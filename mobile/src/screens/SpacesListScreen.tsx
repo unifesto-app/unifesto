@@ -12,14 +12,13 @@ import {
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { SpaceCard, SpaceCardSkeleton } from '../components/home/SpaceCards';
 import { getAllSpaces, getSpaceById, Space } from '../lib/api/spaces';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const GAP = spacing[3];
@@ -32,7 +31,7 @@ const PAGE_SIZE = 12;
  * its own screen, MyCirclesScreen.
  */
 export default function SpacesListScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const router = useRouter();
   const topSpacing = useTopSpacing();
   const { width: screenW } = useWindowDimensions();
@@ -124,12 +123,12 @@ export default function SpacesListScreen() {
   const header = (
     <View style={styles.search}>
       <CardBackdrop shape={styles.search} />
-      <MagnifyingGlass size={18} color={tokens.textMuted} />
+      <MagnifyingGlass size={18} color={c.muted} />
       <TextInput
-        style={[styles.searchInput, { color: tokens.text }]}
+        style={[styles.searchInput, { color: c.text }]}
         placeholder="Search spaces"
-        placeholderTextColor={tokens.textMuted}
-        selectionColor={tokens.accent}
+        placeholderTextColor={c.muted}
+        selectionColor={c.primary}
         value={searchQuery}
         onChangeText={setSearchQuery}
         autoCorrect={false}
@@ -137,7 +136,7 @@ export default function SpacesListScreen() {
       />
       {searchQuery.length > 0 ? (
         <Pressable onPress={() => setSearchQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-          <X size={16} color={tokens.textMuted} weight="bold" />
+          <X size={16} color={c.muted} weight="bold" />
         </Pressable>
       ) : null}
     </View>
@@ -149,16 +148,16 @@ export default function SpacesListScreen() {
     const body = searching ? `Nothing matches “${searchQuery.trim()}”.` : 'Check back soon for new spaces.';
     return (
       <View style={styles.empty}>
-        <UsersThree size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
-        <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{body}</Text>
+        <UsersThree size={48} color={c.soft} weight="duotone" />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
+        <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
       </View>
     );
   })();
 
   return (
     <FlatList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       data={loading ? [] : spaces}
       keyExtractor={(item) => item.id}
       numColumns={2}
@@ -188,15 +187,15 @@ export default function SpacesListScreen() {
           empty
         )
       }
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[6] }} /> : null}
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginTop: spacing[6] }} /> : null}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => loadSpaces(1, 'refresh')}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -214,16 +213,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     borderRadius: borderRadius.full,
   },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
+  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
   skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
+  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.display },
   emptyBody: {
     marginTop: 6,
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
     textAlign: 'center',
     maxWidth: 300,
-    ...font(),
+    ...cosmosFont.body,
   },
 });

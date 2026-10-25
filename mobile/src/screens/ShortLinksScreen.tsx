@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { LinkSimple } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   createShortLink,
@@ -21,7 +20,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { shareLink } from '../lib/share';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -44,7 +43,7 @@ export default function ShortLinksScreen() {
   const scope = useMemo(() => scopeFromParams(params), [params.scope, params.scopeId]); // eslint-disable-line react-hooks/exhaustive-deps
   const title = params.title;
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [links, setLinks] = useState<ShortLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,18 +141,18 @@ export default function ShortLinksScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
-  const icon = <LinkSimple size={ICON} color={tokens.accent} weight="bold" />;
+  const icon = <LinkSimple size={ICON} color={c.primary} weight="bold" />;
   const destination =
     scope?.kind === 'event' ? 'this event' : scope?.kind === 'space' ? 'the space page' : 'any unifesto.app page';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         contentInsetAdjustmentBehavior="never"
@@ -167,12 +166,12 @@ export default function ShortLinksScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
+            tintColor={c.primary}
           />
         }
       >
-        {title ? <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
-        {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+        {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+        {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
         <SettingsGroup
           title="Short links"
@@ -228,14 +227,14 @@ export default function ShortLinksScreen() {
                 />
               ) : null}
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               The link opens {destination}. Registrations through it show up in Tracking under its source.
             </Text>
-            {formError ? <Text style={[styles.error, { color: tokens.danger }]}>{formError}</Text> : null}
+            {formError ? <Text style={[styles.error, { color: c.danger }]}>{formError}</Text> : null}
             <Button label="Create link" fullWidth loading={saving} onPress={add} style={{ marginTop: spacing[4] }} />
           </>
         ) : (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             Give each place you post its own link to see which one brings people in. Tap a link to copy, share or see its stats.
           </Text>
         )}
@@ -249,7 +248,7 @@ const fmtCount = (n: number, unit: string) => `${n.toLocaleString('en-IN')} ${un
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { RefreshControl } from '../../../components/ui/RefreshControl';
 import { useFocusEffect } from 'expo-router';
 import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
 import {
   getPlatformFinancials,
@@ -21,7 +20,7 @@ import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { inr, inrShort } from '../../../utils/money';
 import { borderRadius, spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { font } from '../../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -51,7 +50,7 @@ const FIGURES: { key: keyof FinancialsFigures; label: string }[] = [
  * are owed and how much of that has been paid. Spaces expand to their events.
  */
 export default function FinancialsScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [totals, setTotals] = useState<PlatformFinancials | null>(null);
   const [spaces, setSpaces] = useState<SpaceFinancials[] | null>(null);
@@ -100,22 +99,22 @@ export default function FinancialsScreen() {
 
   if (!totals) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
     >
-      <Text style={[styles.hero, { color: tokens.text }]}>{inr(totals.platformEarnings)}</Text>
-      <Text style={[styles.muted, { color: tokens.textMuted }]}>Platform earnings · app fees + revenue share</Text>
-      {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+      <Text style={[styles.hero, { color: c.text }]}>{inr(totals.platformEarnings)}</Text>
+      <Text style={[styles.muted, { color: c.muted }]}>Platform earnings · app fees + revenue share</Text>
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       <View style={styles.tiles}>
         <ManageStats stats={[{ label: 'Collected', value: inrShort(totals.collectedOverall) }, { label: 'Ticket revenue', value: inrShort(totals.ticketRevenue) }]} />
@@ -129,13 +128,13 @@ export default function FinancialsScreen() {
         <SettingsRow label="Queued for transfer" value={inr(totals.pending)} />
         <SettingsRow label="Still owed" value={inr(totals.available)} />
       </SettingsGroup>
-      <Text style={[styles.note, { color: tokens.textMuted }]}>Net owed = settled + queued + still owed. Figures are cumulative and survive refunds.</Text>
+      <Text style={[styles.note, { color: c.muted }]}>Net owed = settled + queued + still owed. Figures are cumulative and survive refunds.</Text>
 
       {spaces ? (
         <View style={{ marginTop: spacing[8] }}>
           <BlockTitle>By space</BlockTitle>
           <ChipPicker options={SORTS} value={sort} onChange={(v) => v && setSort(v)} />
-          {sorted.length === 0 ? <Text style={[styles.note, { color: tokens.textMuted }]}>No space has collected money yet.</Text> : null}
+          {sorted.length === 0 ? <Text style={[styles.note, { color: c.muted }]}>No space has collected money yet.</Text> : null}
           {sorted.map((s) => (
             <SpaceCard key={s.spaceId} space={s} sortKey={sort} open={open.has(s.spaceId)} onToggle={() => toggle(s.spaceId)} />
           ))}
@@ -146,7 +145,7 @@ export default function FinancialsScreen() {
 }
 
 function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials; sortKey: SortKey; open: boolean; onToggle: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const fee = space.feePercent > 0 ? `${space.feePercent}% rev-share` : 'No rev-share';
   const Caret = open ? CaretDown : CaretRight;
   return (
@@ -154,31 +153,31 @@ function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials;
       <CardBackdrop shape={styles.card} />
       <Pressable onPress={onToggle} style={({ pressed }) => [styles.cardHead, pressed && { opacity: 0.6 }]} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardTitle, { color: tokens.text }]} numberOfLines={1}>
+          <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>
             {space.name}
           </Text>
-          <Text style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.muted, { color: c.muted }]} numberOfLines={1}>
             {`${space.eventCount} ${space.eventCount === 1 ? 'event' : 'events'}  ·  ${fee}`}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.cardValue, { color: sortKey === 'available' && space.available > 0 ? tokens.warning : tokens.text }]}>{inr(space[sortKey])}</Text>
-          <Text style={[styles.tiny, { color: tokens.textMuted }]}>{SORTS.find((s) => s.value === sortKey)?.label}</Text>
+          <Text style={[styles.cardValue, { color: sortKey === 'available' && space.available > 0 ? c.warn : c.text }]}>{inr(space[sortKey])}</Text>
+          <Text style={[styles.tiny, { color: c.muted }]}>{SORTS.find((s) => s.value === sortKey)?.label}</Text>
         </View>
-        <Caret size={15} color={tokens.textMuted} />
+        <Caret size={15} color={c.muted} />
       </Pressable>
 
       {open ? (
         <View style={styles.body}>
           <Figures f={space} />
-          <Text style={[styles.sub, { color: tokens.textMuted }]}>{`Platform earned ${inr(space.platformEarnings)}`}</Text>
-          {space.events.length === 0 ? <Text style={[styles.sub, { color: tokens.textMuted }]}>No events yet.</Text> : null}
+          <Text style={[styles.sub, { color: c.muted }]}>{`Platform earned ${inr(space.platformEarnings)}`}</Text>
+          {space.events.length === 0 ? <Text style={[styles.sub, { color: c.muted }]}>No events yet.</Text> : null}
           {space.events.map((e) => (
-            <View key={e.eventId} style={[styles.event, { borderTopColor: tokens.border }]}>
-              <Text style={[styles.eventTitle, { color: tokens.text }]} numberOfLines={1}>
+            <View key={e.eventId} style={[styles.event, { borderTopColor: c.border }]}>
+              <Text style={[styles.eventTitle, { color: c.text }]} numberOfLines={1}>
                 {e.title}
               </Text>
-              <Text style={[styles.tiny, { color: tokens.textMuted }]}>{shortDate(e.startDateTime)}</Text>
+              <Text style={[styles.tiny, { color: c.muted }]}>{shortDate(e.startDateTime)}</Text>
               <Figures f={e} />
             </View>
           ))}
@@ -190,15 +189,15 @@ function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials;
 
 /** Two-column grid of the seven figures; zeros are muted, money still owed is tinted. */
 function Figures({ f }: { f: FinancialsFigures }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.grid}>
       {FIGURES.map(({ key, label }) => {
         const v = f[key];
-        const color = v === 0 ? tokens.textMuted : key === 'available' ? tokens.warning : tokens.text;
+        const color = v === 0 ? c.muted : key === 'available' ? c.warn : c.text;
         return (
           <View key={key} style={styles.cell}>
-            <Text style={[styles.tiny, { color: tokens.textMuted }]}>{label}</Text>
+            <Text style={[styles.tiny, { color: c.muted }]}>{label}</Text>
             <Text style={[styles.cellValue, { color }]}>{inr(v)}</Text>
           </View>
         );
@@ -210,20 +209,20 @@ function Figures({ f }: { f: FinancialsFigures }) {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  hero: { fontSize: typography.fontSize['4xl'], ...font('heading') },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  hero: { fontSize: typography.fontSize['4xl'], ...cosmosFont.display },
+  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   tiles: { marginTop: spacing[5], gap: spacing[3] },
   card: { marginTop: spacing[3], borderRadius: borderRadius.xl, overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
-  cardTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  cardValue: { fontSize: typography.fontSize.base, ...font('semibold') },
+  cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  cardValue: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { paddingHorizontal: spacing[4], paddingBottom: spacing[4] },
-  sub: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font() },
+  sub: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   event: { marginTop: spacing[4], paddingTop: spacing[3], borderTopWidth: StyleSheet.hairlineWidth },
-  eventTitle: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  eventTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing[2] },
   cell: { width: '50%', paddingVertical: spacing[1] },
-  cellValue: { fontSize: typography.fontSize.sm, ...font('medium') },
-  tiny: { fontSize: typography.fontSize.xs, ...font() },
+  cellValue: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  tiny: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

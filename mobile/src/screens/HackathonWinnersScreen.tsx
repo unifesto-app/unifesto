@@ -6,13 +6,12 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -25,7 +24,7 @@ const ICON = 26;
 export default function HackathonWinnersScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<AwardsList | null>(null);
   const [error, setError] = useState('');
@@ -49,8 +48,8 @@ export default function HackathonWinnersScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -81,7 +80,7 @@ export default function HackathonWinnersScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       refreshControl={
         <RefreshControl
@@ -91,8 +90,8 @@ export default function HackathonWinnersScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -102,7 +101,7 @@ export default function HackathonWinnersScreen() {
         {data.awards.map((a) => (
           <SettingsRow
             key={a.id}
-            icon={<Trophy size={ICON} color={a.published ? tokens.accent : tokens.textMuted} weight="fill" />}
+            icon={<Trophy size={ICON} color={a.published ? c.primary : c.muted} weight="fill" />}
             label={`${a.title} · ${a.team.teamCode ?? ''} ${a.team.name}`.trim()}
             value={a.team.cancelled ? 'Team cancelled' : a.published ? 'Published' : 'Not published'}
             external={data.canDeclareWinners}
@@ -110,10 +109,10 @@ export default function HackathonWinnersScreen() {
           />
         ))}
         {data.canDeclareWinners ? (
-          <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add an award" external onPress={openAwards} />
+          <SettingsRow icon={<Plus size={ICON} color={c.primary} weight="bold" />} label="Add an award" external onPress={openAwards} />
         ) : null}
       </SettingsGroup>
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
+      <Text style={[styles.note, { color: c.muted }]}>
         {data.canDeclareWinners
           ? 'Pick any team, whatever its rank, and say why it won. Teams see awards and notes once you publish.'
           : 'Only the Curator or a Space Admin can declare and publish winners.'}
@@ -125,7 +124,7 @@ export default function HackathonWinnersScreen() {
           size="lg"
           fullWidth
           loading={busy}
-          icon={<Megaphone size={18} color={tokens.accentFg} weight="fill" />}
+          icon={<Megaphone size={18} color={c.primaryFg} weight="fill" />}
           onPress={publish}
           style={{ marginTop: spacing[6] }}
         />
@@ -145,5 +144,5 @@ export default function HackathonWinnersScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

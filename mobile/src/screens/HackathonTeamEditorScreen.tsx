@@ -8,12 +8,11 @@ import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Badge } from '../components/ui/Badge';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -37,7 +36,7 @@ interface Draft {
 export default function HackathonTeamEditorScreen() {
   const { eventId, teamId } = useLocalSearchParams<{ eventId: string; teamId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [team, setTeam] = useState<TeamDetail | null>(null);
@@ -85,8 +84,8 @@ export default function HackathonTeamEditorScreen() {
 
   if (!team || !draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -123,7 +122,7 @@ export default function HackathonTeamEditorScreen() {
   const joined = team.members.filter((m) => m.joined).length;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -133,7 +132,7 @@ export default function HackathonTeamEditorScreen() {
         {cancelled ? (
           <View style={styles.banner}>
             <Badge label="Cancelled" tone="danger" />
-            <Text style={[styles.note, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+            <Text style={[styles.note, { color: c.soft, marginTop: spacing[2] }]}>
               This team’s registration was cancelled. It keeps {team.teamCode ?? 'its Team ID'} and the ID is never given to
               another team. If the registration is restored, the team comes back as it was.
             </Text>
@@ -144,7 +143,7 @@ export default function HackathonTeamEditorScreen() {
           <FieldRow label="Team ID" value={draft.teamCode} onChangeText={(v) => set({ teamCode: v })} autoCapitalize="characters" autoCorrect={false} />
           <FieldRow stacked label="Team name" value={draft.name} onChangeText={(v) => set({ name: v })} />
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           {team.nameSource ? `${NAME_SOURCE[team.nameSource]}. ` : ''}Changing the name here overrides it.
         </Text>
 
@@ -160,7 +159,7 @@ export default function HackathonTeamEditorScreen() {
                 clearable
               />
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               {room
                 ? `${room.occupied} of ${room.capacity} teams in ${room.name}${room.location ? ` · ${room.location}` : ''}. The team is notified when you save.`
                 : 'The team is notified when you put it in a room.'}
@@ -174,9 +173,9 @@ export default function HackathonTeamEditorScreen() {
               <SettingsRow
                 icon={
                   team.statement ? (
-                    <LockSimple size={26} color={tokens.text} />
+                    <LockSimple size={26} color={c.text} />
                   ) : (
-                    <Lightbulb size={26} color={tokens.text} />
+                    <Lightbulb size={26} color={c.text} />
                   )
                 }
                 label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
@@ -188,11 +187,11 @@ export default function HackathonTeamEditorScreen() {
             </SettingsGroup>
             {team.statement?.changedAfterEvalAt ? (
               <View style={styles.flag}>
-                <WarningCircle size={16} color={tokens.warning} weight="fill" />
-                <Text style={[styles.flagText, { color: tokens.warning }]}>Changed after evaluation. Earlier marks were kept.</Text>
+                <WarningCircle size={16} color={c.warn} weight="fill" />
+                <Text style={[styles.flagText, { color: c.warn }]}>Changed after evaluation. Earlier marks were kept.</Text>
               </View>
             ) : (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>
+              <Text style={[styles.note, { color: c.muted }]}>
                 {team.statement
                   ? team.statement.setBy?.kind === 'ORGANISER'
                     ? 'Assigned by organisers. Locked for the team.'
@@ -212,14 +211,14 @@ export default function HackathonTeamEditorScreen() {
             />
           ))}
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Members see the hackathon once they claim their seat in the app. The lead can invite people from their ticket.
         </Text>
 
         {team.registrationId ? (
           <SettingsGroup>
             <SettingsRow
-              icon={<IdentificationCard size={26} color={tokens.text} />}
+              icon={<IdentificationCard size={26} color={c.text} />}
               label="Open the registration"
               onPress={() => router.push(`/manage/event/${eventId}/attendee/${team.registrationId}`)}
             />
@@ -237,6 +236,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   banner: { marginBottom: spacing[2] },
   flag: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], marginHorizontal: spacing[1] },
-  flagText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  flagText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

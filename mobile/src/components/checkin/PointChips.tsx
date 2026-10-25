@@ -1,11 +1,10 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import type { CheckinPoint } from '../../lib/api/checkin';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface PointChipsProps {
   points: CheckinPoint[];
@@ -21,7 +20,7 @@ interface PointChipsProps {
 
 /** Horizontal chip row for picking a check-in point (Main entrance, Day 2…). */
 export default function PointChips({ points, value, onChange, allowAll, onCamera, inset = 0 }: PointChipsProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const items = allowAll ? [{ id: '', name: 'All points' }, ...points] : points;
 
   return (
@@ -36,13 +35,13 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
         const bg = on
           ? onCamera
             ? '#ffffff'
-            : tokens.text
+            : c.text
           : onCamera
             ? LIQUID_GLASS
               ? undefined // GlassFill paints it
               : 'rgba(0, 0, 0, 0.5)'
-            : tokens.fill;
-        const fg = on ? (onCamera ? '#000000' : tokens.bg) : onCamera ? 'rgba(255, 255, 255, 0.9)' : tokens.textSecondary;
+            : c.tint;
+        const fg = on ? (onCamera ? '#000000' : c.bg) : onCamera ? 'rgba(255, 255, 255, 0.9)' : c.soft;
         return (
           <Pressable
             key={p.id || 'all'}
@@ -65,5 +64,5 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
 const styles = StyleSheet.create({
   row: { gap: spacing[2] },
   chip: { paddingHorizontal: spacing[4], height: 36, justifyContent: 'center', borderRadius: borderRadius.full },
-  label: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

@@ -21,7 +21,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
@@ -38,7 +37,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -53,7 +52,7 @@ const when = (iso: string) =>
 export default function StayPassScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing(8);
   const { width } = useWindowDimensions();
   const { user } = useAuth();
@@ -80,8 +79,8 @@ export default function StayPassScreen() {
 
   if (!b) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -91,10 +90,10 @@ export default function StayPassScreen() {
   const paidOnline = b.paymentMode === 'ONLINE' && b.paymentStatus === 'PAID';
   const canCancel = (b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT' || b.status === 'CONFIRMED') && !paidOnline;
   const badge = closed
-    ? { color: tokens.danger, bg: 'rgba(239,68,68,0.14)' }
+    ? { color: c.danger, bg: 'rgba(239,68,68,0.14)' }
     : b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT'
-      ? { color: tokens.warning, bg: 'rgba(245,158,11,0.14)' }
-      : { color: tokens.success, bg: 'rgba(16,185,129,0.14)' };
+      ? { color: c.warn, bg: 'rgba(245,158,11,0.14)' }
+      : { color: c.success, bg: 'rgba(16,185,129,0.14)' };
 
   const pay = async () => {
     setPaying(true);
@@ -171,7 +170,7 @@ export default function StayPassScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -182,8 +181,8 @@ export default function StayPassScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -192,12 +191,12 @@ export default function StayPassScreen() {
       <View style={styles.pass}>
         <CardBackdrop shape={styles.pass} />
         <View style={styles.passTop}>
-          <Text style={[styles.kicker, { color: tokens.accent }]}>UNIFESTO STAY PASS</Text>
+          <Text style={[styles.kicker, { color: c.primary }]}>UNIFESTO STAY PASS</Text>
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
             <Text style={[styles.badgeText, { color: badge.color }]}>{STATUS_LABELS[b.status]}</Text>
           </View>
-          <Text style={[styles.title, { color: tokens.text }]}>{b.stay.name}</Text>
-          <Text style={[styles.sub, { color: tokens.textSecondary }]}>
+          <Text style={[styles.title, { color: c.text }]}>{b.stay.name}</Text>
+          <Text style={[styles.sub, { color: c.soft }]}>
             {b.option.name} · {b.event.title}
           </Text>
           <View style={styles.facts}>
@@ -209,14 +208,14 @@ export default function StayPassScreen() {
           </View>
         </View>
 
-        <View style={[styles.stub, { borderTopColor: tokens.border }]}>
+        <View style={[styles.stub, { borderTopColor: c.border }]}>
           {b.passCode ? (
             <>
               <View style={[styles.qr, (b.status === 'CHECKED_OUT') && { opacity: 0.2 }]}>
                 <QRCode value={b.passCode} size={qrSize} color="#000000" backgroundColor="#ffffff" />
               </View>
-              <Text style={[styles.code, { color: tokens.text }]}>{b.passCode}</Text>
-              <Text style={[styles.hint, { color: tokens.textMuted }]}>
+              <Text style={[styles.code, { color: c.text }]}>{b.passCode}</Text>
+              <Text style={[styles.hint, { color: c.muted }]}>
                 {b.status === 'CHECKED_IN'
                   ? `Checked in ${b.checkedInAt ? when(b.checkedInAt) : ''}. Enjoy your stay.`
                   : b.status === 'CHECKED_OUT'
@@ -225,15 +224,15 @@ export default function StayPassScreen() {
               </Text>
             </>
           ) : b.status === 'PENDING' ? (
-            <StubMessage icon={<HourglassMedium size={40} color={tokens.warning} weight="duotone" />} title="Waiting for the event team">
+            <StubMessage icon={<HourglassMedium size={40} color={c.warn} weight="duotone" />} title="Waiting for the event team">
               They review each request. Your pass appears here once they confirm.
             </StubMessage>
           ) : b.status === 'AWAITING_PAYMENT' ? (
-            <StubMessage icon={<CurrencyInr size={40} color={tokens.accent} weight="duotone" />} title={`Pay ${rupees(b.totalAmount)} to confirm`}>
+            <StubMessage icon={<CurrencyInr size={40} color={c.primary} weight="duotone" />} title={`Pay ${rupees(b.totalAmount)} to confirm`}>
               {b.paymentDueAt ? `Your bed is held until ${when(b.paymentDueAt)}.` : 'Your bed is held for a short while.'}
             </StubMessage>
           ) : (
-            <StubMessage icon={<XCircle size={40} color={tokens.danger} weight="duotone" />} title={STATUS_LABELS[b.status]}>
+            <StubMessage icon={<XCircle size={40} color={c.danger} weight="duotone" />} title={STATUS_LABELS[b.status]}>
               {b.status === 'REJECTED'
                 ? b.rejectionReason || "The event team couldn't fit you in this time."
                 : b.status === 'EXPIRED'
@@ -259,7 +258,7 @@ export default function StayPassScreen() {
       <SettingsGroup title="Property">
         {b.stay.address ? (
           <SettingsRow
-            icon={<MapPin size={24} color={tokens.accent} />}
+            icon={<MapPin size={24} color={c.primary} />}
             label={b.stay.address}
             external={!!b.stay.mapUrl}
             onPress={b.stay.mapUrl ? () => void Linking.openURL(b.stay.mapUrl!) : undefined}
@@ -267,7 +266,7 @@ export default function StayPassScreen() {
         ) : null}
         {b.stay.checkInTime || b.stay.checkOutTime ? (
           <SettingsRow
-            icon={<Clock size={24} color={tokens.accent} />}
+            icon={<Clock size={24} color={c.primary} />}
             label={[b.stay.checkInTime && `Check-in ${b.stay.checkInTime}`, b.stay.checkOutTime && `check-out ${b.stay.checkOutTime}`]
               .filter(Boolean)
               .join(' · ')}
@@ -275,14 +274,14 @@ export default function StayPassScreen() {
         ) : null}
         {b.stay.contactPhone && !closed ? (
           <SettingsRow
-            icon={<Phone size={24} color={tokens.accent} />}
+            icon={<Phone size={24} color={c.primary} />}
             label={b.stay.contactName ? `Call ${b.stay.contactName}` : 'Call the property'}
             value={b.stay.contactPhone}
             onPress={() => void Linking.openURL(`tel:${b.stay.contactPhone}`)}
           />
         ) : null}
         <SettingsRow
-          icon={<Ticket size={24} color={tokens.accent} />}
+          icon={<Ticket size={24} color={c.primary} />}
           label="View event"
           onPress={() => router.push(`/event/${b.event.slug || b.event.id}`)}
         />
@@ -290,7 +289,7 @@ export default function StayPassScreen() {
 
       {b.stay.houseRules ? (
         <SettingsGroup title="House rules" plain>
-          <Text style={[styles.body, { color: tokens.textSecondary }]}>{b.stay.houseRules}</Text>
+          <Text style={[styles.body, { color: c.soft }]}>{b.stay.houseRules}</Text>
         </SettingsGroup>
       ) : null}
 
@@ -298,34 +297,34 @@ export default function StayPassScreen() {
         {b.guests.map((g) => (
           <SettingsRow
             key={g.id ?? g.name}
-            icon={<UsersThree size={24} color={tokens.accent} />}
+            icon={<UsersThree size={24} color={c.primary} />}
             label={g.isBooker ? `${g.name} (you)` : g.name}
             value={GUEST_GENDER_LABELS[g.gender]}
           />
         ))}
         {b.arrivalAt ? (
-          <SettingsRow icon={<CalendarBlank size={24} color={tokens.accent} />} label="Arriving" value={when(b.arrivalAt)} />
+          <SettingsRow icon={<CalendarBlank size={24} color={c.primary} />} label="Arriving" value={when(b.arrivalAt)} />
         ) : null}
       </SettingsGroup>
 
       <SettingsGroup title="Payment">
         <SettingsRow
-          icon={<Bed size={24} color={tokens.accent} />}
+          icon={<Bed size={24} color={c.primary} />}
           label={b.totalAmount ? PAYMENT_LABELS[b.paymentMode] : 'Free stay'}
           value={b.totalAmount ? rupees(b.totalAmount) : undefined}
         />
         {b.paymentStatus === 'PAID' ? (
-          <SettingsRow icon={<CheckCircle size={24} color={tokens.success} weight="fill" />} label="Paid" value={b.paidAt ? when(b.paidAt) : undefined} />
+          <SettingsRow icon={<CheckCircle size={24} color={c.success} weight="fill" />} label="Paid" value={b.paidAt ? when(b.paidAt) : undefined} />
         ) : null}
         {b.refundedAmount ? (
-          <SettingsRow icon={<CheckCircle size={24} color={tokens.success} />} label="Refunded" value={rupees(b.refundedAmount)} />
+          <SettingsRow icon={<CheckCircle size={24} color={c.success} />} label="Refunded" value={rupees(b.refundedAmount)} />
         ) : null}
       </SettingsGroup>
 
       {canCancel ? (
         <SettingsGroup>
           <SettingsRow
-            icon={<XCircle size={24} color={tokens.danger} />}
+            icon={<XCircle size={24} color={c.danger} />}
             label={cancelling ? 'Cancelling…' : 'Cancel stay'}
             danger
             onPress={cancel}
@@ -334,7 +333,7 @@ export default function StayPassScreen() {
       ) : paidOnline && !closed && b.status !== 'CHECKED_OUT' && b.status !== 'CHECKED_IN' ? (
         <SettingsGroup>
           <SettingsRow
-            icon={<XCircle size={24} color={tokens.danger} />}
+            icon={<XCircle size={24} color={c.danger} />}
             label={cancelling ? 'Sending…' : 'Ask to cancel and refund'}
             danger
             onPress={askCancel}
@@ -346,11 +345,11 @@ export default function StayPassScreen() {
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.fact}>
-      <Text style={[styles.factLabel, { color: tokens.textMuted }]}>{label}</Text>
-      <Text style={[styles.factValue, { color: tokens.text }]} numberOfLines={2}>
+      <Text style={[styles.factLabel, { color: c.muted }]}>{label}</Text>
+      <Text style={[styles.factValue, { color: c.text }]} numberOfLines={2}>
         {value}
       </Text>
     </View>
@@ -358,30 +357,30 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function StubMessage({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.stubMsg}>
       {icon}
-      <Text style={[styles.stubTitle, { color: tokens.text }]}>{title}</Text>
-      <Text style={[styles.hint, { color: tokens.textMuted, textAlign: 'center' }]}>{children}</Text>
+      <Text style={[styles.stubTitle, { color: c.text }]}>{title}</Text>
+      <Text style={[styles.hint, { color: c.muted, textAlign: 'center' }]}>{children}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   pass: { borderRadius: borderRadius['2xl'], overflow: 'hidden' },
   passTop: { padding: spacing[5], gap: spacing[2] },
-  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.5, ...font('semibold') },
+  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.5, ...cosmosFont.strong },
   badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: borderRadius.full },
-  badgeText: { fontSize: 12, ...font('semibold') },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
-  sub: { fontSize: typography.fontSize.sm, ...font() },
+  badgeText: { fontSize: 12, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
+  sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   facts: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   fact: { flex: 1, gap: 3 },
-  factLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...font('semibold') },
+  factLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...cosmosFont.strong },
   stub: {
     alignItems: 'center',
     paddingTop: spacing[5],
@@ -391,9 +390,9 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   qr: { padding: 14, borderRadius: borderRadius.xl, backgroundColor: '#ffffff' },
-  code: { marginTop: spacing[4], fontSize: typography.fontSize.xl, letterSpacing: 2, ...font('heading') },
-  hint: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font() },
+  code: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  hint: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   stubMsg: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
-  stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
-  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.display },
+  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

@@ -4,7 +4,6 @@ import { Stack, useRouter } from 'expo-router';
 import { openApexWeb } from '../../lib/openOnWeb';
 import { Cards, Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
@@ -14,7 +13,7 @@ import { campaignStatus } from '../../components/apex/campaignStatus';
 import { listEmailCampaigns, type EmailTargetType } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 const PAGE_SIZE = 20;
@@ -34,7 +33,7 @@ export const pct = (part: number, whole: number) => (whole ? `${Math.round((part
 /** Platform email campaigns with open / click rates; + composes, cards icon opens templates. */
 export default function EmailCampaignsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [total, setTotal] = useState(0);
 
@@ -58,17 +57,17 @@ export default function EmailCampaignsScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => openApexWeb('/dashboard/email/templates')} label="Templates on the web">
-                <Cards size={24} color={tokens.text} />
+                <Cards size={24} color={c.text} />
               </HeaderIconButton>
               <HeaderIconButton onPress={() => openApexWeb('/dashboard/email/new')} label="New campaign on the web">
-                <Plus size={24} color={tokens.text} />
+                <Plus size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
         }}
       />
       <FlatList
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={styles.content}
         data={loading || error ? [] : rows}
         keyExtractor={(c) => c.id}
@@ -88,19 +87,19 @@ export default function EmailCampaignsScreen() {
                 { label: 'Click rate', value: pct(clicks, sent) },
               ]}
             />
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>Sent and rates cover the campaigns loaded below.</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>Sent and rates cover the campaigns loaded below.</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+            <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
           ) : (
-            <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || 'No campaigns yet. Tap + to compose one.'}</Text>
+            <Text style={[styles.empty, { color: c.muted }]}>{error || 'No campaigns yet. Tap + to compose one.'}</Text>
           )
         }
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
         renderItem={({ item }) => {
-          const s = campaignStatus(item.status, tokens);
+          const s = campaignStatus(item.status, c);
           const rates = item.totalSent ? `${item.totalSent} sent · ${pct(item.openCount, item.totalSent)} opened` : null;
           return (
             <ApexRow
@@ -116,10 +115,10 @@ export default function EmailCampaignsScreen() {
         }}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: spacing[4] }} /> : null}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
         }
       />
     </>
@@ -128,7 +127,7 @@ export default function EmailCampaignsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  hint: { fontSize: typography.fontSize.xs, ...font() },
+  hint: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

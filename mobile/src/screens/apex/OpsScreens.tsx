@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import ManageStats from '../../components/manage/ManageStats';
@@ -24,7 +23,7 @@ import {
 import { inrShort } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /* Apex Sessions (Unifesto Huddle) and API logs, both read-only like the web. */
 
@@ -43,7 +42,7 @@ const SESSION_FILTERS = [
 
 export function SessionsAdminScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [status, setStatus] = useState('');
   const fetchPage = useCallback(
     async (search: string, page: number) => {
@@ -68,7 +67,7 @@ export function SessionsAdminScreen() {
           title={s.title}
           meta={[s.space?.name ?? who(s.creator), shortDate(s.startDateTime), `${s.registeredCount} joined`].join('  ·  ')}
           value={s.sales.grossSales ? inrShort(s.sales.grossSales) : titleCase(s.status)}
-          valueColor={s.status === 'CANCELLED' ? tokens.danger : undefined}
+          valueColor={s.status === 'CANCELLED' ? c.danger : undefined}
           onPress={() => router.push(`/apex/sessions/${s.id}`)}
         />
       )}
@@ -79,7 +78,7 @@ export function SessionsAdminScreen() {
 export function SessionAdminDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [s, setS] = useState<AdminSessionDetail | null>(null);
   const [error, setError] = useState('');
@@ -90,17 +89,17 @@ export function SessionAdminDetailScreen() {
 
   if (!s) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
   const net = s.sales.grossSales - s.sales.processingFees - s.sales.refunded;
   return (
-    <ScrollView style={{ backgroundColor: tokens.bg }} contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 80 }}>
-      <Text style={[styles.title, { color: tokens.text }]}>{s.title}</Text>
-      <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'left', marginTop: 4 }]}>
+    <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 80 }}>
+      <Text style={[styles.title, { color: c.text }]}>{s.title}</Text>
+      <Text style={[styles.muted, { color: c.muted, textAlign: 'left', marginTop: 4 }]}>
         {titleCase(s.status)} · {longDate(s.startDateTime)} · {s.durationMinutes} min
       </Text>
 
@@ -152,7 +151,7 @@ const LOG_FILTERS = [
 ];
 
 export function LogsScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [status, setStatus] = useState('error');
   const [stats, setStats] = useState<LogStats | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -169,7 +168,7 @@ export function LogsScreen() {
     [status],
   );
 
-  const codeColor = (c: number) => (c >= 500 ? tokens.danger : c >= 400 ? tokens.warning : tokens.success);
+  const codeColor = (code: number) => (code >= 500 ? c.danger : code >= 400 ? c.warn : c.success);
 
   return (
     <SearchList<ApiLog>
@@ -200,17 +199,17 @@ export function LogsScreen() {
         >
           <View style={styles.logHead}>
             <Text style={[styles.code, { color: codeColor(l.statusCode) }]}>{l.statusCode}</Text>
-            <Text style={[styles.path, { color: tokens.text }]} numberOfLines={openId === l.id ? undefined : 1}>
+            <Text style={[styles.path, { color: c.text }]} numberOfLines={openId === l.id ? undefined : 1}>
               {l.method} {l.path}
             </Text>
           </View>
-          <Text style={[styles.logMeta, { color: tokens.textMuted }]}>
+          <Text style={[styles.logMeta, { color: c.muted }]}>
             {whenShort(l.createdAt)} · {l.durationMs}ms{l.userId ? ' · signed in' : ''}
           </Text>
           {openId === l.id ? (
             <View style={{ marginTop: spacing[2], gap: 4 }}>
-              {l.errorMessage ? <Text style={[styles.detail, { color: tokens.danger }]} selectable>{l.errorMessage}</Text> : null}
-              <Text style={[styles.detail, { color: tokens.textSecondary }]} selectable>
+              {l.errorMessage ? <Text style={[styles.detail, { color: c.danger }]} selectable>{l.errorMessage}</Text> : null}
+              <Text style={[styles.detail, { color: c.soft }]} selectable>
                 {longDate(l.createdAt)}
                 {l.userId ? `\nUser ${l.userId}` : ''}
                 {l.ipAddress ? `\nIP ${l.ipAddress}` : ''}
@@ -226,12 +225,12 @@ export function LogsScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  title: { fontSize: typography.fontSize.xl, ...font('heading') },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   log: { paddingVertical: spacing[3] },
   logHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2] },
-  code: { width: 36, fontSize: typography.fontSize.sm, ...font('semibold') },
-  path: { flex: 1, fontSize: typography.fontSize.sm, ...font('medium') },
-  logMeta: { marginTop: 2, marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, ...font() },
-  detail: { marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, lineHeight: 17, ...font() },
+  code: { width: 36, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  path: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  logMeta: { marginTop: 2, marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  detail: { marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },
 });

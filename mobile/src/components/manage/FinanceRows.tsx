@@ -1,54 +1,42 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { Tokens } from '../../theme/tokens';
 import { describeAccount, type Payout, type PayoutStatus, type RefundRequest, type RefundStatus } from '../../lib/api/finance';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
 
-/** The colours a status needs: app tokens satisfy it, and so does cosmosStatus(). */
-type StatusPalette = Pick<Tokens, 'success' | 'warning' | 'danger' | 'textMuted' | 'textSecondary'> & { info?: string };
-
-const cosmosStatus = (c: Cosmos): StatusPalette => ({
-  success: c.success,
-  warning: c.warn,
-  danger: c.danger,
-  textMuted: c.muted,
-  textSecondary: c.soft,
-});
-
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-export function payoutStatus(s: PayoutStatus, tokens: StatusPalette) {
+export function payoutStatus(s: PayoutStatus, c: Cosmos) {
   switch (s) {
     case 'COMPLETED':
-      return { text: 'Paid', color: tokens.success };
+      return { text: 'Paid', color: c.success };
     case 'PENDING':
-      return { text: 'Queued', color: tokens.warning };
+      return { text: 'Queued', color: c.warn };
     case 'PROCESSING':
-      return { text: 'Processing', color: tokens.warning };
+      return { text: 'Processing', color: c.warn };
     case 'FAILED':
-      return { text: 'Failed', color: tokens.danger };
+      return { text: 'Failed', color: c.danger };
     default:
-      return { text: 'Cancelled', color: tokens.textMuted };
+      return { text: 'Cancelled', color: c.muted };
   }
 }
 
-export function refundStatus(s: RefundStatus, tokens: StatusPalette) {
+export function refundStatus(s: RefundStatus, c: Cosmos) {
   switch (s) {
     case 'PENDING_CURATOR':
-      return { text: 'Needs review', color: tokens.warning };
+      return { text: 'Needs review', color: c.warn };
     case 'PENDING_ADMIN':
-      return { text: 'With Unifesto', color: tokens.info ?? tokens.textSecondary };
+      return { text: 'With Unifesto', color: c.soft };
     case 'PROCESSING':
-      return { text: 'Processing', color: tokens.info ?? tokens.textSecondary };
+      return { text: 'Processing', color: c.soft };
     case 'APPROVED':
-      return { text: 'Refunded', color: tokens.success };
+      return { text: 'Refunded', color: c.success };
     case 'REFUND_FAILED':
-      return { text: 'Refund failed', color: tokens.danger };
+      return { text: 'Refund failed', color: c.danger };
     default:
-      return { text: 'Rejected', color: tokens.danger };
+      return { text: 'Rejected', color: c.danger };
   }
 }
 
@@ -69,7 +57,7 @@ export function PayoutRow({
   onPress?: () => void;
 }) {
   const c = useCosmos();
-  const status = payoutStatus(payout.status, cosmosStatus(c));
+  const status = payoutStatus(payout.status, c);
   const to = payout.bankAccount ? describeAccount(payout.bankAccount) : null;
   return (
     <Pressable
@@ -101,7 +89,7 @@ export function PayoutRow({
 /** One refund request: who, which event, why, how much. */
 export function RefundRow({ refund, onPress }: { refund: RefundRequest; onPress: () => void }) {
   const c = useCosmos();
-  const status = refundStatus(refund.status, cosmosStatus(c));
+  const status = refundStatus(refund.status, c);
   const who = refund.registration?.user?.fullName || refund.registration?.user?.username || 'Attendee';
   const amount = refund.approvedAmount ?? refund.requestedAmount;
   return (

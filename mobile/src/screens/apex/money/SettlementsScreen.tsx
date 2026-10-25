@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../../../components/ui/RefreshControl';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
 import type { AdminPayout, PayoutStatus } from '../../../lib/api/apex';
 import { listPayouts } from '../../../lib/api/apexMoney';
@@ -15,7 +14,7 @@ import { payoutStatus } from '../../../components/manage/FinanceRows';
 import { inr, inrShort } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { font } from '../../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 const GUTTER = spacing[6];
 const OWED: PayoutStatus[] = ['PENDING', 'PROCESSING'];
@@ -51,7 +50,7 @@ async function fetchAllPayouts() {
  */
 export default function SettlementsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [payouts, setPayouts] = useState<AdminPayout[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
@@ -105,7 +104,7 @@ export default function SettlementsScreen() {
 
   return (
     <FlatList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={styles.content}
       data={payouts ? rows : []}
       keyExtractor={(p) => p.id}
@@ -120,19 +119,19 @@ export default function SettlementsScreen() {
             ]}
           />
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
-          {error ? <Text style={[styles.empty, { color: tokens.danger, marginTop: 0 }]}>{error}</Text> : null}
+          {error ? <Text style={[styles.empty, { color: c.danger, marginTop: 0 }]}>{error}</Text> : null}
         </View>
       }
       ListEmptyComponent={
         !payouts && !error ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
         ) : payouts ? (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>Nothing here.</Text>
+          <Text style={[styles.empty, { color: c.muted }]}>Nothing here.</Text>
         ) : null
       }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
       renderItem={({ item: p }) => {
-        const s = payoutStatus(p.status, tokens);
+        const s = payoutStatus(p.status, c);
         const to = p.bankAccount ? describeAccount(p.bankAccount) : null;
         return (
           <ApexRow
@@ -141,13 +140,13 @@ export default function SettlementsScreen() {
               .filter(Boolean)
               .join('  ·  ')}
             value={inr(p.netAmount)}
-            valueColor={p.status === 'COMPLETED' ? tokens.text : s.color}
+            valueColor={p.status === 'COMPLETED' ? c.text : s.color}
             onPress={() => router.push(openPayout(p) as never)}
           />
         );
       }}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
     />
   );
 }
@@ -155,5 +154,5 @@ export default function SettlementsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

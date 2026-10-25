@@ -5,12 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getMyHackathon, renameMyTeam, type HackathonHub } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -20,7 +19,7 @@ const GUTTER = spacing[6];
  */
 export default function HackathonMyTeamScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null | undefined>(undefined);
@@ -45,11 +44,11 @@ export default function HackathonMyTeamScreen() {
   const team = hub?.team;
   if (!team) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {hub === undefined && !error ? (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         ) : (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
+          <Text style={[styles.note, { color: c.muted }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
         )}
       </View>
     );
@@ -70,7 +69,7 @@ export default function HackathonMyTeamScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -91,7 +90,7 @@ export default function HackathonMyTeamScreen() {
                 maxLength={80}
               />
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               You’re the team lead, so you can name the team. Organisers may still adjust it.
             </Text>
           </>
@@ -110,7 +109,7 @@ export default function HackathonMyTeamScreen() {
             />
           ))}
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           {team.isLead
             ? 'Members join by claiming their seat from your invite. Manage invites from your ticket.'
             : 'Everyone who claims their seat sees this hackathon in the app.'}
@@ -125,5 +124,5 @@ export default function HackathonMyTeamScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

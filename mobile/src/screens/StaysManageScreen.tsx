@@ -6,13 +6,12 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { dayLabel, getTeamStays, PROPERTY_LABELS, type TeamStay } from '../lib/api/stays';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -23,7 +22,7 @@ const GUTTER = spacing[6];
 export default function StaysManageScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<{ pendingRequests: number; stays: TeamStay[] } | null>(null);
   const [error, setError] = useState('');
@@ -49,8 +48,8 @@ export default function StaysManageScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -68,7 +67,7 @@ export default function StaysManageScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -79,17 +78,17 @@ export default function StaysManageScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
     >
-      <Text style={[styles.intro, { color: tokens.textSecondary }]}>
+      <Text style={[styles.intro, { color: c.soft }]}>
         List where attendees can stay. Registered attendees request a bed with their details, you approve, and they get a
         Stay Pass to show at check-in.
       </Text>
-      {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.intro, { color: c.danger }]}>{error}</Text> : null}
 
       {data.stays.length ? (
         <View style={{ marginTop: spacing[4] }}>
@@ -105,13 +104,13 @@ export default function StaysManageScreen() {
 
       <SettingsGroup title="Bookings">
         <SettingsRow
-          icon={<ClipboardText size={24} color={tokens.text} />}
+          icon={<ClipboardText size={24} color={c.text} />}
           label="Requests and guests"
           value={data.pendingRequests ? `${data.pendingRequests} new` : undefined}
           onPress={() => router.push(`/manage/event/${eventId}/stay-bookings`)}
         />
         <SettingsRow
-          icon={<QrCode size={24} color={tokens.text} />}
+          icon={<QrCode size={24} color={c.text} />}
           label="Scan Stay Pass"
           onPress={() => router.push(`/manage/event/${eventId}/stay-scan`)}
         />
@@ -119,20 +118,20 @@ export default function StaysManageScreen() {
 
       <SettingsGroup title="Stays">
         {data.stays.length === 0 ? (
-          <SettingsRow icon={<House size={24} color={tokens.textMuted} />} label="No stays yet" />
+          <SettingsRow icon={<House size={24} color={c.muted} />} label="No stays yet" />
         ) : null}
         {data.stays.map((s) => {
           const beds = s.options.filter((o) => o.isActive).reduce((n, o) => n + o.totalBeds, 0);
           return (
             <View key={s.id}>
               <SettingsRow
-                icon={<Bed size={24} color={s.isPublished ? tokens.accent : tokens.textMuted} weight="fill" />}
+                icon={<Bed size={24} color={s.isPublished ? c.primary : c.muted} weight="fill" />}
                 label={s.name}
                 value={s.isPublished ? (s.counts.pending ? `${s.counts.pending} new` : 'Live') : 'Hidden'}
                 external
                 onPress={() => openStay(s.id)}
               />
-              <Text style={[styles.sub, { color: tokens.textMuted }]} onPress={() => openStay(s.id)}>
+              <Text style={[styles.sub, { color: c.muted }]} onPress={() => openStay(s.id)}>
                 {PROPERTY_LABELS[s.propertyType]} · {dayLabel(s.checkInFrom)} to {dayLabel(s.checkOutUntil)} · {beds} bed{beds === 1 ? '' : 's'}
                 {s.counts.confirmedGuests ? ` · ${s.counts.confirmedGuests} confirmed` : ''}
               </Text>
@@ -145,12 +144,12 @@ export default function StaysManageScreen() {
         label="Add a stay on the web"
         variant="secondary"
         fullWidth
-        icon={<Plus size={18} color={tokens.text} weight="bold" />}
+        icon={<Plus size={18} color={c.text} weight="bold" />}
         onPress={() => openStay()}
         style={{ marginTop: spacing[5] }}
       />
       {totals.beds === 0 && data.stays.length ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>Add room or bed options to a stay, then publish it.</Text>
+        <Text style={[styles.note, { color: c.muted }]}>Add room or bed options to a stay, then publish it.</Text>
       ) : null}
     </ScrollView>
   );
@@ -159,7 +158,7 @@ export default function StaysManageScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  sub: { marginTop: -spacing[2], paddingLeft: spacing[4] + 40, paddingRight: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingLeft: spacing[4] + 40, paddingRight: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

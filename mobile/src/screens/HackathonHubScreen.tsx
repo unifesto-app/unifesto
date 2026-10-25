@@ -8,7 +8,6 @@ import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import QuickTiles, { type QuickTile } from '../components/profile/QuickTiles';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getMyHackathon, type HackathonHub } from '../lib/api/hackathon';
 import { evalStatusLabel, stageCopy, venueMapsUrl } from '../lib/hackathon';
@@ -17,7 +16,7 @@ import { AfterEventGroup, useEventCertificate } from '../components/EventEnded';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -30,7 +29,7 @@ const ICON = 26;
 export default function HackathonHubScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null | undefined>(undefined);
   const [error, setError] = useState('');
@@ -75,7 +74,7 @@ export default function HackathonHubScreen() {
           ? () => (
               <HeaderActions>
                 <HeaderIconButton onPress={() => router.push(`/hackathon/${eventId}/updates`)} label={unread ? `${unread} new updates` : 'Updates'}>
-                  {unread ? <BellRinging size={24} color={tokens.accent} weight="fill" /> : <Bell size={24} color={tokens.text} />}
+                  {unread ? <BellRinging size={24} color={c.primary} weight="fill" /> : <Bell size={24} color={c.text} />}
                 </HeaderIconButton>
               </HeaderActions>
             )
@@ -86,21 +85,21 @@ export default function HackathonHubScreen() {
 
   if (hub === undefined) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {header}
-        <ActivityIndicator color={tokens.accent} />
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   if (!hub || !hub.team) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {header}
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>
+        <Text style={[styles.emptyTitle, { color: c.text }]}>
           {!hub ? 'No hackathon here right now' : 'You’re not on a hackathon team'}
         </Text>
-        <Text style={[styles.body, { color: tokens.textSecondary, textAlign: 'center' }]}>
+        <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>
           {error ||
             (!hub
               ? 'This event isn’t running its hackathon in the app at the moment.'
@@ -120,7 +119,7 @@ export default function HackathonHubScreen() {
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
   const joined = team.members.filter((m) => m.joined).length;
   const request = team.evaluation?.request ?? null;
-  const icon = (I: typeof MapPin) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof MapPin) => <I size={ICON} color={c.primary} weight="fill" />;
   const go = (path: string) => () => router.push(`/hackathon/${eventId}/${path}`);
 
   // The one thing the team should do right now, if any, lives on the pass.
@@ -142,7 +141,7 @@ export default function HackathonHubScreen() {
     <>
       {header}
       <ScrollView
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -153,8 +152,8 @@ export default function HackathonHubScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -163,29 +162,29 @@ export default function HackathonHubScreen() {
         <View style={styles.pass}>
           <CardBackdrop shape={styles.pass} />
           <View style={styles.passTop}>
-            <Text style={[styles.label, { color: tokens.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.label, { color: c.muted }]} numberOfLines={1}>
               {hub.event.title}
             </Text>
             <Text
-              style={[styles.teamCode, { color: cancelled ? tokens.textMuted : tokens.text }]}
+              style={[styles.teamCode, { color: cancelled ? c.muted : c.text }]}
               numberOfLines={1}
               adjustsFontSizeToFit
               accessibilityLabel={`Team ID ${team.teamCode ?? 'not assigned'}`}
             >
               {team.teamCode ?? '—'}
             </Text>
-            <Text style={[styles.teamName, { color: tokens.textSecondary }]} numberOfLines={2}>
+            <Text style={[styles.teamName, { color: c.soft }]} numberOfLines={2}>
               {team.name}
               {team.isLead ? ' · Lead' : ''}
             </Text>
           </View>
-          <View style={[styles.passDivider, { backgroundColor: tokens.bg }]} />
+          <View style={[styles.passDivider, { backgroundColor: c.bg }]} />
           <View style={styles.passBottom}>
             <View style={styles.stageRow}>
-              {cancelled ? <WarningCircle size={22} color={tokens.danger} weight="fill" /> : null}
+              {cancelled ? <WarningCircle size={22} color={c.danger} weight="fill" /> : null}
               <View style={{ flex: 1 }}>
-                <Text style={[styles.stageTitle, { color: cancelled ? tokens.danger : tokens.text }]}>{stage.title}</Text>
-                <Text style={[styles.stageBody, { color: tokens.textSecondary }]}>{stage.body}</Text>
+                <Text style={[styles.stageTitle, { color: cancelled ? c.danger : c.text }]}>{stage.title}</Text>
+                <Text style={[styles.stageBody, { color: c.soft }]}>{stage.body}</Text>
               </View>
             </View>
             {cta ? <Button label={cta.label} onPress={cta.onPress} style={{ marginTop: spacing[4] }} /> : null}
@@ -261,7 +260,7 @@ export default function HackathonHubScreen() {
           </SettingsGroup>
         ) : null}
         {(ended ? [] : [!cancelled ? team.room?.notes : null, venueLines[1], hub.venue.notes]).filter(Boolean).map((n, i) => (
-          <Text key={i} style={[styles.note, { color: tokens.textSecondary }]}>
+          <Text key={i} style={[styles.note, { color: c.soft }]}>
             {n}
           </Text>
         ))}
@@ -273,17 +272,17 @@ export default function HackathonHubScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  emptyTitle: { fontSize: typography.fontSize.xl, textAlign: 'center', ...font('bold') },
-  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
+  emptyTitle: { fontSize: typography.fontSize.xl, textAlign: 'center', ...cosmosFont.strong },
+  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   pass: { borderRadius: borderRadius.xl, overflow: 'hidden' },
   passTop: { paddingHorizontal: spacing[5], paddingTop: spacing[6], paddingBottom: spacing[5], alignItems: 'center' },
   passDivider: { height: 2 },
   passBottom: { padding: spacing[5] },
-  label: { fontSize: typography.fontSize.xs, letterSpacing: 0.5, ...font('medium') },
-  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], letterSpacing: 1, ...font('heading') },
-  teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, textAlign: 'center', ...font('medium') },
+  label: { fontSize: typography.fontSize.xs, letterSpacing: 0.5, ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], ...cosmosFont.display },
+  teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
   stageRow: { flexDirection: 'row', gap: spacing[3] },
-  stageTitle: { fontSize: typography.fontSize.base, ...font('medium') },
-  stageBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  stageTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  stageBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

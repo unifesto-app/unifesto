@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { splitFields } from '../hooks/useEventRegistration';
 import { getManagedEvent } from '../lib/api/eventAdmin';
@@ -25,7 +24,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const PHONE = /^[0-9]{10}$/;
@@ -63,7 +62,7 @@ function checkPerson(p: Person, who: string, fields: CustomField[]): string {
  */
 export default function AddAttendeeScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -241,16 +240,16 @@ export default function AddAttendeeScreen() {
 
   if (!tickets) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
   if (tickets.length === 0) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>Add a ticket or RSVP option to this event first.</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.muted, { color: c.muted }]}>Add a ticket or RSVP option to this event first.</Text>
       </View>
     );
   }
@@ -293,7 +292,7 @@ export default function AddAttendeeScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -322,7 +321,7 @@ export default function AddAttendeeScreen() {
 
         {isGroup && teamFields.length > 0 ? (
           <>
-            <Text style={[styles.heading, { color: tokens.text }]}>About the team</Text>
+            <Text style={[styles.heading, { color: c.text }]}>About the team</Text>
             {visibleFields(teamFields, team).map((f) => (
               <View key={f.id} style={styles.block}>
                 <CustomFieldInput field={f} value={team[f.id]} onChange={(v) => setTeam((t) => ({ ...t, [f.id]: v }))} />
@@ -347,15 +346,15 @@ export default function AddAttendeeScreen() {
             </SettingsGroup>
           ) : (
             <>
-              <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[6] }]}>
+              <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
                 They'll get a payment link. Adding people free to a paid ticket needs approval from Unifesto.
               </Text>
               {freeReq === 'PENDING' ? (
-                <Text style={[styles.note, { color: tokens.warning }]}>Your free-add request is waiting for review.</Text>
+                <Text style={[styles.note, { color: c.warn }]}>Your free-add request is waiting for review.</Text>
               ) : (
                 <>
                   {freeReq === 'REJECTED' ? (
-                    <Text style={[styles.note, { color: tokens.danger }]}>Your last free-add request was declined.</Text>
+                    <Text style={[styles.note, { color: c.danger }]}>Your last free-add request was declined.</Text>
                   ) : null}
                   <SettingsGroup plain>
                     <FieldRow stacked multiline label="Why add people free? (optional request)" value={freeReason} onChangeText={setFreeReason} />
@@ -378,8 +377,8 @@ export default function AddAttendeeScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   block: { marginTop: spacing[4] },
-  heading: { marginTop: spacing[8], marginLeft: spacing[1], fontSize: typography.fontSize.base, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  heading: { marginTop: spacing[8], marginLeft: spacing[1], fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

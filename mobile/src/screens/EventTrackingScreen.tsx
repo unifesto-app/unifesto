@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
 import { conversion, getTraffic, scopeParams, type TrafficStats } from '../lib/api/traffic';
@@ -15,7 +14,7 @@ import { withUtm } from '../services/utm';
 import { eventUrl } from '../hooks/useEventDetail';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -36,7 +35,7 @@ const CHANNELS = [
 export default function EventTrackingScreen() {
   const { eventId, slug, title } = useLocalSearchParams<{ eventId: string; slug: string; title?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [sources, setSources] = useState<RegistrationSources | null>(null);
   const [traffic, setTraffic] = useState<TrafficStats | null>(null);
@@ -74,18 +73,18 @@ export default function EventTrackingScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
-  const icon = (I: typeof LinkSimple) => <I size={ICON} color={tokens.text} />;
+  const icon = (I: typeof LinkSimple) => <I size={ICON} color={c.text} />;
   const total = sources?.total ?? 0;
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
@@ -97,12 +96,12 @@ export default function EventTrackingScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
+          tintColor={c.primary}
         />
       }
     >
-      {title ? <Text style={[styles.event, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
-      {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+      {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+      {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
       {traffic ? (
         <>
@@ -140,7 +139,7 @@ export default function EventTrackingScreen() {
         )}
       </SettingsGroup>
       {total > 0 ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           {sources!.tagged} of {total} came through a tracking link. Direct means none was opened in the 7 days before registering.
         </Text>
       ) : null}
@@ -181,7 +180,7 @@ export default function EventTrackingScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  event: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  event: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

@@ -1,15 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTokens } from '../../../context/ThemeContext';
 import { getTransactions, type LedgerTransaction, type TransactionsPage, type TxnStatus } from '../../../lib/api/apexMoney';
 import SearchList from '../../../components/apex/SearchList';
 import { ApexRow, shortDate } from '../../../components/apex/ApexRow';
 import ChipPicker from '../../../components/manage/ChipPicker';
 import ManageStats from '../../../components/manage/ManageStats';
-import type { Tokens } from '../../../theme/tokens';
 import { inr, inrShort } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
+import { type Cosmos, useCosmos } from '../../../theme/cosmos';
 
 const FILTERS: { value: TxnStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -20,18 +19,18 @@ const FILTERS: { value: TxnStatus | 'all'; label: string }[] = [
   { value: 'PARTIALLY_REFUNDED', label: 'Partial refund' },
 ];
 
-export function txnStatus(s: TxnStatus, tokens: Tokens) {
+export function txnStatus(s: TxnStatus, c: Cosmos) {
   switch (s) {
     case 'PAID':
-      return { text: 'Paid', color: tokens.success };
+      return { text: 'Paid', color: c.success };
     case 'PENDING':
-      return { text: 'Pending', color: tokens.warning };
+      return { text: 'Pending', color: c.warn };
     case 'FAILED':
-      return { text: 'Failed', color: tokens.danger };
+      return { text: 'Failed', color: c.danger };
     case 'REFUNDED':
-      return { text: 'Refunded', color: tokens.textMuted };
+      return { text: 'Refunded', color: c.muted };
     default:
-      return { text: 'Partial refund', color: tokens.warning };
+      return { text: 'Partial refund', color: c.warn };
   }
 }
 
@@ -41,7 +40,7 @@ export const payerName = (u: { fullName: string | null; username: string | null;
 /** Every payment on the platform: search by reference, event or payer. */
 export default function TransactionsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [status, setStatus] = useState<TxnStatus | 'all'>('all');
   const [summary, setSummary] = useState<TransactionsPage['summary'] | null>(null);
 
@@ -75,7 +74,7 @@ export default function TransactionsScreen() {
         </View>
       }
       renderItem={(t) => {
-        const s = txnStatus(t.paymentStatus, tokens);
+        const s = txnStatus(t.paymentStatus, c);
         return (
           <ApexRow
             title={payerName(t.user)}
@@ -83,7 +82,7 @@ export default function TransactionsScreen() {
               .filter(Boolean)
               .join('  ·  ')}
             value={inr(t.totalAmount)}
-            valueColor={t.paymentStatus === 'PAID' ? tokens.text : s.color}
+            valueColor={t.paymentStatus === 'PAID' ? c.text : s.color}
             onPress={() => router.push(`/apex/money/transactions/${t.id}`)}
           />
         );

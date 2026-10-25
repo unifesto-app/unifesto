@@ -1,9 +1,8 @@
 import React, { forwardRef } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface FormRowProps extends TextInputProps {
   icon: React.ReactNode;
@@ -21,17 +20,17 @@ const FormRow = forwardRef<TextInput, FormRowProps>(function FormRow(
   { icon, prefix, trailing, multiline, style, ...rest },
   ref,
 ) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={[styles.row, multiline && styles.rowMultiline]}>
       <View style={[styles.icon, multiline && { marginTop: 2 }]}>{icon}</View>
-      {prefix ? <Text style={[styles.prefix, { color: tokens.textMuted }]}>{prefix}</Text> : null}
+      {prefix ? <Text style={[styles.prefix, { color: c.muted }]}>{prefix}</Text> : null}
       <TextInput
         ref={ref}
-        placeholderTextColor={tokens.textMuted}
-        selectionColor={tokens.accent}
+        placeholderTextColor={c.muted}
+        selectionColor={c.primary}
         multiline={multiline}
-        style={[styles.input, multiline && styles.inputMultiline, { color: tokens.text }, style]}
+        style={[styles.input, multiline && styles.inputMultiline, { color: c.text }, style]}
         {...rest}
       />
       {trailing}
@@ -51,7 +50,7 @@ const styles = StyleSheet.create({
   },
   rowMultiline: { alignItems: 'flex-start', paddingVertical: spacing[4] },
   icon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  prefix: { fontSize: typography.fontSize.base, marginRight: -spacing[2], ...font('medium') },
-  input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: spacing[3], ...font('medium') },
+  prefix: { fontSize: typography.fontSize.base, marginRight: -spacing[2], ...cosmosFont.strong },
+  input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: spacing[3], ...cosmosFont.strong },
   inputMultiline: { minHeight: 88, paddingTop: 5, textAlignVertical: 'top' },
 });

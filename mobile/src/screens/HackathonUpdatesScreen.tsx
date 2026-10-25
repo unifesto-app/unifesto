@@ -5,7 +5,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
@@ -19,7 +18,7 @@ import { normalizeDeepLink, routeToDeepLink } from '../services/deepLinkRouter';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -42,7 +41,7 @@ const TABS: { key: InboxTab; label: string }[] = [
  */
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<InAppNotification[] | null>(null);
@@ -127,8 +126,8 @@ export default function HackathonUpdatesScreen() {
   const showTabs = !eventId && (hasStaff || tab === 'staff');
   if (!items && !showTabs) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -138,7 +137,7 @@ export default function HackathonUpdatesScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -149,8 +148,8 @@ export default function HackathonUpdatesScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -172,18 +171,18 @@ export default function HackathonUpdatesScreen() {
 
       {anyUnread ? (
         <Pressable onPress={() => void markAllRead()} style={styles.markAll} accessibilityRole="button" hitSlop={8}>
-          <Text style={[styles.markAllText, { color: tokens.accent }]}>Mark all as read</Text>
+          <Text style={[styles.markAllText, { color: c.primary }]}>Mark all as read</Text>
         </Pressable>
       ) : null}
 
       {!items ? (
-        <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+        <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
       ) : items.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>
+          <Text style={[styles.emptyTitle, { color: c.text }]}>
             {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
           </Text>
-          <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
+          <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
             {eventId
               ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
               : tab === 'staff'
@@ -208,13 +207,13 @@ export default function HackathonUpdatesScreen() {
             >
               <CardBackdrop shape={styles.card} />
               <View style={styles.cardHead}>
-                {!n.readAt ? <View style={[styles.dot, { backgroundColor: tokens.accent }]} /> : null}
-                <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>
+                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.primary }]} /> : null}
+                <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
                   {n.title}
                 </Text>
               </View>
-              <Text style={[styles.body, { color: tokens.textSecondary }]}>{n.body}</Text>
-              <Text style={[styles.time, { color: tokens.textMuted }]}>{when(n.createdAt)}</Text>
+              <Text style={[styles.body, { color: c.soft }]}>{n.body}</Text>
+              <Text style={[styles.time, { color: c.muted }]}>{when(n.createdAt)}</Text>
             </Pressable>
           );
         })}
@@ -223,7 +222,7 @@ export default function HackathonUpdatesScreen() {
       {nextBefore ? (
         <Button label="Show older" variant="secondary" loading={loadingMore} onPress={() => void more()} style={{ marginTop: spacing[5] }} />
       ) : null}
-      {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
     </ScrollView>
   );
 }
@@ -232,14 +231,14 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { marginTop: spacing[10], alignItems: 'center' },
-  emptyTitle: { fontSize: typography.fontSize.lg, ...font('semibold') },
+  emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 8, height: 8, borderRadius: 4 },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing[3] },
-  markAllText: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  title: { flex: 1, fontSize: typography.fontSize.base, ...font('semibold') },
-  body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  time: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  markAllText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  time: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

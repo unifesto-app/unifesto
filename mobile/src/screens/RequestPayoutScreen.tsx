@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleIcon } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   describeAccount,
@@ -20,7 +19,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -38,7 +37,7 @@ const MODES: { key: Mode; label: string }[] = [
 export default function RequestPayoutScreen() {
   const { eventId, title } = useLocalSearchParams<{ eventId: string; title?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [summary, setSummary] = useState<EventPayoutSummary | null>(null);
   const [accounts, setAccounts] = useState<EligibleAccount[]>([]);
@@ -77,16 +76,16 @@ export default function RequestPayoutScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   if (!summary) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
       </View>
     );
   }
@@ -141,26 +140,26 @@ export default function RequestPayoutScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        {title ? <Text style={[styles.event, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
+        {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
 
         <SettingsGroup title="Balance" plain>
           <SettingsRow label="Event earnings" value={inr(summary.eventNet)} />
           <SettingsRow label="Paid out or queued" value={summary.committed > 0 ? `− ${inr(summary.committed)}` : inr(0)} />
           <SettingsRow label="Available" value={inr(available)} />
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Earnings are after the {summary.defaultPlatformFeePercent}% platform fee and any refunds.
         </Text>
 
         {available <= 0 ? (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>Nothing left to pay out for this event.</Text>
+          <Text style={[styles.empty, { color: c.muted }]}>Nothing left to pay out for this event.</Text>
         ) : (
           <>
             <View style={{ marginTop: spacing[8] }}>
@@ -188,15 +187,15 @@ export default function RequestPayoutScreen() {
                   return (
                     <Pressable key={a.id} onPress={() => setAccountId(a.id)} accessibilityRole="radio" accessibilityState={{ selected }} style={styles.account}>
                       {selected ? (
-                        <CheckCircle size={24} color={tokens.accent} weight="fill" />
+                        <CheckCircle size={24} color={c.primary} weight="fill" />
                       ) : (
-                        <CircleIcon size={24} color={tokens.textMuted} />
+                        <CircleIcon size={24} color={c.muted} />
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.accountName, { color: tokens.text }]} numberOfLines={1}>
+                        <Text style={[styles.accountName, { color: c.text }]} numberOfLines={1}>
                           {describeAccount(a)}
                         </Text>
-                        <Text style={[styles.accountSub, { color: tokens.textMuted }]} numberOfLines={1}>
+                        <Text style={[styles.accountSub, { color: c.muted }]} numberOfLines={1}>
                           {a.isOwn ? a.accountHolderName : `${a.ownerName} · ${a.accountHolderName}`}
                           {a.isPrimary ? '  ·  Primary' : ''}
                         </Text>
@@ -207,7 +206,7 @@ export default function RequestPayoutScreen() {
               )}
             </SettingsGroup>
 
-            {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
             <Button
               label={`Request ${mode === 'full' || !amountProblem ? inr(payAmount) : 'payout'}`}
@@ -227,12 +226,12 @@ export default function RequestPayoutScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, ...font() },
-  event: { fontSize: typography.fontSize.xl, ...font('heading') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  empty: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  empty: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   account: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
-  accountName: { fontSize: typography.fontSize.base, ...font('medium') },
-  accountSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...font() },
-  error: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  accountName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  accountSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  error: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

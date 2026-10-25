@@ -5,7 +5,6 @@ import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   approveSpace,
@@ -29,9 +28,9 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { inr, inrShort } from '../../utils/money';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Read-only detail screens for Apex lookups. Each loads one record by id and
@@ -83,22 +82,22 @@ function Shell({
   onRefresh: () => void;
   children?: React.ReactNode;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   return (
     <>
       <Stack.Screen options={{ title }} />
       {loading ? (
-        <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-          {error ? <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+        <View style={[styles.center, { backgroundColor: c.bg }]}>
+          {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
         </View>
       ) : (
         <ScrollView
-          style={{ backgroundColor: tokens.bg }}
+          style={{ backgroundColor: c.bg }}
           contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
           }
         >
           {children}
@@ -109,14 +108,14 @@ function Shell({
 }
 
 function Hero({ imageUrl, title, lines, square }: { imageUrl?: string | null; title: string; lines: (string | null | undefined)[]; square?: boolean }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.hero}>
       {imageUrl ? <Image source={{ uri: imageUrl }} style={[styles.heroImg, !square && { borderRadius: 32 }]} /> : null}
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: tokens.text }]}>{title}</Text>
+        <Text style={[styles.title, { color: c.text }]}>{title}</Text>
         {lines.filter(Boolean).map((l) => (
-          <Text key={l} style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={2}>
+          <Text key={l} style={[styles.muted, { color: c.muted }]} numberOfLines={2}>
             {l}
           </Text>
         ))}
@@ -130,13 +129,13 @@ function Hero({ imageUrl, title, lines, square }: { imageUrl?: string | null; ti
 export function UserDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const load = useCallback(() => getAdminUser(id!), [id]);
   const { data, error, refreshing, refresh } = useRecord(load);
   const u = data?.user;
 
   const verifiedMark = (ok: boolean) =>
-    ok ? <CheckCircle size={20} color={tokens.success} weight="fill" /> : <WarningCircle size={20} color={tokens.warning} weight="fill" />;
+    ok ? <CheckCircle size={20} color={c.success} weight="fill" /> : <WarningCircle size={20} color={c.warn} weight="fill" />;
   const links = u ? SOCIALS.filter((s) => u[s.key]) : [];
   const copy = (label: string, value: string) => {
     void Clipboard.setStringAsync(value);
@@ -150,7 +149,7 @@ export function UserDetailScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => router.push(`/apex/users/${id}/edit`)} label="Edit user">
-                <PencilSimple size={24} color={tokens.text} />
+                <PencilSimple size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
@@ -159,7 +158,7 @@ export function UserDetailScreen() {
       {u ? (
         <>
           <Hero imageUrl={u.avatarUrl} title={nameOf(u)} lines={[u.username ? `@${u.username}` : 'No username', `Joined ${shortDate(u.createdAt)}`]} />
-          <Text style={[styles.bio, { color: u.bio ? tokens.textSecondary : tokens.textMuted }]}>{u.bio || 'No bio provided.'}</Text>
+          <Text style={[styles.bio, { color: u.bio ? c.soft : c.muted }]}>{u.bio || 'No bio provided.'}</Text>
 
           <SettingsGroup title="Contact" plain>
             <InfoRow
@@ -234,9 +233,9 @@ export function UserDetailScreen() {
                   detailDanger={!d.linkedAt && !!d.linkError}
                   trailing={
                     d.linkedAt && d.optedIn ? (
-                      <CheckCircle size={20} color={tokens.success} weight="fill" />
+                      <CheckCircle size={20} color={c.success} weight="fill" />
                     ) : (
-                      <WarningCircle size={20} color={tokens.warning} weight="fill" />
+                      <WarningCircle size={20} color={c.warn} weight="fill" />
                     )
                   }
                   onLongPress={() => copy('Subscription id', d.subscriptionId)}
@@ -291,25 +290,25 @@ function InfoRow({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const body = (
     <>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text style={[styles.rowSub, { color: tokens.textMuted }]} numberOfLines={2}>
+          <Text style={[styles.rowSub, { color: c.muted }]} numberOfLines={2}>
             {subtitle}
           </Text>
         ) : null}
         {detail ? (
-          <Text style={[styles.rowDetail, { color: detailDanger ? tokens.danger : tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.rowDetail, { color: detailDanger ? c.danger : c.muted }]} numberOfLines={1}>
             {detail}
           </Text>
         ) : null}
       </View>
-      {trailing ?? (onPress ? <CaretRight size={15} color={tokens.textMuted} /> : null)}
+      {trailing ?? (onPress ? <CaretRight size={15} color={c.muted} /> : null)}
     </>
   );
   if (!onPress && !onLongPress) return <View style={styles.row}>{body}</View>;
@@ -319,7 +318,7 @@ function InfoRow({
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={title}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       {body}
     </Pressable>
@@ -331,7 +330,7 @@ function InfoRow({
 export function SpaceDetailAdminScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const load = useCallback(() => getSpaceDetail(id!), [id]);
   const { data: s, error, refreshing, refresh } = useRecord(load);
   const [events, setEvents] = useState<ManagedEvent[] | null>(null);
@@ -403,7 +402,7 @@ export function SpaceDetailAdminScreen() {
   };
 
   const statusColor = (st: string) =>
-    st === 'ACTIVE' || st === 'APPROVED' ? tokens.success : st === 'PENDING' ? tokens.warning : st === 'REJECTED' || st === 'SUSPENDED' ? tokens.danger : tokens.textSecondary;
+    st === 'ACTIVE' || st === 'APPROVED' ? c.success : st === 'PENDING' ? c.warn : st === 'REJECTED' || st === 'SUSPENDED' ? c.danger : c.soft;
 
   return (
     <Shell title="Space" loading={!s} error={error} refreshing={refreshing} onRefresh={refresh}>
@@ -412,7 +411,7 @@ export function SpaceDetailAdminScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => router.push(`/manage/space/${id}/settings`)} label="Edit space">
-                <PencilSimple size={24} color={tokens.text} />
+                <PencilSimple size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
@@ -430,7 +429,7 @@ export function SpaceDetailAdminScreen() {
           <Text style={[styles.status, { color: statusColor(s.status) }]}>
             {[titleCase(s.status), s.type === 'SUPER' ? 'Parent space' : 'Regular space', titleCase(s.visibility)].join(' · ')}
           </Text>
-          <Text style={[styles.bio, { color: s.description ? tokens.textSecondary : tokens.textMuted }]}>{s.description || 'No description added yet.'}</Text>
+          <Text style={[styles.bio, { color: s.description ? c.soft : c.muted }]}>{s.description || 'No description added yet.'}</Text>
 
           {s._count ? (
             <View style={{ marginTop: spacing[5] }}>
@@ -456,7 +455,7 @@ export function SpaceDetailAdminScreen() {
               </>
             ) : (
               <>
-                <Text style={[styles.groupHint, { color: tokens.textMuted }]}>Awaiting review. Approve to make it live, or reject with a reason.</Text>
+                <Text style={[styles.groupHint, { color: c.muted }]}>Awaiting review. Approve to make it live, or reject with a reason.</Text>
                 <Button label="Approve" size="lg" fullWidth loading={busy === 'approve'} disabled={busy !== null} onPress={confirmApprove} style={{ marginTop: spacing[3] }} />
                 <Button label="Reject" variant="danger" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(true)} style={{ marginTop: spacing[3] }} />
               </>
@@ -520,7 +519,7 @@ export function SpaceDetailAdminScreen() {
           ) : null}
 
           {events === null ? (
-            <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[6] }} />
+            <ActivityIndicator color={c.primary} style={{ marginTop: spacing[6] }} />
           ) : (
             <>
               {upcoming.length > 0 ? <SettingsGroup title="Upcoming and drafts" plain>{upcoming.map(eventRow)}</SettingsGroup> : null}
@@ -542,7 +541,7 @@ export function SpaceDetailAdminScreen() {
 export function EventDetailAdminScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const load = useCallback(() => getAdminEvent(id!), [id]);
   const { data: e, error, refreshing, refresh } = useRecord(load);
 
@@ -551,11 +550,11 @@ export function EventDetailAdminScreen() {
       {e ? (
         <>
           {e.coverImageUrl ? <Image source={{ uri: e.coverImageUrl }} style={styles.banner} /> : null}
-          <Text style={[styles.title, { color: tokens.text }]}>{e.title}</Text>
-          <Text style={[styles.muted, { color: tokens.textMuted }]}>
+          <Text style={[styles.title, { color: c.text }]}>{e.title}</Text>
+          <Text style={[styles.muted, { color: c.muted }]}>
             {[longDate(e.startDateTime), e.venueName || e.city].filter(Boolean).join('  ·  ')}
           </Text>
-          <Text style={[styles.status, { color: e.deletedAt ? tokens.danger : tokens.textSecondary }]}>
+          <Text style={[styles.status, { color: e.deletedAt ? c.danger : c.soft }]}>
             {e.deletedAt ? `Deleted · ${titleCase(e.status)}` : titleCase(e.status)}
           </Text>
 
@@ -627,13 +626,13 @@ const styles = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   heroImg: { width: 64, height: 64, borderRadius: borderRadius.lg },
   banner: { width: '100%', aspectRatio: 4 / 3, borderRadius: borderRadius.xl, marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
+  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
-  rowTitle: { fontSize: typography.fontSize.base, ...font('medium') },
-  rowSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  rowDetail: { marginTop: 2, fontSize: typography.fontSize.xs, ...font() },
-  groupHint: { marginTop: spacing[8], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  bio: { marginTop: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  rowTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  rowSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  rowDetail: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  groupHint: { marginTop: spacing[8], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  bio: { marginTop: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

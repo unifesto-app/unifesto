@@ -7,7 +7,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import MultiChips from '../components/hackathon/MultiChips';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   createHelpTopic,
@@ -19,7 +18,7 @@ import {
 } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 type Topic = HelpTopics['topics'][number];
@@ -32,7 +31,7 @@ type Topic = HelpTopics['topics'][number];
 export default function HackathonHelpTopicsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<HelpTopics | null>(null);
@@ -96,14 +95,14 @@ export default function HackathonHelpTopicsScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -133,7 +132,7 @@ export default function HackathonHelpTopicsScreen() {
             <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
           )}
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Queries under this topic go to these people and to the volunteers in the team’s room. With nobody picked, they go to the curators.
         </Text>
 
@@ -141,10 +140,10 @@ export default function HackathonHelpTopicsScreen() {
           <Button label={editing ? 'Save' : 'Add topic'} loading={busy} disabled={!name.trim()} onPress={() => void save()} style={{ flex: 1 }} />
           {editing ? <Button label="Cancel" variant="secondary" onPress={reset} style={{ flex: 1 }} /> : null}
         </View>
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
         {data.topics.length === 0 ? (
-          <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[6] }]}>
+          <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
             No topics yet. Teams can still raise “Other” queries, which go to the curators.
           </Text>
         ) : (
@@ -183,5 +182,5 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   chips: { paddingVertical: spacing[2] },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

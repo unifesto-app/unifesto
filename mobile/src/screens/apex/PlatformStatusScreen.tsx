@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   createStatusIncident,
@@ -20,38 +19,37 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { titleCase } from '../../lib/apexQueues';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import UptimeBars from '../../components/apex/UptimeBars';
-import type { Tokens } from '../../theme/tokens';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { type Cosmos, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 type Service = PlatformStatus['services'][number];
 
-export function overallLabel(status: Pick<PlatformStatus, 'overall' | 'stale'>, tokens: Tokens) {
+export function overallLabel(status: Pick<PlatformStatus, 'overall' | 'stale'>, c: Cosmos) {
   switch (status.overall) {
     case 'operational':
       // Older backends sent 'operational' even with a dead sampler.
-      if (status.stale) return { text: 'Status unknown', color: tokens.textMuted };
-      return { text: 'All systems working', color: tokens.success };
+      if (status.stale) return { text: 'Status unknown', color: c.muted };
+      return { text: 'All systems working', color: c.success };
     case 'unknown':
-      return { text: 'Status unknown', color: tokens.textMuted };
+      return { text: 'Status unknown', color: c.muted };
     case 'degraded':
-      return { text: 'Some systems degraded', color: tokens.warning };
+      return { text: 'Some systems degraded', color: c.warn };
     default:
-      return { text: 'Major outage', color: tokens.danger };
+      return { text: 'Major outage', color: c.danger };
   }
 }
 
-const serviceWord = (s: Service['currentStatus'], tokens: Tokens) =>
+const serviceWord = (s: Service['currentStatus'], c: Cosmos) =>
   s === 'up'
-    ? { text: 'Working', color: tokens.success }
+    ? { text: 'Working', color: c.success }
     : s === 'down'
-      ? { text: 'Outage', color: tokens.danger }
-      : { text: 'No recent data', color: tokens.textMuted };
+      ? { text: 'Outage', color: c.danger }
+      : { text: 'No recent data', color: c.muted };
 
-const impactColor = (i: StatusIncident['impact'], tokens: Tokens) =>
-  i === 'CRITICAL' || i === 'MAJOR' ? tokens.danger : i === 'MINOR' ? tokens.warning : tokens.text;
+const impactColor = (i: StatusIncident['impact'], c: Cosmos) =>
+  i === 'CRITICAL' || i === 'MAJOR' ? c.danger : i === 'MINOR' ? c.warn : c.text;
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
 const dayLabel = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -62,9 +60,9 @@ const utcDayLabel = (ymd: string) =>
   new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 function ServiceCard({ service }: { service: Service }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [selected, setSelected] = useState<number | null>(null);
-  const word = serviceWord(service.currentStatus, tokens);
+  const word = serviceWord(service.currentStatus, c);
   const day = selected != null ? service.days[selected] : null;
 
   const middle = day
@@ -77,28 +75,28 @@ function ServiceCard({ service }: { service: Service }) {
     <View style={styles.card}>
       <CardBackdrop />
       <View style={styles.serviceHead}>
-        <Text style={[styles.serviceName, { color: tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.serviceName, { color: c.text }]} numberOfLines={1}>
           {service.name}
         </Text>
         {service.latencyMs != null && service.currentStatus === 'up' ? (
-          <Text style={[styles.small, { color: tokens.textMuted }]}>{service.latencyMs} ms</Text>
+          <Text style={[styles.small, { color: c.muted }]}>{service.latencyMs} ms</Text>
         ) : null}
         <Text style={[styles.word, { color: word.color }]}>{word.text}</Text>
       </View>
       <UptimeBars days={service.days} selected={selected} onSelect={setSelected} />
       <View style={styles.axis}>
-        <Text style={[styles.small, { color: tokens.textMuted }]}>{service.days.length} days ago</Text>
-        <Text style={[styles.small, { color: day ? tokens.text : tokens.textMuted }]} onPress={() => setSelected(null)}>
+        <Text style={[styles.small, { color: c.muted }]}>{service.days.length} days ago</Text>
+        <Text style={[styles.small, { color: day ? c.text : c.muted }]} onPress={() => setSelected(null)}>
           {middle}
         </Text>
-        <Text style={[styles.small, { color: tokens.textMuted }]}>Today</Text>
+        <Text style={[styles.small, { color: c.muted }]}>Today</Text>
       </View>
     </View>
   );
 }
 
 function IncidentItem({ incident, onResolve }: { incident: StatusIncident; onResolve?: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const resolved = incident.status === 'RESOLVED';
   const when = resolved && incident.resolvedAt
     ? `${time(incident.startedAt)} to ${time(incident.resolvedAt)}`
@@ -106,14 +104,14 @@ function IncidentItem({ incident, onResolve }: { incident: StatusIncident; onRes
 
   return (
     <View style={styles.incident}>
-      <Text style={[styles.incidentTitle, { color: resolved ? tokens.text : impactColor(incident.impact, tokens) }]}>
+      <Text style={[styles.incidentTitle, { color: resolved ? c.text : impactColor(incident.impact, c) }]}>
         {incident.title}
       </Text>
-      <Text style={[styles.body, { color: tokens.textSecondary }]}>
-        <Text style={font('semibold')}>{titleCase(incident.status)}</Text>
+      <Text style={[styles.body, { color: c.soft }]}>
+        <Text style={cosmosFont.strong}>{titleCase(incident.status)}</Text>
         {incident.body ? ` · ${incident.body}` : ''}
       </Text>
-      <Text style={[styles.small, { color: tokens.textMuted }]}>
+      <Text style={[styles.small, { color: c.muted }]}>
         {when}
         {incident.impact !== 'NONE' ? ` · ${titleCase(incident.impact)} impact` : ''}
       </Text>
@@ -133,7 +131,7 @@ const IMPACTS: { value: StatusIncident['impact']; label: string }[] = [
 
 /** Report an incident by hand: what the self-checks can't see (proxy errors, rate limiting). */
 function ReportIncident({ services, onDone }: { services: Service[]; onDone: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -155,22 +153,22 @@ function ReportIncident({ services, onDone }: { services: Service[]; onDone: () 
     onDone();
   };
 
-  const input = [styles.input, { color: tokens.text, backgroundColor: tokens.pressed }];
+  const input = [styles.input, { color: c.text, backgroundColor: c.tint }];
   return (
     <View style={styles.card}>
       <CardBackdrop />
-      <TextInput value={title} onChangeText={setTitle} placeholder="What's wrong" placeholderTextColor={tokens.textMuted} maxLength={300} style={input} />
+      <TextInput value={title} onChangeText={setTitle} placeholder="What's wrong" placeholderTextColor={c.muted} maxLength={300} style={input} />
       <TextInput
         value={body}
         onChangeText={setBody}
         placeholder="Details (optional)"
-        placeholderTextColor={tokens.textMuted}
+        placeholderTextColor={c.muted}
         multiline
         style={[input, styles.multiline]}
       />
-      <Text style={[styles.small, { color: tokens.textMuted }]}>Impact</Text>
+      <Text style={[styles.small, { color: c.muted }]}>Impact</Text>
       <ChipPicker options={IMPACTS} value={impact} onChange={(v) => v && setImpact(v)} />
-      <Text style={[styles.small, { color: tokens.textMuted }]}>Affected</Text>
+      <Text style={[styles.small, { color: c.muted }]}>Affected</Text>
       <MultiChipPicker options={services.map((s) => ({ value: s.key, label: s.name }))} value={affected} onChange={setAffected} />
       <View style={styles.actions}>
         <Button label="Cancel" variant="ghost" size="md" onPress={() => setOpen(false)} style={{ flex: 1 }} />
@@ -193,21 +191,21 @@ const duration = (sec: number) => (sec >= 3600 ? `${Math.round(sec / 360) / 10} 
 
 /** One UptimeRobot monitor: state, uptime over 1/7/30 days, response time, last downtime. */
 function MonitorItem({ monitor: m }: { monitor: ExternalMonitor }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const color =
-    m.status === 'up' ? tokens.success : m.status === 'down' ? tokens.danger : m.status === 'degraded' ? tokens.warning : tokens.textMuted;
+    m.status === 'up' ? c.success : m.status === 'down' ? c.danger : m.status === 'degraded' ? c.warn : c.muted;
   return (
     <View style={styles.incident}>
       <View style={styles.serviceHead}>
         <View style={[styles.dot, { backgroundColor: color }]} />
-        <Text style={[styles.serviceName, { color: tokens.text }]} numberOfLines={1}>{m.name}</Text>
+        <Text style={[styles.serviceName, { color: c.text }]} numberOfLines={1}>{m.name}</Text>
         <Text style={[styles.word, { color }]}>{EXTERNAL_LABEL[m.status]}</Text>
       </View>
-      <Text style={[styles.small, { color: tokens.textMuted }]}>
+      <Text style={[styles.small, { color: c.muted }]}>
         {`24 h ${pct(m.uptime.day)} · 7 d ${pct(m.uptime.week)} · 30 d ${pct(m.uptime.month)}${m.responseMs !== null ? ` · ${m.responseMs} ms` : ''}`}
       </Text>
       {m.lastDown ? (
-        <Text style={[styles.small, { color: tokens.textMuted }]}>
+        <Text style={[styles.small, { color: c.muted }]}>
           {`Last down ${dayLabel(new Date(m.lastDown.at))}, ${time(m.lastDown.at)} for ${duration(m.lastDown.durationSec)}${m.lastDown.reason ? ` (${m.lastDown.reason})` : ''}`}
         </Text>
       ) : null}
@@ -217,7 +215,7 @@ function MonitorItem({ monitor: m }: { monitor: ExternalMonitor }) {
 
 /** Public-status-page style board: overall banner, 90-day uptime bars, incidents by day. */
 export default function PlatformStatusScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<PlatformStatus | null>(null);
   const [external, setExternal] = useState<ExternalStatus | null>(null);
@@ -260,13 +258,13 @@ export default function PlatformStatusScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.small, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.small, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
-  const overall = overallLabel(data, tokens);
+  const overall = overallLabel(data, c);
   const checked = data.lastSampleAt ?? data.updatedAt;
   const open = data.incidents.filter((i) => i.status !== 'RESOLVED');
 
@@ -284,32 +282,32 @@ export default function PlatformStatusScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
     >
       <View style={[styles.banner, { backgroundColor: `${overall.color}22` }]}>
         <View style={[styles.dot, { backgroundColor: overall.color }]} />
-        <Text style={[styles.bannerText, { color: tokens.text }]}>{overall.text}</Text>
-        <Text style={[styles.small, { color: tokens.textMuted }]}>
+        <Text style={[styles.bannerText, { color: c.text }]}>{overall.text}</Text>
+        <Text style={[styles.small, { color: c.muted }]}>
           {data.stale ? (data.lastSampleAt ? `Last check ${dayLabel(new Date(checked))}, ${time(checked)}` : 'Never checked') : `As of ${time(checked)}`}
         </Text>
       </View>
       {data.stale ? (
-        <Text style={[styles.hint, { color: tokens.warning }]}>
+        <Text style={[styles.hint, { color: c.warn }]}>
           Health checks have stopped reporting. The backend sampler, Redis or the database may be down.
         </Text>
       ) : null}
 
       {open.length > 0 ? (
         <>
-          <Text style={[styles.section, { color: tokens.textMuted }]}>Happening now</Text>
+          <Text style={[styles.section, { color: c.muted }]}>Happening now</Text>
           <View style={styles.card}>
             <CardBackdrop />
             {open.map((i, n) => (
               <View key={i.id}>
-                {n > 0 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
+                {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
                 <IncidentItem incident={i} onResolve={() => resolve(i)} />
               </View>
             ))}
@@ -320,22 +318,22 @@ export default function PlatformStatusScreen() {
         <ReportIncident services={data.services} onDone={() => void load()} />
       </View>
 
-      <Text style={[styles.section, { color: tokens.textMuted }]}>Services</Text>
+      <Text style={[styles.section, { color: c.muted }]}>Services</Text>
       <View style={styles.services}>
         {data.services.map((s) => (
           <ServiceCard key={s.key} service={s} />
         ))}
       </View>
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>
+      <Text style={[styles.hint, { color: c.muted }]}>
         Not an outside probe. The API checks itself every 5 minutes, so it can't see a dead server, proxy errors or
         rate limiting. Incidents count against uptime too. Drag across a bar strip to see a single day.
       </Text>
 
       {external ? (
         <>
-          <Text style={[styles.section, { color: tokens.textMuted }]}>External monitoring (UptimeRobot)</Text>
+          <Text style={[styles.section, { color: c.muted }]}>External monitoring (UptimeRobot)</Text>
           {!external.configured ? (
-            <Text style={[styles.body, { color: tokens.textMuted, marginHorizontal: spacing[1] }]}>
+            <Text style={[styles.body, { color: c.muted, marginHorizontal: spacing[1] }]}>
               Not connected. Add a read-only UptimeRobot API key as UPTIMEROBOT_API_KEY in the backend's .env and deploy.
             </Text>
           ) : (
@@ -345,16 +343,16 @@ export default function PlatformStatusScreen() {
                   <CardBackdrop />
                   {external.monitors.map((m, n) => (
                     <View key={m.id}>
-                      {n > 0 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
+                      {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
                       <MonitorItem monitor={m} />
                     </View>
                   ))}
                 </View>
               ) : !external.error ? (
-                <Text style={[styles.body, { color: tokens.textMuted, marginHorizontal: spacing[1] }]}>No monitors set up in UptimeRobot yet.</Text>
+                <Text style={[styles.body, { color: c.muted, marginHorizontal: spacing[1] }]}>No monitors set up in UptimeRobot yet.</Text>
               ) : null}
-              {external.error ? <Text style={[styles.hint, { color: tokens.warning }]}>{external.error}</Text> : null}
-              <Text style={[styles.hint, { color: tokens.textMuted }]}>
+              {external.error ? <Text style={[styles.hint, { color: c.warn }]}>{external.error}</Text> : null}
+              <Text style={[styles.hint, { color: c.muted }]}>
                 Checked from outside our servers, so it still sees an outage that stops our own checks.
                 {external.fetchedAt ? ` As of ${time(external.fetchedAt)}.` : ''}
               </Text>
@@ -363,13 +361,13 @@ export default function PlatformStatusScreen() {
         </>
       ) : null}
 
-      <Text style={[styles.section, { color: tokens.textMuted }]}>Past incidents</Text>
+      <Text style={[styles.section, { color: c.muted }]}>Past incidents</Text>
       {history.map(({ date, items }) => (
         <View key={localKey(date)} style={styles.day}>
-          <Text style={[styles.dayTitle, { color: tokens.text }]}>{dayLabel(date)}</Text>
-          <View style={[styles.rule, { backgroundColor: tokens.border }]} />
+          <Text style={[styles.dayTitle, { color: c.text }]}>{dayLabel(date)}</Text>
+          <View style={[styles.rule, { backgroundColor: c.border }]} />
           {items.length === 0 ? (
-            <Text style={[styles.body, { color: tokens.textMuted }]}>No incidents reported.</Text>
+            <Text style={[styles.body, { color: c.muted }]}>No incidents reported.</Text>
           ) : (
             items.map((i) => <IncidentItem key={i.id} incident={i} />)
           )}
@@ -390,25 +388,25 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     borderRadius: borderRadius.xl,
   },
-  bannerText: { flex: 1, fontSize: typography.fontSize.lg, ...font('heading') },
+  bannerText: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.display },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('semibold') },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   services: { gap: spacing[3] },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], gap: spacing[3] },
   serviceHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  serviceName: { flex: 1, fontSize: typography.fontSize.base, ...font('medium') },
-  word: { fontSize: typography.fontSize.sm, ...font('medium') },
+  serviceName: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  word: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   axis: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  small: { fontSize: typography.fontSize.xs, ...font() },
+  small: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   incident: { gap: 4, paddingVertical: spacing[1] },
-  incidentTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  incidentTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[2] },
   day: { marginBottom: spacing[5], gap: spacing[2] },
-  dayTitle: { fontSize: typography.fontSize.base, ...font('heading') },
+  dayTitle: { fontSize: typography.fontSize.base, ...cosmosFont.display },
   rule: { height: StyleSheet.hairlineWidth },
-  input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...font() },
+  input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   multiline: { minHeight: 80, paddingTop: spacing[3], textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: spacing[2] },
-  hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

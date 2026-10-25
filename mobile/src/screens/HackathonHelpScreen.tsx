@@ -8,14 +8,13 @@ import { FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { getMyHelp, HELP_STATUS_LABEL, raiseHelpQuery, type MyHelp } from '../lib/api/hackathon';
 import { timeAgo } from '../utils/checkinFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const OTHER = 'OTHER';
@@ -27,7 +26,7 @@ const OTHER = 'OTHER';
  */
 export default function HackathonHelpScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [help, setHelp] = useState<MyHelp | null>(null);
@@ -74,8 +73,8 @@ export default function HackathonHelpScreen() {
 
   if (!help) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -83,7 +82,7 @@ export default function HackathonHelpScreen() {
   const volunteers = help.room?.volunteers.map((v) => v.name).filter(Boolean) ?? [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -97,8 +96,8 @@ export default function HackathonHelpScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -109,7 +108,7 @@ export default function HackathonHelpScreen() {
           </SettingsGroup>
         ) : null}
 
-        <Text style={[styles.section, { color: tokens.textMuted }]}>What’s it about?</Text>
+        <Text style={[styles.section, { color: c.muted }]}>What’s it about?</Text>
         <ChipPicker
           options={[...help.topics.map((t) => ({ value: t.id, label: t.name })), { value: OTHER, label: 'Other' }]}
           value={topic}
@@ -135,24 +134,24 @@ export default function HackathonHelpScreen() {
           />
         </SettingsGroup>
         <Button label="Send" size="lg" fullWidth loading={sending} disabled={!topic || !message.trim()} onPress={() => void send()} style={{ marginTop: spacing[4] }} />
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
-        {sent ? <Text style={[styles.note, { color: tokens.success }]}>Sent. We’ll notify you when someone picks it up.</Text> : null}
+        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
+        {sent ? <Text style={[styles.note, { color: c.success }]}>Sent. We’ll notify you when someone picks it up.</Text> : null}
 
         {help.queries.length ? (
           <>
-            <Text style={[styles.section, { color: tokens.textMuted }]}>Your queries</Text>
+            <Text style={[styles.section, { color: c.muted }]}>Your queries</Text>
             {help.queries.map((q) => (
               <View key={q.id} style={styles.card}>
                 <CardBackdrop shape={styles.card} />
                 <View style={styles.cardHead}>
-                  <Text style={[styles.topic, { color: tokens.text }]}>{q.topicName}</Text>
-                  <Text style={[styles.status, { color: q.status === 'RESOLVED' ? tokens.textMuted : tokens.accent }]}>
+                  <Text style={[styles.topic, { color: c.text }]}>{q.topicName}</Text>
+                  <Text style={[styles.status, { color: q.status === 'RESOLVED' ? c.muted : c.primary }]}>
                     {HELP_STATUS_LABEL[q.status]}
                     {q.status !== 'OPEN' && q.handledByName ? ` · ${q.handledByName}` : ''}
                   </Text>
                 </View>
-                <Text style={[styles.message, { color: tokens.textSecondary }]}>{q.message}</Text>
-                <Text style={[styles.meta, { color: tokens.textMuted }]}>{timeAgo(q.createdAt)}</Text>
+                <Text style={[styles.message, { color: c.soft }]}>{q.message}</Text>
+                <Text style={[styles.meta, { color: c.muted }]}>{timeAgo(q.createdAt)}</Text>
               </View>
             ))}
           </>
@@ -165,12 +164,12 @@ export default function HackathonHelpScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  section: { marginTop: spacing[6], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  section: { marginTop: spacing[6], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
-  topic: { fontSize: typography.fontSize.base, ...font('semibold') },
-  status: { fontSize: typography.fontSize.sm, ...font('medium') },
-  message: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  topic: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  message: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

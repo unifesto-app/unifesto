@@ -9,7 +9,6 @@ import { SettingsGroup } from '../components/profile/SettingsGroup';
 import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   assignTeamStatement,
@@ -25,7 +24,7 @@ import {
 import { formatWhen, placesLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -43,7 +42,7 @@ const SOURCES: { value: Source; label: string }[] = [
 export default function HackathonTeamStatementScreen() {
   const { eventId, teamId } = useLocalSearchParams<{ eventId: string; teamId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [team, setTeam] = useState<TeamDetail | null>(null);
@@ -81,8 +80,8 @@ export default function HackathonTeamStatementScreen() {
 
   if (!team || !list) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -157,7 +156,7 @@ export default function HackathonTeamStatementScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Stack.Screen options={{ title: team.teamCode ?? 'Problem statement' }} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 120 + insets.bottom }]}
@@ -165,15 +164,15 @@ export default function HackathonTeamStatementScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.heading, { color: tokens.text }]} numberOfLines={2}>
+        <Text style={[styles.heading, { color: c.text }]} numberOfLines={2}>
           {team.name}
         </Text>
 
         {cur ? (
           <>
             <View style={styles.status}>
-              <LockSimple size={16} color={tokens.success} weight="fill" />
-              <Text style={[styles.statusText, { color: tokens.success }]}>
+              <LockSimple size={16} color={c.success} weight="fill" />
+              <Text style={[styles.statusText, { color: c.success }]}>
                 {cur.setBy?.kind === 'ORGANISER' ? 'Assigned by organisers' : `Locked in${cur.setBy?.name ? ` by ${cur.setBy.name}` : ''}`}
                 {cur.lockedAt ? ` · ${formatWhen(cur.lockedAt)}` : ''}
               </Text>
@@ -181,19 +180,19 @@ export default function HackathonTeamStatementScreen() {
             <StatementCard code={cur.code} title={cur.title} description={cur.description} theme={cur.themeLabel} />
             {cur.changedAfterEvalAt ? (
               <View style={styles.status}>
-                <WarningCircle size={16} color={tokens.warning} weight="fill" />
-                <Text style={[styles.statusText, { color: tokens.warning }]}>
+                <WarningCircle size={16} color={c.warn} weight="fill" />
+                <Text style={[styles.statusText, { color: c.warn }]}>
                   Changed after evaluation ({formatWhen(cur.changedAfterEvalAt)}). Earlier marks were kept.
                 </Text>
               </View>
             ) : null}
           </>
         ) : (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>No problem statement yet.</Text>
+          <Text style={[styles.note, { color: c.muted }]}>No problem statement yet.</Text>
         )}
 
         {cancelled ? (
-          <Text style={[styles.note, { color: tokens.danger, marginTop: spacing[5] }]}>
+          <Text style={[styles.note, { color: c.danger, marginTop: spacing[5] }]}>
             This team’s registration was cancelled, so it can’t be given a statement.
           </Text>
         ) : (
@@ -205,7 +204,7 @@ export default function HackathonTeamStatementScreen() {
 
             {source === 'LIST' ? (
               list.statements.length === 0 ? (
-                <Text style={[styles.note, { color: tokens.textMuted }]}>Your list is empty. Add statements first, or write one.</Text>
+                <Text style={[styles.note, { color: c.muted }]}>Your list is empty. Add statements first, or write one.</Text>
               ) : (
                 list.statements.map((s) => {
                   const mine = s.id === cur?.statementId;
@@ -265,7 +264,7 @@ export default function HackathonTeamStatementScreen() {
               onPress={assign}
               style={{ marginTop: spacing[6] }}
             />
-            {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
             {cur ? (
               <Button
@@ -275,7 +274,7 @@ export default function HackathonTeamStatementScreen() {
                 fullWidth
                 loading={unlocking}
                 disabled={saving}
-                icon={<ArrowCounterClockwise size={18} color={tokens.text} weight="bold" />}
+                icon={<ArrowCounterClockwise size={18} color={c.text} weight="bold" />}
                 onPress={unlock}
                 style={{ marginTop: spacing[4] }}
               />
@@ -290,8 +289,8 @@ export default function HackathonTeamStatementScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  heading: { fontSize: typography.fontSize.xl, ...font('bold') },
+  heading: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
   status: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], marginHorizontal: spacing[1] },
-  statusText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  statusText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

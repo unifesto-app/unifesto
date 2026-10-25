@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { CopySimple, Eye, ShareNetwork } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getPartnerStats, type PartnerStats } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -14,8 +13,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { shareLink } from '../lib/share';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -34,7 +33,7 @@ const istDayOffset = (n: number) =>
 export default function PartnerStatsScreen() {
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,16 +66,16 @@ export default function PartnerStatsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   if (!stats) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>
           {error || 'These stats are no longer available.'}
         </Text>
         <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
@@ -84,7 +83,7 @@ export default function PartnerStatsScreen() {
     );
   }
 
-  const icon = (I: typeof Eye) => <I size={ICON} color={tokens.text} />;
+  const icon = (I: typeof Eye) => <I size={ICON} color={c.text} />;
   const e = stats.event;
 
   const copyLink = async () => {
@@ -98,7 +97,7 @@ export default function PartnerStatsScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
@@ -110,15 +109,15 @@ export default function PartnerStatsScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
+          tintColor={c.primary}
         />
       }
     >
       <View style={styles.header}>
         {e.coverImageUrl ? <Image source={{ uri: e.coverImageUrl }} style={styles.cover} /> : null}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.event, { color: tokens.text }]} numberOfLines={3}>{e.title}</Text>
-          <Text style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.event, { color: c.text }]} numberOfLines={3}>{e.title}</Text>
+          <Text style={[styles.muted, { color: c.muted }]} numberOfLines={1}>
             {e.space?.name ? `${e.space.name} · ` : ''}Partner as {stats.name}
           </Text>
         </View>
@@ -126,16 +125,16 @@ export default function PartnerStatsScreen() {
 
       <View style={styles.hero}>
         <CardBackdrop shape={styles.hero} />
-        <Text style={[styles.big, { color: tokens.text }]}>{stats.registrations.toLocaleString('en-IN')}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>
+        <Text style={[styles.big, { color: c.text }]}>{stats.registrations.toLocaleString('en-IN')}</Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
           {stats.registrations === 1 ? 'person registered' : 'people registered'} through your link
         </Text>
         <View style={styles.subStats}>
-          <Text style={[styles.sub, { color: tokens.text }]}>
-            {stats.today} <Text style={{ color: tokens.textMuted }}>today</Text>
+          <Text style={[styles.sub, { color: c.text }]}>
+            {stats.today} <Text style={{ color: c.muted }}>today</Text>
           </Text>
-          <Text style={[styles.sub, { color: tokens.text }]}>
-            {lastTwoWeeks} <Text style={{ color: tokens.textMuted }}>last 14 days</Text>
+          <Text style={[styles.sub, { color: c.text }]}>
+            {lastTwoWeeks} <Text style={{ color: c.muted }}>last 14 days</Text>
           </Text>
         </View>
 
@@ -147,7 +146,7 @@ export default function PartnerStatsScreen() {
                   styles.bar,
                   {
                     height: b.count ? Math.max(4, (b.count / peak) * BAR_MAX_H) : 2,
-                    backgroundColor: b.count ? tokens.accent : tokens.fill,
+                    backgroundColor: b.count ? c.primary : c.tint,
                   },
                 ]}
               />
@@ -155,13 +154,13 @@ export default function PartnerStatsScreen() {
           ))}
         </View>
         <View style={styles.axis}>
-          <Text style={[styles.axisLabel, { color: tokens.textMuted }]}>
+          <Text style={[styles.axisLabel, { color: c.muted }]}>
             {new Date(bars[0].date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
           </Text>
-          <Text style={[styles.axisLabel, { color: tokens.textMuted }]}>Today</Text>
+          <Text style={[styles.axisLabel, { color: c.muted }]}>Today</Text>
         </View>
       </View>
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
+      <Text style={[styles.note, { color: c.muted }]}>
         Counts confirmed registrations only. A registration counts for you when the person opened your link within 7 days before registering.
       </Text>
 
@@ -185,16 +184,16 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   cover: { width: 96, height: 72, borderRadius: borderRadius.lg }, // 4:3
-  event: { fontSize: typography.fontSize.xl, ...font('heading') },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
+  event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { marginTop: spacing[6], padding: spacing[5], borderRadius: borderRadius.xl },
-  big: { fontSize: 48, lineHeight: 56, ...font('heading') },
+  big: { fontSize: 48, lineHeight: 56, ...cosmosFont.display },
   subStats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
-  sub: { fontSize: typography.fontSize.sm, ...font('medium') },
+  sub: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: BAR_MAX_H, gap: 4, marginTop: spacing[5] },
   barSlot: { flex: 1, justifyContent: 'flex-end' },
   bar: { borderRadius: 3 },
   axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[2] },
-  axisLabel: { fontSize: typography.fontSize.xs, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  axisLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

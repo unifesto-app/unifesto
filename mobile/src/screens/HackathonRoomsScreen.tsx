@@ -7,12 +7,11 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { autoAllocateRooms, getRooms, type Room } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -24,7 +23,7 @@ const GUTTER = spacing[6];
 export default function HackathonRoomsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [unallocated, setUnallocated] = useState(0);
@@ -84,8 +83,8 @@ export default function HackathonRoomsScreen() {
 
   if (!rooms) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -97,14 +96,14 @@ export default function HackathonRoomsScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => openRoom('new')} label="Add room">
-                <Plus size={24} color={tokens.text} />
+                <Plus size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
         }}
       />
       <ScrollView
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -115,26 +114,26 @@ export default function HackathonRoomsScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
       >
         {rooms.length === 0 ? (
           <View style={{ marginTop: spacing[10], alignItems: 'center' }}>
-            <Text style={[styles.empty, { color: tokens.text }]}>No rooms yet</Text>
-            <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
+            <Text style={[styles.empty, { color: c.text }]}>No rooms yet</Text>
+            <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
               Add the rooms teams will work in, with how many teams each one fits.
             </Text>
             <Button label="Add a room" onPress={() => openRoom('new')} style={{ marginTop: spacing[5] }} />
           </View>
         ) : (
           <>
-            <Text style={[styles.summary, { color: tokens.text }]}>
+            <Text style={[styles.summary, { color: c.text }]}>
               {unallocated ? `${unallocated} team${unallocated === 1 ? '' : 's'} without a room` : 'Every team has a room'}
             </Text>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>{free} free place{free === 1 ? '' : 's'} across {rooms.length} room{rooms.length === 1 ? '' : 's'}</Text>
+            <Text style={[styles.note, { color: c.muted }]}>{free} free place{free === 1 ? '' : 's'} across {rooms.length} room{rooms.length === 1 ? '' : 's'}</Text>
             {unallocated ? (
               <Button
                 label="Auto-allocate"
@@ -147,7 +146,7 @@ export default function HackathonRoomsScreen() {
               />
             ) : null}
             {unallocated && free === 0 ? (
-              <Text style={[styles.note, { color: tokens.warning }]}>Every room is full. Add a room or raise a capacity.</Text>
+              <Text style={[styles.note, { color: c.warn }]}>Every room is full. Add a room or raise a capacity.</Text>
             ) : null}
 
             <SettingsGroup title="Rooms" plain>
@@ -162,7 +161,7 @@ export default function HackathonRoomsScreen() {
             </SettingsGroup>
           </>
         )}
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
       </ScrollView>
     </>
   );
@@ -171,7 +170,7 @@ export default function HackathonRoomsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { fontSize: typography.fontSize.lg, ...font('semibold') },
-  summary: { fontSize: typography.fontSize.xl, ...font('bold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  empty: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  summary: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

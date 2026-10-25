@@ -3,6 +3,6 @@
 // Older components (GradientButton…) keep working and get
 // replaced screen-by-screen.
 export { Text, type TextProps, type TextVariant, type TextTone } from './Text';
-export { Button, resolveButtonColors, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
+export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { Card, type CardProps } from './Card';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';

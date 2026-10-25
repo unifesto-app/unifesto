@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { decideRefund } from '../../lib/api/apex';
 import { FieldRow } from '../manage/FormFields';
 import { SettingsGroup } from '../profile/SettingsGroup';
@@ -9,7 +8,7 @@ import { AppAlert } from '../ui/AppAlert';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface Props {
   refundId: string;
@@ -26,7 +25,7 @@ interface Props {
  * once by the amount field, once by the alert.
  */
 export default function AdminRefundDecision({ refundId, refundable, owed, onDone }: Props) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const retry = owed != null;
   const start = retry ? Math.min(owed, refundable) : refundable;
   const [amount, setAmount] = useState(start > 0 ? String(start) : '');
@@ -93,7 +92,7 @@ export default function AdminRefundDecision({ refundId, refundable, owed, onDone
         <FieldRow label="Refund (₹)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={String(refundable)} />
         <FieldRow stacked multiline label="Note (optional)" value={note} onChangeText={setNote} placeholder="Shown with the decision" />
       </SettingsGroup>
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>Ticket price only. The app fee is never refunded.</Text>
+      <Text style={[styles.hint, { color: c.muted }]}>Ticket price only. The app fee is never refunded.</Text>
       <Button label={retry ? 'Send refund' : 'Approve and refund'} size="lg" fullWidth loading={busy === 'APPROVE'} onPress={confirmApprove} style={{ marginTop: spacing[6] }} />
       {retry ? null : (
         <Button label="Reject" variant="danger" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(true)} style={{ marginTop: spacing[3] }} />
@@ -103,5 +102,5 @@ export default function AdminRefundDecision({ refundId, refundable, owed, onDone
 }
 
 const styles = StyleSheet.create({
-  hint: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  hint: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

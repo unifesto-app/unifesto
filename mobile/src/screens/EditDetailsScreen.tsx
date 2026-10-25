@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   getAttendeeDetails,
@@ -21,7 +20,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 type Answers = Record<string, unknown>;
@@ -57,7 +56,7 @@ export default function EditDetailsScreen() {
   }>();
   const curator = !!curatorEventId;
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
 
   const [mine, setMine] = useState<MyDetails | null>(null);
@@ -185,14 +184,14 @@ export default function EditDetailsScreen() {
 
   if (!mine && !theirs) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {error ? (
           <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text>
+            <Text style={[styles.muted, { color: c.muted }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -201,36 +200,36 @@ export default function EditDetailsScreen() {
   const set = (key: string, patch: Partial<Section>) => setDraft((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {title ? <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
+        {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
 
         {!editable ? (
-          <View style={[styles.locked, { backgroundColor: tokens.fill }]}>
-            <Lock size={18} color={tokens.textSecondary} weight="bold" />
-            <Text style={[styles.lockedText, { color: tokens.textSecondary }]}>
+          <View style={[styles.locked, { backgroundColor: c.tint }]}>
+            <Lock size={18} color={c.soft} weight="bold" />
+            <Text style={[styles.lockedText, { color: c.soft }]}>
               {mine?.lockedReason ?? 'These details can’t be changed right now.'} Ask the organiser if something is wrong.
             </Text>
           </View>
         ) : null}
         {!curator ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
           </Text>
         ) : null}
         {editable && !curator && mine?.editsUntil ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             You can change these until{' '}
             {new Date(mine.editsUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
           </Text>
         ) : null}
 
         {sections.length === 0 ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>This ticket has no details to change.</Text>
+          <Text style={[styles.note, { color: c.muted }]}>This ticket has no details to change.</Text>
         ) : null}
 
         {sections.map((s) => {
@@ -239,7 +238,7 @@ export default function EditDetailsScreen() {
             <View key={s.key} style={{ marginTop: spacing[6] }}>
               {editable ? (
                 <>
-                  <Text style={[styles.section, { color: tokens.textMuted }]}>{s.title}</Text>
+                  <Text style={[styles.section, { color: c.muted }]}>{s.title}</Text>
                   {curator && s.seatIndex !== undefined ? (
                     <SettingsGroup plain>
                       <FieldRow label="Name" value={d.name ?? ''} onChangeText={(v) => set(s.key, { name: v })} maxLength={100} />
@@ -278,7 +277,7 @@ export default function EditDetailsScreen() {
           />
         ) : null}
         {curator ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             As an organiser you can change these any time. Required questions aren’t enforced here.
           </Text>
         ) : null}
@@ -290,10 +289,10 @@ export default function EditDetailsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[3], ...font('heading') },
-  section: { marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...font('semibold') },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[3], ...cosmosFont.display },
+  section: { marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   locked: { flexDirection: 'row', gap: spacing[3], alignItems: 'center', padding: spacing[4], borderRadius: 16 },
-  lockedText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font() },
+  lockedText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
 });

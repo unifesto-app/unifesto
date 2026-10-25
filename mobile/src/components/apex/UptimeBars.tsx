@@ -1,16 +1,15 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { StatusDay } from '../../lib/api/apex';
-import type { Tokens } from '../../theme/tokens';
+import { type Cosmos, useCosmos } from '../../theme/cosmos';
 
 /** Colour for one day's bar. */
-export function dayTone(day: StatusDay, tokens: Tokens): string {
-  if (day.status === 'nodata' || day.uptime == null) return tokens.fillStrong;
-  if (day.status === 'up') return tokens.success;
-  if (day.status === 'down') return tokens.danger;
+export function dayTone(day: StatusDay, c: Cosmos): string {
+  if (day.status === 'nodata' || day.uptime == null) return c.input;
+  if (day.status === 'up') return c.success;
+  if (day.status === 'down') return c.danger;
   // Partial day: a blip is amber, losing more than an hour or so is red.
-  return day.uptime >= 95 ? tokens.warning : tokens.danger;
+  return day.uptime >= 95 ? c.warn : c.danger;
 }
 
 interface Props {
@@ -26,7 +25,7 @@ interface Props {
  * across the whole strip instead; vertical scrolling can still take over.
  */
 export default function UptimeBars({ days, selected, onSelect }: Props) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [width, setWidth] = useState(0);
   const last = useRef<number | null>(null);
 
@@ -55,7 +54,7 @@ export default function UptimeBars({ days, selected, onSelect }: Props) {
           key={d.date}
           style={[
             styles.bar,
-            { backgroundColor: dayTone(d, tokens) },
+            { backgroundColor: dayTone(d, c) },
             selected != null && i !== selected && styles.dimmed,
           ]}
         />

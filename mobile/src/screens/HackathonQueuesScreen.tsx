@@ -6,7 +6,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
 import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
@@ -25,7 +24,7 @@ import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -42,7 +41,7 @@ type Group = { key: string; title: string; action?: { label: string; onPress: ()
  */
 export default function HackathonQueuesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<QueueMonitor | null>(null);
   const [error, setError] = useState('');
@@ -72,8 +71,8 @@ export default function HackathonQueuesScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -160,7 +159,7 @@ export default function HackathonQueuesScreen() {
     action: { label: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) },
     data: [
       ...(!q.isAvailable
-        ? [{ key: 'break', row: <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} />} label="On a break" /> }]
+        ? [{ key: 'break', row: <SettingsRow icon={<Coffee size={ICON} color={c.muted} />} label="On a break" /> }]
         : []),
       ...(q.current
         ? [
@@ -168,7 +167,7 @@ export default function HackathonQueuesScreen() {
               key: 'current',
               row: (
                 <SettingsRow
-                  icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? tokens.warning : tokens.success} weight="fill" />}
+                  icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? c.warn : c.success} weight="fill" />}
                   label={teamLabel(q.current.team)}
                   value={evalStatusLabel(q.current.status)}
                   trailing={q.current.status === 'IN_PROGRESS' ? <SlotTimer until={q.current.slotEndsAt} label="" doneLabel="Time’s up" /> : undefined}
@@ -182,7 +181,7 @@ export default function HackathonQueuesScreen() {
         key: w.requestId,
         row: (
           <SettingsRow
-            icon={<Hourglass size={ICON} color={tokens.textMuted} />}
+            icon={<Hourglass size={ICON} color={c.muted} />}
             label={`${w.position}. ${teamLabel(w.team)}`}
             value={w.roundName ?? undefined}
             onPress={() => waitingActions(q, w.requestId, w.team)}
@@ -201,7 +200,7 @@ export default function HackathonQueuesScreen() {
         key: j.id,
         row: (
           <SettingsRow
-            icon={<LockOpen size={ICON} color={tokens.text} />}
+            icon={<LockOpen size={ICON} color={c.text} />}
             label={`${teamLabel(j.team)}`}
             value={j.judgeName}
             onPress={() => reopen(j.id, j.judgeName, j.team)}
@@ -220,9 +219,9 @@ export default function HackathonQueuesScreen() {
           <SettingsRow
             icon={
               q.isAvailable ? (
-                q.kind === 'PANEL' ? <UsersFour size={ICON} color={tokens.text} /> : <Gavel size={ICON} color={tokens.text} />
+                q.kind === 'PANEL' ? <UsersFour size={ICON} color={c.text} /> : <Gavel size={ICON} color={c.text} />
               ) : (
-                <Coffee size={ICON} color={tokens.textMuted} weight="fill" />
+                <Coffee size={ICON} color={c.muted} weight="fill" />
               )
             }
             label={q.name}
@@ -241,7 +240,7 @@ export default function HackathonQueuesScreen() {
 
   return (
     <SectionList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       refreshControl={
         <RefreshControl
@@ -251,8 +250,8 @@ export default function HackathonQueuesScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -262,14 +261,14 @@ export default function HackathonQueuesScreen() {
       ListHeaderComponent={
         <>
           <View style={styles.liveRow}>
-            {live ? <Broadcast size={16} color={tokens.success} weight="fill" /> : <WifiSlash size={16} color={tokens.textMuted} />}
-            <Text style={[styles.note, { color: live ? tokens.success : tokens.textMuted, marginTop: 0 }]}>
+            {live ? <Broadcast size={16} color={c.success} weight="fill" /> : <WifiSlash size={16} color={c.muted} />}
+            <Text style={[styles.note, { color: live ? c.success : c.muted, marginTop: 0 }]}>
               {live ? 'Live' : 'Refreshing every 10 seconds'}
               {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
             </Text>
           </View>
           {!active.length ? (
-            <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[5] }]}>Nobody is in a queue right now.</Text>
+            <Text style={[styles.note, { color: c.muted, marginTop: spacing[5] }]}>Nobody is in a queue right now.</Text>
           ) : null}
         </>
       }
@@ -280,7 +279,7 @@ export default function HackathonQueuesScreen() {
         </GroupCell>
       )}
       ListFooterComponent={
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Marks lock 5 minutes after a judge submits. Reopening gives them 5 more minutes; you never change marks yourself.
         </Text>
       }
@@ -292,5 +291,5 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

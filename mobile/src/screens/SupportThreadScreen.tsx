@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { cancelAccountDeletion } from '../lib/api/profile';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -26,7 +25,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * One Assist case. The person who raised it gets the conversation, a reply box
@@ -36,7 +35,7 @@ import { font } from '../theme/fontHelpers';
  */
 export default function SupportThreadScreen() {
   const { ticketId } = useLocalSearchParams<{ ticketId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const { user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
@@ -136,8 +135,8 @@ export default function SupportThreadScreen() {
 
   if (!ticket) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {missing ? <Text style={[styles.meta, { color: tokens.textMuted }]}>This request couldn't be opened.</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {missing ? <Text style={[styles.meta, { color: c.muted }]}>This request couldn't be opened.</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -169,7 +168,7 @@ export default function SupportThreadScreen() {
     !asDesk && ticket.kind === 'PRIVACY' && ticket.subjectType === 'User' && !!user?.deletionScheduledFor;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Stack.Screen options={{ title: `#${ticket.ticketNumber}` }} />
       <ScrollView
         ref={scroll}
@@ -179,8 +178,8 @@ export default function SupportThreadScreen() {
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
       >
-        <Text style={[styles.subject, { color: tokens.text }]}>{ticket.subject}</Text>
-        <Text style={[styles.meta, { color: tokens.textMuted }]}>{meta.filter(Boolean).join(' · ')}</Text>
+        <Text style={[styles.subject, { color: c.text }]}>{ticket.subject}</Text>
+        <Text style={[styles.meta, { color: c.muted }]}>{meta.filter(Boolean).join(' · ')}</Text>
 
         <View style={{ marginTop: spacing[5] }}>
           <CaseMessages
@@ -193,11 +192,11 @@ export default function SupportThreadScreen() {
 
         {asDesk ? (
           withUnifesto ? (
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is with Unifesto now. You can read it, but only Unifesto replies.</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>This case is with Unifesto now. You can read it, but only Unifesto replies.</Text>
           ) : !closed ? (
             <Button label="Escalate to Unifesto" variant="ghost" loading={acting} onPress={escalate} style={styles.action} />
           ) : (
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed.</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>This case is closed.</Text>
           )
         ) : bot ? (
           <View style={styles.assist}>
@@ -232,9 +231,9 @@ export default function SupportThreadScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  subject: { fontSize: typography.fontSize.xl, ...font('heading') },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  subject: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   action: { marginTop: spacing[6], alignSelf: 'center' },
   assist: { marginTop: spacing[6], alignItems: 'center', gap: spacing[3] },
 });

@@ -4,7 +4,6 @@ import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AndroidLogo, AppleLogo, ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
@@ -14,7 +13,7 @@ import { getAppVersionPolicy, updateAppVersionPolicy, type AppVersionPolicy, typ
 import { compareVersions } from '../../lib/appUpdate';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "App Version" parity: per-store latest/minimum version + store URL that
@@ -51,7 +50,7 @@ function validate(v: AppVersionPolicy): string {
 }
 
 export default function AppVersionScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -138,16 +137,16 @@ export default function AppVersionScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
-  const hint = (text: string) => <Text style={[styles.hint, { color: tokens.textMuted }]}>{text}</Text>;
+  const hint = (text: string) => <Text style={[styles.hint, { color: c.muted }]}>{text}</Text>;
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: tokens.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
@@ -157,7 +156,7 @@ export default function AppVersionScreen() {
         {STORES.map(({ key, title, Logo }) => (
           <SettingsGroup key={key} title={title}>
             <FormRow
-              icon={<ArrowCircleUp size={ICON} color={tokens.text} />}
+              icon={<ArrowCircleUp size={ICON} color={c.text} />}
               value={draft[key].latestVersion}
               onChangeText={set(key, 'latestVersion')}
               placeholder="Empty = no update prompt"
@@ -166,7 +165,7 @@ export default function AppVersionScreen() {
               trailing={hint('Latest')}
             />
             <FormRow
-              icon={<ShieldWarning size={ICON} color={tokens.text} />}
+              icon={<ShieldWarning size={ICON} color={c.text} />}
               value={draft[key].minimumVersion}
               onChangeText={set(key, 'minimumVersion')}
               placeholder="2.0.0"
@@ -175,7 +174,7 @@ export default function AppVersionScreen() {
               trailing={hint('Minimum')}
             />
             <FormRow
-              icon={<Logo size={ICON} color={tokens.text} />}
+              icon={<Logo size={ICON} color={c.text} />}
               value={draft[key].storeUrl}
               onChangeText={set(key, 'storeUrl')}
               placeholder="https://…"
@@ -186,17 +185,17 @@ export default function AppVersionScreen() {
           </SettingsGroup>
         ))}
 
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Below minimum forces an update; below latest shows an optional prompt. Set minimum to 0.0.0 to never force.
           The app re-reads this on every launch.
         </Text>
 
-        {error ? <Text style={[styles.message, { color: tokens.danger }]}>{error}</Text> : null}
-        {notice && !isDirty ? <Text style={[styles.message, { color: tokens.accent }]}>{notice}</Text> : null}
+        {error ? <Text style={[styles.message, { color: c.danger }]}>{error}</Text> : null}
+        {notice && !isDirty ? <Text style={[styles.message, { color: c.primary }]}>{notice}</Text> : null}
       </ScrollView>
 
       <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
       </Animated.View>
     </KeyboardAvoidingView>
@@ -206,9 +205,9 @@ export default function AppVersionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  hint: { fontSize: typography.fontSize.sm, ...font('medium') },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  hint: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });

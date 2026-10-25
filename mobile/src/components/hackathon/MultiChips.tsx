@@ -1,10 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { CardBackdrop } from '../ui/CardSurface';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface MultiChipsProps {
   options: { value: string; label: string }[];
@@ -14,7 +13,7 @@ interface MultiChipsProps {
 
 /** Wrapping row of multi-select chips (same look as ChipPicker). */
 export default function MultiChips({ options, value, onChange }: MultiChipsProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.wrap}>
       {options.map((o) => {
@@ -27,11 +26,11 @@ export default function MultiChips({ options, value, onChange }: MultiChipsProps
             accessibilityState={{ checked: on }}
             style={({ pressed }) => [
               styles.chip,
-              { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+              { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
             ]}
           >
             {!on ? <CardBackdrop shape={styles.chip} /> : null}
-            <Text style={[styles.label, { color: on ? tokens.accentFg : tokens.text }]}>{o.label}</Text>
+            <Text style={[styles.label, { color: on ? c.primaryFg : c.text }]}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -42,5 +41,5 @@ export default function MultiChips({ options, value, onChange }: MultiChipsProps
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  label: { fontSize: typography.fontSize.sm, ...font('medium') },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

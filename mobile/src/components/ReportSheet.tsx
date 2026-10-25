@@ -4,14 +4,13 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { CheckCircle, Flag, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import { SheetBackdrop } from './ui/CardSurface';
 import { REPORT_REASONS, submitContentReport, type ReportTarget } from '../lib/api/contentReports';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const TITLES: Record<ReportTarget, string> = {
   EVENT: 'Report event',
@@ -39,7 +38,7 @@ interface ReportSheetProps {
  * optionally add details, send. Signed-out users are asked to sign in first.
  */
 export default function ReportSheet({ visible, onClose, targetType, targetId, subject }: ReportSheetProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
@@ -108,20 +107,20 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
             <SheetBackdrop radius={28} />
             <View style={styles.head}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: tokens.text }]}>{TITLES[targetType]}</Text>
+                <Text style={[styles.title, { color: c.text }]}>{TITLES[targetType]}</Text>
                 {subject ? (
-                  <Text style={[styles.subject, { color: tokens.textMuted }]} numberOfLines={1}>{subject}</Text>
+                  <Text style={[styles.subject, { color: c.muted }]} numberOfLines={1}>{subject}</Text>
                 ) : null}
               </View>
               <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-                <X size={22} color={tokens.textSecondary} weight="bold" />
+                <X size={22} color={c.soft} weight="bold" />
               </Pressable>
             </View>
 
             {!token ? (
               <View style={styles.center}>
-                <Flag size={48} color={tokens.textSecondary} weight="duotone" />
-                <Text style={[styles.body, styles.centerText, { color: tokens.textSecondary }]}>
+                <Flag size={48} color={c.soft} weight="duotone" />
+                <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
                   Sign in so we can follow up on your report.
                 </Text>
                 <Button
@@ -136,11 +135,11 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
               </View>
             ) : done ? (
               <View style={styles.center}>
-                <CheckCircle size={56} color={tokens.success} weight="duotone" />
-                <Text style={[styles.doneTitle, { color: tokens.text }]}>
+                <CheckCircle size={56} color={c.success} weight="duotone" />
+                <Text style={[styles.doneTitle, { color: c.text }]}>
                   {done.alreadyReported ? 'Report updated' : 'Thanks for telling us'}
                 </Text>
-                <Text style={[styles.body, styles.centerText, { color: tokens.textSecondary }]}>
+                <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
                   {done.alreadyReported
                     ? "You'd already reported this, so we've added your new details to it."
                     : 'Our team reviews every report and acts on anything that breaks our rules.'}
@@ -149,7 +148,7 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
               </View>
             ) : (
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
-                <Text style={[styles.body, { color: tokens.textSecondary, marginBottom: spacing[3] }]}>{INTROS[targetType]}</Text>
+                <Text style={[styles.body, { color: c.soft, marginBottom: spacing[3] }]}>{INTROS[targetType]}</Text>
                 <View style={{ gap: spacing[2] }}>
                   {REPORT_REASONS[targetType].map((r) => {
                     const on = reason === r.key;
@@ -161,11 +160,11 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
                         accessibilityState={{ checked: on }}
                         style={({ pressed }) => [
                           styles.reason,
-                          { backgroundColor: on ? 'rgba(52,145,255,0.14)' : tokens.fill, opacity: pressed ? 0.85 : 1 },
+                          { backgroundColor: on ? 'rgba(52,145,255,0.14)' : c.tint, opacity: pressed ? 0.85 : 1 },
                         ]}
                       >
-                        <Text style={[styles.reasonText, { color: on ? tokens.accent : tokens.text }]}>{r.label}</Text>
-                        {on ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : null}
+                        <Text style={[styles.reasonText, { color: on ? c.primary : c.text }]}>{r.label}</Text>
+                        {on ? <CheckCircle size={22} color={c.primary} weight="fill" /> : null}
                       </Pressable>
                     );
                   })}
@@ -176,16 +175,16 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
                     value={details}
                     onChangeText={setDetails}
                     placeholder={needsDetails ? 'Tell us what happened' : 'Add details (optional)'}
-                    placeholderTextColor={tokens.textMuted}
-                    selectionColor={tokens.accent}
+                    placeholderTextColor={c.muted}
+                    selectionColor={c.primary}
                     multiline
                     maxLength={2000}
                     textAlignVertical="top"
-                    style={[styles.details, { color: tokens.text, backgroundColor: tokens.fill }]}
+                    style={[styles.details, { color: c.text, backgroundColor: c.tint }]}
                   />
                 ) : null}
 
-                {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+                {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
                 <Button
                   label={sending ? 'Sending…' : 'Send report'}
@@ -214,9 +213,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing[6],
   },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize.xl, letterSpacing: -0.3, ...font('heading') },
-  subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...font() },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   reason: {
     minHeight: 50,
     borderRadius: borderRadius.lg,
@@ -226,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing[3],
   },
-  reasonText: { flex: 1, fontSize: typography.fontSize.base, ...font('medium') },
+  reasonText: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   details: {
     marginTop: spacing[4],
     minHeight: 96,
@@ -234,11 +233,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
-    ...font(),
+    ...cosmosFont.body,
   },
-  error: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...font() },
+  error: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   button: { marginTop: spacing[5], alignSelf: 'stretch' },
   center: { alignItems: 'center', paddingVertical: spacing[4] },
   centerText: { textAlign: 'center', marginTop: spacing[3] },
-  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...font('heading') },
+  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
 });

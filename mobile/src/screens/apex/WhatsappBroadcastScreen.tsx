@@ -3,7 +3,6 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, Warning, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow } from '../../components/manage/FormFields';
@@ -27,7 +26,7 @@ import {
 } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 const NAME_TOKEN = '{name}';
@@ -56,7 +55,7 @@ async function pickPhoneUsers(q: string): Promise<PickerItem[]> {
  */
 export default function WhatsappBroadcastScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -173,10 +172,10 @@ export default function WhatsappBroadcastScreen() {
 
   if (sentTo !== null) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg, paddingTop: topSpacing }]}>
-        <CheckCircle size={56} color={tokens.success} weight="fill" />
-        <Text style={[styles.doneTitle, { color: tokens.text }]}>Broadcast started</Text>
-        <Text style={[styles.doneBody, { color: tokens.textMuted }]}>
+      <View style={[styles.center, { backgroundColor: c.bg, paddingTop: topSpacing }]}>
+        <CheckCircle size={56} color={c.success} weight="fill" />
+        <Text style={[styles.doneTitle, { color: c.text }]}>Broadcast started</Text>
+        <Text style={[styles.doneBody, { color: c.muted }]}>
           Sending {template?.name} to {sentTo} recipient{sentTo === 1 ? '' : 's'}. Delivery runs in the background; individual sends show in
           Meta's dashboards.
         </Text>
@@ -197,7 +196,7 @@ export default function WhatsappBroadcastScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 160 + insets.bottom }}
@@ -224,7 +223,7 @@ export default function WhatsappBroadcastScreen() {
                   key={u.id}
                   label={u.title}
                   value={u.subtitle}
-                  trailing={<X size={18} color={tokens.textMuted} />}
+                  trailing={<X size={18} color={c.muted} />}
                   onPress={() => setUsers((prev) => prev.filter((p) => p.id !== u.id))}
                 />
               ))}
@@ -239,8 +238,8 @@ export default function WhatsappBroadcastScreen() {
           ) : null}
           {audience === 'ALL' ? (
             <View style={styles.warn}>
-              <Warning size={20} color={tokens.warning} weight="fill" />
-              <Text style={[styles.warnText, { color: tokens.textSecondary }]}>
+              <Warning size={20} color={c.warn} weight="fill" />
+              <Text style={[styles.warnText, { color: c.soft }]}>
                 Messages every user in the app with a mobile number. It can't be undone once started. Use a Marketing template, for opted-in
                 recipients only.
               </Text>
@@ -258,10 +257,10 @@ export default function WhatsappBroadcastScreen() {
           />
           {template ? (
             <View style={styles.templateBody}>
-              <Text style={[styles.meta, { color: tokens.textMuted }]}>{titleCase(template.category)}</Text>
-              {template.bodyText ? <Text style={[styles.quote, { color: tokens.text }]}>"{template.bodyText}"</Text> : null}
+              <Text style={[styles.meta, { color: c.muted }]}>{titleCase(template.category)}</Text>
+              {template.bodyText ? <Text style={[styles.quote, { color: c.text }]}>"{template.bodyText}"</Text> : null}
               {template.needsMediaHeader ? (
-                <Text style={[styles.meta, { color: tokens.danger }]}>Has a media header this sender can't fill. It may fail.</Text>
+                <Text style={[styles.meta, { color: c.danger }]}>Has a media header this sender can't fill. It may fail.</Text>
               ) : null}
             </View>
           ) : null}
@@ -277,9 +276,9 @@ export default function WhatsappBroadcastScreen() {
             />
           ))}
         </SettingsGroup>
-        {templatesError ? <Text style={[styles.hint, { color: tokens.danger }]}>{templatesError}</Text> : null}
+        {templatesError ? <Text style={[styles.hint, { color: c.danger }]}>{templatesError}</Text> : null}
         {params.length ? (
-          <Text style={[styles.hint, { color: tokens.textMuted }]}>Type {NAME_TOKEN} in a variable to use each recipient's own name.</Text>
+          <Text style={[styles.hint, { color: c.muted }]}>Type {NAME_TOKEN} in a variable to use each recipient's own name.</Text>
         ) : null}
 
         {audience === 'ALL' ? (
@@ -288,7 +287,7 @@ export default function WhatsappBroadcastScreen() {
           </SettingsGroup>
         ) : null}
 
-        <Text style={[styles.summary, { color: tokens.textMuted }]}>
+        <Text style={[styles.summary, { color: c.muted }]}>
           {template ? template.name : 'No template'} → {recipients}
         </Text>
         {template && params.every((p) => p.trim()) ? (
@@ -309,14 +308,14 @@ export default function WhatsappBroadcastScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: GUTTER, gap: spacing[3] },
-  doneTitle: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], ...font('heading') },
-  doneBody: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...font() },
+  doneTitle: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  doneBody: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   doneActions: { marginTop: spacing[4], flexDirection: 'row', gap: spacing[3] },
   warn: { flexDirection: 'row', gap: spacing[3], padding: spacing[4] },
-  warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...font() },
+  warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   templateBody: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: spacing[2] },
-  meta: { fontSize: typography.fontSize.xs, ...font('medium') },
-  quote: { fontSize: typography.fontSize.sm, lineHeight: 20, ...font() },
-  hint: { marginTop: spacing[2], marginLeft: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  summary: { marginTop: spacing[6], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  quote: { fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
+  hint: { marginTop: spacing[2], marginLeft: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  summary: { marginTop: spacing[6], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

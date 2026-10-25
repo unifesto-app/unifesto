@@ -1,10 +1,9 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface DateTimeRowProps {
   label: string;
@@ -28,18 +27,18 @@ const display = (d: Date, mode: 'datetime' | 'date' | 'time') =>
  * a tap opens the date dialog and then the time dialog.
  */
 export default function DateTimeRow({ label, value, onChange, minimumDate, mode = 'datetime' }: DateTimeRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
 
   if (Platform.OS === 'ios') {
     return (
       <View style={styles.row}>
-        <Text style={[styles.label, { color: tokens.text }]}>{label}</Text>
+        <Text style={[styles.label, { color: c.text }]}>{label}</Text>
         <DateTimePicker
           value={value}
           mode={mode}
           display="compact"
           minimumDate={minimumDate}
-          accentColor={tokens.accent}
+          accentColor={c.primary}
           onValueChange={(_, d) => onChange(d)}
         />
       </View>
@@ -70,15 +69,15 @@ export default function DateTimeRow({ label, value, onChange, minimumDate, mode 
     });
 
   return (
-    <Pressable onPress={pick} style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]} accessibilityRole="button">
-      <Text style={[styles.label, { color: tokens.text }]}>{label}</Text>
-      <Text style={[styles.value, { color: tokens.accent }]}>{display(value, mode)}</Text>
+    <Pressable onPress={pick} style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]} accessibilityRole="button">
+      <Text style={[styles.label, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.value, { color: c.primary }]}>{display(value, mode)}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
-  label: { fontSize: typography.fontSize.base, ...font('medium') },
-  value: { fontSize: typography.fontSize.base, ...font('medium') },
+  label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  value: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

@@ -1,7 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { ArrowsClockwise, CloudArrowUp, UsersThree, Warning } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { useIsOffline } from '../../lib/offline/connectivity';
 import type { useOfflineCheckin } from '../../hooks/useOfflineCheckin';
 import type { QueuedCheckin } from '../../lib/offline/checkinQueue';
@@ -9,7 +8,7 @@ import { SettingsGroup, SettingsRow } from '../profile/SettingsGroup';
 import PersonRow from './PersonRow';
 import { timeAgo } from '../../utils/checkinFormat';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 type Offline = ReturnType<typeof useOfflineCheckin>;
 
@@ -20,7 +19,7 @@ type Offline = ReturnType<typeof useOfflineCheckin>;
  * access at that point…) or a ticket another device had already let in.
  */
 export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const isOffline = useIsOffline();
 
   const listValue = offline.rosterSavedAt
@@ -29,10 +28,10 @@ export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
 
   const textAction = (label: string, onPress: () => void, busy: boolean, disabled = false) =>
     busy ? (
-      <ActivityIndicator size="small" color={tokens.accent} />
+      <ActivityIndicator size="small" color={c.primary} />
     ) : (
       <Pressable onPress={onPress} disabled={disabled} hitSlop={8} accessibilityRole="button">
-        <Text style={[styles.action, { color: disabled ? tokens.textMuted : tokens.accent }]}>{label}</Text>
+        <Text style={[styles.action, { color: disabled ? c.muted : c.primary }]}>{label}</Text>
       </Pressable>
     );
 
@@ -40,20 +39,20 @@ export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
     <>
       <SettingsGroup title="Offline scanning">
         <SettingsRow
-          icon={<UsersThree size={22} color={tokens.textSecondary} />}
+          icon={<UsersThree size={22} color={c.soft} />}
           label="Saved guest list"
           value={listValue}
           trailing={textAction('Refresh', () => void offline.download(), offline.downloading, isOffline)}
         />
         {offline.pending > 0 ? (
           <SettingsRow
-            icon={<CloudArrowUp size={22} color={tokens.warning} />}
+            icon={<CloudArrowUp size={22} color={c.warn} />}
             label={`${offline.pending} waiting to sync`}
             trailing={textAction('Sync now', () => void offline.sync(), offline.syncing, isOffline)}
           />
         ) : null}
         {offline.error ? (
-          <SettingsRow icon={<Warning size={22} color={tokens.danger} />} label={offline.error} />
+          <SettingsRow icon={<Warning size={22} color={c.danger} />} label={offline.error} />
         ) : null}
       </SettingsGroup>
 
@@ -63,7 +62,7 @@ export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
             <PersonRow key={r.id} name={r.name ?? 'Attendee'} sub={reviewLine(r)} />
           ))}
           <SettingsRow
-            icon={<ArrowsClockwise size={22} color={tokens.textSecondary} />}
+            icon={<ArrowsClockwise size={22} color={c.soft} />}
             label="Clear reviewed"
             onPress={() => offline.review.forEach((r) => void offline.dismiss(r.id))}
           />
@@ -94,5 +93,5 @@ function reviewLine(r: QueuedCheckin): string {
 }
 
 const styles = StyleSheet.create({
-  action: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

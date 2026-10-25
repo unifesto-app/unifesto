@@ -6,7 +6,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { shareCsv } from '../lib/csvShare';
 import {
@@ -20,7 +19,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -45,7 +44,7 @@ const IN_TAB: Record<Tab, StayBookingStatus[] | null> = {
 export default function StayBookingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [rows, setRows] = useState<TeamStayBooking[] | null>(null);
   const [tab, setTab] = useState<Tab>('requests');
@@ -115,15 +114,15 @@ export default function StayBookingsScreen() {
 
   if (!rows) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   return (
     <FlatList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       data={shown}
       keyExtractor={(b) => b.id}
@@ -136,32 +135,32 @@ export default function StayBookingsScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
       ListHeaderComponent={
         <View style={{ gap: spacing[4], marginBottom: spacing[4] }}>
-          <View style={[styles.search, { backgroundColor: tokens.fill }]}>
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
+          <View style={[styles.search, { backgroundColor: c.tint }]}>
+            <MagnifyingGlass size={18} color={c.muted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Name, phone, pass or room"
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
+              placeholderTextColor={c.muted}
+              selectionColor={c.primary}
               autoCapitalize="none"
               autoCorrect={false}
-              style={[styles.searchInput, { color: tokens.text }]}
+              style={[styles.searchInput, { color: c.text }]}
             />
           </View>
           <SegmentedTabs tabs={TABS.map((t) => ({ ...t, label: `${t.label}${countFor(t.key) ? ` ${countFor(t.key)}` : ''}` }))} value={tab} onChange={setTab} />
-          {error ? <Text style={[styles.meta, { color: tokens.danger }]}>{error}</Text> : null}
+          {error ? <Text style={[styles.meta, { color: c.danger }]}>{error}</Text> : null}
         </View>
       }
       ListEmptyComponent={
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>
+        <Text style={[styles.empty, { color: c.muted }]}>
           {tab === 'requests' ? 'No new requests.' : tab === 'pay' ? 'Nobody is waiting to pay.' : 'Nothing here yet.'}
         </Text>
       }
@@ -171,7 +170,7 @@ export default function StayBookingsScreen() {
             label="Export guest list"
             variant="secondary"
             fullWidth
-            icon={<FileCsv size={18} color={tokens.text} />}
+            icon={<FileCsv size={18} color={c.text} />}
             onPress={() => void exportCsv()}
             style={{ marginTop: spacing[5] }}
           />
@@ -181,25 +180,25 @@ export default function StayBookingsScreen() {
         const booker = b.guests.find((g) => g.isBooker) ?? b.guests[0];
         const tone =
           b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT'
-            ? tokens.warning
+            ? c.warn
             : b.status === 'REJECTED' || b.status === 'CANCELLED' || b.status === 'EXPIRED'
-              ? tokens.danger
-              : tokens.success;
+              ? c.danger
+              : c.success;
         return (
           <Pressable
             onPress={() => router.push(`/manage/event/${eventId}/stay-booking/${b.id}`)}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.row, { backgroundColor: pressed ? tokens.pressed : tokens.surface }]}
+            style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.tint : c.card }]}
           >
             <View style={{ flex: 1, gap: 3 }}>
-              <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+              <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
                 {booker?.name || b.user.fullName || 'Guest'}
                 {b.guestCount > 1 ? ` +${b.guestCount - 1}` : ''}
               </Text>
-              <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
+              <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
                 {b.stay.name} · {b.option.name}
               </Text>
-              <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
                 {dayLabel(b.checkInDate)} → {dayLabel(b.checkOutDate)}
                 {b.allocation ? ` · ${b.allocation}` : ''}
               </Text>
@@ -217,10 +216,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingHorizontal: spacing[4], borderRadius: borderRadius.full, height: 44 },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
+  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.lg },
-  name: { fontSize: typography.fontSize.base, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.xs, ...font() },
-  status: { fontSize: typography.fontSize.xs, maxWidth: 110, textAlign: 'right', ...font('semibold') },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  status: { fontSize: typography.fontSize.xs, maxWidth: 110, textAlign: 'right', ...cosmosFont.strong },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

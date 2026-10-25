@@ -3,7 +3,6 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { Scissors } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { conversion, getTraffic, scopeParams, type PlatformTrafficStats } from '../../lib/api/traffic';
 import { sourceLabel } from '../../lib/api/tracking';
@@ -11,7 +10,7 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { TrafficSummary, fmt } from '../../components/traffic/TrafficSummary';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -20,7 +19,7 @@ const PLATFORM_LABEL: Record<string, string> = { ios: 'iOS', android: 'Android',
 /** Apex › Traffic: page views across the platform, what's most viewed, and platform short links. */
 export default function TrafficScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<PlatformTrafficStats | null>(null);
   const [error, setError] = useState('');
@@ -41,15 +40,15 @@ export default function TrafficScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
@@ -61,15 +60,15 @@ export default function TrafficScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
+          tintColor={c.primary}
         />
       }
     >
-      {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
       <SettingsGroup title="Links">
         <SettingsRow
-          icon={<Scissors size={ICON} color={tokens.accent} weight="bold" />}
+          icon={<Scissors size={ICON} color={c.primary} weight="bold" />}
           label="Short links"
           onPress={() => router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'admin' }), title: '' } })}
         />
@@ -130,5 +129,5 @@ function Section({ title, empty, children }: { title: string; empty: string; chi
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

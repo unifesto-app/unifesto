@@ -5,13 +5,12 @@ import { LinkSimple, LockOpen, WarningCircle } from '@unifesto/unicon/react-nati
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getResults, reopenJudgment, type HackathonResults } from '../lib/api/hackathon';
 import { formatScore, formatWhen, standingLabel } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -22,7 +21,7 @@ const GUTTER = spacing[6];
  */
 export default function HackathonResultTeamScreen() {
   const { eventId, teamId, roundId } = useLocalSearchParams<{ eventId: string; teamId: string; roundId?: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<HackathonResults | null>(null);
   const [error, setError] = useState('');
@@ -43,12 +42,12 @@ export default function HackathonResultTeamScreen() {
   const team = data?.teams.find((t) => t.id === teamId);
   if (!data || !team) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Stack.Screen options={{ title: 'Results' }} />
         {error || data ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>{error || 'This team isn’t on the hackathon any more.'}</Text>
+          <Text style={[styles.note, { color: c.muted }]}>{error || 'This team isn’t on the hackathon any more.'}</Text>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -71,10 +70,10 @@ export default function HackathonResultTeamScreen() {
   const rounds = [...data.rounds].sort((a, b) => (a.id === roundId ? -1 : b.id === roundId ? 1 : a.order - b.order));
 
   return (
-    <ScrollView style={{ backgroundColor: tokens.bg }} contentContainerStyle={[styles.content, { paddingTop: topSpacing }]} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={[styles.content, { paddingTop: topSpacing }]} showsVerticalScrollIndicator={false}>
       <Stack.Screen options={{ title: team.teamCode ?? 'Results' }} />
-      <Text style={[styles.title, { color: tokens.text }]}>{team.name}</Text>
-      <Text style={[styles.meta, { color: tokens.textSecondary }]}>
+      <Text style={[styles.title, { color: c.text }]}>{team.name}</Text>
+      <Text style={[styles.meta, { color: c.soft }]}>
         {[
           team.rank != null ? `Rank ${team.rank}` : null,
           team.total != null ? `${data.scoringMode === 'CUMULATIVE' ? 'Total' : 'Score'} ${formatScore(team.total)}` : null,
@@ -85,15 +84,15 @@ export default function HackathonResultTeamScreen() {
           .join(' · ')}
       </Text>
       {team.statement ? (
-        <Text style={[styles.meta, { color: tokens.textMuted }]}>
+        <Text style={[styles.meta, { color: c.muted }]}>
           {[team.statement.code, team.statement.title].filter(Boolean).join(' · ')}
           {team.statement.themeLabel ? `  (${team.statement.themeLabel})` : ''}
         </Text>
       ) : null}
       {team.psChangedAfterEvalAt ? (
         <View style={styles.flag}>
-          <WarningCircle size={18} color={tokens.warning} weight="fill" />
-          <Text style={[styles.meta, { color: tokens.warning, marginTop: 0, flex: 1 }]}>
+          <WarningCircle size={18} color={c.warn} weight="fill" />
+          <Text style={[styles.meta, { color: c.warn, marginTop: 0, flex: 1 }]}>
             Problem statement changed after evaluation ({formatWhen(team.psChangedAfterEvalAt)}). Marks were kept.
           </Text>
         </View>
@@ -117,13 +116,13 @@ export default function HackathonResultTeamScreen() {
           .join(' · ');
         return (
           <View key={r.id}>
-            <Text style={[styles.section, { color: tokens.textMuted }]}>{title}</Text>
+            <Text style={[styles.section, { color: c.muted }]}>{title}</Text>
             {p.links.length ? (
               <SettingsGroup plain>
                 {p.links.map((l) => (
                   <SettingsRow
                     key={l.url}
-                    icon={<LinkSimple size={22} color={tokens.accent} weight="bold" />}
+                    icon={<LinkSimple size={22} color={c.primary} weight="bold" />}
                     label={l.label}
                     external
                     onPress={() => void Linking.openURL(l.url)}
@@ -131,42 +130,42 @@ export default function HackathonResultTeamScreen() {
                 ))}
               </SettingsGroup>
             ) : null}
-            {p.linksNotes ? <Text style={[styles.note, { color: tokens.textMuted }]}>{p.linksNotes}</Text> : null}
+            {p.linksNotes ? <Text style={[styles.note, { color: c.muted }]}>{p.linksNotes}</Text> : null}
             {p.evaluations.length === 0 ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>{mentoring ? 'No mentor feedback yet.' : 'No submitted marks yet.'}</Text>
+              <Text style={[styles.note, { color: c.muted }]}>{mentoring ? 'No mentor feedback yet.' : 'No submitted marks yet.'}</Text>
             ) : null}
             {p.evaluations.map((ev) => (
               <View key={ev.judgmentId} style={styles.card}>
                 <CardBackdrop shape={styles.card} />
                 <View style={styles.cardHead}>
-                  <Text style={[styles.judge, { color: tokens.text }]}>{ev.judgeName}</Text>
-                  {!mentoring ? <Text style={[styles.judge, { color: tokens.accent }]}>{formatScore(ev.total)}</Text> : null}
+                  <Text style={[styles.judge, { color: c.text }]}>{ev.judgeName}</Text>
+                  {!mentoring ? <Text style={[styles.judge, { color: c.primary }]}>{formatScore(ev.total)}</Text> : null}
                 </View>
-                {r.criteria.map((c) => {
-                  const m = ev.marks.find((x) => x.metricId === c.id);
+                {r.criteria.map((crit) => {
+                  const m = ev.marks.find((x) => x.metricId === crit.id);
                   return (
-                    <View key={c.id}>
+                    <View key={crit.id}>
                       <View style={styles.markRow}>
-                        <Text style={[styles.markLabel, { color: tokens.textSecondary }]}>
-                          {c.label}
-                          {c.weight !== 1 ? ` ×${c.weight}` : ''}
+                        <Text style={[styles.markLabel, { color: c.soft }]}>
+                          {crit.label}
+                          {crit.weight !== 1 ? ` ×${crit.weight}` : ''}
                         </Text>
-                        <Text style={[styles.markValue, { color: tokens.text }]}>
-                          {m ? formatScore(m.value) : '–'} / {formatScore(c.maxValue)}
+                        <Text style={[styles.markValue, { color: c.text }]}>
+                          {m ? formatScore(m.value) : '–'} / {formatScore(crit.maxValue)}
                         </Text>
                       </View>
-                      {m?.comment ? <Text style={[styles.comment, { color: tokens.textMuted }]}>{m.comment}</Text> : null}
+                      {m?.comment ? <Text style={[styles.comment, { color: c.muted }]}>{m.comment}</Text> : null}
                     </View>
                   );
                 })}
-                {ev.review ? <Text style={[styles.review, { color: tokens.text }]}>{ev.review}</Text> : null}
-                <Text style={[styles.comment, { color: tokens.textMuted }]}>
+                {ev.review ? <Text style={[styles.review, { color: c.text }]}>{ev.review}</Text> : null}
+                <Text style={[styles.comment, { color: c.muted }]}>
                   Submitted {formatWhen(ev.submittedAt)} · {ev.locked ? 'locked' : 'judge can still edit'}
                 </Text>
                 {ev.locked && r.status === 'ACTIVE' ? (
                   <SettingsGroup plain>
                     <SettingsRow
-                      icon={<LockOpen size={22} color={tokens.text} />}
+                      icon={<LockOpen size={22} color={c.text} />}
                       label="Reopen for 5 minutes"
                       onPress={() => reopen(ev.judgmentId, ev.judgeName)}
                     />
@@ -177,7 +176,7 @@ export default function HackathonResultTeamScreen() {
           </View>
         );
       })}
-      <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[6] }]}>
+      <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
         Marks are never shown to teams. Notes are shared only if you turn on sharing judges’ notes.
       </Text>
     </ScrollView>
@@ -187,17 +186,17 @@ export default function HackathonResultTeamScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize['2xl'], ...font('bold') },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font('medium') },
+  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.strong },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.strong },
   flag: { flexDirection: 'row', gap: spacing[2], alignItems: 'center', marginTop: spacing[3] },
-  section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...font('semibold') },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing[2] },
-  judge: { fontSize: typography.fontSize.base, ...font('semibold') },
+  judge: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   markRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing[1] },
-  markLabel: { fontSize: typography.fontSize.sm, flex: 1, ...font() },
-  markValue: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...font('semibold') },
-  comment: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, marginBottom: spacing[1], ...font() },
-  review: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  markLabel: { fontSize: typography.fontSize.sm, flex: 1, ...cosmosFont.body },
+  markValue: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  comment: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, marginBottom: spacing[1], ...cosmosFont.body },
+  review: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

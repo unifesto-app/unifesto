@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { getTicketStats, listAllTickets, PRIORITY_LABEL, type AdminTicket, type TicketStats } from '../../lib/api/apexSupport';
 import {
@@ -18,6 +17,7 @@ import ChipPicker from '../../components/manage/ChipPicker';
 import ManageStats from '../../components/manage/ManageStats';
 import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
+import { useCosmos } from '../../theme/cosmos';
 
 type Filter = SupportTicketStatus | 'unread' | 'mine' | 'all';
 
@@ -42,7 +42,7 @@ const DESKS = (Object.keys(DESK_LABEL) as SupportDesk[]).map((d) => ({ value: d,
  */
 export default function SupportInboxScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>('OPEN');
   const [kind, setKind] = useState<SupportCaseKind | ''>('');
@@ -108,7 +108,7 @@ export default function SupportInboxScreen() {
               .filter(Boolean)
               .join('  ·  ')}
             value={urgent ? PRIORITY_LABEL[t.priority] : undefined}
-            valueColor={t.priority === 'URGENT' ? tokens.danger : tokens.warning}
+            valueColor={t.priority === 'URGENT' ? c.danger : c.warn}
             unread={t.unread}
             onPress={() => router.push(`/apex/support/${t.id}`)}
           />

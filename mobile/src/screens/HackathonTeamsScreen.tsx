@@ -10,13 +10,12 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { runImportTeams } from '../components/hackathon/importTeamsFlow';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getHackathonOverview, getTeams, type HackathonOverview, type TeamRow } from '../lib/api/hackathon';
 import { joinedLabel } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -33,7 +32,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 export default function HackathonTeamsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [teams, setTeams] = useState<TeamRow[] | null>(null);
   const [overview, setOverview] = useState<HackathonOverview | null>(null);
@@ -79,8 +78,8 @@ export default function HackathonTeamsScreen() {
 
   if (!teams) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -93,14 +92,14 @@ export default function HackathonTeamsScreen() {
             overview ? (
               <HeaderActions>
                 <HeaderIconButton onPress={startImport} label="Import teams">
-                  <DownloadSimple size={24} color={tokens.text} />
+                  <DownloadSimple size={24} color={c.text} />
                 </HeaderIconButton>
               </HeaderActions>
             ) : null,
         }}
       />
       <FlatList
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -112,8 +111,8 @@ export default function HackathonTeamsScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -124,16 +123,16 @@ export default function HackathonTeamsScreen() {
             <>
               <View style={styles.search}>
                 <CardBackdrop shape={styles.search} />
-                <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
+                <MagnifyingGlass size={20} color={c.muted} weight="bold" />
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
                   placeholder="Team ID, team or lead name"
-                  placeholderTextColor={tokens.textMuted}
-                  selectionColor={tokens.accent}
+                  placeholderTextColor={c.muted}
+                  selectionColor={c.primary}
                   autoCorrect={false}
                   autoCapitalize="none"
-                  style={[styles.searchInput, { color: tokens.text }]}
+                  style={[styles.searchInput, { color: c.text }]}
                 />
               </View>
               <View style={{ marginTop: spacing[4] }}>
@@ -147,8 +146,8 @@ export default function HackathonTeamsScreen() {
         ListEmptyComponent={
           teams.length === 0 ? (
             <View style={{ marginTop: spacing[10], alignItems: 'center' }}>
-              <Text style={[styles.empty, { color: tokens.text }]}>No teams yet</Text>
-              <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
+              <Text style={[styles.empty, { color: c.text }]}>No teams yet</Text>
+              <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
                 Import your confirmed group registrations. Each becomes a team with its own Team ID.
               </Text>
               <Button label="Import teams" onPress={startImport} disabled={!overview} style={{ marginTop: spacing[5] }} />
@@ -164,7 +163,7 @@ export default function HackathonTeamsScreen() {
             <TeamItem t={item} onOpen={openTeam} />
           </GroupCell>
         )}
-        ListFooterComponent={error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+        ListFooterComponent={error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
       />
     </>
   );
@@ -189,7 +188,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 48, paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
-  empty: { fontSize: typography.fontSize.lg, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  empty: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

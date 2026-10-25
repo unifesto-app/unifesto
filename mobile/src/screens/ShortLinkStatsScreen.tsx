@@ -4,7 +4,6 @@ import QRCode from 'react-native-qrcode-svg';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { conversion, getShortLinkStats, scopeFromParams, type ShortLinkStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -13,7 +12,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { shortLinkLabel } from './ShortLinksScreen';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const DEVICE_LABEL: Record<string, string> = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Computer' };
@@ -32,7 +31,7 @@ function countryLabel(code: string | null): string {
 export default function ShortLinkStatsScreen() {
   const params = useLocalSearchParams<{ scope: string; scopeId?: string; linkId: string }>();
   const scope = useMemo(() => scopeFromParams(params), [params.scope, params.scopeId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<ShortLinkStats | null>(null);
   const [error, setError] = useState('');
@@ -54,8 +53,8 @@ export default function ShortLinkStatsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -71,7 +70,7 @@ export default function ShortLinkStatsScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
@@ -83,14 +82,14 @@ export default function ShortLinkStatsScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
+          tintColor={c.primary}
         />
       }
     >
-      {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
       {data ? (
         <>
-          <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{shortLinkLabel(data)}</Text>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{shortLinkLabel(data)}</Text>
           <TrafficSummary
             stats={[
               { label: 'Clicks', value: fmt(data.clicks) },
@@ -120,7 +119,7 @@ export default function ShortLinkStatsScreen() {
                 ))
               )}
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               Direct or app means the click had no website behind it: typed, scanned, or opened from an app like WhatsApp.
             </Text>
           </View>
@@ -152,7 +151,7 @@ export default function ShortLinkStatsScreen() {
               </View>
               <SettingsRow label="Download PNG" onPress={() => void Linking.openURL(`${data.qrUrl}?format=png`)} />
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               For posters, standees and slides. Scans count as clicks.
             </Text>
           </View>
@@ -165,8 +164,8 @@ export default function ShortLinkStatsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
+  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
   qr: { alignItems: 'center', padding: spacing[4], backgroundColor: '#ffffff' },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

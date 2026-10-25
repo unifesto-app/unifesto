@@ -3,7 +3,6 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import { Stack, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
@@ -21,7 +20,7 @@ import {
 } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 const PAGE_SIZE = 20;
@@ -40,7 +39,7 @@ export function pushTargetLabel(c: PushCampaign): string {
 /** Push broadcasts: history with delivery counts, send-now / cancel for pending ones, delete for any not mid-send. */
 export default function PushCampaignsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
 
   const fetchPage = useCallback(async (page: number) => {
@@ -100,14 +99,14 @@ export default function PushCampaignsScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => router.push('/apex/push/new')} label="New push">
-                <Plus size={24} color={tokens.text} />
+                <Plus size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
         }}
       />
       <FlatList
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={styles.content}
         data={loading || error ? [] : rows}
         keyExtractor={(c) => c.id}
@@ -121,19 +120,19 @@ export default function PushCampaignsScreen() {
                 { label: 'Scheduled', value: totals.scheduled },
               ]}
             />
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>Totals cover the broadcasts loaded below.</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>Totals cover the broadcasts loaded below.</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+            <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
           ) : (
-            <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
+            <Text style={[styles.empty, { color: c.muted }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
           )
         }
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
         renderItem={({ item }) => {
-          const s = campaignStatus(item.status, tokens);
+          const s = campaignStatus(item.status, c);
           const delivery = item.status === 'SENT' ? `${item.sentCount} sent${item.failedCount ? ` · ${item.failedCount} failed` : ''}` : null;
           const when = item.status === 'SCHEDULED' ? `for ${whenShort(item.scheduledAt, now)}` : whenShort(item.sentAt ?? item.createdAt, now);
           return (
@@ -149,10 +148,10 @@ export default function PushCampaignsScreen() {
         }}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: spacing[4] }} /> : null}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
         }
       />
     </>
@@ -161,7 +160,7 @@ export default function PushCampaignsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  hint: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font() },
+  hint: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -9,13 +9,12 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getAnnouncements, sendAnnouncement, type AnnouncementAudience, type Announcements } from '../lib/api/hackathon';
 import { formatWhen } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -36,7 +35,7 @@ const audienceLabel = (a: Announcements['announcements'][number]) =>
  */
 export default function HackathonAnnounceScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<Announcements | null>(null);
@@ -62,8 +61,8 @@ export default function HackathonAnnounceScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -99,7 +98,7 @@ export default function HackathonAnnounceScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -116,7 +115,7 @@ export default function HackathonAnnounceScreen() {
             setError('');
           }}
         />
-        <Text style={[styles.note, { color: tokens.textMuted }]}>{AUDIENCES.find((a) => a.value === audience)?.hint}</Text>
+        <Text style={[styles.note, { color: c.muted }]}>{AUDIENCES.find((a) => a.value === audience)?.hint}</Text>
         {audience === 'ROOM' ? (
           <View style={{ marginTop: spacing[3] }}>
             {data.rooms.length ? (
@@ -126,7 +125,7 @@ export default function HackathonAnnounceScreen() {
                 onChange={(v) => v && setRoomId(v)}
               />
             ) : (
-              <Text style={[styles.note, { color: tokens.warning }]}>Add rooms first.</Text>
+              <Text style={[styles.note, { color: c.warn }]}>Add rooms first.</Text>
             )}
           </View>
         ) : null}
@@ -146,18 +145,18 @@ export default function HackathonAnnounceScreen() {
 
         {data.announcements.length ? (
           <>
-            <Text style={[styles.section, { color: tokens.textMuted }]}>Sent</Text>
+            <Text style={[styles.section, { color: c.muted }]}>Sent</Text>
             {data.announcements.map((a) => (
               <View key={a.id} style={styles.card}>
                 <CardBackdrop shape={styles.card} />
                 <View style={styles.cardHead}>
-                  <Megaphone size={18} color={tokens.accent} weight="fill" />
-                  <Text style={[styles.cardTitle, { color: tokens.text }]} numberOfLines={2}>
+                  <Megaphone size={18} color={c.primary} weight="fill" />
+                  <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>
                     {a.title}
                   </Text>
                 </View>
-                <Text style={[styles.cardBody, { color: tokens.textSecondary }]}>{a.body}</Text>
-                <Text style={[styles.meta, { color: tokens.textMuted }]}>
+                <Text style={[styles.cardBody, { color: c.soft }]}>{a.body}</Text>
+                <Text style={[styles.meta, { color: c.muted }]}>
                   {audienceLabel(a)} · {a.recipients} {a.recipients === 1 ? 'person' : 'people'} · {formatWhen(a.createdAt)}
                   {a.sentBy ? ` · ${a.sentBy}` : ''}
                 </Text>
@@ -174,11 +173,11 @@ export default function HackathonAnnounceScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...font('semibold') },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  cardTitle: { flex: 1, fontSize: typography.fontSize.base, ...font('semibold') },
-  cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  meta: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font('medium') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  cardTitle: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  meta: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

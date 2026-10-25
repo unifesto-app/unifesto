@@ -18,14 +18,13 @@ import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { ShareNetwork, UserCircle, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { CardBackdrop } from './ui/CardSurface';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /** Event fields the share card needs — resolved by the caller from whatever
  *  shape it has (event detail, ticket, etc.). */
@@ -200,7 +199,7 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
 const cardStyles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  chipText: { color: '#ffffff', ...font('semibold') },
+  chipText: { color: '#ffffff', ...cosmosFont.strong },
   banner: { borderRadius: 12, overflow: 'hidden', backgroundColor: '#141414' },
   dateChip: {
     position: 'absolute',
@@ -213,8 +212,8 @@ const cardStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.62)',
     alignItems: 'center',
   },
-  dateDay: { fontSize: 18, lineHeight: 20, color: INK, ...font('heading') },
-  dateMonth: { fontSize: 10, color: SOFT, ...font('semibold') },
+  dateDay: { fontSize: 18, lineHeight: 20, color: INK, ...cosmosFont.display },
+  dateMonth: { fontSize: 10, color: SOFT, ...cosmosFont.strong },
   logo: {
     position: 'absolute',
     right: 10,
@@ -224,18 +223,18 @@ const cardStyles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#141414',
   },
-  title: { color: INK, letterSpacing: -0.3, ...font('heading') },
-  meta: { color: SOFT, marginTop: 6, ...font() },
+  title: { color: INK, ...cosmosFont.display },
+  meta: { color: SOFT, marginTop: 6, ...cosmosFont.body },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 46, height: 46, borderRadius: 23, borderWidth: 2, backgroundColor: '#141414' },
-  name: { color: INK, ...font('semibold') },
-  handle: { color: SOFT, fontSize: 12, marginTop: 1, ...font() },
-  site: { color: SOFT, fontSize: 11, ...font('medium') },
+  name: { color: INK, ...cosmosFont.strong },
+  handle: { color: SOFT, fontSize: 12, marginTop: 1, ...cosmosFont.body },
+  site: { color: SOFT, fontSize: 11, ...cosmosFont.strong },
 });
 
 /** Two-option switch with a sliding pill (Story / Post). */
 function FormatSwitch({ value, onChange }: { value: ShareFormatKey; onChange: (k: ShareFormatKey) => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [w, setW] = useState(0);
   const segW = w > 0 ? (w - 8) / SHARE_FORMATS.length : 0;
   const x = useSharedValue(0);
@@ -251,12 +250,12 @@ function FormatSwitch({ value, onChange }: { value: ShareFormatKey; onChange: (k
       accessibilityRole="tablist"
     >
       <CardBackdrop shape={modalStyles.switch} />
-      {segW > 0 ? <Animated.View style={[modalStyles.switchPill, { width: segW, backgroundColor: tokens.text }, pill]} /> : null}
+      {segW > 0 ? <Animated.View style={[modalStyles.switchPill, { width: segW, backgroundColor: c.text }, pill]} /> : null}
       {SHARE_FORMATS.map((f) => {
         const active = f.key === value;
         return (
           <Pressable key={f.key} onPress={() => onChange(f.key)} style={modalStyles.switchSeg} accessibilityRole="tab" accessibilityState={{ selected: active }}>
-            <Text style={[modalStyles.switchText, { color: active ? tokens.bg : tokens.textSecondary }]}>{f.label}</Text>
+            <Text style={[modalStyles.switchText, { color: active ? c.bg : c.soft }]}>{f.label}</Text>
           </Pressable>
         );
       })}
@@ -279,12 +278,12 @@ export default function AttendingShareModal({
   onClose: () => void;
   event: AttendingEvent;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
-  const accent = event.brandColor || tokens.accent;
+  const accent = event.brandColor || c.primary;
 
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
@@ -335,20 +334,20 @@ export default function AttendingShareModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <View style={[modalStyles.screen, { backgroundColor: tokens.bg, paddingTop: insets.top }]}>
+      <View style={[modalStyles.screen, { backgroundColor: c.bg, paddingTop: insets.top }]}>
         <View style={modalStyles.header}>
           <Pressable onPress={onClose} hitSlop={10} style={modalStyles.close} accessibilityRole="button" accessibilityLabel="Close">
-            <X size={24} color={tokens.text} weight="bold" />
+            <X size={24} color={c.text} weight="bold" />
           </Pressable>
-          <Text style={[modalStyles.headerTitle, { color: tokens.text }]}>Share that I'm going</Text>
+          <Text style={[modalStyles.headerTitle, { color: c.text }]}>Share that I'm going</Text>
           <View style={modalStyles.close} />
         </View>
 
         {!complete ? (
           <View style={modalStyles.gate}>
             <UserCircle size={56} color={accent} weight="duotone" />
-            <Text style={[modalStyles.gateTitle, { color: tokens.text }]}>Add your name and photo</Text>
-            <Text style={[modalStyles.gateBody, { color: tokens.textMuted }]}>
+            <Text style={[modalStyles.gateTitle, { color: c.text }]}>Add your name and photo</Text>
+            <Text style={[modalStyles.gateBody, { color: c.muted }]}>
               Both appear on the card you share. Add them, then come back to post it.
             </Text>
             <Button label="Edit profile" size="lg" fullWidth onPress={goToProfile} style={{ marginTop: spacing[5], alignSelf: 'stretch' }} />
@@ -373,7 +372,7 @@ export default function AttendingShareModal({
                 </View>
               </View>
               <FormatSwitch value={formatKey} onChange={setFormatKey} />
-              {error ? <Text style={[modalStyles.error, { color: tokens.danger }]}>{error}</Text> : null}
+              {error ? <Text style={[modalStyles.error, { color: c.danger }]}>{error}</Text> : null}
             </ScrollView>
 
             <View style={[modalStyles.footer, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
@@ -407,7 +406,7 @@ const modalStyles = StyleSheet.create({
     height: 52,
   },
   close: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, ...font('semibold') },
+  headerTitle: { fontSize: 17, ...cosmosFont.strong },
   body: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[4], paddingBottom: spacing[6], gap: spacing[6] },
   previewShadow: {
     borderRadius: 14,
@@ -420,8 +419,8 @@ const modalStyles = StyleSheet.create({
   switch: { flexDirection: 'row', padding: 4, borderRadius: borderRadius.full, width: 220 },
   switchPill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: borderRadius.full },
   switchSeg: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center' },
-  switchText: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  error: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  switchText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  error: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   footer: { paddingHorizontal: spacing[6], paddingTop: spacing[3] },
   shareBtn: {
     height: 54,
@@ -431,8 +430,8 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[2],
   },
-  shareText: { color: '#ffffff', fontSize: typography.fontSize.base, ...font('semibold') },
+  shareText: { color: '#ffffff', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   gate: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], paddingBottom: spacing[16], gap: spacing[2] },
-  gateTitle: { marginTop: spacing[3], fontSize: typography.fontSize.xl, textAlign: 'center', ...font('heading') },
-  gateBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...font() },
+  gateTitle: { marginTop: spacing[3], fontSize: typography.fontSize.xl, textAlign: 'center', ...cosmosFont.display },
+  gateBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

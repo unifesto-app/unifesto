@@ -6,7 +6,6 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { CalendarPlus, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { isPaidSessionBlocked, PAID_SESSION_IOS_NOTE, useSessionRegistration } from '../hooks/useSessionRegistration';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -22,7 +21,7 @@ import { countdownLabel } from '../utils/eventFormat';
 import { getSessionBySlug, getMySessions, joinSession, PLATFORM_LABELS, type Session } from '../lib/api/sessions';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, CosmosWash, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const ICON = 24;
@@ -86,7 +85,6 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
 
 function SessionDetailView({ data, hue }: { data: SessionData; hue: string | null }) {
   const c = useCosmos();
-  const tokens = useTokens();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
@@ -281,8 +279,8 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
 
           {registered && !isCancelled ? (
             <View style={styles.note}>
-              <CheckCircle size={18} color={tokens.success} weight="fill" />
-              <Text style={[styles.noteText, { color: tokens.success }]}>
+              <CheckCircle size={18} color={c.success} weight="fill" />
+              <Text style={[styles.noteText, { color: c.success }]}>
                 {isCompleted ? 'You attended this session' : "You're registered. Join opens shortly before the start."}
               </Text>
             </View>

@@ -17,7 +17,6 @@ import { FieldRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getFormUploadUrl, FIELD_TYPE_MAP, type CustomField } from '../lib/api/tickets';
 import {
@@ -40,7 +39,7 @@ import type { Result } from '../lib/api/manageEvent';
 import { displayAnswer, isFileAnswer, type FileAnswer } from '../utils/formQuestions';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -57,7 +56,7 @@ export default function StayBookingDetailScreen() {
   // out, but approving, cancelling, rooms and ID files are for the organisers.
   const { eventId, bookingId, desk: deskParam } = useLocalSearchParams<{ eventId: string; bookingId: string; desk?: string }>();
   const desk = deskParam === '1';
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [b, setB] = useState<TeamStayBooking | null>(null);
@@ -88,8 +87,8 @@ export default function StayBookingDetailScreen() {
 
   if (!b) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -168,49 +167,49 @@ export default function StayBookingDetailScreen() {
   const answered = questions.filter((q) => q.field_type !== 'section' && b.answers[q.id] !== undefined && b.answers[q.id] !== '');
   const tone =
     b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT'
-      ? tokens.warning
+      ? c.warn
       : b.status === 'REJECTED' || b.status === 'CANCELLED' || b.status === 'EXPIRED'
-        ? tokens.danger
-        : tokens.success;
+        ? c.danger
+        : c.success;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 80 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.status, { color: tone }]}>{STATUS_LABELS[b.status]}</Text>
-        <Text style={[styles.title, { color: tokens.text }]}>
+        <Text style={[styles.title, { color: c.text }]}>
           {booker?.name || b.user.fullName || 'Guest'}
           {b.guestCount > 1 ? ` +${b.guestCount - 1}` : ''}
         </Text>
-        <Text style={[styles.sub, { color: tokens.textSecondary }]}>
+        <Text style={[styles.sub, { color: c.soft }]}>
           {b.stay.name} · {b.option.name}
         </Text>
-        <Text style={[styles.sub, { color: tokens.textMuted }]}>
+        <Text style={[styles.sub, { color: c.muted }]}>
           {rangeLabel(b.checkInDate, b.checkOutDate, b.nights)} · Pass {b.passCode}
         </Text>
 
         {/* ── Next step ── */}
         {b.status === 'PENDING' && desk ? (
-          <View style={[styles.banner, { backgroundColor: tokens.fill }]}>
-            <Warning size={20} color={tokens.warning} />
-            <Text style={[styles.bannerText, { color: tokens.text }]}>Not approved yet. Ask an organiser to approve it first.</Text>
+          <View style={[styles.banner, { backgroundColor: c.tint }]}>
+            <Warning size={20} color={c.warn} />
+            <Text style={[styles.bannerText, { color: c.text }]}>Not approved yet. Ask an organiser to approve it first.</Text>
           </View>
         ) : b.status === 'PENDING' ? (
           <View style={styles.actions}>
             <Button label="Approve" size="lg" fullWidth loading={busy === 'approve'} disabled={!!busy} onPress={() => void approve()} />
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               {b.paymentMode === 'ONLINE' && b.totalAmount
                 ? `They'll have to pay ${rupees(b.totalAmount)} in the app to confirm. Add the room below first if you know it.`
                 : 'Confirms the stay and sends their Stay Pass. Add the room below first if you know it.'}
             </Text>
           </View>
         ) : b.status === 'AWAITING_PAYMENT' ? (
-          <View style={[styles.banner, { backgroundColor: tokens.fill }]}>
-            <CurrencyInr size={20} color={tokens.warning} />
-            <Text style={[styles.bannerText, { color: tokens.text }]}>
+          <View style={[styles.banner, { backgroundColor: c.tint }]}>
+            <CurrencyInr size={20} color={c.warn} />
+            <Text style={[styles.bannerText, { color: c.text }]}>
               Waiting for {rupees(b.totalAmount)}
               {b.paymentDueAt ? ` until ${when(b.paymentDueAt)}` : ''}. The bed is held.
             </Text>
@@ -225,7 +224,7 @@ export default function StayBookingDetailScreen() {
                 fullWidth
                 loading={busy === 'in'}
                 disabled={!!busy}
-                icon={<SignIn size={18} color={tokens.accentFg} />}
+                icon={<SignIn size={18} color={c.primaryFg} />}
                 onPress={() =>
                   AppAlert.alert(`Took ${rupees(b.totalAmount)}?`, 'This records the payment and checks the guest in.', [
                     { text: 'Back', style: 'cancel' },
@@ -241,7 +240,7 @@ export default function StayBookingDetailScreen() {
                 fullWidth
                 loading={busy === 'paid'}
                 disabled={!!busy}
-                icon={<CurrencyInr size={18} color={tokens.text} />}
+                icon={<CurrencyInr size={18} color={c.text} />}
                 onPress={() => void run('paid', () => markStayPaid(eventId!, b.id))}
               />
             ) : null}
@@ -252,19 +251,19 @@ export default function StayBookingDetailScreen() {
               fullWidth
               loading={busy === 'in'}
               disabled={!!busy || unpaidAtProperty}
-              icon={<SignIn size={18} color={tokens.accentFg} />}
+              icon={<SignIn size={18} color={c.primaryFg} />}
               onPress={() => void run('in', () => checkInStay(eventId!, b.id), 'Checked in')}
             />
             )}
             {unpaidAtProperty && !desk ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>Collect the payment first.</Text>
+              <Text style={[styles.note, { color: c.muted }]}>Collect the payment first.</Text>
             ) : null}
           </View>
         ) : b.status === 'CHECKED_IN' ? (
           <View style={styles.actions}>
-            <View style={[styles.banner, { backgroundColor: tokens.fill }]}>
-              <CheckCircle size={20} color={tokens.success} weight="fill" />
-              <Text style={[styles.bannerText, { color: tokens.text }]}>Checked in {b.checkedInAt ? when(b.checkedInAt) : ''}</Text>
+            <View style={[styles.banner, { backgroundColor: c.tint }]}>
+              <CheckCircle size={20} color={c.success} weight="fill" />
+              <Text style={[styles.bannerText, { color: c.text }]}>Checked in {b.checkedInAt ? when(b.checkedInAt) : ''}</Text>
             </View>
             <Button
               label="Check out"
@@ -273,14 +272,14 @@ export default function StayBookingDetailScreen() {
               fullWidth
               loading={busy === 'out'}
               disabled={!!busy}
-              icon={<SignOut size={18} color={tokens.text} />}
+              icon={<SignOut size={18} color={c.text} />}
               onPress={() => void run('out', () => checkOutStay(eventId!, b.id))}
             />
           </View>
         ) : (
-          <View style={[styles.banner, { backgroundColor: tokens.fill }]}>
-            <Warning size={20} color={tokens.danger} />
-            <Text style={[styles.bannerText, { color: tokens.text }]}>
+          <View style={[styles.banner, { backgroundColor: c.tint }]}>
+            <Warning size={20} color={c.danger} />
+            <Text style={[styles.bannerText, { color: c.text }]}>
               {b.rejectionReason || b.cancellationReason || STATUS_LABELS[b.status]}
             </Text>
           </View>
@@ -323,10 +322,10 @@ export default function StayBookingDetailScreen() {
                 value={GUEST_GENDER_LABELS[g.gender]}
                 onPress={g.phone ? () => void Linking.openURL(`tel:${g.phone}`) : undefined}
               />
-              <Text style={[styles.rowSub, { color: tokens.textMuted }]}>{[g.phone, g.email].filter(Boolean).join(' · ') || 'No contact given'}</Text>
+              <Text style={[styles.rowSub, { color: c.muted }]}>{[g.phone, g.email].filter(Boolean).join(' · ') || 'No contact given'}</Text>
               {g.idProof && !desk ? (
                 <SettingsRow
-                  icon={<IdentificationCard size={22} color={tokens.accent} />}
+                  icon={<IdentificationCard size={22} color={c.primary} />}
                   label="View ID"
                   value={g.idProof.name}
                   external
@@ -339,13 +338,13 @@ export default function StayBookingDetailScreen() {
 
         <SettingsGroup title="Arrival and emergency">
           <SettingsRow
-            icon={<CalendarBlank size={22} color={tokens.accent} />}
+            icon={<CalendarBlank size={22} color={c.primary} />}
             label="Arriving"
             value={b.arrivalAt ? when(b.arrivalAt) : 'Not given'}
           />
           {b.emergencyPhone ? (
             <SettingsRow
-              icon={<Phone size={22} color={tokens.accent} />}
+              icon={<Phone size={22} color={c.primary} />}
               label={b.emergencyName || 'Emergency contact'}
               value={b.emergencyPhone}
               onPress={() => void Linking.openURL(`tel:${b.emergencyPhone}`)}
@@ -354,7 +353,7 @@ export default function StayBookingDetailScreen() {
         </SettingsGroup>
         {b.note ? (
           <SettingsGroup title="Their note" plain>
-            <Text style={[styles.body, { color: tokens.textSecondary }]}>{b.note}</Text>
+            <Text style={[styles.body, { color: c.soft }]}>{b.note}</Text>
           </SettingsGroup>
         ) : null}
 
@@ -364,15 +363,15 @@ export default function StayBookingDetailScreen() {
               const v = b.answers[q.id];
               return (
                 <View key={q.id} style={styles.answer}>
-                  <Text style={[styles.answerLabel, { color: tokens.textMuted }]}>{q.label}</Text>
+                  <Text style={[styles.answerLabel, { color: c.muted }]}>{q.label}</Text>
                   {isFileAnswer(v) && desk ? (
-                    <Text style={[styles.answerValue, { color: tokens.text }]}>{v.name}</Text>
+                    <Text style={[styles.answerValue, { color: c.text }]}>{v.name}</Text>
                   ) : isFileAnswer(v) ? (
-                    <Text style={[styles.answerValue, { color: tokens.accent }]} onPress={() => void openId(v)}>
+                    <Text style={[styles.answerValue, { color: c.primary }]} onPress={() => void openId(v)}>
                       {v.name}
                     </Text>
                   ) : (
-                    <Text style={[styles.answerValue, { color: tokens.text }]}>{displayAnswer(q, v)}</Text>
+                    <Text style={[styles.answerValue, { color: c.text }]}>{displayAnswer(q, v)}</Text>
                   )}
                 </View>
               );
@@ -402,7 +401,7 @@ export default function StayBookingDetailScreen() {
               fullWidth
               loading={busy === 'reject' || busy === 'cancel'}
               disabled={!!busy}
-              icon={<XCircle size={18} color={tokens.danger} />}
+              icon={<XCircle size={18} color={c.danger} />}
               onPress={b.status === 'CONFIRMED' ? cancel : decline}
               style={{ marginTop: spacing[3] }}
             />
@@ -416,16 +415,16 @@ export default function StayBookingDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  status: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  title: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, ...font('heading') },
-  sub: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, ...cosmosFont.display },
+  sub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { marginTop: spacing[5], gap: spacing[3] },
   banner: { marginTop: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.lg },
-  bannerText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font('medium') },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  rowSub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...font() },
-  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  bannerText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.strong },
+  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  rowSub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   answer: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
-  answerLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  answerValue: { fontSize: typography.fontSize.base, ...font('medium') },
+  answerLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  answerValue: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

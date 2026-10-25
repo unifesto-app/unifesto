@@ -4,7 +4,6 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { BellRinging, CheckCircle, EnvelopeSimple, User, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { Button } from '../ui';
 import { SettingsGroup } from '../profile/SettingsGroup';
 import { CardSurfaceProvider, SheetBackdrop } from '../ui/CardSurface';
@@ -12,7 +11,7 @@ import FormRow from '../profile/FormRow';
 import type { EventDetail } from '../../hooks/useEventDetail';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 
 /**
@@ -29,7 +28,7 @@ export default function NotifySheet({
   accent: string;
   eventTitle?: string | null;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
 
   const progress = useSharedValue(0);
@@ -76,11 +75,11 @@ export default function NotifySheet({
             {notify.done ? (
               <View style={styles.center}>
                 <Animated.View style={popStyle}>
-                  <CheckCircle size={64} color={tokens.success} weight="duotone" />
+                  <CheckCircle size={64} color={c.success} weight="duotone" />
                 </Animated.View>
-                <Text style={[styles.doneTitle, { color: tokens.text }]}>You're on the list</Text>
-                <Text style={[styles.body, styles.centerText, { color: tokens.textSecondary }]}>
-                  We'll email <Text style={{ color: tokens.text, ...font('semibold') }}>{email}</Text> with updates
+                <Text style={[styles.doneTitle, { color: c.text }]}>You're on the list</Text>
+                <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
+                  We'll email <Text style={{ color: c.text, ...cosmosFont.strong }}>{email}</Text> with updates
                   {eventTitle ? ` about ${eventTitle}` : ''}.
                 </Text>
                 <Button label="Done" size="lg" onPress={close} style={styles.button} />
@@ -90,17 +89,17 @@ export default function NotifySheet({
                 <View style={styles.head}>
                   <BellRinging size={30} color={accent} weight="duotone" />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.title, { color: tokens.text }]}>Get notified</Text>
+                    <Text style={[styles.title, { color: c.text }]}>Get notified</Text>
                     {eventTitle ? (
-                      <Text style={[styles.subject, { color: tokens.textMuted }]} numberOfLines={1}>{eventTitle}</Text>
+                      <Text style={[styles.subject, { color: c.muted }]} numberOfLines={1}>{eventTitle}</Text>
                     ) : null}
                   </View>
                   <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-                    <X size={22} color={tokens.textSecondary} weight="bold" />
+                    <X size={22} color={c.soft} weight="bold" />
                   </Pressable>
                 </View>
 
-                <Text style={[styles.body, { color: tokens.textSecondary, marginBottom: spacing[4] }]}>
+                <Text style={[styles.body, { color: c.soft, marginBottom: spacing[4] }]}>
                   We'll email you updates about this event.
                 </Text>
 
@@ -130,7 +129,7 @@ export default function NotifySheet({
                 </SettingsGroup>
                 </CardSurfaceProvider>
                 {email.length > 0 && !emailValid ? (
-                  <Text style={[styles.hint, { color: tokens.danger }]}>That email doesn't look right.</Text>
+                  <Text style={[styles.hint, { color: c.danger }]}>That email doesn't look right.</Text>
                 ) : null}
 
                 <Button
@@ -161,12 +160,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing[6],
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginBottom: spacing[3] },
-  title: { fontSize: typography.fontSize.xl, letterSpacing: -0.3, ...font('heading') },
-  subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...font() },
-  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font() },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
+  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   button: { marginTop: spacing[5], alignSelf: 'stretch' },
   center: { alignItems: 'center', paddingTop: spacing[2] },
   centerText: { textAlign: 'center', marginTop: spacing[2], paddingHorizontal: spacing[2] },
-  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...font('heading') },
+  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
 });

@@ -12,7 +12,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Handshake } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { createPartnerLink, getPartnerLinks, revokePartnerLink, type PartnerLink } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -22,7 +21,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { shareLink } from '../lib/share';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -34,7 +33,7 @@ const ICON = 28;
  */
 export default function EventPartnersScreen() {
   const { eventId, title } = useLocalSearchParams<{ eventId: string; title?: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [partners, setPartners] = useState<PartnerLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,16 +123,16 @@ export default function EventPartnersScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
-  const icon = <Handshake size={ICON} color={tokens.text} />;
+  const icon = <Handshake size={ICON} color={c.text} />;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         contentInsetAdjustmentBehavior="never"
@@ -147,12 +146,12 @@ export default function EventPartnersScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
+            tintColor={c.primary}
           />
         }
       >
-        {title ? <Text style={[styles.event, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
-        {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+        {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+        {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
         <SettingsGroup
           title="Partners"
@@ -190,14 +189,14 @@ export default function EventPartnersScreen() {
                 autoCorrect={false}
               />
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               The contact needs a Unifesto account. They see only how many people registered through their link, never who.
             </Text>
-            {formError ? <Text style={[styles.error, { color: tokens.danger }]}>{formError}</Text> : null}
+            {formError ? <Text style={[styles.error, { color: c.danger }]}>{formError}</Text> : null}
             <Button label="Add partner" fullWidth loading={saving} onPress={addPartner} style={{ marginTop: spacing[4] }} />
           </>
         ) : (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             Give a club, community or sponsor its own tracking link. Registrations through it keep their credit for 7 days, even if the person opens other shared links later.
           </Text>
         )}
@@ -209,7 +208,7 @@ export default function EventPartnersScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  event: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  event: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

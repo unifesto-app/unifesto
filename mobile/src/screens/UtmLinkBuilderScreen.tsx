@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { FieldRow } from '../components/manage/FormFields';
@@ -12,8 +11,8 @@ import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -33,7 +32,7 @@ const tag = (v: string) =>
     .slice(0, 60);
 
 function Chips({ options, value, onPick }: { options: string[]; value: string; onPick: (v: string) => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.chips}>
       {options.map((o) => {
@@ -44,9 +43,9 @@ function Chips({ options, value, onPick }: { options: string[]; value: string; o
             onPress={() => onPick(on ? '' : o)}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
-            style={[styles.chip, { backgroundColor: on ? tokens.accent : tokens.fill }]}
+            style={[styles.chip, { backgroundColor: on ? c.primary : c.tint }]}
           >
-            <Text style={[styles.chipText, { color: on ? tokens.accentFg : tokens.text }]}>{o}</Text>
+            <Text style={[styles.chipText, { color: on ? c.primaryFg : c.text }]}>{o}</Text>
           </Pressable>
         );
       })}
@@ -62,7 +61,7 @@ function Chips({ options, value, onPick }: { options: string[]; value: string; o
  */
 export default function UtmLinkBuilderScreen() {
   const { url, title, campaign: defaultCampaign } = useLocalSearchParams<{ url: string; title?: string; campaign?: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [source, setSource] = useState('');
   const [medium, setMedium] = useState('');
@@ -81,14 +80,14 @@ export default function UtmLinkBuilderScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         contentInsetAdjustmentBehavior="never"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {title ? <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
+        {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
 
         <SettingsGroup title="Where you'll post it" plain>
           <FieldRow label="Source" value={source} onChangeText={setSource} placeholder="e.g. instagram" autoCapitalize="none" autoCorrect={false} />
@@ -106,8 +105,8 @@ export default function UtmLinkBuilderScreen() {
 
         <View style={styles.preview}>
           <CardBackdrop shape={styles.preview} />
-          <Text style={[styles.previewLabel, { color: tokens.textMuted }]}>Your link</Text>
-          <Text style={[styles.previewUrl, { color: link ? tokens.text : tokens.textMuted }]} selectable>
+          <Text style={[styles.previewLabel, { color: c.muted }]}>Your link</Text>
+          <Text style={[styles.previewUrl, { color: link ? c.text : c.muted }]} selectable>
             {link || 'Add a source to build the link.'}
           </Text>
         </View>
@@ -121,7 +120,7 @@ export default function UtmLinkBuilderScreen() {
           onPress={() => void shareLink({ message: title || 'On Unifesto', url: link, title })}
           style={{ marginTop: spacing[3] }}
         />
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Registrations count for this link when the person opened it within 7 days before registering.
         </Text>
       </ScrollView>
@@ -131,12 +130,12 @@ export default function UtmLinkBuilderScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
+  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[2], marginHorizontal: spacing[1] },
   chip: { paddingHorizontal: spacing[3], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   preview: { marginTop: spacing[8], padding: spacing[4], borderRadius: borderRadius.xl },
-  previewLabel: { fontSize: typography.fontSize.xs, ...font() },
-  previewUrl: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  previewLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  previewUrl: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

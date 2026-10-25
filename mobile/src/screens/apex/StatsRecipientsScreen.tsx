@@ -4,7 +4,6 @@ import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Phone, PlusCircle, WhatsappLogo, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
@@ -12,7 +11,7 @@ import { Button } from '../../components/ui';
 import { getStatsRecipients, updateStatsRecipients } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "Stats recipients": the WhatsApp numbers that get the Unifesto Stats
@@ -40,7 +39,7 @@ function display(e164: string): string {
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((n, i) => n === b[i]);
 
 export default function StatsRecipientsScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -113,14 +112,14 @@ export default function StatsRecipientsScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: tokens.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
@@ -134,11 +133,11 @@ export default function StatsRecipientsScreen() {
             draft.map((n) => (
               <SettingsRow
                 key={n}
-                icon={<WhatsappLogo size={ICON} color={tokens.text} />}
+                icon={<WhatsappLogo size={ICON} color={c.text} />}
                 label={display(n)}
                 trailing={
                   <Pressable onPress={() => remove(n)} hitSlop={12} accessibilityRole="button" accessibilityLabel={`Remove ${display(n)}`}>
-                    <X size={18} color={tokens.textMuted} weight="bold" />
+                    <X size={18} color={c.muted} weight="bold" />
                   </Pressable>
                 }
               />
@@ -148,7 +147,7 @@ export default function StatsRecipientsScreen() {
 
         <SettingsGroup title="Add a number">
           <FormRow
-            icon={<Phone size={ICON} color={tokens.text} />}
+            icon={<Phone size={ICON} color={c.text} />}
             value={input}
             onChangeText={(v) => {
               setInput(v);
@@ -161,23 +160,23 @@ export default function StatsRecipientsScreen() {
             onSubmitEditing={add}
             trailing={
               <Pressable onPress={add} hitSlop={12} disabled={!input.trim()} accessibilityRole="button" accessibilityLabel="Add number">
-                <PlusCircle size={26} color={input.trim() ? tokens.accent : tokens.textMuted} weight="fill" />
+                <PlusCircle size={26} color={input.trim() ? c.primary : c.muted} weight="fill" />
               </Pressable>
             }
           />
         </SettingsGroup>
 
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           These numbers get the Unifesto Stats WhatsApp: a daily snapshot at 8 AM, a weekly digest on Mondays at 9 AM, and
           milestone alerts. A 10-digit number is treated as Indian (+91).
         </Text>
 
-        {error ? <Text style={[styles.message, { color: tokens.danger }]}>{error}</Text> : null}
-        {notice && !isDirty ? <Text style={[styles.message, { color: tokens.accent }]}>{notice}</Text> : null}
+        {error ? <Text style={[styles.message, { color: c.danger }]}>{error}</Text> : null}
+        {notice && !isDirty ? <Text style={[styles.message, { color: c.primary }]}>{notice}</Text> : null}
       </ScrollView>
 
       <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
       </Animated.View>
     </KeyboardAvoidingView>
@@ -187,8 +186,8 @@ export default function StatsRecipientsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  note: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  note: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });

@@ -1,11 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface SettingsRowProps {
   /** Omit for a plain label/value row (no leading glyph, no indent). */
@@ -37,7 +36,7 @@ interface SettingsGroupProps {
 
 /** Inset-grouped list: title, rows on one rounded surface. */
 export function SettingsGroup({ title, action, plain, surface, style, children }: SettingsGroupProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={[styles.group, style]}>
@@ -48,7 +47,7 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
           <View key={i}>
             {row}
             {i < rows.length - 1 ? (
-              <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: tokens.border }]} />
+              <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: c.border }]} />
             ) : null}
           </View>
         ))}
@@ -58,14 +57,14 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
 }
 
 function GroupTitle({ title, action }: Pick<SettingsGroupProps, 'title' | 'action'>) {
-  const tokens = useTokens();
+  const c = useCosmos();
   if (!title && !action) return null;
   return (
     <View style={styles.titleRow}>
-      {title ? <Text style={[styles.title, { color: tokens.textMuted }]}>{title}</Text> : <View />}
+      {title ? <Text style={[styles.title, { color: c.muted }]}>{title}</Text> : <View />}
       {action ? (
         <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
-          <Text style={[styles.action, { color: tokens.accent }]}>{action.label}</Text>
+          <Text style={[styles.action, { color: c.primary }]}>{action.label}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -94,7 +93,7 @@ export function GroupCell({ index, count, plain, divider, style, children }: {
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const top = index === 0 ? borderRadius.xl : 0;
   const bottom = index === count - 1 ? borderRadius.xl : 0;
   const shape = { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: bottom, borderBottomRightRadius: bottom };
@@ -103,27 +102,27 @@ export function GroupCell({ index, count, plain, divider, style, children }: {
       <CardBackdrop shape={shape} />
       {children}
       {index < count - 1 ? (
-        <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: tokens.border }, divider]} />
+        <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: c.border }, divider]} />
       ) : null}
     </View>
   );
 }
 
 export function SettingsRow({ icon, label, value, external, trailing, danger, onPress }: SettingsRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const content = (
     <>
       {icon ? <View style={styles.icon}>{icon}</View> : null}
-      <Text style={[styles.label, { color: danger ? tokens.danger : tokens.text }]} numberOfLines={1}>
+      <Text style={[styles.label, { color: danger ? c.danger : c.text }]} numberOfLines={1}>
         {label}
       </Text>
-      {value ? <Text style={[styles.value, { color: tokens.textMuted }]} numberOfLines={1}>{value}</Text> : null}
+      {value ? <Text style={[styles.value, { color: c.muted }]} numberOfLines={1}>{value}</Text> : null}
       {trailing ??
         (onPress ? (
           external ? (
-            <ArrowUpRight size={15} color={tokens.textMuted} />
+            <ArrowUpRight size={15} color={c.muted} />
           ) : (
-            <CaretRight size={15} color={danger ? tokens.danger : tokens.textMuted} />
+            <CaretRight size={15} color={danger ? c.danger : c.muted} />
           )
         ) : null)}
     </>
@@ -136,7 +135,7 @@ export function SettingsRow({ icon, label, value, external, trailing, danger, on
       onPress={onPress}
       accessibilityRole={external ? 'link' : 'button'}
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       {content}
     </Pressable>
@@ -154,8 +153,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
     marginHorizontal: spacing[1],
   },
-  title: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  action: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  title: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden' },
   cell: { overflow: 'hidden' },
   row: {
@@ -167,8 +166,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
   },
   icon: { width: ICON, height: ICON, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, fontSize: typography.fontSize.base, ...font('medium') },
-  value: { fontSize: typography.fontSize.sm, maxWidth: '55%', ...font() },
+  label: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  value: { fontSize: typography.fontSize.sm, maxWidth: '55%', ...cosmosFont.body },
   // Inset so the hairline starts under the label, not the icon.
   divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + ICON + spacing[3] },
   dividerPlain: { marginLeft: spacing[4] },

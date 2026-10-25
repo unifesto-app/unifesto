@@ -2,14 +2,13 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { GroupScanResult } from '../../lib/api/checkin';
 import { Button } from '../ui';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { Avatar } from './PersonRow';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface GroupCheckinSheetProps {
   group: GroupScanResult | null;
@@ -34,7 +33,7 @@ export default function GroupCheckinSheet({
   onClose,
   submitting,
 }: GroupCheckinSheetProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const members = group?.members ?? [];
   const allOn = members.length > 0 && selected.size === members.length;
@@ -48,23 +47,23 @@ export default function GroupCheckinSheet({
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing[5]) }]}
         >
           <SheetBackdrop radius={borderRadius['3xl']} />
-          <View style={[styles.handle, { backgroundColor: tokens.fillStrong }]} />
+          <View style={[styles.handle, { backgroundColor: c.input }]} />
 
-          <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
             {group?.leadName ? `${group.leadName}'s group` : 'Group ticket'}
           </Text>
-          <Text style={[styles.sub, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
             {[group?.ticketType, `${group?.groupSize ?? members.length} people`, alreadyIn ? `${alreadyIn} already in` : null]
               .filter(Boolean)
               .join(' · ')}
           </Text>
 
           <View style={styles.toolbar}>
-            <Text style={[styles.count, { color: tokens.textSecondary }]}>
+            <Text style={[styles.count, { color: c.soft }]}>
               {selected.size} of {members.length} selected
             </Text>
             <Pressable onPress={onToggleAll} hitSlop={10} accessibilityRole="button">
-              <Text style={[styles.toggleAll, { color: tokens.accent }]}>{allOn ? 'Clear all' : 'Select all'}</Text>
+              <Text style={[styles.toggleAll, { color: c.primary }]}>{allOn ? 'Clear all' : 'Select all'}</Text>
             </Pressable>
           </View>
 
@@ -80,28 +79,28 @@ export default function GroupCheckinSheet({
                   accessibilityState={{ checked: on }}
                   style={({ pressed }) => [
                     styles.member,
-                    i < members.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: tokens.border },
-                    pressed && { backgroundColor: tokens.pressed },
+                    i < members.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.border },
+                    pressed && { backgroundColor: c.tint },
                   ]}
                 >
                   {on ? (
-                    <CheckCircle size={26} color={tokens.accent} weight="fill" />
+                    <CheckCircle size={26} color={c.primary} weight="fill" />
                   ) : (
-                    <Circle size={26} color={tokens.textMuted} />
+                    <Circle size={26} color={c.muted} />
                   )}
                   <Avatar name={name} size={36} />
                   <View style={{ flex: 1, gap: 1 }}>
-                    <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+                    <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
                       {name}
-                      {m.index === 0 ? <Text style={{ color: tokens.textMuted }}> · Lead</Text> : null}
+                      {m.index === 0 ? <Text style={{ color: c.muted }}> · Lead</Text> : null}
                     </Text>
                     {m.email ? (
-                      <Text style={[styles.email, { color: tokens.textMuted }]} numberOfLines={1}>
+                      <Text style={[styles.email, { color: c.muted }]} numberOfLines={1}>
                         {m.email}
                       </Text>
                     ) : null}
                   </View>
-                  {m.checkedInAtPoint ? <Text style={[styles.in, { color: tokens.success }]}>In</Text> : null}
+                  {m.checkedInAtPoint ? <Text style={[styles.in, { color: c.success }]}>In</Text> : null}
                 </Pressable>
               );
             })}
@@ -134,8 +133,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing[3],
   },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize.xl, ...font('heading') },
-  sub: { fontSize: typography.fontSize.sm, marginTop: 2, ...font() },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  sub: { fontSize: typography.fontSize.sm, marginTop: 2, ...cosmosFont.body },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -143,12 +142,12 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
     marginBottom: spacing[1],
   },
-  count: { fontSize: typography.fontSize.sm, ...font('medium') },
-  toggleAll: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  count: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  toggleAll: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   list: { maxHeight: 380 },
   member: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
-  name: { fontSize: typography.fontSize.base, ...font('semibold') },
-  email: { fontSize: typography.fontSize.xs, ...font() },
-  in: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  email: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  in: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
 });

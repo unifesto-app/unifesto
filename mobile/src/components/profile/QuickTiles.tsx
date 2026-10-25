@@ -1,10 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { CardBackdrop } from '../ui/CardSurface';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface QuickTile {
   key: string;
@@ -15,7 +14,7 @@ export interface QuickTile {
 
 /** Row of equal tiles for the things you open most (saved, certificates, circles). */
 export default function QuickTiles({ tiles }: { tiles: QuickTile[] }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.row}>
       {tiles.map((t) => (
@@ -31,7 +30,7 @@ export default function QuickTiles({ tiles }: { tiles: QuickTile[] }) {
         >
           <CardBackdrop shape={styles.tile} />
           <View style={styles.icon}>{t.icon}</View>
-          <Text style={[styles.label, { color: tokens.text }]} numberOfLines={1}>{t.label}</Text>
+          <Text style={[styles.label, { color: c.text }]} numberOfLines={1}>{t.label}</Text>
         </Pressable>
       ))}
     </View>
@@ -48,5 +47,5 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   icon: { height: 28, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: typography.fontSize.sm, ...font('medium') },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

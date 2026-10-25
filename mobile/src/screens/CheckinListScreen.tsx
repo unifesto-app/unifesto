@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { QrCode } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { getMyCheckinEvents, type CheckinEvent } from '../lib/api/checkin';
 import CheckinEventCard from '../components/checkin/CheckinEventCard';
 import Skeleton from '../components/Skeleton';
@@ -12,7 +11,7 @@ import { checkinPhase, type CheckinPhase } from '../utils/checkinFormat';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[5];
 const ENDED_SHOWN = 5;
@@ -26,7 +25,7 @@ const SECTIONS: { phase: CheckinPhase; title: string }[] = [
 /** Every event this user can check people into, bucketed live → upcoming → ended. */
 export default function CheckinListScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
 
   const [events, setEvents] = useState<CheckinEvent[] | null>(null);
@@ -72,7 +71,7 @@ export default function CheckinListScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }, empty && styles.grow]}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -82,8 +81,8 @@ export default function CheckinListScreen() {
             setRefreshing(true);
             void load();
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -97,15 +96,15 @@ export default function CheckinListScreen() {
         </View>
       ) : error && !events ? (
         <View style={styles.center}>
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>Couldn't load events</Text>
-          <Text style={[styles.emptyText, { color: tokens.textMuted }]}>{error}</Text>
+          <Text style={[styles.emptyTitle, { color: c.text }]}>Couldn't load events</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
         </View>
       ) : empty ? (
         <View style={styles.center}>
-          <QrCode size={48} color={tokens.textMuted} />
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>Nothing to check in yet</Text>
-          <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
+          <QrCode size={48} color={c.muted} />
+          <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing to check in yet</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>
             Events you run, or where a curator gives you door access, show up here.
           </Text>
         </View>
@@ -113,7 +112,7 @@ export default function CheckinListScreen() {
         SECTIONS.map(({ phase, title }) =>
           grouped[phase].length > 0 ? (
             <View key={phase} style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tokens.textMuted }]}>{title}</Text>
+              <Text style={[styles.sectionTitle, { color: c.muted }]}>{title}</Text>
               <View style={styles.list}>
                 {grouped[phase].map((ev) => (
                   <CheckinEventCard key={ev.id} event={ev} phase={phase} onPress={() => open(ev)} />
@@ -131,9 +130,9 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[12] },
   grow: { flexGrow: 1 },
   section: { marginBottom: spacing[8] },
-  sectionTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...font('semibold') },
+  sectionTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...cosmosFont.strong },
   list: { gap: spacing[3] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[2], paddingBottom: spacing[20] },
-  emptyTitle: { fontSize: typography.fontSize.xl, marginTop: spacing[3], textAlign: 'center', ...font('heading') },
-  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 290, ...font() },
+  emptyTitle: { fontSize: typography.fontSize.xl, marginTop: spacing[3], textAlign: 'center', ...cosmosFont.display },
+  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 290, ...cosmosFont.body },
 });

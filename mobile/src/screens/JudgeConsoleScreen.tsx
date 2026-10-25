@@ -9,7 +9,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket, { useNow } from '../hooks/useHackathonSocket';
 import {
@@ -26,7 +25,7 @@ import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel, formatClock, secondsUntil } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -39,7 +38,7 @@ const ICON = 26;
  */
 export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<JudgeConsole | null>(null);
   const [error, setError] = useState('');
@@ -82,14 +81,14 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {error ? (
           <>
-            <Text style={[styles.body, { color: tokens.textSecondary, textAlign: 'center' }]}>{error}</Text>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -106,31 +105,31 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
     const submitted = !!s.myMarks?.submittedAt;
     const meeting = q.meetingUrl;
     return (
-      <View key={s.requestId} style={[styles.card, { borderColor: s.status === 'AWAITING_MARKS' ? tokens.warning : tokens.accent }]}>
+      <View key={s.requestId} style={[styles.card, { borderColor: s.status === 'AWAITING_MARKS' ? c.warn : c.primary }]}>
         <CardBackdrop shape={styles.card} />
-        <Text style={[styles.overline, { color: tokens.textMuted }]}>
+        <Text style={[styles.overline, { color: c.muted }]}>
           {[q.kind === 'PANEL' ? q.name : null, s.round?.name, evalStatusLabel(s.status)].filter(Boolean).join(' · ')}
         </Text>
-        <Text style={[styles.teamCode, { color: tokens.text }]}>{team?.teamCode ?? '—'}</Text>
-        <Text style={[styles.teamName, { color: tokens.textSecondary }]}>{team?.name}</Text>
+        <Text style={[styles.teamCode, { color: c.text }]}>{team?.teamCode ?? '—'}</Text>
+        <Text style={[styles.teamName, { color: c.soft }]}>{team?.name}</Text>
         {team?.statement ? (
-          <Text style={[styles.body, { color: tokens.text }]} numberOfLines={3}>
+          <Text style={[styles.body, { color: c.text }]} numberOfLines={3}>
             {[team.statement.code, team.statement.title].filter(Boolean).join(' · ')}
             {team.statement.themeLabel ? `  (${team.statement.themeLabel})` : ''}
           </Text>
         ) : null}
         {team?.members.length ? (
-          <Text style={[styles.meta, { color: tokens.textMuted }]}>{team.members.join(', ')}</Text>
+          <Text style={[styles.meta, { color: c.muted }]}>{team.members.join(', ')}</Text>
         ) : null}
-        {team?.room ? <Text style={[styles.meta, { color: tokens.textMuted }]}>Room: {team.room.name}</Text> : null}
+        {team?.room ? <Text style={[styles.meta, { color: c.muted }]}>Room: {team.room.name}</Text> : null}
         {team?.links.length ? (
           <View style={{ marginTop: spacing[2] }}>
             {team.links.map((l) => (
-              <Text key={l.url} style={[styles.meta, { color: tokens.accent }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+              <Text key={l.url} style={[styles.meta, { color: c.primary }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
                 {l.label} ↗
               </Text>
             ))}
-            {team.linksNotes ? <Text style={[styles.meta, { color: tokens.textMuted }]}>{team.linksNotes}</Text> : null}
+            {team.linksNotes ? <Text style={[styles.meta, { color: c.muted }]}>{team.linksNotes}</Text> : null}
           </View>
         ) : null}
 
@@ -138,12 +137,12 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
           {s.status === 'CALLED' ? <SlotTimer until={s.graceEndsAt} label="to arrive" doneLabel="Grace time over" /> : null}
           {s.status === 'IN_PROGRESS' ? <SlotTimer large until={s.slotEndsAt} label="left" doneLabel="Time’s up" /> : null}
           {s.status === 'AWAITING_MARKS' ? (
-            <Text style={[styles.meta, { color: tokens.warning }]}>
+            <Text style={[styles.meta, { color: c.warn }]}>
               Time’s up. Submit your {mentor ? 'feedback' : 'marks'} to call the next team.
             </Text>
           ) : null}
           {s.panelProgress ? (
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+            <Text style={[styles.meta, { color: c.muted }]}>
               {s.panelProgress.submitted} of {s.panelProgress.total} panel judges have submitted
             </Text>
           ) : null}
@@ -163,7 +162,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               variant="ghost"
               fullWidth
               disabled={!canNoShow || acting}
-              icon={<UserMinus size={18} color={canNoShow ? tokens.danger : tokens.textMuted} />}
+              icon={<UserMinus size={18} color={canNoShow ? c.danger : c.muted} />}
               onPress={() =>
                 AppAlert.alert(`${team?.teamCode ?? 'This team'} didn’t turn up?`, 'They leave your queue and are told. They can join a queue again.', [
                   { text: 'Cancel', style: 'cancel' },
@@ -180,7 +179,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               size="lg"
               fullWidth
               variant={submitted ? 'secondary' : 'primary'}
-              icon={<PencilSimple size={18} color={submitted ? tokens.text : tokens.accentFg} weight="bold" />}
+              icon={<PencilSimple size={18} color={submitted ? c.text : c.primaryFg} weight="bold" />}
               onPress={() => openMarks(s.round!.id, team, s.round!.name)}
             />
           </View>
@@ -190,7 +189,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
             label="Open your call"
             variant="ghost"
             fullWidth
-            icon={<VideoCamera size={18} color={tokens.text} />}
+            icon={<VideoCamera size={18} color={c.text} />}
             onPress={() => void Linking.openURL(meeting)}
             style={{ marginTop: spacing[1] }}
           />
@@ -201,7 +200,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -212,8 +211,8 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -228,14 +227,14 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         />
       </SettingsGroup>
       {data.location || data.meetingUrl ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Teams find you {data.location ? `at ${data.location}` : ''}
           {data.location && data.meetingUrl ? ' or ' : ''}
           {data.meetingUrl ? 'on your call link' : ''}.
         </Text>
       ) : null}
       {!openRound ? (
-        <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[4] }]}>
+        <Text style={[styles.note, { color: c.muted, marginTop: spacing[4] }]}>
           No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
         </Text>
       ) : null}
@@ -252,7 +251,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               {q.waiting.map((w) => (
                 <SettingsRow
                   key={w.requestId}
-                  icon={<Hourglass size={ICON} color={tokens.textMuted} />}
+                  icon={<Hourglass size={ICON} color={c.muted} />}
                   label={`${w.position}. ${w.team?.teamCode ?? '—'}  ${w.team?.name ?? ''}`}
                   value={[w.team?.themeLabel, w.roundName].filter(Boolean).join(' · ') || undefined}
                 />
@@ -264,12 +263,12 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               fullWidth
               loading={acting}
               disabled={!q.canCallNext}
-              icon={<MegaphoneSimple size={18} color={q.canCallNext ? tokens.accentFg : tokens.textMuted} weight="fill" />}
+              icon={<MegaphoneSimple size={18} color={q.canCallNext ? c.primaryFg : c.muted} weight="fill" />}
               onPress={() => void run(callNextTeam(eventId, q.kind === 'PANEL' ? q.id : undefined), "Couldn't call the next team")}
               style={{ marginTop: spacing[3] }}
             />
             {data.busy && q.waiting.length ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>
+              <Text style={[styles.note, { color: c.muted }]}>
                 {data.busy.status === 'CALLED'
                   ? `Start ${data.busy.teamCode ?? 'the called team'} or mark it a no-show first.`
                   : `Submit ${mentor ? 'feedback' : 'marks'} for ${data.busy.teamCode ?? 'the current team'} to call the next one.`}
@@ -289,13 +288,13 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
                 key={r.requestId}
                 icon={
                   r.status === 'NO_SHOW' ? (
-                    <UserMinus size={ICON} color={tokens.textMuted} />
+                    <UserMinus size={ICON} color={c.muted} />
                   ) : editable ? (
-                    <PencilSimple size={ICON} color={tokens.accent} weight="fill" />
+                    <PencilSimple size={ICON} color={c.primary} weight="fill" />
                   ) : r.submittedAt ? (
-                    <LockSimple size={ICON} color={tokens.textMuted} weight="fill" />
+                    <LockSimple size={ICON} color={c.muted} weight="fill" />
                   ) : (
-                    <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+                    <CheckCircle size={ICON} color={c.success} weight="fill" />
                   )
                 }
                 label={`${r.team?.teamCode ?? '—'}  ${r.team?.name ?? ''}`}
@@ -314,7 +313,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
           })}
         </SettingsGroup>
       ) : null}
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
+      <Text style={[styles.note, { color: c.muted }]}>
         You can change your {mentor ? 'feedback' : 'marks'} for 5 minutes after you submit. After that {mentor ? 'it locks' : 'they lock'}; the
         organisers can reopen {mentor ? 'it' : 'them'} if needed.
       </Text>
@@ -326,11 +325,11 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   card: { marginTop: spacing[5], borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[5], borderWidth: 2 },
-  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...font('bold') },
-  teamCode: { marginTop: spacing[1], fontSize: typography.fontSize['3xl'], letterSpacing: 0.5, ...font('bold') },
-  teamName: { fontSize: typography.fontSize.lg, ...font('medium') },
-  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
-  meta: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font() },
+  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[1], fontSize: typography.fontSize['3xl'], letterSpacing: 0.5, ...cosmosFont.strong },
+  teamName: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
+  meta: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   actions: { marginTop: spacing[4], gap: spacing[2] },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { CardBackdrop } from '../../components/ui/CardSurface';
@@ -23,7 +22,7 @@ import {
 } from '../../lib/api/apex';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex › OTA updates: what's published on each EAS Update channel, and the
@@ -67,7 +66,7 @@ const pct = (n: number, total: number) => (total ? Math.round((n / total) * 100)
 const platformLabel = (p: string[]) => p.map((x) => (x === 'ios' ? 'iOS' : x === 'android' ? 'Android' : x)).join(' · ');
 
 export default function OtaUpdatesScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const mine = buildInfo();
   const [channel, setChannel] = useState<OtaChannel>('production');
@@ -148,26 +147,26 @@ export default function OtaUpdatesScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
     >
       {stale ? <StaleCard s={stale} /> : null}
       {adoption ? <AdoptionCard a={adoption} groups={channel === 'production' ? groups : null} /> : null}
 
       <SegmentedTabs tabs={CHANNELS} value={channel} onChange={switchChannel} />
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>
+      <Text style={[styles.hint, { color: c.muted }]}>
         This phone: {mine.channel ?? 'no channel'} · runtime {mine.runtimeVersion?.slice(0, 7) ?? '–'} ·{' '}
         {mine.updateId ? `update ${mine.updateId.slice(0, 7)}` : 'store build code'}
       </Text>
 
       {!groups ? (
         <View style={styles.center}>
-          {error ? <Text style={[styles.body, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+          {error ? <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
         </View>
       ) : groups.length === 0 ? (
-        <Text style={[styles.body, styles.center, { color: tokens.textMuted }]}>Nothing published on {channel} yet.</Text>
+        <Text style={[styles.body, styles.center, { color: c.muted }]}>Nothing published on {channel} yet.</Text>
       ) : (
         <View style={styles.list}>
           {groups.map((g) => {
@@ -182,22 +181,22 @@ export default function OtaUpdatesScreen() {
                   <Badge label={b.label} tone={b.tone} />
                   {isMine ? <Badge label="This phone" tone="accent" /> : null}
                 </View>
-                <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>
+                <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
                   {g.isRollBackToEmbedded ? 'Roll back to the store build’s code' : g.message || 'No message'}
                 </Text>
-                <Text style={[styles.small, { color: tokens.textMuted }]}>
+                <Text style={[styles.small, { color: c.muted }]}>
                   {when(g.createdAt)}
                   {g.publishedBy ? ` · ${g.publishedBy}` : ''} · {platformLabel(g.platforms)}
                 </Text>
-                <Text style={[styles.small, { color: tokens.textMuted }]}>
+                <Text style={[styles.small, { color: c.muted }]}>
                   Runtime {g.runtimeVersion.slice(0, 7)} · group {g.group.slice(0, 8)}
                   {g.gitCommitHash ? ` · ${g.gitCommitHash.slice(0, 7)}` : ''}
                 </Text>
 
                 {s === 'rollout' ? (
                   <>
-                    <View style={[styles.track, { backgroundColor: tokens.border }]}>
-                      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: tokens.warning }]} />
+                    <View style={[styles.track, { backgroundColor: c.border }]}>
+                      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.warn }]} />
                     </View>
                     <View style={styles.actions}>
                       {pct < 50 ? (
@@ -265,7 +264,7 @@ export default function OtaUpdatesScreen() {
         </View>
       )}
 
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>
+      <Text style={[styles.hint, { color: c.muted }]}>
         Publish new updates with `npm run update:production` (starts at 20%). Rolling back to the store build is CLI-only:
         `npm run update:rollback`.
       </Text>
@@ -275,7 +274,7 @@ export default function OtaUpdatesScreen() {
 
 /** O12: "nothing shipped for 10 days" made visible. Production only. */
 function StaleCard({ s }: { s: OtaStaleness }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const n = s.unshippedCommits;
   const count = n == null ? null : `${n}${s.unshippedTruncated ? '+' : ''}`;
   const old = s.oldestUnshippedAt ? daysAgo(s.oldestUnshippedAt) : 0;
@@ -290,24 +289,24 @@ function StaleCard({ s }: { s: OtaStaleness }) {
         ) : null}
       </View>
       {!s.main ? (
-        <Text style={[styles.body, { color: tokens.textMuted }]}>
+        <Text style={[styles.body, { color: c.muted }]}>
           No report from CI yet. It posts after the next push to main that touches mobile/.
         </Text>
       ) : (
         <>
-          <Text style={[styles.title, { color: tokens.text }]}>
+          <Text style={[styles.title, { color: c.text }]}>
             {n == null
               ? 'Couldn’t compare main with the last publish.'
               : n === 0
                 ? 'Every mobile commit on main is published.'
                 : `${count} mobile commit${n === 1 ? '' : 's'} on main newer than the last production update${old ? `, oldest ${old} day${old === 1 ? '' : 's'} ago` : ''}.`}
           </Text>
-          <Text style={[styles.small, { color: tokens.textMuted }]}>
+          <Text style={[styles.small, { color: c.muted }]}>
             {s.lastPublish ? `Last publish ${when(s.lastPublish.createdAt)}` : s.expoError ? s.expoError : 'Nothing published yet'} · main{' '}
             {s.main.sha.slice(0, 7)} checked {when(s.main.reportedAt)}
           </Text>
           {!s.main.otaSafe ? (
-            <Text style={[styles.small, { color: tokens.textMuted }]}>
+            <Text style={[styles.small, { color: c.muted }]}>
               Main’s native fingerprint matches no live store build, so an OTA from main would reach nobody. Ship a store build.
             </Text>
           ) : null}
@@ -319,7 +318,7 @@ function StaleCard({ s }: { s: OtaStaleness }) {
 
 /** O13: share of active users on each runtime, and on each update within it. */
 function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const label = (id: string | null) => {
     if (!id) return 'Store build code';
     const g = groups?.find((x) => x.updateIds.includes(id));
@@ -328,23 +327,23 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
   const row = (key: string, text: string, users: number, total: number, indent = false) => (
     <View key={key} style={[styles.adoptRow, indent && { paddingLeft: spacing[3] }]}>
       <View style={styles.adoptHead}>
-        <Text style={[indent ? styles.small : styles.body, { color: indent ? tokens.textMuted : tokens.text, flex: 1 }]} numberOfLines={1}>
+        <Text style={[indent ? styles.small : styles.body, { color: indent ? c.muted : c.text, flex: 1 }]} numberOfLines={1}>
           {text}
         </Text>
-        <Text style={[styles.small, { color: tokens.textMuted }]}>
+        <Text style={[styles.small, { color: c.muted }]}>
           {users} · {pct(users, total)}%
         </Text>
       </View>
-      <View style={[styles.track, { backgroundColor: tokens.border }]}>
-        <View style={[styles.fill, { width: `${pct(users, total)}%`, backgroundColor: indent ? tokens.textMuted : tokens.accent }]} />
+      <View style={[styles.track, { backgroundColor: c.border }]}>
+        <View style={[styles.fill, { width: `${pct(users, total)}%`, backgroundColor: indent ? c.muted : c.primary }]} />
       </View>
     </View>
   );
   return (
     <View style={[styles.card, styles.section]}>
       <CardBackdrop />
-      <Text style={[styles.title, { color: tokens.text }]}>What phones run</Text>
-      <Text style={[styles.small, { color: tokens.textMuted }]}>
+      <Text style={[styles.title, { color: c.text }]}>What phones run</Text>
+      <Text style={[styles.small, { color: c.muted }]}>
         {a.total} active user{a.total === 1 ? '' : 's'} (app reported in the last {a.days} days)
       </Text>
       {a.byRuntime.map((r) => (
@@ -369,11 +368,11 @@ const styles = StyleSheet.create({
   list: { marginTop: spacing[4], gap: spacing[3] },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], gap: spacing[2] },
   head: { flexDirection: 'row', gap: spacing[2] },
-  title: { fontSize: typography.fontSize.base, ...font('medium') },
-  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
-  small: { fontSize: typography.fontSize.xs, ...font() },
+  title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  small: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   track: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: spacing[1] },
   fill: { height: 6, borderRadius: 3 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },
-  hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

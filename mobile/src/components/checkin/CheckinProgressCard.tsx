@@ -2,13 +2,12 @@ import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTokens } from '../../context/ThemeContext';
 import type { CheckinStats } from '../../lib/api/checkin';
 import { CardBackdrop } from '../ui/CardSurface';
 import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
@@ -17,7 +16,7 @@ const fmt = (n: number) => n.toLocaleString('en-IN');
  * the two numbers door staff ask about (still to come, and the rate).
  */
 export default function CheckinProgressCard({ stats, loading }: { stats: CheckinStats | null; loading?: boolean }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const total = stats?.total ?? 0;
   const checkedIn = stats?.checkedIn ?? 0;
   const ratio = total > 0 ? Math.min(1, checkedIn / total) : 0;
@@ -40,14 +39,14 @@ export default function CheckinProgressCard({ stats, loading }: { stats: Checkin
       ) : (
         <>
           <View style={styles.headline}>
-            <Text style={[styles.big, { color: tokens.text }]}>{fmt(checkedIn)}</Text>
-            <Text style={[styles.of, { color: tokens.textMuted }]}>of {fmt(total)} checked in</Text>
+            <Text style={[styles.big, { color: c.text }]}>{fmt(checkedIn)}</Text>
+            <Text style={[styles.of, { color: c.muted }]}>of {fmt(total)} checked in</Text>
           </View>
 
-          <View style={[styles.track, { backgroundColor: tokens.fill }]}>
+          <View style={[styles.track, { backgroundColor: c.tint }]}>
             <Animated.View style={[styles.fill, bar]}>
               <LinearGradient
-                colors={tokens.accentGradient}
+                colors={[c.soft, c.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -67,11 +66,11 @@ export default function CheckinProgressCard({ stats, loading }: { stats: Checkin
 }
 
 function Figure({ label, value }: { label: string; value: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={{ flex: 1, gap: 2 }}>
-      <Text style={[styles.figure, { color: tokens.text }]}>{value}</Text>
-      <Text style={[styles.figureLabel, { color: tokens.textMuted }]} numberOfLines={1}>
+      <Text style={[styles.figure, { color: c.text }]}>{value}</Text>
+      <Text style={[styles.figureLabel, { color: c.muted }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -81,11 +80,11 @@ function Figure({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   card: { borderRadius: borderRadius['2xl'], padding: spacing[5], gap: spacing[4] },
   headline: { flexDirection: 'row', alignItems: 'baseline', gap: spacing[2], flexWrap: 'wrap' },
-  big: { fontSize: 44, lineHeight: 50, letterSpacing: -1, ...font('heading') },
-  of: { fontSize: typography.fontSize.base, ...font('medium') },
+  big: { fontSize: 44, lineHeight: 50, ...cosmosFont.display },
+  of: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   track: { height: 10, borderRadius: borderRadius.full, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: borderRadius.full, overflow: 'hidden' },
   split: { flexDirection: 'row', gap: spacing[4] },
-  figure: { fontSize: typography.fontSize.xl, ...font('heading') },
-  figureLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
+  figure: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  figureLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
 });

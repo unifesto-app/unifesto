@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { RefreshControl } from '../../components/ui/RefreshControl';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import ManageStats from '../../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
@@ -14,16 +13,16 @@ import { cancelEmailCampaign, getEmailCampaign, previewEmailBody, type EmailCamp
 import { EMAIL_TARGET_LABEL, pct } from './EmailCampaignsScreen';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
 /** One email campaign: delivery + engagement, A/B split, recipient log, cancel if scheduled. */
 export default function EmailCampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
-  const [c, setC] = useState<EmailCampaignDetail | null>(null);
+  const [campaign, setCampaign] = useState<EmailCampaignDetail | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -31,7 +30,7 @@ export default function EmailCampaignDetailScreen() {
   const load = useCallback(async () => {
     const res = await getEmailCampaign(id!);
     if (res.ok) {
-      setC(res.data);
+      setCampaign(res.data);
       setError('');
     } else setError(res.denied ? 'Only Unifesto platform admins can see this.' : res.message);
   }, [id]);
@@ -49,8 +48,8 @@ export default function EmailCampaignDetailScreen() {
   };
 
   const openPreview = async () => {
-    if (!c) return;
-    const res = await previewEmailBody(c.body);
+    if (!campaign) return;
+    const res = await previewEmailBody(campaign.body);
     if (res.ok) setPreview(res.data.html);
     else AppAlert.alert('No preview', res.message);
   };
@@ -69,67 +68,67 @@ export default function EmailCampaignDetailScreen() {
       },
     ]);
 
-  if (!c) {
+  if (!campaign) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Stack.Screen options={{ title: 'Campaign' }} />
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
-  const s = campaignStatus(c.status, tokens);
-  const when = c.sentAt ? `Sent ${longDate(c.sentAt)}` : c.scheduledAt ? `Scheduled for ${longDate(c.scheduledAt)}` : `Created ${longDate(c.createdAt)}`;
+  const s = campaignStatus(campaign.status, c);
+  const when = campaign.sentAt ? `Sent ${longDate(campaign.sentAt)}` : campaign.scheduledAt ? `Scheduled for ${longDate(campaign.scheduledAt)}` : `Created ${longDate(campaign.createdAt)}`;
 
   return (
     <>
       <Stack.Screen options={{ title: 'Campaign' }} />
       <ScrollView
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
         }
       >
-        <Text style={[styles.title, { color: tokens.text }]}>{c.subject}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>
-          <Text style={{ color: s.color }}>{s.label}</Text> · {EMAIL_TARGET_LABEL[c.targetType] ?? c.targetType} · {when}
+        <Text style={[styles.title, { color: c.text }]}>{campaign.subject}</Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
+          <Text style={{ color: s.color }}>{s.label}</Text> · {EMAIL_TARGET_LABEL[campaign.targetType] ?? campaign.targetType} · {when}
         </Text>
 
         <View style={styles.stats}>
           <ManageStats
             stats={[
-              { label: 'Sent', value: c.totalSent },
-              { label: 'Failed', value: c.failedCount },
+              { label: 'Sent', value: campaign.totalSent },
+              { label: 'Failed', value: campaign.failedCount },
             ]}
           />
           <ManageStats
             stats={[
-              { label: `Opens · ${pct(c.openCount, c.totalSent)}`, value: c.openCount },
-              { label: `Clicks · ${pct(c.clickCount, c.totalSent)}`, value: c.clickCount },
+              { label: `Opens · ${pct(campaign.openCount, campaign.totalSent)}`, value: campaign.openCount },
+              { label: `Clicks · ${pct(campaign.clickCount, campaign.totalSent)}`, value: campaign.clickCount },
             ]}
           />
         </View>
 
         <SettingsGroup plain>
           <SettingsRow label="Preview email" onPress={() => void openPreview()} />
-          {c.status === 'SCHEDULED' ? <SettingsRow label="Cancel campaign" danger onPress={cancel} /> : null}
+          {campaign.status === 'SCHEDULED' ? <SettingsRow label="Cancel campaign" danger onPress={cancel} /> : null}
         </SettingsGroup>
 
-        {c.stats ? (
+        {campaign.stats ? (
           <SettingsGroup title="A/B subject results" plain>
             {(['a', 'b'] as const).map((k) => {
-              const v = c.stats![k];
+              const v = campaign.stats![k];
               return (
                 <View key={k} style={styles.variant}>
-                  <Text style={[styles.variantHead, { color: tokens.text }]}>
+                  <Text style={[styles.variantHead, { color: c.text }]}>
                     Variant {k.toUpperCase()} · {v.sent} sent
                   </Text>
-                  <Text style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={2}>
-                    {k === 'a' ? c.subject : c.subjectB}
+                  <Text style={[styles.muted, { color: c.muted }]} numberOfLines={2}>
+                    {k === 'a' ? campaign.subject : campaign.subjectB}
                   </Text>
-                  <Text style={[styles.variantRates, { color: tokens.textSecondary }]}>
+                  <Text style={[styles.variantRates, { color: c.soft }]}>
                     Open {pct(v.opens, v.sent)} · Click {pct(v.clicks, v.sent)}
                   </Text>
                 </View>
@@ -138,14 +137,14 @@ export default function EmailCampaignDetailScreen() {
           </SettingsGroup>
         ) : null}
 
-        <Text style={[styles.section, { color: tokens.textMuted }]}>Recipients ({c.logs.length} shown)</Text>
-        {c.logs.length === 0 ? <Text style={[styles.muted, { color: tokens.textMuted }]}>Nobody yet.</Text> : null}
-        {c.logs.map((l, i) => {
+        <Text style={[styles.section, { color: c.muted }]}>Recipients ({campaign.logs.length} shown)</Text>
+        {campaign.logs.length === 0 ? <Text style={[styles.muted, { color: c.muted }]}>Nobody yet.</Text> : null}
+        {campaign.logs.map((l, i) => {
           const engaged = l.firstClickedAt ? `clicked ${shortDate(l.firstClickedAt)}` : l.openedAt ? `opened ${shortDate(l.openedAt)}` : 'not opened';
-          const statusColor = l.status === 'SENT' ? tokens.success : l.status === 'BOUNCED' ? tokens.warning : tokens.danger;
+          const statusColor = l.status === 'SENT' ? c.success : l.status === 'BOUNCED' ? c.warn : c.danger;
           return (
             <View key={l.id}>
-              {i > 0 ? <View style={[styles.sep, { backgroundColor: tokens.border }]} /> : null}
+              {i > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
               <ApexRow
                 title={l.recipientEmail}
                 meta={[l.variant ? `Variant ${l.variant}` : null, l.status === 'SENT' ? engaged : l.errorMessage].filter(Boolean).join(' · ')}
@@ -156,19 +155,19 @@ export default function EmailCampaignDetailScreen() {
           );
         })}
       </ScrollView>
-      <HtmlPreviewSheet html={preview} title={c.subject} onClose={() => setPreview(null)} />
+      <HtmlPreviewSheet html={preview} title={campaign.subject} onClose={() => setPreview(null)} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize['2xl'], letterSpacing: -0.4, ...font('heading') },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
+  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { marginTop: spacing[5], gap: spacing[3] },
   variant: { paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
-  variantHead: { fontSize: typography.fontSize.base, ...font('semibold') },
-  variantRates: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
-  section: { marginTop: spacing[8], marginBottom: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('semibold') },
+  variantHead: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  variantRates: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  section: { marginTop: spacing[8], marginBottom: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
 });

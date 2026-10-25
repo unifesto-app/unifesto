@@ -4,7 +4,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleShe
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MagnifyingGlass } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { getAdminTicket, PRIORITY_LABEL, replyAsStaff, sendToSpace, triageTicket, type AdminTicket } from '../../lib/api/apexSupport';
@@ -26,7 +25,7 @@ import { longDate, shortDate } from '../../components/apex/ApexRow';
 import { DESK_LABEL } from './SupportInboxScreen';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const STATUSES: { value: SupportTicketStatus; label: string }[] = (['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const).map((s) => ({
   value: s,
@@ -44,7 +43,7 @@ const PRIORITIES = (Object.keys(PRIORITY_LABEL) as SupportTicketPriority[]).map(
 export default function AdminSupportThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
@@ -107,8 +106,8 @@ export default function AdminSupportThreadScreen() {
 
   if (!ticket) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.meta, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.meta, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -118,7 +117,7 @@ export default function AdminSupportThreadScreen() {
   const nameOf = (m: SupportMessage) => (sideOf(m) === 'ASSISTANT' ? 'Assist' : personName(m.author));
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Stack.Screen options={{ title: `#${ticket.ticketNumber}` }} />
       <ScrollView
         ref={scroll}
@@ -127,8 +126,8 @@ export default function AdminSupportThreadScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.subject, { color: tokens.text }]}>{ticket.subject}</Text>
-        <Text style={[styles.meta, { color: tokens.textMuted }]}>
+        <Text style={[styles.subject, { color: c.text }]}>{ticket.subject}</Text>
+        <Text style={[styles.meta, { color: c.muted }]}>
           {KIND_LABEL[ticket.kind]} · {CATEGORY_LABEL[ticket.category]} · opened {longDate(ticket.createdAt)}
         </Text>
 
@@ -166,9 +165,9 @@ export default function AdminSupportThreadScreen() {
           />
         ) : null}
 
-        <Text style={[styles.label, { color: tokens.textMuted }]}>Status</Text>
+        <Text style={[styles.label, { color: c.muted }]}>Status</Text>
         <ChipPicker options={STATUSES} value={ticket.status} onChange={(v) => v && v !== ticket.status && !saving && void triage({ status: v })} />
-        <Text style={[styles.label, { color: tokens.textMuted }]}>Priority</Text>
+        <Text style={[styles.label, { color: c.muted }]}>Priority</Text>
         <ChipPicker options={PRIORITIES} value={ticket.priority} onChange={(v) => v && v !== ticket.priority && !saving && void triage({ priority: v })} />
 
         <View style={{ marginTop: spacing[6] }}>
@@ -176,7 +175,7 @@ export default function AdminSupportThreadScreen() {
         </View>
 
         {closed ? (
-          <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed. Set it back to Needs reply to answer.</Text>
+          <Text style={[styles.hint, { color: c.muted }]}>This case is closed. Set it back to Needs reply to answer.</Text>
         ) : null}
       </ScrollView>
 
@@ -210,7 +209,7 @@ function SendToOrganiser({
   reason?: string;
   onDone: () => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [open, setOpen] = useState(suggested);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AdminEventRow[]>([]);
@@ -241,8 +240,8 @@ function SendToOrganiser({
 
   return (
     <View style={{ marginTop: spacing[4] }}>
-      <Text style={[styles.label, { color: tokens.textMuted }]}>Send to organiser</Text>
-      <Text style={[styles.meta, { color: tokens.textMuted, marginTop: 0 }]}>
+      <Text style={[styles.label, { color: c.muted }]}>Send to organiser</Text>
+      <Text style={[styles.meta, { color: c.muted, marginTop: 0 }]}>
         {suggested ? `Assist thinks the organiser can answer this${reason ? `: ${reason}` : '.'}` : "Pass this question to an event's space desk."}
       </Text>
       {!open ? (
@@ -253,13 +252,13 @@ function SendToOrganiser({
         <>
           <View style={styles.search}>
             <CardBackdrop shape={styles.search} />
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
+            <MagnifyingGlass size={18} color={c.muted} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search events"
-              placeholderTextColor={tokens.textMuted}
-              style={[styles.searchInput, { color: tokens.text }]}
+              placeholderTextColor={c.muted}
+              style={[styles.searchInput, { color: c.text }]}
               autoCorrect={false}
               autoCapitalize="none"
               accessibilityLabel="Search events"
@@ -286,10 +285,10 @@ function SendToOrganiser({
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  subject: { fontSize: typography.fontSize.xl, ...font('heading') },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  label: { marginTop: spacing[4], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
-  hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  subject: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  label: { marginTop: spacing[4], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, height: 44, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
+  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
 });

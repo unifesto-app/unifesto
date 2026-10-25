@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   listContentReports,
@@ -22,7 +21,7 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -66,7 +65,7 @@ function targetRoute(r: ContentReport): string | null {
 /** The moderation queue for events, spaces and tickets people reported from the app. */
 export function ContentReportsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [status, setStatus] = useState<StatusFilter>('OPEN');
   const [type, setType] = useState<TypeFilter>('all');
   const [counts, setCounts] = useState<Record<ReportStatus, number> | null>(null);
@@ -129,7 +128,7 @@ export function ContentReportsScreen() {
           title={r.targetName}
           meta={[TYPE_NOUN[r.targetType], reasonLabel(r), whenShort(r.createdAt)].join('  ·  ')}
           value={status === 'all' || status !== r.status ? REPORT_STATUS_LABEL[r.status] : undefined}
-          valueColor={isActive(r.status) ? tokens.warning : tokens.textMuted}
+          valueColor={isActive(r.status) ? c.warn : c.muted}
           unread={r.status === 'OPEN'}
           onPress={() => router.push(`/apex/reports/${r.id}`)}
         />
@@ -142,7 +141,7 @@ export function ContentReportsScreen() {
 export function ContentReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [report, setReport] = useState<ContentReport | null>(() => (id ? handoff.get(id) ?? null : null));
   const [error, setError] = useState('');
@@ -177,8 +176,8 @@ export function ContentReportDetailScreen() {
 
   if (!report) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.meta, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.meta, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -188,18 +187,18 @@ export function ContentReportDetailScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: tokens.text }]}>{reasonLabel(report)}</Text>
-      <Text style={[styles.meta, { color: tokens.textMuted }]}>
+      <Text style={[styles.title, { color: c.text }]}>{reasonLabel(report)}</Text>
+      <Text style={[styles.meta, { color: c.muted }]}>
         {REPORT_STATUS_LABEL[report.status]} · reported {longDate(report.createdAt)}
       </Text>
 
-      {report.details ? <Text style={[styles.details, { color: tokens.textSecondary }]}>{report.details}</Text> : null}
+      {report.details ? <Text style={[styles.details, { color: c.soft }]}>{report.details}</Text> : null}
 
       <SettingsGroup plain>
         <SettingsRow
@@ -230,7 +229,7 @@ export function ContentReportDetailScreen() {
           />
         </SettingsGroup>
       ) : report.resolutionNote ? (
-        <Text style={[styles.details, { color: tokens.textSecondary }]}>Note: {report.resolutionNote}</Text>
+        <Text style={[styles.details, { color: c.soft }]}>Note: {report.resolutionNote}</Text>
       ) : null}
 
       <View style={styles.actions}>
@@ -253,8 +252,8 @@ export function ContentReportDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, ...font('heading') },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  details: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...font() },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  details: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   actions: { marginTop: spacing[6], gap: spacing[3] },
 });

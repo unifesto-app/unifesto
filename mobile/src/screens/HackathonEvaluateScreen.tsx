@@ -8,7 +8,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
@@ -23,7 +22,7 @@ import {
 import { evalStatusLabel, roundBlockedCopy, stageCopy, teamRequestCopy, waitLabel } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -35,7 +34,7 @@ const ICON = 26;
  */
 export default function HackathonEvaluateScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<MyEvaluation | null>(null);
   const [error, setError] = useState('');
@@ -109,28 +108,28 @@ export default function HackathonEvaluateScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {error ? (
           <>
-            <Text style={[styles.body, { color: tokens.textSecondary, textAlign: 'center' }]}>{error}</Text>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
   }
 
   const req = data.openRequest;
-  const icon = (I: typeof Gavel) => <I size={ICON} color={tokens.text} />;
+  const icon = (I: typeof Gavel) => <I size={ICON} color={c.text} />;
   const notReady = data.stage === 'NEEDS_PS' || data.stage === 'CANCELLED';
   const copy = req ? teamRequestCopy(req) : null;
   const called = req?.status === 'CALLED';
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -141,44 +140,44 @@ export default function HackathonEvaluateScreen() {
             await load();
             setRefreshing(false);
           }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
     >
-      <Text style={[styles.label, { color: tokens.textMuted }]}>{[data.team.teamCode, data.team.name].filter(Boolean).join(' · ')}</Text>
+      <Text style={[styles.label, { color: c.muted }]}>{[data.team.teamCode, data.team.name].filter(Boolean).join(' · ')}</Text>
 
       {notReady ? (
         <View style={[styles.card, { marginTop: spacing[3] }]}>
           <CardBackdrop shape={styles.card} />
-          <Text style={[styles.title, { color: tokens.text }]}>{stageCopy(data.stage).title}</Text>
-          <Text style={[styles.body, { color: tokens.textSecondary }]}>
+          <Text style={[styles.title, { color: c.text }]}>{stageCopy(data.stage).title}</Text>
+          <Text style={[styles.body, { color: c.soft }]}>
             {data.stage === 'NEEDS_PS' ? 'Lock in your problem statement to unlock judging.' : stageCopy(data.stage).body}
           </Text>
         </View>
       ) : null}
 
       {req && copy ? (
-        <View style={[styles.card, styles.requestCard, { marginTop: spacing[3], borderColor: called ? tokens.accent : 'transparent' }]}>
+        <View style={[styles.card, styles.requestCard, { marginTop: spacing[3], borderColor: called ? c.primary : 'transparent' }]}>
           <CardBackdrop shape={styles.card} />
-          <Text style={[styles.overline, { color: called ? tokens.accent : tokens.textMuted }]}>{req.roundName ?? 'Evaluation'}</Text>
-          <Text style={[styles.bigTitle, { color: tokens.text }]}>{copy.title}</Text>
-          <Text style={[styles.body, { color: tokens.textSecondary }]}>{copy.body}</Text>
+          <Text style={[styles.overline, { color: called ? c.primary : c.muted }]}>{req.roundName ?? 'Evaluation'}</Text>
+          <Text style={[styles.bigTitle, { color: c.text }]}>{copy.title}</Text>
+          <Text style={[styles.body, { color: c.soft }]}>{copy.body}</Text>
           {req.evaluator ? (
             <View style={styles.metaRow}>
-              <UsersThree size={16} color={tokens.textMuted} />
-              <Text style={[styles.meta, { color: tokens.textSecondary }]}>{req.evaluator.name}</Text>
+              <UsersThree size={16} color={c.muted} />
+              <Text style={[styles.meta, { color: c.soft }]}>{req.evaluator.name}</Text>
               {req.evaluator.location ? (
                 <>
-                  <MapPin size={16} color={tokens.textMuted} />
-                  <Text style={[styles.meta, { color: tokens.textSecondary }]}>{req.evaluator.location}</Text>
+                  <MapPin size={16} color={c.muted} />
+                  <Text style={[styles.meta, { color: c.soft }]}>{req.evaluator.location}</Text>
                 </>
               ) : null}
             </View>
           ) : null}
           {req.status === 'WAITING' && req.waitMinutes != null ? (
-            <Text style={[styles.meta, { color: tokens.textMuted, marginTop: spacing[2] }]}>{waitLabel(req.waitMinutes)}</Text>
+            <Text style={[styles.meta, { color: c.muted, marginTop: spacing[2] }]}>{waitLabel(req.waitMinutes)}</Text>
           ) : null}
           <View style={{ marginTop: spacing[3] }}>
             {called ? <SlotTimer until={req.graceEndsAt} label="to get there" doneLabel="Hurry, the judge is waiting" /> : null}
@@ -189,7 +188,7 @@ export default function HackathonEvaluateScreen() {
               label="Join call"
               size="lg"
               fullWidth
-              icon={<VideoCamera size={18} color={tokens.accentFg} weight="fill" />}
+              icon={<VideoCamera size={18} color={c.primaryFg} weight="fill" />}
               onPress={() => void Linking.openURL(req.evaluator!.meetingUrl!)}
               style={{ marginTop: spacing[4] }}
             />
@@ -223,7 +222,7 @@ export default function HackathonEvaluateScreen() {
             return (
               <SettingsRow
                 key={r.id}
-                icon={r.completed >= r.required ? <CheckCircle size={ICON} color={tokens.success} weight="fill" /> : icon(Gavel)}
+                icon={r.completed >= r.required ? <CheckCircle size={ICON} color={c.success} weight="fill" /> : icon(Gavel)}
                 label={r.name}
                 value={
                   r.canRequest
@@ -238,7 +237,7 @@ export default function HackathonEvaluateScreen() {
           })}
         </SettingsGroup>
       ) : (
-        <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[6] }]}>
+        <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
           The organisers haven’t set up judging rounds yet. We’ll notify you when a round opens.
         </Text>
       )}
@@ -258,7 +257,7 @@ export default function HackathonEvaluateScreen() {
               return (
                 <SettingsRow
                   key={`${e.kind}:${e.id}`}
-                  icon={e.isAvailable ? icon(e.online ? VideoCamera : UsersThree) : <Coffee size={ICON} color={tokens.textMuted} />}
+                  icon={e.isAvailable ? icon(e.online ? VideoCamera : UsersThree) : <Coffee size={ICON} color={c.muted} />}
                   label={e.location ? `${e.name} · ${e.location}` : e.name}
                   value={
                     e.alreadyEvaluated
@@ -276,7 +275,7 @@ export default function HackathonEvaluateScreen() {
               );
             })}
           </SettingsGroup>
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             {picking.round.kind === 'MENTORING'
               ? 'Mentors give written feedback, no marks. Each session is with a different mentor.'
               : picking.round.judgingMode === 'MULTI'
@@ -297,7 +296,7 @@ export default function HackathonEvaluateScreen() {
           ))}
         </SettingsGroup>
       ) : null}
-      <Text style={[styles.note, { color: tokens.textMuted }]}>Marks are never shown to teams. Results come from the organisers.</Text>
+      <Text style={[styles.note, { color: c.muted }]}>Marks are never shown to teams. Results come from the organisers.</Text>
     </ScrollView>
   );
 }
@@ -307,12 +306,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[5] },
   requestCard: { borderWidth: 2 },
-  label: { fontSize: typography.fontSize.sm, ...font('medium') },
-  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...font('bold') },
-  title: { fontSize: typography.fontSize.lg, ...font('semibold') },
-  bigTitle: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], ...font('bold') },
-  body: { marginTop: spacing[1], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  bigTitle: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], ...cosmosFont.strong },
+  body: { marginTop: spacing[1], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing[1] + 2, marginTop: spacing[3] },
-  meta: { fontSize: typography.fontSize.sm, marginRight: spacing[2], ...font('medium') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  meta: { fontSize: typography.fontSize.sm, marginRight: spacing[2], ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

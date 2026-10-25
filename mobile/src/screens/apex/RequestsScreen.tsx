@@ -2,15 +2,14 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { ApexRow } from '../../components/apex/ApexRow';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { CardBackdrop } from '../../components/ui/CardSurface';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -36,7 +35,7 @@ type Filter = RequestSource | 'all';
 export default function RequestsScreen() {
   const params = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [tab, setTab] = useState<RequestTab>('open');
   const [filter, setFilter] = useState<Filter>(params.type && sourceDef(params.type) ? (params.type as RequestSource) : 'all');
@@ -85,7 +84,7 @@ export default function RequestsScreen() {
 
   return (
     <SectionList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={styles.content}
       sections={loading ? [] : sections}
       keyExtractor={(r) => r.key}
@@ -94,57 +93,57 @@ export default function RequestsScreen() {
         <View style={{ paddingTop: topSpacing }}>
           <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chips}>
-            {chips.map((c) => {
-              const on = c.key === filter;
+            {chips.map((chip) => {
+              const on = chip.key === filter;
               return (
                 <Pressable
-                  key={c.key}
-                  onPress={() => setFilter(c.key)}
+                  key={chip.key}
+                  onPress={() => setFilter(chip.key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   style={({ pressed }) => [
                     styles.chip,
-                    { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                   ]}
                 >
                   {!on ? <CardBackdrop shape={styles.chip} /> : null}
-                  <Text style={[styles.chipLabel, { color: on ? tokens.accentFg : tokens.text }]}>
-                    {c.label}
-                    {!loading && c.count > 0 ? <Text style={{ color: on ? tokens.accentFg : tokens.textMuted }}>{`  ${c.count}`}</Text> : null}
+                  <Text style={[styles.chipLabel, { color: on ? c.primaryFg : c.text }]}>
+                    {chip.label}
+                    {!loading && chip.count > 0 ? <Text style={{ color: on ? c.primaryFg : c.muted }}>{`  ${chip.count}`}</Text> : null}
                   </Text>
                 </Pressable>
               );
             })}
           </ScrollView>
-          {failNote ? <Text style={[styles.fail, { color: tokens.danger }]}>{failNote}</Text> : null}
+          {failNote ? <Text style={[styles.fail, { color: c.danger }]}>{failNote}</Text> : null}
         </View>
       }
       renderSectionHeader={({ section }) =>
         filter === 'all' || section.error ? (
           <View style={styles.sectionHead}>
             {filter === 'all' ? (
-              <Text style={[styles.sectionTitle, { color: tokens.textMuted }]}>
+              <Text style={[styles.sectionTitle, { color: c.muted }]}>
                 {section.title}  ·  {section.data.length}
               </Text>
             ) : null}
-            {section.error ? <Text style={[styles.fail, { color: tokens.danger }]}>{section.error}</Text> : null}
+            {section.error ? <Text style={[styles.fail, { color: c.danger }]}>{section.error}</Text> : null}
           </View>
         ) : null
       }
       ListEmptyComponent={
         loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>{EMPTY[tab]}</Text>
+          <Text style={[styles.empty, { color: c.muted }]}>{EMPTY[tab]}</Text>
         )
       }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
       renderItem={({ item }) => (
         <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
       )}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
       }
     />
   );
@@ -155,10 +154,10 @@ const styles = StyleSheet.create({
   chipScroll: { marginTop: spacing[4], marginHorizontal: -GUTTER },
   chips: { gap: spacing[2], paddingHorizontal: GUTTER },
   chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  chipLabel: { fontSize: typography.fontSize.sm, ...font('medium') },
+  chipLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sectionHead: { marginTop: spacing[6], marginBottom: spacing[1] },
-  sectionTitle: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  fail: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...font('medium') },
+  sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  fail: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

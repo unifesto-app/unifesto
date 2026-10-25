@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { cancelPayout, markPayoutPaid } from '../../lib/api/apex';
 import { recallPayout, organiserName } from '../../lib/apexRequests';
@@ -15,7 +14,7 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -27,7 +26,7 @@ const GUTTER = spacing[6];
 export default function AdminPayoutDetailScreen() {
   const { payoutId } = useLocalSearchParams<{ payoutId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const payout = payoutId ? recallPayout(payoutId) : undefined;
   const [utr, setUtr] = useState('');
@@ -35,13 +34,13 @@ export default function AdminPayoutDetailScreen() {
 
   if (!payout) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
       </View>
     );
   }
 
-  const status = payoutStatus(payout.status, tokens);
+  const status = payoutStatus(payout.status, c);
   const acct = payout.bankAccount;
   const open = payout.status === 'PENDING' || payout.status === 'PROCESSING';
 
@@ -91,15 +90,15 @@ export default function AdminPayoutDetailScreen() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.amount, { color: tokens.text }]}>{inr(payout.netAmount)}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>
+        <Text style={[styles.amount, { color: c.text }]}>{inr(payout.netAmount)}</Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
           {[payout.event?.title ?? payout.session?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
         </Text>
         <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
@@ -119,7 +118,7 @@ export default function AdminPayoutDetailScreen() {
             {acct.bankName ? <SettingsRow label="Bank" value={acct.bankName} /> : null}
           </SettingsGroup>
         ) : (
-          <Text style={[styles.note, { color: tokens.warning }]}>No payout account on this request.</Text>
+          <Text style={[styles.note, { color: c.warn }]}>No payout account on this request.</Text>
         )}
 
         <SettingsGroup title="History" plain>
@@ -127,8 +126,8 @@ export default function AdminPayoutDetailScreen() {
           {payout.completedAt ? <SettingsRow label="Paid on" value={longDate(payout.completedAt)} /> : null}
           {payout.utr ? <SettingsRow label="UTR" value={payout.utr} onPress={copy('UTR', payout.utr)} /> : null}
         </SettingsGroup>
-        {payout.failureReason ? <Text style={[styles.note, { color: tokens.danger }]}>{payout.failureReason}</Text> : null}
-        {payout.notes ? <Text style={[styles.note, { color: tokens.textSecondary }]}>{payout.notes}</Text> : null}
+        {payout.failureReason ? <Text style={[styles.note, { color: c.danger }]}>{payout.failureReason}</Text> : null}
+        {payout.notes ? <Text style={[styles.note, { color: c.soft }]}>{payout.notes}</Text> : null}
 
         {open ? (
           <>
@@ -149,8 +148,8 @@ export default function AdminPayoutDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  amount: { fontSize: typography.fontSize['4xl'], ...font('heading') },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.display },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

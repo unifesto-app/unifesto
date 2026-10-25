@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getRefund, reviewRefund, type RefundRequest } from '../lib/api/finance';
 import { refundStatus } from '../components/manage/FinanceRows';
@@ -12,10 +11,10 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import AdminRefundDecision from '../components/apex/AdminRefundDecision';
 import usePlatformAdmin from '../hooks/usePlatformAdmin';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /** Approval claims stuck this long can be approved again (matches the backend). */
 const STUCK_PROCESSING_MS = 10 * 60_000;
@@ -33,7 +32,7 @@ const when = (iso?: string | null) =>
 export default function RefundDetailScreen() {
   const { refundId } = useLocalSearchParams<{ refundId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [refund, setRefund] = useState<RefundRequest | null>(null);
   const [error, setError] = useState('');
@@ -85,14 +84,14 @@ export default function RefundDetailScreen() {
 
   if (!refund) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
   const reg = refund.registration;
-  const status = refundStatus(refund.status, tokens);
+  const status = refundStatus(refund.status, c);
   const who = reg?.user?.fullName || reg?.user?.username || 'Attendee';
   const paid = Number(reg?.totalAmount ?? 0);
   const fee = Number(reg?.processingFee ?? 0);
@@ -106,23 +105,23 @@ export default function RefundDetailScreen() {
   const canReview = refund.status === 'PENDING_CURATOR';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.who, { color: tokens.text }]}>{who}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={2}>
+        <Text style={[styles.who, { color: c.text }]}>{who}</Text>
+        <Text style={[styles.muted, { color: c.muted }]} numberOfLines={2}>
           {[refund.event?.title, reg?.ticketType?.name].filter(Boolean).join('  ·  ')}
         </Text>
         <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
 
         <View style={[styles.quote]}>
           <CardBackdrop shape={styles.quote} />
-          <Text style={[styles.quoteText, { color: tokens.text }]}>“{refund.reason}”</Text>
-          <Text style={[styles.quoteBy, { color: tokens.textMuted }]}>
+          <Text style={[styles.quoteText, { color: c.text }]}>“{refund.reason}”</Text>
+          <Text style={[styles.quoteBy, { color: c.muted }]}>
             {refund.requesterRole === 'ATTENDEE' ? 'Asked by the attendee' : `Raised by ${refund.requestedBy?.fullName ?? 'an organiser'}`} · {when(refund.createdAt)}
           </Text>
         </View>
@@ -147,8 +146,8 @@ export default function RefundDetailScreen() {
             ) : null}
           </SettingsGroup>
         ) : null}
-        {refund.curatorNote ? <Text style={[styles.note, { color: tokens.textSecondary }]}>Organiser note: {refund.curatorNote}</Text> : null}
-        {refund.adminNote ? <Text style={[styles.note, { color: tokens.textSecondary }]}>Unifesto note: {refund.adminNote}</Text> : null}
+        {refund.curatorNote ? <Text style={[styles.note, { color: c.soft }]}>Organiser note: {refund.curatorNote}</Text> : null}
+        {refund.adminNote ? <Text style={[styles.note, { color: c.soft }]}>Unifesto note: {refund.adminNote}</Text> : null}
 
         {canReview ? (
           rejecting ? (
@@ -190,11 +189,11 @@ export default function RefundDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, ...font() },
-  who: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
+  muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  who: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   quote: { marginTop: spacing[5], padding: spacing[4], borderRadius: 14, gap: spacing[2] },
-  quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...font('medium') },
-  quoteBy: { fontSize: typography.fontSize.xs, ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
+  quoteBy: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

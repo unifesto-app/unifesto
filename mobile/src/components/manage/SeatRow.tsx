@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { displayFieldValue } from '../../hooks/useEventRegistration';
 import { displayAnswer, isFileAnswer } from '../../utils/formQuestions';
 import { openFormUpload } from '../../lib/api/tickets';
 import type { GroupSeatRow } from '../../lib/api/manageEvent';
 import type { CustomField } from '../../lib/api/tickets';
-import type { Tokens } from '../../theme/tokens';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { type Cosmos, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const STATUS: Record<string, string> = { OPEN: 'Open', INVITED: 'Invited', CLAIMED: 'Filled', RELEASED: 'Released' };
 
-const statusColor = (s: string, t: Tokens) => (s === 'CLAIMED' ? t.success : s === 'INVITED' ? t.warning : t.textMuted);
+const statusColor = (s: string, c: Cosmos) => (s === 'CLAIMED' ? c.success : s === 'INVITED' ? c.warn : c.muted);
 
 const day = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : undefined;
@@ -45,7 +43,7 @@ interface SeatRowProps {
  * (contact details and their own answers). Seat 1 is the lead.
  */
 export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [open, setOpen] = useState(false);
   const p = seatPerson(seat);
   const isLead = seat.seatIndex === 1;
@@ -67,8 +65,8 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
   const line = (label: string, value?: string, onPress?: () => void) =>
     value ? (
       <View style={styles.detail} key={label}>
-        <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>{label}</Text>
-        <Text style={[styles.detailValue, { color: onPress ? tokens.accent : tokens.text }]} onPress={onPress} selectable>
+        <Text style={[styles.detailLabel, { color: c.muted }]}>{label}</Text>
+        <Text style={[styles.detailValue, { color: onPress ? c.primary : c.text }]} onPress={onPress} selectable>
           {value}
         </Text>
       </View>
@@ -78,21 +76,21 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
     <View>
       <Pressable
         onPress={hasDetail ? () => setOpen((o) => !o) : undefined}
-        style={({ pressed }) => [styles.row, pressed && hasDetail && { backgroundColor: tokens.pressed }]}
+        style={({ pressed }) => [styles.row, pressed && hasDetail && { backgroundColor: c.tint }]}
         accessibilityRole={hasDetail ? 'button' : undefined}
         accessibilityState={hasDetail ? { expanded: open } : undefined}
       >
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
             {title}
           </Text>
-          <Text style={[styles.sub, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
             {[`Seat ${seat.seatIndex}`, isLead ? 'Lead' : null, p.name && p.email ? p.email : null].filter(Boolean).join(' · ')}
           </Text>
         </View>
-        <Text style={[styles.status, { color: statusColor(seat.status, tokens) }]}>{STATUS[seat.status] ?? seat.status}</Text>
+        <Text style={[styles.status, { color: statusColor(seat.status, c) }]}>{STATUS[seat.status] ?? seat.status}</Text>
         {hasDetail ? (
-          open ? <CaretDown size={14} color={tokens.textMuted} /> : <CaretRight size={14} color={tokens.textMuted} />
+          open ? <CaretDown size={14} color={c.muted} /> : <CaretRight size={14} color={c.muted} />
         ) : null}
       </Pressable>
 
@@ -109,10 +107,10 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
       {action ? (
         <View style={styles.actions}>
           {busy ? (
-            <ActivityIndicator size="small" color={tokens.accent} />
+            <ActivityIndicator size="small" color={c.primary} />
           ) : (
             <Pressable onPress={onAction} hitSlop={8}>
-              <Text style={[styles.link, { color: tokens.accent }]}>
+              <Text style={[styles.link, { color: c.primary }]}>
                 Manage seat
               </Text>
             </Pressable>
@@ -125,13 +123,13 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
-  name: { fontSize: typography.fontSize.base, ...font('medium') },
-  sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...font() },
-  status: { fontSize: typography.fontSize.xs, ...font('semibold') },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   body: { paddingHorizontal: spacing[4], paddingBottom: spacing[3], gap: spacing[2] },
   detail: { gap: 2 },
-  detailLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  detailValue: { fontSize: typography.fontSize.sm, ...font() },
+  detailLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  detailValue: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing[4], paddingBottom: spacing[3] },
-  link: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

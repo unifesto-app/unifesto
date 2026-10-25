@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { MagnifyingGlass, UserFocus, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { CheckinNetworkError, manualCheckin, searchAttendees, undoCheckin, type AttendeeSearchResult } from '../lib/api/checkin';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
@@ -17,7 +16,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { attendeeName } from '../utils/checkinFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[5];
 const MIN_QUERY = 2;
@@ -28,7 +27,7 @@ const MIN_QUERY = 2;
  * line is usually also waiting.
  */
 export default function ManualCheckinScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const { eventId, checkinTypeId } = useLocalSearchParams<{ eventId: string; checkinTypeId?: string }>();
   const { points, loading: pointsLoading } = useCheckinEvent(eventId);
@@ -172,13 +171,13 @@ export default function ManualCheckinScreen() {
     <View style={styles.header}>
       <View style={styles.search}>
         <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
+        <MagnifyingGlass size={20} color={c.muted} weight="bold" />
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder="Name, email, phone or ticket ID"
-          placeholderTextColor={tokens.textMuted}
-          style={[styles.input, { color: tokens.text }]}
+          placeholderTextColor={c.muted}
+          style={[styles.input, { color: c.text }]}
           autoFocus
           autoCapitalize="none"
           autoCorrect={false}
@@ -186,10 +185,10 @@ export default function ManualCheckinScreen() {
           clearButtonMode="never"
         />
         {searching ? (
-          <ActivityIndicator size="small" color={tokens.textMuted} />
+          <ActivityIndicator size="small" color={c.muted} />
         ) : query ? (
           <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <XCircle size={20} color={tokens.textMuted} weight="fill" />
+            <XCircle size={20} color={c.muted} weight="fill" />
           </Pressable>
         ) : null}
       </View>
@@ -211,7 +210,7 @@ export default function ManualCheckinScreen() {
 
   return (
     <FlatList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
@@ -258,12 +257,12 @@ const ResultRow = React.memo(function ResultRow({ item, busy, canUndo, onCheckIn
 });
 
 function Empty({ title, body }: { title: string; body: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.empty}>
-      <UserFocus size={44} color={tokens.textMuted} />
-      <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
-      <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{body}</Text>
+      <UserFocus size={44} color={c.muted} />
+      <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
+      <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
     </View>
   );
 }
@@ -280,11 +279,11 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: borderRadius.full,
   },
-  input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: 0, ...font() },
+  input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: 0, ...cosmosFont.body },
   chips: { marginTop: spacing[3] },
   cell: { marginHorizontal: GUTTER },
   divider: { marginLeft: spacing[4] + 40 + spacing[3] },
   empty: { alignItems: 'center', paddingTop: spacing[16], paddingHorizontal: spacing[8], gap: spacing[2] },
-  emptyTitle: { fontSize: typography.fontSize.lg, marginTop: spacing[2], ...font('semibold') },
-  emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...font() },
+  emptyTitle: { fontSize: typography.fontSize.lg, marginTop: spacing[2], ...cosmosFont.strong },
+  emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

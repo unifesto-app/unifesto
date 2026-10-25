@@ -40,11 +40,10 @@ import ReportSheet from '../components/ReportSheet';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
-import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, CosmosWash, useCosmos } from '../theme/cosmos';
 
 const ICON = 24;
 const NOTCH = 22;
@@ -75,7 +74,6 @@ export default function TicketDetailScreen() {
 
 function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const c = useCosmos();
-  const tokens = useTokens();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
@@ -169,7 +167,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       : t.ended
         ? { text: t.status === 'checkedIn' ? 'Attended' : 'Ended', color: c.muted }
         : t.status === 'checkedIn'
-          ? { text: 'Checked in', color: tokens.success }
+          ? { text: 'Checked in', color: c.success }
           : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
@@ -396,16 +394,16 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               onPress={t.openWhatsapp}
             />
             <SettingsRow
-              icon={<CheckCircle size={24} color={t.waGroup.joined ? tokens.success : tokens.textMuted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
+              icon={<CheckCircle size={24} color={t.waGroup.joined ? c.success : c.muted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
               label="I've joined"
               trailing={
                 <Switch
                   value={!!t.waGroup.joined}
                   onValueChange={t.toggleJoinedWhatsapp}
                   disabled={t.waSaving}
-                  trackColor={{ false: tokens.fillStrong, true: tokens.success }}
+                  trackColor={{ false: c.input, true: c.success }}
                   thumbColor="#ffffff"
-                  ios_backgroundColor={tokens.fillStrong}
+                  ios_backgroundColor={c.input}
                 />
               }
             />
@@ -414,14 +412,14 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {t.checkins.length > 0 ? (
           <SettingsGroup title="Check-ins" surface={c.raised}>
-            {t.checkins.map((c) => {
-              const at = new Date(c.checkedInAt);
+            {t.checkins.map((ci) => {
+              const at = new Date(ci.checkedInAt);
               const when = `${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${formatTime(at)}`;
               return (
                 <SettingsRow
-                  key={c.id}
-                  icon={<CheckCircle size={24} color={tokens.success} weight="fill" />}
-                  label={[c.checkinType || 'Check-in', c.checkedBy ? `by ${c.checkedBy}` : null].filter(Boolean).join(' · ')}
+                  key={ci.id}
+                  icon={<CheckCircle size={24} color={c.success} weight="fill" />}
+                  label={[ci.checkinType || 'Check-in', ci.checkedBy ? `by ${ci.checkedBy}` : null].filter(Boolean).join(' · ')}
                   value={when}
                 />
               );
@@ -433,7 +431,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
           <SettingsGroup surface={c.raised}>
             {t.canRefund ? (
               <SettingsRow
-                icon={<ArrowCounterClockwise size={24} color={tokens.danger} />}
+                icon={<ArrowCounterClockwise size={24} color={c.danger} />}
                 label="Refund and status"
                 danger
                 onPress={() =>
@@ -451,7 +449,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             ) : null}
             {t.canCancelFree ? (
               <SettingsRow
-                icon={<XCircle size={24} color={tokens.danger} />}
+                icon={<XCircle size={24} color={c.danger} />}
                 label={t.cancelling ? 'Cancelling…' : 'Cancel ticket'}
                 danger
                 onPress={t.confirmCancel}

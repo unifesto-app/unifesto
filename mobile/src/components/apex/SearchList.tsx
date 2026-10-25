@@ -3,13 +3,12 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from '
 import { RefreshControl } from '../ui/RefreshControl';
 import { MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useFocusEffect } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import type { Result } from '../../lib/api/apex';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { CardBackdrop } from '../ui/CardSurface';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -44,7 +43,7 @@ export default function SearchList<T>({
   deniedMessage = 'Only Unifesto platform admins can see this.',
   refreshOnFocus,
 }: SearchListProps<T>) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
@@ -112,7 +111,7 @@ export default function SearchList<T>({
 
   return (
     <FlatList
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={styles.content}
       data={loading || error ? [] : rows}
       keyExtractor={keyOf}
@@ -122,13 +121,13 @@ export default function SearchList<T>({
         <View style={{ paddingTop: topSpacing }}>
           <View style={styles.search}>
             <CardBackdrop shape={styles.search} />
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
+            <MagnifyingGlass size={18} color={c.muted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder={placeholder}
-              placeholderTextColor={tokens.textMuted}
-              style={[styles.input, { color: tokens.text }]}
+              placeholderTextColor={c.muted}
+              style={[styles.input, { color: c.text }]}
               autoCorrect={false}
               autoCapitalize="none"
               clearButtonMode="while-editing"
@@ -136,7 +135,7 @@ export default function SearchList<T>({
           </View>
           {header}
           {!loading && !error && total > 0 ? (
-            <Text style={[styles.count, { color: tokens.textMuted }]}>
+            <Text style={[styles.count, { color: c.muted }]}>
               {total.toLocaleString('en-IN')} {total === 1 ? noun[0] : noun[1]}
             </Text>
           ) : null}
@@ -144,19 +143,19 @@ export default function SearchList<T>({
       }
       ListEmptyComponent={
         loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
+          <Text style={[styles.empty, { color: c.muted }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
         )
       }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
       renderItem={({ item }) => renderItem(item)}
       onEndReached={() => void loadMore()}
       onEndReachedThreshold={0.4}
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: spacing[4] }} /> : null}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
       }
     />
   );
@@ -165,8 +164,8 @@ export default function SearchList<T>({
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, height: 44 },
-  input: { flex: 1, fontSize: typography.fontSize.base, ...font() },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...font('medium') },
+  input: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -4,7 +4,6 @@ import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, CircleDashed, PencilSimple, Pause, Play, Stop, XCircle } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import { openSpaceWeb } from '../lib/openOnWeb';
@@ -12,7 +11,7 @@ import { getRound, setRoundStatus, setTeamDecision, type RoundDetail, type Round
 import { evalStatusLabel, roundStatusLabel, standingLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 26;
@@ -24,7 +23,7 @@ const ICON = 26;
  */
 export default function HackathonRoundScreen() {
   const { eventId, roundId, spaceId } = useLocalSearchParams<{ eventId: string; roundId: string; spaceId?: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [acting, setActing] = useState(false);
@@ -48,9 +47,9 @@ export default function HackathonRoundScreen() {
 
   if (!round) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -113,37 +112,37 @@ export default function HackathonRoundScreen() {
     );
   };
 
-  const icon = (I: typeof Play, color = tokens.text) => <I size={ICON} color={color} />;
+  const icon = (I: typeof Play, color = c.text) => <I size={ICON} color={color} />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
       <Stack.Screen options={{ title }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 80 }]} showsVerticalScrollIndicator={false}>
         <SettingsGroup title={`Status · ${roundStatusLabel(round.status)}`}>
           {round.status !== 'ACTIVE' ? (
             <SettingsRow
-              icon={icon(Play, tokens.success)}
+              icon={icon(Play, c.success)}
               label={round.status === 'CLOSED' ? 'Open again' : 'Open round'}
               value={round.blockers.length ? 'Waiting on decisions' : undefined}
               onPress={acting ? undefined : () => changeStatus('ACTIVE')}
             />
           ) : (
             <>
-              <SettingsRow icon={icon(Pause, tokens.warning)} label="Pause" onPress={acting ? undefined : () => changeStatus('PENDING')} />
-              <SettingsRow icon={icon(Stop, tokens.danger)} label="Close round" danger onPress={acting ? undefined : () => changeStatus('CLOSED')} />
+              <SettingsRow icon={icon(Pause, c.warn)} label="Pause" onPress={acting ? undefined : () => changeStatus('PENDING')} />
+              <SettingsRow icon={icon(Stop, c.danger)} label="Close round" danger onPress={acting ? undefined : () => changeStatus('CLOSED')} />
             </>
           )}
         </SettingsGroup>
         {round.blockers.map((b) => (
-          <Text key={b.roundId} style={[styles.note, { color: tokens.warning }]}>
+          <Text key={b.roundId} style={[styles.note, { color: c.warn }]}>
             Decide every team in {b.roundName} first: {b.teams.slice(0, 6).map((t) => t.teamCode ?? t.name).join(', ')}
             {b.teams.length > 6 ? ` and ${b.teams.length - 6} more` : ''}.
           </Text>
         ))}
         {round.kind === 'EVALUATION' && round.status !== 'ACTIVE' && !round.criteria.length ? (
-          <Text style={[styles.note, { color: tokens.warning }]}>Add at least one criterion before opening.</Text>
+          <Text style={[styles.note, { color: c.warn }]}>Add at least one criterion before opening.</Text>
         ) : null}
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           {round.kind === 'MENTORING'
             ? `${round.judges} mentor${round.judges === 1 ? '' : 's'} mentor this round.`
             : round.judgingMode === 'PANEL'
@@ -179,11 +178,11 @@ export default function HackathonRoundScreen() {
                 key={t.id}
                 icon={
                   t.standing === 'ADVANCED' ? (
-                    <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+                    <CheckCircle size={ICON} color={c.success} weight="fill" />
                   ) : t.standing === 'ELIMINATED' ? (
-                    <XCircle size={ICON} color={tokens.danger} weight="fill" />
+                    <XCircle size={ICON} color={c.danger} weight="fill" />
                   ) : (
-                    <CircleDashed size={ICON} color={tokens.textMuted} />
+                    <CircleDashed size={ICON} color={c.muted} />
                   )
                 }
                 label={`${t.teamCode ?? '—'}  ${t.name}`}
@@ -202,7 +201,7 @@ export default function HackathonRoundScreen() {
           </SettingsGroup>
         ) : null}
         {round.eliminationEnabled && round.teams.length ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>Tap a team to advance or eliminate it. Teams are told straight away.</Text>
+          <Text style={[styles.note, { color: c.muted }]}>Tap a team to advance or eliminate it. Teams are told straight away.</Text>
         ) : null}
 
       </ScrollView>
@@ -213,5 +212,5 @@ export default function HackathonRoundScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

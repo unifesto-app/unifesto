@@ -3,7 +3,6 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vi
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretLeft, CaretRight, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useEventAttendees } from '../hooks/useEventAttendees';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -13,7 +12,7 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import type { AttendeeFilter } from '../lib/api/manageEvent';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -28,7 +27,7 @@ export default function EventAttendeesScreen() {
   // `ticket` + `ticketName` deep-link from a ticket's page to just its holders.
   const { eventId, ticket, ticketName } = useLocalSearchParams<{ eventId: string; ticket?: string; ticketName?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const a = useEventAttendees(eventId, ticket);
   const list = useRef<FlatList<AttendeeRowData>>(null);
@@ -42,13 +41,13 @@ export default function EventAttendeesScreen() {
     <View style={{ paddingTop: topSpacing }}>
       <View style={styles.search}>
         <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
+        <MagnifyingGlass size={20} color={c.muted} weight="bold" />
         <TextInput
           value={a.query}
           onChangeText={a.setQuery}
           placeholder="Name, phone, email or username"
-          placeholderTextColor={tokens.textMuted}
-          style={[styles.searchInput, { color: tokens.text }]}
+          placeholderTextColor={c.muted}
+          style={[styles.searchInput, { color: c.text }]}
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
@@ -56,7 +55,7 @@ export default function EventAttendeesScreen() {
         />
         {a.query.length > 0 ? (
           <Pressable onPress={() => a.setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <X size={18} color={tokens.textSecondary} weight="bold" />
+            <X size={18} color={c.soft} weight="bold" />
           </Pressable>
         ) : null}
       </View>
@@ -64,7 +63,7 @@ export default function EventAttendeesScreen() {
         <SegmentedTabs tabs={TABS} value={a.filter} onChange={a.setFilter} />
       </View>
       {!a.loading && !a.error ? (
-        <Text style={[styles.count, { color: tokens.textMuted }]}>
+        <Text style={[styles.count, { color: c.muted }]}>
           {a.pageCount > 1
             ? `${a.from.toLocaleString('en-IN')}–${a.to.toLocaleString('en-IN')} of ${a.total.toLocaleString('en-IN')} bookings`
             : `${a.total.toLocaleString('en-IN')} ${a.total === 1 ? 'booking' : 'bookings'}`}
@@ -75,9 +74,9 @@ export default function EventAttendeesScreen() {
   );
 
   const empty = a.loading ? (
-    <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+    <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
   ) : (
-    <Text style={[styles.empty, { color: tokens.textMuted }]}>
+    <Text style={[styles.empty, { color: c.muted }]}>
       {a.denied
         ? 'The attendee list is only open to Space admins right now.'
         : a.error || (a.query ? 'No one matches that search.' : 'No one here yet.')}
@@ -97,13 +96,13 @@ export default function EventAttendeesScreen() {
           accessibilityLabel="Previous page"
           style={[styles.pageBtn, { opacity: canBack ? 1 : 0.3 }]}
         >
-          <CaretLeft size={18} color={tokens.accent} weight="bold" />
-          <Text style={[styles.pageBtnText, { color: tokens.accent }]}>Previous</Text>
+          <CaretLeft size={18} color={c.primary} weight="bold" />
+          <Text style={[styles.pageBtnText, { color: c.primary }]}>Previous</Text>
         </Pressable>
         {a.paging ? (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         ) : (
-          <Text style={[styles.pageLabel, { color: tokens.textSecondary }]}>
+          <Text style={[styles.pageLabel, { color: c.soft }]}>
             Page {a.page} of {a.pageCount}
           </Text>
         )}
@@ -115,8 +114,8 @@ export default function EventAttendeesScreen() {
           accessibilityLabel="Next page"
           style={[styles.pageBtn, { opacity: canNext ? 1 : 0.3 }]}
         >
-          <Text style={[styles.pageBtnText, { color: tokens.accent }]}>Next</Text>
-          <CaretRight size={18} color={tokens.accent} weight="bold" />
+          <Text style={[styles.pageBtnText, { color: c.primary }]}>Next</Text>
+          <CaretRight size={18} color={c.primary} weight="bold" />
         </Pressable>
       </View>
     ) : null;
@@ -124,13 +123,13 @@ export default function EventAttendeesScreen() {
   return (
     <FlatList
       ref={list}
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={styles.content}
       data={a.loading || a.error ? [] : a.rows}
       keyExtractor={(r) => r.id}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
+      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
       renderItem={({ item }) => (
         <AttendeeRow
           row={item}
@@ -145,8 +144,8 @@ export default function EventAttendeesScreen() {
         <RefreshControl
           refreshing={a.refreshing}
           onRefresh={a.refresh}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
+          tintColor={c.primary}
+          colors={[c.primary]}
           progressViewOffset={topSpacing}
         />
       }
@@ -164,12 +163,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     borderRadius: borderRadius.full,
   },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...font('medium') },
+  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[6], minHeight: 44 },
   pageBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingVertical: spacing[2] },
-  pageBtnText: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  pageLabel: { fontSize: typography.fontSize.sm, ...font('medium') },
+  pageBtnText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  pageLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

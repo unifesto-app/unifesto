@@ -8,13 +8,12 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getMySubmissions, saveMySubmission, type MySubmissions } from '../lib/api/hackathon';
 import { formatWhen } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const MAX_LINKS = 10;
@@ -30,7 +29,7 @@ interface LinkDraft {
  */
 export default function HackathonSubmissionScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<MySubmissions | null>(null);
@@ -70,8 +69,8 @@ export default function HackathonSubmissionScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -98,8 +97,8 @@ export default function HackathonSubmissionScreen() {
 
   if (!data.rounds.length) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
           The organisers haven’t set up rounds yet. You can add project links once they do.
         </Text>
       </View>
@@ -107,7 +106,7 @@ export default function HackathonSubmissionScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -120,7 +119,7 @@ export default function HackathonSubmissionScreen() {
 
         {round ? (
           <>
-            <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[4] }]}>
+            <Text style={[styles.note, { color: c.muted, marginTop: spacing[4] }]}>
               {round.canEdit
                 ? round.closesAt
                   ? `Add your repo, demo, deck or video. You can change them until ${formatWhen(round.closesAt)}.`
@@ -143,8 +142,8 @@ export default function HackathonSubmissionScreen() {
                         value={l.label}
                         onChangeText={(v) => setLink(i, { label: v })}
                         placeholder="Label (e.g. GitHub)"
-                        placeholderTextColor={tokens.textMuted}
-                        style={[styles.input, styles.labelInput, { color: tokens.text }]}
+                        placeholderTextColor={c.muted}
+                        style={[styles.input, styles.labelInput, { color: c.text }]}
                         maxLength={60}
                       />
                       <Pressable
@@ -154,18 +153,18 @@ export default function HackathonSubmissionScreen() {
                         onPress={() => setLinks((ls) => ls.filter((_, j) => j !== i))}
                         style={{ padding: spacing[1] }}
                       >
-                        <X size={18} color={tokens.textMuted} weight="bold" />
+                        <X size={18} color={c.muted} weight="bold" />
                       </Pressable>
                     </View>
                     <TextInput
                       value={l.url}
                       onChangeText={(v) => setLink(i, { url: v })}
                       placeholder="https://"
-                      placeholderTextColor={tokens.textMuted}
+                      placeholderTextColor={c.muted}
                       autoCapitalize="none"
                       autoCorrect={false}
                       keyboardType="url"
-                      style={[styles.input, { color: tokens.text, backgroundColor: tokens.fill }]}
+                      style={[styles.input, { color: c.text, backgroundColor: c.tint }]}
                     />
                   </View>
                 ))}
@@ -174,7 +173,7 @@ export default function HackathonSubmissionScreen() {
                     label="Add a link"
                     variant="secondary"
                     fullWidth
-                    icon={<Plus size={16} color={tokens.text} weight="bold" />}
+                    icon={<Plus size={16} color={c.text} weight="bold" />}
                     onPress={() => setLinks((ls) => [...ls, { label: '', url: '' }])}
                     style={{ marginTop: spacing[2] }}
                   />
@@ -185,10 +184,10 @@ export default function HackathonSubmissionScreen() {
                     value={notes}
                     onChangeText={(v) => (setNotes(v), setError(''))}
                     placeholder="Notes for the judges (optional), e.g. demo login"
-                    placeholderTextColor={tokens.textMuted}
+                    placeholderTextColor={c.muted}
                     multiline
                     maxLength={2000}
-                    style={[styles.input, { color: tokens.text, minHeight: 72, textAlignVertical: 'top' }]}
+                    style={[styles.input, { color: c.text, minHeight: 72, textAlignVertical: 'top' }]}
                   />
                 </View>
               </>
@@ -198,7 +197,7 @@ export default function HackathonSubmissionScreen() {
                 {round.links.map((l) => (
                   <SettingsRow
                     key={l.url}
-                    icon={<LinkSimple size={24} color={tokens.accent} weight="bold" />}
+                    icon={<LinkSimple size={24} color={c.primary} weight="bold" />}
                     label={l.label}
                     external
                     onPress={() => void Linking.openURL(l.url)}
@@ -207,7 +206,7 @@ export default function HackathonSubmissionScreen() {
               </SettingsGroup>
             )}
             {round.updatedAt ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>
+              <Text style={[styles.note, { color: c.muted }]}>
                 Last saved {formatWhen(round.updatedAt)}
                 {round.updatedBy ? ` by ${round.updatedBy}` : ''}.
               </Text>
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   linkCard: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[3], marginTop: spacing[3], gap: spacing[2] },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  input: { borderRadius: borderRadius.lg, paddingHorizontal: spacing[3], paddingVertical: spacing[2], fontSize: typography.fontSize.base, ...font() },
-  labelInput: { flex: 1, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  input: { borderRadius: borderRadius.lg, paddingHorizontal: spacing[3], paddingVertical: spacing[2], fontSize: typography.fontSize.base, ...cosmosFont.body },
+  labelInput: { flex: 1, ...cosmosFont.strong },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

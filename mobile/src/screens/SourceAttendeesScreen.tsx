@@ -3,13 +3,12 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UserCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -24,7 +23,7 @@ const orNull = (v?: string) => (v ? v : null);
 export default function SourceAttendeesScreen() {
   const params = useLocalSearchParams<{ eventId: string; source?: string; medium?: string; campaign?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [rows, setRows] = useState<SourceAttendee[] | null>(null);
   const [error, setError] = useState('');
@@ -47,8 +46,8 @@ export default function SourceAttendeesScreen() {
 
   if (!rows && !error) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
@@ -58,20 +57,20 @@ export default function SourceAttendeesScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: tokens.bg }}
+      style={{ backgroundColor: c.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: tokens.text }]}>{sourceLabel(tags)}</Text>
-      <Text style={[styles.muted, { color: tokens.textMuted }]}>
+      <Text style={[styles.title, { color: c.text }]}>{sourceLabel(tags)}</Text>
+      <Text style={[styles.muted, { color: c.muted }]}>
         {[tags.medium, tags.campaign].filter(Boolean).join(' · ') || 'No tags'}
       </Text>
 
       {error ? (
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>{error}</Text>
+        <Text style={[styles.empty, { color: c.muted }]}>{error}</Text>
       ) : rows!.length === 0 ? (
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>No confirmed registrations from this source.</Text>
+        <Text style={[styles.empty, { color: c.muted }]}>No confirmed registrations from this source.</Text>
       ) : (
         <View style={{ marginTop: spacing[6] }}>
           <SettingsGroup
@@ -84,7 +83,7 @@ export default function SourceAttendeesScreen() {
                   r.user.avatarUrl ? (
                     <Image source={{ uri: r.user.avatarUrl }} style={styles.avatar} />
                   ) : (
-                    <UserCircle size={ICON} color={tokens.accent} weight="fill" />
+                    <UserCircle size={ICON} color={c.primary} weight="fill" />
                   )
                 }
                 label={r.user.fullName || r.user.username || 'Attendee'}
@@ -98,7 +97,7 @@ export default function SourceAttendeesScreen() {
             ))}
           </SettingsGroup>
           {rows!.length === 500 ? (
-            <Text style={[styles.note, { color: tokens.textMuted }]}>Showing the latest 500.</Text>
+            <Text style={[styles.note, { color: c.muted }]}>Showing the latest 500.</Text>
           ) : null}
         </View>
       )}
@@ -109,9 +108,9 @@ export default function SourceAttendeesScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, ...font('heading') },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   avatar: { width: ICON, height: ICON, borderRadius: ICON / 2 },
 });

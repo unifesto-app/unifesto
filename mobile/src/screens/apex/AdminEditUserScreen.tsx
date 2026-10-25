@@ -8,7 +8,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { At, Camera, Trash } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
@@ -24,7 +23,7 @@ import {
 } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Platform admin edits someone else's profile (Apex parity). Photo changes
@@ -73,7 +72,7 @@ const initials = (name: string) =>
 export default function AdminEditUserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -160,16 +159,16 @@ export default function AdminEditUserScreen() {
 
   if (!fields) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
 
-  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
+  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={c.text} />;
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: tokens.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
@@ -179,12 +178,12 @@ export default function AdminEditUserScreen() {
         {/* Photo: applies immediately */}
         <View style={styles.avatarWrap}>
           <Pressable onPress={pickAvatar} disabled={avatarBusy} accessibilityRole="button" accessibilityLabel="Change photo">
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
-              <View style={[styles.avatar, { backgroundColor: tokens.elevated, borderColor: tokens.bg }]}>
+            <LinearGradient colors={[c.soft, c.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
+              <View style={[styles.avatar, { backgroundColor: c.raised, borderColor: c.bg }]}>
                 {avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
                 ) : (
-                  <Text style={[styles.initials, { color: tokens.text }]}>{initials(fields.fullName || fields.username)}</Text>
+                  <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
                 )}
                 {avatarBusy ? (
                   <View style={[StyleSheet.absoluteFill, styles.avatarBusy]}>
@@ -196,13 +195,13 @@ export default function AdminEditUserScreen() {
           </Pressable>
           <View style={styles.photoActions}>
             <Pressable onPress={pickAvatar} disabled={avatarBusy} hitSlop={8} style={styles.photoAction}>
-              <Camera size={16} color={tokens.accent} weight="fill" />
-              <Text style={[styles.photoActionText, { color: tokens.accent }]}>{avatarUrl ? 'Change photo' : 'Add photo'}</Text>
+              <Camera size={16} color={c.primary} weight="fill" />
+              <Text style={[styles.photoActionText, { color: c.primary }]}>{avatarUrl ? 'Change photo' : 'Add photo'}</Text>
             </Pressable>
             {avatarUrl ? (
               <Pressable onPress={removeAvatar} disabled={avatarBusy} hitSlop={8} style={styles.photoAction}>
-                <Trash size={16} color={tokens.danger} weight="fill" />
-                <Text style={[styles.photoActionText, { color: tokens.danger }]}>Remove</Text>
+                <Trash size={16} color={c.danger} weight="fill" />
+                <Text style={[styles.photoActionText, { color: c.danger }]}>Remove</Text>
               </Pressable>
             ) : null}
           </View>
@@ -211,7 +210,7 @@ export default function AdminEditUserScreen() {
         <SettingsGroup title="Profile">
           <FormRow icon={unicon('user')} value={fields.fullName} onChangeText={set('fullName')} placeholder="Full name" />
           <FormRow
-            icon={<At size={22} color={tokens.text} weight="bold" />}
+            icon={<At size={22} color={c.text} weight="bold" />}
             value={fields.username}
             onChangeText={(v) => set('username')(v.toLowerCase())}
             placeholder="username"
@@ -244,11 +243,11 @@ export default function AdminEditUserScreen() {
           ))}
         </SettingsGroup>
 
-        {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
       </ScrollView>
 
       <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
       </Animated.View>
     </KeyboardAvoidingView>
@@ -258,7 +257,7 @@ export default function AdminEditUserScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   avatarWrap: { alignSelf: 'center', alignItems: 'center' },
   ring: { width: AVATAR + 8, height: AVATAR + 8, borderRadius: (AVATAR + 8) / 2, alignItems: 'center', justifyContent: 'center' },
   avatar: {
@@ -271,10 +270,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarBusy: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  initials: { fontSize: 34, ...font('heading') },
+  initials: { fontSize: 34, ...cosmosFont.display },
   photoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
   photoAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  photoActionText: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  error: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  photoActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  error: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });

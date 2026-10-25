@@ -3,7 +3,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleShe
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
@@ -24,7 +23,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -47,7 +46,7 @@ const STATUS_TEXT: Record<string, string> = {
 export default function EventSettingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const { spaces } = useSpaceAccess();
 
@@ -161,14 +160,14 @@ export default function EventSettingsScreen() {
 
   if (!event) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {error ? (
           <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text>
+            <Text style={[styles.muted, { color: c.muted }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -182,12 +181,12 @@ export default function EventSettingsScreen() {
   const canHide = (isCompleted || isCancelled) && !isHidden;
   const canDelete = isDraft || isCancelled;
   const canCancel = status === 'PUBLISHED';
-  const icon = (I: typeof Trash, color = tokens.text) => <I size={ICON} color={color} />;
+  const icon = (I: typeof Trash, color = c.text) => <I size={ICON} color={color} />;
   const radio = (on: boolean) =>
-    on ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : <CircleIcon size={22} color={tokens.textMuted} />;
+    on ? <CheckCircle size={22} color={c.primary} weight="fill" /> : <CircleIcon size={22} color={c.muted} />;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
@@ -200,20 +199,20 @@ export default function EventSettingsScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
       >
-        <Text style={[styles.status, { color: isCancelled ? tokens.danger : isDraft ? tokens.warning : tokens.success }]}>
+        <Text style={[styles.status, { color: isCancelled ? c.danger : isDraft ? c.warn : c.success }]}>
           {isHidden ? 'Hidden' : status.charAt(0) + status.slice(1).toLowerCase()}
         </Text>
-        <Text style={[styles.muted, { color: tokens.textSecondary, textAlign: 'left' }]}>
+        <Text style={[styles.muted, { color: c.soft, textAlign: 'left' }]}>
           {isHidden ? 'Off every listing. Restore it to bring it back.' : STATUS_TEXT[status] ?? ''}
         </Text>
         {isCancelled && event.cancellationReason ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>Reason: {event.cancellationReason}</Text>
+          <Text style={[styles.note, { color: c.muted }]}>Reason: {event.cancellationReason}</Text>
         ) : null}
 
         {isDraft && isEventOwner ? (
@@ -222,7 +221,7 @@ export default function EventSettingsScreen() {
             size="lg"
             fullWidth
             loading={busy === 'publish'}
-            icon={<RocketLaunch size={18} color={tokens.accentFg} weight="fill" />}
+            icon={<RocketLaunch size={18} color={c.primaryFg} weight="fill" />}
             onPress={publish}
             style={{ marginTop: spacing[6] }}
           />
@@ -292,7 +291,7 @@ export default function EventSettingsScreen() {
                 />
               ) : null}
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               {event.attendeeEditsEnabled && event.attendeeEditsUntil && new Date(event.attendeeEditsUntil).getTime() <= Date.now()
                 ? 'The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen.'
                 : 'You can always edit any attendee’s details from Attendees, whatever these say.'}
@@ -322,7 +321,7 @@ export default function EventSettingsScreen() {
               ))}
             </SettingsGroup>
             {accounts.length === 0 ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>No verified accounts yet. Add one under Finance, Payout accounts.</Text>
+              <Text style={[styles.note, { color: c.muted }]}>No verified accounts yet. Add one under Finance, Payout accounts.</Text>
             ) : null}
             {selected !== savedAccount ? (
               <Button label="Save payout account" onPress={saveAccount} loading={busy === 'account'} fullWidth style={{ marginTop: spacing[4] }} />
@@ -334,32 +333,32 @@ export default function EventSettingsScreen() {
           <>
           <SettingsGroup title="Danger zone">
             {canCancel ? (
-              <SettingsRow icon={icon(XCircle, tokens.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
+              <SettingsRow icon={icon(XCircle, c.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
             ) : null}
             {isHidden ? (
               <SettingsRow
                 icon={icon(ArrowCounterClockwise)}
                 label="Restore event"
-                trailing={busy === 'restore' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
+                trailing={busy === 'restore' ? <ActivityIndicator size="small" color={c.primary} /> : undefined}
                 onPress={() => void run('restore', () => restoreEvent(eventId!))}
               />
             ) : (
               <SettingsRow
-                icon={icon(EyeSlash, canHide ? tokens.accent : tokens.textMuted)}
+                icon={icon(EyeSlash, canHide ? c.primary : c.muted)}
                 label="Hide event"
-                trailing={busy === 'hide' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
+                trailing={busy === 'hide' ? <ActivityIndicator size="small" color={c.primary} /> : undefined}
                 onPress={canHide ? hide : undefined}
               />
             )}
             <SettingsRow
-              icon={icon(Trash, canDelete ? tokens.danger : tokens.textMuted)}
+              icon={icon(Trash, canDelete ? c.danger : c.muted)}
               label="Delete permanently"
               danger={canDelete}
-              trailing={busy === 'delete' ? <ActivityIndicator size="small" color={tokens.danger} /> : undefined}
+              trailing={busy === 'delete' ? <ActivityIndicator size="small" color={c.danger} /> : undefined}
               onPress={canDelete ? remove : undefined}
             />
           </SettingsGroup>
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             {canDelete
               ? 'Hiding is reversible. Deleting is not.'
               : isCompleted
@@ -400,7 +399,7 @@ export default function EventSettingsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  status: { fontSize: typography.fontSize['2xl'], marginLeft: spacing[1], ...font('heading') },
-  muted: { marginTop: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  status: { fontSize: typography.fontSize['2xl'], marginLeft: spacing[1], ...cosmosFont.display },
+  muted: { marginTop: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

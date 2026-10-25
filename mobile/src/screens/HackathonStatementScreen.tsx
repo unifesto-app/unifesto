@@ -10,7 +10,6 @@ import { SettingsGroup } from '../components/profile/SettingsGroup';
 import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   getMyHackathon,
@@ -24,7 +23,7 @@ import { blockCopy, formatWhen, placesLabel } from '../lib/hackathon';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -36,7 +35,7 @@ const GUTTER = spacing[6];
  */
 export default function HackathonStatementScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null>(null);
@@ -86,14 +85,14 @@ export default function HackathonStatementScreen() {
 
   if (!opts) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {error ? (
           <>
-            <Text style={[styles.body, { color: tokens.textSecondary, textAlign: 'center' }]}>{error}</Text>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -157,7 +156,7 @@ export default function HackathonStatementScreen() {
       : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 120 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -167,8 +166,8 @@ export default function HackathonStatementScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -176,8 +175,8 @@ export default function HackathonStatementScreen() {
         {locked ? (
           <>
             <View style={styles.lockedHead}>
-              <LockSimple size={18} color={tokens.success} weight="fill" />
-              <Text style={[styles.lockedLabel, { color: tokens.success }]}>
+              <LockSimple size={18} color={c.success} weight="fill" />
+              <Text style={[styles.lockedLabel, { color: c.success }]}>
                 {mine.setBy?.kind === 'ORGANISER'
                   ? 'Assigned by the organisers'
                   : `Locked in${mine.setBy?.name ? ` by ${mine.setBy.name}` : ''}`}
@@ -191,21 +190,21 @@ export default function HackathonStatementScreen() {
               theme={mine.themeLabel}
               expanded
             />
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               Your team’s problem statement is final. Only the organisers can change it.
             </Text>
           </>
         ) : stop ? (
-          <View style={[styles.box, { borderColor: tokens.borderStrong }]}>
-            <Text style={[styles.boxTitle, { color: tokens.text }]}>{stop.title}</Text>
-            <Text style={[styles.boxBody, { color: tokens.textSecondary }]}>{stop.body}</Text>
+          <View style={[styles.box, { borderColor: c.outline }]}>
+            <Text style={[styles.boxTitle, { color: c.text }]}>{stop.title}</Text>
+            <Text style={[styles.boxBody, { color: c.soft }]}>{stop.body}</Text>
           </View>
         ) : (
           <>
-            <Text style={[styles.heading, { color: tokens.text }]}>
+            <Text style={[styles.heading, { color: c.text }]}>
               {writing ? 'Write your problem statement' : 'Pick your problem statement'}
             </Text>
-            <Text style={[styles.body, { color: tokens.textSecondary }]}>
+            <Text style={[styles.body, { color: c.soft }]}>
               {opts.isLead
                 ? 'Choose carefully: once you lock it in, your team can’t change it.'
                 : 'Your team lead locks it in. Talk it through with them.'}
@@ -241,7 +240,7 @@ export default function HackathonStatementScreen() {
                 </SettingsGroup>
               ) : null
             ) : opts.statements.length === 0 ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>The organisers haven’t added problem statements yet.</Text>
+              <Text style={[styles.note, { color: c.muted }]}>The organisers haven’t added problem statements yet.</Text>
             ) : (
               opts.statements.map((s) => {
                 const full = s.placesLeft === 0;
@@ -305,14 +304,14 @@ export default function HackathonStatementScreen() {
                 fullWidth
                 loading={saving}
                 disabled={!writing && !picked}
-                icon={<LockSimple size={18} color={tokens.accentFg} weight="bold" />}
+                icon={<LockSimple size={18} color={c.primaryFg} weight="bold" />}
                 onPress={lockIn}
                 style={{ marginTop: spacing[6] }}
               />
             ) : null}
           </>
         )}
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -321,12 +320,12 @@ export default function HackathonStatementScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  heading: { fontSize: typography.fontSize.xl, ...font('bold') },
-  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  heading: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
+  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   lockedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
-  lockedLabel: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  lockedLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   box: { padding: spacing[4], borderRadius: borderRadius.xl, borderWidth: 1 },
-  boxTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  boxBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  boxTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  boxBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

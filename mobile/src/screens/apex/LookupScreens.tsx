@@ -6,9 +6,9 @@ import { titleCase } from '../../lib/apexQueues';
 import SearchList from '../../components/apex/SearchList';
 import { ApexRow, shortDate } from '../../components/apex/ApexRow';
 import ChipPicker from '../../components/manage/ChipPicker';
-import { useTokens } from '../../context/ThemeContext';
 import { inrShort } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
+import { useCosmos } from '../../theme/cosmos';
 
 /*
  * Read-only platform lookups: users, spaces, events. Each list pushes to its
@@ -44,7 +44,7 @@ export function UsersLookupScreen() {
 
 export function SpacesLookupScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const fetchPage = useCallback(async (search: string, page: number) => {
     const r = await searchSpaces(search, page);
     return r.ok ? { ok: true as const, data: { items: r.data.spaces, total: r.data.pagination.total } } : r;
@@ -61,7 +61,7 @@ export function SpacesLookupScreen() {
           title={s.name}
           meta={[s.city, `${s.member_count} people`, s.parentSpace ? `in ${s.parentSpace.name}` : null].filter(Boolean).join('  ·  ')}
           value={s.status === 'ACTIVE' ? undefined : titleCase(s.status)}
-          valueColor={s.status === 'SUSPENDED' || s.status === 'REJECTED' ? tokens.danger : tokens.warning}
+          valueColor={s.status === 'SUSPENDED' || s.status === 'REJECTED' ? c.danger : c.warn}
           onPress={() => router.push(`/apex/spaces/${s.id}`)}
         />
       )}
@@ -79,7 +79,7 @@ const EVENT_FILTERS = [
 
 export function EventsLookupScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [status, setStatus] = useState('');
   // New identity per filter → SearchList reloads from page 1.
   const fetchPage = useCallback(
@@ -105,7 +105,7 @@ export function EventsLookupScreen() {
           title={e.title}
           meta={[e.space?.name, shortDate(e.startDateTime), `${e._count?.registrations ?? 0} reg`].filter(Boolean).join('  ·  ')}
           value={e.sales?.grossSales ? inrShort(e.sales.grossSales) : titleCase(e.status)}
-          valueColor={e.sales?.grossSales ? tokens.text : undefined}
+          valueColor={e.sales?.grossSales ? c.text : undefined}
           onPress={() => router.push(`/apex/events/${e.id}`)}
         />
       )}

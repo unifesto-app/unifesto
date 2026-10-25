@@ -8,13 +8,12 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import MultiChips from '../components/hackathon/MultiChips';
 import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -33,7 +32,7 @@ export default function HackathonRoomEditorScreen() {
   const { eventId, roomId } = useLocalSearchParams<{ eventId: string; roomId: string }>();
   const isNew = !roomId || roomId === 'new';
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [room, setRoom] = useState<Room | null>(null);
@@ -73,9 +72,9 @@ export default function HackathonRoomEditorScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
       </View>
     );
   }
@@ -117,7 +116,7 @@ export default function HackathonRoomEditorScreen() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Stack.Screen options={{ title }} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
@@ -131,7 +130,7 @@ export default function HackathonRoomEditorScreen() {
           <FieldRow label="Teams it fits" value={draft.capacity} onChangeText={(v) => set({ capacity: v })} keyboardType="number-pad" placeholder="10" />
           <FieldRow stacked multiline label="Notes for teams (optional)" value={draft.notes} onChangeText={(v) => set({ notes: v })} placeholder="Wi-Fi: HackNet · Power strips at every table" />
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
+        <Text style={[styles.note, { color: c.muted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
 
         <SettingsGroup title="Volunteers here" plain>
           {staff.length ? (
@@ -146,7 +145,7 @@ export default function HackathonRoomEditorScreen() {
             <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
           )}
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Teams in this room see their volunteers, and every query they raise goes to them too.
         </Text>
 
@@ -171,7 +170,7 @@ export default function HackathonRoomEditorScreen() {
             fullWidth
             loading={deleting}
             disabled={saving}
-            icon={<Trash size={18} color={tokens.danger} weight="bold" />}
+            icon={<Trash size={18} color={c.danger} weight="bold" />}
             onPress={remove}
             style={{ marginTop: spacing[10] }}
           />
@@ -187,5 +186,5 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   chips: { paddingVertical: spacing[2] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

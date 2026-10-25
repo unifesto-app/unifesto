@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   cancelAttendee,
@@ -18,7 +17,7 @@ import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 
@@ -59,7 +58,7 @@ export default function AttendeeActionScreen() {
   const action: AttendeeAction = kind === 'refund' || kind === 'transfer' ? kind : 'cancel';
   const copy = COPY[action];
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [email, setEmail] = useState('');
@@ -102,17 +101,17 @@ export default function AttendeeActionScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Stack.Screen options={{ title: copy.title }} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.intro, { color: tokens.textSecondary }]}>{copy.intro}</Text>
+        <Text style={[styles.intro, { color: c.soft }]}>{copy.intro}</Text>
 
         {existing && action === 'transfer' ? (
-          <Text style={[styles.note, { color: existing.status === 'REJECTED' ? tokens.danger : tokens.textSecondary }]}>
+          <Text style={[styles.note, { color: existing.status === 'REJECTED' ? c.danger : c.soft }]}>
             {existing.status === 'PENDING'
               ? `Transfer to ${existing.targetEmail} is waiting for review.`
               : existing.status === 'APPROVED'
@@ -159,6 +158,6 @@ export default function AttendeeActionScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  note: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  note: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

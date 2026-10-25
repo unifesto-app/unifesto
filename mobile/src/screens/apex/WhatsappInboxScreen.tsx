@@ -14,7 +14,6 @@ import {
   HeaderActions,
   HeaderIconButton,
 } from "../../navigation/HeaderActions";
-import { useTokens } from "../../context/ThemeContext";
 import useTopSpacing from "../../hooks/useTopSpacing";
 import {
   conversationName,
@@ -27,13 +26,14 @@ import { borderRadius, spacing } from "../../theme/spacing";
 import { typography } from "../../theme/typography";
 import { font } from "../../theme/fontHelpers";
 import { CardBackdrop } from "../../components/ui/CardSurface";
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const GUTTER = spacing[6];
 
 /** Messages sent to the Unifesto WhatsApp Business number, newest first. */
 export default function WhatsappInboxScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -91,14 +91,14 @@ export default function WhatsappInboxScreen() {
                 onPress={() => router.push("/apex/whatsapp/broadcast")}
                 label="WhatsApp blast"
               >
-                <Megaphone size={24} color={tokens.text} />
+                <Megaphone size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
         }}
       />
       <FlatList
-        style={{ backgroundColor: tokens.bg }}
+        style={{ backgroundColor: c.bg }}
         contentContainerStyle={styles.content}
         data={loading || error ? [] : rows}
         keyExtractor={(c) => c.id}
@@ -107,13 +107,13 @@ export default function WhatsappInboxScreen() {
           <View style={{ paddingTop: topSpacing }}>
             <View style={styles.search}>
               <CardBackdrop shape={styles.search} />
-              <MagnifyingGlass size={18} color={tokens.textMuted} />
+              <MagnifyingGlass size={18} color={c.muted} />
               <TextInput
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Name or number"
-                placeholderTextColor={tokens.textMuted}
-                style={[styles.input, { color: tokens.text }]}
+                placeholderTextColor={c.muted}
+                style={[styles.input, { color: c.text }]}
                 autoCorrect={false}
                 clearButtonMode="while-editing"
               />
@@ -123,17 +123,17 @@ export default function WhatsappInboxScreen() {
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator
-              color={tokens.accent}
+              color={c.primary}
               style={{ marginTop: spacing[10] }}
             />
           ) : (
-            <Text style={[styles.empty, { color: tokens.textMuted }]}>
+            <Text style={[styles.empty, { color: c.muted }]}>
               {error || (query ? "No matches." : "No messages yet.")}
             </Text>
           )
         }
         ItemSeparatorComponent={() => (
-          <View style={[styles.sep, { backgroundColor: tokens.border }]} />
+          <View style={[styles.sep, { backgroundColor: c.border }]} />
         )}
         renderItem={({ item }) => {
           const last = item.messages?.[0];
@@ -158,8 +158,8 @@ export default function WhatsappInboxScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -179,12 +179,12 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: spacing[2],
   },
-  input: { flex: 1, fontSize: typography.fontSize.base, ...font() },
+  input: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
   empty: {
     marginTop: spacing[10],
     textAlign: "center",
     fontSize: typography.fontSize.sm,
-    ...font(),
+    ...cosmosFont.body,
   },
 });

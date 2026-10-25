@@ -6,7 +6,6 @@ import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { VideoCamera } from '@unifesto/unicon/react-native';
-import { useTokens } from '../src/context/ThemeContext';
 import { CardBackdrop } from '../src/components/ui/CardSurface';
 import useTopSpacing from '../src/hooks/useTopSpacing';
 import Skeleton from '../src/components/Skeleton';
@@ -15,7 +14,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { formatTime } from '../src/utils/eventFormat';
 import { borderRadius, spacing } from '../src/theme/spacing';
 import { typography } from '../src/theme/typography';
-import { font } from '../src/theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../src/theme/cosmos';
 
 const GUTTER = spacing[6];
 // Session covers follow the event banner ratio: 4:3.
@@ -41,7 +40,7 @@ function dayLabel(d: Date, now = new Date()) {
 
 /** Online sessions from spaces: grouped by day, live ones flagged, filterable by platform. */
 export default function SessionsListScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const router = useRouter();
   const topSpacing = useTopSpacing(8);
 
@@ -92,7 +91,7 @@ export default function SessionsListScreen() {
   const open = useCallback((s: Session) => router.push(`/session/${s.slug}`), [router]);
 
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <Stack.Screen options={{ title: 'Unifesto Huddle', headerShown: true }} />
       <SectionList
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[12] }}
@@ -104,8 +103,8 @@ export default function SessionsListScreen() {
               setRefreshing(true);
               void load();
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
@@ -114,12 +113,12 @@ export default function SessionsListScreen() {
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <>
-            <Text style={[styles.title, { color: tokens.text }]}>Live and upcoming</Text>
-            <Text style={[styles.lead, { color: tokens.textSecondary }]}>Online talks and workshops from spaces on Unifesto.</Text>
+            <Text style={[styles.title, { color: c.text }]}>Live and upcoming</Text>
+            <Text style={[styles.lead, { color: c.soft }]}>Online talks and workshops from spaces on Unifesto.</Text>
 
             {mine.length > 0 ? (
               <View style={{ marginTop: spacing[8] }}>
-                <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>My sessions</Text>
+                <Text style={[styles.groupLabel, { color: c.muted }]}>My sessions</Text>
                 <View style={{ gap: spacing[4] }}>
                   {mine.map((s) => (
                     <SessionRow key={s.id} s={s} live={isLive(s, now)} withDay onOpen={open} />
@@ -138,11 +137,11 @@ export default function SessionsListScreen() {
                       onPress={() => setPlatform(p)}
                       style={({ pressed }) => [
                         styles.chip,
-                        { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                        { backgroundColor: active ? c.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                       ]}
                     >
                       {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                      <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{p ?? 'All'}</Text>
+                      <Text style={[styles.chipText, { color: active ? c.bg : c.text }]}>{p ?? 'All'}</Text>
                     </Pressable>
                   );
                 })}
@@ -165,16 +164,16 @@ export default function SessionsListScreen() {
             </View>
           ) : (
             <View style={styles.empty}>
-              <VideoCamera size={48} color={tokens.textSecondary} weight="duotone" />
-              <Text style={[styles.emptyTitle, { color: tokens.text }]}>No sessions coming up</Text>
-              <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>
+              <VideoCamera size={48} color={c.soft} weight="duotone" />
+              <Text style={[styles.emptyTitle, { color: c.text }]}>No sessions coming up</Text>
+              <Text style={[styles.emptyBody, { color: c.muted }]}>
                 When spaces schedule online talks or workshops, they show up here.
               </Text>
             </View>
           )
         }
         renderSectionHeader={({ section }) => (
-          <Text style={[styles.groupLabel, { color: tokens.textMuted, marginTop: spacing[8] }]}>{section.label}</Text>
+          <Text style={[styles.groupLabel, { color: c.muted, marginTop: spacing[8] }]}>{section.label}</Text>
         )}
         ItemSeparatorComponent={ItemGap}
         renderItem={({ item }) => <SessionRow s={item} live={isLive(item, now)} onOpen={open} />}
@@ -187,7 +186,7 @@ const ItemGap = () => <View style={{ height: spacing[4] }} />;
 
 /** One session: 4:3 thumb, live marker, title, time, platform, host and price. */
 const SessionRow = React.memo(function SessionRow({ s, live, withDay, onOpen }: { s: Session; live: boolean; withDay?: boolean; onOpen: (s: Session) => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const price = Number(s.price);
   const start = new Date(s.startDateTime);
   return (
@@ -197,22 +196,22 @@ const SessionRow = React.memo(function SessionRow({ s, live, withDay, onOpen }: 
       accessibilityLabel={s.title}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
     >
-      <View style={[styles.thumb, { backgroundColor: tokens.elevated }]}>
+      <View style={[styles.thumb, { backgroundColor: c.raised }]}>
         {s.coverImageUrl ? (
           <Image source={{ uri: s.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
-            <VideoCamera size={26} color="#ffffff" weight="fill" />
+          <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+            <VideoCamera size={26} color={c.muted} weight="fill" />
           </LinearGradient>
         )}
       </View>
       <View style={{ flex: 1, gap: 3 }}>
-        {live ? <LiveChip color={tokens.danger} /> : null}
-        <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={2}>{s.title}</Text>
-        <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
+        {live ? <LiveChip color={c.danger} /> : null}
+        <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={2}>{s.title}</Text>
+        <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
           {withDay ? `${dayLabel(start)}, ` : ''}{formatTime(start)} · {s.durationMinutes || 60} min · {platformOf(s)}
         </Text>
-        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
           {[s.space?.name, price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'].filter(Boolean).join(' · ')}
         </Text>
       </View>
@@ -241,23 +240,23 @@ function LiveChip({ color }: { color: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: typography.fontSize['2xl'], letterSpacing: -0.4, ...font('heading') },
-  lead: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  lead: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   chipsWrap: { marginTop: spacing[5], marginHorizontal: -GUTTER },
   chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
   chip: { height: 36, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
-  groupLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], ...font('semibold') },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  groupLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], ...cosmosFont.strong },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
-  rowTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, ...font() },
+  rowTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   live: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDotWrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
-  liveText: { fontSize: 12, ...font('semibold') },
+  liveText: { fontSize: 12, ...cosmosFont.strong },
   empty: { alignItems: 'center', paddingTop: spacing[16], paddingHorizontal: spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
-  emptyBody: { marginTop: 6, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...font() },
+  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...cosmosFont.display },
+  emptyBody: { marginTop: 6, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

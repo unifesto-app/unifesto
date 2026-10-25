@@ -3,7 +3,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleShe
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneTilt } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getWhatsappConfig, setTicketWhatsappLink, updateEvent, type EventWhatsappConfig } from '../lib/api/eventAdmin';
 import { sendWhatsappBlast } from '../lib/api/manageEvent';
@@ -14,7 +13,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const PLACEHOLDER = 'https://chat.whatsapp.com/…';
@@ -27,7 +26,7 @@ const PLACEHOLDER = 'https://chat.whatsapp.com/…';
  */
 export default function EventWhatsappScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
 
@@ -123,14 +122,14 @@ export default function EventWhatsappScreen() {
 
   if (!config) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         {loadError ? (
           <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text>
+            <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
           </>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.primary} />
         )}
       </View>
     );
@@ -139,14 +138,14 @@ export default function EventWhatsappScreen() {
   const usingParent = !eventUrl.trim() && !!config.parentAttendeeGroupUrl;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.intro, { color: tokens.textSecondary }]}>
+        <Text style={[styles.intro, { color: c.soft }]}>
           Create the group in WhatsApp, then paste its invite link. Attendees get it when they register, and it never shows
           on the public event page.
         </Text>
@@ -164,7 +163,7 @@ export default function EventWhatsappScreen() {
           />
         </SettingsGroup>
         {usingParent ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             No group of its own yet, so attendees go to the main event's group: {config.parentAttendeeGroupUrl}
           </Text>
         ) : null}
@@ -186,7 +185,7 @@ export default function EventWhatsappScreen() {
                 />
               ))}
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               Holders of a ticket with its own link are invited there instead.
             </Text>
           </>
@@ -194,9 +193,9 @@ export default function EventWhatsappScreen() {
 
         <SettingsGroup title="Invite">
           <SettingsRow
-            icon={<PaperPlaneTilt size={28} color={tokens.text} />}
+            icon={<PaperPlaneTilt size={28} color={c.text} />}
             label="Send invite to attendees"
-            trailing={sending ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
+            trailing={sending ? <ActivityIndicator size="small" color={c.primary} /> : undefined}
             onPress={sending ? undefined : dirty ? () => AppAlert.alert('Save first', 'Save your link changes before sending.') : confirmBlast}
           />
         </SettingsGroup>
@@ -210,7 +209,7 @@ export default function EventWhatsappScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, marginLeft: spacing[1], ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, marginLeft: spacing[1], ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });
