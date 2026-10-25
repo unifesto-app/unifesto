@@ -1,5 +1,5 @@
 import { apiBase, withInternal } from "@/lib/api/internal";
-import { BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLANS, type Plan } from "@/lib/site";
+import { BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLANS, platformFeeFrom, type Plan } from "@/lib/site";
 
 /**
  * The live rate card (A9, D10): each plan's platform fee and the buyer's
@@ -15,6 +15,8 @@ export interface RateCard {
   buyerFee: number;
   /** Most the buyer fee can be per ticket, in rupees; null = no cap. */
   buyerFeeCap: number | null;
+  /** "2 Nov 2026" until the platform fee starts (copy says "from ..."), then null. */
+  feeFrom: string | null;
 }
 
 interface PlanFeesResponse {
@@ -29,12 +31,16 @@ export async function getRateCard(): Promise<RateCard> {
     if (!res.ok) throw new Error(`plan-fees ${res.status}`);
     const data = (await res.json()) as PlanFeesResponse;
     const fee = new Map(data.plans.map((p) => [p.plan.toLowerCase(), Number(p.platformFeePercent)]));
+    const feeFrom = platformFeeFrom();
     return {
-      plans: PLANS.map((p) => (fee.has(p.id) ? { ...p, fee: fee.get(p.id)! } : p)),
+      // Rates sit at 0 until an admin sets them on go-live day (D10); until
+      // then show the announced rate, worded "from <date>".
+      plans: PLANS.map((p) => (fee.has(p.id) && (fee.get(p.id)! > 0 || !feeFrom) ? { ...p, fee: fee.get(p.id)! } : p)),
       buyerFee: Number(data.buyerProcessingFeePercent),
       buyerFeeCap: Number(data.buyerProcessingFeeCapPerTicket) || null,
+      feeFrom,
     };
   } catch {
-    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE, buyerFeeCap: BUYER_PROCESSING_FEE_CAP };
+    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE, buyerFeeCap: BUYER_PROCESSING_FEE_CAP, feeFrom: platformFeeFrom() };
   }
 }

@@ -32,6 +32,8 @@ import { withStoredUtm } from "@/lib/utm";
 interface Props {
   /** Fetched (and checked public) by the server page, so it all renders in the initial HTML. */
   event: Event;
+  /** "5% processing fee, capped at ₹99 per ticket", from the live rate card. */
+  buyerFee: string;
 }
 
 /** Long agendas start folded to this many slots (as on mobile). */
@@ -92,7 +94,7 @@ function subPrice(sub: SubEventSummary): string {
   return "";
 }
 
-export default function EventDetailClient({ event }: Props) {
+export default function EventDetailClient({ event, buyerFee }: Props) {
   // Client-only: a countdown rendered on the server would never match hydration.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const { agenda = [], speakers = [], prizes = [], contacts = [], faqs = [] } = event.sections ?? {};
@@ -140,6 +142,9 @@ export default function EventDetailClient({ event }: Props) {
   const priceAmount = `${currencySymbol}${(event.price ?? 0).toLocaleString("en-IN")}`;
   const multiTier = (event.ticket_type_count ?? 0) > 1;
   const priceLabel = event.is_free ? "Free" : multiTier ? `Starting from ${priceAmount}` : priceAmount;
+
+  // State the buyer fee up front, not first at the payment step (A11).
+  const feeLine = event.is_free ? undefined : event.fee_included ? "Processing fee included" : `Plus ${buyerFee}`;
 
   // "Big event" with no tickets of its own: registration is per sub-event.
   const subEvents = event.sub_events ?? [];
@@ -289,7 +294,7 @@ export default function EventDetailClient({ event }: Props) {
                 <FactRow
                   icon={<Ticket className="h-6 w-6 text-paper" aria-hidden />}
                   title={isUmbrella ? subCount : priceLabel}
-                  sub={reg === "open" ? undefined : NOT_OPEN[reg]}
+                  sub={reg !== "open" ? NOT_OPEN[reg] : isUmbrella ? undefined : feeLine}
                 />
               )}
             </Card>

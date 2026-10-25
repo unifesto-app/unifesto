@@ -10,13 +10,13 @@ import { useSession } from "@/lib/context/SessionContext";
  * spaces only: FREE (comped) and revenue-share spaces don't change. Runs until
  * two weeks after go-live; dismissing it hides it on this browser.
  */
-const GO_LIVE = new Date("2026-11-02T00:00:00+05:30");
+export const GO_LIVE = new Date("2026-11-02T00:00:00+05:30");
 const SHOW_UNTIL = new Date("2026-11-16T00:00:00+05:30");
 const GO_LIVE_LABEL = "Monday 2 November 2026";
 const DISMISS_KEY = "fee-notice-2026-11-02";
 
 /** The announced launch rate per plan (D10). GROWTH is retired: Starter's. */
-const RATE: Record<string, number> = { STARTER: 2.5, GROWTH: 2.5, PRO: 1.5, ENTERPRISE: 1 };
+export const RATE: Record<string, number> = { STARTER: 2.5, GROWTH: 2.5, PRO: 1.5, ENTERPRISE: 1 };
 
 export function FeeNoticeBanner() {
   const { billing, can } = useSession();
