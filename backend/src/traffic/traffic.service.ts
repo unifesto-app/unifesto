@@ -320,7 +320,7 @@ export class TrafficService {
       this.topEvents(Prisma.sql`TRUE`, stats.since),
       this.prisma.$queryRaw<{ id: string; views: number; visitors: number }[]>`
         SELECT space_id AS id, count(*)::int AS views, count(DISTINCT visitor_id)::int AS visitors
-        FROM page_views WHERE created_at >= ${stats.since}
+        FROM page_views WHERE space_id IS NOT NULL AND created_at >= ${stats.since}
         GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
       this.registrationsSince({}, stats.since),
     ]);
