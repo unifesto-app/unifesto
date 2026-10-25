@@ -489,7 +489,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 |---|---|---|
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
-| J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
+| J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | in progress (#377) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#373) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
@@ -917,3 +917,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J4 slice 1: Sentry now gets BullMQ job failures (after last retry) and every @OnEvent listener error (#369)
 - **2026-10-26** · J4 slice 3: Caddy access logs (the CERT-In record) now really keep 180 days; Apex logs page states true retention and sampling (#372)
 - **2026-10-26** · J4 slice 4: error.tsx + global-error.tsx reporting to Sentry on web/space/apex; blog/help/verify show try-again on API failure, real 404 only on 404 (#373)
+- **2026-10-26** · J3 slice 1: page/limit parsed safely and capped on every hand-parsed list endpoint (public /spaces max 50); public space page no longer loads every member (#377)
