@@ -1,6 +1,8 @@
 -- Plan lineup: General (STARTER) · Club · Growth · Pro · Enterprise. The Free
--- and Revenue-share billing models are removed; every space is on a plan and
--- custom terms live in deals (D8).
+-- and Revenue-share billing models are retired; every space is on a plan and
+-- custom terms live in deals (D8). Expand step only: billing_model,
+-- revenue_share_percent, billing_model_configs and the billing_model enum stay
+-- (unused) until a contract-step migration drops them in a later deploy.
 
 -- 1. Spaces on Free or Revenue share move to General, with a history row.
 INSERT INTO "subscription_history" ("subscription_id", "from_plan", "to_plan", "reason")
@@ -10,6 +12,8 @@ SELECT "id", "plan", 'STARTER', 'Billing model ' || "billing_model"::text || ' r
 
 UPDATE "org_subscriptions"
    SET "plan" = 'STARTER',
+       "billing_model" = 'SUBSCRIPTION',
+       "revenue_share_percent" = NULL,
        "billing_cycle" = 'MONTHLY',
        "amount" = 0,
        "expires_at" = NULL,
@@ -70,9 +74,3 @@ AS $$
     WHERE s.space_id = p_space_id
   ), 0);
 $$;
-
--- 4. Drop the billing models.
-ALTER TABLE "org_subscriptions" DROP COLUMN "billing_model";
-ALTER TABLE "org_subscriptions" DROP COLUMN "revenue_share_percent";
-DROP TABLE "billing_model_configs";
-DROP TYPE "billing_model";
