@@ -45,7 +45,6 @@ import {
 } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import StatusBarScrim from '../components/ui/StatusBarScrim';
 import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import PressableScale from '../components/ui/PressableScale';
@@ -764,7 +763,6 @@ export default function ApexScreen() {
           </>
         )}
       </ScrollView>
-      <StatusBarScrim />
     </View>
   );
 }
