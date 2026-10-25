@@ -374,12 +374,27 @@ export class StatusService {
     since.setUTCHours(0, 0, 0, 0);
 
     const now = Date.now();
-    const [samples, downIncidents] = await Promise.all([
-      this.prisma.healthCheck.findMany({
-        where: { checkedAt: { gte: since } },
-        select: { service: true, up: true, latencyMs: true, checkedAt: true },
-        orderBy: { checkedAt: 'asc' },
-      }),
+    // J3: aggregate in Postgres. Loading the raw rows was ~100k health_checks
+    // (4 services x 288/day x 90 days) on every 30s poll.
+    const [dayCounts, latestRows, downIncidents] = await Promise.all([
+      this.prisma.$queryRaw<{ service: string; day: string; total: number; up: number }[]>`
+        SELECT service,
+               to_char(checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
+               count(*)::int AS total,
+               (count(*) FILTER (WHERE up))::int AS up
+        FROM health_checks
+        WHERE checked_at >= ${since}
+        GROUP BY 1, 2`,
+      // Newest sample per service: one index seek each on (service, checked_at).
+      Promise.all(
+        STATUS_SERVICES.map(({ key }) =>
+          this.prisma.healthCheck.findFirst({
+            where: { service: key, checkedAt: { gte: since } },
+            orderBy: { checkedAt: 'desc' },
+            select: { service: true, up: true, latencyMs: true, checkedAt: true },
+          }),
+        ),
+      ),
       // Every incident that overlaps the window counts against uptime.
       this.prisma.incident.findMany({
         where: {
@@ -402,16 +417,14 @@ export class StatusService {
     const byService = new Map<string, Map<string, { up: number; total: number }>>();
     const latest = new Map<string, { up: boolean; latencyMs: number | null }>();
     let lastSampleAt: Date | null = null;
-    for (const s of samples) {
-      const day = dateKey(s.checkedAt);
-      if (!byService.has(s.service)) byService.set(s.service, new Map());
-      const dayMap = byService.get(s.service)!;
-      const cell = dayMap.get(day) ?? { up: 0, total: 0 };
-      cell.total += 1;
-      if (s.up) cell.up += 1;
-      dayMap.set(day, cell);
-      latest.set(s.service, { up: s.up, latencyMs: s.latencyMs ?? null });
-      lastSampleAt = s.checkedAt;
+    for (const c of dayCounts) {
+      if (!byService.has(c.service)) byService.set(c.service, new Map());
+      byService.get(c.service)!.set(c.day, { up: c.up, total: c.total });
+    }
+    for (const r of latestRows) {
+      if (!r) continue;
+      latest.set(r.service, { up: r.up, latencyMs: r.latencyMs ?? null });
+      if (!lastSampleAt || r.checkedAt > lastSampleAt) lastSampleAt = r.checkedAt;
     }
     // A dead sampler (DB or Redis down, crashed cron) would otherwise freeze the
     // last reading, usually all green. Past the threshold, current is unknown.

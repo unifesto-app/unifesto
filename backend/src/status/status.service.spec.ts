@@ -11,12 +11,27 @@ function makeHarness() {
   let nextId = 1;
 
   const prisma: any = {
+    // The summary's GROUP BY (service, UTC day), computed over the in-memory rows.
+    $queryRaw: jest.fn(async (_sql: TemplateStringsArray, since: Date) => {
+      const cells = new Map<string, { service: string; day: string; total: number; up: number }>();
+      for (const r of checks.filter((c) => c.checkedAt >= since)) {
+        const day = r.checkedAt.toISOString().slice(0, 10);
+        const cell = cells.get(`${r.service}|${day}`) ?? { service: r.service, day, total: 0, up: 0 };
+        cell.total += 1;
+        if (r.up) cell.up += 1;
+        cells.set(`${r.service}|${day}`, cell);
+      }
+      return [...cells.values()];
+    }),
     healthCheck: {
       createMany: jest.fn(async ({ data }) => {
         checks.push(...data);
       }),
-      findFirst: jest.fn(async () => {
-        const last = [...checks].sort((a, b) => +b.checkedAt - +a.checkedAt)[0];
+      findFirst: jest.fn(async ({ where } = {} as any) => {
+        const last = checks
+          .filter((r) => !where?.service || r.service === where.service)
+          .filter((r) => !where?.checkedAt?.gte || r.checkedAt >= where.checkedAt.gte)
+          .sort((a, b) => +b.checkedAt - +a.checkedAt)[0];
         return last ? { checkedAt: last.checkedAt } : null;
       }),
       findMany: jest.fn(async ({ where, take, orderBy }) => {
@@ -236,7 +251,7 @@ describe('StatusService uptime with incidents', () => {
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     yesterday.setUTCHours(0, 0, 0, 0);
-    const checks = [];
+    const checks: { service: string; up: boolean; latencyMs: number; checkedAt: Date }[] = [];
     for (let m = 0; m < 24 * 60; m += 5) {
       for (const service of ['api', 'database', 'redis', 'storage']) {
         checks.push({ service, up: true, latencyMs: 1, checkedAt: new Date(+yesterday + m * 60_000) });
@@ -259,5 +274,8 @@ describe('StatusService uptime with incidents', () => {
     expect(day).toMatchObject({ status: 'partial', uptime: 75 });
     expect(api.uptimePercent).toBeLessThan(100);
     expect(s.services.find((x) => x.key === 'database')!.days.at(-2)).toMatchObject({ status: 'up', uptime: 100 });
+    // J3: aggregated in SQL, never ~100k raw rows per poll.
+    expect(h.prisma.healthCheck.findMany).not.toHaveBeenCalled();
+    expect(h.prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 });
