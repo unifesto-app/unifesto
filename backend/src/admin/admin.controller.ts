@@ -107,6 +107,11 @@ export class AdminController {
         dto.requireAgeConfirmation,
       );
     }
+    if (dto.customSendingDomainsEnabled !== undefined) {
+      await this.platformConfig.setCustomSendingDomainsEnabled(
+        dto.customSendingDomainsEnabled,
+      );
+    }
     return this.platformConfig.getConfig();
   }
 

@@ -349,7 +349,7 @@ export default function BrandingStudioPage() {
           <EventOverrides events={data.events} spaceColor={data.live ? space.brandColor : null} onChanged={load} />
 
           <DomainCard spaceId={spaceId} kind="web" />
-          <DomainCard spaceId={spaceId} kind="email" />
+          <DomainCard spaceId={spaceId} kind="email" comingSoon={!data.customSendingDomainsEnabled} />
         </>
       )}
     </div>

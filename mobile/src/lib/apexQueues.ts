@@ -6,14 +6,12 @@ import {
   getStatusRequests,
   getSubSpaceRequests,
   getTransferRequests,
-  getWhiteLabelRequests,
   rejectSpaceRequest,
   reviewFreeAddRequest,
   reviewOwnershipRequest,
   reviewStatusRequest,
   reviewSubSpaceRequest,
   reviewTransferRequest,
-  reviewWhiteLabelRequest,
   type Decision,
   type PersonRef,
   type RequestStatus,
@@ -22,12 +20,12 @@ import {
 } from './api/apex';
 
 /*
- * The seven Apex approval queues share one list → review → approve/reject flow.
+ * The six Apex approval queues share one list → review → approve/reject flow.
  * Each queue maps its raw API shape onto QueueItem here, so the screens never
  * branch on the request type.
  */
 
-export type QueueKind = 'space' | 'status' | 'ownership' | 'subspace' | 'transfer' | 'free-add' | 'white-label';
+export type QueueKind = 'space' | 'status' | 'ownership' | 'subspace' | 'transfer' | 'free-add';
 
 export interface QueuePerson {
   label: string;
@@ -247,32 +245,6 @@ export const QUEUES: QueueDef[] = [
         })),
       ),
     review: reviewFreeAddRequest,
-  },
-  {
-    kind: 'white-label',
-    label: 'White-label',
-    approveLabel: 'Approve colour',
-    fetch: (status) =>
-      mapped(getWhiteLabelRequests(status), (d) =>
-        (d.requests ?? []).map((r) => ({
-          id: r.id,
-          status: r.status,
-          createdAt: r.createdAt,
-          reviewNote: r.reviewNote,
-          title: r.event ? `${r.space?.name} · ${r.event.title}` : r.space?.name ?? 'Space',
-          subtitle: [r.brandColor, nameOf(r.requester)].filter(Boolean).join('  ·  '),
-          reason: r.reason,
-          requester: person(r.requester),
-          facts: [
-            ...(r.brandColor ? [{ label: 'Brand colour', value: r.brandColor.toUpperCase() }] : []),
-            ...(r.event ? [{ label: 'Event', value: r.event.title }] : []),
-          ],
-          warning:
-            r.planHasBranding === false ? "Their plan doesn't include white-label, so the colour won't show until they upgrade." : undefined,
-          approveEffect: 'The brand colour goes live on their pages.',
-        })),
-      ),
-    review: reviewWhiteLabelRequest,
   },
 ];
 

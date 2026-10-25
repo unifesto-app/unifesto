@@ -47,7 +47,16 @@ const COPY = {
  * via Cloudflare). The space adds the records shown here; once verified, mail
  * goes from local@their-domain, or their pages answer on their domain.
  */
-export function DomainCard({ spaceId, kind }: { spaceId: string; kind: "email" | "web" }) {
+export function DomainCard({
+  spaceId,
+  kind,
+  comingSoon = false,
+}: {
+  spaceId: string;
+  kind: "email" | "web";
+  /** No domain can be added yet (H20 platform switch); an existing one still shows. */
+  comingSoon?: boolean;
+}) {
   const copyText = COPY[kind];
   const [domain, setDomain] = useState<SpaceDomain | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -92,13 +101,19 @@ export function DomainCard({ spaceId, kind }: { spaceId: string; kind: "email" |
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           {copyText.title} {status && <Badge variant={status.variant}>{status.label}</Badge>}
+          {!domain && comingSoon && <Badge variant="neutral">Coming soon</Badge>}
         </CardTitle>
         <CardDescription>{copyText.blurb}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
 
-        {!domain ? (
+        {!domain && comingSoon ? (
+          <p className="text-sm text-muted-foreground">
+            Custom sending domains are coming soon. Until then, attendee emails go from Unifesto&apos;s address with
+            your sender name.
+          </p>
+        ) : !domain ? (
           <div className="flex flex-wrap items-end gap-3">
             {kind === "email" && (
               <>

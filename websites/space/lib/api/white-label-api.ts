@@ -69,6 +69,8 @@ export interface EventWhiteLabelState {
 export interface WhiteLabelOverview {
   /** Whether the space's plan includes white-label (required to edit/render). */
   planHasBranding: boolean;
+  /** H20 platform switch: off means a new sending domain can't be added yet. */
+  customSendingDomainsEnabled?: boolean;
   /** Switched on + plan + not suspended: attendees see it right now. */
   live: boolean;
   space: SpaceWhiteLabelState;
