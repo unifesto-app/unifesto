@@ -14,6 +14,7 @@ import {
   getMyRegistrationForEvent,
   getMyRegistrationsForEvent,
 } from '../lib/api/events';
+import { isSpaceUnavailable } from '../lib/api/errors';
 import { eventSections, AgendaItem, Speaker, Prize, Faq, Contact } from '../lib/api/additional-info';
 import { getMySponsorOptIns, optInToSponsor, withdrawSponsorOptIn } from '../lib/api/sponsors';
 import { registerEventInterest } from '../lib/api/leads';
@@ -37,6 +38,7 @@ export function useEventDetail(eventId: string | undefined) {
   const [event, setEvent] = useState<Event | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [spaceUnavailable, setSpaceUnavailable] = useState(false);
   // Ticket-type ids the user already holds. An event can offer several types
   // and a user may register for each distinct type once.
   const [ownedTicketTypeIds, setOwnedTicketTypeIds] = useState<Set<string>>(new Set());
@@ -71,6 +73,7 @@ export function useEventDetail(eventId: string | undefined) {
         // Reset everything when eventId changes so stale data never flashes.
         setLoading(true);
         setEvent(null);
+        setSpaceUnavailable(false);
         setTickets([]);
         setAgenda([]);
         setSpeakers([]);
@@ -130,7 +133,10 @@ export function useEventDetail(eventId: string | undefined) {
     } catch (error) {
       if (__DEV__) console.error('Error loading event:', error);
       // A failed refresh keeps what's on screen.
-      if (!silent) setEvent(null);
+      if (!silent) {
+        setEvent(null);
+        setSpaceUnavailable(isSpaceUnavailable(error));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -395,6 +401,7 @@ export function useEventDetail(eventId: string | undefined) {
     event,
     tickets,
     loading,
+    spaceUnavailable,
     refreshing,
     refresh,
     agenda,
