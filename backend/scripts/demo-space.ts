@@ -36,7 +36,7 @@ import {
 
 const prisma = new PrismaClient();
 
-const SLUG = 'aurora-tech-club-demo';
+const SLUG = 'aurora-tech-club';
 const MOBILE_PREFIX = '+0999';
 const EMAIL_RE = /^demo\.\d+@example\.com$/;
 
@@ -167,7 +167,7 @@ async function create(ownerEmail: string) {
   const events: EventSpec[] = [
     {
       title: 'Aurora Fest 2026',
-      slug: 'aurora-fest-2026-demo',
+      slug: 'aurora-fest-2026',
       description: 'Two days of talks, a startup expo and the night concert.',
       status: EventStatus.COMPLETED,
       start: at(-21, 9),
@@ -183,7 +183,7 @@ async function create(ownerEmail: string) {
     },
     {
       title: 'Build Night: 24h Hackathon',
-      slug: 'build-night-24h-hackathon-demo',
+      slug: 'build-night-24h-hackathon',
       description: '24 hours, teams of 3, mentors on call and prizes for the top three builds.',
       // Live right now (half-way through) so Sprint screens have scores,
       // an active round and open help-desk queries. Re-seed before recording.
@@ -200,7 +200,7 @@ async function create(ownerEmail: string) {
     },
     {
       title: 'Figma for beginners',
-      slug: 'figma-for-beginners-demo',
+      slug: 'figma-for-beginners',
       description: 'A hands-on 2-hour workshop. Bring a laptop.',
       status: EventStatus.PUBLISHED,
       start: at(5, 16),
@@ -212,7 +212,7 @@ async function create(ownerEmail: string) {
     },
     {
       title: 'Aurora Fest 2027',
-      slug: 'aurora-fest-2027-demo',
+      slug: 'aurora-fest-2027',
       description: 'Save the date.',
       status: EventStatus.DRAFT,
       start: at(340, 9),
