@@ -62,7 +62,7 @@ export const darkTokens: Tokens = {
 
   text: '#ffffff',
   textSecondary: '#94a3b8',
-  textMuted: '#64748b',
+  textMuted: '#8a8a90', // 4.1:1 was under AA; cosmos muted holds 5.7:1 on bg
 
   accent: '#3491ff',
   accentStrong: '#0062ff',
@@ -93,16 +93,16 @@ export const lightTokens: Tokens = {
 
   text: '#0a0a0b',
   textSecondary: '#52525b',
-  textMuted: '#71717a',
+  textMuted: '#63636a',
 
   accent: '#0062ff',
   accentStrong: '#0052d9',
   accentFg: '#ffffff',
   accentGradient: ['#3491ff', '#0062ff'] as const,
 
-  success: '#059669',
-  warning: '#d97706',
-  danger: '#dc2626',
+  success: '#047857',
+  warning: '#92400e',
+  danger: '#c62828', // with success/warning: AA (4.5:1) on the grey ground, as cosmos
   info: '#0062ff',
 
   scheme: 'light',

@@ -478,9 +478,9 @@ function SingleAddForm({
   return (
     <div className="max-w-2xl space-y-4">
       <div className="space-y-2">
-        <Label>Ticket type</Label>
+        <Label htmlFor="add-ticket-type">Ticket type</Label>
         <Select value={ticketTypeId} onValueChange={setTicketTypeId}>
-          <SelectTrigger>
+          <SelectTrigger id="add-ticket-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -497,12 +497,12 @@ function SingleAddForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Asha Rao" />
+          <Label htmlFor="add-name">Name</Label>
+          <Input id="add-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Asha Rao" />
         </div>
         <div className="space-y-2">
-          <Label>Email</Label>
-          <Input
+          <Label htmlFor="add-email">Email</Label>
+          <Input id="add-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -510,21 +510,21 @@ function SingleAddForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>
+          <Label htmlFor="add-phone">
             Phone<span className="text-destructive"> *</span>
           </Label>
-          <Input
+          <Input id="add-phone"
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
             placeholder="9876543210"
           />
         </div>
         <div className="space-y-2">
-          <Label>
+          <Label htmlFor="add-gender">
             Gender<span className="text-destructive"> *</span>
           </Label>
           <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger>
+            <SelectTrigger id="add-gender">
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
@@ -538,8 +538,8 @@ function SingleAddForm({
         </div>
         {isGroup && (
           <div className="space-y-2">
-            <Label>Group size</Label>
-            <Input
+            <Label htmlFor="add-group-size">Group size</Label>
+            <Input id="add-group-size"
               type="number"
               min={ticket.minGroupSize ?? 1}
               max={ticket.maxGroupSize ?? undefined}
@@ -591,13 +591,13 @@ function SingleAddForm({
 
       {isGroup && extraSlots > 0 && (
         <div className="space-y-2">
-          <Label>
+          <Label id="add-other-members-label">
             Other members
             <span className="ml-2 text-xs font-normal text-muted-foreground">
               all fields required for each member
             </span>
           </Label>
-          <div className="space-y-3">
+          <div role="group" aria-labelledby="add-other-members-label" className="space-y-3">
             {Array.from({ length: extraSlots }).map((_, i) => (
               <div key={i} className="space-y-3 rounded-md border p-3">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -676,8 +676,8 @@ function SingleAddForm({
                 </p>
               ) : reqOpen ? (
                 <div className="space-y-2">
-                  <Label>How many seats do you need to add for free?</Label>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <Label id="add-how-many-seats-do-you-need-to-ad-label">How many seats do you need to add for free?</Label>
+                  <div role="group" aria-labelledby="add-how-many-seats-do-you-need-to-ad-label" className="flex flex-wrap items-center gap-3">
                     <Input
                       type="number"
                       min={1}
@@ -694,8 +694,8 @@ function SingleAddForm({
                       Only for {ticket.name}
                     </label>
                   </div>
-                  <Label>Why do you need to add attendees for free?</Label>
-                  <Textarea
+                  <Label htmlFor="add-why-do-you-need-to-add-attendees">Why do you need to add attendees for free?</Label>
+                  <Textarea id="add-why-do-you-need-to-add-attendees"
                     rows={3}
                     value={reqReason}
                     onChange={(e) => setReqReason(e.target.value)}

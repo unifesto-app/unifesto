@@ -574,8 +574,8 @@ export function CertificateDesigner({
                     is required. Drag it to reposition; set its size below.
                   </p>
                   <div className="space-y-1.5">
-                    <Label>Size (px)</Label>
-                    <Input
+                    <Label htmlFor="certificatedesigner-size-px">Size (px)</Label>
+                    <Input id="certificatedesigner-size-px"
                       type="number"
                       value={
                         selectedField.maxWidth ?? Math.round(canvasWidth * 0.12)
@@ -591,14 +591,14 @@ export function CertificateDesigner({
               ) : (
                 <>
                   <div className="space-y-1.5">
-                    <Label>Content</Label>
+                    <Label htmlFor="certificatedesigner-content">Content</Label>
                     <Select
                       value={selectedField.key}
                       onValueChange={(v) =>
                         patchField(selected!, { key: v as CertificateFieldKey })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="certificatedesigner-content">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -613,8 +613,8 @@ export function CertificateDesigner({
 
                   {selectedField.key === "custom" && (
                     <div className="space-y-1.5">
-                      <Label>Text</Label>
-                      <Input
+                      <Label htmlFor="certificatedesigner-text">Text</Label>
+                      <Input id="certificatedesigner-text"
                         value={selectedField.label ?? ""}
                         onChange={(e) =>
                           patchField(selected!, { label: e.target.value })
@@ -637,14 +637,14 @@ export function CertificateDesigner({
                   )}
 
                   <div className="space-y-1.5">
-                    <Label>Font</Label>
+                    <Label htmlFor="certificatedesigner-font">Font</Label>
                     <Select
                       value={selectedField.fontFamily ?? DEFAULT_FONT}
                       onValueChange={(v) =>
                         patchField(selected!, { fontFamily: v })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="certificatedesigner-font">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="max-h-72">
@@ -676,8 +676,8 @@ export function CertificateDesigner({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>Font size</Label>
-                      <Input
+                      <Label htmlFor="certificatedesigner-font-size">Font size</Label>
+                      <Input id="certificatedesigner-font-size"
                         type="number"
                         value={selectedField.fontSize}
                         onChange={(e) =>
@@ -688,8 +688,8 @@ export function CertificateDesigner({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Colour</Label>
-                      <input
+                      <Label htmlFor="certificatedesigner-colour">Colour</Label>
+                      <input id="certificatedesigner-colour"
                         type="color"
                         value={selectedField.color ?? "#111111"}
                         onChange={(e) =>
@@ -701,8 +701,8 @@ export function CertificateDesigner({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Text box width (px)</Label>
-                    <Input
+                    <Label htmlFor="certificatedesigner-text-box-width-px">Text box width (px)</Label>
+                    <Input id="certificatedesigner-text-box-width-px"
                       type="number"
                       value={selectedField.maxWidth ?? canvasWidth}
                       onChange={(e) =>
@@ -720,7 +720,7 @@ export function CertificateDesigner({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Alignment</Label>
+                    <Label htmlFor="certificatedesigner-alignment">Alignment</Label>
                     <Select
                       value={selectedField.align ?? "left"}
                       onValueChange={(v) =>
@@ -729,7 +729,7 @@ export function CertificateDesigner({
                         })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="certificatedesigner-alignment">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

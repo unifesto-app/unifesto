@@ -330,6 +330,7 @@ export default function TicketDetailPage() {
         <CardContent>
           <Button
             size="sm"
+            aria-pressed={offSale}
             variant={offSale ? "default" : "outline"}
             disabled={savingMeta}
             onClick={() =>

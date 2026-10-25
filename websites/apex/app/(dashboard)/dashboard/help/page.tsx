@@ -211,8 +211,8 @@ function ArticleDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
+            <Label htmlFor="help-title">Title</Label>
+            <Input id="help-title"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
               placeholder="How do refunds work?"
@@ -220,8 +220,8 @@ function ArticleDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Slug (optional)</Label>
-            <Input
+            <Label htmlFor="help-slug-optional">Slug (optional)</Label>
+            <Input id="help-slug-optional"
               value={form.slug}
               onChange={(e) => set("slug", e.target.value)}
               placeholder="auto-generated-from-title"
@@ -230,8 +230,8 @@ function ArticleDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Category</Label>
-              <Input
+              <Label htmlFor="help-category">Category</Label>
+              <Input id="help-category"
                 list="help-categories"
                 value={form.category}
                 onChange={(e) => set("category", e.target.value)}
@@ -244,12 +244,12 @@ function ArticleDialog({
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label htmlFor="help-status">Status</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => set("status", v as HelpArticleStatus)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="help-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -261,8 +261,8 @@ function ArticleDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Body (Markdown)</Label>
-            <Textarea
+            <Label htmlFor="help-body-markdown">Body (Markdown)</Label>
+            <Textarea id="help-body-markdown"
               rows={14}
               value={form.body}
               onChange={(e) => set("body", e.target.value)}

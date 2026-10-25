@@ -202,8 +202,8 @@ export default function ApplyWhiteLabelPage() {
 
             {/* Enable / disable segmented control. */}
             <div className="space-y-1.5">
-              <Label>White-label</Label>
-              <div className="inline-flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
+              <Label id="apply-white-label-label">White-label</Label>
+              <div role="group" aria-labelledby="apply-white-label-label" className="inline-flex gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {(
                   [
                     { value: true, label: "Enable" },

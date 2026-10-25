@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, PencilSimple, Trash, Buildings, ArrowsClockwise, UsersThree } from "@unifesto/unicon/react";
+import { Field as LabelledField } from "@/components/hackathon/HackParts";
 import {
   listSponsors,
   createSponsor,
@@ -315,22 +316,8 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
   );
 }
 
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactElement }) {
   return (
-    <div className="space-y-1.5">
-      <Label>
-        {label}
-        {required && <span className="text-destructive"> *</span>}
-      </Label>
-      {children}
-    </div>
+    <LabelledField label={<>{label}{required && <span className="text-destructive"> *</span>}</>}>{children}</LabelledField>
   );
 }

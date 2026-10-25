@@ -42,6 +42,7 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
             onBlur?.(e);
           }}
           multiline={multiline}
+          accessibilityLabel={label}
           style={[styles.input, multiline && styles.inputMultiline, { color: c.text }, style]}
           {...rest}
         />

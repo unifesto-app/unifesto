@@ -158,6 +158,7 @@ export default function ContentReportsPage() {
           <Button
             key={t.key}
             size="sm"
+            aria-pressed={status === t.key}
             variant={status === t.key ? "default" : "outline"}
             onClick={() => setStatus(t.key)}
           >

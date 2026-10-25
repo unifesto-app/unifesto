@@ -65,7 +65,8 @@ export default function AuthButton({
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 12,
     borderRadius: cosmosRadius,
     flexDirection: 'row',
     alignItems: 'center',

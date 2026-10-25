@@ -426,6 +426,7 @@ export default function SpaceEventsPage() {
                       return (
                         <Button
                           key={page}
+                          aria-current={page === currentPage ? "page" : undefined}
                           variant={page === currentPage ? "default" : "ghost"}
                           size="sm"
                           onClick={() => setCurrentPage(page)}

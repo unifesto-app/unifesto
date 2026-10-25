@@ -213,9 +213,9 @@ function BulkUploadForm({
   return (
     <div className="max-w-2xl space-y-4">
       <div className="space-y-2">
-        <Label>Ticket type</Label>
+        <Label htmlFor="import-ticket-type">Ticket type</Label>
         <Select value={ticketTypeId} onValueChange={onPickTicketType}>
-          <SelectTrigger>
+          <SelectTrigger id="import-ticket-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -242,8 +242,8 @@ function BulkUploadForm({
       </div>
 
       <div className="space-y-2">
-        <Label>Upload filled CSV</Label>
-        <Input
+        <Label htmlFor="import-upload-filled-csv">Upload filled CSV</Label>
+        <Input id="import-upload-filled-csv"
           type="file"
           accept=".csv,text/csv"
           onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}

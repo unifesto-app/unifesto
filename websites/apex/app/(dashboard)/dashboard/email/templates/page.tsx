@@ -141,10 +141,10 @@ export default function EmailTemplatesPage() {
                 <div className="flex items-start justify-between">
                   <h3 className="font-medium text-foreground">{t.name}</h3>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
+                    <Button aria-label="Edit" variant="ghost" size="icon" onClick={() => openEdit(t)}>
                       <PencilSimple className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remove(t)}>
+                    <Button aria-label="Delete" variant="ghost" size="icon" onClick={() => remove(t)}>
                       <Trash className="h-4 w-4" />
                     </Button>
                   </div>

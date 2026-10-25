@@ -396,12 +396,12 @@ function EditArrangement({
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-1.5">
-            <Label>Model</Label>
+            <Label htmlFor="subscriptions-model">Model</Label>
             <Select
               value={model}
               onValueChange={(v) => setModel(v as BillingModel)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="subscriptions-model">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -445,9 +445,9 @@ function EditArrangement({
           {model === "SUBSCRIPTION" && (
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label>Plan</Label>
+                <Label htmlFor="subscriptions-plan">Plan</Label>
                 <Select value={plan} onValueChange={(v) => setPlan(v as OrgPlan)}>
-                  <SelectTrigger>
+                  <SelectTrigger id="subscriptions-plan">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -461,12 +461,12 @@ function EditArrangement({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Cycle</Label>
+                <Label htmlFor="subscriptions-cycle">Cycle</Label>
                 <Select
                   value={cycle}
                   onValueChange={(v) => setCycle(v as BillingCycle)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="subscriptions-cycle">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -629,9 +629,9 @@ function OfflinePayment({
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Plan</Label>
+            <Label htmlFor="subscriptions-plan-2">Plan</Label>
             <Select value={plan} onValueChange={(v) => setPlan(v as OrgPlan)}>
-              <SelectTrigger>
+              <SelectTrigger id="subscriptions-plan-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -644,9 +644,9 @@ function OfflinePayment({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Cycle</Label>
+            <Label htmlFor="subscriptions-cycle-2">Cycle</Label>
             <Select value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
-              <SelectTrigger>
+              <SelectTrigger id="subscriptions-cycle-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

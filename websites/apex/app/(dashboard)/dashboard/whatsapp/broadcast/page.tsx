@@ -395,8 +395,8 @@ export default function WhatsAppBroadcastPage() {
 
           {audience === "SPACE" && (
             <div className="space-y-1.5">
-              <Label>Space</Label>
-              <select
+              <Label htmlFor="broadcast-space">Space</Label>
+              <select id="broadcast-space"
                 value={spaceId}
                 onChange={(e) => setSpaceId(e.target.value)}
                 disabled={spacesLoading}
@@ -454,8 +454,8 @@ export default function WhatsAppBroadcastPage() {
           )}
 
           <div className="space-y-1.5">
-            <Label>Template</Label>
-            <select
+            <Label htmlFor="broadcast-template">Template</Label>
+            <select id="broadcast-template"
               value={templateKey}
               onChange={(e) => setTemplateKey(e.target.value)}
               disabled={templatesLoading}
@@ -551,11 +551,11 @@ export default function WhatsAppBroadcastPage() {
 
           {audience === "ALL" && (
             <div className="space-y-1.5">
-              <Label>
+              <Label htmlFor="broadcast-type-to-confirm-the-app-wide-bla">
                 Type <span className="font-mono">{CONFIRM_PHRASE}</span> to confirm the
                 app-wide blast
               </Label>
-              <Input
+              <Input id="broadcast-type-to-confirm-the-app-wide-bla"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder={CONFIRM_PHRASE}

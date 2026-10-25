@@ -153,8 +153,8 @@ export default function ReportsPage() {
         <CardContent className="space-y-5">
           {/* Type toggle */}
           <div className="space-y-1.5">
-            <Label>Report type</Label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <Label id="reports-report-type-label">Report type</Label>
+            <div role="group" aria-labelledby="reports-report-type-label" className="grid gap-3 sm:grid-cols-2">
               {(
                 [
                   {
@@ -211,8 +211,8 @@ export default function ReportsPage() {
           {/* Section chips — only for Custom */}
           {type === "CUSTOM" && (
             <div className="space-y-1.5">
-              <Label>Sections</Label>
-              <div className="flex flex-wrap gap-2">
+              <Label id="reports-sections-label">Sections</Label>
+              <div role="group" aria-labelledby="reports-sections-label" className="flex flex-wrap gap-2">
                 {REPORT_SECTIONS.map((s) => {
                   const on = sections.has(s.key);
                   return (

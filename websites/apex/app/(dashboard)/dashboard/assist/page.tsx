@@ -357,9 +357,9 @@ export default function AssistInboxPage() {
                   </p>
                 )}
                 <div className="space-y-1.5">
-                  <Label>Status</Label>
+                  <Label htmlFor="assist-status">Status</Label>
                   <Select value={selected.status} onValueChange={(v) => triage({ status: v as SupportTicketStatus })}>
-                    <SelectTrigger disabled={acting}>
+                    <SelectTrigger id="assist-status" disabled={acting}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -372,9 +372,9 @@ export default function AssistInboxPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Priority</Label>
+                  <Label htmlFor="assist-priority">Priority</Label>
                   <Select value={selected.priority} onValueChange={(v) => triage({ priority: v as SupportTicketPriority })}>
-                    <SelectTrigger disabled={acting}>
+                    <SelectTrigger id="assist-priority" disabled={acting}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -387,8 +387,8 @@ export default function AssistInboxPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Assignee</Label>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Label id="assist-assignee-label">Assignee</Label>
+                  <div role="group" aria-labelledby="assist-assignee-label" className="flex items-center gap-2 text-sm text-muted-foreground">
                     <UserCircle className="h-4 w-4" />
                     {selected.assignedTo
                       ? selected.assignedTo.fullName || selected.assignedTo.username || "Assigned"

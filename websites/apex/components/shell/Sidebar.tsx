@@ -57,7 +57,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <aside
         className={cn(
           "fixed bottom-0 left-0 top-16 z-30 w-64 overflow-y-auto border-r border-border bg-sidebar transition-transform duration-200 ease-out lg:w-60 lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full max-lg:invisible"
         )}
       >
         <nav className="space-y-6 p-4">

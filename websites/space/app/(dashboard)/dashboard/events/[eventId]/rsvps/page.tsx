@@ -204,7 +204,7 @@ export default function EventRsvpsPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Button
+                  <Button aria-label="Edit"
                     variant="ghost"
                     size="sm"
                     onClick={() =>
@@ -219,7 +219,7 @@ export default function EventRsvpsPage() {
                   >
                     <PencilSimple className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => remove(t.id)}>
+                  <Button aria-label="Delete" variant="ghost" size="sm" onClick={() => remove(t.id)}>
                     <Trash className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>

@@ -176,14 +176,14 @@ export function SessionForm({
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Platform</Label>
+                <Label htmlFor="sessionform-platform">Platform</Label>
                 <Select
                   value={platform}
                   onValueChange={(v) =>
                     setPlatform(v as SessionPlatform)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="sessionform-platform">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,12 +221,12 @@ export function SessionForm({
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Format</Label>
+                  <Label htmlFor="sessionform-format">Format</Label>
                   <Select
                     value={interactive ? "interactive" : "broadcast"}
                     onValueChange={(v) => setInteractive(v === "interactive")}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="sessionform-format">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -267,12 +267,12 @@ export function SessionForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Duration</Label>
+                <Label htmlFor="sessionform-duration">Duration</Label>
                 <Select
                   value={String(durationMinutes)}
                   onValueChange={(v) => setDurationMinutes(Number(v))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="sessionform-duration">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -318,14 +318,14 @@ export function SessionForm({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Visibility</Label>
+              <Label htmlFor="sessionform-visibility">Visibility</Label>
               <Select
                 value={visibility}
                 onValueChange={(v) =>
                   setVisibility(v as SessionVisibility)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="sessionform-visibility">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

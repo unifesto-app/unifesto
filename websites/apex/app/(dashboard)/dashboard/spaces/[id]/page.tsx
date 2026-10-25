@@ -925,8 +925,8 @@ function AddMemberCard({
         {selected ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
-              <Label>Selected user</Label>
-              <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <Label id="id-selected-user-label">Selected user</Label>
+              <div role="group" aria-labelledby="id-selected-user-label" className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                 <span className="truncate">
                   {selected.fullName || selected.username || selected.email}
                   {selected.username && (
@@ -946,12 +946,12 @@ function AddMemberCard({
               </div>
             </div>
             <div className="space-y-1 sm:w-44">
-              <Label>Role</Label>
+              <Label htmlFor="id-role">Role</Label>
               <Select
                 value={role}
                 onValueChange={(v) => setRole(v as SpaceMemberRoleCode)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="id-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

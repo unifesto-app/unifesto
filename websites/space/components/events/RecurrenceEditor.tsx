@@ -156,8 +156,8 @@ export function RecurrenceEditor({
           {/* Weekday picker (weekly only) */}
           {value.freq === "WEEKLY" && (
             <div className="space-y-1.5">
-              <Label>On these days</Label>
-              <div className="flex flex-wrap gap-1.5">
+              <Label id="recurrenceeditor-on-these-days-label">On these days</Label>
+              <div role="group" aria-labelledby="recurrenceeditor-on-these-days-label" className="flex flex-wrap gap-1.5">
                 {WEEKDAY_LABELS.map((label, d) => {
                   const active = value.weekdays.includes(d);
                   return (
@@ -184,8 +184,8 @@ export function RecurrenceEditor({
 
           {/* End condition */}
           <div className="space-y-1.5">
-            <Label>Ends</Label>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <Label id="recurrenceeditor-ends-label">Ends</Label>
+            <div role="group" aria-labelledby="recurrenceeditor-ends-label" className="grid gap-2 sm:grid-cols-3">
               {(
                 [
                   { value: "count", label: "After" },
