@@ -1068,7 +1068,6 @@ model UserRole {
 
   // Constraints
   @@unique([userId, roleId, spaceId, eventId], name: "unique_user_role_scope")
-  @@index([userId])
   @@index([roleId])
   @@index([spaceId])
   @@index([eventId])
@@ -1199,7 +1198,6 @@ model Space {
   shortLinks               ShortLink[]
   deals                    Deal[]
 
-  @@index([slug])
   @@index([status])
   @@index([createdBy])
   @@index([type])
@@ -1660,7 +1658,6 @@ model Event {
   @@index([spaceId])
   @@index([status])
   @@index([startDateTime])
-  @@index([slug])
   @@index([createdBy])
   // Every listing filters `deletedAt: null`, so it belongs in the hot indexes.
   @@index([deletedAt])
@@ -2204,11 +2201,9 @@ model EventRegistration {
   // express a filtered unique index, so it is created in raw SQL — see
   // migration 20260815120000_registration_active_partial_unique. Keep this in
   // sync with the pre-create cleanup in RegistrationsService.createPaymentOrder.
-  @@index([eventId])
   @@index([eventId, updatedAt])
   @@index([orderId])
   @@index([userId])
-  @@index([qrCode])
   @@index([paymentStatus])
   @@index([checkedInBy])
   // Serves the organiser's queue view (per ticket type, in join order) and the
@@ -2432,7 +2427,6 @@ model GroupSeat {
   checkins EventGroupMemberCheckin[]
 
   @@unique([registrationId, seatIndex])
-  @@index([inviteToken])
   @@index([claimedByUserId])
   @@map("group_seats")
 }
@@ -3090,9 +3084,7 @@ model ApiLog {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([createdAt])
-  @@index([statusCode])
   @@index([method])
-  @@index([userId])
   @@index([statusCode, createdAt])
   @@index([userId, createdAt])
   // Prefix search (logs.service `startsWith`) under a non-C collation.
@@ -3400,7 +3392,6 @@ model Session {
   coHosts       SessionCoHost[]
 
   @@index([spaceId])
-  @@index([slug])
   @@index([status])
   @@index([startDateTime])
   @@index([createdBy])
@@ -4430,7 +4421,6 @@ model Certificate {
   @@index([templateId])
   @@index([eventId])
   @@index([userId])
-  @@index([verificationCode])
   @@index([status])
   @@map("certificates")
 }
@@ -4911,7 +4901,6 @@ model BlogPost {
   questions BlogQuestion[]
 
   @@index([status])
-  @@index([slug])
   @@index([category])
   @@map("blog_posts")
 }
