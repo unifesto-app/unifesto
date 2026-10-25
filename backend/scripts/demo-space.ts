@@ -17,6 +17,7 @@
  */
 import 'dotenv/config';
 import * as crypto from 'crypto';
+import { DEMO_SPACE_SLUG } from '../src/common/demo-data';
 import {
   EventStatus,
   EventType,
@@ -36,7 +37,7 @@ import {
 
 const prisma = new PrismaClient();
 
-const SLUG = 'aurora-tech-club';
+const SLUG = DEMO_SPACE_SLUG; // one source with the metrics exclusion (P23)
 const MOBILE_PREFIX = '+0999';
 const EMAIL_RE = /^demo\.\d+@example\.com$/;
 

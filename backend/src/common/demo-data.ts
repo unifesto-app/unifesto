@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
  * whose mobile starts `+0999`. These fragments keep it out of every platform
  * money/analytics aggregate without touching the rows. Keep in sync with the script.
  */
-export const DEMO_SPACE_SLUG = 'aurora-tech-club-demo';
+export const DEMO_SPACE_SLUG = 'aurora-tech-club';
 export const DEMO_MOBILE_PREFIX = '+0999';
 
 export const NOT_DEMO_SPACE: Prisma.SpaceWhereInput = { slug: { not: DEMO_SPACE_SLUG } };
