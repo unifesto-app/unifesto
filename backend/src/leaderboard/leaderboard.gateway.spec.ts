@@ -2,19 +2,13 @@ import { EventEmitter } from 'events';
 import * as jwt from 'jsonwebtoken';
 import { ENGAGEMENT_PING_MS, LeaderboardGateway, msUntilExpiry } from './leaderboard.gateway';
 
-// S36: socket auth in middleware, expiry disconnect, snapshot cache.
+// S36: socket auth in middleware, expiry disconnect. E8: no public score feed.
 describe('LeaderboardGateway', () => {
-  const build = (redisStore: Record<string, string> = {}, prisma: unknown = {}, authz: unknown = {}) => {
+  const build = (_unused: Record<string, string> = {}, prisma: unknown = {}, authz: unknown = {}) => {
     const auth = { validateAccessToken: jest.fn().mockResolvedValue({ id: 'u1' }) };
-    const leaderboard = { getPublicSnapshot: jest.fn().mockResolvedValue({ id: 'b1' }) };
-    const redis = {
-      get: jest.fn(async (k: string) => redisStore[k] ?? null),
-      set: jest.fn(async (k: string, v: string) => {
-        redisStore[k] = v;
-      }),
-    };
-    const gw = new LeaderboardGateway(auth as never, leaderboard as never, redis as never, prisma as never, authz as never);
-    return { gw, auth, leaderboard, redis };
+    const leaderboard = {};
+    const gw = new LeaderboardGateway(auth as never, leaderboard as never, prisma as never, authz as never);
+    return { gw, auth, leaderboard };
   };
 
   const socket = (token?: string) => {
@@ -56,11 +50,10 @@ describe('LeaderboardGateway', () => {
     expect(s.userId).toBeNull();
   });
 
-  it('serves repeat snapshots from the cache', async () => {
-    const { gw, leaderboard } = build();
-    await gw.cachedSnapshot('e1');
-    await gw.cachedSnapshot('e1');
-    expect(leaderboard.getPublicSnapshot).toHaveBeenCalledTimes(1);
+  it('has no legacy public score feed (E8)', () => {
+    const { gw } = build();
+    expect((gw as any).onSubscribe).toBeUndefined();
+    expect((gw as any).broadcast).toBeUndefined();
   });
 
   it('msUntilExpiry is null for tokens without exp', () => {

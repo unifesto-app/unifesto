@@ -371,6 +371,16 @@ describe('LeaderboardService (privacy rules)', () => {
       expect(round.entrants[0]).not.toHaveProperty('rank');
     });
 
+    it('E8: returns nothing to an outsider on a participants-only board', async () => {
+      const { svc, prisma } = buildParticipant(false) as any;
+      prisma.leaderboard.findUnique.mockResolvedValue({
+        ...baseBoard(false),
+        visibility: 'PARTICIPANTS_ONLY',
+      });
+      (svc as any).isEventPanelistOrManager = jest.fn().mockResolvedValue(false);
+      expect(await svc.getParticipantView(EVENT, 'stranger')).toBeNull();
+    });
+
     it('hides written feedback until the curator reveals it', async () => {
       const judgmentFindMany = jest.fn();
       const { svc } = buildParticipant(false, judgmentFindMany);

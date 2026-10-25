@@ -11,7 +11,6 @@ import { Namespace, Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { AuthService } from '../auth/auth.service';
 import { corsOriginCallback } from '../common/cors';
-import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationService } from '../auth/authorization';
 import { canJoinEngagement, displayTokenMatches, engagementRoom } from '../engagement/engagement.access';
@@ -21,11 +20,6 @@ interface AuthedSocket extends Socket {
   userId?: string | null;
 }
 
-const room = (eventId: string) => `board:${eventId}`;
-
-/** Reconnect storms re-read the same board; 2 s is fresh enough (S36). */
-const SNAPSHOT_CACHE_SECONDS = 2;
-const snapshotKey = (eventId: string) => `lb:snapshot:${eventId}`;
 const MAX_TIMER_MS = 2 ** 31 - 1;
 /**
  * Engagement pings per event are coalesced into one per window: a vote flood
@@ -84,7 +78,6 @@ export class LeaderboardGateway implements OnGatewayInit {
     private readonly authService: AuthService,
     @Inject(forwardRef(() => LeaderboardService))
     private readonly leaderboard: LeaderboardService,
-    private readonly redis: RedisService,
     private readonly prisma: PrismaService,
     private readonly authz: AuthorizationService,
   ) {}
@@ -124,48 +117,6 @@ export class LeaderboardGateway implements OnGatewayInit {
     const timer = setTimeout(() => client.disconnect(true), ms);
     timer.unref?.();
     client.once('disconnect', () => clearTimeout(timer));
-  }
-
-  /** getPublicSnapshot behind a 2 s shared cache; fails open without Redis. */
-  async cachedSnapshot(eventId: string) {
-    const key = snapshotKey(eventId);
-    try {
-      const hit = await this.redis.get(key);
-      if (hit !== null) return JSON.parse(hit);
-    } catch {
-      /* Redis down: read through */
-    }
-    const snapshot = await this.leaderboard.getPublicSnapshot(eventId);
-    this.redis
-      .set(key, JSON.stringify(snapshot), SNAPSHOT_CACHE_SECONDS)
-      .catch(() => undefined);
-    return snapshot;
-  }
-
-  @SubscribeMessage('subscribe')
-  async onSubscribe(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { eventId: string },
-  ) {
-    const eventId = body?.eventId;
-    if (!eventId) return { error: 'eventId required' };
-
-    const allowed = await this.leaderboard.canView(eventId, client.userId ?? null);
-    if (!allowed) {
-      return { error: 'not_authorized' };
-    }
-    client.join(room(eventId));
-    client.emit('snapshot', await this.cachedSnapshot(eventId));
-    return { ok: true };
-  }
-
-  @SubscribeMessage('unsubscribe')
-  onUnsubscribe(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { eventId: string },
-  ) {
-    if (body?.eventId) client.leave(room(body.eventId));
-    return { ok: true };
   }
 
   /**
@@ -271,15 +222,5 @@ export class LeaderboardGateway implements OnGatewayInit {
       this.server.to(engagementRoom(eventId)).emit('engagement:changed', { eventId });
     }, ENGAGEMENT_PING_MS);
     timer.unref?.();
-  }
-
-  /** Push a fresh ranked snapshot to everyone watching this event's board. */
-  broadcast(eventId: string, snapshot: unknown) {
-    if (!snapshot) return;
-    // Refresh the cache too, so a subscribe right after never sees the old board.
-    this.redis
-      .set(snapshotKey(eventId), JSON.stringify(snapshot), SNAPSHOT_CACHE_SECONDS)
-      .catch(() => undefined);
-    this.server.to(room(eventId)).emit('rank:update', snapshot);
   }
 }
