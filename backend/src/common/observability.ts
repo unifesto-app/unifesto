@@ -3,7 +3,9 @@ import type { IncomingMessage } from 'http';
 
 /**
  * Optional observability, all OFF unless its env var is set:
- *   SENTRY_DSN       report 5xx responses and cron failures to Sentry
+ *   SENTRY_DSN       report 5xx responses, cron, queue-job and event-listener
+ *                    failures, uncaught exceptions and unhandled rejections
+ *                    (the last two via @sentry/node default integrations)
  *   LOG_FORMAT=json  structured pino logs (nestjs-pino) instead of Nest's text logger
  *
  * Sentry is required lazily so an unset DSN costs nothing at boot.
@@ -52,4 +54,24 @@ export function requestIdFor(req: IncomingMessage): string {
   const pick = (v: string | string[] | undefined) =>
     (Array.isArray(v) ? v[0] : v)?.slice(0, 128);
   return pick(h['cf-ray']) || pick(h['x-request-id']) || randomUUID();
+}
+
+/**
+ * BullMQ `failed` handler body: report a job only when it is out of retries,
+ * so a transient blip that the next attempt fixes stays a log line.
+ */
+export function reportJobFailure(
+  queue: string,
+  job:
+    | {
+        id?: string;
+        name: string;
+        attemptsMade: number;
+        opts: { attempts?: number };
+      }
+    | undefined,
+  error: Error,
+): void {
+  if (job && job.attemptsMade < (job.opts.attempts ?? 1)) return;
+  reportError(error, { queue, job: job?.name, jobId: job?.id });
 }
