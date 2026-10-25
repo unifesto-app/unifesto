@@ -27,7 +27,7 @@ jobs:
     name: CI passed
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The OTA status report counts mobile commits on main: needs history.
           fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
@@ -105,7 +105,7 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ !cancelled() && steps.ota.outputs.ok == 'true' }}
         with:
           ref: ${{ github.event.pull_request.base.sha }}
