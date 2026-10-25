@@ -15,6 +15,7 @@ import { Roles, CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { FreeAttendeeAddService } from './free-attendee-add.service';
 import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestDto } from './dto';
+import { toPage, toLimit } from '../common/pagination';
 
 @Controller('free-attendee-add')
 export class FreeAttendeeAddController {
@@ -66,8 +67,8 @@ export class FreeAttendeeAddController {
   ) {
     return this.service.getAllRequests(
       status,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      toPage(page),
+      toLimit(limit, 20),
     );
   }
 

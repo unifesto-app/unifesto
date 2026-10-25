@@ -33,6 +33,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Action, Can, CanGuard } from '../auth/authorization';
 import { RoleCode, BillingModel, OrgPlan } from '@prisma/client';
+import { toPage, toLimit } from '../common/pagination';
 
 @ApiTags('Subscription')
 @ApiBearerAuth()
@@ -114,7 +115,7 @@ export class SubscriptionController {
     @Query('isActive') isActive?: string,
     @Query('search') search?: string,
   ) {
-    return this.subscriptionService.getAllSpaceSubscriptions(+page, +limit, {
+    return this.subscriptionService.getAllSpaceSubscriptions(toPage(page), toLimit(limit), {
       billingModel,
       plan,
       isActive:

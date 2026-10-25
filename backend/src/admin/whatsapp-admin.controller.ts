@@ -26,6 +26,7 @@ import {
   WhatsAppBroadcastDto,
   WhatsAppBroadcastTestDto,
 } from '../whatsapp/dto/broadcast.dto';
+import { toPage, toLimit } from '../common/pagination';
 
 /**
  * Admin-only WhatsApp inbox: read the messages the Business number received and
@@ -67,7 +68,7 @@ export class WhatsAppAdminController {
   broadcastUsers(@Query('search') search?: string, @Query('limit') limit?: string) {
     return this.whatsappService.searchBroadcastUsers(
       search ?? '',
-      limit ? parseInt(limit, 10) : undefined,
+      limit ? toLimit(limit) : undefined,
     );
   }
 
@@ -116,8 +117,8 @@ export class WhatsAppAdminController {
   ) {
     return this.whatsappService.listConversations({
       search,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: page ? toPage(page) : undefined,
+      limit: limit ? toLimit(limit) : undefined,
     });
   }
 

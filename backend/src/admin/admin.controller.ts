@@ -39,6 +39,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { RoleCode, SpaceStatus } from '@prisma/client';
+import { toPage, toLimit } from '../common/pagination';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -150,8 +151,8 @@ export class AdminController {
     @Query('search') search?: string,
   ) {
     return this.usersService.getAllUsers({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       search,
     });
   }
@@ -237,8 +238,8 @@ export class AdminController {
     @Query('search') search?: string,
   ) {
     return this.adminService.getAllSpacesAdmin({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       search,
     });
   }
@@ -339,8 +340,8 @@ export class AdminController {
     @Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string,
   ) {
     return this.adminService.getAllEvents({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       status,
       search,
       spaceId,
@@ -415,8 +416,8 @@ export class AdminController {
     @Query('deleted') deleted?: string,
   ) {
     return this.adminService.getAllSessions({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       status,
       search,
       // Anything but the two explicit opt-ins means the normal list, so a
@@ -442,8 +443,8 @@ export class AdminController {
     @Query('search') search?: string,
   ) {
     return this.adminService.getTransactions({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       status,
       search,
     });
