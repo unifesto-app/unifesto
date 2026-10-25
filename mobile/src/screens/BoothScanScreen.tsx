@@ -11,8 +11,10 @@ import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticl
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { Button } from '../components/ui';
 
 // Same rhythm as the door scanner: ignore the same QR for a moment, and keep
 // problems on screen longer than successes.
@@ -35,6 +37,7 @@ const buzz = (kind: ScanFeedback['kind']) => Vibration.vibrate(kind === 'success
  * so a repeat scan is told apart by the lead id we've already seen.
  */
 export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsorId: string; eventSponsorId: string }) {
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing(spacing[2]);
   const [permission, requestPermission] = useCameraPermissions();
@@ -103,26 +106,26 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
 
   if (!permission) {
     return (
-      <View style={[styles.root, styles.shell]}>
-        <StatusBar style="light" />
-        <ActivityIndicator color={WHITE} />
+      <View style={[styles.root, styles.shell, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <ActivityIndicator color={c.text} />
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={[styles.root, styles.shell]}>
-        <StatusBar style="light" />
-        <Camera size={48} color={WHITE} />
-        <Text style={styles.msgTitle}>Camera needed</Text>
-        <Text style={styles.msgBody}>Unifesto uses the camera only to read attendees' ticket QR codes at your booth.</Text>
-        <Pressable
+      <View style={[styles.root, styles.shell, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <Camera size={48} color={c.text} />
+        <Text style={[styles.msgTitle, { color: c.text }]} accessibilityRole="header">Camera needed</Text>
+        <Text style={[styles.msgBody, { color: c.soft }]}>Unifesto uses the camera only to read attendees' ticket QR codes at your booth.</Text>
+        <Button
+          label={permission.canAskAgain ? 'Allow camera' : 'Open settings'}
+          size="lg"
           onPress={() => (permission.canAskAgain ? void requestPermission() : void Linking.openSettings())}
-          style={({ pressed }) => [styles.msgBtn, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text style={styles.msgBtnText}>{permission.canAskAgain ? 'Allow camera' : 'Open settings'}</Text>
-        </Pressable>
+          style={{ marginTop: spacing[4], alignSelf: 'center' }}
+        />
       </View>
     );
   }
@@ -200,16 +203,14 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: GLASS,
   },
-  pillText: { color: WHITE, fontSize: typography.fontSize.sm, ...font('semibold') },
+  pillText: { color: WHITE, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
-  hint: { color: WHITE, fontSize: typography.fontSize.base, ...font('medium') },
+  hint: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
   tools: { flexDirection: 'row', gap: spacing[3] },
   tool: { height: 52, width: 52, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
   toolWide: { flex: 1, width: undefined, paddingHorizontal: spacing[4], backgroundColor: GLASS },
-  toolText: { color: WHITE_DIM, fontSize: typography.fontSize.xs, textAlign: 'center', ...font('medium') },
-  msgTitle: { color: WHITE, fontSize: typography.fontSize.xl, textAlign: 'center', ...font('heading') },
-  msgBody: { color: WHITE_DIM, fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...font() },
-  msgBtn: { marginTop: spacing[4], height: 48, paddingHorizontal: spacing[8], borderRadius: borderRadius.full, backgroundColor: WHITE, justifyContent: 'center' },
-  msgBtnText: { color: '#000000', fontSize: typography.fontSize.base, ...font('semibold') },
+  toolText: { color: WHITE_DIM, fontSize: typography.fontSize.xs, textAlign: 'center', ...cosmosFont.strong },
+  msgTitle: { fontSize: typography.fontSize.lg, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  msgBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

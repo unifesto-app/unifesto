@@ -4,7 +4,6 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
-  TouchableOpacity,
   Pressable,
   ScrollView,
   Modal,
@@ -37,10 +36,19 @@ import {
   isTrackReference,
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';
-import { useTheme } from '../context/ThemeContext';
-import { font } from '../theme/fontHelpers';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { Button } from '../components/ui';
 import { joinSession } from '../lib/api/sessions';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { cosmosCardRadius, cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
+
+// The call canvas is dark in any app theme (video reads best on black), so the
+// room uses the dark cosmos set; the joining states and the chat follow the app.
+const NIGHT = cosmosFor('dark');
+/** Names over a video frame. */
+const WHITE = '#ffffff';
 
 /**
  * In-app live room for a UNIFESTO_LIVE session, powered by LiveKit.
@@ -51,7 +59,7 @@ import { joinSession } from '../lib/api/sessions';
  * user and expires when the session's join window closes.
  */
 export default function LiveSessionScreen({ sessionId }: { sessionId: string }) {
-  const { colors } = useTheme();
+  const c = useCosmos();
   const router = useRouter();
 
   const [conn, setConn] = useState<{
@@ -106,9 +114,10 @@ export default function LiveSessionScreen({ sessionId }: { sessionId: string }) 
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
-        <Text style={[styles.msg, { color: colors.textSecondary }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <ActivityIndicator color={c.text} />
+        <Text style={[styles.msg, { color: c.soft }]}>
           Joining the live room…
         </Text>
       </View>
@@ -117,13 +126,14 @@ export default function LiveSessionScreen({ sessionId }: { sessionId: string }) 
 
   if (error || !conn) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={[styles.msg, { color: colors.text }]}>
-          {error || 'Could not join the room.'}
-        </Text>
-        <TouchableOpacity style={styles.leaveBtn} onPress={() => router.back()}>
-          <Text style={styles.leaveText}>Go back</Text>
-        </TouchableOpacity>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <View style={[styles.errorCard, { backgroundColor: c.raised }]}>
+          <Text style={[styles.msg, { color: c.soft, marginTop: 0 }]}>
+            {error || 'Could not join the room.'}
+          </Text>
+          <Button label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
+        </View>
       </View>
     );
   }
@@ -172,7 +182,7 @@ function RoomView({
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.grid}>
         {allTracks.length === 0 && (
-          <Text style={styles.waiting}>Waiting for video…</Text>
+          <Text style={[styles.waiting, { color: NIGHT.muted }]}>Waiting for video…</Text>
         )}
 
         {/* Screen shares span the full width so they're readable. */}
@@ -238,6 +248,7 @@ function ChatPanel({
   visible: boolean;
   onClose: () => void;
 }) {
+  const c = useCosmos();
   const { chatMessages, send } = useChat();
   const [draft, setDraft] = useState('');
 
@@ -255,14 +266,15 @@ function ChatPanel({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.chatContainer}
+        style={[styles.chatContainer, { backgroundColor: c.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.chatHeader}>
-          <Text style={styles.chatTitle}>Chat</Text>
-          <TouchableOpacity onPress={onClose}>
-            <X size={26} color="#fff" weight="bold" />
-          </TouchableOpacity>
+        <CosmosBackdrop horizon={false} />
+        <View style={[styles.chatHeader, { borderBottomColor: c.border }]}>
+          <Text style={[styles.chatTitle, { color: c.text }]} accessibilityRole="header">Chat</Text>
+          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close chat">
+            <X size={26} color={c.text} weight="bold" />
+          </Pressable>
         </View>
 
         <ScrollView
@@ -270,38 +282,44 @@ function ChatPanel({
           contentContainerStyle={{ padding: 16, gap: 12 }}
         >
           {chatMessages.length === 0 && (
-            <Text style={styles.waiting}>No messages yet. Say hello 👋</Text>
+            <Text style={[styles.waiting, { color: c.muted }]}>No messages yet. Say hello 👋</Text>
           )}
           {chatMessages.map((m) => (
             <View key={m.id ?? `${m.timestamp}-${m.from?.identity}`}>
-              <Text style={styles.chatFrom}>
+              <Text style={[styles.chatFrom, { color: c.muted }]}>
                 {m.from?.name || m.from?.identity || 'Someone'}
               </Text>
-              <Text style={styles.chatMessage}>{m.message}</Text>
+              <Text style={[styles.chatMessage, { color: c.text }]}>{m.message}</Text>
             </View>
           ))}
         </ScrollView>
 
-        <View style={styles.chatInputRow}>
+        <View style={[styles.chatInputRow, { borderTopColor: c.border }]}>
           <TextInput
-            style={styles.chatInput}
+            style={[styles.chatInput, { backgroundColor: c.card, borderColor: c.input, color: c.text }]}
             value={draft}
             onChangeText={setDraft}
             placeholder="Message…"
-            placeholderTextColor="#888"
+            placeholderTextColor={c.muted}
+            selectionColor={c.text}
             onSubmitEditing={handleSend}
             returnKeyType="send"
           />
-          <TouchableOpacity style={styles.chatSend} onPress={handleSend}>
-            <PaperPlaneRight size={20} color="#fff" weight="fill" />
-          </TouchableOpacity>
+          <Pressable
+            style={({ pressed }) => [styles.chatSend, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
+            onPress={handleSend}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+          >
+            <PaperPlaneRight size={20} color={c.primaryFg} weight="fill" />
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-// The call canvas is always dark, so the glass carries a fixed dark tint whatever the app theme.
+// The glass carries a fixed dark tint whatever the app theme.
 const CONTROL_TINT = 'rgba(42, 42, 42, 0.55)';
 
 /** Round call control: Liquid Glass on iOS 26+, flat dark disc elsewhere; Leave stays solid red. */
@@ -325,20 +343,21 @@ function CallControl({
       // Scale, not opacity: opacity breaks Liquid Glass.
       style={({ pressed }) => [
         styles.ctrl,
-        danger ? styles.leaveCtrl : glass ? { backgroundColor: 'transparent' } : null,
+        danger ? { backgroundColor: NIGHT.danger } : glass ? { backgroundColor: 'transparent' } : null,
         { transform: [{ scale: pressed ? 0.94 : 1 }] },
       ]}
     >
       {glass ? <GlassFill radius={28} tint={CONTROL_TINT} interactive /> : null}
-      <IconGlyph size={24} color="#fff" weight="fill" />
+      <IconGlyph size={24} color={danger ? NIGHT.primaryFg : NIGHT.text} weight="fill" />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: '#0a0a0a' },
+  fill: { flex: 1, backgroundColor: NIGHT.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  msg: { marginTop: 12, fontSize: 15, textAlign: 'center', ...font() },
+  errorCard: { alignSelf: 'stretch', borderRadius: cosmosCardRadius, padding: spacing[6] },
+  msg: { marginTop: 12, fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
   grid: {
     flexGrow: 1,
     flexDirection: 'row',
@@ -348,29 +367,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  waiting: { color: '#888', fontSize: 15, ...font() },
+  waiting: { fontSize: typography.fontSize.base, ...cosmosFont.body },
   tile: {
     width: '47%',
     aspectRatio: 3 / 4,
-    borderRadius: 12,
+    borderRadius: cosmosRadius,
     overflow: 'hidden',
-    backgroundColor: '#161616',
+    backgroundColor: NIGHT.raised,
   },
   screenTile: {
     width: '100%',
     aspectRatio: 16 / 9,
-    borderRadius: 12,
+    borderRadius: cosmosRadius,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: NIGHT.bg,
   },
   video: { flex: 1 },
   tileName: {
     position: 'absolute',
     bottom: 6,
     left: 8,
-    color: '#fff',
+    color: WHITE,
     fontSize: 12,
-    ...font('semibold'),
+    ...cosmosFont.strong,
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowRadius: 3,
   },
@@ -379,26 +398,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 20,
     paddingVertical: 20,
-    backgroundColor: '#111',
+    backgroundColor: NIGHT.card,
   },
   ctrl: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2a2a2a',
+    // A soft silver disc on the dark bar (the old #2a2a2a).
+    backgroundColor: NIGHT.input,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leaveCtrl: { backgroundColor: '#d11' },
-  leaveBtn: {
-    marginTop: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#2a2a2a',
-  },
-  leaveText: { color: '#fff', ...font('semibold') },
-  chatContainer: { flex: 1, backgroundColor: '#0a0a0a' },
+  chatContainer: { flex: 1 },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -407,35 +418,31 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingTop: 52,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#333',
   },
-  chatTitle: { color: '#fff', fontSize: 18, ...font('bold') },
+  chatTitle: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   chatList: { flex: 1 },
-  chatFrom: { color: '#9aa', fontSize: 12, marginBottom: 2, ...font('semibold') },
-  chatMessage: { color: '#fff', fontSize: 15, ...font() },
+  chatFrom: { fontSize: 12, marginBottom: 2, ...cosmosFont.strong },
+  chatMessage: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   chatInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     padding: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#333',
   },
   chatInput: {
     flex: 1,
-    backgroundColor: '#1c1c1c',
     borderRadius: 22,
+    borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    color: '#fff',
-    fontSize: 15,
-    ...font(),
+    fontSize: typography.fontSize.base,
+    ...cosmosFont.body,
   },
   chatSend: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#3491ff',
     alignItems: 'center',
     justifyContent: 'center',
   },

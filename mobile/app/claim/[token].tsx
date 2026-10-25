@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User, UserSwitch } from '@unifesto/unicon/react-native';
 import { useAuth } from '../../src/context/AuthContext';
@@ -8,7 +8,9 @@ import Skeleton from '../../src/components/Skeleton';
 import { Button } from '../../src/components/ui';
 import { AppAlert } from '../../src/components/ui/AppAlert';
 import { markClaimLinkHandled } from '../../src/services/claimLinks';
-import BrandGlow from '../../src/components/ui/BrandGlow';
+import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
+import CosmosScreen from '../../src/components/ui/CosmosScreen';
+import { GUTTER } from '../../src/components/home/Section';
 import { ActionBar, useActionBarSpace } from '../../src/components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import FormRow from '../../src/components/profile/FormRow';
@@ -22,9 +24,7 @@ import { borderRadius, spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
 import { markTicketsStale } from '../../src/lib/ticketsRefresh';
-import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../src/theme/cosmos';
 
 interface ClaimInfo {
   seatIndex: number;
@@ -190,13 +190,13 @@ export default function ClaimSeatRoute() {
   // ── Non-form states ──
   if (phase === 'loading') {
     return (
-      <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing + spacing[6], paddingHorizontal: GUTTER, alignItems: 'center' }]}>
+      <CosmosScreen contentContainerStyle={styles.loading}>
         {header}
         <Skeleton width={56} height={56} borderRadius={28} />
         <Skeleton width="70%" height={28} borderRadius={8} style={{ marginTop: spacing[5] }} />
         <Skeleton width="50%" height={14} borderRadius={6} style={{ marginTop: spacing[3] }} />
-        <Skeleton width="100%" height={170} borderRadius={borderRadius.xl} style={{ marginTop: spacing[8] }} />
-      </View>
+        <Skeleton width="100%" height={170} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[8] }} />
+      </CosmosScreen>
     );
   }
 
@@ -264,11 +264,11 @@ export default function ClaimSeatRoute() {
 
     return (
       <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
         {header}
-        <BrandGlow />
         <View style={[styles.state, { paddingTop: topSpacing }]}>
           {view.icon}
-          <Text style={[styles.stateTitle, { color: c.text }]}>{view.title}</Text>
+          <Text style={[styles.stateTitle, { color: c.text }]} accessibilityRole="header">{view.title}</Text>
           <Text style={[styles.stateBody, { color: c.soft }]}>{view.body}</Text>
           <Button label={view.action} size="lg" onPress={view.onAction} style={styles.stateButton} />
           {phase === 'already' ? (
@@ -293,21 +293,19 @@ export default function ClaimSeatRoute() {
 
   // ── Claim form ──
   return (
-    <View style={[styles.flex, { backgroundColor: c.bg }]}>
-      {header}
-      <BrandGlow />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={{ paddingTop: topSpacing + spacing[4], paddingHorizontal: GUTTER, paddingBottom: barSpace }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="on-drag"
+      bottom={barSpace}
+      contentContainerStyle={styles.pad}
+      footer={<ActionBar info={null} label="Claim my seat" disabled={!canClaim} loading={submitting} accent={c.primary} onPress={claim} />}
+    >
+          {header}
           <View style={styles.hero}>
             <Ticket size={56} color={c.primary} weight="duotone" />
             <Text style={[styles.kicker, { color: c.soft }]}>You've been invited to</Text>
-            <Text style={[styles.title, { color: c.text }]}>{info?.event?.title ?? 'an event'}</Text>
-            <Text style={[styles.meta, { color: c.muted }]}>
+            <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{info?.event?.title ?? 'an event'}</Text>
+            <Text style={[styles.meta, { color: c.soft }]}>
               Seat {info?.seatIndex} in a group ticket{info?.invitedEmail ? ` · for ${info.invitedEmail}` : ''}
             </Text>
           </View>
@@ -383,10 +381,9 @@ export default function ClaimSeatRoute() {
                       onPress={() => setGender(opt)}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: active }}
-                      style={({ pressed }) => [styles.chip, { backgroundColor: active ? c.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+                      style={({ pressed }) => [styles.chip, { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
                     >
-                      {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                      <Text style={[styles.chipText, { color: active ? c.bg : c.text }]}>{opt}</Text>
+                      <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{opt}</Text>
                     </Pressable>
                   );
                 })}
@@ -417,24 +414,21 @@ export default function ClaimSeatRoute() {
           <Text style={[styles.link, styles.decline, { color: c.soft }]} onPress={decline} accessibilityRole="button">
             Can't make it? Decline the invite
           </Text>
-        </ScrollView>
-
-        <ActionBar info={null} label="Claim my seat" disabled={!canClaim} loading={submitting} accent={c.primary} onPress={claim} />
-      </KeyboardAvoidingView>
-    </View>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  pad: { paddingHorizontal: GUTTER },
+  loading: { paddingHorizontal: GUTTER, paddingTop: spacing[6], alignItems: 'center' },
   hero: { alignItems: 'center', paddingHorizontal: spacing[2] },
   kicker: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: {
     marginTop: spacing[1],
     textAlign: 'center',
     fontSize: typography.fontSize['2xl'],
-    lineHeight: typography.fontSize['2xl'] * 1.2,
-    
+    lineHeight: typography.fontSize['2xl'] * 1.35,
     ...cosmosFont.display,
   },
   meta: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
@@ -457,7 +451,7 @@ const styles = StyleSheet.create({
   link: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.strong },
   decline: { marginTop: spacing[4] },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8] },
-  stateTitle: { marginTop: spacing[5], fontSize: typography.fontSize['2xl'], textAlign: 'center', ...cosmosFont.display },
+  stateTitle: { marginTop: spacing[5], fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   stateBody: {
     marginTop: spacing[2],
     fontSize: typography.fontSize.base,

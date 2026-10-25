@@ -1,21 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { CheckCircle, CircleDashed, Info, XCircle } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../src/hooks/useTopSpacing';
 import Skeleton from '../../src/components/Skeleton';
+import CosmosScreen from '../../src/components/ui/CosmosScreen';
+import { GUTTER } from '../../src/components/home/Section';
+import { Button } from '../../src/components/ui';
 import { borderRadius, spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import {
@@ -26,9 +18,7 @@ import {
   type RefundStatus,
 } from '../../src/lib/api/refunds';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
-import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
 
 /** Visual state a single timeline step can be in. */
 type StepState = 'done' | 'current' | 'rejected' | 'skipped' | 'pending';
@@ -108,7 +98,6 @@ const QUICK_REASONS = ["Can't make it anymore", 'Event details changed', 'Bought
 export default function RefundRoute() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{ registrationId: string; eventTitle?: string; eventCompleted?: string }>();
   const registrationId = String(params.registrationId ?? '');
   const eventTitle = params.eventTitle ? String(params.eventTitle) : 'this event';
@@ -163,23 +152,17 @@ export default function RefundRoute() {
     tone === 'success' ? c.success : tone === 'error' ? c.danger : c.warn;
 
   return (
-    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+    <>
       <Stack.Screen options={{ title: 'Refund', headerShown: true }} />
 
       {loading ? (
-        <View style={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, gap: spacing[4] }}>
+        <CosmosScreen contentContainerStyle={[styles.pad, { gap: spacing[4] }]}>
           <Skeleton width="70%" height={26} borderRadius={8} />
-          <Skeleton width="100%" height={220} borderRadius={borderRadius.xl} />
-        </View>
+          <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} />
+        </CosmosScreen>
       ) : (
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[10] + insets.bottom }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={[styles.eventTitle, { color: c.text }]}>{latest?.event?.title || eventTitle}</Text>
+        <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={spacing[10] + insets.bottom} contentContainerStyle={styles.pad}>
+            <Text style={[styles.eventTitle, { color: c.text }]} accessibilityRole="header">{latest?.event?.title || eventTitle}</Text>
 
             {/* ── Progress of the latest request ── */}
             {latest ? (() => {
@@ -188,7 +171,7 @@ export default function RefundRoute() {
               return (
                 <View style={[styles.card]}>
                   <CardBackdrop shape={styles.card} />
-                  <View style={[styles.chip, { backgroundColor: tone + '22' }]}>
+                  <View style={[styles.chip, { backgroundColor: `${tone}26` }]}>
                     <Text style={[styles.chipText, { color: tone }]}>{summary.label}</Text>
                   </View>
 
@@ -238,13 +221,14 @@ export default function RefundRoute() {
                           setReason(r);
                           setError('');
                         }}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
                         style={({ pressed }) => [
                           styles.reasonChip,
-                          { backgroundColor: active ? c.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                          { backgroundColor: active ? c.primary : undefined, borderColor: active ? c.primary : c.input, transform: [{ scale: pressed ? 0.96 : 1 }] },
                         ]}
                       >
-                        {!active ? <CardBackdrop shape={styles.reasonChip} /> : null}
-                        <Text style={[styles.reasonChipText, { color: active ? c.bg : c.text }]}>{r}</Text>
+                        <Text style={[styles.reasonChipText, { color: active ? c.primaryFg : c.text }]}>{r}</Text>
                       </Pressable>
                     );
                   })}
@@ -258,10 +242,10 @@ export default function RefundRoute() {
                   }}
                   placeholder="Tell us a little more"
                   placeholderTextColor={c.muted}
-                  selectionColor={c.primary}
+                  selectionColor={c.text}
                   multiline
                   editable={!submitting}
-                  style={[styles.input, { backgroundColor: c.tint, color: c.text }]}
+                  style={[styles.input, { backgroundColor: c.card, borderColor: c.input, color: c.text }]}
                 />
 
                 <View style={styles.note}>
@@ -273,17 +257,7 @@ export default function RefundRoute() {
 
                 {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
-                <Pressable
-                  onPress={submit}
-                  disabled={submitting}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.submit,
-                    { backgroundColor: c.primary, opacity: submitting ? 0.7 : pressed ? 0.85 : 1 },
-                  ]}
-                >
-                  {submitting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitText}>Submit request</Text>}
-                </Pressable>
+                <Button label="Submit request" size="lg" fullWidth loading={submitting} onPress={submit} style={{ marginTop: spacing[5] }} />
               </View>
             ) : null}
 
@@ -328,10 +302,9 @@ export default function RefundRoute() {
                 </View>
               </View>
             ) : null}
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </CosmosScreen>
       )}
-    </View>
+    </>
   );
 }
 
@@ -390,15 +363,14 @@ function StepRow({ step, isLast }: { step: ProgressStep; isLast: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  pad: { paddingHorizontal: GUTTER },
   eventTitle: {
-    fontSize: typography.fontSize['2xl'],
-    lineHeight: typography.fontSize['2xl'] * 1.2,
-    
+    fontSize: typography.fontSize.xl,
+    lineHeight: typography.fontSize.xl * 1.4,
     marginBottom: spacing[5],
     ...cosmosFont.display,
   },
-  card: { borderRadius: borderRadius.xl, padding: spacing[5] },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   chip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: borderRadius.full },
   chipText: { fontSize: 12, ...cosmosFont.strong },
   stepRow: { flexDirection: 'row', gap: spacing[3] },
@@ -409,19 +381,20 @@ const styles = StyleSheet.create({
   liveWrap: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
   liveDot: { width: 12, height: 12, borderRadius: 6 },
-  amountBox: { marginTop: spacing[5], padding: spacing[4], borderRadius: borderRadius.lg, gap: 2 },
+  amountBox: { marginTop: spacing[5], padding: spacing[4], borderRadius: cosmosRadius, gap: 2 },
   amountLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  amount: { fontSize: typography.fontSize['3xl'], ...cosmosFont.display },
+  amount: { fontSize: typography.fontSize['3xl'], lineHeight: 38, ...cosmosFont.figure },
   small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  cardTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.display },
+  cardTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   body: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[4] },
-  reasonChip: { paddingHorizontal: 14, height: 36, borderRadius: borderRadius.full, justifyContent: 'center' },
+  reasonChip: { paddingHorizontal: 14, height: 36, borderRadius: borderRadius.full, borderWidth: 1, justifyContent: 'center' },
   reasonChipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   input: {
     marginTop: spacing[3],
     minHeight: 100,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
     padding: spacing[4],
     fontSize: typography.fontSize.base,
     textAlignVertical: 'top',
@@ -429,12 +402,10 @@ const styles = StyleSheet.create({
   },
   note: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[4] },
   error: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  submit: { marginTop: spacing[5], height: 52, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
-  submitText: { color: '#ffffff', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   hint: { marginTop: spacing[5], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', ...cosmosFont.body },
   groupTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...cosmosFont.strong },
   earlierRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[3] },
   earlierTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  earlierAmount: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  earlierAmount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   divider: { height: StyleSheet.hairlineWidth },
 });

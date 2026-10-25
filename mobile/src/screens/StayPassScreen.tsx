@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import RazorpayCheckout from 'react-native-razorpay';
@@ -16,13 +16,13 @@ import {
   UsersThree,
   XCircle,
 } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import {
   cancelMyStay,
   createStayOrder,
@@ -37,9 +37,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -53,7 +51,6 @@ export default function StayPassScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing(8);
   const { width } = useWindowDimensions();
   const { user } = useAuth();
   const [b, setB] = useState<StayBooking | null>(null);
@@ -79,9 +76,16 @@ export default function StayPassScreen() {
 
   if (!b) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -89,11 +93,8 @@ export default function StayPassScreen() {
   const closed = b.status === 'REJECTED' || b.status === 'CANCELLED' || b.status === 'EXPIRED';
   const paidOnline = b.paymentMode === 'ONLINE' && b.paymentStatus === 'PAID';
   const canCancel = (b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT' || b.status === 'CONFIRMED') && !paidOnline;
-  const badge = closed
-    ? { color: c.danger, bg: 'rgba(239,68,68,0.14)' }
-    : b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT'
-      ? { color: c.warn, bg: 'rgba(245,158,11,0.14)' }
-      : { color: c.success, bg: 'rgba(16,185,129,0.14)' };
+  const badgeColor = closed ? c.danger : b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT' ? c.warn : c.success;
+  const badge = { color: badgeColor, bg: `${badgeColor}26` };
 
   const pay = async () => {
     setPaying(true);
@@ -169,33 +170,24 @@ export default function StayPassScreen() {
     ]);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.pad}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {/* ── The pass ── */}
       <View style={styles.pass}>
         <CardBackdrop shape={styles.pass} />
         <View style={styles.passTop}>
-          <Text style={[styles.kicker, { color: c.primary }]}>UNIFESTO STAY PASS</Text>
+          <Text style={[styles.kicker, { color: c.muted }]}>Unifesto Stay Pass</Text>
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
             <Text style={[styles.badgeText, { color: badge.color }]}>{STATUS_LABELS[b.status]}</Text>
           </View>
-          <Text style={[styles.title, { color: c.text }]}>{b.stay.name}</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{b.stay.name}</Text>
           <Text style={[styles.sub, { color: c.soft }]}>
             {b.option.name} · {b.event.title}
           </Text>
@@ -340,7 +332,7 @@ export default function StayPassScreen() {
           />
         </SettingsGroup>
       ) : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -368,14 +360,15 @@ function StubMessage({ icon, title, children }: { icon: React.ReactNode; title: 
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  pass: { borderRadius: borderRadius['2xl'], overflow: 'hidden' },
+  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   passTop: { padding: spacing[5], gap: spacing[2] },
-  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.5, ...cosmosFont.strong },
+  kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: borderRadius.full },
   badgeText: { fontSize: 12, ...cosmosFont.strong },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
+  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.4, ...cosmosFont.display },
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   facts: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   fact: { flex: 1, gap: 3 },
@@ -389,10 +382,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1.5,
     borderStyle: 'dashed',
   },
-  qr: { padding: 14, borderRadius: borderRadius.xl, backgroundColor: '#ffffff' },
-  code: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  qr: { padding: 14, borderRadius: cosmosRadius, backgroundColor: '#ffffff' },
+  code: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   stubMsg: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
-  stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.display },
+  stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
   body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

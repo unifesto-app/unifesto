@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Lifebuoy, MagnifyingGlass, QrCode } from '@unifesto/unicon/react-native';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
@@ -10,7 +9,8 @@ import { useIsOffline } from '../lib/offline/connectivity';
 import { offlineStats, pullChanges } from '../lib/offline/checkinQueue';
 import { undoCheckin, type RecentCheckin } from '../lib/api/checkin';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import CheckinProgressCard from '../components/checkin/CheckinProgressCard';
 import OfflineCheckinPanel from '../components/checkin/OfflineCheckinPanel';
 import PersonRow from '../components/checkin/PersonRow';
@@ -22,9 +22,7 @@ import { relativeWhen } from '../utils/eventFormat';
 import { checkinPhase, timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[5];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * One event's door: live progress, the two ways to check people in, and the
@@ -34,7 +32,6 @@ const GUTTER = spacing[5];
 export default function EventCheckinScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const params = useLocalSearchParams<{ eventId: string; title?: string; startDateTime?: string; venueName?: string }>();
   const { eventId } = params;
 
@@ -100,20 +97,7 @@ export default function EventCheckinScreen() {
   const toolParams = { checkinTypeId: pointId || (points.length === 1 ? points[0].id : '') };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={hub.refreshing}
-          onRefresh={hub.refresh}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
+    <CosmosScreen refreshing={hub.refreshing} onRefresh={hub.refresh}>
       {/* Identity */}
       <View style={styles.gutter}>
         {live ? (
@@ -124,7 +108,7 @@ export default function EventCheckinScreen() {
         ) : start ? (
           <Text style={[styles.eyebrow, { color: c.primary }]}>{relativeWhen(start)}</Text>
         ) : null}
-        <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={3} accessibilityRole="header">
           {title}
         </Text>
         {venue ? (
@@ -143,9 +127,9 @@ export default function EventCheckinScreen() {
       {/* Progress */}
       <View style={[styles.gutter, { marginTop: spacing[5] }]}>
         {hub.error && !stats ? (
-          <View style={styles.errorBox}>
-            <Text style={[styles.venue, { color: c.muted }]}>{hub.error}</Text>
-            <Button label="Try again" variant="secondary" size="sm" onPress={hub.retry} />
+          <View style={[styles.errorBox, { backgroundColor: c.raised }]}>
+            <Text style={[styles.errorText, { color: c.soft }]}>{hub.error}</Text>
+            <Button label="Try again" variant="secondary" onPress={hub.retry} style={{ alignSelf: 'center' }} />
           </View>
         ) : (
           <CheckinProgressCard stats={stats} loading={hub.loading && !localStats} />
@@ -213,20 +197,20 @@ export default function EventCheckinScreen() {
           )}
         </SettingsGroup>
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing[12] },
   gutter: { paddingHorizontal: GUTTER },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  title: { fontSize: typography.fontSize['3xl'], lineHeight: 36, marginTop: spacing[1], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 32, marginTop: spacing[1], ...cosmosFont.display },
   venue: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.body },
   chips: { marginTop: spacing[5] },
-  errorBox: { alignItems: 'flex-start', gap: spacing[3], paddingVertical: spacing[4] },
+  errorBox: { gap: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  errorText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   actions: { gap: spacing[3], marginTop: spacing[5] },
   placeholder: { fontSize: typography.fontSize.sm, padding: spacing[4], lineHeight: 20, ...cosmosFont.body },
 });

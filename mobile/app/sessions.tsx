@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { VideoCamera } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../src/components/ui/CardSurface';
+import CosmosBackdrop from '../src/components/ui/CosmosBackdrop';
+import { GUTTER } from '../src/components/home/Section';
 import useTopSpacing from '../src/hooks/useTopSpacing';
 import Skeleton from '../src/components/Skeleton';
 import { getMySessions, listSessions, PLATFORM_LABELS, type Session } from '../src/lib/api/sessions';
@@ -14,9 +16,8 @@ import { useAuth } from '../src/context/AuthContext';
 import { formatTime } from '../src/utils/eventFormat';
 import { borderRadius, spacing } from '../src/theme/spacing';
 import { typography } from '../src/theme/typography';
-import { cosmosFont, useCosmos } from '../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../src/theme/cosmos';
 
-const GUTTER = spacing[6];
 // Session covers follow the event banner ratio: 4:3.
 const THUMB_W = 104;
 const THUMB_H = 78;
@@ -42,7 +43,7 @@ function dayLabel(d: Date, now = new Date()) {
 export default function SessionsListScreen() {
   const c = useCosmos();
   const router = useRouter();
-  const topSpacing = useTopSpacing(8);
+  const topSpacing = useTopSpacing();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,9 +93,12 @@ export default function SessionsListScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       <Stack.Screen options={{ title: 'Unifesto Huddle', headerShown: true }} />
       <SectionList
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[12] }}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -103,8 +107,8 @@ export default function SessionsListScreen() {
               setRefreshing(true);
               void load();
             }}
-            tintColor={c.primary}
-            colors={[c.primary]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
@@ -113,7 +117,7 @@ export default function SessionsListScreen() {
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <>
-            <Text style={[styles.title, { color: c.text }]}>Live and upcoming</Text>
+            <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">Live and upcoming</Text>
             <Text style={[styles.lead, { color: c.soft }]}>Online talks and workshops from spaces on Unifesto.</Text>
 
             {mine.length > 0 ? (
@@ -135,13 +139,15 @@ export default function SessionsListScreen() {
                     <Pressable
                       key={p ?? 'all'}
                       onPress={() => setPlatform(p)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
                       style={({ pressed }) => [
                         styles.chip,
-                        { backgroundColor: active ? c.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                        { backgroundColor: active ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                       ]}
                     >
                       {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                      <Text style={[styles.chipText, { color: active ? c.bg : c.text }]}>{p ?? 'All'}</Text>
+                      <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{p ?? 'All'}</Text>
                     </Pressable>
                   );
                 })}
@@ -163,10 +169,10 @@ export default function SessionsListScreen() {
               ))}
             </View>
           ) : (
-            <View style={styles.empty}>
-              <VideoCamera size={48} color={c.soft} weight="duotone" />
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <VideoCamera size={40} color={c.muted} weight="duotone" />
               <Text style={[styles.emptyTitle, { color: c.text }]}>No sessions coming up</Text>
-              <Text style={[styles.emptyBody, { color: c.muted }]}>
+              <Text style={[styles.emptyBody, { color: c.soft }]}>
                 When spaces schedule online talks or workshops, they show up here.
               </Text>
             </View>
@@ -240,7 +246,7 @@ function LiveChip({ color }: { color: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   lead: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   chipsWrap: { marginTop: spacing[5], marginHorizontal: -GUTTER },
   chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
@@ -256,7 +262,7 @@ const styles = StyleSheet.create({
   liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
   liveText: { fontSize: 12, ...cosmosFont.strong },
-  empty: { alignItems: 'center', paddingTop: spacing[16], paddingHorizontal: spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...cosmosFont.display },
+  empty: { alignItems: 'center', marginTop: spacing[6], padding: spacing[6], borderRadius: cosmosCardRadius },
+  emptyTitle: { marginTop: spacing[3], fontSize: typography.fontSize.base, ...cosmosFont.strong },
   emptyBody: { marginTop: 6, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

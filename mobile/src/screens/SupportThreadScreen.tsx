@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { cancelAccountDeletion } from '../lib/api/profile';
 import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import {
   assistStep,
   closeTicket,
@@ -25,7 +27,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * One Assist case. The person who raised it gets the conversation, a reply box
@@ -135,9 +137,16 @@ export default function SupportThreadScreen() {
 
   if (!ticket) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {missing ? <Text style={[styles.meta, { color: c.muted }]}>This request couldn't be opened.</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {missing ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>This request couldn't be opened.</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -169,6 +178,7 @@ export default function SupportThreadScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <CosmosBackdrop horizon={false} />
       <Stack.Screen options={{ title: `#${ticket.ticketNumber}` }} />
       <ScrollView
         ref={scroll}
@@ -178,7 +188,7 @@ export default function SupportThreadScreen() {
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
       >
-        <Text style={[styles.subject, { color: c.text }]}>{ticket.subject}</Text>
+        <Text style={[styles.subject, { color: c.text }]} accessibilityRole="header">{ticket.subject}</Text>
         <Text style={[styles.meta, { color: c.muted }]}>{meta.filter(Boolean).join(' · ')}</Text>
 
         <View style={{ marginTop: spacing[5] }}>
@@ -230,8 +240,9 @@ export default function SupportThreadScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  subject: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
+  subject: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   action: { marginTop: spacing[6], alignSelf: 'center' },

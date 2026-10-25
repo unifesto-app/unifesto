@@ -5,7 +5,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt } from '@unifesto/unicon/react-native';
-import BrandGlow from '../components/ui/BrandGlow';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -18,7 +18,7 @@ import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { markTicketsStale } from '../lib/ticketsRefresh';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
 
@@ -117,7 +117,7 @@ export default function RegistrationSuccessScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
-      <BrandGlow />
+      <CosmosBackdrop horizon={false} />
       <SheetTop fill>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: spacing[10], paddingBottom: barSpace }]} showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.center, popStyle]}>
@@ -125,7 +125,7 @@ export default function RegistrationSuccessScreen() {
         </Animated.View>
 
         <Animated.View style={riseStyle}>
-          <Text style={[styles.title, { color: c.text }]}>You're going</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">You're going</Text>
           <Text style={[styles.sub, { color: c.soft }]}>
             Your spot at {title} is confirmed.
           </Text>
@@ -164,7 +164,7 @@ export default function RegistrationSuccessScreen() {
               ) : null}
               <View style={styles.passRow}>
                 <Text style={[styles.meta, { color: c.muted }]}>{total === 0 ? 'Price' : 'Paid'}</Text>
-                <Text style={[styles.passValue, { color: c.text }]}>{total === 0 ? 'Free' : money(currency, total)}</Text>
+                <Text style={[styles.passValue, styles.figure, { color: c.text }]}>{total === 0 ? 'Free' : money(currency, total)}</Text>
               </View>
             </View>
           </View>
@@ -173,7 +173,7 @@ export default function RegistrationSuccessScreen() {
             <Pressable
               onPress={() => router.push(`/group/${registration.id}`)}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.invite, { opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [styles.invite, { backgroundColor: c.raised, opacity: pressed ? 0.85 : 1 }]}
             >
               <PaperPlaneTilt size={28} color={c.primary} weight="duotone" />
               <View style={{ flex: 1 }}>
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
     textAlign: 'center',
     fontSize: typography.fontSize['3xl'],
-    
+    lineHeight: 38,
     ...cosmosFont.display,
   },
   sub: {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     ...cosmosFont.body,
   },
-  pass: { marginTop: spacing[8], borderRadius: borderRadius.xl, overflow: 'hidden' },
+  pass: { marginTop: spacing[8], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   passTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[5] },
   cover: { width: 88, height: 66, borderRadius: borderRadius.md, overflow: 'hidden' },
   passTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, marginBottom: 4, ...cosmosFont.strong },
@@ -238,14 +238,14 @@ const styles = StyleSheet.create({
   passRows: { padding: spacing[5], paddingTop: spacing[3], gap: spacing[3] },
   passRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[4] },
   passValue: { flexShrink: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  figure: { ...cosmosFont.figure },
   invite: {
     marginTop: spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],
     padding: spacing[5],
-    borderRadius: borderRadius.xl,
-    backgroundColor: 'rgba(52,145,255,0.14)',
+    borderRadius: cosmosCardRadius,
   },
   explore: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

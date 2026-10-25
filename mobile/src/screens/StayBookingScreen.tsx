@@ -1,15 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -21,7 +11,8 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { getProfile } from '../lib/api/profile';
 import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
 import {
@@ -44,9 +35,8 @@ import {
 import { firstFormProblem, visibleFields, type FileAnswer } from '../utils/formQuestions';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const GENDERS: GuestGender[] = ['MALE', 'FEMALE', 'OTHER'];
 
 interface GuestDraft {
@@ -74,7 +64,6 @@ export default function StayBookingScreen() {
   const router = useRouter();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const { user } = useAuth();
   const [stay, setStay] = useState<Stay | null>(null);
   const [option, setOption] = useState<StayOption | null>(null);
@@ -132,10 +121,16 @@ export default function StayBookingScreen() {
 
   if (!stay || !option) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title: 'Book a stay' }} />
-        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -207,16 +202,10 @@ export default function StayBookingScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={60 + insets.bottom} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Book a stay' }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 60 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.kicker, { color: c.primary }]}>{stay.name.toUpperCase()}</Text>
-        <Text style={[styles.title, { color: c.text }]}>{option.name}</Text>
+        <Text style={[styles.kicker, { color: c.muted }]}>{stay.name}</Text>
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{option.name}</Text>
         <Text style={[styles.muted, { color: c.soft, textAlign: 'left' }]}>
           {[priceLabel(option), option.gender !== 'ANY' ? GENDER_LABELS[option.gender] : null].filter(Boolean).join(' · ')}
         </Text>
@@ -367,8 +356,7 @@ export default function StayBookingScreen() {
           onPress={() => void submit()}
           style={{ marginTop: spacing[5] }}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
@@ -466,7 +454,7 @@ function IdProofPicker({
           accessibilityRole="button"
           style={({ pressed }) => [styles.file, { backgroundColor: c.tint, opacity: pressed ? 0.85 : 1 }]}
         >
-          {busy ? <ActivityIndicator color={c.primary} /> : <IdentificationCard size={20} color={c.primary} />}
+          {busy ? <ActivityIndicator color={c.text} /> : <IdentificationCard size={20} color={c.primary} />}
           <Text style={[styles.fileName, { color: c.primary }]}>{busy ? 'Uploading…' : 'Upload college or government ID'}</Text>
         </Pressable>
       )}
@@ -477,15 +465,15 @@ function IdProofPicker({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.2, ...cosmosFont.strong },
-  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   block: { marginTop: spacing[6] },
   dayRow: { gap: spacing[2], paddingRight: spacing[4] },
-  day: { width: 64, paddingVertical: spacing[2], borderRadius: borderRadius.lg, alignItems: 'center', gap: 1 },
+  day: { width: 64, paddingVertical: spacing[2], borderRadius: cosmosRadius, alignItems: 'center', gap: 1 },
   dayWeek: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  dayNum: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  dayNum: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   daySub: { marginTop: 2, fontSize: 10, ...cosmosFont.strong },
   hint: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   inner: { paddingHorizontal: spacing[4], paddingTop: spacing[3], paddingBottom: spacing[2] },
@@ -501,7 +489,7 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
   },
   fileName: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

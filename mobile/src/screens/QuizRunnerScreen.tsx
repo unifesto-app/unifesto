@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import { getManagedQuizzes, stepQuiz, type ManagedQuiz } from '../lib/api/quizzes';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
@@ -10,9 +10,8 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 /** Answer counts move without a ping; refetch this often while a quiz runs. */
 const LIVE_REFRESH_MS = 2000;
 const STATUS_LABEL = { DRAFT: 'Draft', LIVE: 'Live', ENDED: 'Ended' } as const;
@@ -26,7 +25,6 @@ const ms = (iso: string | null) => (iso ? new Date(iso).getTime() : 0);
 export default function QuizRunnerScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [quizzes, setQuizzes] = useState<ManagedQuiz[] | null>(null);
   const [skew, setSkew] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -83,40 +81,39 @@ export default function QuizRunnerScreen() {
 
   if (!quizzes) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   const serverNow = now + skew;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      bottom={140}
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <Text style={[styles.intro, { color: c.soft }]}>
         Build quizzes on the Space dashboard on the web. Run them from here: attendees answer from their ticket and
         the leaderboard updates after each question.
       </Text>
-      {error ? <Text style={[styles.intro, { color: c.danger }]}>{error}</Text> : null}
+      {error ? (
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
+        </View>
+      ) : null}
       {!quizzes.length && !error ? (
-        <Text style={[styles.intro, { color: c.muted }]}>No quizzes for this event yet.</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>No quizzes for this event yet.</Text>
+        </View>
       ) : null}
 
       {quizzes.map((z) => {
@@ -181,13 +178,14 @@ export default function QuizRunnerScreen() {
           </SettingsGroup>
         );
       })}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 140, gap: spacing[4] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: GUTTER, gap: spacing[4] },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   quiz: { padding: spacing[4], gap: spacing[3] },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

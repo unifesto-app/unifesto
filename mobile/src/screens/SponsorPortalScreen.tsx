@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Export, QrCode } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { getPortalLeads, type PortalLead } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
 import { shareCsv, slugPart } from '../lib/csvShare';
@@ -18,9 +18,8 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -33,7 +32,6 @@ export default function SponsorPortalScreen() {
   const { sponsorId } = useLocalSearchParams<{ sponsorId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const { sponsorships, refresh: refreshAccess } = useSpaceAccess();
   const sponsor = sponsorships.find((s) => s.sponsorId === sponsorId);
   const [leads, setLeads] = useState<PortalLead[] | null>(null);
@@ -89,35 +87,28 @@ export default function SponsorPortalScreen() {
 
   if (!sponsor) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted }]}>This sponsor isn't linked to your account any more.</Text>
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>This sponsor isn't linked to your account any more.</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await Promise.all([load(), refreshAccess()]);
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await Promise.all([load(), refreshAccess()]);
+        setRefreshing(false);
+      }}
     >
       <View style={styles.hero}>
         <SponsorMark name={sponsor.name} logoUrl={sponsor.logoUrl} size={64} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
             {sponsor.name}
           </Text>
           <Text style={[styles.muted, { color: c.muted }]}>Sponsoring with {sponsor.spaceName}</Text>
@@ -158,7 +149,7 @@ export default function SponsorPortalScreen() {
       </View>
 
       <View style={{ marginTop: spacing[8] }}>
-        <Text style={[styles.section, { color: c.text }]}>Leads</Text>
+        <Text style={[styles.section, { color: c.text }]} accessibilityRole="header">Leads</Text>
         {events.length > 1 ? (
           <View style={{ marginTop: spacing[3] }}>
             <ChipPicker options={events.map((e) => ({ value: e.eventId, label: e.title }))} value={eventFilter} onChange={setEventFilter} clearable />
@@ -167,7 +158,7 @@ export default function SponsorPortalScreen() {
         {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
         <View style={{ marginTop: spacing[3] }}>
           {!leads ? (
-            <ActivityIndicator color={c.primary} />
+            <ActivityIndicator color={c.text} />
           ) : (
             <SettingsGroup plain>
               {shown.length === 0 ? <SettingsRow label="No leads yet" /> : null}
@@ -193,16 +184,17 @@ export default function SponsorPortalScreen() {
           />
         ) : null}
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  name: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.15, ...cosmosFont.display },
-  section: { fontSize: typography.fontSize.lg, ...cosmosFont.display },
+  name: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.35, ...cosmosFont.display },
+  section: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'left', ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },

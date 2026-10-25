@@ -3,11 +3,11 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bed, CaretRight, House, MapPin, Moon } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import {
   dayLabel,
   GENDER_LABELS,
@@ -22,9 +22,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Unifesto Stay for one event: the places the event team has arranged, what
@@ -35,7 +33,6 @@ export default function StayBrowseScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<EventStays | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -57,16 +54,16 @@ export default function StayBrowseScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.muted, { color: c.muted }]}>{error}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[1], alignSelf: 'center' }} />
+          </View>
         ) : (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -74,26 +71,17 @@ export default function StayBrowseScreen() {
     router.push({ pathname: '/stay/book', params: { eventId: data.event.id, stayId: stay.id, optionId: option.id } });
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
-      <Text style={[styles.kicker, { color: c.primary }]}>UNIFESTO STAY</Text>
-      <Text style={[styles.title, { color: c.text }]}>Stay for {data.event.title}</Text>
+      <Text style={[styles.kicker, { color: c.muted }]}>Unifesto Stay</Text>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">Stay for {data.event.title}</Text>
       <Text style={[styles.intro, { color: c.soft }]}>
         Places to stay arranged by the event team. Pick one, send your details, and your Stay Pass arrives once they
         confirm.
@@ -109,15 +97,15 @@ export default function StayBrowseScreen() {
           />
         </SettingsGroup>
       ) : !data.registered ? (
-        <View style={[styles.notice, { backgroundColor: c.tint }]}>
+        <View style={[styles.notice, { backgroundColor: c.raised }]}>
           <Text style={[styles.noticeText, { color: c.text }]}>Register for the event first, then book a stay here.</Text>
         </View>
       ) : null}
 
       {data.stays.length === 0 ? (
-        <View style={styles.empty}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
           <House size={40} color={c.muted} weight="duotone" />
-          <Text style={[styles.muted, { color: c.muted }]}>No stays have been listed for this event yet.</Text>
+          <Text style={[styles.muted, { color: c.soft }]}>No stays have been listed for this event yet.</Text>
         </View>
       ) : null}
 
@@ -206,7 +194,7 @@ export default function StayBrowseScreen() {
           Questions about a stay? Call the contact listed on your Stay Pass once you have one.
         </Text>
       ) : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -237,21 +225,20 @@ function StayPhotos({ urls }: { urls: string[] }) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.5, ...cosmosFont.strong },
-  title: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, ...cosmosFont.display },
+  content: { paddingHorizontal: GUTTER },
+  kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { marginTop: spacing[1], fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.4, ...cosmosFont.display },
   intro: { marginTop: spacing[2], marginBottom: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  notice: { marginTop: spacing[4], padding: spacing[4], borderRadius: borderRadius.lg },
+  notice: { marginTop: spacing[4], padding: spacing[4], borderRadius: cosmosCardRadius },
   noticeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  empty: { alignItems: 'center', gap: spacing[3], marginTop: spacing[12] },
+  empty: { alignItems: 'center', gap: spacing[3], marginTop: spacing[6], padding: spacing[6], borderRadius: cosmosCardRadius },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  card: { marginTop: spacing[6], borderRadius: borderRadius['2xl'], overflow: 'hidden' },
+  card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   cover: { width: '100%', aspectRatio: 16 / 9 },
   counter: { position: 'absolute', right: spacing[3], bottom: spacing[3], paddingHorizontal: spacing[2], paddingVertical: 2, borderRadius: borderRadius.full, backgroundColor: 'rgba(0,0,0,0.55)' },
-  counterText: { color: '#ffffff', fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  counterText: { color: '#ffffff', fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   cardBody: { padding: spacing[5], gap: spacing[2] },
-  stayName: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
+  stayName: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.3, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },
@@ -267,6 +254,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   optionName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  price: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  price: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   note: { marginTop: spacing[5], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

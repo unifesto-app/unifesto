@@ -1,11 +1,8 @@
 import React from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,16 +19,18 @@ import { displayAnswer, visibleFields } from '../../src/utils/formQuestions';
 import Skeleton from '../../src/components/Skeleton';
 import { ActionBar } from '../../src/components/event/EventOverlays';
 import { useManageGroup, type GroupRow, type SeatAction } from '../../src/hooks/useManageGroup';
-import useTopSpacing from '../../src/hooks/useTopSpacing';
+import CosmosScreen, { CosmosList } from '../../src/components/ui/CosmosScreen';
+import { GUTTER } from '../../src/components/home/Section';
 import type { GroupMemberInput } from '../../src/lib/api/registrations';
-import { borderRadius, spacing } from '../../src/theme/spacing';
+import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
 import { Button } from '../../src/components/ui';
-import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
 
-const GUTTER = spacing[6];
 const AVATAR = 40;
+/** Page titles are Michroma, except ones with a number in them ("Member 3"): its 0 reads as O. */
+const titleFont = (t: string) => (/\d/.test(t) ? cosmosFont.figure : cosmosFont.display);
 
 /**
  * "Manage group" — one page for both group models (pay-first seats and the
@@ -41,7 +40,6 @@ const AVATAR = 40;
 export default function ManageGroupRoute() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing(8);
   const { registrationId: rawId } = useLocalSearchParams<{ registrationId: string }>();
   const g = useManageGroup(String(rawId ?? ''));
 
@@ -49,40 +47,43 @@ export default function ManageGroupRoute() {
 
   if (g.loading) {
     return (
-      <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER, gap: spacing[4] }]}>
+      <CosmosScreen contentContainerStyle={[styles.pad, { gap: spacing[4] }]}>
         {header}
         <Skeleton width="55%" height={28} borderRadius={8} />
         <Skeleton width="100%" height={6} borderRadius={3} />
-        <Skeleton width="100%" height={260} borderRadius={borderRadius.xl} />
-      </View>
+        <Skeleton width="100%" height={260} borderRadius={cosmosCardRadius} />
+      </CosmosScreen>
     );
   }
 
   if (g.error) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: c.bg, padding: GUTTER }]}>
+      <CosmosScreen contentContainerStyle={styles.pad}>
         {header}
-        <UsersThree size={48} color={c.soft} weight="duotone" />
-        <Text style={[styles.body, { color: c.muted, textAlign: 'center', marginTop: spacing[3] }]}>{g.error}</Text>
-      </View>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <UsersThree size={40} color={c.muted} weight="duotone" />
+          <Text style={[styles.body, { color: c.soft, textAlign: 'center', marginTop: spacing[3] }]}>{g.error}</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
   // ── Editing one member (replaces the list) ──
   if (g.editing) {
     const i = g.editIndex;
+    const editTitle = i === 0 ? 'My details' : i != null ? `Member ${i + 1}` : 'Members';
     return (
-      <View style={[styles.flex, { backgroundColor: c.bg }]}>
-        {header}
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-          >
+      <CosmosScreen
+        keyboard
+        keyboardDismissMode="interactive"
+        bottom={140 + insets.bottom}
+        contentContainerStyle={styles.pad}
+        footer={g.editMode !== 'view' ? <ActionBar info={null} label="Save" loading={g.saving} accent={c.primary} onPress={g.saveRoster} /> : null}
+      >
+            {header}
             <View style={styles.editHead}>
-              <Text style={[styles.title, { color: c.text }]}>
-                {i === 0 ? 'My details' : i != null ? `Member ${i + 1}` : 'Members'}
+              <Text style={[styles.title, titleFont(editTitle), { color: c.text }]} accessibilityRole="header">
+                {editTitle}
               </Text>
               <Pressable onPress={g.closeEditing} disabled={g.saving} hitSlop={10}>
                 <Text style={[styles.link, { color: c.soft }]}>{g.editMode === 'view' ? 'Done' : 'Cancel'}</Text>
@@ -173,12 +174,7 @@ export default function ManageGroupRoute() {
             })}
             {g.rosterError ? <Text style={[styles.error, { color: c.danger }]}>{g.rosterError}</Text> : null}
             <SeatActions actions={g.openRow?.actions ?? []} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-        {g.editMode !== 'view' ? (
-          <ActionBar info={null} label="Save" loading={g.saving} accent={c.primary} onPress={g.saveRoster} />
-        ) : null}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -200,11 +196,10 @@ export default function ManageGroupRoute() {
             ? 'Released. It stays yours, but no one can claim it until you reopen it.'
             : 'Open. Invite someone to claim it.';
     return (
-      <View style={[styles.flex, { backgroundColor: c.bg }]}>
-        {header}
-        <ScrollView contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[10] + insets.bottom }}>
+      <CosmosScreen bottom={spacing[10] + insets.bottom} contentContainerStyle={styles.pad}>
+          {header}
           <View style={styles.editHead}>
-            <Text style={[styles.title, { color: c.text, flex: 1 }]} numberOfLines={2}>
+            <Text style={[styles.title, titleFont(title), { color: c.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
               {title}
             </Text>
             <Pressable onPress={g.closeSeat} hitSlop={10}>
@@ -226,8 +221,7 @@ export default function ManageGroupRoute() {
               {g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.
             </Text>
           ) : null}
-        </ScrollView>
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -236,19 +230,17 @@ export default function ManageGroupRoute() {
   const allFilled = g.totalCount > 0 && g.filledCount === g.totalCount;
 
   return (
-    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+    <KeyboardAvoidingView style={[styles.flex, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {header}
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <FlatList
-          contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[10] + insets.bottom }}
-          keyboardShouldPersistTaps="handled"
+        <CosmosList
+          bottom={spacing[10] + insets.bottom}
+          contentContainerStyle={styles.pad}
           keyboardDismissMode="interactive"
-          showsVerticalScrollIndicator={false}
           data={g.isMember ? [] : g.rows}
           keyExtractor={(row) => row.key}
           ListHeaderComponent={
             <>
-              <Text style={[styles.title, { color: c.text }]}>My group</Text>
+              <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">My group</Text>
               {g.totalCount > 0 ? (
                 <>
                   <Text style={[styles.body, { color: c.soft, marginTop: 4 }]}>
@@ -315,9 +307,9 @@ export default function ManageGroupRoute() {
           }
           ListEmptyComponent={
             g.isMember ? null : (
-              <Text style={[styles.body, { color: c.muted, textAlign: 'center', marginTop: spacing[8] }]}>
-                There's nothing to manage for this ticket.
-              </Text>
+              <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[6] }]}>
+                <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>There's nothing to manage for this ticket.</Text>
+              </View>
             )
           }
           renderItem={({ item, index }) => (
@@ -426,7 +418,7 @@ export default function ManageGroupRoute() {
                       ? `${g.replacing.name} loses this seat and is told by email. The new person gets a link to claim it.`
                       : 'They get a link to claim this seat as their own ticket and fill in their own details.'}
                   </Text>
-                  <View style={[styles.inputRow, { backgroundColor: c.tint }]}>
+                  <View style={[styles.inputRow, { backgroundColor: c.card, borderColor: c.input }]}>
                     <EnvelopeSimple size={20} color={c.muted} />
                     <TextInput
                       style={[styles.input, { color: c.text }]}
@@ -434,7 +426,7 @@ export default function ManageGroupRoute() {
                       onChangeText={g.setEmail}
                       placeholder="name@email.com"
                       placeholderTextColor={c.muted}
-                      selectionColor={c.primary}
+                      selectionColor={c.text}
                       autoCapitalize="none"
                       autoCorrect={false}
                       keyboardType="email-address"
@@ -443,23 +435,21 @@ export default function ManageGroupRoute() {
                       onSubmitEditing={g.invite}
                     />
                   </View>
-                  <Pressable
+                  <Button
+                    label={g.replacing ? 'Replace and invite' : 'Send invite'}
+                    loading={g.inviting}
+                    disabled={!g.email.trim()}
                     onPress={g.invite}
-                    disabled={g.inviting || !g.email.trim()}
-                    style={({ pressed }) => [
-                      styles.send,
-                      { backgroundColor: c.primary, opacity: g.inviting || !g.email.trim() ? 0.5 : pressed ? 0.85 : 1 },
-                    ]}
-                  >
-                    {g.inviting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.sendText}>{g.replacing ? 'Replace and invite' : 'Send invite'}</Text>}
-                  </Pressable>
+                    size="lg"
+                    fullWidth
+                    style={{ marginTop: spacing[4] }}
+                  />
                 </View>
               ) : null}
             </>
           }
         />
-      </KeyboardAvoidingView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -535,26 +525,27 @@ const Row = React.memo(function Row({ row }: { row: GroupRow }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { alignItems: 'center', borderRadius: cosmosCardRadius, padding: spacing[6] },
+  title: { flexShrink: 1, fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   error: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   track: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: spacing[3] },
   fill: { height: '100%', borderRadius: 3 },
-  card: { borderRadius: borderRadius.xl, padding: spacing[5], overflow: 'hidden' },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5], overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...cosmosFont.strong },
   editHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 64, paddingVertical: spacing[2] },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 16, ...cosmosFont.display },
+  avatarText: { fontSize: 16, ...cosmosFont.strong },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   actions: { flexDirection: 'row', gap: spacing[4] },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  stepCount: { minWidth: 24, textAlign: 'center', fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  stepCount: { minWidth: 24, textAlign: 'center', fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   divider: { height: StyleSheet.hairlineWidth },
   // The roster card: a little air above the first row and below the last.
@@ -566,11 +557,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[2],
     height: 52,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
     paddingHorizontal: spacing[4],
     marginTop: spacing[4],
   },
   input: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
-  send: { marginTop: spacing[4], height: 48, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
-  sendText: { color: '#ffffff', fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });
