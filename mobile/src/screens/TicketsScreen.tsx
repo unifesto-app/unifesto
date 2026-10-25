@@ -7,7 +7,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import StatusBarScrim from '../components/ui/StatusBarScrim';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import PromptCard from '../components/home/PromptCard';
@@ -148,7 +147,6 @@ export default function TicketsScreen() {
             <AuthButton label="Browse events" variant="secondary" onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[3] }} />
           </View>
         </ScrollView>
-        <StatusBarScrim />
       </View>
     );
   }

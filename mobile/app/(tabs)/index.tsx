@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { IdentificationCard, Sparkle, UserCircle } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
-import StatusBarScrim from '../../src/components/ui/StatusBarScrim';
 import { useCosmos } from '../../src/theme/cosmos';
 import { useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
@@ -316,7 +315,6 @@ export default function HomeTab() {
           </Section>
         ) : null}
       </ScrollView>
-      <StatusBarScrim />
 
       <SearchSheet
         search={search}

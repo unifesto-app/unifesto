@@ -8,7 +8,6 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useWorkspaceCards } from '../hooks/useWorkspaceCards';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import StatusBarScrim from '../components/ui/StatusBarScrim';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Rail, Section } from '../components/home/Section';
@@ -234,7 +233,6 @@ export default function SpaceScreen() {
           </>
         )}
       </ScrollView>
-      <StatusBarScrim />
     </View>
   );
 }
