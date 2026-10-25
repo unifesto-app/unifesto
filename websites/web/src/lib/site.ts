@@ -421,7 +421,10 @@ export type Plan = {
   /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
   standardFee: number;
+  /** Fallback list. Live: built by planIncludes() from the plan_configs row (T10). */
   includes: string[];
+  /** Lines no plan_configs flag covers, shown as written. */
+  extras: string[];
   cta: { label: string; href: string };
 };
 
@@ -456,6 +459,15 @@ export const PLANS: Plan[] = [
       "WhatsApp confirmations and push",
       "Unifesto Stay: rooms, approvals, stay passes",
     ],
+    extras: [
+      "Free RSVP events, no fees",
+      "Paid and group tickets with Razorpay",
+      "Multi-point QR check-in from the app",
+      "Coupons, custom questions, sub-events",
+      "Payouts, refunds and financials",
+      "WhatsApp confirmations and push",
+      "Unifesto Stay: rooms, approvals, stay passes",
+    ],
     cta: { label: "Start free", href: "/request-space" },
   },
   {
@@ -477,6 +489,7 @@ export const PLANS: Plan[] = [
       "WhatsApp blasts, analytics and PDF reports",
       "Bulk attendee export",
     ],
+    extras: [],
     cta: { label: "Start with Pro", href: "/request-space" },
   },
   {
@@ -496,9 +509,45 @@ export const PLANS: Plan[] = [
       "Custom limits and priority support",
       "Onboarding for your team",
     ],
+    extras: ["White-label: colour, favicon, email sender", "Sub-spaces for every department", "Onboarding for your team"],
     cta: { label: "Talk to us", href: "mailto:support@unifesto.app?subject=Unifesto%20Enterprise" },
   },
 ];
+
+/** The plan_configs columns /pricing renders (GET /config/plan-fees). */
+export type PlanRow = {
+  eventsPerMonth: number | null;
+  attendeesPerEvent: number | null;
+} & Partial<Record<(typeof PLAN_FEATURES)[number][0], boolean>>;
+
+/** plan_configs feature flags, in the order /pricing lists them. */
+export const PLAN_FEATURES = [
+  ["hasWaitlist", "Waitlists"],
+  ["hasRecurringEvents", "Recurring event series"],
+  ["hasCertificates", "Certificates with public verification"],
+  ["hasSponsors", "Sponsors, sponsor portal and lead capture"],
+  ["hasLeaderboard", "Unifesto Sprint for hackathons"],
+  ["hasSessions", "Unifesto Huddle online sessions"],
+  ["hasWhatsappBlast", "WhatsApp blasts"],
+  ["hasAnalytics", "Analytics and PDF reports"],
+  ["hasBulkExport", "Bulk attendee export"],
+  ["hasRemoveBranding", "Remove Unifesto branding"],
+  ["hasPrioritySupport", "Priority support"],
+] as const;
+
+const count = (n: number | null, unit: string) => (n === null ? `Unlimited ${unit}s` : `${n.toLocaleString("en-IN")} ${n === 1 ? unit : `${unit}s`}`);
+
+/** A plan's list from its plan_configs row: "Everything in <previous>", its
+   limits, its own lines, then the features the previous plan lacks. */
+export function planIncludes(plan: Plan, row: PlanRow, prev?: { plan: Plan; row: PlanRow }): string[] {
+  const limits = `${count(row.eventsPerMonth, "event")} a month, ${row.attendeesPerEvent === null ? "unlimited attendees" : `up to ${row.attendeesPerEvent.toLocaleString("en-IN")} attendees`} each`;
+  return [
+    ...(prev ? [`Everything in ${prev.plan.name}`] : []),
+    limits,
+    ...plan.extras,
+    ...PLAN_FEATURES.filter(([k]) => row[k] && !prev?.row[k]).map(([, label]) => label),
+  ];
+}
 
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
