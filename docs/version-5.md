@@ -503,7 +503,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | in progress (#317) |
 | J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | planned |
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
-| J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#333) |
+| J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#347) |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
 | J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#320) |
 
@@ -889,3 +889,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · T3 GET /spaces/:id/access (effective caps + enforced plan); Space nav/pages and mobile event hub gate on it, rbac.ts matrix and /usage features call dropped (#342)
 - **2026-10-25** · Dependabot skips major versions (Prisma 7 / TypeScript 7 bot PRs closed) (#343)
 - **2026-10-25** · mobile follow-ups J2 resend FAILED push, J17 drop dead loginWithGoogle, J16 space-unavailable state; Z11 copy checked (no change) (#345)
+- **2026-10-25** · J17 ILIKE wildcard re-check on all email equality lookups; T3 co-host Space Admin gets event:edit in access; J16 suspended-space gate on curator attendee adds; space Danger zone on event:cancel (#347)
