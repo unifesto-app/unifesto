@@ -445,6 +445,10 @@ model User {
   avatarUrl String? @map("avatar_url") @db.Text
   bio       String? @db.Text
   gender    String? @db.VarChar(30)
+  // Z11 (DPDP): when the user confirmed they are 18 or older. Null = never
+  // asked (pre-5.0.0 accounts). Under-18s are registered by the organiser as
+  // guests (manual add/import), never by self sign-up.
+  ageConfirmedAt DateTime? @map("age_confirmed_at") @db.Timestamptz(6)
 
   // Social Links
   linkedinUrl  String? @map("linkedin_url") @db.Text
@@ -2633,6 +2637,11 @@ model PlatformConfig {
   // here, so each one ships dark until its eval passes, and removing it is the
   // kill switch. Read fresh per call so every replica sees the change at once.
   aiEnabledFeatures String[] @default([]) @map("ai_enabled_features")
+
+  // Z11: when on, self-registration (create-order) needs User.ageConfirmedAt.
+  // Off by default because 4.x apps cannot send the confirmation; turn on once
+  // 5.0.0 adoption is high. Organiser manual add/import is never gated.
+  requireAgeConfirmation Boolean @default(false) @map("require_age_confirmation")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

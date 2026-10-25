@@ -23,6 +23,8 @@ export interface User {
   createdAt: string;
   /** Set while a deletion request is pending: when the account will close. */
   deletionScheduledFor?: string | null;
+  /** Z11: when I confirmed I am 18 or older; null = not yet. */
+  ageConfirmedAt?: string | null;
 }
 
 /** The signed-in user's profile. */
@@ -40,6 +42,8 @@ export async function updateUserProfile(data: {
   instagramUrl?: string;
   githubUrl?: string;
   websiteUrl?: string;
+  /** Z11: "I am 18 or older". Stamped once server-side. */
+  ageConfirmed?: true;
 }): Promise<User> {
   return expectOk(
     await makeAuthenticatedRequest('/users/me', { method: 'PATCH', body: JSON.stringify(data) }),

@@ -27,4 +27,15 @@ export class UpdatePlatformConfigDto {
   @IsOptional()
   @IsBoolean()
   appReviewLoginEnabled?: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Refuse self-registration until the user confirmed they are 18 or older ' +
+      '(Z11). Keep off until most attendees run app 5.0.0+.',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  requireAgeConfirmation?: boolean;
 }

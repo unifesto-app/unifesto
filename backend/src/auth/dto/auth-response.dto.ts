@@ -27,6 +27,8 @@ export class UserProfileDto {
   createdAt: string;
   /** Set while a deletion request is pending: when the account will close. */
   deletionScheduledFor: string | null;
+  /** Z11: when I confirmed I am 18 or older; null = not yet. */
+  ageConfirmedAt: string | null;
   roles?: { role: { code: string; name: string } }[];
 
   static fromUser(user: User, roles?: any[]): UserProfileDto {
@@ -47,6 +49,7 @@ export class UserProfileDto {
       deletionScheduledFor: user.deletionRequestedAt
         ? deletionDueAt(user.deletionRequestedAt).toISOString()
         : null,
+      ageConfirmedAt: user.ageConfirmedAt?.toISOString() ?? null,
       roles: roles || [],
     };
   }

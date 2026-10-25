@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DeviceMobile,
   AppleLogo,
@@ -132,8 +132,19 @@ function PlatformCard({
   );
 }
 
-/** On/off for the fixed App Review test login. Saves on click, on its own. */
-function AppReviewLoginCard() {
+/** An on/off platform switch. Saves on click, on its own. */
+function FlagCard({
+  field,
+  title,
+  children,
+  risky,
+}: {
+  field: "appReviewLoginEnabled" | "requireAgeConfirmation";
+  title: string;
+  children: ReactNode;
+  /** Colour "On" as the dangerous state (otherwise "Off" is). */
+  risky: boolean;
+}) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,19 +152,17 @@ function AppReviewLoginCard() {
   useEffect(() => {
     getPlatformConfig().then(({ data, error }) => {
       if (error) setError(error.message || "Failed to load");
-      else if (data) setEnabled(data.appReviewLoginEnabled);
+      else if (data) setEnabled(data[field]);
     });
-  }, []);
+  }, [field]);
 
   const toggle = async () => {
     if (enabled === null) return;
     setBusy(true);
     setError(null);
-    const { data, error } = await updatePlatformConfig({
-      appReviewLoginEnabled: !enabled,
-    });
+    const { data, error } = await updatePlatformConfig({ [field]: !enabled });
     if (error) setError(error.message || "Failed to save");
-    else if (data) setEnabled(data.appReviewLoginEnabled);
+    else if (data) setEnabled(data[field]);
     setBusy(false);
   };
 
@@ -161,13 +170,9 @@ function AppReviewLoginCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Warning className="h-5 w-5" weight="fill" /> App Review login
+          <Warning className="h-5 w-5" weight="fill" /> {title}
         </CardTitle>
-        <CardDescription>
-          Lets the store review team sign in with the fixed test account
-          without a real code. Anyone who knows the code can use it while it is
-          on. Turn it on for a review and off as soon as the review ends.
-        </CardDescription>
+        <CardDescription>{children}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
         {enabled === null && !error ? (
@@ -176,7 +181,7 @@ function AppReviewLoginCard() {
           <p className="text-sm">
             Status:{" "}
             <span
-              className={`font-semibold ${enabled ? "text-destructive" : "text-success"}`}
+              className={`font-semibold ${enabled === risky ? "text-destructive" : "text-success"}`}
             >
               {enabled ? "On" : "Off"}
             </span>
@@ -338,7 +343,18 @@ export default function AppVersionPage() {
         </div>
       )}
 
-      <AppReviewLoginCard />
+      <FlagCard field="appReviewLoginEnabled" title="App Review login" risky>
+        Lets the store review team sign in with the fixed test account without
+        a real code. Anyone who knows the code can use it while it is on. Turn
+        it on for a review and off as soon as the review ends.
+      </FlagCard>
+
+      <FlagCard field="requireAgeConfirmation" title="18+ confirmation" risky={false}>
+        Refuses self-registration until the attendee confirms they are 18 or
+        older (DPDP). Apps before 5.0.0 cannot confirm, so their users get
+        blocked: turn this on only once most attendees run 5.0.0 or later.
+        Organiser manual add and import are never blocked.
+      </FlagCard>
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <DeviceMobile className="mt-0.5 h-4 w-4 shrink-0" />

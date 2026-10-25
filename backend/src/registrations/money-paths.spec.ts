@@ -437,6 +437,7 @@ describe('coupon cap at checkout (S45)', () => {
       ],
     }));
     prisma.ticketTypeBlock = { findMany: jest.fn(async () => []) };
+    prisma.platformConfig = { findUnique: jest.fn(async () => null) };
     prisma.eventCoupon = {
       findUnique: jest.fn(async () => ({
         id: 'c-1', code: 'LAST', isActive: true, appliesToTicketTypeIds: [], usageLimit: 1, usedCount: 0,

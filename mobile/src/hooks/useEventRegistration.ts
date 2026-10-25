@@ -175,13 +175,15 @@ export function useEventRegistration() {
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([blankAttendee()]);
   const [alsoUpdateProfile, setAlsoUpdateProfile] = useState(false);
 
-  // ── Profile gate (name + username + gender required) ──
+  // ── Profile gate (name + username + gender + 18+ confirmation required) ──
   const [profileGender, setProfileGender] = useState('');
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
   const [gateName, setGateName] = useState('');
   const [gateUsername, setGateUsername] = useState('');
   const [gateGender, setGateGender] = useState('');
+  // Z11: 'adult' = "I am 18 or older"; 'minor' blocks self-registration.
+  const [gateAge, setGateAge] = useState<'adult' | 'minor' | null>(null);
   const [gateUsernameError, setGateUsernameError] = useState('');
   const [gateUsernameAvailable, setGateUsernameAvailable] = useState<boolean | null>(null);
   const [gateChecking, setGateChecking] = useState(false);
@@ -199,7 +201,8 @@ export function useEventRegistration() {
         setGateName(p.fullName || '');
         setGateUsername(p.username || '');
         setGateGender(p.gender || '');
-        setProfileComplete(!!(p.fullName && p.username && p.gender));
+        if (p.ageConfirmedAt) setGateAge('adult');
+        setProfileComplete(!!(p.fullName && p.username && p.gender && p.ageConfirmedAt));
       })
       .catch(() => setProfileComplete(true)); // never hard-block on a fetch failure
   }, [token]);
@@ -265,6 +268,12 @@ export function useEventRegistration() {
     if (!name) { setGateError('Please enter your name.'); return; }
     if (!uname) { setGateUsernameError('Username cannot be empty'); return; }
     if (!gateGender) { setGateError('Please select your gender.'); return; }
+    if (gateAge !== 'adult') {
+      setGateError(gateAge === 'minor'
+        ? 'Under 18? Ask the organiser to register you through a parent or guardian.'
+        : 'Please confirm your age.');
+      return;
+    }
     if (gateUsernameError) return;
 
     if (uname !== (profile?.username || '') && gateUsernameAvailable !== true) {
@@ -281,7 +290,7 @@ export function useEventRegistration() {
     }
     try {
       setGateSaving(true);
-      await updateUserProfile({ username: uname, fullName: name, gender: gateGender });
+      await updateUserProfile({ username: uname, fullName: name, gender: gateGender, ageConfirmed: true });
       loadProfile(); // flips the gate and prefills attendee[0]
     } catch (e: any) {
       setGateError(e?.message || 'Could not save. Check your connection and try again.');
@@ -679,6 +688,8 @@ export function useEventRegistration() {
       checking: gateChecking,
       gender: gateGender,
       setGender: setGateGender,
+      age: gateAge,
+      setAge: setGateAge,
       saving: gateSaving,
       error: gateError,
       save: saveGate,

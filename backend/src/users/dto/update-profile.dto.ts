@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsUrl,
   IsIn,
+  Equals,
   Matches,
   MaxLength,
 } from 'class-validator';
@@ -45,4 +46,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsUrl()
   websiteUrl?: string;
+
+  /** Z11: "I am 18 or older". Only `true` is accepted; stamps ageConfirmedAt once. */
+  @IsOptional()
+  @Equals(true)
+  ageConfirmed?: true;
 }

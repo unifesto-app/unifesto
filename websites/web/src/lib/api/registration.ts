@@ -126,6 +126,9 @@ export const verifyPhoneCode = (mobileNumber: string, otp: string, tempToken: st
   call<AuthResponse>("POST", "/auth/verify-mobile", { mobileNumber, otp, tempToken });
 export const saveName = (fullName: string, token: string) => call("PATCH", "/users/me", { fullName }, token);
 
+/** Z11: record "I am 18 or older" (stamped once server-side). */
+export const confirmAge = (token: string) => call("PATCH", "/users/me", { ageConfirmed: true }, token);
+
 /** My live registrations for this event (empty when I have none). */
 export const myRegistrations = (eventId: string, token: string) =>
   call<{ id: string }[]>("GET", `/events/${eventId}/my-registrations`, undefined, token);

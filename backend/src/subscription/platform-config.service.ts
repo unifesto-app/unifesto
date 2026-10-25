@@ -215,10 +215,11 @@ export class PlatformConfigService implements OnModuleInit {
     postEventActionWindowDays: number;
     appVersion: AppVersionConfig;
     appReviewLoginEnabled: boolean;
+    requireAgeConfirmation: boolean;
   }> {
     const row = await this.prisma.platformConfig.findUnique({
       where: { id: CONFIG_ID },
-      select: { appReviewLoginEnabled: true },
+      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true },
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
@@ -226,7 +227,18 @@ export class PlatformConfigService implements OnModuleInit {
       postEventActionWindowDays: this.postEventActionWindowDays,
       appVersion: this.appVersion,
       appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
+      requireAgeConfirmation: row?.requireAgeConfirmation ?? false,
     };
+  }
+
+  /** Admin switch for the Z11 18+ gate on self-registration. */
+  async setRequireAgeConfirmation(enabled: boolean): Promise<void> {
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, requireAgeConfirmation: enabled },
+      update: { requireAgeConfirmation: enabled },
+    });
+    this.logger.warn(`Age confirmation gate turned ${enabled ? 'ON' : 'OFF'}`);
   }
 
   /** Admin switch for the App Review test login (see auth.service). */
