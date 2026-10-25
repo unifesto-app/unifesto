@@ -71,6 +71,14 @@ export class BlogController {
     return this.writer.listQuestions();
   }
 
+  /** ADMIN — re-queue a FAILED question. */
+  @Post('questions/:id/retry')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  retryQuestion(@Param('id') id: string) {
+    return this.writer.retryQuestion(id);
+  }
+
   /** ADMIN — weekly Search Console Pages CSV; queues 10 questions related to posts that get clicks. */
   @Post('questions/search-console')
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import { getPlatformConfig } from "@/lib/api/subscriptions-api";
 import {
   getBlogQuestions,
   learnFromSearchConsole,
+  retryBlogQuestion,
   type BlogQuestion,
   type BlogQuestionStatus,
 } from "@/lib/api/blog-api";
@@ -30,6 +33,8 @@ export default function BlogQueuePage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [writerOn, setWriterOn] = useState<boolean | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -45,7 +50,20 @@ export default function BlogQueuePage() {
 
   useEffect(() => {
     void load();
+    getPlatformConfig().then(({ data }) => {
+      if (data) setWriterOn((data.aiEnabledFeatures ?? []).includes("blog_writer"));
+    });
   }, [load]);
+
+  const retry = async (q: BlogQuestion) => {
+    setRetrying(q.id);
+    const { error: err } = await retryBlogQuestion(q.id);
+    setRetrying(null);
+    if (err) return setError(err.message);
+    setError("");
+    setNotice(`Back in the queue: "${q.question}".`);
+    void load();
+  };
 
   const upload = async (f: File) => {
     setUploading(true);
@@ -92,6 +110,17 @@ export default function BlogQueuePage() {
         Posts that get clicks add 10 related questions to the queue.
       </p>
 
+      {writerOn === false && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
+          The auto-blog writer is off, so queued questions fail with &quot;research: disabled&quot;. Turn on
+          Auto-blog writer under{" "}
+          <Link href="/dashboard/app-version" className="font-medium text-primary hover:underline">
+            App version › AI features
+          </Link>
+          , then retry the failed ones.
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
@@ -134,6 +163,11 @@ export default function BlogQueuePage() {
                 </p>
                 {q.failReason && <p className="mt-1 text-xs text-destructive">{q.failReason}</p>}
               </div>
+              {q.status === "FAILED" && (
+                <Button size="sm" variant="outline" onClick={() => void retry(q)} disabled={retrying !== null}>
+                  {retrying === q.id ? "Retrying…" : "Retry"}
+                </Button>
+              )}
               {q.post && (
                 <a
                   href={`https://unifesto.app/blog/${q.post.slug}`}

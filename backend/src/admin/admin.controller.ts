@@ -112,6 +112,9 @@ export class AdminController {
         dto.customSendingDomainsEnabled,
       );
     }
+    if (dto.aiEnabledFeatures !== undefined) {
+      await this.platformConfig.setAiEnabledFeatures(dto.aiEnabledFeatures);
+    }
     return this.platformConfig.getConfig();
   }
 

@@ -252,6 +252,10 @@ export interface PlatformConfig {
   requireAgeConfirmation: boolean;
   /** H20: spaces may add their own email sending domain. */
   customSendingDomainsEnabled: boolean;
+  /** Every AI feature the backend knows (read-only). */
+  aiFeatures?: string[];
+  /** The AI features allowed to run; the rest are off. */
+  aiEnabledFeatures?: string[];
 }
 
 /** `GET /admin/platform-config` — read app-wide settings (admin). */
