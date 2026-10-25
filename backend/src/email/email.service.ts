@@ -474,8 +474,8 @@ export class EmailService {
     return this.deliverBranded('resend', data.email, data, T.eventUpdatedEmail, delivery);
   }
 
-  async sendEventPublished(data: T.EventPublishedData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventPublishedEmail(data));
+  async sendEventPublished(data: T.EventPublishedData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliver('resend', data.email, T.eventPublishedEmail(data), { delivery });
   }
 
   async sendEventSummary(data: T.EventSummaryData): Promise<void> {
