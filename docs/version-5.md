@@ -428,7 +428,7 @@ One support system for everything a person needs help with. Every item is an **A
 | G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | done (#276) |
 | G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | done (#265) |
 | G13 | **Polish mobile from the 18 Oct device audit.** Low and medium items from the real-iPhone pass. | done (#274) |
-| G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | planned |
+| G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | done (#390) |
 
 ### H · White-label, the big version
 
@@ -932,3 +932,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · H15 phase 1: mobile Apex white-label queue removed; POST /white-label/requests sends Deprecation header (#388)
 - **2026-10-26** · G3 every remaining mobile screen on cosmos (palette codemod + ~100-screen structural pass) (#385)
 - **2026-10-26** · G8 event-day cockpit on mobile: live check-ins, today's money, help desk, announcements (#387)
+- **2026-10-26** · G14 accessibility: labelled inputs (mobile + 100 web labels), reachable card hearts, AA legacy palette, Dynamic Type-safe controls (#390)
