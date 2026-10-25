@@ -488,7 +488,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | # | Item | Status |
 |---|---|---|
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
-| J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
+| J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#299) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
@@ -883,3 +883,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J17 auth hardening: lowercase emails + E.164 mobiles at auth entry (case-insensitive lookups), OTP send failure = 502 + cap refund, WhatsApp OTP +91 allowlist, Apple/Cognito fail closed, /auth/google removed, identifier OTP lockout 15→40, Apex/Space ?next= same-origin only (#333)
 - **2026-10-25** · J16 space status enforced: one PUBLIC_SPACE_STATUSES (APPROVED+ACTIVE) gate for listings, event feed/detail/ICS, publish, checkout and payout requests; private-space events out of the public feed; web "temporarily unavailable" page (#332)
 - **2026-10-25** · Dependabot no longer opens mobile PRs (Expo SDK pins native versions; #330 broke npm ci) (#334)
+- **2026-10-25** · J2 backend reliability: boot failure exits, stranded push sweep + resend, refund retry crons locked/indexed/alerted, email queue Redis-down fallback, starting-soon window fixed (#339)
