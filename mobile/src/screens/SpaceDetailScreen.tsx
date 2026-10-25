@@ -120,7 +120,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <UsersThree size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>Space not found</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]}>{s.unavailable ? 'This space is temporarily unavailable' : 'Space not found'}</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );

@@ -22,7 +22,7 @@ import {
   withRetry,
 } from './resilience';
 
-export { ApiError, errorFrom, expectOk, readJson } from './errors';
+export { ApiError, errorFrom, expectOk, isSpaceUnavailable, readJson } from './errors';
 
 /**
  * `retry`: try again (twice, with backoff) when unreached or transient. Only

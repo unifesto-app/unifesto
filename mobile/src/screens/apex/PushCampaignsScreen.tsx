@@ -72,6 +72,12 @@ export default function PushCampaignsScreen() {
       ],
     );
 
+  const confirmResend = (c: PushCampaign) =>
+    AppAlert.alert('Resend this broadcast?', 'It goes only to people the last attempt did not reach.', [
+      { text: 'Keep', style: 'cancel' },
+      { text: 'Resend', onPress: () => void act(() => sendPushCampaign(c.id), 'Not sent') },
+    ]);
+
   const openActions = (c: PushCampaign) =>
     AppAlert.alert(c.title, c.body, [
       ...(ACTIONABLE.includes(c.status)
@@ -80,6 +86,7 @@ export default function PushCampaignsScreen() {
             { text: 'Cancel broadcast', style: 'destructive' as const, onPress: () => void act(() => cancelPushCampaign(c.id), 'Not cancelled') },
           ]
         : []),
+      ...(c.status === 'FAILED' ? [{ text: 'Resend', onPress: () => confirmResend(c) }] : []),
       { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(c) },
       { text: 'Close', style: 'cancel' },
     ]);

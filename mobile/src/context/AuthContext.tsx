@@ -44,7 +44,6 @@ interface AuthContextType {
   sendEmailOtp: (email: string) => Promise<void>;
   verifyEmailOtp: (email: string, otp: string) => Promise<void>;
   // Social Auth
-  loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithApple: (identityToken: string, authorizationCode: string) => Promise<void>;
   loginWithCognito: (idToken: string) => Promise<void>;
   // Actions
@@ -246,23 +245,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await handleAuthSuccess(data.accessToken, data.user, data.refreshToken);
   };
 
-  const loginWithGoogle = async (idToken: string) => {
-    const response = await makePublicRequest('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ idToken }),
-    });
-
-    if (!response?.ok) throw await errorFrom(response, 'Google login failed');
-
-    const data = await response.json();
-    if (data.requiresMobileVerification) {
-      setTempToken(data.tempToken);
-      setUser(data.user);
-      return;
-    }
-    await handleAuthSuccess(data.accessToken, data.user, data.refreshToken);
-  };
-
   const loginWithApple = async (identityToken: string, authorizationCode: string) => {
     const response = await makePublicRequest('/auth/apple', {
       method: 'POST',
@@ -347,7 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tempToken,
       sendMobileOtp, verifyMobileOtp,
       sendEmailOtp, verifyEmailOtp,
-      loginWithGoogle, loginWithApple, loginWithCognito,
+      loginWithApple, loginWithCognito,
       logout, refreshUser, updateUser,
     }}>
       {children}
