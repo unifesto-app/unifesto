@@ -50,11 +50,12 @@ export class OtpService {
 
   /**
    * Reserve a send slot for this identifier: throws 429 inside the cooldown or
-   * past the daily cap. No Redis → allowed (the code can't be stored anyway).
+   * past the daily cap. 503 without Redis: the code couldn't be stored, so
+   * never claim it was sent.
    */
   async assertCanSend(identifier: string, ip = 'unknown'): Promise<void> {
     const client = this.redisService.getClient();
-    if (!client) return;
+    if (!client) throw unavailable();
     const cooled = await client.set(
       `otp-limit:cooldown:${identifier}:${ip}`,
       '1',
@@ -88,7 +89,7 @@ export class OtpService {
 
   async verifyOtp(identifier: string, otp: string, ip = 'unknown'): Promise<OtpVerifyResult> {
     const client = this.redisService.getClient();
-    if (!client) return 'invalid';
+    if (!client) throw unavailable();
     const key = `otp:${identifier}`;
     const ipKey = `otp-limit:ip-attempts:${ip}`;
     const pairKey = `otp-limit:attempts:${identifier}:${ip}`;
@@ -143,6 +144,13 @@ async function incrWithTtl(
   const n = await client.incr(key);
   if (n === 1 || (await client.ttl(key)) === -1) await client.expire(key, ttlSeconds);
   return n;
+}
+
+function unavailable(): HttpException {
+  return new HttpException(
+    'Sign-in codes are briefly unavailable. Please try again in a minute.',
+    HttpStatus.SERVICE_UNAVAILABLE,
+  );
 }
 
 function tooMany(message: string): HttpException {

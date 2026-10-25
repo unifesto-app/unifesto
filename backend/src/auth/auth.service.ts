@@ -358,7 +358,7 @@ export class AuthService {
       );
     } catch (error) {
       this.logger.error('Email OTP verification failed', error);
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof UnauthorizedException || isUnavailable(error)) {
         throw error;
       }
       throw new UnauthorizedException('Invalid OTP');
@@ -386,7 +386,7 @@ export class AuthService {
         message: 'OTP sent to your WhatsApp',
       };
     } catch (error) {
-      if (error instanceof HttpException && error.getStatus() === 429) throw error;
+      if (error instanceof HttpException && [429, 503].includes(error.getStatus())) throw error;
       this.logger.error('Mobile OTP send failed', error);
       throw new BadRequestException('Failed to send mobile OTP');
     }
@@ -526,7 +526,7 @@ export class AuthService {
       }
     } catch (error) {
       this.logger.error('Mobile verification failed', error);
-      if (error instanceof UnauthorizedException || error instanceof ConflictException) {
+      if (error instanceof UnauthorizedException || error instanceof ConflictException || isUnavailable(error)) {
         throw error;
       }
       throw new UnauthorizedException('Mobile verification failed');
@@ -1106,4 +1106,9 @@ export class AuthService {
       tempToken,
     };
   }
+}
+
+/** Redis down (OtpService 503): say so instead of "invalid OTP". */
+function isUnavailable(error: unknown): boolean {
+  return error instanceof HttpException && error.getStatus() === 503;
 }

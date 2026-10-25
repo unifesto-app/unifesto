@@ -282,11 +282,15 @@ describe('RedisService', () => {
       expect(service.getClient()).toBeNull();
       expect(service.isHealthy()).toBe(false);
       expect(loggerErrorSpy).toHaveBeenCalledWith(
-        'Redis initialization failed - application will continue with degraded functionality',
+        'Redis initialization failed - degraded until it reconnects',
         expect.objectContaining({
           error: 'Connection timeout',
         }),
       );
+
+      // J12: the client is kept, so a later reconnect restores it without a restart.
+      mockRedisClient['_eventHandlers']['ready']();
+      expect(service.getClient()).toBe(mockRedisClient);
     });
 
     it('should set healthy status to false when error event is triggered', async () => {
@@ -367,11 +371,11 @@ describe('RedisService', () => {
       const redisConfig = (Redis as unknown as jest.Mock).mock.calls[0][0];
       const retryStrategy = redisConfig.retryStrategy;
 
-      // Test retry delays: 1s, 2s, 4s
-      expect(retryStrategy(1)).toBe(1000);
-      expect(retryStrategy(2)).toBe(2000);
-      expect(retryStrategy(3)).toBe(4000);
-      expect(retryStrategy(4)).toBeNull(); // Stop after 3 attempts
+      // J12: back off to 5s and never give up (null would end the client).
+      expect(retryStrategy(1)).toBe(200);
+      expect(retryStrategy(10)).toBe(2000);
+      expect(retryStrategy(100)).toBe(5000);
+      expect(retryStrategy(10_000)).toBe(5000);
     });
 
     it('should log reconnection attempts', async () => {
@@ -541,6 +545,62 @@ describe('RedisService', () => {
       if (errorHandler) errorHandler(new Error('Connection failed'));
 
       expect(service.isHealthy()).toBe(false);
+    });
+  });
+
+  describe('syncCache (J12)', () => {
+    const fakeStore = () => {
+      const store = new Map<string, string>();
+      return {
+        get: jest.fn(async (k: string) => store.get(k) ?? null),
+        incr: jest.fn(async (k: string) => {
+          const n = Number(store.get(k) ?? 0) + 1;
+          store.set(k, String(n));
+          return n;
+        }),
+      };
+    };
+    const replica = (client: unknown) => {
+      const svc = new RedisService(mockConfigService as any);
+      (svc as any).client = client;
+      (svc as any).healthy = true;
+      return svc;
+    };
+
+    afterEach(() => jest.useRealTimers());
+
+    it('reloads other replicas after a bump, not the one that edited', async () => {
+      jest.useFakeTimers();
+      const client = fakeStore();
+      const a = replica(client);
+      const b = replica(client);
+      const reloadA = jest.fn(async () => {});
+      const reloadB = jest.fn(async () => {});
+      const bumpA = a.syncCache('iam', reloadA);
+      b.syncCache('iam', reloadB);
+
+      await client.incr('config-stamp:iam'); // some earlier edit
+      await jest.advanceTimersByTimeAsync(2000); // both note the stamp
+      expect(reloadA).not.toHaveBeenCalled();
+      expect(reloadB).not.toHaveBeenCalled();
+
+      await bumpA();
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(reloadB).toHaveBeenCalledTimes(1);
+      expect(reloadA).not.toHaveBeenCalled();
+
+      await a.onModuleDestroy().catch(() => {});
+      await b.onModuleDestroy().catch(() => {});
+    });
+
+    it('reloads every 30s even with Redis down', async () => {
+      jest.useFakeTimers();
+      const svc = replica(null);
+      const reload = jest.fn(async () => {});
+      svc.syncCache('plans', reload);
+      await jest.advanceTimersByTimeAsync(30_000);
+      expect(reload).toHaveBeenCalledTimes(1);
+      await svc.onModuleDestroy().catch(() => {});
     });
   });
 });

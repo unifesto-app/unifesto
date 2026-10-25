@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** The fixed primary key of the singleton platform_config row. */
@@ -114,10 +115,17 @@ export class PlatformConfigService implements OnModuleInit {
     },
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  /** Tells the other replicas to reload after an edit here. */
+  private bumpReplicas: () => Promise<void> = async () => {};
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redis?: RedisService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.reload();
+    if (this.redis) this.bumpReplicas = this.redis.syncCache('platform', () => this.reload());
   }
 
   /** Reload the cached config from the database. */
@@ -241,6 +249,7 @@ export class PlatformConfigService implements OnModuleInit {
       update: { postEventActionWindowDays: days },
     });
     this.postEventActionWindowDays = row.postEventActionWindowDays;
+    await this.bumpReplicas();
     this.logger.log(
       `Post-event action window updated to ${this.postEventActionWindowDays} days`,
     );
@@ -311,6 +320,7 @@ export class PlatformConfigService implements OnModuleInit {
       update: data,
     });
     this.appVersion = this.rowToAppVersion(row);
+    await this.bumpReplicas();
     this.logger.log(
       `App version policy updated (iOS latest ${this.appVersion.ios.latestVersion}, Android latest ${this.appVersion.android.latestVersion})`,
     );

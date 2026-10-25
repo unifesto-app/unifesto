@@ -3,7 +3,9 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
+import { RedisService } from '../../redis/redis.service';
 import { RoleCode, RoleScope } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Action, ACTION_SCOPE } from './actions';
@@ -138,10 +140,9 @@ export interface CapabilityMatrix {
  * migration seed hasn't run), that role falls back to the compiled matrix. So
  * the platform is never left with an empty, deny-all matrix by accident.
  *
- * Cache scope: per-process, same trade-off as PlanConfigService. On a single
- * backend container an edit takes effect immediately (the controller calls
- * `reload()`); multi-instance deployments pick up changes on their next
- * `reload()` / restart. `ADMIN` never appears in this matrix — platform-admin
+ * Cache scope: per-process. The replica that takes an edit reloads at once;
+ * the others follow within ~2s via RedisService.syncCache.
+ * `ADMIN` never appears in this matrix — platform-admin
  * power is an inheritance rule in AuthorizationService, not a grant here.
  */
 @Injectable()
@@ -158,10 +159,17 @@ export class CapabilityConfigService implements OnModuleInit {
    */
   private spaceOverrides = new Map<string, Map<RoleCode, Set<string>>>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  /** Tells the other replicas to reload after an edit here. */
+  private bumpReplicas: () => Promise<void> = async () => {};
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redis?: RedisService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.reload();
+    if (this.redis) this.bumpReplicas = this.redis.syncCache('iam', () => this.reload());
   }
 
   /** Re-read the whole matrix (global + per-space) from the DB. Call after any edit. */
@@ -311,6 +319,7 @@ export class CapabilityConfigService implements OnModuleInit {
     }
 
     await this.reload();
+    await this.bumpReplicas();
     return this.getMatrix();
   }
 
@@ -423,6 +432,7 @@ export class CapabilityConfigService implements OnModuleInit {
     }
 
     await this.reload();
+    await this.bumpReplicas();
     return this.getSpaceMatrix(spaceId);
   }
 
@@ -436,6 +446,7 @@ export class CapabilityConfigService implements OnModuleInit {
     }
     await this.prisma.spaceRoleCapability.deleteMany({ where: { spaceId, code } });
     await this.reload();
+    await this.bumpReplicas();
     return this.getSpaceMatrix(spaceId);
   }
 }
