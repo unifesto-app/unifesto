@@ -457,7 +457,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | done (#146), live 19 Oct server side, mobile in 5.0.0; not seen on device |
 | H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | done, live 16 Oct (#135) |
 | H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | done (#280) |
-| H15 | **Retire legacy white-label requests in mobile, Apex and backend.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
+| H15 | **Retire legacy white-label requests in mobile, Apex and backend.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | in progress (#388) |
 | H16 | **Space app: gate Branding on manage-settings capability.** Space app `Capability` type has no `space:manage-settings`, so the Branding nav item gates on `manage-billing` (backend enforces manage-settings). Add the capability to the space RBAC types | done, live 16 Oct (#135) |
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
@@ -929,3 +929,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J5 slice 4: CSV import capped at 1,000 rows (preview + import); import confirmations sent 5 at a time after the rows (#386)
 - **2026-10-26** · G1 mobile desk editors replaced by "open on web" handoffs; 38 screens deleted (#378)
 - **2026-10-26** · H20 custom sending domains gated by PlatformConfig switch (default off, Apex toggle); studio shows coming soon; Resend limit refusal is a 403 (#391)
+- **2026-10-26** · H15 phase 1: mobile Apex white-label queue removed; POST /white-label/requests sends Deprecation header (#388)
