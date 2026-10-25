@@ -520,7 +520,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
-| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | next |
+| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#321) |
 | K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
 
 ### L · Live engagement (new)
@@ -876,3 +876,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J14 deploy.sh stops syncing .env files (server-side env gate), local dev compose + .env.development.example, backend/prisma refuse RDS unless NODE_ENV=production (#317)
 - **2026-10-25** · P23 UPI IDs masked in payout pickers/lists; demo space + users left out of financials, analytics and stats broadcasts; no link to a private host space (#318)
 - **2026-10-25** · E8 privacy: removed the legacy public score socket (live scores leaked to attendees) and gated participants-only brackets to attendees, panelists and operators (#319)
+- **2026-10-25** · K10 slice 1: free/RSVP registration on web (email OTP sign-in, questions, UTM), paid/group/file still hand off to the app (#321)
