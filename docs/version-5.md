@@ -500,7 +500,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | IN_REVIEW (#310) |
 | J12 | **Make Redis and config caches replica-safe.** 1. The shared RedisService retryStrategy returns null after 3 tries (backend/src/redis/redis.service.ts:41-55), so the ioredis client ends for good, and a failed boot ping sets client=null (:106-108). | done (#316) |
 | J13 | **Deploy only CI-green main with a rollback image.** deploy.sh:87-110 rsyncs the local working tree with no check on git status, branch, origin/main or CI, and parallel sessions share this tree. | done (#292) |
-| J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | planned |
+| J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | in progress (#317) |
 | J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | planned |
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | planned |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | planned |
@@ -873,3 +873,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · Auto-blog: 50-question queue, 3/day researched + humanized + gated posts, Search Console learn, author box (#314)
 - **2026-10-25** · 5.0.0 launch prep: Play submit uploads a draft (never auto-live), OTA.md store-launch runbook (beta, phased release, pause rule) (#315)
 - **2026-10-25** · J12 Redis client reconnects forever (OTP 503 when down) and IAM/plan/platform config caches sync across replicas via a Redis stamp (~2s, 30s floor) (#316)
+- **2026-10-25** · J14 deploy.sh stops syncing .env files (server-side env gate), local dev compose + .env.development.example, backend/prisma refuse RDS unless NODE_ENV=production (#317)
