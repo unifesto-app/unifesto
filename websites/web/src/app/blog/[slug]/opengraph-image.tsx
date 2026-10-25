@@ -13,7 +13,7 @@ interface Props {
 
 export default async function Image({ params }: Props) {
   const { slug } = await params;
-  const post = await getPost(slug);
+  const post = await getPost(slug).catch(() => null);
   const [cover, base] = await Promise.all([fetchImageAsDataUrl(post?.coverImageUrl), loadOgBase()]);
   const m = post ? postMeta(post) : null;
 

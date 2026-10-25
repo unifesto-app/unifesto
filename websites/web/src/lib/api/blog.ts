@@ -37,18 +37,18 @@ export async function getPosts(): Promise<BlogPost[]> {
   }
 }
 
-/** One published post by slug, or null when not found. */
+/**
+ * One published post by slug, or null on a real 404. Any other failure throws,
+ * so the page shows its error state (and ISR keeps the last good copy) instead
+ * of telling readers and crawlers the post is gone.
+ */
 export async function getPost(slug: string): Promise<BlogPost | null> {
-  try {
-    const res = await fetch(`${API_URL}/blog/${encodeURIComponent(slug)}`, withInternal({
-      next: { revalidate: 60 },
-    }));
-    if (res.status === 404) return null;
-    if (!res.ok) return null;
-    return (await res.json()) as BlogPost;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${API_URL}/blog/${encodeURIComponent(slug)}`, withInternal({
+    next: { revalidate: 60 },
+  }));
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Error fetching blog post: ${res.status}`);
+  return (await res.json()) as BlogPost;
 }
 
 /** Human-friendly date + read-time for a post's meta line. */
