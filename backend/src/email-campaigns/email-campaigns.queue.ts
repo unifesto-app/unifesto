@@ -8,6 +8,7 @@ import { ModuleRef } from '@nestjs/core';
 import { Job, Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
 import { RedisService } from '../redis/redis.service';
+import { reportJobFailure } from '../common/observability';
 import { EmailCampaignsService } from './email-campaigns.service';
 
 const QUEUE_NAME = 'email-campaigns';
@@ -52,16 +53,21 @@ export class EmailCampaignQueue implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker<CampaignJob>(
       QUEUE_NAME,
       async (job: Job<CampaignJob>) => {
-        const service = this.moduleRef.get(EmailCampaignsService, { strict: false });
+        const service = this.moduleRef.get(EmailCampaignsService, {
+          strict: false,
+        });
         await service.runCampaign(job.data.campaignId, {
           lastAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
         });
       },
       { connection: workerConn, concurrency: 1 },
     );
-    this.worker.on('failed', (job, err) =>
-      this.logger.error(`Campaign job ${job?.data.campaignId} failed: ${err.message}`),
-    );
+    this.worker.on('failed', (job, err) => {
+      this.logger.error(
+        `Campaign job ${job?.data.campaignId} failed: ${err.message}`,
+      );
+      reportJobFailure(QUEUE_NAME, job, err);
+    });
   }
 
   async onModuleDestroy() {

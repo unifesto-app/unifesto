@@ -30,6 +30,13 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@nestjs/event-emitter',
+          importNames: ['OnEvent'],
+          message: 'Use OnEvent from src/common/on-event: it also reports listener failures to Sentry.',
+        }],
+      }],
     },
   },
 );
