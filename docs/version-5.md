@@ -516,7 +516,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K3 | **Harden the blog and careers editors: draft guard, scheduling, slugs.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
-| K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
+| K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | done (#322) |
 | K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
@@ -878,3 +878,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · E8 privacy: removed the legacy public score socket (live scores leaked to attendees) and gated participants-only brackets to attendees, panelists and operators (#319)
 - **2026-10-25** · K10 slice 1: free/RSVP registration on web (email OTP sign-in, questions, UTM), paid/group/file still hand off to the app (#321)
 - **2026-10-25** · Next 16.4.2 in web/space/apex (critical image-optimiser RCE advisory); ignoreBuildErrors removed; CI blocks critical runtime advisories; Dependabot monthly (#320)
+- **2026-10-25** · K6 web visits + referrer domains via first-party cookieless PageView beacon; Z7 weekly scorecard on Apex Overview (#322)
