@@ -884,3 +884,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J16 space status enforced: one PUBLIC_SPACE_STATUSES (APPROVED+ACTIVE) gate for listings, event feed/detail/ICS, publish, checkout and payout requests; private-space events out of the public feed; web "temporarily unavailable" page (#332)
 - **2026-10-25** · Dependabot no longer opens mobile PRs (Expo SDK pins native versions; #330 broke npm ci) (#334)
 - **2026-10-25** · J2 backend reliability: boot failure exits, stranded push sweep + resend, refund retry crons locked/indexed/alerted, email queue Redis-down fallback, starting-soon window fixed (#339)
+- **2026-10-25** · Z11 18+ self-registration confirmation (User.ageConfirmedAt, requireAgeConfirmation flag off, mobile gate + web RSVP + Apex toggle), breach runbook in PR body (#340)
