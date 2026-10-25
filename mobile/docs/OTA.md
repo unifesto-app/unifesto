@@ -99,6 +99,31 @@ Rollback is interactive; it asks which channel and which update. Test promote,
 revert and rollback once on the `preview` channel (`npm run update:preview`, with
 an internal preview build) before relying on them.
 
+## Store launch (5.0.0, and every store build after it)
+
+Nothing reaches the stores' users until you press release. Freeze Fri 20 Nov,
+submit Wed 25 Nov, release Wed 2 Dec (version-5 D6, R1–R5, Z10).
+
+1. **Before submit:** give the production build to organisers and Crew on
+   TestFlight and Play internal testing; each runs create event → register →
+   check in. Publish a no-op OTA to the `preview` channel and confirm a preview
+   build receives it.
+2. **Submit:** `eas submit --profile production --platform all`. Android uploads
+   as a **draft** on the Production track (`releaseStatus: "draft"` in
+   `eas.json`), so it never goes live on submit. iOS lands in App Store Connect;
+   set the version to "Manually release this version" and turn on **phased
+   release** (7 days) before sending it for review.
+3. **Release day:** App Store: Release. Play: edit the draft release, staged
+   rollout 10% → 50% (day 2) → 100% (day 3).
+4. **Pause rule:** crash-free sessions under 99% in Sentry (`unifesto-mobile`),
+   or a spike in registration or payment errors. App Store: pause phased
+   release. Play: halt the rollout. Ship the fix as an OTA once the new runtime is
+   recorded (below), else as a new build. The app has no feature flags, so the
+   OTA is the only switch.
+5. **Same day:** `npm run ota:record-build`, publish a tiny 5.0.1 OTA at 20% and
+   confirm a phone shows its update id in Profile › About. Set the latest version
+   in Apex › App version to turn on the soft update prompt.
+
 ## What a phone does with an update
 
 - Checks on cold start and on every return to the foreground (at most every 30 minutes).
