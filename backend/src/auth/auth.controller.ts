@@ -146,6 +146,7 @@ export class AuthController {
     return this.authService.logout(req.user.id, {
       refreshToken: body?.refreshToken,
       allDevices: body?.allDevices,
+      accessToken: req.headers?.authorization?.replace(/^Bearer\s+/i, ''),
     });
   }
 }
