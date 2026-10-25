@@ -102,10 +102,14 @@ export class RecordOfflinePaymentDto {
   @IsEnum(BillingCycle)
   billingCycle: BillingCycle;
 
-  @ApiProperty({ example: 4499, description: 'Amount received (₹)' })
+  @ApiPropertyOptional({
+    example: 4499,
+    description: "Amount received (₹); defaults to the plan's price in force (deal or rate card)",
+  })
+  @IsOptional()
   @IsNumber()
   @Min(1)
-  amount: number;
+  amount?: number;
 
   @ApiPropertyOptional({ example: 'UTR 4021XXXX', description: 'Bank / cheque reference; recorded once' })
   @IsOptional()
