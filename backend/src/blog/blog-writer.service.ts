@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { BlogQuestion, BlogQuestionSource, BlogQuestionStatus, BlogStatus } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
@@ -280,5 +280,15 @@ export class BlogWriterService {
       orderBy: { createdAt: 'asc' },
       include: { post: { select: { slug: true, title: true } } },
     });
+  }
+
+  /** Put a FAILED question back in the queue; the next run picks it up. */
+  async retryQuestion(id: string) {
+    const { count } = await this.prisma.blogQuestion.updateMany({
+      where: { id, status: BlogQuestionStatus.FAILED },
+      data: { status: BlogQuestionStatus.QUEUED, failReason: null },
+    });
+    if (!count) throw new NotFoundException('No failed question with that id');
+    return this.prisma.blogQuestion.findUnique({ where: { id } });
   }
 }

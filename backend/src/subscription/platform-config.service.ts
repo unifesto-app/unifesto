@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
+import { AI_FEATURE_KEYS, type AiFeature } from '../ai/ai-features';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** The fixed primary key of the singleton platform_config row. */
@@ -217,10 +218,12 @@ export class PlatformConfigService implements OnModuleInit {
     appReviewLoginEnabled: boolean;
     requireAgeConfirmation: boolean;
     customSendingDomainsEnabled: boolean;
+    aiFeatures: AiFeature[];
+    aiEnabledFeatures: string[];
   }> {
     const row = await this.prisma.platformConfig.findUnique({
       where: { id: CONFIG_ID },
-      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true },
+      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true, aiEnabledFeatures: true },
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
@@ -230,7 +233,20 @@ export class PlatformConfigService implements OnModuleInit {
       appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
       requireAgeConfirmation: row?.requireAgeConfirmation ?? false,
       customSendingDomainsEnabled: row?.customSendingDomainsEnabled ?? false,
+      aiFeatures: AI_FEATURE_KEYS,
+      aiEnabledFeatures: row?.aiEnabledFeatures ?? [],
     };
+  }
+
+  /** Admin switch for which AI features may run (the kill switch AiService reads). */
+  async setAiEnabledFeatures(features: string[]): Promise<void> {
+    const list = AI_FEATURE_KEYS.filter((f) => features.includes(f));
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, aiEnabledFeatures: list },
+      update: { aiEnabledFeatures: list },
+    });
+    this.logger.warn(`AI features enabled: ${list.length ? list.join(', ') : 'none'}`);
   }
 
   /** Admin switch for the Z11 18+ gate on self-registration. */

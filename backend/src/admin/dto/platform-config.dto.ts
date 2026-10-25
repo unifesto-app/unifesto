@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min, IsArray, IsIn, ArrayUnique } from 'class-validator';
+import { AI_FEATURE_KEYS } from '../../ai/ai-features';
 
 // The app-wide processing fee is fixed platform-wide (see PROCESSING_FEE_PERCENT)
 // and is intentionally not part of this DTO — it can no longer be set by admins.
@@ -49,4 +50,15 @@ export class UpdatePlatformConfigDto {
   @IsOptional()
   @IsBoolean()
   customSendingDomainsEnabled?: boolean;
+
+  @ApiProperty({
+    example: ['blog_writer'],
+    description: 'The AI features allowed to run; anything left out is off.',
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(AI_FEATURE_KEYS, { each: true })
+  aiEnabledFeatures?: string[];
 }

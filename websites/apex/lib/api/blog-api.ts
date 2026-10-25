@@ -98,6 +98,11 @@ export async function getBlogQuestions(): Result<BlogQuestion[]> {
   return apiCall<BlogQuestion[]>(backendClient.get("/blog/questions"));
 }
 
+/** `POST /blog/questions/:id/retry` — put a FAILED question back in the queue. */
+export async function retryBlogQuestion(id: string): Result<BlogQuestion> {
+  return apiCall<BlogQuestion>(backendClient.post(`/blog/questions/${id}/retry`));
+}
+
 /** `POST /blog/questions/search-console` — queue 10 questions from a Pages CSV. */
 export async function learnFromSearchConsole(
   csv: string

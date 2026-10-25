@@ -29,6 +29,7 @@ import {
   type PlatformVersionInfo,
 } from "@/lib/api/app-version-api";
 import { FlagCard } from "@/components/shared/FlagCard";
+import { AiFeaturesCard } from "@/components/shared/AiFeaturesCard";
 
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const ZERO_RE = /^0(\.0)*$/;
@@ -284,6 +285,8 @@ export default function AppVersionPage() {
         blocked: turn this on only once most attendees run 5.0.0 or later.
         Organiser manual add and import are never blocked.
       </FlagCard>
+
+      <AiFeaturesCard />
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <DeviceMobile className="mt-0.5 h-4 w-4 shrink-0" />
