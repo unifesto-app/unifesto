@@ -48,7 +48,8 @@ function formatDate(dateString: string): string {
 
 export default async function VerifyPage({ params }: VerifyPageProps) {
   const { code } = await params;
-  const cert = await verifyCertificate(code).catch(() => null);
+  // A 404 is "not found"; any other failure throws to error.tsx (try again).
+  const cert = await verifyCertificate(code);
 
   return (
     <main className="min-h-screen bg-canvas overflow-x-hidden">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -33,21 +34,7 @@ export default async function HelpArticlePage({ params }: Props) {
   const { slug } = await params;
   const article = await getHelpArticle(slug);
 
-  if (!article) {
-    return (
-      <main className="min-h-screen bg-canvas">
-        <Navbar />
-        <section className="px-6 pb-24 pt-40 text-center">
-          <h1 className="font-display text-3xl font-bold text-paper">Article not found</h1>
-          <p className="mt-3 text-paper/65">It may have moved or been unpublished.</p>
-          <Link href="/help" className="btn btn-secondary mt-8">
-            Back to help
-          </Link>
-        </section>
-        <Footer />
-      </main>
-    );
-  }
+  if (!article) notFound();
 
   const updated = new Date(article.updatedAt).toLocaleDateString("en-US", {
     year: "numeric",

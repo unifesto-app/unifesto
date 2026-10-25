@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import Markdown from "@/components/site/Markdown";
@@ -34,26 +35,7 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = await getPost(slug);
 
-  if (!post) {
-    return (
-      <main className="min-h-screen bg-canvas">
-        <Navbar />
-        <section className="px-6 pb-24 pt-40 text-center">
-          <h1 className="font-display text-3xl font-bold text-paper">Post not found</h1>
-          <p className="mt-3 text-paper/65">
-            This story may have moved or been unpublished.
-          </p>
-          <Link
-            href="/blog"
-            className="btn btn-secondary mt-8"
-          >
-            Back to blog
-          </Link>
-        </section>
-        <Footer />
-      </main>
-    );
-  }
+  if (!post) notFound();
 
   const { date, readTime } = postMeta(post);
   const url = `${SITE.url}/blog/${post.slug}`;

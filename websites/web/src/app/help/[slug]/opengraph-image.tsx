@@ -14,7 +14,7 @@ interface Props {
 
 export default async function Image({ params }: Props) {
   const { slug } = await params;
-  const [article, base] = await Promise.all([getHelpArticle(slug), loadOgBase()]);
+  const [article, base] = await Promise.all([getHelpArticle(slug).catch(() => null), loadOgBase()]);
   // Same first non-heading line the page uses for its meta description.
   const intro = article?.body.split("\n").find((l) => l.trim() && !l.trim().startsWith("#"));
 
