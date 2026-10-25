@@ -490,7 +490,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
-| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#369) |
+| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#372) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
@@ -915,3 +915,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · T6 slice 1: one settle() at each sale's frozen fee feeds payouts, export, Space+mobile Transactions tiles (server endpoint, Net now carries the platform fee), ticket-type and sub-space revenue; per-payout fee override dropped; forced reconcile delta goes to the organiser base. Left: Payout.sessionId (A17) (#376)
 - **2026-10-26** · A11 site and Space billing state both fees honestly: buyer 5% capped ₹99 (Razorpay inside it), organiser fee "from 2 Nov 2026", ₹500-pass example from the rate card, fee on event page, real annual saving (#370)
 - **2026-10-26** · J4 slice 1: Sentry now gets BullMQ job failures (after last retry) and every @OnEvent listener error (#369)
+- **2026-10-26** · J4 slice 3: Caddy access logs (the CERT-In record) now really keep 180 days; Apex logs page states true retention and sampling (#372)
