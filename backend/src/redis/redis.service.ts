@@ -8,6 +8,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private healthy = false;
+  private timers: NodeJS.Timeout[] = [];
 
   constructor(private configService: ConfigService) {}
 
@@ -16,6 +17,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    this.timers.forEach(clearInterval);
     if (this.client) {
       await this.client.quit();
       this.logger.log('Redis client disconnected');
@@ -35,23 +37,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const retryDelays = [1000, 2000, 4000]; // 1s, 2s, 4s
-    let attempt = 0;
-
+    // Never give up: a null here ends the client for good, and OTP login plus
+    // every runExclusive cron stayed broken until a manual restart (J12).
     const retryStrategy = (times: number) => {
-      if (times > retryDelays.length) {
-        this.logger.error('Redis connection failed after maximum retry attempts', {
-          host,
-          port,
-          tls: tlsEnabled,
-          attempts: retryDelays.length,
-        });
-        return null; // Stop retrying
+      if (times % 10 === 1) {
+        this.logger.warn(`Redis reconnect attempt ${times}`, { host, port, tls: tlsEnabled });
       }
-
-      const delay = retryDelays[times - 1];
-      this.logger.warn(`Redis connection attempt ${times} failed, retrying in ${delay}ms`);
-      return delay;
+      return Math.min(times * 200, 5000);
     };
 
     try {
@@ -61,6 +53,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         tls: tlsEnabled ? {} : undefined, // Enable TLS if configured
         retryStrategy,
         maxRetriesPerRequest: 3,
+        // A hung connection fails the command instead of the request.
+        commandTimeout: 2000,
         enableReadyCheck: true,
         lazyConnect: false, // Connect immediately
         // ioredis 6 defaults to RESP3; keep the v5 wire protocol.
@@ -102,11 +96,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       // Wait for connection to be ready or fail
       await this.client.ping();
+      this.healthy = true;
       this.logger.log('Redis ping successful');
     } catch (error) {
+      // Keep the client: it keeps reconnecting and 'ready' flips healthy back.
       this.healthy = false;
-      this.client = null;
-      this.logger.error('Redis initialization failed - application will continue with degraded functionality', {
+      this.logger.error('Redis initialization failed - degraded until it reconnects', {
         host,
         port,
         tls: tlsEnabled,
@@ -116,11 +111,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Get the Redis client instance
-   * @returns Redis client or null if connection failed
+   * The shared client while it is connected, else null. Every caller treats
+   * null as "Redis unavailable" and degrades, so an outage fails fast instead
+   * of queueing, and recovery needs no restart.
    */
   getClient(): Redis | null {
-    return this.client;
+    return this.healthy ? this.client : null;
   }
 
   /**
@@ -172,6 +168,43 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Keep a per-process config cache in step across replicas (J12). Call the
+   * returned bump() after an edit (and after reloading locally): every other
+   * replica sees the new stamp and reloads within ~2s. Every replica also
+   * reloads every 30s regardless, the floor while Redis is down.
+   */
+  syncCache(name: string, reload: () => Promise<void>): () => Promise<void> {
+    const key = `config-stamp:${name}`;
+    let seen: string | null = null;
+    let ticks = 0;
+    let busy = false;
+    const timer = setInterval(async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const stamp = await this.get(key).catch(() => null);
+        const changed = stamp !== null && seen !== null && stamp !== seen;
+        if (stamp !== null) seen = stamp;
+        if (changed || ++ticks % 15 === 0) await reload();
+      } catch (err) {
+        this.logger.warn(`syncCache(${name}) reload failed: ${(err as Error).message}`);
+      } finally {
+        busy = false;
+      }
+    }, 2000);
+    timer.unref();
+    this.timers.push(timer);
+
+    return async () => {
+      const client = this.getClient();
+      if (!client) return;
+      const n = await client.incr(key).catch(() => null);
+      // Skip our own reload only when nobody else bumped in between.
+      if (n !== null && seen !== null && Number(seen) + 1 === n) seen = String(n);
+    };
+  }
+
+  /**
    * Check if Redis connection is healthy
    * @returns boolean indicating connection status
    */
@@ -180,16 +213,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async get(key: string): Promise<string | null> {
-    if (!this.client) return null;
-    return this.client.get(key);
+    const client = this.getClient();
+    if (!client) return null;
+    return client.get(key);
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-    if (!this.client) return;
+    const client = this.getClient();
+    if (!client) return;
     if (ttlSeconds) {
-      await this.client.setex(key, ttlSeconds, value);
+      await client.setex(key, ttlSeconds, value);
     } else {
-      await this.client.set(key, value);
+      await client.set(key, value);
     }
   }
 
@@ -200,8 +235,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * is unavailable so callers fail open rather than block.
    */
   async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
-    if (!this.client) return true;
-    const res = await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+    const client = this.getClient();
+    if (!client) return true;
+    const res = await client.set(key, value, 'EX', ttlSeconds, 'NX');
     return res === 'OK';
   }
 
@@ -239,7 +275,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         throw err;
       });
 
-    if (!this.client) {
+    const client = this.getClient();
+    if (!client) {
       if (failOpen) {
         await run();
         return true;
@@ -251,7 +288,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
 
     const won =
-      (await this.client.set(key, '1', 'EX', ttlSeconds, 'NX')) === 'OK';
+      (await client.set(key, '1', 'EX', ttlSeconds, 'NX')) === 'OK';
     if (!won) return false;
 
     await run();
@@ -259,8 +296,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async del(key: string): Promise<void> {
-    if (!this.client) return;
-    await this.client.del(key);
+    const client = this.getClient();
+    if (!client) return;
+    await client.del(key);
   }
 
   async ping(): Promise<boolean> {

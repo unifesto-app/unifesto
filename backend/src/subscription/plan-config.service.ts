@@ -1,4 +1,5 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 import {
   BillingModel,
   BillingModelConfig,
@@ -30,9 +31,8 @@ export interface ModelConfig extends Omit<
  * read limits *synchronously* — exactly like the old hardcoded config, but now
  * editable. Falls back to the compiled defaults if a row is missing.
  *
- * Note: the in-memory cache is per-process. On a single backend container an
- * admin edit takes effect immediately. If scaled to multiple instances, other
- * instances pick up changes on their next `reload()` / restart.
+ * Note: the in-memory cache is per-process. The replica that takes an edit
+ * updates at once; the others reload within ~2s via RedisService.syncCache.
  */
 @Injectable()
 export class PlanConfigService implements OnModuleInit {
@@ -46,10 +46,17 @@ export class PlanConfigService implements OnModuleInit {
     BillingModel.REVENUE_SHARE,
   ];
 
-  constructor(private readonly prisma: PrismaService) {}
+  /** Tells the other replicas to reload after an edit here. */
+  private bumpReplicas: () => Promise<void> = async () => {};
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redis?: RedisService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.reload();
+    if (this.redis) this.bumpReplicas = this.redis.syncCache('plans', () => this.reload());
   }
 
   private rowToLimits(row: PlanConfig): PlanLimits {
@@ -270,6 +277,7 @@ export class PlanConfigService implements OnModuleInit {
       update: data,
     });
     this.modelCache.set(model, merged);
+    await this.bumpReplicas();
     return merged;
   }
 
@@ -314,6 +322,7 @@ export class PlanConfigService implements OnModuleInit {
       update: data,
     });
     this.cache.set(plan, merged);
+    await this.bumpReplicas();
     return { plan, ...merged };
   }
 }
