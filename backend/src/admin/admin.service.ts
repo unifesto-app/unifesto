@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
@@ -333,7 +334,7 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       this.prisma.space.count(),
-      this.prisma.space.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.space.count({ where: LIVE_SPACE_WHERE }),
       this.prisma.spaceRequest.count({ where: { status: 'PENDING' } }),
       // Hidden events are left out, like the Events page's default list (B14).
       this.prisma.event.count({ where: { deletedAt: null } }),

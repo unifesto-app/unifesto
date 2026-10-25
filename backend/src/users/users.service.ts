@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { OPERATOR_SPACE_STATUSES } from '../spaces/space-access';
 import { ConfigService } from '@nestjs/config';
 import { UpdateProfileDto, UpdateNotificationSettingsDto } from './dto';
 import {
@@ -728,7 +729,7 @@ export class UsersService {
     // Default behaviour (apex/mobile) — one row per space-scoped role, unchanged.
     if (!opts.includeEventRoles) {
       const spaceRoles = await this.prisma.userRole.findMany({
-        where: { userId, space: { status: 'ACTIVE' } },
+        where: { userId, space: { status: { in: OPERATOR_SPACE_STATUSES } } },
         include: {
           space: { include: spaceInclude },
           role: { select: { id: true, code: true, name: true } },
@@ -744,14 +745,14 @@ export class UsersService {
     }
 
     // Space-app path: also match event-scoped roles whose event's space is
-    // ACTIVE. These have no spaceId, so the plain `space` filter would drop them
+    // live or paused. These have no spaceId, so the plain `space` filter would drop them
     // (why event-only curators/crew couldn't sign in).
     const userRoles = await this.prisma.userRole.findMany({
       where: {
         userId,
         OR: [
-          { space: { status: 'ACTIVE' } },
-          { event: { space: { status: 'ACTIVE' } } },
+          { space: { status: { in: OPERATOR_SPACE_STATUSES } } },
+          { event: { space: { status: { in: OPERATOR_SPACE_STATUSES } } } },
         ],
       },
       include: {

@@ -19,6 +19,7 @@ import {
   SupportTicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSpaceLive } from '../spaces/space-access';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
@@ -644,6 +645,7 @@ export class StayBookingsService {
         'The time to pay has run out. Ask the event team to approve you again.',
       );
     }
+    await assertSpaceLive(this.prisma, { events: { some: { id: b.eventId } } });
     const total = num(b.totalAmount);
     const order = await this.payments.createOrder({
       amount: total,

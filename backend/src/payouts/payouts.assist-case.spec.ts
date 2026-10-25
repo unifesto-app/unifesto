@@ -23,6 +23,7 @@ function setup() {
     user: { fullName: 'Asha', identities: [] },
   };
   const db: any = {
+    space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
     event: {
       findUnique: jest.fn(async ({ where }: any) => ({ id: where.id, title: 'Hack Day', createdBy: 'creator', spaceId: 'sp-1', payoutBankAccountId: null, space: { subscription: null } })),
       findMany: jest.fn(async () => [{ id: 'ev-1' }]),

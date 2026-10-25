@@ -32,6 +32,7 @@ describe('SessionsService session capacity', () => {
       ...row,
     };
     const prisma: any = {
+      space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
       $executeRaw: jest.fn(async () => seatTaken),
       session: { findUnique: jest.fn(async () => session) },
       sessionRegistration: {

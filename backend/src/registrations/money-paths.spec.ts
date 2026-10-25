@@ -19,6 +19,7 @@ jest.mock('./form-answers.policy', () => ({
 function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number } = {}) {
   let seatsLeft = opts.seatsLeft ?? 100;
   const prisma: any = {
+    space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
     $executeRaw: jest.fn(async (_sql: TemplateStringsArray, n: number) => {
       if (seatsLeft < n) return 0;
       seatsLeft -= n;

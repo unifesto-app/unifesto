@@ -33,7 +33,7 @@ const row = {
   createdBy: 'u-owner',
   displayToken: 'projector-secret',
   ticketTypes: [],
-  space: { name: 'Space', subscription: null },
+  space: { name: 'Space', subscription: null, visibility: 'PUBLIC', status: 'ACTIVE' },
   creator: { fullName: 'Owner' },
 };
 

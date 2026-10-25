@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventStatus, PaymentStatus, RoleCode, SpaceStatus, SpaceType, SpaceVisibility } from '@prisma/client';
+import { EventStatus, PaymentStatus, RoleCode, SpaceType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { PayoutsService } from '../payouts/payouts.service';
 import { SpacesService } from '../spaces/spaces.service';
 import { EmailService } from '../email/email.service';
@@ -275,7 +276,7 @@ export class OrbitService {
   /** Public campus picker for the apply form. `open` = no live Orbit Lead yet. */
   async campusOptions() {
     const rows = await this.prisma.space.findMany({
-      where: { type: SpaceType.SUPER, parentSpaceId: null, visibility: SpaceVisibility.PUBLIC, status: SpaceStatus.ACTIVE },
+      where: { type: SpaceType.SUPER, parentSpaceId: null, ...PUBLIC_LIVE_SPACE_WHERE },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, city: true, _count: { select: { orbitLeads: { where: { endedAt: null } } } } },
     });

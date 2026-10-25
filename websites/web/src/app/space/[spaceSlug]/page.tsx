@@ -6,13 +6,21 @@ import { withSocial } from "@/lib/seo";
 import { getTenant } from "@/lib/tenant";
 import { cache } from "react";
 import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
+import { UnavailableError } from "@/lib/api/events";
+import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
 import { getSpaceSessions } from "@/lib/api/sessions";
 import SpaceDetailClient from "./SpaceDetailClient";
 
-// One fetch per request, shared by generateMetadata and the page.
-const getSpaceBySlug = cache(fetchSpace);
+// One fetch per request, shared by generateMetadata and the page. A space taken
+// down for now comes back as "unavailable" (J16).
+const getSpaceBySlug = cache((slug: string) =>
+  fetchSpace(slug).catch((e) => {
+    if (e instanceof UnavailableError) return "unavailable" as const;
+    throw e;
+  }),
+);
 
 interface Props {
   params: Promise<{ spaceSlug: string }>;
@@ -40,6 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { spaceSlug } = await params;
   const space = await getSpaceBySlug(spaceSlug);
 
+  if (space === "unavailable") return { title: "Temporarily unavailable", robots: { index: false } };
   if (!space) notFound();
 
   // White-labelled: no Unifesto in the title or share card. A space with a
@@ -72,6 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SpacePage({ params }: Props) {
   const { spaceSlug } = await params;
   const space = await getSpaceBySlug(spaceSlug);
+  if (space === "unavailable") return <Unavailable what="space" />;
   if (!space) notFound();
   // An old slug (renamed space) resolves too: go to the current address.
   if (space.slug && space.slug !== spaceSlug) redirect(`/space/${space.slug}`);

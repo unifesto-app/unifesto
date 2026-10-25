@@ -3,7 +3,7 @@ import type { Branding } from "@/components/BrandedChrome";
 // Universal module (no browser APIs): usable from both Client Components and
 // server code such as `generateMetadata` / the OG image routes. Do not add a
 // "use client" directive here or server-side callers will break.
-import { mapEvent } from "./events";
+import { mapEvent, UnavailableError } from "./events";
 
 // Call the NestJS backend directly. The backend exposes spaces under `/spaces`.
 // See backends/unifesto-backend/src/spaces/spaces.controller.ts.
@@ -109,7 +109,7 @@ function mapSpace(raw: Record<string, unknown> | null | undefined): Space | null
     state: r.state as string | undefined,
     country: r.country as string | undefined,
     is_verified: Boolean(r.verifiedAt),
-    is_active: (r.status as string) === 'APPROVED',
+    is_active: ['APPROVED', 'ACTIVE'].includes(r.status as string),
     created_at: (r.createdAt ?? r.created_at) as string,
     updated_at: (r.updatedAt ?? r.updated_at) as string,
     member_count: (count.userRoles ?? count.members) as number | undefined,
@@ -128,7 +128,6 @@ export async function getSpaces(
   filters?: {
     search?: string;
     type?: string;
-    is_active?: boolean;
   }
 ): Promise<SpaceListResponse> {
   try {
@@ -137,10 +136,7 @@ export async function getSpaces(
       limit: limit.toString(),
     });
 
-    // `is_active` maps to the backend's status=ACTIVE filter; `type` is client-side.
-    if (filters?.is_active) {
-      params.append('status', 'ACTIVE');
-    }
+    // The backend lists only live (APPROVED or ACTIVE) public spaces by default; `type` is client-side.
     if (filters?.search) {
       params.append('search', filters.search);
     }
@@ -211,6 +207,7 @@ export async function getSpaceBySlug(slug: string): Promise<Space | null> {
 
     // Only a 404 means "no such space"; other failures throw (see getEventBySlug).
     if (response.status === 404) return null;
+    if (response.status === 403) throw new UnavailableError();
     if (!response.ok) {
       throw new Error(`Error fetching space: ${response.status} ${response.statusText}`);
     }

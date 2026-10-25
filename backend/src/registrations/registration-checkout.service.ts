@@ -24,6 +24,7 @@ import {
   EventVisibility,
 } from '@prisma/client';
 import { canAccessSpaceOnlyEvent } from '../events/event-access';
+import { assertSpaceLive } from '../spaces/space-access';
 import {
   RegisterForEventDto,
   CreateOrderDto,
@@ -242,6 +243,8 @@ export class RegistrationCheckoutService {
     },
     userId: string,
   ) {
+    // No new sales while the space is taken down (J16).
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
     if (!(await canAccessSpaceOnlyEvent(this.prisma, event, userId))) {
       throw new ForbiddenException(
         `This event is only open to members of ${event.space?.name ?? 'its space'}. Join the space to register.`,
@@ -713,6 +716,8 @@ export class RegistrationCheckoutService {
         'This offer has expired and the seat has been released',
       );
     }
+
+    await assertSpaceLive(this.prisma, { events: { some: { id: registration.eventId } } });
 
     const razorpayAmount = Number(registration.razorpayAmount);
     if (razorpayAmount <= 0) {

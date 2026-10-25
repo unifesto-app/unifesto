@@ -49,7 +49,7 @@ import {
 } from '@prisma/client';
 import { assertEventSchedule } from '../events/event-dates';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
-import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
+import { assertCanViewSpace, isSpaceLive, visibleSpacesWhere } from './space-access';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
@@ -259,7 +259,7 @@ export class SpacesService {
   async getSpaceBannerUrl(id: string, userId?: string): Promise<string | null> {
     const space = await this.prisma.space.findUnique({
       where: { id },
-      select: { id: true, visibility: true, bannerUrl: true },
+      select: { id: true, visibility: true, status: true, bannerUrl: true },
     });
     if (!space) {
       throw new NotFoundException('Space not found');
@@ -1068,7 +1068,7 @@ export class SpacesService {
     }
     this.logger.log(`parentSpace: ${JSON.stringify((space as any).parentSpace)}`);
 
-    if (space.status !== SpaceStatus.ACTIVE) {
+    if (!isSpaceLive(space.status)) {
       throw new BadRequestException('Space is not active');
     }
 
