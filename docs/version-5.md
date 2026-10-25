@@ -903,3 +903,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · K13 web checks a signed-out discount code after sign-in and stops on the final total (#354)
 - **2026-10-25** · J19 web has its first frontend tests (node --test, no new deps), run in CI (#360)
 - **2026-10-25** · K15 web /tickets page with QR + resend my ticket on the already-in screen (#359)
+- **2026-10-25** · K14 web strict nonce CSP (pages now per-request) + web session capped at 24h (#364)
