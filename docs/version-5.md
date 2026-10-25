@@ -933,3 +933,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · G3 every remaining mobile screen on cosmos (palette codemod + ~100-screen structural pass) (#385)
 - **2026-10-26** · G8 event-day cockpit on mobile: live check-ins, today's money, help desk, announcements (#387)
 - **2026-10-26** · G14 accessibility: labelled inputs (mobile + 100 web labels), reachable card hearts, AA legacy palette, Dynamic Type-safe controls (#390)
+- **2026-10-26** · Support stats batch their queries (≤3 connections) instead of 10 at once; fixes pool timeouts UNIFESTO-BACKEND-6/7 (#392)
