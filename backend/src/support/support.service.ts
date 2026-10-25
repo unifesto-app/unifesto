@@ -1053,26 +1053,24 @@ export class SupportService {
       });
 
     const active = { ...scope, status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING] } };
-    const [open, pending, resolved, closed, myUnread, deskUnread, unassigned, kinds, overdue, desks] = await Promise.all([
-      this.prisma.supportTicket.count({
-        where: { ...scope, status: SupportTicketStatus.OPEN },
-      }),
-      this.prisma.supportTicket.count({
-        where: { ...scope, status: SupportTicketStatus.PENDING },
-      }),
-      this.prisma.supportTicket.count({
-        where: { ...scope, status: SupportTicketStatus.RESOLVED },
-      }),
-      this.prisma.supportTicket.count({
-        where: { ...scope, status: SupportTicketStatus.CLOSED },
-      }),
-      countMyUnread(),
-      admin ? countDeskUnread() : null,
+    // Small batches, not one Promise.all of ten: each replica has 10 pool
+    // connections and one stats call used to take all of them (UNIFESTO-BACKEND-6).
+    const [byStatus, unassigned, kinds] = await Promise.all([
+      this.prisma.supportTicket.groupBy({ by: ['status'], where: scope, _count: { _all: true } }),
       this.prisma.supportTicket.count({ where: { ...scope, status: SupportTicketStatus.OPEN, assignedToId: null } }),
       this.prisma.supportTicket.groupBy({ by: ['kind'], where: active, _count: { _all: true } }),
-      admin ? this.prisma.supportTicket.count({ where: overdueWhere() }) : null,
-      admin ? this.deskTimesByDesk() : null,
     ]);
+    const [myUnread, deskUnread, overdue] = await Promise.all([
+      countMyUnread(),
+      admin ? countDeskUnread() : null,
+      admin ? this.prisma.supportTicket.count({ where: overdueWhere() }) : null,
+    ]);
+    const desks = admin ? await this.deskTimesByDesk() : null;
+    const statusCount = (st: SupportTicketStatus) => byStatus.find((r) => r.status === st)?._count._all ?? 0;
+    const open = statusCount(SupportTicketStatus.OPEN);
+    const pending = statusCount(SupportTicketStatus.PENDING);
+    const resolved = statusCount(SupportTicketStatus.RESOLVED);
+    const closed = statusCount(SupportTicketStatus.CLOSED);
 
     return {
       open,
