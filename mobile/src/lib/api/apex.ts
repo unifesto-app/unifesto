@@ -577,6 +577,18 @@ export interface PlatformStatus {
 
 export const getPlatformStatus = () => call<PlatformStatus>('/admin/status');
 
+/** POST /admin/status/incidents: report an incident by hand. */
+export const createStatusIncident = (body: {
+  title: string;
+  body?: string;
+  impact: StatusIncident['impact'];
+  affectedServices: string[];
+}) => call<StatusIncident>('/admin/status/incidents', post(body));
+
+/** PATCH /admin/status/incidents/:id: RESOLVED stamps resolvedAt on the server. */
+export const updateStatusIncident = (id: string, body: { status: StatusIncident['status'] }) =>
+  call<StatusIncident>(`/admin/status/incidents/${id}`, patch(body));
+
 /** UptimeRobot's outside view (read-only key on the server; cached a minute). */
 export interface ExternalMonitor {
   id: number;

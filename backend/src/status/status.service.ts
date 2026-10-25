@@ -85,6 +85,42 @@ function dateKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Milliseconds of `day` (UTC, YYYY-MM-DD) that incidents marked `service` down.
+ * The samples come from the API checking itself, so they can't see a dead
+ * host, a Caddy 502 storm or 429s; incidents (auto or reported) can. NONE is
+ * maintenance/info and never counts; an incident with no services listed
+ * counts against the API. Overlapping incidents are merged, not summed.
+ */
+export function incidentDownMs(
+  incidents: { impact: IncidentImpact; affectedServices: string[]; startedAt: Date; resolvedAt: Date | null }[],
+  service: string,
+  day: string,
+  now: number,
+): number {
+  const dayStart = Date.parse(`${day}T00:00:00Z`);
+  const dayEnd = Math.min(dayStart + DAY_MS, now);
+  const spans = incidents
+    .filter(
+      (i) =>
+        i.impact !== IncidentImpact.NONE &&
+        (i.affectedServices.length ? i.affectedServices.includes(service) : service === 'api'),
+    )
+    .map((i) => [Math.max(+i.startedAt, dayStart), Math.min(i.resolvedAt ? +i.resolvedAt : now, dayEnd)])
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let end = -Infinity;
+  for (const [a, b] of spans) {
+    if (b <= end) continue;
+    total += b - Math.max(a, end);
+    end = b;
+  }
+  return total;
+}
+
 @Injectable()
 export class StatusService {
   private readonly logger = new Logger(StatusService.name);
@@ -337,11 +373,37 @@ export class StatusService {
     since.setUTCDate(since.getUTCDate() - (HISTORY_DAYS - 1));
     since.setUTCHours(0, 0, 0, 0);
 
-    const samples = await this.prisma.healthCheck.findMany({
-      where: { checkedAt: { gte: since } },
-      select: { service: true, up: true, latencyMs: true, checkedAt: true },
-      orderBy: { checkedAt: 'asc' },
-    });
+    const now = Date.now();
+    // J3: aggregate in Postgres. Loading the raw rows was ~100k health_checks
+    // (4 services x 288/day x 90 days) on every 30s poll.
+    const [dayCounts, latestRows, downIncidents] = await Promise.all([
+      this.prisma.$queryRaw<{ service: string; day: string; total: number; up: number }[]>`
+        SELECT service,
+               to_char(checked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
+               count(*)::int AS total,
+               (count(*) FILTER (WHERE up))::int AS up
+        FROM health_checks
+        WHERE checked_at >= ${since}
+        GROUP BY 1, 2`,
+      // Newest sample per service: one index seek each on (service, checked_at).
+      Promise.all(
+        STATUS_SERVICES.map(({ key }) =>
+          this.prisma.healthCheck.findFirst({
+            where: { service: key, checkedAt: { gte: since } },
+            orderBy: { checkedAt: 'desc' },
+            select: { service: true, up: true, latencyMs: true, checkedAt: true },
+          }),
+        ),
+      ),
+      // Every incident that overlaps the window counts against uptime.
+      this.prisma.incident.findMany({
+        where: {
+          impact: { not: IncidentImpact.NONE },
+          OR: [{ resolvedAt: null }, { resolvedAt: { gte: since } }],
+        },
+        select: { impact: true, affectedServices: true, startedAt: true, resolvedAt: true },
+      }),
+    ]);
 
     // Pre-build the list of day keys (oldest → today).
     const dayKeys: string[] = [];
@@ -355,16 +417,14 @@ export class StatusService {
     const byService = new Map<string, Map<string, { up: number; total: number }>>();
     const latest = new Map<string, { up: boolean; latencyMs: number | null }>();
     let lastSampleAt: Date | null = null;
-    for (const s of samples) {
-      const day = dateKey(s.checkedAt);
-      if (!byService.has(s.service)) byService.set(s.service, new Map());
-      const dayMap = byService.get(s.service)!;
-      const cell = dayMap.get(day) ?? { up: 0, total: 0 };
-      cell.total += 1;
-      if (s.up) cell.up += 1;
-      dayMap.set(day, cell);
-      latest.set(s.service, { up: s.up, latencyMs: s.latencyMs ?? null });
-      lastSampleAt = s.checkedAt;
+    for (const c of dayCounts) {
+      if (!byService.has(c.service)) byService.set(c.service, new Map());
+      byService.get(c.service)!.set(c.day, { up: c.up, total: c.total });
+    }
+    for (const r of latestRows) {
+      if (!r) continue;
+      latest.set(r.service, { up: r.up, latencyMs: r.latencyMs ?? null });
+      if (!lastSampleAt || r.checkedAt > lastSampleAt) lastSampleAt = r.checkedAt;
     }
     // A dead sampler (DB or Redis down, crashed cron) would otherwise freeze the
     // last reading, usually all green. Past the threshold, current is unknown.
@@ -373,16 +433,23 @@ export class StatusService {
 
     const services = STATUS_SERVICES.map(({ key, name }) => {
       const dayMap = byService.get(key) ?? new Map();
-      let up = 0;
-      let total = 0;
+      // Time-weighted: a day's uptime is the worse of what the samples saw
+      // and what incidents say, so a reported outage can't hide behind green
+      // self-checks.
+      let upMs = 0;
+      let totalMs = 0;
       const days: DayBucket[] = dayKeys.map((date) => {
         const cell = dayMap.get(date);
-        if (!cell) return { date, status: 'nodata', uptime: null };
-        up += cell.up;
-        total += cell.total;
-        const pct = Math.round((cell.up / cell.total) * 100);
-        const status =
-          pct === 100 ? 'up' : pct === 0 ? 'down' : 'partial';
+        const down = incidentDownMs(downIncidents, key, date, now);
+        if (!cell && !down) return { date, status: 'nodata', uptime: null };
+        const dayStart = Date.parse(`${date}T00:00:00Z`);
+        const span = Math.max(Math.min(DAY_MS, now - dayStart), 1);
+        const ratio = Math.min(cell ? cell.up / cell.total : 1, 1 - down / span);
+        upMs += ratio * span;
+        totalMs += span;
+        const status = ratio >= 1 ? 'up' : ratio <= 0 ? 'down' : 'partial';
+        // Never print 100% on a day that had downtime.
+        const pct = ratio >= 1 ? 100 : Math.min(99, Math.round(ratio * 100));
         return { date, status, uptime: pct };
       });
       const cur = latest.get(key);
@@ -392,7 +459,7 @@ export class StatusService {
         currentStatus: cur && !stale ? (cur.up ? 'up' : 'down') : 'unknown',
         latencyMs: cur?.latencyMs ?? null,
         uptimePercent:
-          total > 0 ? Math.round((up / total) * 10000) / 100 : null,
+          totalMs > 0 ? Math.floor((upMs / totalMs) * 10000) / 100 : null,
         days,
       };
     });
