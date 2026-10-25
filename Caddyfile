@@ -57,16 +57,15 @@ api.unifesto.app {
 		lb_try_duration 5s
 		lb_try_interval 250ms
 
-		# Passively eject a replica for 30s after it errors, and actively probe
-		# `GET /` so a wedged or recovering replica is only returned to rotation
-		# once it answers again. Together with the Docker healthcheck (which keeps
-		# unhealthy replicas out of DNS entirely) this stops traffic reaching a
-		# replica that can't serve it.
+		# Passively eject a replica for 30s after a failed request (a refused or
+		# timed-out dial: restarting, OOM-killed, not yet booted). Active checks
+		# (health_uri) were configured here but Caddy never runs them for
+		# `dynamic` upstreams, and the replica set must stay dynamic because
+		# deploy.sh rolls replicas with `--scale`, which renames containers.
+		# A replica that stays up but stops answering is caught by its Docker
+		# healthcheck and restarted by `autoheal` (docker-compose.yml); its
+		# dials then fail and this check ejects it until it is back.
 		fail_duration 30s
-		health_uri /
-		health_interval 10s
-		health_timeout 5s
-		health_status 2xx
 	}
 }
 
@@ -106,6 +105,7 @@ unifesto.app, www.unifesto.app {
 			header_up X-Forwarded-For {client_ip}
 			lb_try_duration 5s
 			lb_try_interval 250ms
+			fail_duration 30s
 		}
 	}
 	# One web container: while a deploy recreates it, hold requests and retry
