@@ -395,7 +395,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
-| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | in progress (#319) |
+| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | done (#366) |
 | E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | planned |
 
 ### F · Feedback and user IAM (from 4.4.0)
@@ -907,3 +907,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J19 slice 3 — money modules typed (33 any → 0), CI any-count guard (#361)
 - **2026-10-26** · J17 logout blacklists the caller's access token (Apex/Space sign-out now revokes server-side) (#363)
 - **2026-10-26** · T8 #365: plan checkout/renew/upgrade credit/offline/admin edit/MRR priced from the space deal; history rows record price_paise + deal_id; Apex shows price in force (#365)
+- **2026-10-26** · E8 hackathon judging integrity: panel race, COI guard, no-mark force-complete, criteria lock, top-N/decision confirms, award unpublish revokes certs (#366)
