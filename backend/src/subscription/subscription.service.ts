@@ -14,7 +14,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PlanConfigService, SELLABLE_PLANS, subscriptionStatus } from './plan-config.service';
-import { TermsService } from './terms.service';
+import { PlanPrice, planPriceFor, TermsService } from './terms.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import {
@@ -72,7 +72,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Credit (paise) for the unused whole days of the current paid period, priced
- * at the current plan's list price. The period is the cycle ending at
+ * at what that period cost (paidForPeriodPaise). The period is the cycle ending at
  * expiresAt, or from the last payment when that is later (bought 31 Jan, ends
  * 28 Feb: a 28-day period). Time stacked by early renewals is credited too.
  */
@@ -242,6 +242,8 @@ export class SubscriptionService {
     plan: OrgPlan,
     cycle: BillingCycle,
     now = new Date(),
+    /** What the current period cost (paise); default = its plan's list price. */
+    periodPricePaise?: number | null,
   ): { kind: PlanChangeKind; creditPaise: number } {
     const diff =
       PLAN_RANK[plan] - PLAN_RANK[sub.plan] || CYCLE_RANK[cycle] - CYCLE_RANK[sub.billingCycle];
@@ -249,15 +251,62 @@ export class SubscriptionService {
     const paidLeft = sub.plan !== OrgPlan.STARTER && !!sub.expiresAt && sub.expiresAt > now;
     if (!paidLeft) return { kind: 'upgrade', creditPaise: 0 };
     if (diff < 0) return { kind: 'downgrade', creditPaise: 0 };
-    const limits = this.planConfig.getLimits(sub.plan);
     const price =
-      sub.billingCycle === BillingCycle.MONTHLY ? limits.monthlyPrice : limits.annualPrice;
+      periodPricePaise !== undefined
+        ? periodPricePaise
+        : planPriceFor(this.planConfig.getLimits(sub.plan), sub.plan, sub.billingCycle, null).pricePaise;
     return {
       kind: 'upgrade',
       creditPaise: price
-        ? prorationCreditPaise(price * 100, sub.billingCycle, sub.expiresAt!, now, sub.lastPaymentAt)
+        ? prorationCreditPaise(price, sub.billingCycle, sub.expiresAt!, now, sub.lastPaymentAt)
         : 0,
     };
+  }
+
+  /** The price of a plan for this space now: its space deal, else the rate card (T6). */
+  async planPrice(
+    spaceId: string,
+    plan: OrgPlan,
+    cycle: BillingCycle,
+    at = new Date(),
+  ): Promise<PlanPrice> {
+    const deal = await this.terms.activeDeal(spaceId, null, at);
+    return planPriceFor(this.planConfig.getLimits(plan), plan, cycle, deal);
+  }
+
+  /** Admin: what each paid plan and cycle costs this space now (deal or rate card). */
+  async getPlanPricesForSpace(spaceId: string) {
+    const deal = await this.terms.activeDeal(spaceId);
+    const prices: Partial<Record<OrgPlan, Record<BillingCycle, PlanPrice>>> = {};
+    for (const plan of SELLABLE_PLANS.filter((p) => p !== OrgPlan.STARTER)) {
+      const limits = this.planConfig.getLimits(plan);
+      prices[plan] = {
+        MONTHLY: planPriceFor(limits, plan, BillingCycle.MONTHLY, deal),
+        ANNUAL: planPriceFor(limits, plan, BillingCycle.ANNUAL, deal),
+      };
+    }
+    return prices;
+  }
+
+  /**
+   * What the space paid for its current period (paise), to credit unused days
+   * at: the price its last payment bought, when that payment was for the plan it
+   * is on. Payments before T6 (no recorded price) and plans set without a
+   * payment fall back to the price in force, which is what they were credited
+   * at before. ponytail: a cycle changed by an admin after the payment isn't
+   * detected (history has no cycle); add one if that becomes common.
+   */
+  private async paidForPeriodPaise(
+    spaceId: string,
+    sub: { id: string; plan: OrgPlan; billingCycle: BillingCycle },
+  ): Promise<number | null> {
+    const last = await this.prisma.subscriptionHistory.findFirst({
+      where: { subscriptionId: sub.id, amountPaise: { gt: 0 } },
+      orderBy: { changedAt: 'desc' },
+      select: { toPlan: true, pricePaise: true },
+    });
+    if (last?.pricePaise != null && last.toPlan === sub.plan) return last.pricePaise;
+    return (await this.planPrice(spaceId, sub.plan, sub.billingCycle)).pricePaise;
   }
 
   async createUpgradeOrderForSpace(spaceId: string, dto: UpgradeSubscriptionDto) {
@@ -268,32 +317,26 @@ export class SubscriptionService {
     // A space deal naming this plan (and cycle, if it sets one) prices it, and
     // is the only way a FREE or REVENUE_SHARE space may buy a plan (T4); paying
     // moves such a space onto SUBSCRIPTION. Without one they stay blocked.
-    const active = await this.terms.activeDeal(spaceId);
-    const deal =
-      active?.plan === dto.plan && (!active.billingCycle || active.billingCycle === dto.billingCycle)
-        ? active
-        : null;
-    if (!deal) assertSelfServeBilling(subscription.billingModel);
+    const { pricePaise, dealId } = await this.planPrice(spaceId, dto.plan, dto.billingCycle);
+    if (!dealId) assertSelfServeBilling(subscription.billingModel);
     if (subscription.pendingPlan) {
       throw new BadRequestException(
         'A plan change is already scheduled for the end of this period. Contact support to change it.',
       );
     }
 
-    const planLimits = this.planConfig.getLimits(dto.plan);
-    const rateCard =
-      dto.billingCycle === BillingCycle.MONTHLY
-        ? planLimits.monthlyPrice
-        : planLimits.annualPrice;
-    const pricePaise =
-      deal?.planPricePaise != null ? deal.planPricePaise : rateCard === null ? null : rateCard * 100;
-
     // A comped deal (0) is applied by an admin, never paid for.
     if (pricePaise === null || pricePaise === 0) {
       throw new BadRequestException('Cannot upgrade to this plan via payment');
     }
 
-    const { kind, creditPaise } = this.quoteChange(subscription, dto.plan, dto.billingCycle);
+    const { kind, creditPaise } = this.quoteChange(
+      subscription,
+      dto.plan,
+      dto.billingCycle,
+      new Date(),
+      await this.paidForPeriodPaise(spaceId, subscription),
+    );
     const amountPaise = pricePaise - creditPaise;
     if (amountPaise < 100) {
       throw new BadRequestException(
@@ -312,7 +355,9 @@ export class SubscriptionService {
         billingCycle: dto.billingCycle,
         kind,
         creditPaise: String(creditPaise),
-        ...(deal ? { dealId: deal.id, listPaise: String(pricePaise) } : {}),
+        // The plan price bought (before credit) and its deal, recorded on payment.
+        listPaise: String(pricePaise),
+        ...(dealId ? { dealId } : {}),
       },
     });
 
@@ -409,12 +454,13 @@ export class SubscriptionService {
     const amountPaise = Math.round(Number(order.amount));
     // A deal-priced order (T4) records the deal's price and moves the space
     // onto SUBSCRIPTION billing, so a FREE / REVENUE_SHARE space gets its plan.
-    const viaDeal = typeof n.dealId === 'string';
-    const listPrice = viaDeal
-      ? Number(n.listPaise) / 100
-      : billingCycle === BillingCycle.MONTHLY
-        ? this.planConfig.getLimits(plan).monthlyPrice
-        : this.planConfig.getLimits(plan).annualPrice;
+    const dealId = typeof n.dealId === 'string' ? n.dealId : null;
+    // The plan price the order bought, before credit. Orders made before T6
+    // without one were rate-card priced.
+    const pricePaise =
+      n.listPaise != null
+        ? Number(n.listPaise)
+        : planPriceFor(this.planConfig.getLimits(plan), plan, billingCycle, null).pricePaise;
 
     const row = await this.prisma.orgSubscription.findUnique({
       where: { spaceId },
@@ -450,6 +496,8 @@ export class SubscriptionService {
             paymentId,
             orderId: order.id,
             amountPaise,
+            pricePaise,
+            dealId,
           },
         ],
         skipDuplicates: true,
@@ -461,7 +509,7 @@ export class SubscriptionService {
         isActive: true,
         lastPaymentAt: now,
         nextPaymentAt: expiresAt,
-        ...(viaDeal ? { billingModel: BillingModel.SUBSCRIPTION } : {}),
+        ...(dealId ? { billingModel: BillingModel.SUBSCRIPTION } : {}),
       };
       const subscription = await tx.orgSubscription.update({
         where: { id: sub.id },
@@ -472,7 +520,7 @@ export class SubscriptionService {
                 ...paid,
                 plan,
                 billingCycle,
-                amount: new Prisma.Decimal(listPrice ?? amountPaise / 100),
+                amount: new Prisma.Decimal((pricePaise ?? amountPaise) / 100),
                 expiresAt,
                 pendingPlan: null,
                 pendingBillingCycle: null,
@@ -639,6 +687,16 @@ export class SubscriptionService {
       data.revenueSharePercent = dto.revenueSharePercent;
     }
     if (dto.plan !== undefined) data.plan = dto.plan;
+    // A plan or cycle change with no amount takes the space deal's price (T6).
+    // Without a deal the amount is left as it was.
+    if (dto.amount === undefined && (dto.plan !== undefined || dto.billingCycle !== undefined)) {
+      const price = await this.planPrice(
+        spaceId,
+        dto.plan ?? subscription.plan,
+        dto.billingCycle ?? subscription.billingCycle,
+      );
+      if (price.dealId && price.pricePaise !== null) data.amount = price.pricePaise / 100;
+    }
 
     // Every admin change is logged with it, in one transaction (from = to plan
     // when only the arrangement changed).
@@ -677,6 +735,12 @@ export class SubscriptionService {
       (await this.createStarterForSpace(spaceId));
     const ref = dto.reference?.trim();
     const now = new Date();
+    // No amount given: the price in force (deal or rate card, T6).
+    const price = await this.planPrice(spaceId, dto.plan, dto.billingCycle, now);
+    const amountPaise = dto.amount != null ? Math.round(dto.amount * 100) : price.pricePaise;
+    if (!amountPaise) {
+      throw new BadRequestException('Enter the amount received; this plan has no set price.');
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const sub = await lockSubscription(tx, row.id);
@@ -691,7 +755,9 @@ export class SubscriptionService {
             toPlan: dto.plan,
             reason: ['Offline payment', ref, dto.note?.trim()].filter(Boolean).join(' · ').slice(0, 500),
             paymentId: ref ? `offline:${ref}` : null,
-            amountPaise: Math.round(dto.amount * 100),
+            amountPaise,
+            pricePaise: amountPaise,
+            dealId: price.dealId,
           },
         })
         .catch((e) => {
@@ -706,7 +772,7 @@ export class SubscriptionService {
           billingModel: BillingModel.SUBSCRIPTION,
           plan: dto.plan,
           billingCycle: dto.billingCycle,
-          amount: new Prisma.Decimal(dto.amount),
+          amount: new Prisma.Decimal(dto.amount ?? amountPaise / 100),
           isActive: true,
           expiresAt,
           cancelledAt: null,
@@ -787,6 +853,7 @@ export class SubscriptionService {
       this.prisma.space.count({ where }),
     ]);
 
+    const deals = await this.terms.activeSpaceDeals(spaces.map((sp) => sp.id));
     const data = spaces.map((sp) => {
       const own = sp.subscription;
       const eff = own;
@@ -811,6 +878,10 @@ export class SubscriptionService {
         plan: eff?.plan ?? null,
         billingCycle: eff?.billingCycle ?? BillingCycle.MONTHLY,
         amount: eff?.amount ?? 0,
+        /** The current plan's price now (T6): the space deal's, else the rate card's. */
+        priceInForce: eff
+          ? planPriceFor(this.planConfig.getLimits(eff.plan), eff.plan, eff.billingCycle, deals.get(sp.id) ?? null)
+          : null,
         currency: eff?.currency ?? 'INR',
         isActive: eff?.isActive ?? false,
         status: eff ? subscriptionStatus(eff) : null,
@@ -870,9 +941,10 @@ export class SubscriptionService {
     }
 
     // MRR from what was actually paid: each live, uncancelled subscription's
-    // latest payment spread over its cycle. Comp plans (never paid) add nothing.
-    // ponytail: an upgrade's first payment is net of its proration credit, so
-    // MRR reads low for one period after an upgrade.
+    // latest payment spread over its cycle, at the plan price it bought (deal or
+    // rate card, before proration credit; T6). Comp plans (never paid) add
+    // nothing. ponytail: payments before T6 have no price, so an upgrade paid
+    // then still counts net of its credit until it renews.
     const payments = await this.prisma.subscriptionHistory.findMany({
       where: {
         amountPaise: { gt: 0 },
@@ -882,6 +954,7 @@ export class SubscriptionService {
       distinct: ['subscriptionId'],
       select: {
         amountPaise: true,
+        pricePaise: true,
         subscription: {
           select: {
             plan: true,
@@ -899,7 +972,7 @@ export class SubscriptionService {
       const s = p.subscription;
       if (s.plan === OrgPlan.STARTER || subscriptionStatus(s) === 'EXPIRED') continue;
       const cycle = s.pendingBillingCycle ?? s.billingCycle;
-      mrrPaise += (p.amountPaise ?? 0) / (cycle === BillingCycle.ANNUAL ? 12 : 1);
+      mrrPaise += (p.pricePaise ?? p.amountPaise ?? 0) / (cycle === BillingCycle.ANNUAL ? 12 : 1);
     }
     const mrr = mrrPaise / 100;
 
