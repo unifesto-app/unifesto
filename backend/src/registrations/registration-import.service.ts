@@ -27,6 +27,7 @@ import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
+import { assertSpaceLive } from '../spaces/space-access';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
 /**
@@ -423,6 +424,7 @@ export class RegistrationImportService {
       eventId,
       ticketTypeId,
     );
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
     this.assertAttendeeActionsOpen(event.endDateTime);
     const shape = this.toImportShape(ticketType);
     const { rows: parsed, fileError } = parseImportRows(shape, parseCsv(csvText));
@@ -670,6 +672,7 @@ export class RegistrationImportService {
       eventId,
       dto.ticketTypeId,
     );
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
     this.assertAttendeeActionsOpen(event.endDateTime);
 
     // Resolve the group size + how many seats this booking consumes.

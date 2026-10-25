@@ -18,6 +18,7 @@ import {
   UpdateSponsorDto,
   UpdateSponsorTierDto,
 } from './dto/sponsor.dto';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 /**
  * Sponsors & lead generation — P1: the space-level sponsor roster, the per-space
@@ -562,10 +563,8 @@ export class SponsorsService {
     await this.assertPlanAllowsSponsors(spaceId);
     await this.getOwnedSponsor(spaceId, sponsorId);
 
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, email, {
       select: { userId: true },
-      orderBy: { isPrimary: 'desc' },
     });
     if (!identity) {
       throw new BadRequestException(

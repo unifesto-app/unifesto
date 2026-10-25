@@ -42,6 +42,13 @@ interface EventNavItem {
   exact?: boolean;
   /** Capability the role must hold to see this section. Absent = any operator. */
   requires?: Capability;
+  /**
+   * The backend checks `can()` on the event itself, which co-hosting doesn't
+   * reach: hide it from a co-host Space Admin, whose only event capability is
+   * `event:edit` (the canManageEvent fallback). Every real path to `event:edit`
+   * also carries the mandatory `event:view`, so that is the signal.
+   */
+  ownersOnly?: boolean;
   /** Plan feature that must be enabled. Absent = not plan-gated. */
   feature?: SpaceFeature;
 }
@@ -65,7 +72,7 @@ const NAV_GROUPS: EventNavGroup[] = [
     items: [
       { href: "/rsvps", label: "RSVPs", icon: Lightning, requires: "event:manage-attendees" },
       { href: "/tickets", label: "Tickets", icon: Ticket, requires: "event:edit" },
-      { href: "/coupons", label: "Discount codes", icon: Tag, requires: "event:edit" },
+      { href: "/coupons", label: "Discount codes", icon: Tag, requires: "event:edit", ownersOnly: true },
       { href: "/attendees", label: "Attendees", icon: Users, requires: "event:manage-attendees" },
       { href: "/waitlist", label: "Waiting list", icon: Hourglass, requires: "event:manage-attendees", feature: "hasWaitlist" },
       { href: "/whatsapp", label: "WhatsApp group", icon: WhatsappLogo, requires: "event:manage-attendees" },
@@ -91,10 +98,10 @@ const NAV_GROUPS: EventNavGroup[] = [
     label: "Experience",
     items: [
       { href: "/content", label: "Content", icon: FileText, requires: "event:edit" },
-      { href: "/polls", label: "Live polls", icon: ListChecks, requires: "event:edit" },
-      { href: "/questions", label: "Live Q&A", icon: ChatsCircle, requires: "event:edit" },
-      { href: "/quizzes", label: "Live quizzes", icon: Timer, requires: "event:edit" },
-      { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", feature: "hasCertificates" },
+      { href: "/polls", label: "Live polls", icon: ListChecks, requires: "event:edit", ownersOnly: true },
+      { href: "/questions", label: "Live Q&A", icon: ChatsCircle, requires: "event:edit", ownersOnly: true },
+      { href: "/quizzes", label: "Live quizzes", icon: Timer, requires: "event:edit", ownersOnly: true },
+      { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", ownersOnly: true, feature: "hasCertificates" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
       { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-leaderboard" },
       // Unifesto Stay. Crew get the property desk; setup and approvals are gated in-page.
@@ -145,7 +152,10 @@ export function EventNav({
   const navGroups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
-      (i) => (!i.requires || can(i.requires)) && (!i.feature || hasFeature(i.feature))
+      (i) =>
+        (!i.requires || can(i.requires)) &&
+        (!i.ownersOnly || can("event:view")) &&
+        (!i.feature || hasFeature(i.feature))
     ),
   })).filter((group) => group.items.length > 0);
 

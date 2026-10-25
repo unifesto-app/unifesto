@@ -54,7 +54,12 @@ type IdentityFinder = { userIdentity: { findMany(args: any): Promise<any[]> } };
 export async function findIdentityByEmail<T = any>(
   db: IdentityFinder,
   email: string,
-  args: { where?: Prisma.UserIdentityWhereInput; include?: object; select?: object } = {},
+  args: {
+    where?: Prisma.UserIdentityWhereInput;
+    include?: object;
+    select?: object;
+    orderBy?: Prisma.UserIdentityOrderByWithRelationInput[];
+  } = {},
   by: 'email' | 'providerUserId' = 'email',
 ): Promise<T | null> {
   const e = normalizeEmail(email);
@@ -67,8 +72,30 @@ export async function findIdentityByEmail<T = any>(
       ...(by === 'providerUserId' ? { provider: 'EMAIL' } : {}),
       [by]: emailFilter(e),
     },
-    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    orderBy: args.orderBy ?? [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     take: 10,
   });
   return rows.find((r) => sameEmail(r[by], e)) ?? null;
+}
+
+type EmailRowFinder = { findMany(args: any): Promise<any[]> };
+
+/**
+ * Ids of the rows (within `where`) whose `field` is one of `emails` in any
+ * case, exactly: the ILIKE hits re-checked with {@link sameEmail}. For the
+ * update/delete paths, which then act on `id: { in: ids }`.
+ */
+export async function idsByEmail(
+  model: EmailRowFinder,
+  where: object,
+  field: string,
+  emails: (string | null | undefined)[],
+): Promise<string[]> {
+  const wanted = [...new Set(emails.map((e) => normalizeEmail(e ?? '')).filter(Boolean))];
+  if (wanted.length === 0) return [];
+  const rows = await model.findMany({
+    where: { AND: [where, { OR: wanted.map((e) => ({ [field]: emailFilter(e) })) }] },
+    select: { id: true, [field]: true },
+  });
+  return rows.filter((r) => wanted.some((e) => sameEmail(r[field], e))).map((r) => r.id);
 }

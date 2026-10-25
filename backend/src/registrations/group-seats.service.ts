@@ -16,6 +16,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { emailFilter, findIdentityByEmail, idsByEmail, sameEmail } from '../auth/identifiers';
 import { enforceFormAnswers } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -769,7 +770,7 @@ export class GroupSeatsService {
       await GroupSeatsService.cancelPendingLeadTransfer(tx, registrationId);
       const gone = oldEmail
         ? await tx.eventTicket.deleteMany({
-            where: { registrationId, attendeeEmail: { equals: oldEmail, mode: 'insensitive' } },
+            where: { id: { in: await idsByEmail(tx.eventTicket, { registrationId }, 'attendeeEmail', [oldEmail]) } },
           })
         : { count: 0 };
       return GroupSeatsService.mayHoldSharedQr(seat, oldEmail, gone.count) ? this.rotateSharedQr(tx, registrationId) : null;
@@ -834,12 +835,8 @@ export class GroupSeatsService {
     if (!inviteEmail) {
       throw new ForbiddenException("This seat hasn't been sent to anyone yet, so it can't be claimed.");
     }
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: {
-        userId: claimerUserId,
-        email: { equals: inviteEmail.trim(), mode: 'insensitive' },
-        emailVerified: true,
-      },
+    const identity = await findIdentityByEmail(this.prisma, inviteEmail, {
+      where: { userId: claimerUserId, emailVerified: true },
       select: { userId: true },
     });
     if (!identity) {
@@ -921,11 +918,11 @@ export class GroupSeatsService {
     const emails = [...new Set(identities.map((i) => (i.email ?? '').trim().toLowerCase()).filter(Boolean))];
     if (emails.length === 0) return { invites: [] };
 
-    const seats = await this.prisma.groupSeat.findMany({
+    const hits = await this.prisma.groupSeat.findMany({
       where: {
         AND: [
           { OR: [{ status: GroupSeatStatus.INVITED }, TYPED_IN] },
-          { OR: emails.map((e) => ({ inviteEmail: { equals: e, mode: 'insensitive' as const } })) },
+          { OR: emails.map((e) => ({ inviteEmail: emailFilter(e) })) },
         ],
         registration: {
           userId: { not: userId }, // never my own group's seats
@@ -941,6 +938,7 @@ export class GroupSeatsService {
       take: 10,
       select: {
         inviteToken: true,
+        inviteEmail: true,
         seatIndex: true,
         registration: {
           select: {
@@ -961,6 +959,8 @@ export class GroupSeatsService {
         },
       },
     });
+    // ILIKE treats `_`/`%` as wildcards: keep exact (any-case) matches only.
+    const seats = hits.filter((s) => emails.some((e) => sameEmail(s.inviteEmail, e)));
     if (seats.length === 0) return { invites: [] };
 
     // Drop events I'm already in (same rule the claim enforces), so the card
@@ -1115,8 +1115,7 @@ export class GroupSeatsService {
       if (prior.length > 0) {
         await tx.eventTicket.deleteMany({
           where: {
-            registrationId: seat.registrationId,
-            OR: prior.map((e) => ({ attendeeEmail: { equals: e.trim(), mode: 'insensitive' as const } })),
+            id: { in: await idsByEmail(tx.eventTicket, { registrationId: seat.registrationId }, 'attendeeEmail', prior) },
           },
         });
       }

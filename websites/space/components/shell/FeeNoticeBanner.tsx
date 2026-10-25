@@ -19,7 +19,7 @@ const DISMISS_KEY = "fee-notice-2026-11-02";
 const RATE: Record<string, number> = { STARTER: 2.5, GROWTH: 2.5, PRO: 1.5, ENTERPRISE: 1 };
 
 export function FeeNoticeBanner() {
-  const { billing, currentRole } = useSession();
+  const { billing, can } = useSession();
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function FeeNoticeBanner() {
     !billing ||
     billing.billingModel !== "SUBSCRIPTION" ||
     rate == null ||
-    !(currentRole === "space_admin" || currentRole === "curator")
+    !(can("space:manage-money") || can("event:manage-money"))
   ) {
     return null;
   }

@@ -13,6 +13,7 @@ describe('A28 admin transfer rotates the QR', () => {
     const db: any = {
       userIdentity: {
         findFirst: jest.fn(async ({ where }: any) => (where.userId === 'old' ? { email: 'old@x.com' } : { userId: 'new' })),
+        findMany: jest.fn(async () => [{ userId: 'new', email: 'new@x.com' }]),
       },
       eventRegistration: {
         findFirst: jest.fn(async ({ where }: any) => (where.id ? { id: 'r-1', eventId: 'e-1', userId: 'old', ticketTypeId: 't-1' } : null)),

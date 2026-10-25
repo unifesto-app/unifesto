@@ -4,7 +4,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportCaseKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from '../auth/otp.service';
-import { normalizeEmail } from '../auth/identifiers';
+import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
 import { SupportService } from './support.service';
 import { CreateGrievanceDto } from './dto';
 
@@ -34,10 +34,9 @@ export class GrievanceController {
     if (result !== 'ok') throw new UnauthorizedException('That code is wrong or has expired.');
 
     // The code proves the email, so an unverified identity with it counts; prefer a verified one.
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { email: { equals: dto.email, mode: 'insensitive' } },
-      orderBy: { emailVerified: 'desc' },
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, dto.email, {
       select: { userId: true },
+      orderBy: [{ emailVerified: 'desc' }],
     });
     if (!identity) {
       throw new NotFoundException('No Unifesto account uses this email. Write to the Grievance Officer instead.');
