@@ -26,6 +26,8 @@ import { takeSeats } from './capacity.util';
 import { holdsSeats } from './registration.util';
 import { esc, h1, p, strong } from '../email/layout';
 import { takeFreeAddSeats } from '../free-attendee-add/free-add-quota';
+import { RedisService } from '../redis/redis.service';
+import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
@@ -109,6 +111,7 @@ export class TeamChangesService {
     private readonly payments: PaymentsService,
     private readonly email: EmailService,
     private readonly notifications: NotificationsService,
+    private readonly redis?: RedisService,
   ) {}
 
   // ── Loading + authorisation ─────────────────────────────────────────────────
@@ -566,6 +569,7 @@ export class TeamChangesService {
       await this.payments.refund(p.paymentId!, total, `auto:seats:${p.id}`, { groupSeatPurchaseId: p.id });
     } catch (err) {
       this.logger.error(`CRITICAL: add-seats ${p.id} payment ${p.paymentId} couldn't be refunded, retrying later: ${err}`);
+      await noteRefundFailure(this.redis, `auto:seats:${p.id}`, err);
       return false;
     }
     await this.prisma.groupSeatPurchase.update({
@@ -579,12 +583,14 @@ export class TeamChangesService {
   /** Retry add-seats refunds that didn't go through the first time. */
   @Cron('*/15 * * * *')
   async retryDueRefunds(): Promise<void> {
-    const due = await this.prisma.groupSeatPurchase.findMany({
-      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
-      select: { id: true },
-      take: 100,
+    await runRefundRetry(this.redis, 'seats', async () => {
+      const due = await this.prisma.groupSeatPurchase.findMany({
+        where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+        select: { id: true },
+        take: 100,
+      });
+      for (const d of due) await this.refundDue(d.id);
     });
-    for (const d of due) await this.refundDue(d.id);
   }
 
   // ── Hand over the lead ──────────────────────────────────────────────────────

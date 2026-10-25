@@ -9,6 +9,7 @@ import {
   Prisma,
   PushCampaign,
   PushCampaignStatus,
+  PushLogStatus,
   PushScope,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -42,6 +43,14 @@ const BROADCAST_SEGMENT = process.env.ONESIGNAL_BROADCAST_SEGMENT || 'Total Subs
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
+
+/**
+ * A SENDING campaign untouched this long is stranded (the process died
+ * mid-send): the sweep marks it FAILED so it can be resent or deleted.
+ * ponytail: dispatch has no per-batch heartbeat; a single send running longer
+ * than this would be marked FAILED early (its final update still sets SENT).
+ */
+export const STALE_SENDING_MS = 15 * MINUTE;
 
 @Injectable()
 export class PushCampaignService {
@@ -118,18 +127,22 @@ export class PushCampaignService {
     });
   }
 
-  /** Admin re-trigger of a DRAFT/SCHEDULED campaign. */
+  /**
+   * Admin re-trigger of a DRAFT/SCHEDULED campaign, or a resend of a FAILED
+   * one (users it already reached are skipped).
+   */
   async sendNow(id: string): Promise<{ status: string }> {
     const campaign = await this.prisma.pushCampaign.findUnique({ where: { id } });
     if (!campaign) throw new NotFoundException('Campaign not found');
     const sendable: PushCampaignStatus[] = [
       PushCampaignStatus.DRAFT,
       PushCampaignStatus.SCHEDULED,
+      PushCampaignStatus.FAILED,
     ];
     if (!sendable.includes(campaign.status)) {
       throw new BadRequestException(`Campaign is ${campaign.status}, cannot send`);
     }
-    void this.dispatch(id).catch((err) =>
+    void this.dispatch(id, campaign.status === PushCampaignStatus.FAILED).catch((err) =>
       this.logger.error(`dispatch(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
     );
     return { status: 'dispatching' };
@@ -283,11 +296,13 @@ export class PushCampaignService {
    * double-click can't double-send. PushLog's @@unique([campaignId, userId])
    * backstops per-recipient duplication.
    */
-  async dispatch(campaignId: string): Promise<void> {
+  async dispatch(campaignId: string, resend = false): Promise<void> {
     const claim = await this.prisma.pushCampaign.updateMany({
       where: {
         id: campaignId,
-        status: { in: [PushCampaignStatus.DRAFT, PushCampaignStatus.SCHEDULED] },
+        status: resend
+          ? PushCampaignStatus.FAILED
+          : { in: [PushCampaignStatus.DRAFT, PushCampaignStatus.SCHEDULED] },
       },
       data: { status: PushCampaignStatus.SENDING },
     });
@@ -338,7 +353,15 @@ export class PushCampaignService {
           deepLink,
         });
       } else {
-        const userIds = await this.resolveRecipients(campaign);
+        let userIds = await this.resolveRecipients(campaign);
+        if (resend) {
+          const reached = await this.prisma.pushLog.findMany({
+            where: { campaignId, status: PushLogStatus.SENT },
+            select: { userId: true },
+          });
+          const skip = new Set(reached.map((l) => l.userId));
+          userIds = userIds.filter((id) => !skip.has(id));
+        }
         summary = await this.notifications.send(userIds, {
           category: staffTest ? 'adminAlerts' : category,
           title: staffTest ? `[Test] ${campaign.title}` : campaign.title,
@@ -372,6 +395,19 @@ export class PushCampaignService {
         .update({ where: { id: campaignId }, data: { status: PushCampaignStatus.FAILED } })
         .catch(() => undefined);
     }
+  }
+
+  /** Mark campaigns stranded in SENDING (see {@link STALE_SENDING_MS}) FAILED. */
+  async sweepStaleSending(now = new Date()): Promise<number> {
+    const { count } = await this.prisma.pushCampaign.updateMany({
+      where: {
+        status: PushCampaignStatus.SENDING,
+        updatedAt: { lt: new Date(now.getTime() - STALE_SENDING_MS) },
+      },
+      data: { status: PushCampaignStatus.FAILED },
+    });
+    if (count) this.logger.warn(`${count} push campaign(s) stalled in SENDING; marked FAILED (resend or delete)`);
+    return count;
   }
 
   private async resolveRecipients(campaign: PushCampaign): Promise<string[]> {

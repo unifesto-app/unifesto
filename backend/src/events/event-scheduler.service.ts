@@ -8,6 +8,19 @@ import { emailOptedOutUserIds } from '../email/email-preferences';
 import { forEachPage, inChunks } from '../common/batching';
 import { CLAIMED_MEMBER_SEAT, COUNTS_AS_ATTENDING } from '../common/attendance';
 
+export const STARTING_SOON_CADENCE_MIN = 15;
+
+/**
+ * The start times one "starting soon" run covers: [tick+60, tick+75) minutes,
+ * where tick is `now` floored to the cron cadence (so run-time jitter can't
+ * open gaps or overlaps between consecutive runs).
+ */
+export function startingSoonWindow(now: Date): { gte: Date; lt: Date } {
+  const step = STARTING_SOON_CADENCE_MIN * 60_000;
+  const tick = Math.floor(now.getTime() / step) * step;
+  return { gte: new Date(tick + 60 * 60_000), lt: new Date(tick + 60 * 60_000 + step) };
+}
+
 type Person = {
   id: string;
   fullName: string | null;
@@ -192,22 +205,23 @@ export class EventSchedulerService {
   }
 
   /**
-   * Job 2: Send "event starting soon" notifications 1 hour before
-   * Runs: Every 15 minutes
-   * Finds: Events starting in 55-65 minutes
+   * Job 2: Send "event starting soon" notifications about an hour before.
+   * Runs every 15 minutes over {@link startingSoonWindow}, a 15-minute window
+   * matching the cadence, so every start time is caught by exactly one run
+   * (the old 55-65 min window skipped a third of them). The setNx guard below
+   * stops a duplicate from an overlapping replica.
    */
-  @Cron('*/15 * * * *')
+  @Cron(`*/${STARTING_SOON_CADENCE_MIN} * * * *`)
   async sendEventStartingSoonNotifications(): Promise<void> {
     this.logger.log('Starting event starting soon job...');
 
     const now = new Date();
-    const in55Min = new Date(now.getTime() + 55 * 60 * 1000);
-    const in65Min = new Date(now.getTime() + 65 * 60 * 1000);
+    const window = startingSoonWindow(now);
 
     const events = await this.prisma.event.findMany({
       where: {
         ...NOT_DELETED,
-        startDateTime: { gte: in55Min, lte: in65Min },
+        startDateTime: window,
         status: 'PUBLISHED',
       },
     });
@@ -253,7 +267,9 @@ export class EventSchedulerService {
                   userName: to.name,
                   eventId: event.id,
                   eventTitle: event.title,
-                  startsInMinutes: 60,
+                  startsInMinutes: Math.round(
+                    (event.startDateTime.getTime() - now.getTime()) / 60_000,
+                  ),
                   venueName: event.venueName || undefined,
                   city: event.city || undefined,
                   isOnline: event.type === 'ONLINE',

@@ -72,10 +72,14 @@ export class EmailCampaignQueue implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Queue a send. The job id is the campaign id, so a campaign already queued
-   * or running is not queued twice. False when there is no queue.
+   * or running is not queued twice. False when there is no queue, or Redis
+   * is down: ioredis buffers commands while disconnected, so `queue.add`
+   * would hang forever and the caller's inline fallback would never run.
    */
   async add(campaignId: string): Promise<boolean> {
-    if (!this.queue) return false;
+    // ponytail: health flag lags a fresh outage by one ping; a timeout race
+    // here could enqueue late AND send inline, so it is deliberately not used.
+    if (!this.queue || !this.redis.getClient()) return false;
     await this.queue.add(
       'send',
       { campaignId },

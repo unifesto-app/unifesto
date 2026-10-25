@@ -1,4 +1,4 @@
-import { EventSchedulerService, reminderRecipients } from './event-scheduler.service';
+import { EventSchedulerService, reminderRecipients, startingSoonWindow } from './event-scheduler.service';
 
 describe('auto-complete leaves series parents alone (A29)', () => {
   it('only completes non-recurring events', async () => {
@@ -50,5 +50,20 @@ describe('reminders reach attending bookings and joined group members (C9)', () 
       ['lead@x.in', 'QR-GROUP', 'T-LEAD'],
       ['mem@x.in', 'QR-MEM', 'T-MEM'],
     ]);
+  });
+});
+
+describe('starting-soon window covers every start minute exactly once (J2)', () => {
+  it('over a simulated day of 15-minute runs (with run-time jitter)', () => {
+    const t0 = Date.UTC(2026, 9, 25, 0, 0);
+    const runs = Array.from({ length: 96 }, (_, i) => startingSoonWindow(new Date(t0 + i * 15 * 60_000 + (i % 7) * 1000)));
+    // Every start minute between the first and last covered hour, plus odd seconds.
+    for (let m = 60; m < 24 * 60 + 60 - 15; m++) {
+      for (const sec of [0, 29]) {
+        const start = t0 + m * 60_000 + sec * 1000;
+        const hits = runs.filter((w) => start >= w.gte.getTime() && start < w.lt.getTime());
+        expect(hits).toHaveLength(1);
+      }
+    }
   });
 });

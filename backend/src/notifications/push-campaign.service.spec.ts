@@ -1,4 +1,4 @@
-import { PushCampaignService } from './push-campaign.service';
+import { PushCampaignService, STALE_SENDING_MS } from './push-campaign.service';
 
 /** The confirm step's audience count and send-to-me test (no DB, no OneSignal). */
 describe('PushCampaignService confirm step', () => {
@@ -168,5 +168,42 @@ describe('PushCampaignService confirm step', () => {
       expect.objectContaining({ category: 'promotions', campaignId: 'c1' }),
     );
     expect(notifications.send.mock.calls[0][1].inbox).toBeUndefined(); // inbox on by default
+  });
+});
+
+describe('PushCampaignService stranded SENDING (J2)', () => {
+  const build = (prisma: any, notifications: any = {}) =>
+    new PushCampaignService(prisma, notifications, {} as any, {} as any);
+
+  it('marks SENDING campaigns with no progress for 15 min FAILED', async () => {
+    const prisma = { pushCampaign: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) } };
+    const now = new Date('2026-10-25T10:00:00Z');
+    expect(await build(prisma).sweepStaleSending(now)).toBe(2);
+    expect(prisma.pushCampaign.updateMany).toHaveBeenCalledWith({
+      where: { status: 'SENDING', updatedAt: { lt: new Date(now.getTime() - STALE_SENDING_MS) } },
+      data: { status: 'FAILED' },
+    });
+  });
+
+  it('a FAILED campaign can be resent, skipping users it already reached', async () => {
+    const prisma = {
+      pushCampaign: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'c1', status: 'FAILED' }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'c1', scope: 'PLATFORM', category: 'promotions', title: 'T', body: 'B', data: {},
+          targetSegment: { type: 'users', userIds: ['a', 'b'] },
+        }),
+        update: jest.fn(),
+      },
+      pushLog: { findMany: jest.fn().mockResolvedValue([{ userId: 'a' }]) },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]) },
+    };
+    const notifications = { send: jest.fn().mockResolvedValue({ sent: 1, failed: 0, skipped: 0 }) };
+    const svc = build(prisma, notifications);
+    await svc.sendNow('c1');
+    await new Promise((r) => setImmediate(r));
+    expect(prisma.pushCampaign.updateMany.mock.calls[0][0].where).toEqual({ id: 'c1', status: 'FAILED' });
+    expect(notifications.send.mock.calls[0][0]).toEqual(['b']);
   });
 });

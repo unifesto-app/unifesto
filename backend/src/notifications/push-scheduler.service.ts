@@ -35,6 +35,9 @@ export class PushSchedulerService {
     for (const c of due) {
       await this.campaigns.dispatch(c.id);
     }
+    await this.redis.runExclusive('cron:pushStaleSweep', 50, async () => {
+      await this.campaigns.sweepStaleSending();
+    });
   }
 
   /**

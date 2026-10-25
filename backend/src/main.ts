@@ -13,7 +13,7 @@ import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import axios from 'axios';
 import { OUTBOUND_TIMEOUT_MS } from './common/http/outbound-timeouts';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { jsonLogsEnabled } from './common/observability';
+import { jsonLogsEnabled, reportError } from './common/observability';
 
 // S32: no outbound axios call (WhatsApp, OneSignal, Razorpay's SDK) may hang
 // forever. Set before any service is constructed so SDK instances inherit it.
@@ -144,4 +144,13 @@ async function bootstrap() {
   logger.log(`Application is running on: http://localhost:${port}`);
   logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }
-bootstrap();
+// A failed boot (bad env, DB down) must exit non-zero so Docker restarts the
+// container; the unhandledRejection handler above would otherwise swallow it
+// and leave a zombie replica. The delay lets Sentry flush the report.
+bootstrap().catch((err: unknown) => {
+  new Logger('Bootstrap').error(
+    err instanceof Error ? (err.stack ?? err.message) : String(err),
+  );
+  reportError(err, { phase: 'bootstrap' });
+  setTimeout(() => process.exit(1), 2000).unref();
+});

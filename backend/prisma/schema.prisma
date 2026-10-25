@@ -2169,6 +2169,7 @@ model EventRegistration {
   // expiry sweep, which scans OFFERED rows past their deadline.
   @@index([ticketTypeId, waitlistStatus, waitlistedAt])
   @@index([waitlistStatus, waitlistOfferExpiresAt])
+  @@index([refundDueAt]) // J2: refund-retry cron
   @@map("event_registrations")
 }
 
@@ -2474,6 +2475,7 @@ model GroupSeatPurchase {
 
   @@index([registrationId])
   @@index([eventId, paymentStatus])
+  @@index([refundDueAt]) // J2: refund-retry cron
   @@map("group_seat_purchases")
 }
 
@@ -3405,6 +3407,7 @@ model SessionRegistration {
   @@index([userId])
   @@index([paymentStatus])
   @@index([orderId])
+  @@index([refundDueAt]) // J2: refund-retry cron
   @@map("session_registrations")
 }
 
@@ -5739,6 +5742,7 @@ model StayBooking {
   @@index([registrationId])
   @@index([orderId])
   @@index([status, paymentDueAt])
+  @@index([refundDueAt]) // J2: refund-retry cron
   @@map("stay_bookings")
 }
 

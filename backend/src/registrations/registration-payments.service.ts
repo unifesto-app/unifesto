@@ -9,6 +9,8 @@ import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
+import { RedisService } from '../redis/redis.service';
+import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 import { CouponsService } from '../coupons/coupons.service';
 import {
   PaymentStatus,
@@ -66,6 +68,7 @@ export class RegistrationPaymentsService {
     private readonly events?: EventEmitter2,
     // Plan orders ride the same account-wide webhook (T8).
     private readonly subscriptions?: SubscriptionService,
+    private readonly redis?: RedisService,
   ) {}
 
   /**
@@ -119,6 +122,7 @@ export class RegistrationPaymentsService {
       if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount, `auto:reg:${registrationId}`, { registrationId });
     } catch (err) {
       this.logger.error(`CRITICAL: auto-refund of registration ${registrationId} failed, retrying later: ${err}`);
+      await noteRefundFailure(this.redis, `auto:reg:${registrationId}`, err);
       return false;
     }
     await this.prisma.eventRegistration.update({
@@ -138,12 +142,14 @@ export class RegistrationPaymentsService {
   /** Retry automatic refunds that didn't go through the first time. */
   @Cron('*/15 * * * *')
   async retryDueRefunds(): Promise<void> {
-    const due = await this.prisma.eventRegistration.findMany({
-      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
-      select: { id: true },
-      take: 100,
+    await runRefundRetry(this.redis, 'registration', async () => {
+      const due = await this.prisma.eventRegistration.findMany({
+        where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+        select: { id: true },
+        take: 100,
+      });
+      for (const r of due) await this.refundDue(r.id);
     });
-    for (const r of due) await this.refundDue(r.id);
   }
 
   /**
