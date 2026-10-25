@@ -8,7 +8,7 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { EXAMPLE_PASS, LAUNCH_OFFER_ENDS, PLANS, SITE, buyerFeeOn, buyerFeeText, inr, passExample, planFeesText, pricingFaq, rupees } from "@/lib/site";
+import { EXAMPLE_PASS, LAUNCH_OFFER_ENDS, SITE, type Plan, buyerFeeOn, buyerFeeText, inr, passExample, planFeesText, pricingFaq, rupees } from "@/lib/site";
 import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
@@ -23,14 +23,13 @@ export async function generateMetadata(): Promise<Metadata> {
   }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
 
-const productLd = {
+const productLd = (plans: Plan[]) => ({
   "@context": "https://schema.org",
   "@type": "Product",
   name: "Unifesto event platform",
   brand: { "@type": "Brand", name: SITE.name },
   description: SITE.description,
-  // Prices only (no fees), so the static plan list is enough here.
-  offers: PLANS.filter((p) => p.price !== null).map((p) => ({
+  offers: plans.filter((p) => p.price !== null).map((p) => ({
     "@type": "Offer",
     name: `${p.name} plan`,
     price: p.price,
@@ -38,14 +37,14 @@ const productLd = {
     url: `${SITE.url}/pricing`,
     availability: "https://schema.org/InStock",
   })),
-};
+});
 
 export default async function PricingPage() {
   const { plans, buyerFee, buyerFeeCap, feeFrom } = await getRateCard();
   const studentPays = rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap));
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
-      <JsonLd data={[productLd, breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
+      <JsonLd data={[productLd(plans), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
       <Navbar />
 
       <PageHero
