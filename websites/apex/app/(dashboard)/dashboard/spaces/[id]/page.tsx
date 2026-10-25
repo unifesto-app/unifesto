@@ -71,6 +71,7 @@ import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { StatCard } from "@/components/shared/StatCard";
+import { SpaceDealsCard } from "@/components/spaces/SpaceDealsCard";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -362,6 +363,8 @@ function SpaceManagement({
             verified={space.is_verified}
             onChange={onChange}
           />
+
+          <SpaceDealsCard spaceId={space.id} />
 
           {isSuper && <ChildSpacesPanel space={space} />}
 

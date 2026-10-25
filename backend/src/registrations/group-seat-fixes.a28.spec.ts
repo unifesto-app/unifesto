@@ -8,6 +8,7 @@ import { RegistrationConfirmationsService } from './registration-confirmations.s
 import { WaitlistService } from './waitlist.service';
 import { SoldOutError } from './capacity.util';
 import { seatTicketOf } from './registration.util';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** A28: group seat edits, transfers and member data. One block per finding. */
 
@@ -36,7 +37,7 @@ describe('A28 team changes need a booked group', () => {
       $transaction: jest.fn(),
     };
     const seats = { assertLeadMayChangeTeam: jest.fn(), ensureSeatsForRegistration: jest.fn() };
-    const svc = new TeamChangesService(prisma, seats as any, { priceSale: (b: number) => ({ base: b, fee: 0, total: b }) } as any, {} as any, {} as any);
+    const svc = new TeamChangesService(prisma, seats as any, { priceSale: (b: number) => ({ base: b, fee: 0, total: b }) } as any, {} as any, {} as any, rateCardTerms());
     return { svc, prisma };
   };
   const lead = { by: 'lead' as const, userId: 'lead' };
@@ -343,7 +344,7 @@ describe('A28 waitlist "Allow next N" skips a group that does not fit', () => {
       { id: 'solo-3', groupSize: null, quantity: 1 },
     ];
     const prisma: any = { eventRegistration: { findMany: jest.fn(async () => queue) } };
-    const svc = new WaitlistService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new WaitlistService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'assertOrganiser').mockResolvedValue({});
     const offer = jest.spyOn(svc, 'offer').mockImplementation(async (_o, _e, id) => {
       if (id.startsWith('big')) throw new SoldOutError('Not enough seats free');

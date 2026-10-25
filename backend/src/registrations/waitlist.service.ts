@@ -22,6 +22,7 @@ import {
 } from '@prisma/client';
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
+import { TermsService, dealColumns } from '../subscription/terms.service';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -64,6 +65,7 @@ export class WaitlistService {
     private readonly groupSeats: GroupSeatsService,
     private readonly authz: AuthorizationService,
     private readonly confirmations: RegistrationConfirmationsService,
+    private readonly terms: TermsService,
   ) {}
 
   /**
@@ -474,6 +476,9 @@ export class WaitlistService {
    */
   async offer(organiserId: string, eventId: string, registrationId: string) {
     const event = await this.assertOrganiser(organiserId, eventId);
+    // Terms at offer time (T5), like the price: a later deal change does not
+    // move the amount on someone mid-payment.
+    const terms = await this.terms.forEvent(eventId);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const reg = await tx.eventRegistration.findUnique({
@@ -530,6 +535,7 @@ export class WaitlistService {
         baseAmount,
         ticketsIn(ticketType, { quantity: reg.quantity, groupSize: seats }),
         Boolean((event as any)?.absorbProcessingFee),
+        terms,
       );
       const processingFee = sale.fee;
       const totalAmount = sale.total;
@@ -554,6 +560,7 @@ export class WaitlistService {
           waitlistOfferExpiresAt: null,
           totalAmount: new Prisma.Decimal(totalAmount),
           processingFee: new Prisma.Decimal(processingFee),
+          ...dealColumns(terms, true),
           razorpayAmount: new Prisma.Decimal(totalAmount),
           paymentStatus: PaymentStatus.PENDING,
         },

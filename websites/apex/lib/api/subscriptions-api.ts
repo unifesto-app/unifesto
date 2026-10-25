@@ -177,6 +177,74 @@ export interface ListSubscriptionsParams {
 
 type Result<T> = { data: T | null; error: ApiError | null };
 
+/**
+ * Negotiated terms for a space or one of its events (T4). Null fields fall back
+ * to the rate card: the space's plan, its organiser fee from Plans (D10) and the
+ * 5% / ₹99-per-ticket buyer fee (D11). Ending a deal keeps it on record.
+ */
+export interface Deal {
+  id: string;
+  spaceId: string;
+  eventId: string | null;
+  event?: { id: string; title: string } | null;
+  plan: OrgPlan | null;
+  /** Paise; null = rate card, 0 = comp. */
+  planPricePaise: number | null;
+  billingCycle: BillingCycle | null;
+  buyerFeeBps: number | null;
+  organiserFeeBps: number | null;
+  validFrom: string;
+  validUntil: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+/** The terms a space's sales are priced under right now. */
+export interface ResolvedTerms {
+  dealId: string | null;
+  plan: OrgPlan;
+  buyerFeeBps: number;
+  buyerFeeCapPaise: number;
+  organiserFeeBps: number;
+}
+
+export type CreateDealInput = Partial<
+  Pick<
+    Deal,
+    | "eventId"
+    | "plan"
+    | "planPricePaise"
+    | "billingCycle"
+    | "buyerFeeBps"
+    | "organiserFeeBps"
+    | "validFrom"
+    | "validUntil"
+    | "note"
+  >
+>;
+
+/** `GET /subscription/admin/space/:spaceId/deals` — deals + terms in force. */
+export async function getSpaceDeals(
+  spaceId: string
+): Promise<Result<{ deals: Deal[]; current: ResolvedTerms }>> {
+  return apiCall(backendClient.get(`/subscription/admin/space/${spaceId}/deals`));
+}
+
+/** `POST /subscription/admin/space/:spaceId/deals` — create a deal (admin). */
+export async function createSpaceDeal(
+  spaceId: string,
+  input: CreateDealInput
+): Promise<Result<Deal>> {
+  return apiCall<Deal>(
+    backendClient.post(`/subscription/admin/space/${spaceId}/deals`, input)
+  );
+}
+
+/** `POST /subscription/admin/deals/:dealId/end` — end a deal now (admin). */
+export async function endDeal(dealId: string): Promise<Result<Deal>> {
+  return apiCall<Deal>(backendClient.post(`/subscription/admin/deals/${dealId}/end`));
+}
+
 /** `GET /subscription/plans` — plan catalogue with limits + pricing. */
 export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
   return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));

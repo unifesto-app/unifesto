@@ -3,6 +3,7 @@ import { buildRegistrationsService } from './registrations.testing';
 import { GroupSeatsService } from './group-seats.service';
 import { WaitlistService } from './waitlist.service';
 import { MAX_GROUP_SIZE, resolveGroupSize } from './registration.util';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 jest.mock('./form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -79,7 +80,7 @@ function build() {
 
   const payments = { priceSale: (b: number) => ({ base: b, fee: 0, total: b }) };
   const groupSeats = new GroupSeatsService(prisma, {} as any, {} as any);
-  const waitlist = new WaitlistService(prisma, {} as any, payments as any, {} as any, groupSeats, {} as any, {} as any);
+  const waitlist = new WaitlistService(prisma, {} as any, payments as any, {} as any, groupSeats, {} as any, {} as any, rateCardTerms());
   const joinSpy = jest.spyOn(waitlist, 'join');
   const svc = buildRegistrationsService(
     prisma, {} as any, {} as any, { invalidateCheckinCache: jest.fn() } as any, {} as any, {} as any,

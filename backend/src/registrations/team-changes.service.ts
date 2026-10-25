@@ -28,6 +28,7 @@ import { holdsSeats } from './registration.util';
 import { esc, h1, p, strong } from '../email/layout';
 import { takeFreeAddSeats } from '../free-attendee-add/free-add-quota';
 import { RedisService } from '../redis/redis.service';
+import { TermsService, dealColumns } from '../subscription/terms.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 
 const money = (n: number) => Math.round(n * 100) / 100;
@@ -83,6 +84,7 @@ const REG_SELECT = {
       type: true,
       status: true,
       endDateTime: true,
+      spaceId: true,
       absorbProcessingFee: true,
       allowTeamChanges: true,
       teamChangesUntil: true,
@@ -112,6 +114,7 @@ export class TeamChangesService {
     private readonly payments: PaymentsService,
     private readonly email: EmailService,
     private readonly notifications: NotificationsService,
+    private readonly terms: TermsService,
     private readonly redis?: RedisService,
   ) {}
 
@@ -233,7 +236,10 @@ export class TeamChangesService {
     const size = reg.groupSize ?? 0;
     const room = tt?.totalQuantity == null ? null : Math.max(0, tt.totalQuantity - tt.soldCount);
     const maxAdd = Math.max(0, Math.min(tt?.maxGroupSize != null ? tt.maxGroupSize - size : Infinity, room ?? Infinity));
-    const perSeat = tt ? addSeatsQuote(tt, 1, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee)) : null;
+    const terms = tt ? await this.terms.resolve(reg.event.spaceId, reg.eventId) : null;
+    const perSeat = tt
+      ? addSeatsQuote(tt, 1, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee, terms!))
+      : null;
     return {
       isLead,
       leadTransfer,
@@ -426,7 +432,8 @@ export class TeamChangesService {
     if (tt.totalQuantity != null && tt.soldCount + seats > tt.totalQuantity) {
       throw new BadRequestException('Not enough seats left on this ticket.');
     }
-    const quote = addSeatsQuote(tt, seats, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee));
+    const terms = await this.terms.resolve(reg.event.spaceId, reg.eventId);
+    const quote = addSeatsQuote(tt, seats, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee, terms));
     if (quote.total <= 0) throw new BadRequestException('These seats are free. Add them directly.');
 
     const purchase = await this.prisma.groupSeatPurchase.create({
@@ -438,6 +445,7 @@ export class TeamChangesService {
         baseAmount: quote.base,
         processingFee: quote.fee,
         totalAmount: quote.total,
+        ...dealColumns(terms),
       },
     });
     // Notes carry `groupSeatPurchaseId`, never `registrationId`: the webhook and

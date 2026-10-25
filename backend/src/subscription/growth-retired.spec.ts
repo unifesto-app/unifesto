@@ -3,6 +3,7 @@ import { BillingCycle, OrgPlan } from '@prisma/client';
 import { SubscriptionService } from './subscription.service';
 import { PlanConfigService } from './plan-config.service';
 import { PublicConfigController } from '../config/public-config.controller';
+import { rateCardTerms } from './terms.testing';
 
 /** A9 / D10: GROWTH is retired; the public rate card lists only sellable plans. */
 describe('GROWTH retired (A9)', () => {
@@ -13,7 +14,7 @@ describe('GROWTH retired (A9)', () => {
       update: jest.fn(async () => ({})),
     },
   };
-  const svc = new SubscriptionService(prisma, {} as any, {} as any, planConfig);
+  const svc = new SubscriptionService(prisma, {} as any, {} as any, planConfig, rateCardTerms());
 
   it('is never listed as a plan', async () => {
     const plans = await svc.getAllPlans();

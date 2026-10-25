@@ -2,6 +2,7 @@ import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { FavoritesService } from '../favorites/favorites.service';
 import { SessionsService } from '../sessions/sessions.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * J9: anonymous event lists, favourites, the public event detail, the public
@@ -125,7 +126,7 @@ describe('public session fields (J9)', () => {
         findFirst: jest.fn(async () => (registered ? { session: { recordingUrl: 'https://rec/1' } } : null)),
       },
     };
-    const svc = new SessionsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new SessionsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
     return { svc, prisma };
   }
 

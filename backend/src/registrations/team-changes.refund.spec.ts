@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import { TeamChangesService } from './team-changes.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** S51: an add-seats payment that couldn't add seats goes back once, through a claimed refundDueAt. */
 describe('TeamChangesService add-seats refund', () => {
@@ -25,7 +26,7 @@ describe('TeamChangesService add-seats refund', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new TeamChangesService(prisma, {} as any, payments as any, {} as any, {} as any);
+    const svc = new TeamChangesService(prisma, {} as any, payments as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'push').mockImplementation(() => undefined);
     return { svc, prisma, payments };
   };

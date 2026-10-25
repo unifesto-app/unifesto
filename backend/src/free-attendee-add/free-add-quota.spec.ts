@@ -3,6 +3,7 @@ import { FreeAttendeeAddService } from './free-attendee-add.service';
 import { freeAddSeatsLeft, takeFreeAddSeats } from './free-add-quota';
 import { TeamChangesService } from '../registrations/team-changes.service';
 import { RegistrationImportService } from '../registrations/registration-import.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** A27: a free-add approval is a revocable seat quota that every comp draws down. */
 describe('free-add seat quota (A27)', () => {
@@ -84,7 +85,7 @@ describe('free-add seat quota (A27)', () => {
       const prisma: any = { $transaction: jest.fn(async (fn: any) => fn(tx)) };
       const fee = (b: number) => Math.round(b * 5) / 100;
       const payments: any = { computeProcessingFee: fee, priceSale: (b: number) => ({ base: b, fee: fee(b), total: b + fee(b) }) };
-      const svc = new TeamChangesService(prisma, {} as any, payments, {} as any, {} as any);
+      const svc = new TeamChangesService(prisma, {} as any, payments, {} as any, {} as any, rateCardTerms());
       const reg = { id: 'reg', eventId: 'ev', ticketTypeId: 'tt', ticketType: { price: 500, groupPricingMode: 'PER_PERSON' }, event: { absorbProcessingFee: false } };
       jest.spyOn(svc as any, 'load').mockResolvedValue(reg);
       jest.spyOn(svc as any, 'assertCanGrow').mockReturnValue(undefined);
@@ -112,7 +113,7 @@ describe('free-add seat quota (A27)', () => {
   });
 
   describe('CSV import of a paid ticket', () => {
-    const svc = new RegistrationImportService({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new RegistrationImportService({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'resolveUserIdByEmail').mockResolvedValue(null);
     const row = (line: number, groupSize: number | null = null) => ({ line, name: 'A', email: `a${line}@x.in`, groupSize, error: null });
     const classify = (r: any, state: any) => (svc as any).classifyImportRow('ev', 'tt', r, state);
