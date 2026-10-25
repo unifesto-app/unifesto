@@ -5,12 +5,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { EmailService } from '../email/email.service';
-import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto } from './dto';
+import { ACCOUNT_NUMBER_RE, AddBankAccountDto, CreatePayoutDto, IFSC_RE, MarkPayoutPaidDto, UPI_RE, UpdateBankAccountStatusDto } from './dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, OrgPlan, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
-import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
+import { button, details, esc, greet, h1, inr, note as callout, p, SPACE_APP, strong } from '../email/layout';
 import { OPEN_REFUND_STATUSES } from '../refunds/open-statuses';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { assertSpaceLive } from '../spaces/space-access';
@@ -29,6 +29,13 @@ function maskPayoutAccount<P extends { bankAccount: { upiId: string | null; acco
   if (!p.bankAccount) return p;
   const b = p.bankAccount;
   return { ...p, bankAccount: { ...b, upiId: maskUpiId(b.upiId), accountNumber: b.accountNumber?.slice(-4) ?? null } };
+}
+
+/** Masked label for emails: `Asha · HDFC ••••5678` or `Asha · UPI as***@okhdfc`. */
+function accountLabel(a: { accountHolderName: string; bankName: string | null; accountNumber: string | null; upiId: string | null }): string {
+  return a.upiId
+    ? `${a.accountHolderName} · UPI ${maskUpiId(a.upiId)}`
+    : `${a.accountHolderName} · ${a.bankName ?? 'Bank'} ••••${(a.accountNumber ?? '').slice(-4)}`;
 }
 
 function round2(n: number): number {
@@ -91,32 +98,166 @@ export class PayoutsService {
     });
   }
 
-  async addBankAccount(userId: string, dto: AddBankAccountDto) {
-    if (dto.isPrimary) {
-      await this.prisma.payoutBankAccount.updateMany({
-        where: { userId, isPrimary: true },
-        data: { isPrimary: false },
+  /** Email each user (first identity with an email). Never throws: a mail failure must not undo a money step. */
+  private async emailUsers(userIds: string[], subject: string, body: (name: string) => string) {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: [...new Set(userIds)] } },
+        select: {
+          fullName: true,
+          username: true,
+          identities: { where: { email: { not: null } }, orderBy: { isPrimary: 'desc' }, take: 1, select: { email: true } },
+        },
       });
+      await Promise.all(
+        users.map(async (u) => {
+          const email = u.identities[0]?.email;
+          if (email) await this.emailService.sendRawEmail(email, subject, body(u.fullName || u.username || 'there'));
+        }),
+      );
+    } catch (err) {
+      this.logger.error(`Payout email "${subject}" failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /**
+   * A32: tell the space's payout contacts (the event creator and every Space
+   * Admin, the people who may route or request its payouts) when a payout is
+   * requested, paid (with the UTR) or cancelled. Platform admins hear about a
+   * request through its Assist case (adminAlerts push).
+   */
+  private async notifyPayoutContacts(payoutId: string, step: 'requested' | 'paid' | 'cancelled') {
+    try {
+      const payout = await this.prisma.payout.findUnique({
+        where: { id: payoutId },
+        include: {
+          event: { select: { title: true, createdBy: true, spaceId: true } },
+          bankAccount: { select: { accountHolderName: true, bankName: true, accountNumber: true, upiId: true } },
+        },
+      });
+      if (!payout) return;
+      const recipients = await this.getEligibleAccountUserIds(payout.event);
+      const amount = inr(Number(payout.netAmount));
+      const title = payout.event.title;
+      const facts = details([
+        ['Event', esc(title)],
+        ['Amount', esc(amount)],
+        ['Pay to', esc(accountLabel(payout.bankAccount))],
+        ['UTR', step === 'paid' && payout.utr ? esc(payout.utr) : null],
+      ]);
+      const cta = button('View payouts', `${SPACE_APP}/dashboard/financials?tab=payouts`);
+      const copy = {
+        requested: {
+          subject: `Payout requested for ${title}`,
+          head: 'Payout requested',
+          line: `We received a payout request of ${strong(amount)} for ${strong(title)}. We transfer it manually and email you the UTR once it is paid.`,
+        },
+        paid: {
+          subject: `Payout sent for ${title}`,
+          head: 'Payout sent',
+          line: `We transferred ${strong(amount)} for ${strong(title)}. Use the UTR below to match it in your bank statement.`,
+        },
+        cancelled: {
+          subject: `Payout cancelled for ${title}`,
+          head: 'Payout cancelled',
+          line: `The payout of ${strong(amount)} for ${strong(title)} was cancelled and not paid. The amount is back in the event balance, so you can request it again.`,
+        },
+      }[step];
+      await this.emailUsers([...recipients], copy.subject, (name) => h1(copy.head) + greet(name) + p(copy.line) + facts + cta);
+    } catch (err) {
+      this.logger.error(`Payout ${payoutId} ${step} email failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** A32: a BANK method or a UPI handle, formats checked again here so no caller skips them. */
+  async addBankAccount(userId: string, dto: AddBankAccountDto) {
+    const isUpi = dto.methodType === 'UPI';
+    const accountNumber = isUpi ? null : (dto.accountNumber ?? '').replace(/\s+/g, '');
+    const ifscCode = isUpi ? null : (dto.ifscCode ?? '').trim().toUpperCase();
+    const upiId = isUpi ? (dto.upiId ?? '').trim() : null;
+    if (isUpi ? !UPI_RE.test(upiId!) : !ACCOUNT_NUMBER_RE.test(accountNumber!) || !IFSC_RE.test(ifscCode!) || !dto.bankName?.trim()) {
+      throw new BadRequestException(
+        isUpi ? 'Enter a valid UPI ID, like name@okhdfc' : 'Enter a 9 to 18 digit account number, a valid IFSC and the bank name',
+      );
     }
 
-    // UPI is no longer an accepted method type; every new method is a BANK
-    // account, so the UPI field stays null.
-    const account = await this.prisma.payoutBankAccount.create({
-      data: {
-        userId,
-        methodType: PayoutMethodType.BANK,
-        accountHolderName: dto.accountHolderName.trim(),
-        mobileNumber: dto.mobileNumber.trim(),
-        accountNumber: dto.accountNumber.trim(),
-        ifscCode: dto.ifscCode.trim().toUpperCase(),
-        bankName: dto.bankName.trim(),
-        accountType: dto.accountType || 'savings',
-        upiId: null,
-        isPrimary: dto.isPrimary || false,
-      },
+    const account = await this.prisma.$transaction(async (tx) => {
+      if (dto.isPrimary) {
+        await tx.payoutBankAccount.updateMany({ where: { userId, isPrimary: true }, data: { isPrimary: false } });
+      }
+      return tx.payoutBankAccount.create({
+        data: {
+          userId,
+          methodType: isUpi ? PayoutMethodType.UPI : PayoutMethodType.BANK,
+          accountHolderName: dto.accountHolderName.trim(),
+          mobileNumber: dto.mobileNumber.trim(),
+          accountNumber,
+          ifscCode,
+          bankName: isUpi ? null : dto.bankName!.trim(),
+          accountType: dto.accountType || 'savings',
+          upiId,
+          isPrimary: dto.isPrimary || false,
+        },
+      });
     });
     this.openBankAccountCase(account);
     return account;
+  }
+
+  /** A32: make one of my methods primary. One primary per owner, swapped in one transaction. */
+  async setPrimaryBankAccount(userId: string, accountId: string) {
+    const account = await this.prisma.payoutBankAccount.findFirst({ where: { id: accountId, userId } });
+    if (!account) throw new NotFoundException('Bank account not found');
+    if (account.status === BankAccountStatus.REJECTED) {
+      throw new BadRequestException('A rejected method cannot be primary');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.payoutBankAccount.updateMany({
+        where: { userId, isPrimary: true, id: { not: accountId } },
+        data: { isPrimary: false },
+      });
+      return tx.payoutBankAccount.update({ where: { id: accountId }, data: { isPrimary: true } });
+    });
+  }
+
+  /**
+   * A32: take back a VERIFIED account's verification (back to PENDING, the
+   * note shown to its owner). Refused while an unpaid payout points at it, so
+   * the admin pays or cancels that first.
+   */
+  async revokeBankAccountVerification(accountId: string, note: string, adminId: string) {
+    const account = await this.prisma.payoutBankAccount.findUnique({ where: { id: accountId } });
+    if (!account) throw new NotFoundException('Bank account not found');
+    if (account.status !== BankAccountStatus.VERIFIED) {
+      throw new BadRequestException('Only a verified account can be revoked');
+    }
+    const unpaid = await this.prisma.payout.count({
+      where: { bankAccountId: accountId, status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } },
+    });
+    if (unpaid > 0) {
+      throw new ConflictException('An unpaid payout goes to this account. Pay or cancel it first.');
+    }
+    const { count } = await this.prisma.payoutBankAccount.updateMany({
+      where: { id: accountId, status: BankAccountStatus.VERIFIED },
+      data: { status: BankAccountStatus.PENDING, verifiedAt: null, verifiedBy: null, rejectionReason: note.trim() },
+    });
+    if (count === 0) throw new ConflictException('This account changed. Reload and try again.');
+    this.openBankAccountCase(account);
+    updateSubjectCase(this.events, {
+      subjectType: 'PayoutBankAccount',
+      subjectId: accountId,
+      actorId: adminId,
+      text: `Unifesto revoked verification of this payout account. Note: ${note.trim()}`,
+      status: SupportTicketStatus.PENDING,
+    });
+    void this.emailUsers([account.userId], 'Your payout account needs a fresh check', (name) =>
+      h1('Payout account verification revoked') +
+      greet(name) +
+      p(`We took back verification of ${strong(accountLabel(account))}. Payouts will not go to it until it is verified again.`) +
+      callout(esc(note.trim())) +
+      button('View payout methods', `${SPACE_APP}/dashboard/financials?tab=accounts`),
+    );
+    return this.prisma.payoutBankAccount.findUnique({ where: { id: accountId } });
   }
 
   async getMyBankAccounts(userId: string) {
@@ -246,7 +387,7 @@ export class PayoutsService {
             h1('Payout account verified') +
               greet(userName) +
               p(`Your ${isUpi ? 'UPI ID' : 'bank account'} ${strong(refLabel)}${isUpi ? '' : ` at ${strong(methodLabel)}`} is verified. Payouts for your events can now reach you.`) +
-              button('View payouts', `${SPACE_APP}/dashboard/payouts`),
+              button('View payouts', `${SPACE_APP}/dashboard/financials?tab=accounts`),
           )
           .catch((err) =>
             this.logger.error('Failed to send bank account verified email', err),
@@ -1430,7 +1571,8 @@ export class PayoutsService {
     await this.assertEventMoney(userId, eventId, event.spaceId, 'request this event’s payout');
     await assertSpaceLive(this.prisma, { id: event.spaceId });
     const payout = await this.createEventPayout(eventId, userId, netAmount, bankAccountId);
-    // D22: the request is a Platform case; payouts send no mail, so the case tells both sides.
+    // D22: the request is a Platform case, which alerts platform admins.
+    void this.notifyPayoutContacts(payout.id, 'requested');
     openSubjectCase(this.events, {
       subjectType: 'Payout',
       subjectId: payout.id,
@@ -1450,15 +1592,25 @@ export class PayoutsService {
   /**
    * Record a payout as settled. Transfers are made manually by an admin through
    * their own banking channel (NEFT/IMPS/UPI) — there is no automated gateway
-   * transfer — so this simply marks the payout COMPLETED and stores the UTR /
-   * reference the admin entered for the audit trail.
+   * transfer — so this marks the payout COMPLETED with the UTR the admin
+   * entered (required, unique per payout) and who marked it, when (A32). The
+   * change is conditional on PENDING (S12), so a double click can't mark twice.
    */
-  async markPayoutPaid(payoutId: string, dto?: MarkPayoutPaidDto, adminId?: string) {
+  async markPayoutPaid(payoutId: string, dto: MarkPayoutPaidDto, adminId: string) {
+    const utr = dto?.utr?.trim() ?? '';
+    if (utr.length < 6 || utr.length > 40) {
+      throw new BadRequestException('Enter the UTR or bank reference (6 to 40 characters)');
+    }
     const payout = await this.prisma.payout.findUnique({ where: { id: payoutId } });
     if (!payout) throw new NotFoundException('Payout not found');
     if (payout.status !== PayoutStatus.PENDING) {
-      throw new BadRequestException(`Payout is ${payout.status}, only PENDING payouts can be marked paid`);
+      throw new ConflictException(`This payout is ${payout.status.toLowerCase()}, only a pending payout can be marked paid`);
     }
+    const reused = await this.prisma.payout.findFirst({
+      where: { id: { not: payoutId }, utr: { equals: utr, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (reused) throw new ConflictException('This UTR is already recorded on another payout');
 
     const now = new Date();
     const reference = dto?.reference?.trim();
@@ -1470,12 +1622,21 @@ export class PayoutsService {
       status: PayoutStatus.COMPLETED,
       processedAt: now,
       completedAt: now,
-      utr: dto?.utr?.trim() || null,
+      paidAt: now,
+      paidById: adminId,
+      utr,
       notes,
+    }).catch((err: unknown) => {
+      // payouts_paid_utr_key: the same UTR saved on another payout at the same moment.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('This UTR is already recorded on another payout');
+      }
+      throw err;
     });
 
-    this.logger.log(`Payout ${payoutId} marked paid manually${dto?.utr ? ` (UTR ${dto.utr})` : ''}`);
-    const ref = updated.utr ? ` UTR ${updated.utr}.` : reference ? ` Reference ${reference}.` : '';
+    this.logger.log(`Payout ${payoutId} marked paid manually by ${adminId} (UTR ${utr})`);
+    void this.notifyPayoutContacts(payoutId, 'paid');
+    const ref = ` UTR ${updated.utr}.`;
     updateSubjectCase(this.events, {
       subjectType: 'Payout',
       subjectId: payoutId,
@@ -1492,6 +1653,7 @@ export class PayoutsService {
     if (!payout) throw new NotFoundException('Payout not found');
     if (payout.status !== PayoutStatus.PENDING) throw new BadRequestException('Only PENDING payouts can be cancelled');
     const updated = await this.pendingOnly(payoutId, { status: PayoutStatus.CANCELLED, notes: `Cancelled by admin ${adminId}` });
+    void this.notifyPayoutContacts(payoutId, 'cancelled');
     updateSubjectCase(this.events, {
       subjectType: 'Payout',
       subjectId: payoutId,

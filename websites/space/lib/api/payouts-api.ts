@@ -108,6 +108,18 @@ export async function addBankAccount(
   );
 }
 
+/** Organiser: make a method my primary (the others lose it). `PATCH /payouts/bank-accounts/:id/primary`. */
+export async function setPrimaryBankAccount(
+  id: string
+): Promise<{ data: BankAccount | null; error: ApiError | null }> {
+  return apiCall<BankAccount>(backendClient.patch(`/payouts/bank-accounts/${id}/primary`));
+}
+
+/** Formats the backend enforces (A32). */
+export const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+export const ACCOUNT_NUMBER_RE = /^\d{9,18}$/;
+export const UPI_RE = /^[\w.\-]{2,}@[a-zA-Z]{2,}$/;
+
 /** Organiser: delete a bank account. `DELETE /payouts/bank-accounts/:id`. */
 export async function deleteBankAccount(
   id: string

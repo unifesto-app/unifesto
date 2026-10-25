@@ -81,10 +81,10 @@ describe('payout request ↔ Assist case (D22)', () => {
       }),
     ]);
 
-    await service.markPayoutPaid('p0', { utr: 'UTR9' } as any, 'admin');
-    expect(payouts[0]).toMatchObject({ status: PayoutStatus.COMPLETED, utr: 'UTR9' });
+    await service.markPayoutPaid('p0', { utr: 'UTR999999' } as any, 'admin');
+    expect(payouts[0]).toMatchObject({ status: PayoutStatus.COMPLETED, utr: 'UTR999999' });
     expect(emitted(events, SUBJECT_CASE_UPDATE)).toEqual([
-      expect.objectContaining({ subjectType: 'Payout', subjectId: 'p0', actorId: 'admin', text: 'Unifesto paid ₹1000.00. UTR UTR9.', status: 'RESOLVED' }),
+      expect.objectContaining({ subjectType: 'Payout', subjectId: 'p0', actorId: 'admin', text: 'Unifesto paid ₹1000.00. UTR UTR999999.', status: 'RESOLVED' }),
     ]);
   });
 

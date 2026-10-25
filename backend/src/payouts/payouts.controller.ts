@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PayoutsService } from './payouts.service';
-import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
+import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, RevokeBankAccountDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -25,6 +25,12 @@ export class PayoutsController {
   @Get('bank-accounts')
   async getMyBankAccounts(@Request() req) {
     return this.payoutsService.getMyBankAccounts(req.user.id);
+  }
+
+  /** A32: make this method my primary (one primary per owner). */
+  @Patch('bank-accounts/:id/primary')
+  async setPrimaryBankAccount(@Request() req, @Param('id') id: string) {
+    return this.payoutsService.setPrimaryBankAccount(req.user.id, id);
   }
 
   @Delete('bank-accounts/:id')
@@ -99,6 +105,14 @@ export class PayoutsController {
   @Roles(RoleCode.ADMIN)
   async updateBankAccountStatus(@Request() req, @Param('id') id: string, @Body() dto: UpdateBankAccountStatusDto) {
     return this.payoutsService.updateBankAccountStatus(id, dto, req.user.id);
+  }
+
+  /** A32: take back a verified account's verification, with a note for its owner. */
+  @Patch('admin/bank-accounts/:id/revoke')
+  @UseGuards(RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async revokeBankAccount(@Request() req, @Param('id') id: string, @Body() dto: RevokeBankAccountDto) {
+    return this.payoutsService.revokeBankAccountVerification(id, dto.note, req.user.id);
   }
 
   @Get('admin')

@@ -28,14 +28,19 @@ export interface Payout {
   failedAt: string | null;
   failureReason: string | null;
   utr: string | null;
+  /** Admin who marked it paid, and when (A32). */
+  paidById?: string | null;
+  paidAt?: string | null;
   notes: string | null;
   createdAt: string;
   event?: { id: string; title: string; slug: string; startDateTime?: string };
   user?: { id: string; fullName: string | null; username: string | null };
+  /** Full values on the admin list; organiser endpoints mask them. */
   bankAccount?: {
     methodType?: PayoutMethodType;
     bankName: string | null;
     accountNumber: string | null;
+    ifscCode?: string | null;
     upiId: string | null;
     accountHolderName?: string;
   };
@@ -86,13 +91,13 @@ export async function getAllPayoutsUnpaginated(
   return { data: all, error: null };
 }
 
-/** Mark a payout settled, recording the manual UTR/reference. `POST /payouts/admin/:id/process`. */
+/** Mark a payout settled with its UTR (required, 6 to 40 chars, unique). `POST /payouts/admin/:id/process`. */
 export async function markPayoutPaid(
   id: string,
-  payload?: { utr?: string; reference?: string }
+  payload: { utr: string; reference?: string }
 ): Promise<{ data: Payout | null; error: ApiError | null }> {
   return apiCall<Payout>(
-    backendClient.post(`/payouts/admin/${id}/process`, payload ?? {})
+    backendClient.post(`/payouts/admin/${id}/process`, payload)
   );
 }
 
@@ -200,6 +205,17 @@ export async function updateBankAccountStatus(
 ): Promise<{ data: BankAccount | null; error: ApiError | null }> {
   return apiCall<BankAccount>(
     backendClient.patch(`/payouts/admin/bank-accounts/${id}/status`, payload)
+  );
+}
+
+/** Admin: take back a verified account's verification. Refused while an unpaid payout uses it.
+ *  `PATCH /payouts/admin/bank-accounts/:id/revoke`. */
+export async function revokeBankAccount(
+  id: string,
+  note: string
+): Promise<{ data: BankAccount | null; error: ApiError | null }> {
+  return apiCall<BankAccount>(
+    backendClient.patch(`/payouts/admin/bank-accounts/${id}/revoke`, { note })
   );
 }
 

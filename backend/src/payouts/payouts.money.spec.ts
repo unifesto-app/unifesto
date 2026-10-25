@@ -108,8 +108,9 @@ describe('payout status changes leave PENDING once (S12)', () => {
     const { service, db, payouts } = setup({ payouts: [{ netAmount: 500, status: PayoutStatus.PENDING }] });
     // Both admins loaded it while PENDING.
     const stale = { ...payouts[0] };
+    jest.spyOn(service as any, 'notifyPayoutContacts').mockResolvedValue(undefined); // its read would take a stale row
     db.payout.findUnique.mockResolvedValueOnce(stale).mockResolvedValueOnce(stale);
-    await service.markPayoutPaid('p0', { utr: 'UTR1' } as any);
+    await service.markPayoutPaid('p0', { utr: 'UTR000001' }, 'admin');
     await expect(service.cancelPayout('p0', 'admin')).rejects.toBeInstanceOf(ConflictException);
     expect(payouts[0].status).toBe(PayoutStatus.COMPLETED);
   });

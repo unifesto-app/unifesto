@@ -6,6 +6,10 @@ import {
   getMyBankAccounts,
   addBankAccount,
   deleteBankAccount,
+  setPrimaryBankAccount,
+  IFSC_RE,
+  ACCOUNT_NUMBER_RE,
+  UPI_RE,
   type BankAccount,
   type BankAccountStatus,
   type AddBankAccountPayload,
@@ -36,6 +40,7 @@ const EMPTY: AddBankAccountPayload = {
   ifscCode: "",
   bankName: "",
   accountType: "savings",
+  upiId: "",
   isPrimary: false,
 };
 
@@ -48,6 +53,7 @@ export function BankAccountsPanel() {
   const [form, setForm] = useState<AddBankAccountPayload>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,26 +68,36 @@ export function BankAccountsPanel() {
     void load();
   }, [load]);
 
+  const isUpi = form.methodType === "UPI";
+
   async function save() {
-    if (!form.accountHolderName.trim() || !form.mobileNumber.trim()) {
-      setFormError("Name and linked mobile number are required.");
-      return;
-    }
-    if (!form.accountNumber?.trim() || !form.ifscCode?.trim() || !form.bankName?.trim()) {
-      setFormError("Account number, IFSC and bank name are required.");
+    const accountNumber = (form.accountNumber ?? "").replace(/\s+/g, "");
+    const ifscCode = (form.ifscCode ?? "").trim().toUpperCase();
+    const upiId = (form.upiId ?? "").trim();
+    const problem =
+      !form.accountHolderName.trim() || !form.mobileNumber.trim()
+        ? "Name and linked mobile number are required."
+        : isUpi
+          ? !UPI_RE.test(upiId) && "Enter a valid UPI ID, like name@okhdfc."
+          : !ACCOUNT_NUMBER_RE.test(accountNumber)
+            ? "Account number must be 9 to 18 digits."
+            : !IFSC_RE.test(ifscCode)
+              ? "Enter a valid IFSC code, like HDFC0001234."
+              : !form.bankName?.trim() && "Bank name is required.";
+    if (problem) {
+      setFormError(problem);
       return;
     }
     setSaving(true);
     setFormError("");
     const { error } = await addBankAccount({
-      methodType: "BANK",
+      methodType: form.methodType,
       accountHolderName: form.accountHolderName.trim(),
       mobileNumber: form.mobileNumber.trim(),
-      accountNumber: form.accountNumber?.trim(),
-      ifscCode: form.ifscCode?.trim().toUpperCase(),
-      bankName: form.bankName?.trim(),
-      accountType: form.accountType,
       isPrimary: form.isPrimary,
+      ...(isUpi
+        ? { upiId }
+        : { accountNumber, ifscCode, bankName: form.bankName?.trim(), accountType: form.accountType }),
     });
     setSaving(false);
     if (error) {
@@ -91,6 +107,14 @@ export function BankAccountsPanel() {
     setForm(EMPTY);
     setAdding(false);
     void load();
+  }
+
+  async function makePrimary(id: string) {
+    setBusy(id);
+    const { error } = await setPrimaryBankAccount(id);
+    setBusy(null);
+    if (error) setError(error.message);
+    else void load();
   }
 
   async function remove(id: string) {
@@ -104,7 +128,7 @@ export function BankAccountsPanel() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Bank accounts where your event earnings are transferred. An admin
+          Bank accounts and UPI IDs where your event earnings are transferred. An admin
           verifies each before payouts can be released. You can keep several and
           route an event to another space admin&apos;s method.
         </p>
@@ -127,12 +151,26 @@ export function BankAccountsPanel() {
             <CardTitle className="text-base">Add a payout method</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
+            <div className="flex gap-2" role="radiogroup" aria-label="Payout method type">
+              {(["BANK", "UPI"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.methodType === m}
+                  onClick={() => { setForm((f) => ({ ...f, methodType: m })); setFormError(""); }}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-medium ${form.methodType === m ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                >
+                  {m === "BANK" ? "Bank account" : "UPI"}
+                </button>
+              ))}
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
-                label="Account holder name"
+                label={isUpi ? "Payee name" : "Account holder name"}
                 value={form.accountHolderName}
                 onChange={(v) => setForm((f) => ({ ...f, accountHolderName: v }))}
-                placeholder="As per bank records"
+                placeholder={isUpi ? "Name on the UPI ID" : "As per bank records"}
               />
               <Field
                 label="Linked mobile number"
@@ -141,8 +179,12 @@ export function BankAccountsPanel() {
                 placeholder="10-digit mobile linked to the account"
               />
 
+              {isUpi ? (
+                <Field label="UPI ID" value={form.upiId ?? ""} onChange={(v) => setForm((f) => ({ ...f, upiId: v }))} placeholder="e.g. name@okhdfc" />
+              ) : (
+              <>
               <Field label="Bank name" value={form.bankName ?? ""} onChange={(v) => setForm((f) => ({ ...f, bankName: v }))} placeholder="e.g. HDFC Bank" />
-              <Field label="Account number" value={form.accountNumber ?? ""} onChange={(v) => setForm((f) => ({ ...f, accountNumber: v }))} placeholder="Account number" />
+              <Field label="Account number" value={form.accountNumber ?? ""} onChange={(v) => setForm((f) => ({ ...f, accountNumber: v.replace(/[^\d\s]/g, "") }))} placeholder="9 to 18 digits" inputMode="numeric" />
               <Field label="IFSC code" value={form.ifscCode ?? ""} onChange={(v) => setForm((f) => ({ ...f, ifscCode: v.toUpperCase() }))} placeholder="e.g. HDFC0001234" />
               <div className="space-y-1.5">
                 <Label htmlFor="acctType">Account type</Label>
@@ -156,6 +198,8 @@ export function BankAccountsPanel() {
                   <option value="current">Current</option>
                 </select>
               </div>
+              </>
+              )}
             </div>
             <label className="flex items-center gap-2 text-sm text-foreground">
               <input
@@ -186,7 +230,7 @@ export function BankAccountsPanel() {
               icon={Bank}
               tone="positive"
               title="No payout method yet"
-              description="Add a bank account so we can release your event earnings."
+              description="Add a bank account or UPI ID so we can release your event earnings."
               action={
                 <Button onClick={() => setAdding(true)}>
                   <Plus className="mr-1.5 h-4 w-4" weight="bold" />Add method
@@ -220,13 +264,22 @@ export function BankAccountsPanel() {
                         : ` · ****${(a.accountNumber ?? "").slice(-4)} · ${a.ifscCode ?? ""}`}
                       {a.mobileNumber ? ` · ${a.mobileNumber}` : ""}
                     </p>
-                    {a.status === "REJECTED" && a.rejectionReason && (
-                      <p className="mt-1 text-xs text-destructive">Reason: {a.rejectionReason}</p>
+                    {a.status !== "VERIFIED" && a.rejectionReason && (
+                      <p className="mt-1 text-xs text-destructive">
+                        {a.status === "REJECTED" ? "Reason" : "Verification revoked"}: {a.rejectionReason}
+                      </p>
                     )}
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(a.id)} aria-label="Remove account">
-                    <Trash className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    {!a.isPrimary && a.status !== "REJECTED" && (
+                      <Button variant="outline" size="sm" disabled={busy === a.id} onClick={() => makePrimary(a.id)}>
+                        {busy === a.id ? "Saving…" : "Make primary"}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(a.id)} aria-label="Remove account">
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -237,11 +290,11 @@ export function BankAccountsPanel() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({ label, value, onChange, placeholder, inputMode }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; inputMode?: "numeric" }) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode={inputMode} />
     </div>
   );
 }
