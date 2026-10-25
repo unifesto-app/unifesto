@@ -31,7 +31,7 @@ jobs:
         with:
           # The OTA status report counts mobile commits on main: needs history.
           fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
