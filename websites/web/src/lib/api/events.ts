@@ -98,6 +98,8 @@ export interface Event {
 export interface TicketSale {
   sold_out: boolean;
   waitlist: boolean;
+  /** GROUP ticket: registered in the app for now (K10). */
+  group?: boolean;
   sale_start?: string;
   sale_end?: string;
 }
@@ -358,6 +360,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     tickets: ownTicketTypes.map((t) => ({
       sold_out: t.totalQuantity != null && Number(t.soldCount ?? 0) >= Number(t.totalQuantity),
       waitlist: Boolean(t.waitlistEnabled),
+      group: t.kind === "GROUP",
       sale_start: (t.saleStartsAt ?? undefined) as string | undefined,
       sale_end: (t.saleEndsAt ?? undefined) as string | undefined,
     })),

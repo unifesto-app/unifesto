@@ -45,6 +45,11 @@ export function androidIntentUrl(scheme: string): string {
 
 const noopSubscribe = () => () => {};
 
+/** The visitor's phone platform; `unknown` on desktop and during the server render. */
+export function useMobilePlatform(): MobilePlatform {
+  return useSyncExternalStore(noopSubscribe, detectMobilePlatform, () => 'unknown' as const);
+}
+
 /**
  * `href` for an "Open in app" link: where openAppOrStore would go. The click
  * handler is the main path, but taps before hydration, long-press "open" and
@@ -53,7 +58,7 @@ const noopSubscribe = () => () => {};
  * their store) and switches on hydration.
  */
 export function useAppHref(scheme: string): string {
-  const platform = useSyncExternalStore(noopSubscribe, detectMobilePlatform, () => 'unknown' as const);
+  const platform = useMobilePlatform();
   return platform === 'android' ? androidIntentUrl(scheme) : storeUrlFor(platform);
 }
 
