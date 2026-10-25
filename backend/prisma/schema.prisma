@@ -556,11 +556,11 @@ model NotificationSettings {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Preferences
-  pushEnabled     Boolean @default(true) @map("push_enabled")
-  emailEnabled    Boolean @default(true) @map("email_enabled")
-  eventReminders  Boolean @default(true) @map("event_reminders")
-  newEvents       Boolean @default(true) @map("new_events")
-  promotions      Boolean @default(false) @map("promotions")
+  pushEnabled    Boolean @default(true) @map("push_enabled")
+  emailEnabled   Boolean @default(true) @map("email_enabled")
+  eventReminders Boolean @default(true) @map("event_reminders")
+  newEvents      Boolean @default(true) @map("new_events")
+  promotions     Boolean @default(false) @map("promotions")
 
   // Registration/space category switches
   registrationUpdates Boolean @default(true) @map("registration_updates")
@@ -770,28 +770,28 @@ model SpaceRoleCapability {
 // =====================================================
 
 model SpaceRequest {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String          @map("user_id") @db.Uuid
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String          @db.VarChar(255)
-  description String?         @db.Text
-  type        SpaceType       @default(REGULAR)
-  visibility  SpaceVisibility @default(PUBLIC)
-  city        String?         @db.VarChar(100)
-  state       String?         @db.VarChar(100)
-  country     String?         @default("India") @db.VarChar(100)
-  tags        String[]
-  websiteUrl  String?         @map("website_url") @db.Text
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String          @map("user_id") @db.Uuid
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String          @db.VarChar(255)
+  description          String?         @db.Text
+  type                 SpaceType       @default(REGULAR)
+  visibility           SpaceVisibility @default(PUBLIC)
+  city                 String?         @db.VarChar(100)
+  state                String?         @db.VarChar(100)
+  country              String?         @default("India") @db.VarChar(100)
+  tags                 String[]
+  websiteUrl           String?         @map("website_url") @db.Text
   // The requester's role at the organisation (e.g. "President, Coding Club")
   // and when they declared they are authorised to represent it and to use its
   // name and logo. Null declaration = an older client that never asked.
-  requesterRole        String?   @map("requester_role") @db.VarChar(120)
-  authorityConfirmedAt DateTime? @map("authority_confirmed_at") @db.Timestamptz(6)
-  status      String          @default("PENDING") @db.VarChar(20)
-  reviewNote  String?         @map("review_note") @db.Text
-  reviewedBy  String?         @map("reviewed_by") @db.Uuid
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  requesterRole        String?         @map("requester_role") @db.VarChar(120)
+  authorityConfirmedAt DateTime?       @map("authority_confirmed_at") @db.Timestamptz(6)
+  status               String          @default("PENDING") @db.VarChar(20)
+  reviewNote           String?         @map("review_note") @db.Text
+  reviewedBy           String?         @map("reviewed_by") @db.Uuid
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@index([status])
@@ -901,28 +901,28 @@ enum DomainKind {
 /// the public pages. One per kind per space. Used only once `status` is
 /// 'verified' and the space's branding is live.
 model SpaceDomain {
-  id      String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  spaceId String     @map("space_id") @db.Uuid
-  space   Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  kind    DomainKind
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId        String     @map("space_id") @db.Uuid
+  space          Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  kind           DomainKind
   /// Lower-case FQDN, e.g. `mail.acme.edu`.
-  hostname String @unique @db.VarChar(253)
+  hostname       String     @unique @db.VarChar(253)
   /// EMAIL only: the mailbox part of the From address (`tickets`@hostname).
-  emailLocalPart String? @map("email_local_part") @db.VarChar(64)
+  emailLocalPart String?    @map("email_local_part") @db.VarChar(64)
   /// Provider's id (Resend domain id / Cloudflare custom hostname id).
-  providerId String? @map("provider_id") @db.VarChar(100)
+  providerId     String?    @map("provider_id") @db.VarChar(100)
   /// Provider status as reported: pending | verified | failed | ...
-  status  String @default("pending") @db.VarChar(30)
+  status         String     @default("pending") @db.VarChar(30)
   /// DNS records the space must add, as the provider returned them.
-  records Json   @default("[]")
+  records        Json       @default("[]")
   /// WEB only: our ownership TXT token (`_unifesto.<hostname>` = `unifesto-verify=<token>`).
   /// Null only on domains verified before H25.
-  verifyToken String? @map("verify_token") @db.VarChar(64)
+  verifyToken    String?    @map("verify_token") @db.VarChar(64)
   /// First time it verified; kept if it later lapses (only never-verified claims expire).
-  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
-  lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz(6)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  verifiedAt     DateTime?  @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt  DateTime?  @map("last_checked_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([spaceId, kind])
   @@map("space_domains")
@@ -980,13 +980,13 @@ model FreeAttendeeAddRequest {
   requester   User   @relation("FreeAttendeeAddRequester", fields: [requestedBy], references: [id])
 
   /// Scope: one paid ticket type, or null = any ticket type on the event.
-  ticketTypeId String?          @map("ticket_type_id") @db.Uuid
-  ticketType   EventTicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  ticketTypeId   String?          @map("ticket_type_id") @db.Uuid
+  ticketType     EventTicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
   /// Seats the organiser asked for; the admin approves `approvedSeats`.
-  requestedSeats Int? @map("requested_seats")
-  approvedSeats  Int? @map("approved_seats")
+  requestedSeats Int?             @map("requested_seats")
+  approvedSeats  Int?             @map("approved_seats")
   /// Seats already comped against this approval (atomic, never above approved).
-  usedSeats      Int  @default(0) @map("used_seats")
+  usedSeats      Int              @default(0) @map("used_seats")
 
   reason     String    @db.Text
   /// PENDING, APPROVED, REJECTED, or REVOKED (an approval withdrawn).
@@ -1340,8 +1340,8 @@ model PlanConfig {
   /// resolvePlatformFeePercent and the platform_fee_percent_for_event trigger
   /// function, so a change applies to new sales only (A21).
   platformFeePercent Decimal @default(0) @map("platform_fee_percent") @db.Decimal(5, 2)
-  monthlyPrice         Int?    @map("monthly_price") // null = custom / contact sales
-  annualPrice          Int?    @map("annual_price")
+  monthlyPrice       Int?    @map("monthly_price") // null = custom / contact sales
+  annualPrice        Int?    @map("annual_price")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1421,21 +1421,25 @@ model Event {
   onlinePlatform String? @map("online_platform") @db.VarChar(100)
 
   // Registration
-  capacity        Int?
-  registeredCount Int     @default(0) @map("registered_count")
-  waitlistEnabled Boolean @default(false) @map("waitlist_enabled")
+  capacity            Int?
+  registeredCount     Int     @default(0) @map("registered_count")
+  waitlistEnabled     Boolean @default(false) @map("waitlist_enabled")
   /// A33 (D11): the organiser absorbs the 5% buyer fee. Buyers pay the listed
   /// ticket price; the fee (capped at ₹99 a ticket) comes out of it, so the
   /// organiser's base is price − fee. Off = the fee is added on top.
   absorbProcessingFee Boolean @default(false) @map("absorb_processing_fee")
-  waitlistCount   Int     @default(0) @map("waitlist_count")
-  isFree          Boolean @default(true) @map("is_free")
+  waitlistCount       Int     @default(0) @map("waitlist_count")
+  isFree              Boolean @default(true) @map("is_free")
 
   // Metadata
   tags       String[]
-  /** Primary category (first of `categories`), kept for single-category readers. */
+  /**
+   * Primary category (first of `categories`), kept for single-category readers.
+   */
   category   String?         @db.VarChar(100)
-  /** Every category the event is in, primary first (max 3). */
+  /**
+   * Every category the event is in, primary first (max 3).
+   */
   categories String[]        @default([])
   visibility EventVisibility @default(PUBLIC)
   status     EventStatus     @default(DRAFT)
@@ -1598,6 +1602,8 @@ model Event {
   polls                          Poll[]
   quizzes                        Quiz[]
 
+  // One occurrence per slot: replicas reconciling at once can't duplicate.
+  @@unique([seriesParentId, startDateTime])
   @@index([spaceId])
   @@index([status])
   @@index([startDateTime])
@@ -1610,8 +1616,6 @@ model Event {
   @@index([parentEventId])
   // Series reconciliation lists occurrences by their parent.
   @@index([seriesParentId])
-  // One occurrence per slot: replicas reconciling at once can't duplicate.
-  @@unique([seriesParentId, startDateTime])
   @@index([payoutBankAccountId])
   @@map("events")
 }
@@ -1637,9 +1641,9 @@ model FavoriteEvent {
 model EventTicketType {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  eventId String @map("event_id") @db.Uuid
+  eventId         String                   @map("event_id") @db.Uuid
   freeAddRequests FreeAttendeeAddRequest[]
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event           Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   name          String  @db.VarChar(255)
   description   String? @db.Text
@@ -1679,7 +1683,7 @@ model EventTicketType {
   // When set it takes precedence over the event's own group link for anyone on
   // this ticket; when null the attendee falls back to the event group, then the
   // (event/parent) community. Validated + canonicalised via common/whatsapp-links.ts.
-  whatsappGroupUrl String? @map("whatsapp_group_url") @db.Text
+  whatsappGroupUrl   String? @map("whatsapp_group_url") @db.Text
   /// On a recurring occurrence: the series-parent ticket type this one copies
   /// (B17), so parent edits update it in place. Null everywhere else.
   sourceTicketTypeId String? @map("source_ticket_type_id") @db.Uuid
@@ -2025,32 +2029,32 @@ model EventRegistration {
   quantity Int @default(1)
 
   // Group registrations: number of people. The roster lives in GroupSeat rows.
-  groupSize    Int?  @map("group_size")
+  groupSize Int? @map("group_size")
 
   // Payment
-  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+  totalAmount        Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
   // Coupon applied to this registration, if any. Stored inline
   // so the row is self-describing for exports, refunds and the ledger. The
   // reservation lifecycle lives on the linked CouponRedemption row.
-  couponId       String?       @map("coupon_id") @db.Uuid
-  couponDiscount Decimal       @default(0) @map("coupon_discount") @db.Decimal(10, 2)
-  razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
-  processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
-  refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  couponId           String?       @map("coupon_id") @db.Uuid
+  couponDiscount     Decimal       @default(0) @map("coupon_discount") @db.Decimal(10, 2)
+  razorpayAmount     Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
+  processingFee      Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  refundedAmount     Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   /// Platform fee % frozen on the sale when it was paid (A21), set by the
   /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
-  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
+  platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears
   /// it on success; payouts never count such a row.
-  refundDueAt    DateTime?     @map("refund_due_at") @db.Timestamptz(6)
-  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
-  orderId        String?       @map("order_id") @db.VarChar(255)
+  refundDueAt        DateTime?     @map("refund_due_at") @db.Timestamptz(6)
+  paymentStatus      PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId          String?       @unique @map("payment_id") @db.VarChar(255)
+  orderId            String?       @map("order_id") @db.VarChar(255)
   /// Razorpay Payment Link (plink_…) for a curator "collect payment" add. Its
   /// presence means money can still arrive, so cleanup cancels, never deletes.
-  paymentLinkId  String?       @map("payment_link_id") @db.VarChar(255)
-  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+  paymentLinkId      String?       @map("payment_link_id") @db.VarChar(255)
+  paidAt             DateTime?     @map("paid_at") @db.Timestamptz(6)
 
   // Registration status.
   //
@@ -2439,22 +2443,22 @@ model GroupSeatPurchase {
 
   seats Int
 
-  baseAmount       Decimal       @map("base_amount") @db.Decimal(10, 2)
-  processingFee    Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
-  totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
-  refundedAmount   Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  baseAmount         Decimal       @map("base_amount") @db.Decimal(10, 2)
+  processingFee      Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  totalAmount        Decimal       @map("total_amount") @db.Decimal(10, 2)
+  refundedAmount     Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   /// Platform fee % frozen on the sale when it was paid (A21), set by the
   /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
-  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
-  paymentStatus    PaymentStatus @default(PENDING) @map("payment_status")
-  orderId          String?       @unique @map("order_id") @db.VarChar(255)
-  paymentId        String?       @unique @map("payment_id") @db.VarChar(255)
-  razorpayRefundId String?       @map("razorpay_refund_id") @db.VarChar(100)
-  paidAt           DateTime?     @map("paid_at") @db.Timestamptz(6)
-  seatsAddedAt     DateTime?     @map("seats_added_at") @db.Timestamptz(6)
+  platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
+  paymentStatus      PaymentStatus @default(PENDING) @map("payment_status")
+  orderId            String?       @unique @map("order_id") @db.VarChar(255)
+  paymentId          String?       @unique @map("payment_id") @db.VarChar(255)
+  razorpayRefundId   String?       @map("razorpay_refund_id") @db.VarChar(100)
+  paidAt             DateTime?     @map("paid_at") @db.Timestamptz(6)
+  seatsAddedAt       DateTime?     @map("seats_added_at") @db.Timestamptz(6)
   /// Set when the seats couldn't be added and the payment goes back in full.
   /// Claimed before Razorpay is called; a retry job clears it.
-  refundDueAt      DateTime?     @map("refund_due_at") @db.Timestamptz(6)
+  refundDueAt        DateTime?     @map("refund_due_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3141,10 +3145,10 @@ model SupportTicket {
   requesterLastReadAt DateTime? @map("requester_last_read_at") @db.Timestamptz(6)
   deskLastReadAt      DateTime? @map("desk_last_read_at") @db.Timestamptz(6)
 
-  rating        Int?    @db.SmallInt // requester's 1-5 rating once resolved
-  ratingComment String? @map("rating_comment") @db.VarChar(1000) // D20: optional words with the rating
-  aiTriage      Json?   @map("ai_triage")
-  aiSummary     String? @map("ai_summary") @db.Text
+  rating        Int?      @db.SmallInt // requester's 1-5 rating once resolved
+  ratingComment String?   @map("rating_comment") @db.VarChar(1000) // D20: optional words with the rating
+  aiTriage      Json?     @map("ai_triage")
+  aiSummary     String?   @map("ai_summary") @db.Text
   // D15: the lastMessageAt the summary covers; older than lastMessageAt = stale.
   aiSummaryAt   DateTime? @map("ai_summary_at") @db.Timestamptz(6)
 
@@ -4266,8 +4270,8 @@ model CertificateTemplate {
 
   createdBy String @map("created_by") @db.Uuid
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   /// Retired (B19): hidden and no longer issuable, kept because certificates
   /// were issued from it and their verify links must keep working.
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
@@ -4335,11 +4339,11 @@ model Certificate {
   issuedBy String   @map("issued_by") @db.Uuid
   issuedAt DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
 
-  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokedReason String?   @map("revoked_reason") @db.Text
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason   String?   @map("revoked_reason") @db.Text
   /// Revoked one at a time, for a reason (B19): batch re-runs and "Reissue
   /// all" leave it revoked. A bulk "Revoke all" (redesign) leaves this false.
-  revokedForCause Boolean @default(false) @map("revoked_for_cause")
+  revokedForCause Boolean   @default(false) @map("revoked_for_cause")
 
   // When the recipient was last emailed a link to this certificate. Null means
   // never delivered (no email on file, or a send that failed) — so this doubles
@@ -4812,11 +4816,16 @@ model BlogPost {
   /// Article body, in Markdown.
   content String @db.Text
 
-  category      String  @db.VarChar(80)
-  author        String  @db.VarChar(120)
-  coverImageUrl String? @map("cover_image_url") @db.Text
+  category        String  @db.VarChar(80)
+  author          String  @db.VarChar(120)
+  coverImageUrl   String? @map("cover_image_url") @db.Text
+  /// Alt text for the featured image (the cover, else the OG card).
+  coverAlt        String? @map("cover_alt") @db.Text
+  /// <title> and meta description overrides; null falls back to title/excerpt.
+  metaTitle       String? @map("meta_title") @db.VarChar(60)
+  metaDescription String? @map("meta_description") @db.VarChar(155)
   /// Estimated read time in minutes.
-  readMinutes   Int?    @map("read_minutes")
+  readMinutes     Int?    @map("read_minutes")
 
   featured Boolean    @default(false)
   status   BlogStatus @default(DRAFT)
@@ -4827,10 +4836,54 @@ model BlogPost {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  questions BlogQuestion[]
+
   @@index([status])
   @@index([slug])
   @@index([category])
   @@map("blog_posts")
+}
+
+/// The auto-blog queue: one reader question per row, written up by
+/// BlogWriterService. A topic published in the last 7 days waits its turn.
+model BlogQuestion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  question String  @db.Text
+  /// Short kebab-case topic; near-duplicate questions share one.
+  topic    String  @db.VarChar(80)
+  /// explain | compare | how-to (the writer re-decides it).
+  intent   String  @db.VarChar(20)
+  /// Which Unifesto feature answers it, fed to the writer. Null = no product angle.
+  angle    String? @db.Text
+  /// The one app page the post may link to. Null = no app link.
+  appLink  String? @map("app_link") @db.VarChar(200)
+
+  status     BlogQuestionStatus @default(QUEUED)
+  source     BlogQuestionSource @default(SEED)
+  failReason String?            @map("fail_reason") @db.Text
+
+  postId String?   @map("post_id") @db.Uuid
+  post   BlogPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@map("blog_questions")
+}
+
+enum BlogQuestionStatus {
+  QUEUED
+  WRITING
+  PUBLISHED
+  FAILED
+}
+
+enum BlogQuestionSource {
+  SEED
+  REFILL
+  SEARCH_CONSOLE
 }
 
 // =====================================================
@@ -4920,8 +4973,8 @@ model PushCampaign {
   scheduledAt DateTime?          @map("scheduled_at") @db.Timestamptz(6)
   sentAt      DateTime?          @map("sent_at") @db.Timestamptz(6)
 
-  sentCount   Int @default(0) @map("sent_count")
-  failedCount Int @default(0) @map("failed_count")
+  sentCount   Int     @default(0) @map("sent_count")
+  failedCount Int     @default(0) @map("failed_count")
   // Segment broadcasts only: OneSignal's notification id. Its create response
   // carries no recipient count, so sent/failed are read back from its stats.
   oneSignalId String? @map("onesignal_id") @db.VarChar(64)
@@ -4989,13 +5042,13 @@ enum MessageDeliveryStatus {
 model MessageDelivery {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  channel  MessageChannel
-  provider String         @db.VarChar(20) // resend | ses | meta | onesignal
-  kind     String?        @db.VarChar(64) // notify kind or push category
-  label    String         @db.VarChar(255) // email subject / WhatsApp template / push title
+  channel   MessageChannel
+  provider  String         @db.VarChar(20) // resend | ses | meta | onesignal
+  kind      String?        @db.VarChar(64) // notify kind or push category
+  label     String         @db.VarChar(255) // email subject / WhatsApp template / push title
   // Email address, E.164-ish phone, or (push) the user id / segment name.
-  recipient String  @db.VarChar(320)
-  userId    String? @map("user_id") @db.Uuid
+  recipient String         @db.VarChar(320)
+  userId    String?        @map("user_id") @db.Uuid
 
   status            MessageDeliveryStatus
   providerMessageId String?               @map("provider_message_id") @db.VarChar(255)
@@ -5003,7 +5056,7 @@ model MessageDelivery {
   attempts          Int                   @default(0)
   // Optional idempotency key: a second send with the same key is skipped once
   // the first is SENT/DELIVERED/OPENED, retried when it FAILED.
-  dedupKey String? @unique @map("dedup_key") @db.VarChar(255)
+  dedupKey          String?               @unique @map("dedup_key") @db.VarChar(255)
 
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -5619,24 +5672,24 @@ model StayBooking {
 
   // Money, snapshotted at request time. `totalAmount` is what the guest pays
   // = baseAmount + processingFee (the fee applies to ONLINE only).
-  paymentMode    StayPaymentMode @map("payment_mode")
-  baseAmount     Decimal         @default(0) @map("base_amount") @db.Decimal(10, 2)
-  processingFee  Decimal         @default(0) @map("processing_fee") @db.Decimal(10, 2)
-  totalAmount    Decimal         @default(0) @map("total_amount") @db.Decimal(10, 2)
+  paymentMode        StayPaymentMode @map("payment_mode")
+  baseAmount         Decimal         @default(0) @map("base_amount") @db.Decimal(10, 2)
+  processingFee      Decimal         @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  totalAmount        Decimal         @default(0) @map("total_amount") @db.Decimal(10, 2)
   // Null for FREE. PENDING until paid (online, or marked paid at the property).
-  paymentStatus  PaymentStatus?  @map("payment_status")
-  paymentId      String?         @map("payment_id") @db.VarChar(255)
-  orderId        String?         @map("order_id") @db.VarChar(255)
-  paidAt         DateTime?       @map("paid_at") @db.Timestamptz(6)
-  refundedAmount Decimal         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  paymentStatus      PaymentStatus?  @map("payment_status")
+  paymentId          String?         @map("payment_id") @db.VarChar(255)
+  orderId            String?         @map("order_id") @db.VarChar(255)
+  paidAt             DateTime?       @map("paid_at") @db.Timestamptz(6)
+  refundedAmount     Decimal         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   /// Platform fee % frozen on the sale when it was paid (A21), set by the
   /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
-  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
+  platformFeePercent Decimal?        @map("platform_fee_percent") @db.Decimal(5, 2)
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears
   /// it on success; payouts never count such a row.
-  refundDueAt    DateTime?       @map("refund_due_at") @db.Timestamptz(6)
-  paymentDueAt   DateTime?       @map("payment_due_at") @db.Timestamptz(6)
+  refundDueAt        DateTime?       @map("refund_due_at") @db.Timestamptz(6)
+  paymentDueAt       DateTime?       @map("payment_due_at") @db.Timestamptz(6)
 
   reviewedById    String?   @map("reviewed_by_id") @db.Uuid
   reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz(6)
@@ -6104,18 +6157,18 @@ model OrbitLead {
 /// unifesto.app/orbit/apply. Applicants are signed-in users, so appointing one
 /// is a click. At most one PENDING row per user (partial unique index).
 model OrbitApplication {
-  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId  String @map("user_id") @db.Uuid
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId  String  @map("user_id") @db.Uuid
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// The campus they picked; null when their college isn't on Unifesto yet.
   spaceId String? @map("space_id") @db.Uuid
   space   Space?  @relation(fields: [spaceId], references: [id], onDelete: SetNull)
 
-  collegeName String @map("college_name") @db.VarChar(200)
-  yearOfStudy String @map("year_of_study") @db.VarChar(60)
-  myClubs     String @map("my_clubs") @db.Text
-  campusClubs String @map("campus_clubs") @db.Text
-  why         String @db.Text
+  collegeName String   @map("college_name") @db.VarChar(200)
+  yearOfStudy String   @map("year_of_study") @db.VarChar(60)
+  myClubs     String   @map("my_clubs") @db.Text
+  campusClubs String   @map("campus_clubs") @db.Text
+  why         String   @db.Text
   /// When they confirmed they are 18+ and agreed to the Privacy Policy.
   confirmedAt DateTime @map("confirmed_at") @db.Timestamptz(6)
 
