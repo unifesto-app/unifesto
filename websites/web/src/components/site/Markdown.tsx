@@ -35,9 +35,9 @@ const mdComponents = {
   pre: (p: React.ComponentProps<"pre">) => (
     <pre className="mt-6 overflow-x-auto rounded-2xl bg-night-2 p-6 text-sm text-paper/85" {...p} />
   ),
-  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
   img: (p: React.ComponentProps<"img">) => (
-    <img className="mt-8 w-full rounded-2xl" {...p} />
+    // eslint-disable-next-line @next/next/no-img-element -- Markdown images have unknown sizes; alt comes from the source.
+    <img className="mt-8 w-full rounded-2xl" alt="" {...p} />
   ),
   hr: () => <hr className="my-12 h-px border-0 bg-paper/15" />,
   // GFM tables (comparison posts). Scroll sideways on phones instead of squashing.

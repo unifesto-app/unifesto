@@ -24,12 +24,12 @@ export default function DownloadPage() {
 
   useEffect(() => {
     // Detect platform
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const userAgent = navigator.userAgent || navigator.vendor || (window as Window & { opera?: string }).opera;
 
     let detectedPlatform: 'ios' | 'android' | 'unknown' = 'unknown';
 
     // iOS detection
-    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
+    if (/iPad|iPhone|iPod/.test(userAgent) && !('MSStream' in window)) {
       detectedPlatform = 'ios';
     }
     // Android detection

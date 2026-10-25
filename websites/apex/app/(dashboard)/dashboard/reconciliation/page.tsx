@@ -125,7 +125,7 @@ function useReconData<T>(loader: () => Promise<{ data: T | null; error: { messag
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo -- the caller passes the deps
   const run = useCallback(loader, deps);
   useEffect(() => {
     let active = true;

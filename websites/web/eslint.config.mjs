@@ -5,6 +5,12 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Fetch-on-mount effects that set loading/data state are the house pattern
+  // (~180 hits across the sites): a warning, not a rewrite of every page.
+  // Date.now() in render drives "live"/"past" labels; stale until the next render is fine.
+  { rules: { "react-hooks/set-state-in-effect": "warn", "react-hooks/purity": "warn" } },
+  // Self-check scripts run under Node type stripping, outside tsc: @ts-nocheck is deliberate.
+  { files: ["scripts/**"], rules: { "@typescript-eslint/ban-ts-comment": "off" } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
