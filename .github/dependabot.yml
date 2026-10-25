@@ -1,5 +1,7 @@
 # J19: one grouped PR per app per month (security PRs come separately and
 # right away when Dependabot security updates are on in repo settings).
+# Majors are skipped: Prisma 7 and TypeScript 7 bot PRs broke the build
+# (#337, #338); majors are planned upgrades.
 # Not mobile: Expo pins native versions per SDK (upgrade with
 # `npx expo install --fix` on an SDK bump), and a bot bump of react-native or
 # LiveKit broke npm ci in #330. No SDK/RN bump before 5.0.0 anyway.
@@ -13,6 +15,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /websites/web
     schedule:
@@ -21,6 +26,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /websites/space
     schedule:
@@ -29,6 +37,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /websites/apex
     schedule:
@@ -37,6 +48,9 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
