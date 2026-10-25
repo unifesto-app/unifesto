@@ -2,6 +2,7 @@ import {
   buildTemplateSpec,
   parseCsv,
   parseImportRows,
+  MAX_IMPORT_ROWS,
   type ImportFormField,
   type ImportTicketShape,
 } from './manual-import.util';
@@ -140,6 +141,15 @@ describe('parseImportRows', () => {
     const matrix = parseCsv('Name,Email,Mobile\nAsha,asha@example.com,\n');
     const { rows } = parseImportRows(individual, matrix);
     expect(rows[0].error).toMatch(/mobile/i);
+  });
+
+  it('caps one import at MAX_IMPORT_ROWS rows (J5)', () => {
+    const row = (i: number) => `P${i},p${i}@example.com,9876543210`;
+    const csv = (n: number) => ['Name,Email,Mobile', ...Array.from({ length: n }, (_, i) => row(i))].join('\n');
+    expect(parseImportRows(individual, parseCsv(csv(MAX_IMPORT_ROWS))).fileError).toBeUndefined();
+    const over = parseImportRows(individual, parseCsv(csv(MAX_IMPORT_ROWS + 1)));
+    expect(over.rows).toEqual([]);
+    expect(over.fileError).toMatch(/1,001 attendee rows\. Import up to 1,000 at a time/);
   });
 
   it('rejects a file missing the Name/Email header', () => {

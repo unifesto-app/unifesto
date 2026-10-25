@@ -1,4 +1,5 @@
 import { buildRegistrationsService } from './registrations.testing';
+import { RegistrationAttendeesService } from './registration-attendees.service';
 
 /**
  * End-to-end proof of the per-member WhatsApp group blast, run against an
@@ -81,6 +82,14 @@ function makeHarness() {
   ];
 
   const allSeats = () => registrations.flatMap((r) => r.groupSeats);
+  // Conditional update on whatsappInviteSentAt, as Postgres would apply it.
+  const claim = (rows: { id: string; whatsappInviteSentAt: Date | null }[], where: any, data: any) => {
+    const row = rows.find(
+      (x) => x.id === where.id && +(x.whatsappInviteSentAt ?? 0) === +(where.whatsappInviteSentAt ?? 0),
+    );
+    if (row) Object.assign(row, data);
+    return { count: row ? 1 : 0 };
+  };
 
   const prisma = {
     event: {
@@ -96,6 +105,7 @@ function makeHarness() {
         Object.assign(r, data);
         return r;
       },
+      updateMany: async ({ where, data }: any) => claim(registrations, where, data),
     },
     groupSeat: {
       update: async ({ where, data }: any) => {
@@ -103,6 +113,7 @@ function makeHarness() {
         Object.assign(s, data);
         return s;
       },
+      updateMany: async ({ where, data }: any) => claim(allSeats(), where, data),
     },
   };
 
@@ -126,7 +137,7 @@ function makeHarness() {
     none, none, none, none, none,
   );
 
-  return { svc, registrations, sends, rejected };
+  return { svc, registrations, sends, rejected, prisma, whatsappService, groupSeats };
 }
 
 describe('sendGroupInviteBlast — per-member group invite', () => {
@@ -176,5 +187,27 @@ describe('sendGroupInviteBlast — per-member group invite', () => {
     const second = await svc.sendGroupInviteBlast('ev1');
     expect(second).toMatchObject({ sent: 2, failed: 0 });
     expect(sends.map((x) => x.to).sort()).toEqual(['9111111111', '9333333333']);
+  });
+
+  it('two overlapping blasts (a timed-out request retried) invite each person once (J5)', async () => {
+    const { svc, sends } = makeHarness();
+    const [a, b] = await Promise.all([svc.sendGroupInviteBlast('ev1'), svc.sendGroupInviteBlast('ev1')]);
+    expect(sends.map((x) => x.to).sort()).toEqual(['9111111111', '9222222222', '9333333333']);
+    expect(a.sent + b.sent).toBe(3);
+  });
+
+  it('with a queue, answers at once with the plan and sends nothing in the request (J5)', async () => {
+    const { prisma, whatsappService, groupSeats, sends } = makeHarness();
+    const queue = { setHandler: jest.fn(), add: jest.fn(async () => true) };
+    const attendees = new RegistrationAttendeesService(
+      prisma as any, whatsappService as any, groupSeats as any, {} as any, {} as any, queue as any,
+    );
+    const res = await attendees.sendGroupInviteBlast('ev1');
+    expect(res).toEqual({ eligible: 4, sent: 3, noPhone: 1, noLink: 0, failed: 0, queued: true });
+    expect(queue.add).toHaveBeenCalledWith('ev1');
+    expect(sends).toHaveLength(0);
+    // The worker's handler is the real run.
+    await queue.setHandler.mock.calls[0][0]('ev1');
+    expect(sends).toHaveLength(3);
   });
 });

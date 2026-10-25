@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -14,6 +15,18 @@ import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { seatsFor } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { GroupInviteBlastQueue } from './group-invite-blast.queue';
+import { seatMemberName, seatPhone } from './group-invite.util';
+import { inChunks } from '../common/batching';
+
+interface BlastRecipient {
+  kind: 'reg' | 'seat';
+  id: string;
+  phone: string;
+  name: string;
+  inviteUrl: string;
+  isCommunity: boolean;
+}
 
 /** The organiser roster's list filters (see RegistrationAttendeesService.rosterWhere). */
 export interface RosterFilters {
@@ -39,9 +52,92 @@ export class RegistrationAttendeesService {
     private readonly groupSeats: GroupSeatsService,
     private readonly authz: AuthorizationService,
     private readonly confirmations: RegistrationConfirmationsService,
-  ) {}
+    @Optional() private readonly blastQueue?: GroupInviteBlastQueue,
+  ) {
+    blastQueue?.setHandler((eventId) => this.runGroupInviteBlast(eventId));
+  }
 
+  /**
+   * Curator's "send the WhatsApp group invite" (J5). The plan (who still needs
+   * an invite) is cheap and returned right away; the sends run as a queued job
+   * when Redis is up, else inline as before. `sent` is then the number queued,
+   * so older clients still read it as "sent N".
+   */
   async sendGroupInviteBlast(eventId: string) {
+    const plan = await this.planGroupInviteBlast(eventId);
+    const counts = { eligible: plan.eligible, noPhone: plan.noPhone, noLink: plan.noLink };
+    if (plan.recipients.length && (await this.blastQueue?.add(eventId))) {
+      return { ...counts, sent: plan.recipients.length, failed: 0, queued: true };
+    }
+    return this.runGroupInviteBlast(eventId);
+  }
+
+  /**
+   * Send every planned invite. Each recipient is claimed first (its
+   * whatsappInviteSentAt set only if still null) and released if the send
+   * fails, so two overlapping runs (a timed-out request retried, a queued job
+   * re-run after a crash) never invite the same person twice. The claim is the
+   * checkpoint: a re-run only sees people not yet invited.
+   * ponytail: a crash between claim and send loses that one invite rather
+   * than risk a double send; the curator can see who is un-joined.
+   */
+  async runGroupInviteBlast(eventId: string) {
+    // Materialise seats for any seatless group first (idempotent; none are
+    // expected after the backfills) so every member seat is reachable.
+    const groupRegs = await this.prisma.eventRegistration.findMany({
+      where: { eventId, ...COUNTS_AS_ATTENDING, groupSize: { gt: 1 } },
+      select: { id: true },
+    });
+    for (const g of groupRegs) {
+      await this.groupSeats.ensureSeatsForRegistration(g.id);
+    }
+
+    const plan = await this.planGroupInviteBlast(eventId);
+    let sent = 0;
+    let failed = 0;
+    await inChunks(
+      plan.recipients,
+      async (r) => {
+        const now = new Date();
+        const claim =
+          r.kind === 'reg'
+            ? this.prisma.eventRegistration.updateMany({
+                where: { id: r.id, whatsappInviteSentAt: null },
+                data: { whatsappInviteSentAt: now },
+              })
+            : this.prisma.groupSeat.updateMany({
+                where: { id: r.id, whatsappInviteSentAt: null },
+                data: { whatsappInviteSentAt: now },
+              });
+        if ((await claim).count === 0) return; // another run has them
+        let ok = false;
+        try {
+          ok = await this.whatsappService.sendEventWhatsAppGroupInvite(r.phone, {
+            userName: r.name,
+            eventTitle: plan.eventTitle,
+            inviteUrl: r.inviteUrl,
+            isCommunity: r.isCommunity,
+          });
+        } catch (error) {
+          this.logger.error(`Failed to send WhatsApp group invite to ${r.kind} ${r.id}`, error);
+        }
+        if (ok) {
+          sent++;
+          return;
+        }
+        failed++;
+        const release = { where: { id: r.id, whatsappInviteSentAt: now }, data: { whatsappInviteSentAt: null } };
+        await (r.kind === 'reg'
+          ? this.prisma.eventRegistration.updateMany(release)
+          : this.prisma.groupSeat.updateMany(release));
+      },
+      10,
+    );
+    return { eligible: plan.eligible, sent, noPhone: plan.noPhone, noLink: plan.noLink, failed };
+  }
+
+  /** Who still needs an invite, and why the rest can't get one. Throws when no link exists anywhere. */
+  private async planGroupInviteBlast(eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: {
@@ -53,9 +149,9 @@ export class RegistrationAttendeesService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // The invite link is now per registration (a ticket type may carry its own
-    // group). Refuse only when there is no link anywhere — event-level or on any
-    // ticket type — so the curator gets a clear "set one first".
+    // The invite link is per registration (a ticket type may carry its own
+    // group). Refuse only when there is no link anywhere, so the curator gets
+    // a clear "set one first".
     const eventHasLink = !!(
       event.whatsappAttendeeGroupUrl ||
       event.parentEvent?.whatsappAttendeeGroupUrl
@@ -69,20 +165,9 @@ export class RegistrationAttendeesService {
       );
     }
 
-    // Materialise seats for any seatless group first (idempotent; none are
-    // expected after the backfills) so every member seat is reachable.
-    const groupRegs = await this.prisma.eventRegistration.findMany({
-      where: { eventId, ...COUNTS_AS_ATTENDING, groupSize: { gt: 1 } },
-      select: { id: true },
-    });
-    for (const g of groupRegs) {
-      await this.groupSeats.ensureSeatsForRegistration(g.id);
-    }
-
-    // Confirmed attendees only (same predicate as every headcount). We can't
-    // pre-filter on the invite flags because a group whose lead is already
-    // invited may still have un-invited member seats — the per-recipient
-    // decision happens below.
+    // Confirmed attendees only (same predicate as every headcount). A group
+    // whose lead is already invited may still have un-invited member seats, so
+    // the decision is per recipient.
     const registrations = await this.prisma.eventRegistration.findMany({
       where: { eventId, ...COUNTS_AS_ATTENDING },
       select: {
@@ -108,72 +193,35 @@ export class RegistrationAttendeesService {
       },
     });
 
-    // Counts are per *recipient* (person), not per registration — a group is
-    // many recipients. "eligible" = recipients we actually attempted.
+    // Counts are per *recipient* (person), not per registration.
+    // "eligible" = not yet invited or joined.
+    const recipients: BlastRecipient[] = [];
     let eligible = 0;
-    let sent = 0;
     let noPhone = 0;
     let noLink = 0;
-    let failed = 0;
-
     for (const reg of registrations) {
       const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
         ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
         eventAttendeeGroupUrl: event.whatsappAttendeeGroupUrl,
         parentAttendeeGroupUrl: event.parentEvent?.whatsappAttendeeGroupUrl,
       });
-
+      const consider = (kind: BlastRecipient['kind'], id: string, phone: string | null, name: string) => {
+        eligible++;
+        if (!inviteUrl) noLink++;
+        else if (!phone) noPhone++;
+        else recipients.push({ kind, id, phone, name, inviteUrl, isCommunity });
+      };
       // Lead (individual attendee, or seat 1 of a group): tracked on the row.
       if (!reg.whatsappInviteSentAt && !reg.whatsappGroupJoinedAt) {
-        eligible++;
-        if (!inviteUrl) {
-          noLink++;
-        } else if (!reg.user?.mobileNumber) {
-          noPhone++;
-        } else {
-          try {
-            const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
-              reg.user.mobileNumber,
-              {
-                userName: reg.user.fullName || reg.user.username || 'there',
-                eventTitle: event.title,
-                inviteUrl,
-                isCommunity,
-              },
-            );
-            if (!accepted) throw new Error('WhatsApp did not accept the invite');
-            await this.prisma.eventRegistration.update({
-              where: { id: reg.id },
-              data: { whatsappInviteSentAt: new Date() },
-            });
-            sent++;
-          } catch (error) {
-            failed++;
-            this.logger.error(
-              `Failed to send WhatsApp group invite to registration ${reg.id}`,
-              error,
-            );
-          }
-        }
+        consider('reg', reg.id, reg.user?.mobileNumber ?? null, reg.user?.fullName || reg.user?.username || 'there');
       }
-
       // Group members (seats 2..N): tracked per seat.
-      const memberSeats = reg.groupSeats.filter(
-        (s) => s.seatIndex !== 1 && !s.whatsappInviteSentAt && !s.whatsappJoinedAt,
-      );
-      eligible += memberSeats.length;
-      const memberResult = await this.confirmations.sendInviteToGroupMemberSeats(memberSeats, {
-        inviteUrl,
-        isCommunity,
-        eventTitle: event.title,
-      });
-      sent += memberResult.sent;
-      noPhone += memberResult.noPhone;
-      noLink += memberResult.noLink;
-      failed += memberResult.failed;
+      for (const seat of reg.groupSeats) {
+        if (seat.seatIndex === 1 || seat.whatsappInviteSentAt || seat.whatsappJoinedAt) continue;
+        consider('seat', seat.id, seatPhone(seat), seatMemberName(seat));
+      }
     }
-
-    return { eligible, sent, noPhone, noLink, failed };
+    return { eventTitle: event.title, recipients, eligible, noPhone, noLink };
   }
 
   /**

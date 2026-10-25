@@ -8,6 +8,7 @@ import { RegistrationCancellationService } from './registration-cancellation.ser
 import { RegistrationImportService } from './registration-import.service';
 import { RegistrationExportService } from './registration-export.service';
 import { RegistrationTransfersService } from './registration-transfers.service';
+import { GroupInviteBlastQueue } from './group-invite-blast.queue';
 import { RegistrationAttendeesService } from './registration-attendees.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { WaitlistService } from './waitlist.service';
@@ -53,7 +54,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     SubscriptionModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
-  providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService, BadgesService],
+  providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, GroupInviteBlastQueue, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService, BadgesService],
   exports: [RegistrationsService, WaitlistService, GroupSeatsService, TeamChangesService],
 })
 export class RegistrationsModule {}

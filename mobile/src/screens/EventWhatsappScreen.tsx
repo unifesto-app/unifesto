@@ -113,7 +113,12 @@ export default function EventWhatsappScreen() {
               r.noLink ? `${r.noLink} with no group link` : '',
               r.failed ? `${r.failed} failed` : '',
             ].filter(Boolean);
-            AppAlert.alert(`Sent to ${r.sent}`, skipped.length ? `Skipped: ${skipped.join(', ')}.` : undefined);
+            AppAlert.alert(
+              r.queued ? `Sending to ${r.sent}` : `Sent to ${r.sent}`,
+              [r.queued ? 'Invites go out over the next few minutes.' : '', skipped.length ? `Skipped: ${skipped.join(', ')}.` : '']
+                .filter(Boolean)
+                .join(' ') || undefined,
+            );
           },
         },
       ],

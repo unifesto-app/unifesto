@@ -44,3 +44,25 @@ export function assertEventSchedule(
     throw new BadRequestException(`"${timezone}" isn't a timezone we know. Use one like Asia/Kolkata.`);
   }
 }
+
+/** "7 June 2026" */
+export function formatEventDate(dateTime: Date, timezone = 'Asia/Kolkata'): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: timezone,
+  }).format(dateTime);
+}
+
+/** "10:00 AM - 1:00 PM IST" */
+export function formatEventTime(startTime: Date, endTime: Date, timezone = 'Asia/Kolkata'): string {
+  const formatTime = (date: Date) =>
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: timezone,
+    }).format(date);
+  return `${formatTime(startTime)} - ${formatTime(endTime)} IST`;
+}

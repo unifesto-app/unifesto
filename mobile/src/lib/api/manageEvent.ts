@@ -144,6 +144,8 @@ export interface WhatsappBlastResult {
   noPhone: number;
   noLink: number;
   failed: number;
+  /** Sends run in the background; `sent` is how many were queued. */
+  queued?: boolean;
 }
 
 /** POST /events/:id/whatsapp-group-invite — sends once to every un-invited confirmed attendee. */
