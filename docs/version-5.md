@@ -520,7 +520,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
-| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#321) |
+| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#349) |
 | K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
 
 ### L · Live engagement (new)
@@ -892,3 +892,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J17 ILIKE wildcard re-check on all email equality lookups; T3 co-host Space Admin gets event:edit in access; J16 suspended-space gate on curator attendee adds; space Danger zone on event:cancel (#347)
 - **2026-10-25** · J19 CI: next build for web/space/apex + backend migration replay & pinned drift check (backfill migration for 4 untracked tables) (#346)
 - **2026-10-25** · T4/T5 Deals + TermsService + integer-paise quote() on all paid paths, POST /quote, Apex Deals card; parity-proven vs old fee maths (#348)
+- **2026-10-25** · K10 slice 2: paid individual ticket checkout on the web (server quote, coupons, Razorpay Standard Checkout, verify; ₹0 via coupon; mixed free+paid); GROUP and FILE still in the app (#349)
