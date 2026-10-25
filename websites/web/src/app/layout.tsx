@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Michroma, Hanken_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
 import FloatingSupport from "@/components/FloatingSupport";
@@ -88,15 +89,18 @@ export const viewport: Viewport = {
    calls window.__applyTheme after changing the stored choice. */
 const themeScript = `try{var r=document.documentElement,m=matchMedia("(prefers-color-scheme: light)");window.__applyTheme=function(){var p=localStorage.getItem("theme")||"system";r.dataset.pref=p;r.dataset.theme=p==="system"?(m.matches?"light":"dark"):p};__applyTheme();m.addEventListener("change",__applyTheme)}catch(e){}`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // K14: the proxy's per-request CSP nonce. Reading it renders every page per
+  // request, which a nonce needs (a prerendered page can't carry one).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en-IN" className={`${michroma.variable} ${hanken.variable} ${martian.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-night antialiased">
         <UtmCapture />
