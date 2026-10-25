@@ -104,6 +104,7 @@ export interface SupportTicket {
 /** A typed record behind a case: `type` is its model name (RefundRequest, SpaceRequest…). */
 export interface CaseSubject {
   type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- one of many models, read per `type`
   data: Record<string, any>;
 }
 

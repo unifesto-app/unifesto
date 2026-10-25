@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PaperPlaneTilt,
@@ -169,7 +169,7 @@ export default function SpaceComposeCampaignPage() {
   };
 
   // Human-readable recap of the chosen audience for the review rail.
-  const audienceLabel = useMemo(() => {
+  const audienceLabel = (() => {
     if (targetDef.needs === "event") {
       const ev = events.find((e) => e.id === targetId);
       return ev ? `${targetDef.label.replace("an event", "")}${ev.title}` : null;
@@ -181,7 +181,7 @@ export default function SpaceComposeCampaignPage() {
         : null;
     }
     return targetDef.label;
-  }, [targetDef, targetId, events, members]);
+  })();
 
   const ready =
     subject.trim().length > 0 &&

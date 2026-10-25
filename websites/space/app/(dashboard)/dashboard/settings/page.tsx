@@ -43,6 +43,15 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
+// Fields the API returns (in either casing) that SpaceWithHierarchy doesn't declare.
+type SpaceFields = Partial<
+  Record<
+    | "logoUrl" | "logo_url" | "bannerUrl" | "banner_url" | "websiteUrl"
+    | "website" | "city" | "state" | "country" | "visibility",
+    string | null
+  >
+> & { tags?: string[] };
+
 const VISIBILITY_OPTIONS: Array<{
   value: SpaceVisibility;
   label: string;
@@ -143,12 +152,12 @@ export default function SpaceSettingsPage() {
     } else if (data) {
       setSpace(data);
       setLogoUrl(
-        ((data as any).logoUrl ?? (data as any).logo_url ?? null) as
+        ((data as SpaceFields).logoUrl ?? (data as SpaceFields).logo_url ?? null) as
           | string
           | null
       );
       setBannerUrl(
-        ((data as any).bannerUrl ?? (data as any).banner_url ?? null) as
+        ((data as SpaceFields).bannerUrl ?? (data as SpaceFields).banner_url ?? null) as
           | string
           | null
       );
@@ -156,14 +165,14 @@ export default function SpaceSettingsPage() {
         name: data.name || "",
         slug: data.slug || "",
         description: data.description || "",
-        websiteUrl: (data as any).websiteUrl || (data as any).website || "",
-        city: (data as any).city || "",
-        state: (data as any).state || "",
-        country: (data as any).country || "India",
-        tags: (data as any).tags || [],
-        visibility: ((data as any).visibility as SpaceVisibility) || "PUBLIC",
+        websiteUrl: (data as SpaceFields).websiteUrl || (data as SpaceFields).website || "",
+        city: (data as SpaceFields).city || "",
+        state: (data as SpaceFields).state || "",
+        country: (data as SpaceFields).country || "India",
+        tags: (data as SpaceFields).tags || [],
+        visibility: ((data as SpaceFields).visibility as SpaceVisibility) || "PUBLIC",
       });
-      setTagsInput(((data as any).tags || []).join(", "));
+      setTagsInput(((data as SpaceFields).tags || []).join(", "));
     }
     setLoading(false);
   }, [spaceId]);
@@ -220,12 +229,12 @@ export default function SpaceSettingsPage() {
       formData.name !== (space.name || "") ||
       formData.slug !== (space.slug || "") ||
       formData.description !== (space.description || "") ||
-      formData.websiteUrl !== ((space as any).websiteUrl || (space as any).website || "") ||
-      formData.city !== ((space as any).city || "") ||
-      formData.state !== ((space as any).state || "") ||
-      formData.country !== ((space as any).country || "") ||
-      formData.visibility !== ((space as any).visibility || "PUBLIC") ||
-      JSON.stringify(formData.tags || []) !== JSON.stringify((space as any).tags || [])
+      formData.websiteUrl !== ((space as SpaceFields).websiteUrl || (space as SpaceFields).website || "") ||
+      formData.city !== ((space as SpaceFields).city || "") ||
+      formData.state !== ((space as SpaceFields).state || "") ||
+      formData.country !== ((space as SpaceFields).country || "") ||
+      formData.visibility !== ((space as SpaceFields).visibility || "PUBLIC") ||
+      JSON.stringify(formData.tags || []) !== JSON.stringify((space as SpaceFields).tags || [])
     );
   };
 
@@ -279,7 +288,7 @@ export default function SpaceSettingsPage() {
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
             <CardDescription>
-              Update your space's name, description, and identifier.
+              Update your space&apos;s name, description, and identifier.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

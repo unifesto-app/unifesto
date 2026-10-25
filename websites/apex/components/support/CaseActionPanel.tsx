@@ -25,6 +25,7 @@ import { reviewTransferRequest } from "@/lib/api/registrations-api";
 import { updateContentReport } from "@/lib/api/content-reports-api";
 import { cancelPayout, markPayoutPaid, updateBankAccountStatus } from "@/lib/api/payouts-api";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- subject records are untyped JSON of many models
 type Run = (id: string, note: string, d: Record<string, any>) => Promise<{ error: ApiError | null }>;
 
 interface Action {
@@ -41,6 +42,7 @@ interface SubjectDef {
   title: string;
   /** The old queue page, until the inbox replaces it. None for kinds born in the inbox. */
   href?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- as Run
   fields: (d: Record<string, any>) => [string, ReactNode][];
   actions: Action[];
 }

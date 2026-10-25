@@ -127,7 +127,8 @@ jobs:
       # fallback when unset is the prod API),
       # no Sentry DSN, and no SENTRY_AUTH_TOKEN, so withSentryConfig skips the
       # source-map upload. .next/cache is restored per lockfile, so a PR's
-      # later pushes rebuild incrementally.
+      # later pushes rebuild incrementally. Lint fails on errors only
+      # (--quiet hides the ~200 warnings; see each eslint.config.mjs).
       - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
@@ -149,7 +150,7 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical && npm test
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical && npm test
           # Legal pages prerender from the API and throw when it's unreachable
           # (on purpose: keep the cached page). A stub that 404s everything
           # builds them as not-found instead.
@@ -179,7 +180,7 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       - uses: actions/setup-node@v7
@@ -204,7 +205,7 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
