@@ -417,12 +417,12 @@ One support system for everything a person needs help with. Every item is an **A
 |---|---|---|
 | G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | done (#378) |
 | G2 | **Make on-site mobile tools survive offline and slow networks.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | done (#273) |
-| G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
+| G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | done (#385) |
 | G4 | **Move long mobile lists to FlatList.** Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | done (#278) |
 | G5 | **Space web: PageHeader and EmptyState rollout.** Space web page pattern: Stays pages on `PageHeader`/`EmptyState`; `EmptyState` on attendees, checkin, transactions, tracking, IAM, settings | done (#286) |
 | G6 | **Remaining on-site web-to-mobile parity.** Remaining web → mobile parity, on-site parts only: certificates issue, reports view, sessions list | dropped (2026-10-18): merged into G8 (both cover on-site web-to-mobile parity, x-parity-16); |
 | G7 | Unicon: redraw glyphs in our own style, tab bar + Home first | parked (2026-10-18): redrawing Unicon glyphs in a house style is design polish with no user value before 5.0.0; |
-| G8 | **Organiser event-day mode on mobile.** Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | planned |
+| G8 | **Organiser event-day mode on mobile.** Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | done (#387) |
 | G9 | **Unify the mobile API client: refresh, errors and deep links.** - A silent refresh that fails with 5xx or 429 signs the user out (mobile/src/lib/api/helpers.ts:129, :190); | done (#263) |
 | G10 | **Fix check-in for group members, undo and offline sync.** Groups: bulk check-in (a B2 regression) and Space web scan check in whole groups at registration level (backend/src/checkin/checkin.service.ts:1036, :1180, team-changes.service.ts:263), and a member's pass shows 'You are checked i | done (#268) |
 | G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | done (#276) |
@@ -930,3 +930,5 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · G1 mobile desk editors replaced by "open on web" handoffs; 38 screens deleted (#378)
 - **2026-10-26** · H20 custom sending domains gated by PlatformConfig switch (default off, Apex toggle); studio shows coming soon; Resend limit refusal is a 403 (#391)
 - **2026-10-26** · H15 phase 1: mobile Apex white-label queue removed; POST /white-label/requests sends Deprecation header (#388)
+- **2026-10-26** · G3 every remaining mobile screen on cosmos (palette codemod + ~100-screen structural pass) (#385)
+- **2026-10-26** · G8 event-day cockpit on mobile: live check-ins, today's money, help desk, announcements (#387)
