@@ -894,3 +894,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · T4/T5 Deals + TermsService + integer-paise quote() on all paid paths, POST /quote, Apex Deals card; parity-proven vs old fee maths (#348)
 - **2026-10-25** · K10 slice 2: paid individual ticket checkout on the web (server quote, coupons, Razorpay Standard Checkout, verify; ₹0 via coupon; mixed free+paid); GROUP and FILE still in the app (#349)
 - **2026-10-25** · demo-space.ts slugs match prod (no -demo suffix), so --remove finds the space (#350)
+- **2026-10-25** · P23 demo exclusion now matches the prod demo Space slug (aurora-tech-club); the script shares the constant (#351)
