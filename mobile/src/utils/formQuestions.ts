@@ -29,7 +29,6 @@ export const FILE_KIND_MIMES: Record<FileKind, string[]> = {
 };
 export const FILE_DEFAULT_KINDS: FileKind[] = ['pdf', 'image'];
 export const FILE_DEFAULT_MAX_MB = 5;
-export const FILE_MAX_MB_CAP = 10;
 
 export interface FormFieldConfig {
   minLength?: number;
@@ -57,13 +56,6 @@ export const isFileAnswer = (v: unknown): v is FileAnswer =>
 
 /** Answered with one tick: yes/no, or a legacy option-less checkbox. */
 export const isSingleTick = (f: CustomField) => f.field_type === 'yes_no' || f.field_type === 'checkbox';
-
-/** The answers a choice question offers. */
-export function choicesFor(f: CustomField): string[] {
-  if (f.field_type === 'state') return INDIAN_STATES_AND_UTS;
-  if (f.field_type === 'yes_no') return ['Yes', 'No'];
-  return (f.options_json ?? []).map((o) => o.value);
-}
 
 function tokens(f: CustomField, v: unknown): string[] {
   if (v === true) return ['Yes'];

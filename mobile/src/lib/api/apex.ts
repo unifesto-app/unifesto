@@ -610,41 +610,6 @@ export interface ExternalStatus {
 }
 
 export const getExternalStatus = () => call<ExternalStatus>('/admin/status/external');
-
-// ── Platform config: IAM ─────────────────────────────────────────────────────
-
-export type RoleScope = 'PLATFORM' | 'SPACE' | 'EVENT';
-
-export interface CapabilityMatrix {
-  actions: { key: string; scope: RoleScope }[];
-  /** `editable: false` = Platform Admin, a locked inheritance rule. */
-  roles: { code: string; scope: RoleScope; editable: boolean; note?: string; grants: string[] }[];
-}
-
-/** GET /iam/matrix — @Can(platform:manage). */
-export const getCapabilityMatrix = () => call<CapabilityMatrix>('/iam/matrix');
-/** PATCH /iam/matrix — toggle one grant; returns the refreshed matrix. */
-export const setCapabilityGrant = (body: { code: string; action: string; granted: boolean }) =>
-  call<CapabilityMatrix>('/iam/matrix', patch(body));
-
-// Backend sends keys only; labels mirror Apex web (lib/api/iam-api.ts).
-const ACTION_LABELS: Record<string, string> = {
-  'platform:manage': 'Manage platform',
-  'space:view': 'View space',
-  'space:manage-billing': 'Billing & plan',
-  'space:manage-members': 'Manage members',
-  'space:manage-money': 'Money (payouts/refunds)',
-  'space:manage-settings': 'Settings',
-  'space:create-event': 'Create events',
-  'event:view': 'View event',
-  'event:edit': 'Edit event',
-  'event:publish': 'Publish / unpublish',
-  'event:cancel': 'Cancel event',
-  'event:manage-money': 'Event money',
-  'event:assign-crew': 'Assign crew',
-  'event:manage-attendees': 'Manage attendees',
-  'event:check-in': 'Check-in / scan',
-};
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Platform Admin',
   SPACE_ADMIN: 'Space Admin',
@@ -652,37 +617,7 @@ const ROLE_LABELS: Record<string, string> = {
   CO_CURATOR: 'Co-Curator',
   CREW: 'Crew',
 };
-export const actionLabel = (key: string) => ACTION_LABELS[key] ?? key;
 export const roleLabel = (code: string) => ROLE_LABELS[code] ?? code;
-
-// ── Platform config: categories ──────────────────────────────────────────────
-
-export interface AdminCategory {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  bannerUrl: string | null;
-  order: number;
-  event_count: number;
-}
-
-export interface CategoryInput {
-  name?: string;
-  description?: string;
-  bannerUrl?: string;
-  order?: number;
-}
-
-/** GET /categories — active only, with upcoming event counts. */
-export const getAdminCategories = () => call<AdminCategory[]>('/categories');
-export const createCategory = (body: CategoryInput) => call<unknown>('/categories', post(body));
-export const updateCategory = (id: string, body: CategoryInput) =>
-  call<unknown>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-/** Soft delete: deactivates, hides it from event creation. */
-export const deactivateCategory = (id: string) => call<unknown>(`/categories/${id}`, { method: 'DELETE' });
-/** POST /categories/banner (4:3) → hosted URL. */
-export const uploadCategoryBanner = (uri: string) => uploadImage<{ url: string }>('/categories/banner', 'file', uri);
 
 // ── Platform config: app version ─────────────────────────────────────────────
 

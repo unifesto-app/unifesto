@@ -9,6 +9,7 @@ import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { runImportTeams } from '../components/hackathon/importTeamsFlow';
 import {
   disableHackathon,
@@ -37,7 +38,7 @@ const WHAT_IT_DOES = [
  * see teams and rooms at a glance, and get to teams, rooms and settings.
  */
 export default function HackathonManageScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
@@ -45,6 +46,9 @@ export default function HackathonManageScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [switching, setSwitching] = useState(false);
+
+  // Hackathon setup is desk work, so it opens on Unifesto Space (D3).
+  const web = (path: string) => () => openSpaceWeb(`/dashboard/events/${eventId}/hackathon${path}`, spaceId);
 
   const load = useCallback(async () => {
     if (!eventId) return;
@@ -72,7 +76,7 @@ export default function HackathonManageScreen() {
     if (!res.data.hackathon?.teamCodePrefix) {
       AppAlert.alert('Hackathon mode is on', 'Next, set your Team ID format in settings, then import teams.', [
         { text: 'Later', style: 'cancel' },
-        { text: 'Open settings', onPress: () => router.push(`/manage/event/${eventId}/hackathon/settings`) },
+        { text: 'Open settings', onPress: web('/settings') },
       ]);
     }
   };
@@ -189,7 +193,8 @@ export default function HackathonManageScreen() {
                 icon={icon(GearSix)}
                 label="Set your Team ID format"
                 value="Needed to import"
-                onPress={() => router.push(`/manage/event/${eventId}/hackathon/settings`)}
+                external
+                onPress={web('/settings')}
               />
             </SettingsGroup>
           ) : null}
@@ -218,13 +223,15 @@ export default function HackathonManageScreen() {
                   ? `${data.counts.statements} · ${psModeSummary(h?.psMode ?? null, h?.psDeadline ?? null)}`
                   : psModeSummary(h?.psMode ?? null, h?.psDeadline ?? null)
               }
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/statements`)}
+              external
+              onPress={web('/statements')}
             />
             <SettingsRow
               icon={icon(Tag)}
               label="Themes"
               value={data.counts.themes ? String(data.counts.themes) : h?.themeMode === 'TEXT' ? 'Teams type it' : 'Add themes'}
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/themes`)}
+              external
+              onPress={web('/themes')}
             />
           </SettingsGroup>
           {data.counts.active ? (
@@ -237,12 +244,13 @@ export default function HackathonManageScreen() {
             <SettingsRow
               icon={icon(ListNumbers)}
               label="Rounds and criteria"
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/rounds`)}
+              onPress={() => router.push({ pathname: `/manage/event/${eventId}/hackathon/rounds`, params: { spaceId } })}
             />
             <SettingsRow
               icon={icon(Gavel)}
               label="Judges, mentors and panels"
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/judges`)}
+              external
+              onPress={web('/judges')}
             />
             <SettingsRow
               icon={icon(Broadcast)}
@@ -286,13 +294,14 @@ export default function HackathonManageScreen() {
                     ? 'Add awards'
                     : 'None yet'
               }
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/winners`)}
+              onPress={() => router.push({ pathname: `/manage/event/${eventId}/hackathon/winners`, params: { spaceId } })}
             />
             <SettingsRow
               icon={icon(Certificate)}
               label="Certificates"
               value="Participants and winners"
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/certificates`)}
+              external
+              onPress={web('/certificates')}
             />
           </SettingsGroup>
 
@@ -307,7 +316,8 @@ export default function HackathonManageScreen() {
               icon={icon(h?.venue.name ? Buildings : MapPin)}
               label="Venue"
               value={venueName || 'Not set'}
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/settings`)}
+              external
+              onPress={web('/settings')}
             />
           </SettingsGroup>
 
@@ -316,7 +326,8 @@ export default function HackathonManageScreen() {
               icon={icon(GearSix)}
               label="Hackathon settings"
               value={h?.nextTeamCode ?? undefined}
-              onPress={() => router.push(`/manage/event/${eventId}/hackathon/settings`)}
+              external
+              onPress={web('/settings')}
             />
           </SettingsGroup>
 

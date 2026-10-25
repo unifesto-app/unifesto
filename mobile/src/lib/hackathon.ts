@@ -5,27 +5,7 @@
  */
 
 import { Platform } from 'react-native';
-import type {
-  EvalStatus,
-  JudgingMode,
-  PsMode,
-  RoundStatus,
-  Standing,
-  StatementBlock,
-  TeamRequest,
-  TeamRound,
-  TeamStage,
-  ThemeMode,
-  Venue,
-} from './api/hackathon';
-
-/** Same rule the server enforces for the prefix. */
-export const TEAM_CODE_PREFIX_RE = /^[A-Za-z0-9][A-Za-z0-9_\-/.]{0,19}$/;
-
-/** HACK25- + 3 + 7 → "HACK25-007". */
-export function formatTeamCode(prefix: string, digits: number, n: number): string {
-  return `${prefix}${String(n).padStart(digits, '0')}`;
-}
+import type { EvalStatus, JudgingMode, PsMode, RoundStatus, Standing, StatementBlock, TeamRequest, TeamRound, TeamStage, Venue } from './api/hackathon';
 
 /**
  * What the team hub says at each stage. While the team still needs a problem
@@ -106,11 +86,6 @@ export const PS_MODE_OPTIONS: { value: PsMode | 'OFF'; label: string; hint: stri
   { value: 'TEAM_PICKS', label: 'Teams pick', hint: 'Each team picks one from your list.' },
   { value: 'TEAM_WRITES', label: 'Teams write', hint: 'Each team writes its own problem statement.' },
   { value: 'CURATOR_ASSIGNS', label: 'You assign', hint: 'You give each team a statement from your list.' },
-];
-
-export const THEME_MODE_OPTIONS: { value: ThemeMode; label: string; hint: string }[] = [
-  { value: 'LIST', label: 'From your list', hint: 'Teams pick one of your themes (a statement’s own theme wins).' },
-  { value: 'TEXT', label: 'Teams type it', hint: 'Teams type a short theme or domain.' },
 ];
 
 /** One line for the curator: how statements are handed out right now. */

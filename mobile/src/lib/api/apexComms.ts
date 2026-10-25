@@ -80,11 +80,6 @@ export type EmailTargetType =
 
 export type EmailCampaignStatus = 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SCHEDULED' | 'CANCELLED';
 
-export interface SegmentFilters {
-  joinedAfter?: string;
-  hasRegistrations?: boolean;
-}
-
 export interface EmailCampaign {
   id: string;
   subject: string;
@@ -124,50 +119,14 @@ export interface EmailCampaignDetail extends EmailCampaign {
   stats: { a: AbVariantStats; b: AbVariantStats } | null;
 }
 
-export interface CreateEmailCampaign {
-  targetType: EmailTargetType;
-  targetId?: string;
-  subject: string;
-  subjectB?: string;
-  abSplitPct?: number;
-  body: string;
-  segmentFilters?: SegmentFilters;
-  scheduledAt?: string;
-}
-
 export const listEmailCampaigns = (page = 1, limit = 20) =>
   call<{ data: EmailCampaign[]; meta: { page: number; limit: number; total: number; totalPages: number } }>(
     `/admin/email/campaigns${qs({ page, limit })}`,
   );
 export const getEmailCampaign = (id: string) => call<EmailCampaignDetail>(`/admin/email/campaigns/${id}`);
-export const createEmailCampaign = (body: CreateEmailCampaign) => call<{ campaignId: string }>('/admin/email/campaigns', post(body));
 export const cancelEmailCampaign = (id: string) => call<{ success: boolean }>(`/admin/email/campaigns/${id}/cancel`, post());
 /** Renders a body with sample merge values, as the recipient would see it. */
 export const previewEmailBody = (body: string) => call<{ html: string }>('/admin/email/preview', post({ body }));
-
-// ── Email templates (global library) ─────────────────────────────────────────
-
-export interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  variables: string[] | null;
-  updatedAt: string;
-}
-
-export interface EmailTemplatePayload {
-  name: string;
-  subject: string;
-  body: string;
-}
-
-export const listEmailTemplates = () => call<EmailTemplate[]>('/admin/email/templates');
-export const getEmailTemplate = (id: string) => call<EmailTemplate>(`/admin/email/templates/${id}`);
-export const createEmailTemplate = (body: EmailTemplatePayload) => call<EmailTemplate>('/admin/email/templates', post(body));
-export const updateEmailTemplate = (id: string, body: Partial<EmailTemplatePayload>) =>
-  call<EmailTemplate>(`/admin/email/templates/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
-export const deleteEmailTemplate = (id: string) => call<{ success: boolean }>(`/admin/email/templates/${id}`, { method: 'DELETE' });
 
 // ── WhatsApp template blast (/admin/whatsapp/broadcast) ──────────────────────
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -30,7 +30,7 @@ import { Monogram } from '../components/home/SpaceCards';
 import ManageEventRow, { ManageEventRowSkeleton } from '../components/manage/ManageEventRow';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { AppAlert } from '../components/ui/AppAlert';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
@@ -38,7 +38,6 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 const ICON = 26;
 const LOGO = 56;
 const AVATAR = 28;
-const SPACE_WEB_URL = 'https://space.unifesto.app';
 
 const TAB_LABELS: Record<ManageTab, string> = { upcoming: 'Upcoming', drafts: 'Drafts', past: 'Past' };
 
@@ -47,9 +46,6 @@ const EMPTY: Record<ManageTab, string> = {
   drafts: 'No drafts. Everything is published.',
   past: 'No past events yet.',
 };
-
-const openWeb = (path = '') =>
-  Linking.openURL(`${SPACE_WEB_URL}${path}`).catch(() => AppAlert.alert('Error', 'Unable to open Unifesto Space'));
 
 /**
  * Operator view of one space, in the cosmos theme. Top to bottom: who the space
@@ -67,6 +63,8 @@ export default function ManageSpaceScreen() {
   const list = m.buckets[m.tab];
   const isSpaceAdmin = m.space?.userRole?.code === 'SPACE_ADMIN';
   const go = (path: string) => () => router.push(`/manage/space/${spaceId}/${path}` as never);
+  // Desk work (creating events, branding, billing) opens on Unifesto Space (D3).
+  const web = (path: string) => () => openSpaceWeb(path, spaceId);
   const glyph = { size: ICON, color: c.text };
   // Assist desk: null while loading or for someone who works no part of it (403).
   const [deskUnread, setDeskUnread] = useState<number | null>(null);
@@ -152,7 +150,7 @@ export default function ManageSpaceScreen() {
                   <AuthButton
                     label="New event"
                     icon={<Plus size={16} color={c.primaryFg} weight="bold" />}
-                    onPress={go('new-event')}
+                    onPress={web('/dashboard/events/new')}
                     style={styles.action}
                   />
                 ) : null}
@@ -246,8 +244,8 @@ export default function ManageSpaceScreen() {
           <Section title="Space setup">
             <SettingsGroup style={styles.group}>
               <SettingsRow icon={<IdentificationCard {...glyph} />} label="Profile" onPress={go('settings')} />
-              <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" onPress={go('white-label')} />
-              <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" onPress={go('billing')} />
+              <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" external onPress={web('/dashboard/white-label')} />
+              <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" external onPress={web('/dashboard/billing')} />
               {/* Only parent (SUPER) spaces have sub-spaces to roll up. */}
               {m.space?.type === 'SUPER' ? (
                 <SettingsRow icon={<TreeStructure {...glyph} />} label="Sub-spaces" onPress={go('subspaces')} />
@@ -280,7 +278,7 @@ export default function ManageSpaceScreen() {
                 onPress={go(isSpaceAdmin ? 'support?admin=1' : 'support')}
               />
             ) : null}
-            <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={() => openWeb('/dashboard')} />
+            <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={web('/dashboard')} />
           </SettingsGroup>
         </Section>
       </ScrollView>

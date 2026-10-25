@@ -8,6 +8,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -22,7 +23,7 @@ const ICON = 26;
  * else "Winners announced". Co-Curators see the list read-only.
  */
 export default function HackathonWinnersScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
@@ -55,7 +56,8 @@ export default function HackathonWinnersScreen() {
   }
 
   const unpublished = data.awards.filter((a) => !a.published);
-  const openAward = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/award`, params: { awardId: id } });
+  // Writing awards is desk work on Unifesto Space (D3); publishing them stays here.
+  const openAwards = () => openSpaceWeb(`/dashboard/events/${eventId}/hackathon/winners`, spaceId);
 
   const publish = () =>
     AppAlert.alert(
@@ -103,11 +105,12 @@ export default function HackathonWinnersScreen() {
             icon={<Trophy size={ICON} color={a.published ? tokens.accent : tokens.textMuted} weight="fill" />}
             label={`${a.title} · ${a.team.teamCode ?? ''} ${a.team.name}`.trim()}
             value={a.team.cancelled ? 'Team cancelled' : a.published ? 'Published' : 'Not published'}
-            onPress={data.canDeclareWinners ? () => openAward(a.id) : undefined}
+            external={data.canDeclareWinners}
+            onPress={data.canDeclareWinners ? openAwards : undefined}
           />
         ))}
         {data.canDeclareWinners ? (
-          <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add an award" onPress={() => openAward('new')} />
+          <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add an award" external onPress={openAwards} />
         ) : null}
       </SettingsGroup>
       <Text style={[styles.note, { color: tokens.textMuted }]}>
