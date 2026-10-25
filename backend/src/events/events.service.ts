@@ -917,6 +917,8 @@ export class EventsService {
     name: true,
     slug: true,
     logoUrl: true,
+    // A PRIVATE space has no public page, so clients don't link to it (P23).
+    visibility: true,
   };
 
   /** Card-shaped fields for a pending ownership transfer, shared by reads. */
