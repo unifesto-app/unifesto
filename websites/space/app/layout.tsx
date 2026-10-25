@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Michroma, Hanken_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -33,11 +34,14 @@ export const metadata: Metadata = {
     "Run your space on Unifesto — plan, members, events and money, in one operator console.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // CSP nonce from proxy.ts (J17); reading headers() also makes every page
+  // render per request, which nonces need.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
         className={`${michroma.variable} ${hanken.variable} ${martian.variable} font-sans antialiased min-h-full flex flex-col`}
