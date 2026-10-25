@@ -17,12 +17,13 @@ import {
 } from '../auth/authorization';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
-import { emailOptedOutUserIds } from '../email/email-preferences';
 import { esc } from '../email/layout';
 import { openCancelledEventRefunds } from '../refunds/cancelled-event-refunds';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
+import { EventPublishFanout } from './event-publish-fanout';
+import { formatEventDate, formatEventTime } from './event-dates';
 import { RecurrenceService } from './recurrence/recurrence.service';
 import { parseRRule, serializeRRule } from './recurrence/rrule.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -134,6 +135,7 @@ export class EventsService {
     private readonly events: EventEmitter2,
     private readonly authz: AuthorizationService,
     private readonly recurrence: RecurrenceService,
+    private readonly publishFanout?: EventPublishFanout,
   ) {}
 
   /**
@@ -2725,46 +2727,17 @@ export class EventsService {
 
     this.logger.log(`Published event ${eventId}`);
 
-    // Send event published emails to space members (non-blocking)
+    // "New event" email to space members: a queued job (J5), never in the request.
+    await this.publishFanout?.enqueue(eventId);
+
+    // Push audience: the space's members, minus the publisher.
     const spaceMembers = await this.prisma.userRole.findMany({
       where: { spaceId: event.spaceId },
-      include: {
-        user: {
-          include: {
-            identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-          },
-        },
-      },
+      select: { userId: true },
     });
 
-    const optedOut = await emailOptedOutUserIds(
-      this.prisma,
-      spaceMembers.map((m) => m.userId),
-      'newEvents',
-    );
-
-    for (const member of spaceMembers) {
-      const memberEmail = member.user.identities[0]?.email;
-      if (memberEmail && !optedOut.has(member.userId)) {
-        this.emailService
-          .sendEventPublished({
-            email: memberEmail,
-            userName: member.user.fullName || member.user.username || 'there',
-            eventTitle: updated.title,
-            eventDate: this.formatEventDate(updated.startDateTime),
-            eventTime: this.formatEventTime(updated.startDateTime, updated.endDateTime),
-            venueName: updated.venueName || undefined,
-            city: updated.city || undefined,
-            isOnline: updated.type === 'ONLINE',
-            spaceName: updated.space.name,
-            registrationUrl: `https://unifesto.app/event/${updated.slug}`,
-          })
-          .catch((err) => this.logger.error('Failed to send event published email', err));
-      }
-    }
-
-    // Offline push to space members (best-effort, decoupled). Reuses the same
-    // audience as the published email; the publisher themselves is excluded.
+    // Offline push to space members (best-effort, decoupled; one OneSignal
+    // call for the whole list).
     const recipientUserIds = [
       ...new Set(spaceMembers.map((m) => m.userId).filter((id) => id !== userId)),
     ];
@@ -4056,36 +4029,11 @@ export class EventsService {
     return { success: true };
   }
 
-  /**
-   * Helper: Format event date for display
-   * Output: "7 June 2026"
-   */
   private formatEventDate(dateTime: Date, timezone = 'Asia/Kolkata'): string {
-    return new Intl.DateTimeFormat('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      timeZone: timezone,
-    }).format(dateTime);
+    return formatEventDate(dateTime, timezone);
   }
 
-  /**
-   * Helper: Format event time range
-   * Output: "10:00 AM - 1:00 PM IST"
-   */
-  private formatEventTime(
-    startTime: Date,
-    endTime: Date,
-    timezone = 'Asia/Kolkata',
-  ): string {
-    const formatTime = (date: Date) =>
-      new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: timezone,
-      }).format(date);
-
-    return `${formatTime(startTime)} - ${formatTime(endTime)} IST`;
+  private formatEventTime(startTime: Date, endTime: Date, timezone = 'Asia/Kolkata'): string {
+    return formatEventTime(startTime, endTime, timezone);
   }
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppService } from './whatsapp.service';
+import { WhatsappBroadcastQueue } from './whatsapp-broadcast.queue';
 import { StorageModule } from '../storage/storage.module';
 
 // PrismaService (used by WhatsAppService for the inbox) comes from the @Global
@@ -11,7 +12,7 @@ import { StorageModule } from '../storage/storage.module';
 @Module({
   imports: [ConfigModule, StorageModule],
   controllers: [WhatsAppController],
-  providers: [WhatsAppService],
+  providers: [WhatsAppService, WhatsappBroadcastQueue],
   exports: [WhatsAppService],
 })
 export class WhatsAppModule {}

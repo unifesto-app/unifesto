@@ -234,6 +234,9 @@ export function parseCsv(text: string): string[][] {
  * required and its columns are matched against the spec built from the same
  * ticket shape.
  */
+/** Most attendee rows one CSV import accepts (preview and import alike). */
+export const MAX_IMPORT_ROWS = 1000;
+
 export function parseImportRows(
   shape: ImportTicketShape,
   matrix: string[][],
@@ -252,6 +255,14 @@ export function parseImportRows(
       rows: [],
       fileError:
         'The file is missing the required "Name" and "Email" columns. Download the template and use its headers.',
+    };
+  }
+  // J5: one request imports the whole file row by row, so cap it well inside
+  // the proxy timeout (~30 ms a row). Header + blank lines are not rows.
+  if (matrix.length - 1 > MAX_IMPORT_ROWS) {
+    return {
+      rows: [],
+      fileError: `This file has ${(matrix.length - 1).toLocaleString('en-IN')} attendee rows. Import up to ${MAX_IMPORT_ROWS.toLocaleString('en-IN')} at a time: split it into smaller files.`,
     };
   }
   const mobileCol = col(COL_MOBILE);

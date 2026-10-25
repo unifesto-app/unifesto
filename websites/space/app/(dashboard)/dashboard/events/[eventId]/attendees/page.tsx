@@ -227,7 +227,9 @@ export default function EventRegistrationsPage() {
     if (error) {
       alert(error.message);
     } else if (data) {
-      const parts = [`Sent ${data.sent} invite${data.sent === 1 ? "" : "s"}`];
+      const parts = [
+        `${data.queued ? "Sending" : "Sent"} ${data.sent} invite${data.sent === 1 ? "" : "s"}${data.queued ? " in the background" : ""}`,
+      ];
       if (data.noPhone > 0) parts.push(`${data.noPhone} without a phone number`);
       if (data.noLink > 0) parts.push(`${data.noLink} with no group link`);
       if (data.failed > 0) parts.push(`${data.failed} failed`);
