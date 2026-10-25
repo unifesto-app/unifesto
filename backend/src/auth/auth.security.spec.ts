@@ -139,7 +139,7 @@ function setup(env: Record<string, string> = {}) {
   };
   const redis = fakeRedisService();
   const cognito: any = { verifyCognitoToken: jest.fn() };
-  const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined) };
+  const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined), sendSignInMethodAdded: jest.fn().mockResolvedValue(undefined) };
   const whatsapp: any = { sendOtp: jest.fn().mockResolvedValue(true) };
   const service = new AuthService(prisma, config, email, whatsapp, otp, redis as any, cognito);
   return { service, prisma, otp, redis, cognito, email, whatsapp };
@@ -318,6 +318,21 @@ describe('S5: email auto-link needs a verified email', () => {
     );
     expect(prisma.userIdentity.create).toHaveBeenCalled();
     expect(res.accessToken).not.toBe('');
+  });
+
+  it('J17: emails the account when a new sign-in method is linked, not on a re-link', async () => {
+    const { service, prisma, email } = setup();
+    prisma.userIdentity.findMany.mockResolvedValue([{ email: 'Me@x.com' }, { email: 'me@x.com' }]);
+    await (service as any).linkIdentityToUser('me', 'GOOGLE', 'g-1', 'me@x.com', true);
+    await new Promise((r) => setImmediate(r));
+    expect(email.sendSignInMethodAdded).toHaveBeenCalledTimes(1);
+    expect(email.sendSignInMethodAdded).toHaveBeenCalledWith('me@x.com', 'Google');
+
+    email.sendSignInMethodAdded.mockClear();
+    prisma.userIdentity.create.mockRejectedValueOnce(new Error('P2002'));
+    await (service as any).linkIdentityToUser('me', 'GOOGLE', 'g-1', 'me@x.com', true);
+    await new Promise((r) => setImmediate(r));
+    expect(email.sendSignInMethodAdded).not.toHaveBeenCalled();
   });
 
   it('Cognito: unverified email creates a placeholder instead of linking', async () => {

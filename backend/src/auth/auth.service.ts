@@ -685,8 +685,24 @@ export class AuthService {
     } catch (error) {
       // Identity might already exist
       this.logger.warn('Identity already linked', error);
+      if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
+      return;
     }
     if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
+    this.notifySignInMethodAdded(userId, provider).catch((err) =>
+      this.logger.error(`sign-in method notice failed for ${userId}`, err),
+    );
+  }
+
+  /** J17: tell every email on the account that a new sign-in method was linked. */
+  private async notifySignInMethodAdded(userId: string, provider: Provider): Promise<void> {
+    const identities = await this.prisma.userIdentity.findMany({
+      where: { userId, email: { not: null } },
+      select: { email: true },
+    });
+    const emails = new Set(identities.map((i) => i.email!.toLowerCase()));
+    const method = { GOOGLE: 'Google', APPLE: 'Apple', EMAIL: 'Email sign-in codes', PHONE: 'Phone' }[provider];
+    for (const email of emails) await this.emailService.sendSignInMethodAdded(email, method);
   }
 
   /**
