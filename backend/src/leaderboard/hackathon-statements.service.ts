@@ -325,9 +325,13 @@ export class HackathonStatementsService {
     if (!team.statementLockedAt && !team.statementId && !team.customStatementTitle) {
       return this.teams.getTeam(userId, eventId, entrantId);
     }
+    // The team picks again itself after this, so flag a change after
+    // evaluation here: once it relocks, the curator path never sees it.
+    const evaluated = await this.prisma.leaderboardJudgment.count({ where: { entrantId: team.id, submittedAt: { not: null } } });
     await this.prisma.leaderboardEntrant.update({
       where: { id: team.id },
       data: {
+        ...(evaluated ? { statementChangedAfterEvalAt: new Date() } : {}),
         statementId: null,
         customStatementTitle: null,
         customStatementText: null,

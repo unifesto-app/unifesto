@@ -7,6 +7,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import {
+  GroupSeatStatus,
   LeaderboardEntrantRoundStatus,
   LeaderboardPanelistKind,
   LeaderboardRoundStatus,
@@ -45,6 +46,7 @@ import {
   judgmentLocked,
   readLinks,
   submittedKey,
+  takesPart,
 } from './hackathon.shared';
 import { TEAM_STATEMENT_SELECT, statementView } from './hackathon.views';
 
@@ -280,12 +282,11 @@ export class LeaderboardService {
       throw new ForbiddenException('This round is not open for scoring.');
     }
 
-    const kind = await this.resolvePanelistKind(board.id, userId, round.id, entrantId);
-    if (!kind) {
-      throw new ForbiddenException('You are not on the panel for this entrant/round.');
-    }
-
     if (board.isHackathon) {
+      // Conflict of interest: nobody marks or reviews their own team.
+      if (entrant.registrationId && (await this.onTeam(entrant.registrationId, userId))) {
+        throw new ForbiddenException('You’re on this team, so you can’t mark it.');
+      }
       // The round decides the role: judges mark evaluation rounds, mentors give
       // feedback in mentoring rounds.
       const needed = round.kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE;
@@ -297,12 +298,24 @@ export class LeaderboardService {
           AND: [{ OR: [{ roundId: null }, { roundId: round.id }] }, { OR: [{ entrantId: null }, { entrantId }] }],
         },
       });
-      if (!covering) {
+      // A panel seat covers that panel's slots, even for a judge scoped to
+      // another round; otherwise the panel could never finish the slot.
+      const seated =
+        !covering &&
+        needed === LeaderboardPanelistKind.JUDGE &&
+        (await this.prisma.hackathonEvalRequest.count({
+          where: { leaderboardId: board.id, roundId: round.id, entrantId, panel: { members: { some: { userId } } } },
+        }));
+      if (!covering && !seated) {
         throw new ForbiddenException(
           needed === LeaderboardPanelistKind.MENTOR ? 'Only mentors give feedback in a mentoring round.' : 'Only judges give marks in this round.',
         );
       }
       return this.submitHackathonJudgment(userId, { id: entrantId, leaderboardId: board.id }, board, round, needed, dto);
+    }
+    const kind = await this.resolvePanelistKind(board.id, userId, round.id, entrantId);
+    if (!kind) {
+      throw new ForbiddenException('You are not on the panel for this entrant/round.');
     }
     const hasScores = (dto.scores?.length ?? 0) > 0;
     if (hasScores && kind === LeaderboardPanelistKind.MENTOR) {
@@ -384,6 +397,9 @@ export class LeaderboardService {
     dto: SubmitJudgmentDto,
   ) {
     const mentor = kind === LeaderboardPanelistKind.MENTOR;
+    // An empty review or comment clears what the judge wrote before.
+    const review = dto.overallReview === undefined ? undefined : dto.overallReview.trim() || null;
+    const comment = (c?: string) => (c === undefined ? undefined : c.trim() || null);
     if (mentor && (dto.scores?.length ?? 0) > 0) {
       throw new ForbiddenException('Mentors give written feedback, not marks.');
     }
@@ -413,7 +429,7 @@ export class LeaderboardService {
         select: { submittedAt: true, reopenedAt: true, requestId: true, overallReview: true },
       });
       // A mentor's session is their feedback: there must be some to submit.
-      if (mentor && dto.submit && !(dto.overallReview ?? existing?.overallReview ?? '').trim()) {
+      if (mentor && dto.submit && !(review === undefined ? existing?.overallReview : review)?.trim()) {
         throw new BadRequestException('Write your feedback before submitting.');
       }
       let slot: { id: string; panelId: string | null } | null = null;
@@ -448,10 +464,10 @@ export class LeaderboardService {
             roundId: round.id,
             judgeUserId: userId,
             value: cell.value,
-            comment: cell.comment,
+            comment: comment(cell.comment),
             updatedBy: userId,
           },
-          update: { value: cell.value, comment: cell.comment, updatedBy: userId },
+          update: { value: cell.value, comment: comment(cell.comment), updatedBy: userId },
         });
       }
 
@@ -461,13 +477,13 @@ export class LeaderboardService {
         create: {
           ...key,
           kind,
-          overallReview: dto.overallReview,
+          overallReview: review,
           submittedAt: firstSubmit ? now : null,
           requestId: slot?.id ?? null,
         },
         update: {
           kind,
-          ...(dto.overallReview !== undefined ? { overallReview: dto.overallReview } : {}),
+          ...(review !== undefined ? { overallReview: review } : {}),
           ...(firstSubmit ? { submittedAt: now } : {}),
           ...(slot && !existing?.requestId ? { requestId: slot.id } : {}),
         },
@@ -479,6 +495,10 @@ export class LeaderboardService {
       if (firstSubmit && slot) {
         let done = true;
         if (slot.panelId) {
+          // Serialise the panel's submits on the slot row: without it two last
+          // judges submitting together each miss the other's uncommitted mark
+          // and neither completes the slot.
+          await tx.$queryRaw`SELECT id FROM hackathon_eval_requests WHERE id = ${slot.id}::uuid FOR UPDATE`;
           const members = await tx.hackathonPanelMember.findMany({
             where: { panelId: slot.panelId },
             select: { userId: true },
@@ -641,6 +661,17 @@ export class LeaderboardService {
     if (!entrant.statementLockedAt) {
       throw new ForbiddenException("This team hasn't locked in its problem statement yet.");
     }
+  }
+
+  /** The user booked this team's registration or holds a claimed seat in it. */
+  private async onTeam(registrationId: string, userId: string) {
+    const n = await this.prisma.eventRegistration.count({
+      where: {
+        id: registrationId,
+        OR: [{ userId }, { groupSeats: { some: { claimedByUserId: userId, status: GroupSeatStatus.CLAIMED } } }],
+      },
+    });
+    return n > 0;
   }
 
   private async loadEntrantWithBoard(entrantId: string) {
@@ -1244,7 +1275,7 @@ export class LeaderboardService {
     const board = await this.prisma.leaderboard.findUnique({
       where: { eventId },
       include: {
-        rounds: { orderBy: { order: 'asc' }, select: { id: true, name: true, order: true, status: true } },
+        rounds: { orderBy: { order: 'asc' }, select: { id: true, name: true, order: true, status: true, eliminationEnabled: true } },
         entrants: {
           orderBy: { name: 'asc' },
           select: {
@@ -1297,6 +1328,20 @@ export class LeaderboardService {
       select: { entrantId: true, roundId: true, status: true },
     });
     const statusByKey = new Map(standings.map((s) => [`${s.roundId}:${s.entrantId}`, s.status]));
+    const standing = (roundId: string, entrantId: string) =>
+      statusByKey.get(`${roundId}:${entrantId}`) ?? LeaderboardEntrantRoundStatus.PENDING;
+    // A hackathon round lists only the teams in it, and a closed round that
+    // doesn't eliminate carries everyone in it on (nobody decides it, so its
+    // standings would read "pending" forever).
+    const roundEntrants = (r: (typeof board.rounds)[number]) =>
+      board.entrants
+        .filter((e) => !board.isHackathon || takesPart(board.rounds, (id) => standing(id, e.id), r.id).in)
+        .map((e) => {
+          const own = standing(r.id, e.id);
+          const carriedOn =
+            board.isHackathon && !r.eliminationEnabled && r.status === LeaderboardRoundStatus.CLOSED && own === LeaderboardEntrantRoundStatus.PENDING;
+          return { e, status: carriedOn ? LeaderboardEntrantRoundStatus.ADVANCED : own };
+        });
 
     // Published awards only.
     const awards = await this.prisma.leaderboardAward.findMany({
@@ -1331,12 +1376,12 @@ export class LeaderboardService {
         name: r.name,
         order: r.order,
         status: r.status,
-        entrants: board.entrants.map((e) => ({
+        entrants: roundEntrants(r).map(({ e, status }) => ({
           id: e.id,
           name: e.name,
           teamCode: e.teamCode,
           isMine: myEntrantIds.has(e.id),
-          status: statusByKey.get(`${r.id}:${e.id}`) ?? LeaderboardEntrantRoundStatus.PENDING,
+          status,
         })),
       })),
       awards: awards.map((a) => ({

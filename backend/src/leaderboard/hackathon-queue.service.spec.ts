@@ -89,4 +89,34 @@ describe('HackathonQueueService', () => {
     });
     await expect(svc.noShow(JUDGE, EVENT, 'req-1')).rejects.toThrow(/called team/);
   });
+
+  describe('force-complete (E8)', () => {
+    const slot = { id: 'req-1', leaderboardId: BOARD, roundId: 'round-1', entrantId: 'team-1', judgeUserId: JUDGE, panelId: null, status: 'IN_PROGRESS' };
+    const setup = (marked: number) => {
+      const b = build();
+      b.prisma.hackathonEvalRequest.findFirst.mockResolvedValue(slot);
+      b.prisma.leaderboardJudgment = { count: jest.fn().mockResolvedValue(marked) };
+      const close = jest.spyOn(b.svc as any, 'closeRequest').mockResolvedValue(undefined);
+      jest.spyOn(b.svc, 'getQueues').mockResolvedValue({} as any);
+      return { ...b, close };
+    };
+
+    it('refuses to finish a slot nobody marked: the team would be locked out with nothing', async () => {
+      const { svc, close } = setup(0);
+      await expect(svc.forceComplete(JUDGE, EVENT, 'req-1')).rejects.toThrow(/no-show/);
+      expect(close).not.toHaveBeenCalled();
+    });
+
+    it('closes an unmarked slot as a no-show when asked, so the team can queue again', async () => {
+      const { svc, close } = setup(0);
+      await svc.forceComplete(JUDGE, EVENT, 'req-1', { noShow: true });
+      expect(close).toHaveBeenCalledWith(EVENT, BOARD, slot, 'NO_SHOW', expect.objectContaining({ reason: 'FORCED', notify: 'QUEUE_NO_SHOW' }));
+    });
+
+    it('completes a slot with marks', async () => {
+      const { svc, close } = setup(1);
+      await svc.forceComplete(JUDGE, EVENT, 'req-1');
+      expect(close).toHaveBeenCalledWith(EVENT, BOARD, slot, 'COMPLETED', expect.objectContaining({ reason: 'FORCED' }));
+    });
+  });
 });

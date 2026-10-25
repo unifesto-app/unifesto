@@ -43,6 +43,7 @@ import {
   CreateHackathonPanelDto,
   CreateHackathonRoundDto,
   JudgeAvailabilityDto,
+  ForceCompleteDto,
   PickEvaluatorDto,
   SetHackathonRoundStatusDto,
   SetTeamRoundDecisionDto,
@@ -583,8 +584,9 @@ export class HackathonController {
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('requestId', ParseUUIDPipe) requestId: string,
+    @Body() dto: ForceCompleteDto,
   ) {
-    return this.queue.forceComplete(user.id, eventId, requestId);
+    return this.queue.forceComplete(user.id, eventId, requestId, dto);
   }
 
   @Post('events/:eventId/hackathon/judgments/:judgmentId/reopen')

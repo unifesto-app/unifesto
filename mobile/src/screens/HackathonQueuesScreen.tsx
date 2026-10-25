@@ -110,14 +110,17 @@ export default function HackathonQueuesScreen() {
     AppAlert.alert(teamLabel(c.team), `${evalStatusLabel(c.status)} with ${q.name}.`, [
       ...(c.status === 'CALLED' ? [{ text: 'Move to another judge', onPress: () => move(q, c.requestId, c.team) }] : []),
       {
-        text: 'Finish the slot now',
+        // With no marks, finishing would end the team's turn with nothing: it can only be a no-show.
+        text: c.marked ? 'Finish the slot now' : 'Close as a no-show',
         onPress: () =>
           AppAlert.alert(
-            'Finish this slot?',
-            'Marks already submitted count. Judges who haven’t submitted can’t add theirs afterwards.',
+            c.marked ? 'Finish this slot?' : 'Close as a no-show?',
+            c.marked
+              ? 'Marks already submitted count. Judges who haven’t submitted can’t add theirs afterwards.'
+              : 'No judge has marked this team yet. The team is told and can join a queue again.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Finish', style: 'destructive', onPress: () => void run(forceComplete(eventId!, c.requestId), "Couldn't finish") },
+              { text: c.marked ? 'Finish' : 'No-show', style: 'destructive', onPress: () => void run(forceComplete(eventId!, c.requestId, !c.marked), "Couldn't finish") },
             ],
           ),
       },

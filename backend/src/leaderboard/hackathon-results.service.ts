@@ -6,7 +6,7 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CertificateStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
@@ -458,10 +458,18 @@ export class HackathonResultsService {
     const board = await this.teams.getBoardOrThrow(eventId);
     const award = await this.findAwardOrThrow(board.id, awardId);
     if (award.published) {
-      await this.prisma.leaderboardAward.update({
-        where: { id: award.id },
-        data: { published: false, declaredAt: null },
-      });
+      await this.prisma.$transaction([
+        this.prisma.leaderboardAward.update({
+          where: { id: award.id },
+          data: { published: false, declaredAt: null },
+        }),
+        // Its winner certificates stop verifying. Not for cause: publishing
+        // and issuing again brings them back.
+        this.prisma.certificate.updateMany({
+          where: { awardId: award.id, status: CertificateStatus.ISSUED },
+          data: { status: CertificateStatus.REVOKED, revokedAt: new Date(), revokedReason: 'Award unpublished', revokedForCause: false },
+        }),
+      ]);
       await this.leaderboard.recomputeAndBroadcast(board.id);
     }
     return this.listAwards(userId, eventId);

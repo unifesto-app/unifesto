@@ -99,20 +99,27 @@ export default function HackathonSettingsPage() {
     if (!Number.isInteger(next) || next < currentNext) {
       return setError(`The next number can only move forward (it's at ${currentNext}), so no Team ID is ever reused.`);
     }
-    setSaving(true);
-    const res = await updateHackathonConfig(eventId, {
-      teamCodePrefix: prefix || null,
-      teamCodeDigits: digits,
-      teamCodeNext: next,
-      teamNameFieldId: draft.teamNameFieldId === LEAD_NAMES ? null : draft.teamNameFieldId,
-      venueName: draft.venueName.trim() || null,
-      venueAddress: draft.venueAddress.trim() || null,
-      venueMapUrl: draft.venueMapUrl.trim() || null,
-      venueNotes: draft.venueNotes.trim() || null,
-      psMode: draft.psMode === "OFF" ? null : draft.psMode,
-      themeMode: draft.themeMode,
-      psDeadline: teamsChoose && draft.psDeadline ? draft.psDeadline : null,
+    const toBody = (d: Draft) => ({
+      teamCodePrefix: d.prefix.trim() || null,
+      teamCodeDigits: Number(d.digits),
+      teamCodeNext: Number(d.next),
+      teamNameFieldId: d.teamNameFieldId === LEAD_NAMES ? null : d.teamNameFieldId,
+      venueName: d.venueName.trim() || null,
+      venueAddress: d.venueAddress.trim() || null,
+      venueMapUrl: d.venueMapUrl.trim() || null,
+      venueNotes: d.venueNotes.trim() || null,
+      psMode: d.psMode === "OFF" ? null : d.psMode,
+      themeMode: d.themeMode,
+      psDeadline: (d.psMode === "TEAM_PICKS" || d.psMode === "TEAM_WRITES") && d.psDeadline ? d.psDeadline : null,
     });
+    // Send only what this curator changed, so a page opened a while ago can't
+    // write back settings someone else has changed since.
+    const was = toBody(JSON.parse(initial) as Draft);
+    const changes: Partial<ReturnType<typeof toBody>> = Object.fromEntries(
+      Object.entries(toBody(draft)).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(was[k as keyof typeof was]))
+    );
+    setSaving(true);
+    const res = await updateHackathonConfig(eventId, changes);
     setSaving(false);
     if (!res.ok) return setError(res.message);
     router.push(hackBase(eventId));

@@ -321,10 +321,13 @@ export default function HackathonRoundScreen() {
                   onPress={() => router.push(criteriaUrl(c.id))}
                 />
               ))}
-              <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add a criterion" onPress={() => router.push(criteriaUrl())} />
+              {round.criteriaLocked ? null : (
+                <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add a criterion" onPress={() => router.push(criteriaUrl())} />
+              )}
             </SettingsGroup>
             <Text style={[styles.note, { color: tokens.textMuted }]}>
               Judges give a mark for every criterion. A team’s evaluation is the weighted total.
+              {round.criteriaLocked ? ' Marks are in, so criteria, top marks and weights are locked.' : ''}
             </Text>
           </>
         ) : null}
