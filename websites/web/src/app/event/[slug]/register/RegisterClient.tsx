@@ -8,12 +8,15 @@ import Footer from "@/components/Footer";
 import { BrandTheme, brandStyle } from "@/components/BrandedChrome";
 import { registrationState, type Event } from "@/lib/api/events";
 import {
+  acceptLegal,
   ApiError,
   confirmAge,
   createOrder,
   getQuote,
+  resendTicket,
   INDIAN_STATES,
   myRegistrations,
+  pendingLegal,
   saveName,
   sendEmailCode,
   sendPhoneCode,
@@ -60,9 +63,11 @@ interface Props {
   event: Event;
   tickets: RegTicket[];
   fields: FormField[];
+  /** K14: this request's CSP nonce, for Razorpay's checkout.js. */
+  nonce?: string;
 }
 
-export default function RegisterClient({ event, tickets, fields }: Props) {
+export default function RegisterClient({ event, tickets, fields, nonce }: Props) {
   const [now] = useState(() => Date.now());
   const appLink = `unifesto://event/${event.slug}`;
 
@@ -113,6 +118,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   const [coupon, setCoupon] = useState<{ code: string; discountPaise: number | null } | null>(null);
   const [couponMsg, setCouponMsg] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [resent, setResent] = useState("");
 
   const ticket = individual.find((t) => t.id === ticketId);
   const paid = !!ticket && ticket.price > 0;
@@ -195,6 +201,8 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       }
       // Z11: the 18+ box is required on the form; record it before registering.
       await confirmAge(s.token);
+      // K12: so is the Terms box. Record it the way the app does (I2).
+      for (const d of await pendingLegal(s.token)) await acceptLegal(d.slug, d.version, s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
       const res = await createOrder(event.id, s.token, {
         ticketTypeId: ticketId,
@@ -259,10 +267,10 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     setCouponMsg("");
     if (!code) return setCoupon(null);
     if (!session) {
-      // Codes are checked against my account, so before sign-in the code rides
-      // along to checkout, which applies or rejects it.
+      // Codes are checked against my account, so before sign-in the code waits
+      // for the email code; signedIn checks it and stops here with the total.
       setCoupon({ code, discountPaise: null });
-      return setCouponMsg(`${code.toUpperCase()} is checked when you pay.`);
+      return setCouponMsg(`${code.toUpperCase()} is checked once you confirm your email.`);
     }
     setCoupon(null);
     const q = await validateCoupon(event.id, session.token, code, ticketId);
@@ -279,6 +287,22 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     }
     setSession(s);
     setSessionState(s);
+    // K13: a code entered signed out is checked now. Back on the form the quote
+    // refreshes, so the buyer sees the real total (or why the code failed) and
+    // presses Pay themselves instead of landing in Razorpay with a new amount.
+    if (coupon && coupon.discountPaise === null) {
+      goTo("form");
+      try {
+        const q = await validateCoupon(event.id, s.token, coupon.code, ticketId);
+        setCoupon({ code: q.code, discountPaise: Math.round(q.discount * 100) });
+        setCouponMsg(`${q.code} applied. Check the total and pay.`);
+        return;
+      } catch (e) {
+        setCoupon(null);
+        setCouponMsg("");
+        throw new Error(`${coupon.code.toUpperCase()}: ${e instanceof Error ? e.message : "this code can't be used."} Remove it or try another.`);
+      }
+    }
     // Signed in now, so a rejected answer is fixed back on the form.
     await register(s).catch((e) => {
       goTo("form");
@@ -360,7 +384,29 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         >
           Open My tickets in the app
         </button>
-        <a href={storeUrlFor()} className="link-draw mt-5 inline-block text-sm text-paper/65">
+        {done.kind === "already" && done.registrationId && session && (
+          <div className="mt-5">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  const r = await resendTicket(done.registrationId!, session.token);
+                  setResent(r.email ? `Sent to ${r.email}.` : "Sent.");
+                })()
+              }
+              className="btn btn-secondary w-full"
+            >
+              {busy ? "Sending…" : "Resend my ticket"}
+            </button>
+            {(resent || error) && <p className={`mt-2 text-sm ${error ? "text-red-400" : "text-paper/65"}`}>{error || resent}</p>}
+          </div>
+        )}
+        <Link href="/tickets" className="link-draw mt-5 inline-block text-sm text-paper/65">
+          See My tickets on the web
+        </Link>
+        <br />
+        <a href={storeUrlFor()} className="link-draw mt-3 inline-block text-sm text-paper/65">
           No app yet? Get it free
         </a>
         <div className="mt-3">{back}</div>
@@ -413,7 +459,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         />
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-primary w-full">
-          {busy ? "Verifying…" : paid ? "Verify and pay" : "Verify and register"}
+          {busy ? "Verifying…" : coupon?.discountPaise === null ? "Verify" : paid ? "Verify and pay" : "Verify and register"}
         </button>
         <div className="flex justify-between text-sm text-paper/65">
           <button type="button" onClick={() => goTo(isEmail ? "form" : "phone")} className="hover:text-paper">
@@ -547,6 +593,28 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
           </p>
         </div>
 
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
+          <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="underline">
+              Privacy Policy
+            </Link>
+            {paid && (
+              <>
+                , and the{" "}
+                <Link href="/refund" target="_blank" className="underline">
+                  Refund Policy
+                </Link>
+              </>
+            )}
+          </span>
+        </label>
+
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-lg btn-primary w-full">
           {busy
@@ -559,25 +627,6 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
                   ? `Pay ${inr(shown.totalPaise)}`
                   : "Pay"}
         </button>
-        <p className="text-center text-xs text-paper/50">
-          By registering you agree to the{" "}
-          <Link href="/terms" className="underline">
-            Terms
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="underline">
-            Privacy Policy
-          </Link>
-          {paid && (
-            <>
-              , and the{" "}
-              <Link href="/refund" className="underline">
-                Refund Policy
-              </Link>
-            </>
-          )}
-          .
-        </p>
       </form>
     );
   }
@@ -586,7 +635,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     <main className="min-h-screen overflow-x-hidden bg-canvas" style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {individual.some((t) => t.price > 0) && (
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" nonce={nonce} />
       )}
       <Navbar />
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">

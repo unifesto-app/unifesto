@@ -129,6 +129,12 @@ export const saveName = (fullName: string, token: string) => call("PATCH", "/use
 /** Z11: record "I am 18 or older" (stamped once server-side). */
 export const confirmAge = (token: string) => call("PATCH", "/users/me", { ageConfirmed: true }, token);
 
+/** I2/K12: legal documents this account still owes an acceptance for. */
+export const pendingLegal = (token: string) =>
+  call<{ slug: string; version: number }[]>("GET", "/legal/pending", undefined, token);
+export const acceptLegal = (slug: string, version: number, token: string) =>
+  call("POST", `/legal/${encodeURIComponent(slug)}/accept`, { version, client: "web" }, token);
+
 /** My live registrations for this event (empty when I have none). */
 export const myRegistrations = (eventId: string, token: string) =>
   call<{ id: string }[]>("GET", `/events/${eventId}/my-registrations`, undefined, token);
@@ -187,6 +193,22 @@ export interface Quote {
 /** Display-only price from the server's own fee rules (T5). Checkout re-prices anyway. */
 export const getQuote = (eventId: string, basePaise: number, couponDiscountPaise = 0) =>
   call<Quote>("POST", "/quote", { eventId, basePaise, tickets: 1, couponDiscountPaise });
+
+/** A ticket in My tickets (`GET /users/me/registrations`, the app's list). */
+export interface MyTicket {
+  id: string;
+  qrCode: string | null;
+  ticketType: { name: string } | null;
+  event: { title: string; slug: string; startDateTime: string; venueName: string | null; city: string | null; type: string };
+}
+
+/** K15: my live tickets, newest first (own registrations; group seats I claimed stay in the app). */
+export const myTickets = (token: string) =>
+  call<{ data: MyTicket[] }>("GET", "/users/me/registrations?limit=50", undefined, token).then((r) => r.data);
+
+/** Re-sends my confirmation email (and WhatsApp) with the QR. Throttled to 3 per 10 minutes. */
+export const resendTicket = (registrationId: string, token: string) =>
+  call<{ email: string | null; whatsapp: boolean }>("POST", `/registrations/${registrationId}/resend-confirmation`, undefined, token);
 
 /** Answer as the strings a show-if condition compares against (backend answerTokens). */
 function answerTokens(f: FormField, v: unknown): string[] {

@@ -18,9 +18,14 @@ export class RefundAlreadyIssuedError extends Error {
 }
 
 /** Razorpay definitely refused the call (4xx). Anything else may have gone through. */
-export function isRazorpayRejection(err: any): boolean {
-  const code = Number(err?.statusCode);
+export function isRazorpayRejection(err: unknown): boolean {
+  const code = Number((err as { statusCode?: unknown } | null)?.statusCode);
   return code >= 400 && code < 500;
+}
+
+/** Razorpay's own reason for a refused call (`err.error.description`), if any. */
+export function razorpayErrorText(err: unknown): string | undefined {
+  return (err as { error?: { description?: string } } | null)?.error?.description;
 }
 
 /**
@@ -40,9 +45,9 @@ export async function refundOnce(
   const paise = Math.round(amountRupees * 100);
   const find = async (): Promise<string | null> => {
     // ponytail: first 100 refunds of a payment; no payment gets near that.
-    const list: any = await razorpay.payments.fetchMultipleRefund(paymentId, { count: 100 });
+    const list = await razorpay.payments.fetchMultipleRefund(paymentId, { count: 100 });
     const hit = (list?.items ?? []).find(
-      (r: any) => r.notes?.refundKey === key && r.status !== 'failed',
+      (r) => r.notes?.refundKey === key && r.status !== 'failed',
     );
     if (hit && Number(hit.amount) !== paise) {
       throw new RefundAlreadyIssuedError(String(hit.id), Number(hit.amount) / 100);
@@ -52,10 +57,10 @@ export async function refundOnce(
   const existing = await find();
   if (existing) return existing;
   try {
-    const r: any = await razorpay.payments.refund(paymentId, {
+    const r = await razorpay.payments.refund(paymentId, {
       amount: paise,
       notes: { ...notes, refundKey: key },
-    } as any);
+    });
     return String(r.id);
   } catch (err) {
     // A timeout or 5xx may still have refunded: look again before failing.
@@ -215,7 +220,7 @@ export class PaymentsService {
   async createPaymentLink(
     options: CreatePaymentLinkOptions,
   ): Promise<PaymentLinkResult> {
-    const link = await (this.razorpay as any).paymentLink.create({
+    const link = await this.razorpay.paymentLink.create({
       amount: Math.round(options.amount * 100),
       currency: options.currency ?? 'INR',
       accept_partial: false,
@@ -249,11 +254,11 @@ export class PaymentsService {
    */
   async cancelPaymentLink(linkId: string): Promise<void> {
     try {
-      await (this.razorpay as any).paymentLink.cancel(linkId);
+      await this.razorpay.paymentLink.cancel(linkId);
       this.logger.log(`Cancelled Razorpay payment link ${linkId}`);
-    } catch (err: any) {
+    } catch (err) {
       this.logger.warn(
-        `cancelPaymentLink(${linkId}) failed: ${err?.error?.description ?? err?.message ?? String(err)}`,
+        `cancelPaymentLink(${linkId}) failed: ${razorpayErrorText(err) ?? (err instanceof Error ? err.message : String(err))}`,
       );
     }
   }
@@ -300,7 +305,7 @@ export class PaymentsService {
       if (err instanceof RefundAlreadyIssuedError) return; // money already went back
       if (!isRazorpayRejection(err)) throw err;
       this.logger.error(
-        `CRITICAL: duplicate capture ${paymentId} on ${context} could not be refunded, refund it by hand: ${(err as any)?.error?.description ?? err}`,
+        `CRITICAL: duplicate capture ${paymentId} on ${context} could not be refunded, refund it by hand: ${razorpayErrorText(err) ?? err}`,
       );
     }
   }
@@ -318,7 +323,7 @@ export class PaymentsService {
     Array<{ id: string; status: string; amount: number; amountRefunded: number }>
   > {
     const res = await this.razorpay.orders.fetchPayments(orderId);
-    const items = (res as { items?: any[] }).items ?? [];
+    const items = res.items ?? [];
     return items.map((p) => ({
       id: String(p.id),
       status: String(p.status),
@@ -345,7 +350,7 @@ export class PaymentsService {
     currency: string;
     notes: Record<string, string>;
   }> {
-    const p = (await this.razorpay.payments.fetch(paymentId)) as any;
+    const p = await this.razorpay.payments.fetch(paymentId);
     return {
       id: String(p.id),
       orderId: p.order_id ? String(p.order_id) : null,
@@ -359,7 +364,7 @@ export class PaymentsService {
 
   /** The `notes` an order was created with (we store `registrationId` there). */
   async fetchOrderNotes(orderId: string): Promise<Record<string, string>> {
-    const o = (await this.razorpay.orders.fetch(orderId)) as any;
+    const o = await this.razorpay.orders.fetch(orderId);
     return (o.notes ?? {}) as Record<string, string>;
   }
 
@@ -382,18 +387,18 @@ export class PaymentsService {
    * `fetchPage` receives the pagination window and returns the raw `{ items }`
    * payload for that page.
    */
-  private async paginateAll(
-    fetchPage: (opts: { from: number; to: number; count: number; skip: number }) => Promise<any>,
+  private async paginateAll<T>(
+    fetchPage: (opts: { from: number; to: number; count: number; skip: number }) => Promise<{ items?: T[] }>,
     from: number,
     to: number,
     maxPages: number = this.RECON_MAX_PAGES,
-  ): Promise<{ items: any[]; truncated: boolean }> {
+  ): Promise<{ items: T[]; truncated: boolean }> {
     const count = 100;
-    const all: any[] = [];
+    const all: T[] = [];
     let truncated = false;
     for (let page = 0; page < maxPages; page++) {
       const res = await fetchPage({ from, to, count, skip: page * count });
-      const items = (res?.items ?? []) as any[];
+      const items = res?.items ?? [];
       all.push(...items);
       if (items.length < count) break; // last page
       if (page === maxPages - 1) truncated = true; // hit the cap with a full page
@@ -409,7 +414,7 @@ export class PaymentsService {
    */
   async listPayments(from: number, to: number, maxPages?: number) {
     const { items, truncated } = await this.paginateAll(
-      (o) => this.razorpay.payments.all(o) as Promise<any>,
+      (o) => this.razorpay.payments.all(o),
       from,
       to,
       maxPages,
@@ -437,7 +442,7 @@ export class PaymentsService {
    */
   async listRefunds(from: number, to: number, maxPages?: number) {
     const { items } = await this.paginateAll(
-      (o) => this.razorpay.refunds.all(o) as Promise<any>,
+      (o) => this.razorpay.refunds.all(o),
       from,
       to,
       maxPages,
@@ -460,7 +465,7 @@ export class PaymentsService {
    */
   async listSettlements(from: number, to: number, maxPages?: number) {
     const { items } = await this.paginateAll(
-      (o) => (this.razorpay as any).settlements.all(o) as Promise<any>,
+      (o) => this.razorpay.settlements.all(o),
       from,
       to,
       maxPages,

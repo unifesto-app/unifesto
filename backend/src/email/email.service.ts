@@ -429,6 +429,10 @@ export class EmailService {
     await this.deliver('ses', email, T.welcomeEmail(userName));
   }
 
+  async sendSignInMethodAdded(email: string, method: string): Promise<void> {
+    await this.deliver('ses', email, T.signInMethodAddedEmail(method));
+  }
+
   // =====================================================
   // REGISTRATIONS & EVENTS
   // =====================================================

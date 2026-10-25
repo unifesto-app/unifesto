@@ -99,6 +99,24 @@ export interface SpaceSubscription extends BillingArrangement {
   updatedAt: string | null;
   space: SubscriptionSpace;
   admin: SubscriptionUser | null;
+  /** The current plan's price now (T6): the space deal's, else the rate card's. */
+  priceInForce?: PlanPrice | null;
+}
+
+/** A plan price and the deal it comes from (T6). */
+export interface PlanPrice {
+  /** Paise; null = no set price (contact sales), 0 = comp. */
+  pricePaise: number | null;
+  /** Null = rate card. */
+  dealId: string | null;
+}
+
+/** "₹1,499/mo · deal" style label for a price in force. */
+export function planPriceLabel(p: PlanPrice | null | undefined, cycle: BillingCycle): string {
+  if (!p || p.pricePaise === null) return "No set price";
+  if (p.pricePaise === 0) return "Comp (deal)";
+  const rupees = (p.pricePaise / 100).toLocaleString("en-IN");
+  return `₹${rupees}/${cycle === "ANNUAL" ? "yr" : "mo"} · ${p.dealId ? "deal" : "rate card"}`;
 }
 
 export interface PlanInfo {
@@ -419,8 +437,8 @@ export async function adminUpdateSpaceSubscription(
 export interface OfflinePaymentInput {
   plan: OrgPlan;
   billingCycle: BillingCycle;
-  /** ₹ received. */
-  amount: number;
+  /** ₹ received; omitted = the plan's price in force. */
+  amount?: number;
   /** Bank / cheque reference; a reference is recorded once. */
   reference?: string;
   note?: string;
@@ -434,6 +452,13 @@ export async function recordOfflinePayment(
   return apiCall<SpaceSubscription>(
     backendClient.post(`/subscription/admin/space/${spaceId}/offline-payment`, input)
   );
+}
+
+/** `GET /subscription/admin/space/:spaceId/plan-prices` — each paid plan's price now. */
+export async function getSpacePlanPrices(
+  spaceId: string
+): Promise<Result<Partial<Record<OrgPlan, Record<BillingCycle, PlanPrice>>>>> {
+  return apiCall(backendClient.get(`/subscription/admin/space/${spaceId}/plan-prices`));
 }
 
 /* ------------------------------- Display --------------------------------- */

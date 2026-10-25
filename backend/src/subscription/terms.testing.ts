@@ -19,4 +19,5 @@ export const rateCardTerms = (terms: Partial<Terms> = {}) =>
     resolve: async () => ({ ...RATE_CARD_TERMS, ...terms }),
     forEvent: async () => ({ ...RATE_CARD_TERMS, ...terms }),
     activeDeal: async () => null,
+    activeSpaceDeals: async () => new Map(),
   }) as unknown as TermsService;

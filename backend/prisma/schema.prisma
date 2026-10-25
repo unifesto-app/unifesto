@@ -1300,8 +1300,13 @@ model SubscriptionHistory {
   paymentId String?  @unique @map("payment_id") @db.VarChar(255)
   // Razorpay order it paid; unique so verify + webhook activate an order once.
   orderId     String? @unique @map("order_id") @db.VarChar(255)
-  // What was actually paid (paise), Razorpay or offline. MRR reads this.
+  // What was actually paid (paise), Razorpay or offline.
   amountPaise Int?    @map("amount_paise")
+  /// Plan price this payment bought, before any proration credit (T6). Credit
+  /// on a later change and MRR read it; null on payments before T6.
+  pricePaise  Int?    @map("price_paise")
+  /// The deal the plan was sold under (T6); null = rate card.
+  dealId      String? @map("deal_id") @db.Uuid
 
   @@map("subscription_history")
 }

@@ -38,6 +38,8 @@ import {
   getSpaceBillingStats,
   adminUpdateSpaceSubscription,
   recordOfflinePayment,
+  getSpacePlanPrices,
+  planPriceLabel,
   spaceSubName,
   spaceAdminEmail,
   spaceAdminName,
@@ -52,6 +54,7 @@ import {
   type OrgPlan,
   type BillingCycle,
   type AdminUpdateSubscriptionInput,
+  type PlanPrice,
 } from "@/lib/api/subscriptions-api";
 
 const MODEL_FILTERS: { label: string; value: BillingModel | "ALL" }[] = [
@@ -285,6 +288,9 @@ export default function SubscriptionsPage() {
                         )}
                         {spaceAdminEmail(s) && <span>{spaceAdminEmail(s)}</span>}
                         <span>{billingSummary(s)}</span>
+                        {s.billingModel === "SUBSCRIPTION" && s.plan && s.plan !== "STARTER" && (
+                          <span>Price now: {planPriceLabel(s.priceInForce, s.billingCycle)}</span>
+                        )}
                         <span>{s.eventsThisMonth} events this month</span>
                       </div>
                     </div>
@@ -567,16 +573,26 @@ function OfflinePayment({
   const [reference, setReference] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [prices, setPrices] = useState<Partial<Record<OrgPlan, Record<BillingCycle, PlanPrice>>>>({});
+
+  useEffect(() => {
+    getSpacePlanPrices(sub.spaceId).then(({ data }) => setPrices(data ?? {}));
+  }, [sub.spaceId]);
+
+  // The price in force (deal or rate card) is the default amount.
+  const price = prices[plan]?.[cycle];
+  const defaultAmount = price?.pricePaise ? price.pricePaise / 100 : null;
+  const received = amount.trim() ? Number(amount) : defaultAmount;
 
   const save = async () => {
-    if (!(Number(amount) >= 1)) {
+    if (!(received != null && received >= 1)) {
       setError("Enter the amount received.");
       return;
     }
     const sameRun = plan === sub.plan && sub.expiresAt && new Date(sub.expiresAt) > new Date();
     if (
       !window.confirm(
-        `Record ₹${amount} for ${PLAN_LABEL[plan]} (${BILLING_CYCLE_LABEL[cycle].toLowerCase()})? ` +
+        `Record ₹${received.toLocaleString("en-IN")} for ${PLAN_LABEL[plan]} (${BILLING_CYCLE_LABEL[cycle].toLowerCase()})? ` +
           (sameRun ? "It extends the current period." : "The new period starts today.")
       )
     )
@@ -586,7 +602,7 @@ function OfflinePayment({
     const { data, error } = await recordOfflinePayment(sub.spaceId, {
       plan,
       billingCycle: cycle,
-      amount: Number(amount),
+      amount: received,
       reference: reference.trim() || undefined,
     });
     setSaving(false);
@@ -650,8 +666,12 @@ function OfflinePayment({
               min={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="13999"
+              placeholder={defaultAmount != null ? String(defaultAmount) : "13999"}
             />
+            <p className="text-xs text-muted-foreground">
+              Price in force: {planPriceLabel(price, cycle)}
+              {defaultAmount != null && !amount.trim() && " (used if left blank)"}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="offline-ref">Reference (UTR / cheque no.)</Label>

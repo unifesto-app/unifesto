@@ -40,7 +40,7 @@ import { OPEN_REFUND_STATUSES } from './open-statuses';
 import { openCancelledEventRefunds } from './cancelled-event-refunds';
 import { openRefundCase, updateRefundCase, withNote } from './refund-cases';
 import { StayBookingsService } from '../stays/stay-bookings.service';
-import { RefundAlreadyIssuedError, isRazorpayRejection, refundOnce } from '../payments/payments.service';
+import { RefundAlreadyIssuedError, isRazorpayRejection, razorpayErrorText, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
 
 /** Round to 2 decimal places (money). */
@@ -627,7 +627,7 @@ export class RefundsService {
           refundRequestId: requestId,
         });
         progress.moneyMoved = true;
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`Razorpay refund failed for request ${requestId}`, err);
         if (err instanceof RefundAlreadyIssuedError) {
           progress.unsure = true;
@@ -643,7 +643,7 @@ export class RefundsService {
             } minutes: it never refunds twice.`,
           );
         }
-        throw new BadRequestException(err?.error?.description || 'Razorpay refused the refund.');
+        throw new BadRequestException(razorpayErrorText(err) || 'Razorpay refused the refund.');
       }
     }
 
@@ -664,10 +664,10 @@ export class RefundsService {
         );
         addonDone.push({ id: a.id, amount: slice.amount, refundId, payerId: a.userId });
         progress.moneyMoved = true;
-      } catch (err: any) {
+      } catch (err) {
         this.logger.error(`CRITICAL: refund ${requestId}: extra-seats payment ${a.paymentId} refund failed`, err);
         if (isRazorpayRejection(err)) {
-          shortfall = err?.error?.description || 'An extra-seats payment could not be refunded';
+          shortfall = razorpayErrorText(err) || 'An extra-seats payment could not be refunded';
         } else {
           progress.unsure = true;
           shortfall = `Razorpay didn't confirm the extra-seats refund on ${a.paymentId}; check it in Razorpay before raising another`;
@@ -913,8 +913,8 @@ export class RefundsService {
           'Event cancelled: refunded in bulk',
         );
         refunded++;
-      } catch (err: any) {
-        failed.push({ id: r.id, kind: 'ticket', error: err?.message ?? String(err) });
+      } catch (err) {
+        failed.push({ id: r.id, kind: 'ticket', error: err instanceof Error ? err.message : String(err) });
       }
     }
 
@@ -933,8 +933,8 @@ export class RefundsService {
       try {
         await this.stayBookings.cancel(eventId, b.id, adminId, { reason: 'Event cancelled', refund: true });
         staysRefunded++;
-      } catch (err: any) {
-        failed.push({ id: b.id, kind: 'stay', error: err?.message ?? String(err) });
+      } catch (err) {
+        failed.push({ id: b.id, kind: 'stay', error: err instanceof Error ? err.message : String(err) });
       }
     }
     this.logger.log(

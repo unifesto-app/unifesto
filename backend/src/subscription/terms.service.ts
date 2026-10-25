@@ -39,6 +39,33 @@ export function dealColumns(t: Terms, reset = false) {
   };
 }
 
+/** A plan price and the deal it comes from (null = rate card). */
+export interface PlanPrice {
+  /** Paise; null = not sold at a set price (custom / contact sales), 0 = comp. */
+  pricePaise: number | null;
+  dealId: string | null;
+}
+
+/**
+ * The price of `plan` on `cycle` (T6): a space deal naming the plan (and the
+ * cycle, if it sets one) prices it, and a sale under it records its id; a deal
+ * whose planPricePaise is null keeps the rate card's price. Anything else is
+ * the rate card (rupees in plan_configs, so x100).
+ */
+export function planPriceFor(
+  rateCard: { monthlyPrice: number | null; annualPrice: number | null },
+  plan: OrgPlan,
+  cycle: BillingCycle,
+  deal: Pick<Deal, 'id' | 'plan' | 'billingCycle' | 'planPricePaise'> | null,
+): PlanPrice {
+  const list = cycle === BillingCycle.MONTHLY ? rateCard.monthlyPrice : rateCard.annualPrice;
+  const listPaise = list === null ? null : list * 100;
+  if (!deal || deal.plan !== plan || (deal.billingCycle && deal.billingCycle !== cycle)) {
+    return { pricePaise: listPaise, dealId: null };
+  }
+  return { pricePaise: deal.planPricePaise ?? listPaise, dealId: deal.id };
+}
+
 export interface CreateDealInput {
   eventId?: string | null;
   plan?: OrgPlan | null;
@@ -85,6 +112,24 @@ export class TermsService {
       orderBy: { validFrom: 'desc' },
     });
     return deals.find((d) => d.eventId) ?? deals[0] ?? null;
+  }
+
+  /** The space deal (no event) in force for each space at `at`, newest first wins. */
+  async activeSpaceDeals(spaceIds: string[], at = new Date()): Promise<Map<string, Deal>> {
+    const deals = spaceIds.length
+      ? await this.prisma.deal.findMany({
+          where: {
+            spaceId: { in: spaceIds },
+            eventId: null,
+            validFrom: { lte: at },
+            OR: [{ validUntil: null }, { validUntil: { gt: at } }],
+          },
+          orderBy: { validFrom: 'desc' },
+        })
+      : [];
+    const bySpace = new Map<string, Deal>();
+    for (const d of deals) if (!bySpace.has(d.spaceId)) bySpace.set(d.spaceId, d);
+    return bySpace;
   }
 
   async resolve(
