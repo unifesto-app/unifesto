@@ -28,6 +28,7 @@ import {
   type Event,
 } from "@/lib/api/events";
 import PageHero from "@/components/site/PageHero";
+import { IST } from "@/lib/site";
 
 type PriceKey = "all" | "free" | "paid";
 type DateKey = "all" | "today" | "week" | "upcoming";
@@ -38,7 +39,7 @@ function formatFeatureDate(iso?: string): string {
   if (!iso) return "Date TBA";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Date TBA";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: IST });
 }
 
 /* ── Featured strip card ──────────────────────────────────────────────

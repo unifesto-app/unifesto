@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ApiError, myTickets, resendTicket, sendEmailCode, verifyEmailCode, type MyTicket } from "@/lib/api/registration";
 import { clearSession, getSession, setSession, type WebSession } from "@/lib/auth";
+import { IST } from "@/lib/site";
 
 const FIELD =
   "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
@@ -188,6 +189,7 @@ function TicketCard({ ticket: t, token }: { ticket: MyTicket; token: string }) {
     month: "short",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: IST,
   });
   const where = t.event.venueName || t.event.city || (t.event.type === "ONLINE" ? "Online" : "Venue TBA");
 

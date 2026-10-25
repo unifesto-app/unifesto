@@ -1,4 +1,5 @@
 import { apiBase, withInternal } from "@/lib/api/internal";
+import { IST } from "@/lib/site";
 /**
  * Blog API — public, read-only. Safe to call from server components (no auth).
  */
@@ -57,6 +58,7 @@ export function postMeta(post: BlogPost): { date: string; readTime: string } {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: IST,
   });
   const readTime = post.readMinutes ? `${post.readMinutes} min read` : "";
   return { date, readTime };

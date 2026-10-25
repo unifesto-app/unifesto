@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarBlank, MapPin, ArrowRight } from "@unifesto/unicon/react";
 import type { Event } from "@/lib/api/events";
+import { IST } from "@/lib/site";
 
 interface EventCardProps {
   event: Event;
@@ -12,7 +13,7 @@ interface EventCardProps {
 }
 
 /* Turn an ISO date into "Mar 16, 2026" without ever risking an Invalid Date. */
-function formatEventDate(iso?: string): string {
+function formatEventDate(iso: string | undefined, timeZone: string): string {
   if (!iso) return "Date TBA";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Date TBA";
@@ -20,37 +21,41 @@ function formatEventDate(iso?: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone,
   });
 }
 
 /* Format date range: "Mar 16 - 18, 2026" or "Mar 16 - Apr 2, 2026" */
-function formatDateRange(startIso?: string, endIso?: string): string {
+function formatDateRange(startIso: string | undefined, endIso: string | undefined, timeZone: string): string {
   if (!startIso) return "Date TBA";
   
   const start = new Date(startIso);
   if (Number.isNaN(start.getTime())) return "Date TBA";
   
   // If no end date or same as start date, show single date
-  if (!endIso) return formatEventDate(startIso);
+  if (!endIso) return formatEventDate(startIso, timeZone);
   
   const end = new Date(endIso);
-  if (Number.isNaN(end.getTime())) return formatEventDate(startIso);
+  if (Number.isNaN(end.getTime())) return formatEventDate(startIso, timeZone);
   
-  // Check if same day
-  if (start.toDateString() === end.toDateString()) {
-    return formatEventDate(startIso);
+  // Same day / month / year in the event's zone, not the machine's.
+  const ymd = (d: Date) => d.toLocaleDateString("en-CA", { timeZone }).split("-");
+  const [sy, sm, sd] = ymd(start);
+  const [ey, em, ed] = ymd(end);
+  if (sy === ey && sm === em && sd === ed) {
+    return formatEventDate(startIso, timeZone);
   }
   
   // Check if same month and year
-  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { day: "numeric", year: "numeric" })}`;
+  if (sy === ey && sm === em) {
+    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone })} - ${end.toLocaleDateString("en-US", { day: "numeric", year: "numeric", timeZone })}`;
   }
   
   // Different months
-  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone })}`;
 }
 
-function formatEventTime(iso?: string): string {
+function formatEventTime(iso: string | undefined, timeZone: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -58,6 +63,7 @@ function formatEventTime(iso?: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone,
   });
 }
 
@@ -77,8 +83,9 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
   const isFeatured = Boolean(event.is_featured);
 
 
-  const formattedDate = formatDateRange(event.start_date, event.end_date);
-  const formattedTime = formatEventTime(event.start_date);
+  const tz = event.timezone || IST;
+  const formattedDate = formatDateRange(event.start_date, event.end_date, tz);
+  const formattedTime = formatEventTime(event.start_date, tz);
   const organizerName = space?.name || "Organizer";
   const location = getLocation(event);
   const currency =
