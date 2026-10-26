@@ -1,3 +1,4 @@
+import { PlanConfigService } from '../subscription/plan-config.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RoleCode, RoleScope } from '@prisma/client';
 import { AuthorizationService, CAPABILITIES } from '../auth/authorization';
@@ -22,7 +23,7 @@ const SCOPE: Partial<Record<RoleCode, RoleScope>> = {
 
 type Row = { userId: string; code: RoleCode; spaceId: string | null; eventId: string | null };
 
-function build(opts: { event?: Record<string, unknown>; coCuratorLimit?: number } = {}) {
+function build(opts: { event?: Record<string, unknown>; plan?: string } = {}) {
   const rows: Row[] = [
     { userId: 'padmin', code: RoleCode.ADMIN, spaceId: null, eventId: null },
     { userId: 'sadmin', code: RoleCode.SPACE_ADMIN, spaceId: 'sp-1', eventId: null },
@@ -46,7 +47,6 @@ function build(opts: { event?: Record<string, unknown>; coCuratorLimit?: number 
     status: 'PUBLISHED',
     deletedAt: null,
     parentEventId: null,
-    space: { coCuratorLimit: opts.coCuratorLimit ?? 5 },
     ...opts.event,
   };
   const prisma: any = {
@@ -73,6 +73,8 @@ function build(opts: { event?: Record<string, unknown>; coCuratorLimit?: number 
     eventCheckinAccess: { deleteMany: jest.fn(async () => ({ count: 0 })) },
     role: { findFirst: jest.fn(async () => ({ id: 'role-id' })) },
     eventCoHost: { findMany: jest.fn(async () => [{ spaceId: 'sp-2' }]) },
+    // Co-curators per event come from the space's plan (T9); Growth allows 3.
+    orgSubscription: { findUnique: jest.fn(async () => ({ plan: opts.plan ?? 'GROWTH' })) },
     $transaction: jest.fn(async (ops: unknown[]) => ops),
   };
   const capabilities: any = {
@@ -81,7 +83,9 @@ function build(opts: { event?: Record<string, unknown>; coCuratorLimit?: number 
   };
   const authz = new AuthorizationService(prisma, capabilities);
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz, {} as any);
+  const svc = new EventsService(
+    prisma, {} as any, {} as any, cache, {} as any, new PlanConfigService(prisma), { emit: jest.fn() } as any, authz, {} as any,
+  );
   const audit = jest.spyOn((svc as any).logger, 'log').mockImplementation(() => undefined);
   return { svc, prisma, audit };
 }
@@ -168,9 +172,13 @@ describe('team edits (T1)', () => {
       expect(prisma.userRole.create).not.toHaveBeenCalled();
     });
 
-    it('is held to the space co-curator limit', async () => {
-      const { svc } = build({ coCuratorLimit: 1 });
-      await expect(add(svc, 'curator', 'member', EventTeamRole.CO_CURATOR)).rejects.toBeInstanceOf(BadRequestException);
+    it("is held to the plan's co-curators per event (T9)", async () => {
+      // Club allows 1 and 'cocur' already holds it.
+      const { svc, prisma } = build({ plan: 'CLUB' });
+      await expect(add(svc, 'curator', 'member', EventTeamRole.CO_CURATOR)).rejects.toThrow(
+        'The Club plan allows 1 co-curator per event. Growth allows more.',
+      );
+      expect(prisma.userRole.create).not.toHaveBeenCalled();
     });
   });
 

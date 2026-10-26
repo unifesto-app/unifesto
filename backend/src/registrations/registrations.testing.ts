@@ -11,6 +11,7 @@ import { RegistrationPaymentsService } from './registration-payments.service';
 import { RegistrationCheckoutService } from './registration-checkout.service';
 import { MyRegistrationsService } from './my-registrations.service';
 import { rateCardTerms } from '../subscription/terms.testing';
+import { PlanConfigService } from '../subscription/plan-config.service';
 
 export function buildRegistrationsService(
   prisma: any,
@@ -39,12 +40,15 @@ export function buildRegistrationsService(
     groupSeats,
     redis,
   );
+  // Specs that pass no plan service get the compiled plan limits over this prisma.
+  const plans = planConfig?.getEffectiveLimits ? planConfig : new PlanConfigService(prisma);
   const attendees = new RegistrationAttendeesService(
     prisma,
     whatsappService,
     groupSeats,
     authz,
     confirmations,
+    plans,
   );
   const transfers = new RegistrationTransfersService(prisma, authz, emailService, groupSeats);
   const exporter = new RegistrationExportService(prisma, planConfig, authz);
@@ -94,6 +98,7 @@ export function buildRegistrationsService(
     coupons,
     confirmations,
     rateCardTerms(),
+    plans,
   );
   const mine = new MyRegistrationsService(prisma, groupSeats, confirmations);
   return new RegistrationsService(

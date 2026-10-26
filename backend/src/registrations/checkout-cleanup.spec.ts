@@ -16,7 +16,7 @@ function build() {
   const payments: any = { cancelPaymentLink: jest.fn(async () => undefined) };
   const coupons: any = { releaseByRegistration: jest.fn(async () => undefined) };
   const svc = new RegistrationCheckoutService(
-    prisma, {} as any, {} as any, {} as any, payments, {} as any, {} as any, coupons, {} as any, rateCardTerms(),
+    prisma, {} as any, {} as any, {} as any, payments, {} as any, {} as any, coupons, {} as any, rateCardTerms(), {} as any,
   );
   const clear = (stale: any) =>
     (svc as any).clearAbandonedAttempt(

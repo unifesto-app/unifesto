@@ -1,5 +1,7 @@
 import { buildRegistrationsService } from './registrations.testing';
+import { ForbiddenException } from '@nestjs/common';
 import { RegistrationAttendeesService } from './registration-attendees.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
  * End-to-end proof of the per-member WhatsApp group blast, run against an
@@ -29,9 +31,10 @@ interface Reg {
   groupSeats: Seat[];
 }
 
-function makeHarness() {
+function makeHarness(plan = 'GROWTH') {
   const event = {
     id: 'ev1',
+    spaceId: 'sp1',
     title: 'Hackverse 2026',
     whatsappAttendeeGroupUrl: 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv',
     parentEvent: null as { whatsappAttendeeGroupUrl: string | null } | null,
@@ -95,6 +98,8 @@ function makeHarness() {
     event: {
       findUnique: async () => event,
     },
+    // Blasts are a plan switch (T9): Growth has them, General doesn't.
+    orgSubscription: { findUnique: async () => ({ plan }) },
     eventTicketType: {
       count: async () => 0, // no ticket-type-specific links in this fixture
     },
@@ -200,7 +205,8 @@ describe('sendGroupInviteBlast — per-member group invite', () => {
     const { prisma, whatsappService, groupSeats, sends } = makeHarness();
     const queue = { setHandler: jest.fn(), add: jest.fn(async () => true) };
     const attendees = new RegistrationAttendeesService(
-      prisma as any, whatsappService as any, groupSeats as any, {} as any, {} as any, queue as any,
+      prisma as any, whatsappService as any, groupSeats as any, {} as any, {} as any,
+      new PlanConfigService(prisma as any), queue as any,
     );
     const res = await attendees.sendGroupInviteBlast('ev1');
     expect(res).toEqual({ eligible: 4, sent: 3, noPhone: 1, noLink: 0, failed: 0, queued: true });
@@ -209,5 +215,12 @@ describe('sendGroupInviteBlast — per-member group invite', () => {
     // The worker's handler is the real run.
     await queue.setHandler.mock.calls[0][0]('ev1');
     expect(sends).toHaveLength(3);
+  });
+
+  it('is refused on a plan without WhatsApp blasts, and sends nothing (T9)', async () => {
+    const { svc, sends } = makeHarness('STARTER');
+    await expect(svc.sendGroupInviteBlast('ev1')).rejects.toThrow(ForbiddenException);
+    await expect(svc.sendGroupInviteBlast('ev1')).rejects.toThrow('Not on the General plan: WhatsApp blasts. It comes with Growth and up.');
+    expect(sends).toHaveLength(0);
   });
 });

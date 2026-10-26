@@ -150,7 +150,7 @@ export const PLAN_CATALOG: { group: string; rows: PlanCatalogRow[] }[] = [
   {
     group: 'Team and support',
     rows: [
-      { label: 'Spaces', limit: 'spaces' },
+      { label: 'Spaces, counting sub-spaces', limit: 'spaces' },
       { label: 'Co-curators per event', limit: 'coCurators' },
       { label: 'Roles and permissions for your team' },
       { label: 'Assist inbox with AI-drafted replies' },

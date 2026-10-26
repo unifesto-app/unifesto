@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { Prisma, GroupSeatStatus } from '@prisma/client';
 import { Action, AuthorizationService } from '../auth/authorization';
+import { PlanConfigService } from '../subscription/plan-config.service';
 import { GroupSeatsService } from './group-seats.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
@@ -52,6 +53,7 @@ export class RegistrationAttendeesService {
     private readonly groupSeats: GroupSeatsService,
     private readonly authz: AuthorizationService,
     private readonly confirmations: RegistrationConfirmationsService,
+    private readonly planConfig: PlanConfigService,
     @Optional() private readonly blastQueue?: GroupInviteBlastQueue,
   ) {
     blastQueue?.setHandler((eventId) => this.runGroupInviteBlast(eventId));
@@ -64,6 +66,9 @@ export class RegistrationAttendeesService {
    * so older clients still read it as "sent N".
    */
   async sendGroupInviteBlast(eventId: string) {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { spaceId: true } });
+    if (!event) throw new NotFoundException('Event not found');
+    await this.planConfig.assertFeature(event.spaceId, 'hasWhatsappBlast');
     const plan = await this.planGroupInviteBlast(eventId);
     const counts = { eligible: plan.eligible, noPhone: plan.noPhone, noLink: plan.noLink };
     if (plan.recipients.length && (await this.blastQueue?.add(eventId))) {

@@ -2133,6 +2133,18 @@ export class SpacesService {
   /**
    * Create a sub-space request (authenticated users)
    */
+  /**
+   * A space and its sub-spaces count toward its plan's spaces (T9): checked
+   * when a join is asked for and again when Unifesto approves it.
+   */
+  private async assertRoomForSubSpace(parentId: string, db: Prisma.TransactionClient = this.prisma) {
+    const children = await db.space.count({ where: { parentSpaceId: parentId } });
+    await this.planConfig.assertLimit(parentId, 'spaces', 1 + children, [
+      'space, counting sub-spaces',
+      'spaces, counting sub-spaces',
+    ]);
+  }
+
   async createSubSpaceRequest(userId: string, dto: CreateSubSpaceRequestDto) {
     const { requestType, subSpaceId, targetSpaceId, reason } = dto;
 
@@ -2201,6 +2213,7 @@ export class SpacesService {
         }
 
         await this.assertNoHierarchyCycle(subSpaceId, targetSpace.parentSpaceId);
+        await this.assertRoomForSubSpace(targetSpaceId);
       }
 
       // Removal requests: the sub-space must currently be a child of target.
@@ -2401,6 +2414,7 @@ export class SpacesService {
             break;
           }
           case SubSpaceRequestType.CONVERT_AND_JOIN: {
+            await this.assertRoomForSubSpace(request.targetSpaceId, tx);
             // Convert the target to SUPER, then attach the sub-space.
             await tx.space.update({
               where: { id: request.targetSpaceId },
@@ -2415,6 +2429,7 @@ export class SpacesService {
             break;
           }
           case SubSpaceRequestType.JOIN_SUPER: {
+            await this.assertRoomForSubSpace(request.targetSpaceId, tx);
             // Attach the sub-space to the already-SUPER target.
             if (request.subSpaceId) {
               await tx.space.update({

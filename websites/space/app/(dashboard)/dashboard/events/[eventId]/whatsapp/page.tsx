@@ -16,6 +16,7 @@ import {
   type WhatsAppTicketGroup,
 } from "@/lib/api/events-api";
 import { sendWhatsappGroupInvite } from "@/lib/api/registrations-api";
+import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ import {
 export default function EventWhatsAppPage() {
   const params = useParams();
   const eventId = params.eventId as string;
+  const canBlast = useSession().hasFeature("hasWhatsappBlast");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -300,10 +302,19 @@ export default function EventWhatsAppPage() {
             invited yet or already joined. Safe to run more than once: nobody is
             messaged twice.
           </p>
+          {!canBlast && (
+            <p className="text-sm text-muted-foreground">
+              WhatsApp blasts aren&apos;t on this space&apos;s plan. New attendees still get the
+              link with their confirmation.{" "}
+              <a href="/dashboard/billing" className="underline">
+                See plans
+              </a>
+            </p>
+          )}
           <Button
             variant="outline"
             onClick={handleSendBlast}
-            disabled={sending}
+            disabled={sending || !canBlast}
           >
             {sending ? (
               <>
