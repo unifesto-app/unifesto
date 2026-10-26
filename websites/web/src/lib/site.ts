@@ -411,7 +411,8 @@ export const PLATFORM_FEE_STARTS = new Date("2026-11-02T00:00:00+05:30");
 export const PLATFORM_FEE_STARTS_LABEL = "2 Nov 2026";
 
 export type Plan = {
-  id: "starter" | "pro" | "enterprise";
+  /** The plan code lowercased (STARTER is shown as General). */
+  id: "starter" | "club" | "growth" | "pro" | "enterprise";
   name: string;
   forWho: string;
   /** Monthly price in rupees; null = custom quote. */
@@ -421,10 +422,14 @@ export type Plan = {
   /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
   standardFee: number;
+  /** How the fee reads when it isn't one number (Enterprise: "0–0.5%"). */
+  feeText?: string;
   /** Fallback list. Live: built by planIncludes() from the plan_configs row (T10). */
   includes: string[];
   /** Lines no plan_configs flag covers, shown as written. */
   extras: string[];
+  /** The live plan_configs row, when the rate card loaded (comparison table). */
+  row?: PlanRow;
   cta: { label: string; href: string };
 };
 
@@ -432,7 +437,7 @@ export type Plan = {
    the ticket price, on every plan. Separate from the organiser's platform fee
    above. Must match PROCESSING_FEE_PERCENT in
    backend/src/subscription/platform-config.service.ts. */
-export const BUYER_PROCESSING_FEE = 5;
+export const BUYER_PROCESSING_FEE = 4;
 /** Most the buyer fee can be per ticket, in rupees (A34). Fallback; live value from the rate card. */
 export const BUYER_PROCESSING_FEE_CAP = 99;
 
@@ -443,73 +448,111 @@ export const buyerFeeText = (percent: number = BUYER_PROCESSING_FEE, cap: number
 export const PLANS: Plan[] = [
   {
     id: "starter",
-    name: "Starter",
-    forWho: "Clubs and communities getting going",
+    name: "General",
+    forWho: "Clubs getting started",
     price: 0,
     standardPrice: 0,
     annualMonthly: 0,
     fee: 2.5,
     standardFee: 4,
     includes: [
+      "1 event a month, up to 100 attendees each",
       "Free RSVP events, no fees",
       "Paid and group tickets with Razorpay",
       "Multi-point QR check-in from the app",
       "Coupons, custom questions, sub-events",
+      "Email, push and WhatsApp confirmations",
+      "Live polls, Q&A and quizzes",
       "Payouts, refunds and financials",
-      "WhatsApp confirmations and push",
-      "Unifesto Stay: rooms, approvals, stay passes",
     ],
     extras: [
       "Free RSVP events, no fees",
       "Paid and group tickets with Razorpay",
       "Multi-point QR check-in from the app",
       "Coupons, custom questions, sub-events",
+      "Email, push and WhatsApp confirmations",
+      "Live polls, Q&A and quizzes",
       "Payouts, refunds and financials",
-      "WhatsApp confirmations and push",
-      "Unifesto Stay: rooms, approvals, stay passes",
     ],
     cta: { label: "Start free", href: "/request-space" },
   },
   {
-    id: "pro",
-    name: "Pro",
-    forWho: "Fest teams and Spaces that run every month",
-    price: 1499,
-    standardPrice: 2999,
-    annualMonthly: 1319, // ₹15,829 a year, 12% off (decided 26 Oct)
+    id: "club",
+    name: "Club",
+    forWho: "Clubs running regular events",
+    price: 499,
+    standardPrice: 999,
+    annualMonthly: 416, // ₹4,990 a year
+    fee: 2,
+    standardFee: 3.5,
+    includes: [
+      "Everything in General",
+      "4 events a month, up to 300 attendees each",
+      "Waiting list with pay-to-claim offers",
+      "Bulk export (CSV, Excel, PDF)",
+      "Analytics and PDF event reports",
+      "Certificates: design, issue and verify",
+    ],
+    extras: [],
+    cta: { label: "Get Club", href: "/request-space" },
+  },
+  {
+    id: "growth",
+    name: "Growth",
+    forWho: "Fest teams, hackathons and communities",
+    price: 1999,
+    standardPrice: 3999,
+    annualMonthly: 1666, // ₹19,990 a year
     fee: 1.5,
     standardFee: 3,
     includes: [
-      "Everything in Starter",
-      "Waitlists and recurring event series",
-      "Certificates with public verification",
-      "Sponsors, sponsor portal and lead capture",
-      "Unifesto Sprint for hackathons",
-      "Unifesto Huddle online sessions",
-      "WhatsApp blasts, analytics and PDF reports",
-      "Bulk attendee export",
+      "Everything in Club",
+      "Unlimited events a month, up to 1,000 attendees each",
+      "WhatsApp blasts",
+      "Recurring event series",
+      "Huddle live sessions, paid and recorded",
+      "Sponsors, booth lead scans and leads",
+      "Hackathons: teams, judging and leaderboards",
+      "Priority support",
     ],
     extras: [],
-    cta: { label: "Start with Pro", href: "/request-space" },
+    cta: { label: "Get Growth", href: "/request-space" },
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    forWho: "Big fests on their own brand",
+    price: 2999,
+    standardPrice: 5999,
+    annualMonthly: 2499, // ₹29,990 a year
+    fee: 1,
+    standardFee: 2,
+    includes: [
+      "Everything in Growth",
+      "Unlimited events a month, up to 5,000 attendees each",
+      "10 spaces and 10 co-curators per event",
+      "White-label: colours, logo, favicon, own email and domain",
+    ],
+    extras: [],
+    cta: { label: "Get Pro", href: "/request-space" },
   },
   {
     id: "enterprise",
     name: "Enterprise",
-    forWho: "Institutions running many Spaces",
+    forWho: "Universities running many spaces",
     price: null,
     standardPrice: null,
     annualMonthly: null,
-    fee: 1,
-    standardFee: 2,
+    fee: 0.5,
+    standardFee: 1,
+    feeText: "0–0.5%",
     includes: [
       "Everything in Pro",
-      "White-label: colour, favicon, email sender",
-      "Remove Unifesto branding",
+      "Unlimited events, attendees and spaces",
       "Sub-spaces for every department",
-      "Custom limits and priority support",
       "Onboarding for your team",
     ],
-    extras: ["White-label: colour, favicon, email sender", "Sub-spaces for every department", "Onboarding for your team"],
+    extras: ["Sub-spaces for every department", "Onboarding for your team"],
     cta: { label: "Talk to us", href: "mailto:support@unifesto.app?subject=Unifesto%20Enterprise" },
   },
 ];
@@ -518,20 +561,32 @@ export const PLANS: Plan[] = [
 export type PlanRow = {
   eventsPerMonth: number | null;
   attendeesPerEvent: number | null;
+  spaces?: number | null;
+  ticketTypes?: number | null;
+  coCurators?: number | null;
 } & Partial<Record<(typeof PLAN_FEATURES)[number][0], boolean>>;
 
-/** plan_configs feature flags, in the order /pricing lists them. */
+/** One comparison line from the backend catalog: a switch, a limit, or every plan. */
+export type CatalogRow = {
+  label: string;
+  flag?: (typeof PLAN_FEATURES)[number][0];
+  limit?: "spaces" | "eventsPerMonth" | "attendeesPerEvent" | "ticketTypes" | "coCurators";
+};
+export type Catalog = { group: string; rows: CatalogRow[] }[];
+
+/** plan_configs feature flags, in the order /pricing lists them. Labels
+   match the backend catalog (PLAN_CATALOG), which the comparison table reads. */
 export const PLAN_FEATURES = [
-  ["hasWaitlist", "Waitlists"],
-  ["hasRecurringEvents", "Recurring event series"],
-  ["hasCertificates", "Certificates with public verification"],
-  ["hasSponsors", "Sponsors, sponsor portal and lead capture"],
-  ["hasLeaderboard", "Unifesto Sprint for hackathons"],
-  ["hasSessions", "Unifesto Huddle online sessions"],
+  ["hasWaitlist", "Waiting list with pay-to-claim offers"],
+  ["hasBulkExport", "Bulk export (CSV, Excel, PDF)"],
+  ["hasAnalytics", "Analytics and PDF event reports"],
+  ["hasCertificates", "Certificates: design, issue and verify"],
   ["hasWhatsappBlast", "WhatsApp blasts"],
-  ["hasAnalytics", "Analytics and PDF reports"],
-  ["hasBulkExport", "Bulk attendee export"],
-  ["hasRemoveBranding", "Remove Unifesto branding"],
+  ["hasRecurringEvents", "Recurring event series"],
+  ["hasSessions", "Huddle live sessions, paid and recorded"],
+  ["hasSponsors", "Sponsors, booth lead scans and leads"],
+  ["hasLeaderboard", "Hackathons: teams, judging and leaderboards"],
+  ["hasRemoveBranding", "White-label: colours, logo, favicon, own email and domain"],
   ["hasPrioritySupport", "Priority support"],
 ] as const;
 
@@ -563,14 +618,23 @@ export const EXAMPLE_PASS = 500;
 export const buyerFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
   Math.min((price * percent) / 100, cap ?? Infinity);
 
-/** "Platform fee 2.5% on Starter, 1.5% on Pro, 1% on Enterprise". */
-export const planFeesText = (plans: Plan[] = PLANS) => plans.map((p) => `${p.fee}% on ${p.name}`).join(", ");
+/** The fee carved out of a ticket when the organiser includes it in the price
+   (A33): the buyer pays `price`, the organiser gets `price` minus this. Same
+   rate and cap as on top, rounded to the paise like the backend's quote(). */
+export const includedFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
+  Math.min(Math.round((price * percent * 100) / (100 + percent)) / 100, cap ?? Infinity);
+
+/** "1.5%", or the range a plan quotes ("0–0.5%"). */
+export const planFee = (p: Plan) => p.feeText ?? `${p.fee}%`;
+
+/** "2.5% on General, 2% on Club, 1.5% on Growth, 1% on Pro, 0–0.5% on Enterprise". */
+export const planFeesText = (plans: Plan[] = PLANS) => plans.map((p) => `${planFee(p)} on ${p.name}`).join(", ");
 
 /** "from 2 Nov 2026" until the platform fee starts, then nothing. */
 export const platformFeeFrom = (now = new Date()) => (now < PLATFORM_FEE_STARTS ? PLATFORM_FEE_STARTS_LABEL : null);
 
 /** "A ₹500 pass: students pay ₹525, or ₹500 if you include the fee. You keep
-   ₹487.50 on Starter." Computed from the rate card it is given. */
+   ₹487.50 on General." Computed from the rate card it is given. */
 export const passExample = (
   plan: Plan = PLANS[0],
   buyerFee: number = BUYER_PROCESSING_FEE,

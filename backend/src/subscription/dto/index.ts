@@ -13,7 +13,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { BillingCycle, BillingModel, OrgPlan } from '@prisma/client';
+import { BillingCycle, OrgPlan } from '@prisma/client';
 
 /** Platform admin: negotiated terms for a space or one of its events (T4). Null = rate card. */
 export class CreateDealDto {
@@ -126,24 +126,6 @@ export class RecordOfflinePaymentDto {
 }
 
 export class AdminUpdateSubscriptionDto {
-  @ApiPropertyOptional({
-    enum: BillingModel,
-    description: 'How the organiser is billed',
-  })
-  @IsOptional()
-  @IsEnum(BillingModel)
-  billingModel?: BillingModel;
-
-  @ApiPropertyOptional({
-    example: 8,
-    description: 'Platform cut (%) when billingModel is REVENUE_SHARE',
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  revenueSharePercent?: number;
-
   @ApiPropertyOptional({ enum: OrgPlan })
   @IsOptional()
   @IsEnum(OrgPlan)
@@ -243,48 +225,9 @@ export class UpdatePlanConfigDto {
   annualPrice?: number | null;
 }
 
-/** Admin edit of a Free / Revenue-share model definition. */
-export class UpdateBillingModelConfigDto {
-  @ApiPropertyOptional({ description: 'Default % for REVENUE_SHARE' })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  defaultRevenueSharePercent?: number | null;
-
-  @ApiPropertyOptional({ description: 'Max spaces; null = unlimited' })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  spaces?: number | null;
-
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) eventsPerMonth?: number | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) attendeesPerEvent?: number | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) ticketTypes?: number | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) coCurators?: number | null;
-
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasWaitlist?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasBulkExport?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasAnalytics?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasWhatsappBlast?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasRecurringEvents?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasRemoveBranding?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasPrioritySupport?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSessions?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasLeaderboard?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasCertificates?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSponsors?: boolean;
-}
-
 export class SubscriptionResponseDto {
   @ApiProperty()
   id: string;
-
-  @ApiProperty({ enum: BillingModel })
-  billingModel: BillingModel;
-
-  @ApiPropertyOptional({ description: 'Platform cut (%) for REVENUE_SHARE' })
-  revenueSharePercent?: number | null;
 
   @ApiProperty({ enum: OrgPlan })
   plan: OrgPlan;
@@ -321,9 +264,6 @@ export class SubscriptionUsageDto {
   @ApiProperty()
   plan: OrgPlan;
 
-  @ApiProperty({ enum: BillingModel, description: 'FREE (comped), SUBSCRIPTION (plan fee), REVENUE_SHARE (own rate).' })
-  billingModel: BillingModel;
-
   @ApiProperty()
   limits: {
     spaces: number | null;
@@ -337,8 +277,7 @@ export class SubscriptionUsageDto {
    * The effective feature flags for this space, derived from the SAME
    * `getEffectiveLimits` call the backend enforces with. UIs gate on these so a
    * disabled/upsell control can never disagree with the endpoint's own check
-   * (which matters for FREE / REVENUE_SHARE spaces, whose flags come from the
-   * billing-model config rather than the plan table).
+   * (a lapsed plan gets Starter's flags).
    */
   @ApiProperty()
   features: {

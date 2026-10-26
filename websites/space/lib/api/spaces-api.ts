@@ -83,7 +83,6 @@ export interface SpaceAccess {
   /** Null when the space has no subscription yet: plan gates don't apply. */
   plan: {
     plan: string;
-    billingModel: "FREE" | "SUBSCRIPTION" | "REVENUE_SHARE";
     status: "ACTIVE" | "GRACE" | "EXPIRED";
     features: PlanFeatures;
     limits: Record<"spaces" | "eventsPerMonth" | "attendeesPerEvent" | "ticketTypes" | "coCurators", number | null>;

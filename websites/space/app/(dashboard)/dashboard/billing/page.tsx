@@ -1,20 +1,14 @@
 "use client";
 
 import { inr } from "@/lib/utils/money";
-import { useCallback, useEffect, useState } from "react";
-import {
-  CreditCard,
-  CalendarBlank,
-  Buildings,
-  Check,
-  Lock,
-} from "@unifesto/unicon/react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { Check, Minus, Lock } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import {
   getSpaceSubscription,
   getSpaceUsage,
-  getAllPlans,
+  getPlanCatalog,
   cancelSpaceSubscription,
   createSpaceUpgradeOrder,
   verifySpaceUpgrade,
@@ -26,26 +20,22 @@ import {
   type Subscription,
   type SubscriptionUsage,
   type PlanInfo,
+  type PlanCatalog,
+  type CatalogRow,
   type OrgPlan,
   type BillingCycle,
 } from "@/lib/api/subscriptions-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { GO_LIVE, RATE } from "@/components/shell/FeeNoticeBanner";
-import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils/cn";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
-/** Best annual saving across plans, from the API's prices: "Save 20%". */
+/** Best annual saving across plans, from the API's prices: "Save 17%". */
 function annualSaving(plans: PlanInfo[]): string | null {
   const best = Math.max(
     0,
@@ -53,16 +43,24 @@ function annualSaving(plans: PlanInfo[]): string | null {
       p.monthlyPrice && p.annualPrice ? Math.round((1 - p.annualPrice / (p.monthlyPrice * 12)) * 100) : 0
     )
   );
-  return best > 0 ? `Save up to ${best}%` : null;
+  return best > 0 ? `Save ${best}%` : null;
 }
 
-/** "2.5% platform fee per paid ticket", or the announced rate before go-live (DB holds 0 until then). */
-function platformFeeLabel(plan: PlanInfo): string {
-  if (new Date() < GO_LIVE && !plan.platformFeePercent) {
-    const rate = RATE[plan.plan];
-    return rate ? `${rate}% platform fee per paid ticket from 2 Nov 2026` : "No platform fee";
-  }
-  return plan.platformFeePercent ? `${plan.platformFeePercent}% platform fee per paid ticket` : "No platform fee";
+/** A plan's organiser fee, or the announced rate before go-live (the DB holds 0 until then). */
+function feePercent(plan: PlanInfo): number {
+  return new Date() < GO_LIVE && !plan.platformFeePercent ? RATE[plan.plan] ?? 0 : plan.platformFeePercent;
+}
+
+/** "1.5%", or Enterprise's negotiated range "0–0.5%". */
+function feeText(plan: PlanInfo): string {
+  const pct = feePercent(plan);
+  return plan.plan === "ENTERPRISE" && pct ? `0–${pct}%` : `${pct}%`;
+}
+
+function feeLabel(plan: PlanInfo): string {
+  const pct = feePercent(plan);
+  if (!pct) return "No platform fee";
+  return `${feeText(plan)} fee per paid ticket${new Date() < GO_LIVE && !plan.platformFeePercent ? " from 2 Nov" : ""}`;
 }
 
 /** Human label for a plan limit; `null`/undefined means unlimited. */
@@ -70,20 +68,8 @@ function limitLabel(n: number | null | undefined): string {
   return n === null || n === undefined ? "Unlimited" : n.toLocaleString("en-IN");
 }
 
-/** The feature lines shown on each plan card, in display order. */
-const PLAN_FEATURES: { key: keyof PlanInfo; label: string }[] = [
-  { key: "hasWaitlist", label: "Waiting lists" },
-  { key: "hasRecurringEvents", label: "Recurring event series" },
-  { key: "hasCertificates", label: "Certificates" },
-  { key: "hasSponsors", label: "Sponsors and lead capture" },
-  { key: "hasLeaderboard", label: "Hackathons (Unifesto Sprint)" },
-  { key: "hasSessions", label: "Sessions" },
-  { key: "hasWhatsappBlast", label: "WhatsApp blasts" },
-  { key: "hasAnalytics", label: "Analytics & reports" },
-  { key: "hasBulkExport", label: "Bulk attendee export" },
-  { key: "hasRemoveBranding", label: "Remove Unifesto branding" },
-  { key: "hasPrioritySupport", label: "Priority support" },
-];
+const fmtDate = (d: string | null | undefined) =>
+  d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 export default function BillingPage() {
   const spaceId = useSpaceId();
@@ -92,7 +78,7 @@ export default function BillingPage() {
 
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
-  const [plans, setPlans] = useState<PlanInfo[]>([]);
+  const [cat, setCat] = useState<PlanCatalog | null>(null);
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,15 +90,16 @@ export default function BillingPage() {
     if (!spaceId) return;
     setLoading(true);
     setError("");
-    const [subRes, usageRes, plansRes] = await Promise.all([
+    const [subRes, usageRes, catRes] = await Promise.all([
       getSpaceSubscription(spaceId),
       getSpaceUsage(spaceId),
-      getAllPlans(),
+      getPlanCatalog(),
     ]);
     if (subRes.error) setError(subRes.error.message);
     else setSub(subRes.data);
     if (usageRes.data) setUsage(usageRes.data);
-    if (plansRes.data) setPlans(plansRes.data);
+    if (catRes.data) setCat(catRes.data);
+    else if (catRes.error) setError(catRes.error.message);
     // Default the toggle to whatever the space is already billed on.
     if (subRes.data?.billingCycle) setCycle(subRes.data.billingCycle);
     setLoading(false);
@@ -123,12 +110,13 @@ export default function BillingPage() {
   }, [allowed, load]);
 
   async function handleCancel() {
-    if (
-      !window.confirm(
-        "Cancel this plan? You keep it until the end of this period, then the space moves to Starter."
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: "Cancel this plan?",
+      description: "You keep it until the end of this period, then the space moves to General. Your data is kept.",
+      confirmLabel: "Cancel plan",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyPlan(sub?.plan ?? "STARTER");
     setActionError("");
     const { error } = await cancelSpaceSubscription(spaceId);
@@ -141,10 +129,7 @@ export default function BillingPage() {
     setActionError("");
     setNotice("");
     setBusyPlan(plan);
-    const { data: order, error } = await createSpaceUpgradeOrder(spaceId, {
-      plan,
-      billingCycle: targetCycle,
-    });
+    const { data: order, error } = await createSpaceUpgradeOrder(spaceId, { plan, billingCycle: targetCycle });
     if (error || !order) {
       setActionError(error?.message ?? "Could not start checkout");
       setBusyPlan(null);
@@ -203,348 +188,446 @@ export default function BillingPage() {
     );
   }
 
+  const plans = [...(cat?.plans ?? [])].sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan));
   const currentPlan: OrgPlan = sub?.plan ?? "STARTER";
-  // Free and revenue-share spaces are arranged by Unifesto: no self-serve plan changes.
-  const selfServe = !sub?.billingModel || sub.billingModel === "SUBSCRIPTION";
   const currentRank = planRank(currentPlan);
   const status = sub?.status ?? "ACTIVE";
   // A paid plan Unifesto gave without a payment (comp): nothing to cancel or renew.
-  const comp = selfServe && currentRank > 0 && !sub?.lastPaymentAt;
-  const canBuy = selfServe && !comp && !sub?.pendingPlan;
-  const fmtDate = (d: string | null | undefined) =>
-    d
-      ? new Date(d).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "—";
-  const limitsFrom =
-    sub?.billingModel === "FREE"
-      ? "Limits come from your free arrangement with Unifesto."
-      : sub?.billingModel === "REVENUE_SHARE"
-        ? "Limits come from your revenue-share arrangement with Unifesto."
-        : status === "EXPIRED"
-          ? `Your ${PLAN_LABEL[currentPlan]} plan expired, so Starter limits apply. Your data is kept; renew to get them back.`
-          : `Limits come from your ${PLAN_LABEL[currentPlan]} plan${comp ? ", set up by Unifesto" : ""}.`;
-  const orderedPlans = [...plans].sort(
-    (a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan)
-  );
+  const comp = currentRank > 0 && !sub?.lastPaymentAt;
+  const canBuy = !comp && !sub?.pendingPlan;
+  const paidTimeLeft = currentRank > 0 && !!sub?.expiresAt && new Date(sub.expiresAt) > new Date();
+  const saving = annualSaving(plans);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Plan & billing"
-        subtitle={
-          currentSpace ? `Billing for ${currentSpace.name}` : "Your space's plan"
-        }
+        subtitle={currentSpace ? `Billing for ${currentSpace.name}` : "Your space's plan"}
       />
 
       {error && <ErrorNotice message={error} />}
       {actionError && <ErrorNotice message={actionError} />}
       {notice && (
-        <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm text-primary">
-          {notice}
-        </div>
+        <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
       )}
 
       {/* Current plan ------------------------------------------------------ */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <CardContent className="space-y-6 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" weight="fill" />
-                {loading ? (
-                  // Inline span (not the div-based Skeleton) — CardTitle is an
-                  // <h3> and CardDescription a <p>, neither of which may nest a div.
-                  <span className="inline-block h-6 w-32 animate-pulse rounded-md bg-muted align-middle" />
-                ) : (
-                  `${PLAN_LABEL[currentPlan]} plan`
-                )}
-              </CardTitle>
-              <CardDescription>
-                {loading ? (
-                  <span className="inline-block h-4 w-48 animate-pulse rounded-md bg-muted align-middle" />
-                ) : sub ? (
-                  billingSummary(sub)
-                ) : (
-                  "No arrangement set"
-                )}
-              </CardDescription>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Your plan</p>
+              {loading ? (
+                <Skeleton className="mt-2 h-8 w-40" />
+              ) : (
+                <>
+                  <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-semibold text-foreground">
+                    {PLAN_LABEL[currentPlan]}
+                    <StatusPill sub={sub} comp={comp} />
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {sub ? (currentRank === 0 ? "Free" : comp ? "Set up by Unifesto" : billingSummary(sub)) : "No plan set"}
+                    {cat && ` · ${feeLabel(plans.find((p) => p.plan === currentPlan) ?? plans[0])}`}
+                  </p>
+                </>
+              )}
             </div>
-            {!loading && currentRank > 0 && selfServe && !comp && status !== "EXPIRED" && !sub?.cancelledAt && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-                disabled={busyPlan !== null}
-              >
+            {!loading && currentRank > 0 && !comp && status !== "EXPIRED" && !sub?.cancelledAt && (
+              <Button variant="outline" size="sm" onClick={handleCancel} disabled={busyPlan !== null}>
                 Cancel plan
               </Button>
             )}
           </div>
-        </CardHeader>
-        {!loading && sub && (
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <MiniFact
-                label="Status"
-                value={
-                  status === "GRACE"
-                    ? "Grace period: renew to keep it"
-                    : status === "EXPIRED"
-                      ? "Expired"
-                      : sub.isActive
-                        ? "Active"
-                        : "Inactive"
-                }
-              />
-              <MiniFact
-                label={
-                  status !== "ACTIVE"
-                    ? "Expired on"
-                    : sub.cancelledAt
-                      ? "Ends"
-                      : "Renews"
-                }
-                value={fmtDate(sub.expiresAt)}
-              />
-              <MiniFact label="Last payment" value={fmtDate(sub.lastPaymentAt)} />
-            </div>
-            {sub.pendingPlan && (
-              <p className="mt-4 text-sm text-muted-foreground">
-                Moves to {PLAN_LABEL[sub.pendingPlan]}
-                {sub.pendingBillingCycle
-                  ? ` (${sub.pendingBillingCycle.toLowerCase()})`
-                  : ""}{" "}
-                on {fmtDate(sub.expiresAt)}. Already paid.
-              </p>
-            )}
-          </CardContent>
-        )}
+
+          {!loading && sub && currentRank > 0 && (
+            <dl className="grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
+              <Fact label={status !== "ACTIVE" ? "Expired on" : sub.cancelledAt ? "Ends" : "Renews"} value={fmtDate(sub.expiresAt)} />
+              <Fact label="Last payment" value={fmtDate(sub.lastPaymentAt)} />
+              <Fact label="Billed" value={sub.billingCycle === "ANNUAL" ? "Yearly" : "Monthly"} />
+              {sub.pendingPlan && (
+                <p className="col-span-full text-sm text-muted-foreground">
+                  Moves to {PLAN_LABEL[sub.pendingPlan]}
+                  {sub.pendingBillingCycle ? ` (${sub.pendingBillingCycle.toLowerCase()})` : ""} on{" "}
+                  {fmtDate(sub.expiresAt)}. Already paid.
+                </p>
+              )}
+            </dl>
+          )}
+
+          {/* Usage against the plan's limits */}
+          <div className="grid grid-cols-1 gap-4 border-t border-border pt-5 sm:grid-cols-2 lg:grid-cols-4">
+            <Meter
+              label="Events this month"
+              used={usage?.eventsThisMonth}
+              limit={usage?.limits.eventsPerMonth}
+              loading={loading}
+            />
+            <Meter label="Attendees per event" limit={usage?.limits.attendeesPerEvent} loading={loading} />
+            <Meter label="Ticket types per event" limit={usage?.limits.ticketTypes} loading={loading} />
+            <Meter label="Co-curators per event" limit={usage?.limits.coCurators} loading={loading} />
+          </div>
+          {!loading && status === "EXPIRED" && (
+            <p className="text-sm text-muted-foreground">
+              Your {PLAN_LABEL[currentPlan]} plan expired, so General&apos;s limits apply. Your data is kept; renew to
+              get them back.
+            </p>
+          )}
+        </CardContent>
       </Card>
 
-      {/* Usage ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          title="Events this month"
-          value={
-            usage
-              ? `${usage.eventsThisMonth} / ${limitLabel(
-                  usage.limits.eventsPerMonth
-                )}`
-              : "—"
-          }
-          icon={CalendarBlank}
-          loading={loading}
-          tone="brand"
-        />
-        <StatCard
-          title="Spaces"
-          value={
-            usage
-              ? `${usage.spacesCount} / ${limitLabel(usage.limits.spaces)}`
-              : "—"
-          }
-          icon={Buildings}
-          loading={loading}
-        />
-        <StatCard
-          title="Attendees / event"
-          value={usage ? limitLabel(usage.limits.attendeesPerEvent) : "—"}
-          icon={CreditCard}
-          loading={loading}
-          hint="Plan limit"
-        />
-      </div>
-      {!loading && sub && (
-        <p className="-mt-2 text-sm text-muted-foreground">{limitsFrom}</p>
-      )}
-
-      {/* Plan catalogue --------------------------------------------------- */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Plans</h2>
-        {/* Monthly / annual toggle */}
-        <div className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-sm">
-          {(["MONTHLY", "ANNUAL"] as BillingCycle[]).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCycle(c)}
-              className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors",
-                cycle === c
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {c === "MONTHLY" ? "Monthly" : "Annual"}
-              {c === "ANNUAL" && annualSaving(plans) && (
-                <span className="ml-1.5 text-xs text-success">
-                  {annualSaving(plans)}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-96 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {orderedPlans.map((plan) => {
-            const isCurrent = plan.plan === currentPlan;
-            const rank = planRank(plan.plan);
-            const price = priceFor(plan, cycle);
-            const isEnterprise = plan.plan === "ENTERPRISE";
-            // Same plan: annual is "up" from monthly, monthly "down" from annual.
-            const cycleRank = (c: BillingCycle) => (c === "ANNUAL" ? 1 : 0);
-            const diff =
-              rank - currentRank ||
-              (sub ? cycleRank(cycle) - cycleRank(sub.billingCycle) : 0);
-            const direction = diff > 0 ? "up" : diff < 0 ? "down" : "same";
-            const paidTimeLeft =
-              currentRank > 0 &&
-              !!sub?.expiresAt &&
-              new Date(sub.expiresAt) > new Date();
-
-            return (
-              <Card
-                key={plan.plan}
+      {/* Plans ------------------------------------------------------------- */}
+      <section className="space-y-4" aria-labelledby="plans-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="plans-heading" className="text-lg font-semibold text-foreground">
+            Plans
+          </h2>
+          <div className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-sm" role="group" aria-label="Billing cycle">
+            {(["MONTHLY", "ANNUAL"] as BillingCycle[]).map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={cycle === c}
+                onClick={() => setCycle(c)}
                 className={cn(
-                  "flex flex-col",
-                  isCurrent && "border-primary ring-1 ring-primary"
+                  "rounded-md px-3 py-1.5 font-medium transition-colors",
+                  cycle === c ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    {PLAN_LABEL[plan.plan]}
-                    {isCurrent && (
-                      <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-                        Current
-                      </span>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    {isEnterprise ? (
-                      <span className="text-lg font-semibold text-foreground">
-                        Custom
-                      </span>
-                    ) : price === null || price === 0 ? (
-                      <span className="text-lg font-semibold text-foreground">
-                        Free
-                      </span>
-                    ) : (
-                      <span>
-                        <span className="text-2xl font-semibold text-foreground">
-                          {inr(price)}
-                        </span>
-                        <span className="text-muted-foreground">
-                          /{cycle === "MONTHLY" ? "mo" : "yr"}
-                        </span>
-                      </span>
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-4">
-                  <ul className="flex-1 space-y-2 text-sm">
-                    <li className="flex items-center gap-2 font-medium text-foreground">
-                      <Check className="h-4 w-4 text-success" weight="bold" />
-                      {platformFeeLabel(plan)}
-                    </li>
-                    <li className="flex items-center gap-2 text-muted-foreground">
-                      <Check className="h-4 w-4 text-success" weight="bold" />
-                      {limitLabel(plan.eventsPerMonth)} events / month
-                    </li>
-                    <li className="flex items-center gap-2 text-muted-foreground">
-                      <Check className="h-4 w-4 text-success" weight="bold" />
-                      {limitLabel(plan.attendeesPerEvent)} attendees / event
-                    </li>
-                    {PLAN_FEATURES.filter((f) => plan[f.key]).map((f) => (
-                      <li
-                        key={f.key}
-                        className="flex items-center gap-2 text-muted-foreground"
-                      >
-                        <Check className="h-4 w-4 text-success" weight="bold" />
-                        {f.label}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {isCurrent && (direction === "same" || !canBuy || !price) ? (
-                    direction === "same" && canBuy && price ? (
-                      <Button
-                        className="w-full"
-                        disabled={busyPlan !== null}
-                        onClick={() => handleChangePlan(plan.plan, cycle)}
-                      >
-                        {busyPlan === plan.plan ? "Working…" : "Renew"}
-                      </Button>
-                    ) : (
-                      <Button variant="outline" disabled className="w-full">
-                        Current plan
-                      </Button>
-                    )
-                  ) : isEnterprise ? (
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href="mailto:sales@unifesto.app?subject=Enterprise%20plan">
-                        Contact sales
-                      </a>
-                    </Button>
-                  ) : !selfServe ? (
-                    <p className="text-center text-xs text-muted-foreground">
-                      Your plan is arranged by Unifesto. Contact support to
-                      change it.
-                    </p>
-                  ) : !canBuy ? (
-                    <p className="text-center text-xs text-muted-foreground">
-                      {sub?.pendingPlan
-                        ? "A plan change is already scheduled."
-                        : "Your plan is set up by Unifesto. Contact support to change it."}
-                    </p>
-                  ) : direction === "down" && !price ? (
-                    <p className="text-center text-xs text-muted-foreground">
-                      To move down, cancel your plan. It ends at the close of
-                      this period.
-                    </p>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant={direction === "down" ? "outline" : "default"}
-                      disabled={busyPlan !== null || !price}
-                      onClick={() => handleChangePlan(plan.plan, cycle)}
-                    >
-                      {busyPlan === plan.plan
-                        ? "Working…"
-                        : direction === "down" && paidTimeLeft
-                          ? "Switch at period end"
-                          : "Upgrade"}
-                    </Button>
-                  )}
-                  {direction === "up" && paidTimeLeft && canBuy && !!price && (
-                    <p className="text-center text-xs text-muted-foreground">
-                      Starts now. Unused days on your current plan come off the
-                      price.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                {c === "MONTHLY" ? "Monthly" : "Yearly"}
+                {c === "ANNUAL" && saving && <span className="ml-1.5 text-xs text-success">{saving}</span>}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-80 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+            {plans.map((plan, i) => {
+              const isCurrent = plan.plan === currentPlan;
+              const rank = planRank(plan.plan);
+              const price = priceFor(plan, cycle);
+              const isEnterprise = plan.plan === "ENTERPRISE";
+              // Same plan: yearly is "up" from monthly, monthly "down" from yearly.
+              const cycleRank = (c: BillingCycle) => (c === "ANNUAL" ? 1 : 0);
+              const diff = rank - currentRank || (sub ? cycleRank(cycle) - cycleRank(sub.billingCycle) : 0);
+              const direction = diff > 0 ? "up" : diff < 0 ? "down" : "same";
+              const prev = plans[i - 1];
+              const adds = prev ? newFeatures(cat?.catalog ?? [], plan, prev) : [];
+
+              return (
+                <Card
+                  key={plan.plan}
+                  className={cn("flex flex-col", isCurrent && "border-primary ring-1 ring-primary")}
+                >
+                  <CardContent className="flex flex-1 flex-col gap-4 p-5">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold text-foreground">{PLAN_LABEL[plan.plan]}</h3>
+                        {isCurrent && (
+                          <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      {plan.tagline && <p className="mt-0.5 text-xs text-muted-foreground">{plan.tagline}</p>}
+                    </div>
+
+                    <div>
+                      {isEnterprise ? (
+                        <span className="text-2xl font-semibold text-foreground">Custom</span>
+                      ) : !price ? (
+                        <span className="text-2xl font-semibold text-foreground">Free</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl font-semibold tabular-nums text-foreground">{inr(price)}</span>
+                          <span className="text-sm text-muted-foreground">/{cycle === "MONTHLY" ? "mo" : "yr"}</span>
+                        </>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">{feeLabel(plan)}</p>
+                    </div>
+
+                    <ul className="flex-1 space-y-1.5 text-sm">
+                      <Line>{limitLabel(plan.eventsPerMonth)} events a month</Line>
+                      <Line>{limitLabel(plan.attendeesPerEvent)} attendees per event</Line>
+                      {prev && adds.length > 0 && (
+                        <li className="pt-1 text-xs text-muted-foreground">Everything in {PLAN_LABEL[prev.plan]}, plus</li>
+                      )}
+                      {adds.map((label) => (
+                        <Line key={label}>{label}</Line>
+                      ))}
+                      {!prev && <Line>Tickets, check-in, email and polls</Line>}
+                    </ul>
+
+                    <PlanAction
+                      isCurrent={isCurrent}
+                      isEnterprise={isEnterprise}
+                      direction={direction}
+                      canBuy={canBuy}
+                      price={price}
+                      pending={!!sub?.pendingPlan}
+                      busy={busyPlan === plan.plan}
+                      disabled={busyPlan !== null}
+                      paidTimeLeft={paidTimeLeft}
+                      onBuy={() => handleChangePlan(plan.plan, cycle)}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Full comparison -------------------------------------------------- */}
+      {cat && cat.catalog.length > 0 && (
+        <section className="space-y-4" aria-labelledby="compare-heading">
+          <h2 id="compare-heading" className="text-lg font-semibold text-foreground">
+            Compare every feature
+          </h2>
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-10 w-72 border-b border-border bg-card px-4 py-3 text-left font-normal text-muted-foreground">
+                      <span className="sr-only">Feature</span>
+                    </th>
+                    {plans.map((p) => (
+                      <th
+                        key={p.plan}
+                        scope="col"
+                        className={cn(
+                          "border-b border-border px-3 py-3 text-left font-semibold text-foreground",
+                          p.plan === currentPlan && "bg-primary-soft"
+                        )}
+                      >
+                        {PLAN_LABEL[p.plan]}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <CompareRow label="Price" plans={plans} current={currentPlan}>
+                    {(p) => {
+                      const price = priceFor(p, cycle);
+                      return p.plan === "ENTERPRISE" ? "Custom" : price ? `${inr(price)}/${cycle === "MONTHLY" ? "mo" : "yr"}` : "Free";
+                    }}
+                  </CompareRow>
+                  <CompareRow label="Platform fee per paid ticket" plans={plans} current={currentPlan}>
+                    {(p) => feeText(p)}
+                  </CompareRow>
+                  {cat.catalog.map((g) => (
+                    <Fragment key={g.group}>
+                      <tr>
+                        <th
+                          colSpan={plans.length + 1}
+                          className="border-b border-border bg-muted/50 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          {g.group}
+                        </th>
+                      </tr>
+                      {g.rows.map((r) => (
+                        <CompareRow key={r.label} label={r.label} plans={plans} current={currentPlan}>
+                          {(p) => cell(r, p)}
+                        </CompareRow>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </section>
       )}
+
       <p className="text-sm text-muted-foreground">
-        Buyers pay a 5% processing fee on paid tickets, capped at ₹99 per ticket, on every plan. You can include it
-        in your price from each event&apos;s Tickets page. Razorpay&apos;s charges come out of that fee. Free RSVP
-        events carry no fees.
+        Buyers pay a {cat?.buyerProcessingFeePercent ?? 5}% processing fee on paid tickets
+        {cat?.buyerProcessingFeeCapPerTicket ? `, capped at ₹${cat.buyerProcessingFeeCapPerTicket} per ticket,` : ""} on
+        every plan. You can include it in your price from each event&apos;s Tickets page. Razorpay&apos;s charges come
+        out of that fee. Free RSVP events carry no fees.
       </p>
     </div>
+  );
+}
+
+/** Feature lines a plan turns on that the plan below it doesn't. */
+function newFeatures(catalog: PlanCatalog["catalog"], plan: PlanInfo, prev: PlanInfo): string[] {
+  return catalog.flatMap((g) => g.rows).filter((r) => r.flag && plan[r.flag] && !prev[r.flag]).map((r) => r.label);
+}
+
+/** One comparison cell: a tick, a dash, or the plan's limit. */
+function cell(r: CatalogRow, p: PlanInfo) {
+  if (r.limit) return limitLabel(p[r.limit]);
+  const on = r.flag ? p[r.flag] : true;
+  return on ? (
+    <Check className="h-4 w-4 text-success" weight="bold" aria-label="Included" />
+  ) : (
+    <Minus className="h-4 w-4 text-muted-foreground/60" aria-label="Not included" />
+  );
+}
+
+function CompareRow({
+  label,
+  plans,
+  current,
+  children,
+}: {
+  label: string;
+  plans: PlanInfo[];
+  current: OrgPlan;
+  children: (p: PlanInfo) => React.ReactNode;
+}) {
+  return (
+    <tr>
+      <th scope="row" className="sticky left-0 z-10 border-b border-border bg-card px-4 py-2.5 text-left font-normal text-foreground">
+        {label}
+      </th>
+      {plans.map((p) => (
+        <td
+          key={p.plan}
+          className={cn("border-b border-border px-3 py-2.5 tabular-nums text-foreground", p.plan === current && "bg-primary-soft/60")}
+        >
+          {children(p)}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function PlanAction({
+  isCurrent,
+  isEnterprise,
+  direction,
+  canBuy,
+  price,
+  pending,
+  busy,
+  disabled,
+  paidTimeLeft,
+  onBuy,
+}: {
+  isCurrent: boolean;
+  isEnterprise: boolean;
+  direction: "up" | "down" | "same";
+  canBuy: boolean;
+  price: number | null;
+  pending: boolean;
+  busy: boolean;
+  disabled: boolean;
+  paidTimeLeft: boolean;
+  onBuy: () => void;
+}) {
+  if (isCurrent && (direction === "same" || !canBuy || !price)) {
+    return direction === "same" && canBuy && price ? (
+      <Button className="w-full" disabled={disabled} onClick={onBuy}>
+        {busy ? "Working…" : "Renew"}
+      </Button>
+    ) : (
+      <Button variant="outline" disabled className="w-full">
+        Current plan
+      </Button>
+    );
+  }
+  if (isEnterprise) {
+    return (
+      <Button variant="outline" className="w-full" asChild>
+        <a href="mailto:sales@unifesto.app?subject=Enterprise%20plan">Talk to us</a>
+      </Button>
+    );
+  }
+  if (!canBuy) {
+    return (
+      <p className="text-center text-xs text-muted-foreground">
+        {pending ? "A plan change is already scheduled." : "Your plan is set up by Unifesto. Contact support to change it."}
+      </p>
+    );
+  }
+  if (direction === "down" && !price) {
+    return (
+      <p className="text-center text-xs text-muted-foreground">
+        To move down, cancel your plan. It ends at the close of this period.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <Button className="w-full" variant={direction === "down" ? "outline" : "default"} disabled={disabled || !price} onClick={onBuy}>
+        {busy ? "Working…" : direction === "down" && paidTimeLeft ? "Switch at period end" : "Upgrade"}
+      </Button>
+      {direction === "up" && paidTimeLeft && !!price && (
+        <p className="text-center text-xs text-muted-foreground">Starts now. Unused days come off the price.</p>
+      )}
+    </div>
+  );
+}
+
+function StatusPill({ sub, comp }: { sub: Subscription | null; comp: boolean }) {
+  if (!sub) return null;
+  const [label, cls] =
+    sub.status === "GRACE"
+      ? ["Grace period", "bg-warning-soft text-warning"]
+      : sub.status === "EXPIRED"
+        ? ["Expired", "bg-destructive/10 text-destructive"]
+        : sub.cancelledAt
+          ? ["Cancelled", "bg-warning-soft text-warning"]
+          : comp
+            ? ["Comp", "bg-muted text-muted-foreground"]
+            : ["Active", "bg-success-soft text-success"];
+  return <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
+}
+
+function Meter({
+  label,
+  used,
+  limit,
+  loading,
+}: {
+  label: string;
+  used?: number;
+  limit: number | null | undefined;
+  loading: boolean;
+}) {
+  const pct = used !== undefined && limit ? Math.min(100, Math.round((used / limit) * 100)) : null;
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {loading ? (
+        <Skeleton className="mt-1 h-6 w-20" />
+      ) : (
+        <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
+          {used !== undefined ? `${used} / ${limitLabel(limit)}` : limitLabel(limit)}
+        </p>
+      )}
+      {pct !== null && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          <div className={cn("h-full rounded-full", pct >= 100 ? "bg-warning" : "bg-primary")} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function Line({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2 text-muted-foreground">
+      <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" weight="bold" />
+      <span>{children}</span>
+    </li>
   );
 }
 
@@ -571,15 +654,4 @@ function loadRazorpay(): Promise<boolean> {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
-}
-
-function MiniFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5 text-sm font-medium text-foreground">{value}</p>
-    </div>
-  );
 }

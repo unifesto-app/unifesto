@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
-import { Check, ArrowRight } from "@unifesto/unicon/react";
+import { Check, Minus, ArrowRight } from "@unifesto/unicon/react";
 import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import FaqList from "@/components/site/FaqList";
+import PassPaysYou from "@/components/site/PassPaysYou";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { EXAMPLE_PASS, LAUNCH_OFFER_ENDS, SITE, type Plan, buyerFeeOn, buyerFeeText, inr, passExample, planFeesText, pricingFaq, rupees } from "@/lib/site";
+import { LAUNCH_OFFER_ENDS, SITE, type Catalog, type CatalogRow, type Plan, buyerFeeText, inr, passExample, planFee, planFeesText, pricingFaq } from "@/lib/site";
 import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
@@ -40,8 +42,7 @@ const productLd = (plans: Plan[]) => ({
 });
 
 export default async function PricingPage() {
-  const { plans, buyerFee, buyerFeeCap, feeFrom } = await getRateCard();
-  const studentPays = rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap));
+  const { plans, buyerFee, buyerFeeCap, feeFrom, catalog } = await getRateCard();
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd data={[productLd(plans), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
@@ -55,45 +56,48 @@ export default async function PricingPage() {
       />
 
       <Section pad="tight" id="plans">
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3" data-stagger="rise">
+        {/* Each card spans 7 rows of one shared grid (subgrid), so name, price,
+            fee and button line up across cards however their text wraps. */}
+        <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
           {plans.map((plan) => {
-            const featured = plan.id === "pro";
+            const featured = plan.id === "growth";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
             return (
-              <article key={plan.id} className={`relative flex flex-col rounded-xl p-7 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
-                <div className="flex items-center justify-between">
-                  <h2 className="font-display text-lg text-paper">{plan.name}</h2>
-                  {off > 0 && <span className="rounded-full bg-ink px-3 py-1 text-[11px] text-[var(--paper-bg)]">{off}% off at launch</span>}
-                </div>
-                <p className="mt-2 text-sm text-paper/70">{plan.forWho}</p>
+              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
+                <h2 className="font-display text-lg text-paper">{plan.name}</h2>
+                <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
 
-                <div className="mt-6 flex items-end gap-2">
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-2">
                   {plan.price === null ? (
-                    <span className="font-display text-4xl text-paper">Custom</span>
+                    <span className="font-display text-3xl text-paper">Custom</span>
                   ) : (
                     <>
-                      <span className="tabular font-display text-4xl text-paper">{inr(plan.price)}</span>
-                      <span className="mb-1 text-sm text-paper/60">/ month</span>
-                      {off > 0 && <s className="tabular mb-1 text-sm text-paper/45">{inr(plan.standardPrice!)}</s>}
+                      <span className="tabular font-display text-3xl text-paper">{inr(plan.price)}</span>
+                      <span className="text-sm text-paper/60">/ month</span>
                     </>
                   )}
                 </div>
                 <p className="mt-1.5 text-xs text-paper/55">
-                  {plan.annualMonthly ? `${inr(plan.annualMonthly)} / month billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
+                  {off > 0 && (
+                    <>
+                      <s className="tabular">{inr(plan.standardPrice!)}</s> {off}% off at launch ·{" "}
+                    </>
+                  )}
+                  {plan.annualMonthly ? `${inr(plan.annualMonthly)}/mo billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
                 </p>
 
-                <p className="mt-5 flex items-baseline gap-2 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
-                  <span className="tabular font-display">{plan.fee}%</span>
+                <p className="mt-5 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
+                  <span className="tabular font-display">{planFee(plan)}</span>{" "}
                   <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
-                  <span className="text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
+                  <span className="block text-xs text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
                 </p>
 
-                <Link href={plan.cta.href} className={`btn mt-6 w-full ${featured ? "btn-ink" : "btn-secondary"}`}>
+                <Link href={plan.cta.href} className={`btn mt-6 w-full self-start ${featured ? "btn-ink" : "btn-secondary"}`}>
                   {plan.cta.label}
                   <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
                 </Link>
 
-                <ul className="mt-7 flex flex-1 flex-col gap-2.5">
+                <ul className="mt-7 flex flex-col gap-2.5">
                   {plan.includes.map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-paper/85">
                       <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-paper/60" weight="bold" aria-hidden="true" />
@@ -111,33 +115,15 @@ export default async function PricingPage() {
         </p>
       </Section>
 
+      {catalog.length > 0 && <CompareSection plans={plans} catalog={catalog} />}
+
       <Section surface="paper" aria-labelledby="compare-heading">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
-          <div>
-            <h2 id="compare-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-ink [text-wrap:balance]">
-              What a {inr(EXAMPLE_PASS)} pass pays you.
-            </h2>
-            <p data-reveal="blur" className="mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-ink/70">
-              Students pay {studentPays}, or {inr(EXAMPLE_PASS)} if you include the fee in your price. Razorpay&apos;s charges come out of the buyer fee, so this is what reaches you{feeFrom ? ` from ${feeFrom}` : ""}. Free events cost nothing.
-            </p>
-          </div>
-          <table className="w-full text-sm">
-            <caption className="sr-only">What you keep from a {inr(EXAMPLE_PASS)} pass, by plan</caption>
-            <tbody>
-              {plans.map((p) => (
-                <tr key={p.id}>
-                  <th scope="row" className="w-44 py-2.5 pr-4 text-left font-normal text-ink">{p.name}, {p.fee}% fee</th>
-                  <td className="py-2.5">
-                    <div className="h-2 rounded-full bg-white/[0.05]">
-                      <div data-reveal="fill" className="h-full origin-left rounded-full bg-primary" style={{ transform: `scaleX(${1 - p.fee / 100})` }} />
-                    </div>
-                  </td>
-                  <td className="tabular w-20 py-2.5 pl-4 text-right text-ink">{rupees(EXAMPLE_PASS * (1 - p.fee / 100))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PassPaysYou
+          plans={plans.map((p) => ({ id: p.id, name: p.name, fee: p.fee, feeText: planFee(p) }))}
+          buyerFee={buyerFee}
+          buyerFeeCap={buyerFeeCap}
+          feeFrom={feeFrom}
+        />
       </Section>
 
       <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap, feeFrom)} />
@@ -147,7 +133,7 @@ export default async function PricingPage() {
           Not sure which plan fits?
         </h2>
         <p data-reveal="blur" className="mx-auto mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-paper/65">
-          Start on Starter. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
+          Start on General. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
         </p>
         <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/request-space" className="btn btn-lg btn-primary">
@@ -159,5 +145,69 @@ export default async function PricingPage() {
       </Section>
       <Footer />
     </main>
+  );
+}
+
+const limitText = (n: number | null | undefined) => (n === null || n === undefined ? "Unlimited" : n.toLocaleString("en-IN"));
+
+/** One comparison cell: the plan's limit, or a tick or dash for a feature. */
+function cell(r: CatalogRow, p: Plan) {
+  if (r.limit) return limitText(p.row?.[r.limit]);
+  const on = r.flag ? !!p.row?.[r.flag] : true;
+  return on ? (
+    <Check className="h-4 w-4 text-paper" weight="bold" aria-label="Included" />
+  ) : (
+    <Minus className="h-4 w-4 text-paper/30" aria-label="Not included" />
+  );
+}
+
+/** Every feature, every plan, from the backend catalog (the same list Space billing shows). */
+function CompareSection({ plans, catalog }: { plans: Plan[]; catalog: Catalog }) {
+  return (
+    <Section aria-labelledby="every-feature-heading">
+      <h2 id="every-feature-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper">
+        Every feature, every plan.
+      </h2>
+      <div className="mt-8 overflow-x-auto rounded-xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
+        <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
+          <caption className="sr-only">What each Unifesto plan includes</caption>
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 w-72 bg-night-2 px-4 py-3 text-left font-normal">
+                <span className="sr-only">Feature</span>
+              </th>
+              {plans.map((p) => (
+                <th key={p.id} scope="col" className="bg-night-2 px-3 py-3 text-left font-display text-paper">
+                  {p.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {catalog.map((g) => (
+              <Fragment key={g.group}>
+                <tr>
+                  <th colSpan={plans.length + 1} className="border-t border-paper/10 bg-paper/[0.04] px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-paper/60">
+                    {g.group}
+                  </th>
+                </tr>
+                {g.rows.map((r) => (
+                  <tr key={r.label}>
+                    <th scope="row" className="sticky left-0 z-10 border-t border-paper/10 bg-canvas px-4 py-2.5 text-left font-normal text-paper/85">
+                      {r.label}
+                    </th>
+                    {plans.map((p) => (
+                      <td key={p.id} className="tabular border-t border-paper/10 px-3 py-2.5 text-paper/85">
+                        {cell(r, p)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
   );
 }

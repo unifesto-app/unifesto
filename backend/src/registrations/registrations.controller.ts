@@ -307,7 +307,7 @@ export class RegistrationsController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary:
-      'Export attendees, transactions, waiting list, check-ins or coupon redemptions as CSV, Excel or PDF (Growth plan+)',
+      'Export attendees, transactions, waiting list, check-ins or coupon redemptions as CSV, Excel or PDF (Club plan and up)',
   })
   @ApiResponse({ status: 200 })
   async exportRegistrations(

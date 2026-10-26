@@ -75,7 +75,7 @@ export function quote(
 /** Rupees (2dp) to integer paise. */
 export const toPaise = (rupees: number) => Math.round(rupees * 100);
 
-/** The rate-card buyer fee (D11): PlatformConfig's 5%, capped ₹99 per ticket. */
+/** The rate-card buyer fee (D11): PlatformConfig's 4%, capped ₹99 per ticket. */
 export function rateCardFees(cfg: {
   getProcessingFeePercent(): number;
   getProcessingFeeCapPerTicket(): number;

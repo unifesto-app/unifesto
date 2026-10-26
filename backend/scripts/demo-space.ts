@@ -133,7 +133,7 @@ async function create(ownerEmail: string) {
       plan: OrgPlan.PRO,
       planActivatedAt: at(-59),
       createdBy: owner.userId,
-      subscription: { create: { plan: OrgPlan.PRO, billingModel: 'FREE', isActive: true } },
+      subscription: { create: { plan: OrgPlan.PRO, isActive: true } },
     },
   });
 

@@ -1,7 +1,7 @@
 import { call, type Result } from './manageEvent';
 
 /*
- * Apex tools that were web-only: plans & billing models, per-space
+ * Apex tools that were web-only: plans, per-space
  * subscriptions, Huddle sessions, API logs, blog and careers. Same endpoints
  * as websites/apex/lib/api/*; shapes trimmed to what the mobile screens show.
  */
@@ -14,12 +14,11 @@ const qs = (params: Record<string, string | number | boolean | undefined | null>
   return s ? `?${s}` : '';
 };
 
-// ── Plans & billing models ───────────────────────────────────────────────────
+// ── Plans ────────────────────────────────────────────────────────────────────
 
-export type OrgPlan = 'STARTER' | 'GROWTH' | 'PRO' | 'ENTERPRISE';
-export type BillingModel = 'FREE' | 'REVENUE_SHARE' | 'SUBSCRIPTION';
+export type OrgPlan = 'STARTER' | 'CLUB' | 'GROWTH' | 'PRO' | 'ENTERPRISE';
 
-export const PLAN_LABEL: Record<OrgPlan, string> = { STARTER: 'Starter', GROWTH: 'Growth', PRO: 'Pro', ENTERPRISE: 'Enterprise' };
+export const PLAN_LABEL: Record<OrgPlan, string> = { STARTER: 'General', CLUB: 'Club', GROWTH: 'Growth', PRO: 'Pro', ENTERPRISE: 'Enterprise' };
 
 // ── Sessions (Unifesto Huddle) ───────────────────────────────────────────────
 

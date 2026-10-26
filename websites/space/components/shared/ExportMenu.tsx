@@ -85,7 +85,7 @@ export function ExportMenu({
             <div className="p-3">
               <p className="flex items-center gap-1.5 text-sm font-medium">
                 <LockSimple className="h-4 w-4 text-muted-foreground" />
-                Bulk export is a Growth feature
+                Bulk export comes with Club and up
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Upgrade this space to download attendees and transactions as

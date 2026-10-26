@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr, BUYER_FEE_PERCENT, BUYER_FEE_CAP, includedFeeKeeps } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -298,7 +298,7 @@ function formatInr(n: number) {
 }
 
 /**
- * Who pays the 5% buyer fee on this event's paid tickets (A33). Off: it is
+ * Who pays the buyer fee on this event's paid tickets (A33). Off: it is
  * added on top at checkout. On: buyers pay the listed price and the fee comes
  * out of the organiser's share. Changing it affects new sales only. Needs the
  * event's or space's money rights; the server refuses anyone else.
@@ -310,8 +310,8 @@ function FeeCard({ event, onSaved }: { event: Event; onSaved: (absorb: boolean) 
   const toggle = async () => {
     const next = !absorb;
     const msg = next
-      ? "Include the fee in your ticket prices? Buyers will pay exactly the listed price and the 5% fee comes out of your share. New sales only."
-      : "Add the fee on top again? Buyers will pay the listed price plus 5% at checkout. New sales only.";
+      ? `Include the fee in your ticket prices? Buyers will pay exactly the listed price and the ${BUYER_FEE_PERCENT}% fee comes out of your share. New sales only.`
+      : `Add the fee on top again? Buyers will pay the listed price plus ${BUYER_FEE_PERCENT}% at checkout. New sales only.`;
     if (!window.confirm(msg)) return;
     setSaving(true);
     setError("");
@@ -329,8 +329,8 @@ function FeeCard({ event, onSaved }: { event: Event; onSaved: (absorb: boolean) 
             <span className="font-medium text-foreground">Include the processing fee in my ticket prices</span>
             <span className="block text-muted-foreground">
               {absorb
-                ? "On a ₹500 ticket the buyer pays ₹500 and you get ₹476.19. The 5% fee (max ₹99 a ticket) comes out of your share."
-                : "On a ₹500 ticket the buyer pays ₹525 (5% fee on top, max ₹99 a ticket) and you get ₹500."}{" "}
+                ? `On a ₹500 ticket the buyer pays ₹500 and you get ${formatInr(includedFeeKeeps(500))}. The ${BUYER_FEE_PERCENT}% fee (max ₹${BUYER_FEE_CAP} a ticket) comes out of your share.`
+                : `On a ₹500 ticket the buyer pays ${formatInr(500 * (1 + BUYER_FEE_PERCENT / 100))} (${BUYER_FEE_PERCENT}% fee on top, max ₹${BUYER_FEE_CAP} a ticket) and you get ₹500.`}{" "}
               Changes apply to new sales only.
             </span>
           </span>

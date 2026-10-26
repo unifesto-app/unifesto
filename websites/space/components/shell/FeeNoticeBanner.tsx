@@ -3,20 +3,22 @@
 import { useEffect, useState } from "react";
 import { X } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
+import { PLAN_LABEL, type OrgPlan } from "@/lib/api/subscriptions-api";
+import { BUYER_FEE_PERCENT } from "@/lib/utils/money";
 
 /**
  * A10: tell organisers the plan platform fee starts on GO_LIVE. Shown to the
- * people who run a space's money (Space Admins, Curators) on SUBSCRIPTION
- * spaces only: FREE (comped) and revenue-share spaces don't change. Runs until
- * two weeks after go-live; dismissing it hides it on this browser.
+ * people who run a space's money (Space Admins, Curators) on every plan. Runs
+ * until two weeks after go-live; dismissing it hides it on this browser.
  */
 export const GO_LIVE = new Date("2026-11-02T00:00:00+05:30");
 const SHOW_UNTIL = new Date("2026-11-16T00:00:00+05:30");
 const GO_LIVE_LABEL = "Monday 2 November 2026";
 const DISMISS_KEY = "fee-notice-2026-11-02";
 
-/** The announced launch rate per plan (D10). GROWTH is retired: Starter's. */
-export const RATE: Record<string, number> = { STARTER: 2.5, GROWTH: 2.5, PRO: 1.5, ENTERPRISE: 1 };
+/** The announced launch rate per plan (D10); the DB holds 0 until go-live. */
+/** Enterprise is 0–0.5% by deal; 0.5 is its rate card. */
+export const RATE: Record<OrgPlan, number> = { STARTER: 2.5, CLUB: 2, GROWTH: 1.5, PRO: 1, ENTERPRISE: 0.5 };
 
 export function FeeNoticeBanner() {
   const { billing, can } = useSession();
@@ -31,12 +33,11 @@ export function FeeNoticeBanner() {
   }, []);
 
   const now = new Date();
-  const rate = billing ? RATE[billing.plan] : undefined;
+  const rate = billing ? RATE[billing.plan as OrgPlan] : undefined;
   if (
     dismissed ||
     now >= SHOW_UNTIL ||
     !billing ||
-    billing.billingModel !== "SUBSCRIPTION" ||
     rate == null ||
     !(can("space:manage-money") || can("event:manage-money"))
   ) {
@@ -60,11 +61,11 @@ export function FeeNoticeBanner() {
         <p className="flex-1 text-foreground">
           <span className="font-medium">
             {live ? `Since ${GO_LIVE_LABEL}` : `From ${GO_LIVE_LABEL}`}, paid tickets on your{" "}
-            {billing.plan === "GROWTH" ? "Starter" : billing.plan.charAt(0) + billing.plan.slice(1).toLowerCase()} plan
+            {PLAN_LABEL[billing.plan as OrgPlan]} plan
             carry a {rate}% platform fee.
           </span>{" "}
           On a ₹500 ticket you get ₹{keep}. Sales before then are not affected, and free events stay free. You can
-          include the buyer&apos;s 5% processing fee in your price from each event&apos;s Tickets page.{" "}
+          include the buyer&apos;s {BUYER_FEE_PERCENT}% processing fee in your price from each event&apos;s Tickets page.{" "}
           <a href="https://unifesto.app/pricing" target="_blank" rel="noreferrer" className="underline">
             See pricing
           </a>

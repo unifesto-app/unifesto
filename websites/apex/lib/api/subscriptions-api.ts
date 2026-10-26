@@ -1,24 +1,18 @@
 /**
  * Subscriptions / billing API.
  *
- * Every organiser has one billing arrangement (`OrgSubscription`) with a
- * `billingModel`:
- *   - FREE           → onboarded free, no platform fee
- *   - REVENUE_SHARE  → platform takes `revenueSharePercent`% of event sales
- *   - SUBSCRIPTION   → a recurring plan (STARTER…ENTERPRISE)
- *
- * Admins set the arrangement; organisers view theirs. Backed by the NestJS
- * `/subscription` controller. Note: Decimal fields (`amount`,
- * `revenueSharePercent`) arrive as strings — coerce with Number() before maths.
+ * Every space is on one plan (`OrgSubscription`): General (STARTER), Club,
+ * Growth, Pro or Enterprise. Custom terms for a space live in deals. Backed by
+ * the NestJS `/subscription` controller. Note: `amount` is a Decimal and
+ * arrives as a string — coerce with Number() before maths.
  */
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
 
-export type BillingModel = "FREE" | "REVENUE_SHARE" | "SUBSCRIPTION";
-export type OrgPlan = "STARTER" | "GROWTH" | "PRO" | "ENTERPRISE";
+export type OrgPlan = "STARTER" | "CLUB" | "GROWTH" | "PRO" | "ENTERPRISE";
 
-/** Plans a space can be put on. GROWTH is retired (D10): shown only for spaces still on it. */
-export const SELLABLE_PLANS: OrgPlan[] = ["STARTER", "PRO", "ENTERPRISE"];
+/** Every plan, in ladder order. */
+export const SELLABLE_PLANS: OrgPlan[] = ["STARTER", "CLUB", "GROWTH", "PRO", "ENTERPRISE"];
 export type BillingCycle = "MONTHLY" | "ANNUAL";
 
 export interface SubscriptionUser {
@@ -33,8 +27,6 @@ export interface SubscriptionUser {
 export interface BillingArrangement {
   /** False when there is no space-keyed arrangement set up yet. */
   configured?: boolean;
-  billingModel: BillingModel | null;
-  revenueSharePercent: string | number | null;
   plan: OrgPlan | null;
   billingCycle: BillingCycle;
   amount: string | number;
@@ -62,10 +54,12 @@ export interface SpaceSubscription extends BillingArrangement {
   inherited?: boolean;
   currency: string;
   isActive: boolean;
-  /** From the dates: GRACE = 7 days after expiry, EXPIRED = Starter limits. */
+  /** From the dates: GRACE = 7 days after expiry, EXPIRED = General (STARTER) limits. */
   status?: "ACTIVE" | "GRACE" | "EXPIRED" | null;
   pendingPlan?: OrgPlan | null;
   lastPaymentAt?: string | null;
+  /** Set when cancelled at period end; the plan runs until expiresAt. */
+  cancelledAt?: string | null;
   startedAt: string | null;
   expiresAt: string | null;
   nextPaymentAt: string | null;
@@ -97,6 +91,8 @@ export function planPriceLabel(p: PlanPrice | null | undefined, cycle: BillingCy
 
 export interface PlanInfo {
   plan: OrgPlan;
+  /** Who the plan is for, one line (rate card only). */
+  tagline?: string;
   spaces: number | null;
   eventsPerMonth: number | null;
   attendeesPerEvent: number | null;
@@ -125,9 +121,10 @@ export interface PlanInfo {
 
 export interface BillingStats {
   total: number;
-  free: number;
-  revenueShare: number;
-  subscription: number;
+  /** Spaces on each plan. */
+  byPlan: Record<OrgPlan, number>;
+  /** Spaces on a paid plan with a live payment behind it (comps excluded). */
+  paying: number;
   notConfigured: number;
   active: number;
   mrr: number;
@@ -142,8 +139,6 @@ export interface SpaceSubscriptionsResponse {
 }
 
 export interface AdminUpdateSubscriptionInput {
-  billingModel?: BillingModel;
-  revenueSharePercent?: number;
   plan?: OrgPlan;
   billingCycle?: BillingCycle;
   amount?: number;
@@ -153,7 +148,6 @@ export interface AdminUpdateSubscriptionInput {
 }
 
 export interface ListSubscriptionsParams {
-  billingModel?: BillingModel;
   plan?: OrgPlan;
   isActive?: boolean;
   search?: string;
@@ -231,6 +225,31 @@ export async function endDeal(dealId: string): Promise<Result<Deal>> {
   return apiCall<Deal>(backendClient.post(`/subscription/admin/deals/${dealId}/end`));
 }
 
+export type PlanLimitKey = "spaces" | "eventsPerMonth" | "attendeesPerEvent" | "ticketTypes" | "coCurators";
+export type PlanFeatureFlag = {
+  [K in keyof PlanInfo]-?: PlanInfo[K] extends boolean ? K : never;
+}[keyof PlanInfo];
+
+/** One comparison line: a feature switch, a per-plan limit, or neither (every plan). */
+export interface CatalogRow {
+  label: string;
+  flag?: PlanFeatureFlag;
+  limit?: PlanLimitKey;
+}
+
+export interface PlanCatalog {
+  plans: PlanInfo[];
+  /** Every feature, grouped, as the backend defines it (one list for every plan page). */
+  catalog: { group: string; rows: CatalogRow[] }[];
+  buyerProcessingFeePercent: number;
+  buyerProcessingFeeCapPerTicket: number | null;
+}
+
+/** `GET /config/plan-fees` — every plan plus the full feature catalog. */
+export async function getPlanCatalog(): Promise<Result<PlanCatalog>> {
+  return apiCall<PlanCatalog>(backendClient.get("/config/plan-fees"));
+}
+
 /** `GET /subscription/plans` — plan catalogue with limits + pricing. */
 export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
   return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));
@@ -285,53 +304,6 @@ export async function updatePlan(
 ): Promise<Result<PlanInfo>> {
   return apiCall<PlanInfo>(
     backendClient.patch(`/subscription/admin/plans/${plan}`, patch)
-  );
-}
-
-/** Definition of a non-subscription billing model (Free / Revenue-share). */
-export interface BillingModelConfig {
-  billingModel: Extract<BillingModel, "FREE" | "REVENUE_SHARE">;
-  defaultRevenueSharePercent: number | null;
-  spaces: number | null;
-  eventsPerMonth: number | null;
-  attendeesPerEvent: number | null;
-  ticketTypes: number | null;
-  coCurators: number | null;
-  hasWaitlist: boolean;
-  hasBulkExport: boolean;
-  hasAnalytics: boolean;
-  hasWhatsappBlast: boolean;
-  hasRecurringEvents: boolean;
-  hasRemoveBranding: boolean;
-  hasPrioritySupport: boolean;
-  /** Gates the whole Sessions feature for organisers on this plan. */
-  hasSessions: boolean;
-  /** Gates the competitive dashboard / leaderboard for organisers on this plan. */
-  hasLeaderboard: boolean;
-  /** Gates the certificate system for organisers on this plan. */
-  hasCertificates: boolean;
-  /** Gates the sponsors & lead-generation feature for organisers on this plan. */
-  hasSponsors: boolean;
-}
-
-export type UpdateModelInput = Partial<
-  Omit<BillingModelConfig, "billingModel">
->;
-
-/** `GET /subscription/models` — Free & Revenue-share definitions. */
-export async function getBillingModels(): Promise<
-  Result<BillingModelConfig[]>
-> {
-  return apiCall<BillingModelConfig[]>(backendClient.get("/subscription/models"));
-}
-
-/** `PATCH /subscription/admin/models/:model` — edit Free / Revenue-share. */
-export async function updateModel(
-  model: "FREE" | "REVENUE_SHARE",
-  patch: UpdateModelInput
-): Promise<Result<BillingModelConfig>> {
-  return apiCall<BillingModelConfig>(
-    backendClient.patch(`/subscription/admin/models/${model}`, patch)
   );
 }
 
@@ -399,14 +371,9 @@ export async function getSpacePlanPrices(
 
 /* ------------------------------- Display --------------------------------- */
 
-export const BILLING_MODEL_LABEL: Record<BillingModel, string> = {
-  FREE: "Free",
-  REVENUE_SHARE: "Revenue share",
-  SUBSCRIPTION: "Subscription",
-};
-
 export const PLAN_LABEL: Record<OrgPlan, string> = {
-  STARTER: "Starter",
+  STARTER: "General",
+  CLUB: "Club",
   GROWTH: "Growth",
   PRO: "Pro",
   ENTERPRISE: "Enterprise",
@@ -432,25 +399,10 @@ export function spaceAdminName(s: SpaceSubscription): string | null {
   return s.admin?.fullName || s.admin?.username || null;
 }
 
-/** A short human description of the billing arrangement. */
+/** "Pro · ₹2,999/mo" style label for a space's plan. */
 export function billingSummary(s: BillingArrangement): string {
-  if (s.configured === false || !s.billingModel) return "No arrangement set";
-  switch (s.billingModel) {
-    case "FREE":
-      return "Free — no platform fee";
-    case "REVENUE_SHARE": {
-      const pct = s.revenueSharePercent ?? 0;
-      return `${Number(pct)}% of event sales`;
-    }
-    case "SUBSCRIPTION": {
-      const amt = Number(s.amount) || 0;
-      const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
-      const planLabel = s.plan ? PLAN_LABEL[s.plan] : "Custom";
-      return amt > 0
-        ? `${planLabel} · ₹${amt.toLocaleString("en-IN")}/${cycle}`
-        : planLabel;
-    }
-    default:
-      return "—";
-  }
+  if (s.configured === false || !s.plan) return "No plan set";
+  const amt = Number(s.amount) || 0;
+  const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
+  return amt > 0 ? `${PLAN_LABEL[s.plan]} · ₹${amt.toLocaleString("en-IN")}/${cycle}` : PLAN_LABEL[s.plan];
 }

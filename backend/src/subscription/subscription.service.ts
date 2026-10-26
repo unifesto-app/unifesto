@@ -7,13 +7,9 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
-import {
-  BillingCycle,
-  BillingModel,
-  OrgPlan,
-  Prisma,
-} from '@prisma/client';
+import { BillingCycle, OrgPlan, Prisma } from '@prisma/client';
 import { PlanConfigService, SELLABLE_PLANS, subscriptionStatus } from './plan-config.service';
+import { FEATURE_LABELS, PLAN_FEATURE_FLAGS, PlanLimits } from './plan-limits.config';
 import { PlanPrice, planPriceFor, TermsService } from './terms.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
@@ -25,28 +21,16 @@ import {
   VerifyUpgradeDto,
 } from './dto';
 
-/** Marketing feature bullets used in activation / upgrade emails. */
-const SUBSCRIPTION_PLAN_FEATURES: Record<string, string[]> = {
-  GROWTH: [
-    'Up to 10 events/month',
-    '200 attendees per event',
-    'Waitlist management',
-    'Bulk export',
-  ],
-  PRO: [
-    'Unlimited events',
-    '1000 attendees per event',
-    'Analytics dashboard',
-    'WhatsApp blast',
-    'Remove branding',
-  ],
-  ENTERPRISE: [
-    'Unlimited everything',
-    'White label',
-    'Priority support',
-    'Custom integrations',
-  ],
-};
+/** Email bullets for a plan, read from its live limits so they never drift. */
+export function planHighlights(l: PlanLimits): string[] {
+  const count = (v: number | null, what: string) =>
+    v === null ? `Unlimited ${what}` : `${v.toLocaleString('en-IN')} ${what}`;
+  return [
+    count(l.eventsPerMonth, 'events a month'),
+    count(l.attendeesPerEvent, 'attendees per event'),
+    ...PLAN_FEATURE_FLAGS.filter((f) => l[f]).map((f) => FEATURE_LABELS[f]),
+  ];
+}
 
 const IST_OFFSET_MS = 330 * 60 * 1000;
 
@@ -91,7 +75,7 @@ export function prorationCreditPaise(
   return Math.floor((pricePaise * daysLeft) / cycleDays);
 }
 
-const PLAN_RANK: Record<OrgPlan, number> = { STARTER: 0, GROWTH: 1, PRO: 2, ENTERPRISE: 3 };
+const PLAN_RANK: Record<OrgPlan, number> = { STARTER: 0, CLUB: 1, GROWTH: 2, PRO: 3, ENTERPRISE: 4 };
 const CYCLE_RANK: Record<BillingCycle, number> = { MONTHLY: 0, ANNUAL: 1 };
 
 /** renew = same plan+cycle (extends); upgrade = starts now; downgrade = starts at period end. */
@@ -101,15 +85,6 @@ export type PlanChangeKind = 'renew' | 'upgrade' | 'downgrade';
 export async function lockSubscription(tx: Prisma.TransactionClient, id: string) {
   await tx.$queryRaw`SELECT id FROM org_subscriptions WHERE id = ${id}::uuid FOR UPDATE`;
   return tx.orgSubscription.findUniqueOrThrow({ where: { id } });
-}
-
-/** Plans are only sold to spaces billed by subscription; FREE and REVENUE_SHARE are set by Unifesto. */
-function assertSelfServeBilling(model: BillingModel) {
-  if (model !== BillingModel.SUBSCRIPTION) {
-    throw new BadRequestException(
-      "This space's billing is arranged by Unifesto, so its plan can't be changed here. Contact support to change it.",
-    );
-  }
 }
 
 @Injectable()
@@ -131,7 +106,6 @@ export class SubscriptionService {
   }
 
   async getAllPlans() {
-    // GROWTH is retired (D10): never listed, so no client can offer it.
     return this.planConfig.getAll().filter((p) => SELLABLE_PLANS.includes(p.plan));
   }
 
@@ -144,22 +118,6 @@ export class SubscriptionService {
       throw new BadRequestException(`Unknown plan: ${plan}`);
     }
     return this.planConfig.update(plan, patch);
-  }
-
-  /** All billing-model definitions (Free, Revenue-share). */
-  getBillingModels() {
-    return this.planConfig.getAllModels();
-  }
-
-  /** Admin: edit a Free / Revenue-share definition. */
-  async updateBillingModel(
-    model: BillingModel,
-    patch: Partial<Parameters<PlanConfigService['updateModel']>[1]>,
-  ) {
-    if (!PlanConfigService.CONFIGURABLE_MODELS.includes(model)) {
-      throw new BadRequestException(`Model ${model} is not configurable`);
-    }
-    return this.planConfig.updateModel(model, patch);
   }
 
   // =========================================================================
@@ -201,7 +159,6 @@ export class SubscriptionService {
       spacesCount: 1, // per-space view: this space counts as one
       eventsThisMonth: subscription.eventsThisMonth,
       plan: subscription.plan,
-      billingModel: subscription.billingModel,
       limits: {
         spaces: limits.spaces,
         eventsPerMonth: limits.eventsPerMonth,
@@ -314,11 +271,8 @@ export class SubscriptionService {
       throw new BadRequestException('That plan is no longer available');
     }
     const subscription = await this.getSpaceSubscription(spaceId);
-    // A space deal naming this plan (and cycle, if it sets one) prices it, and
-    // is the only way a FREE or REVENUE_SHARE space may buy a plan (T4); paying
-    // moves such a space onto SUBSCRIPTION. Without one they stay blocked.
+    // A space deal naming this plan (and cycle, if it sets one) prices it (T4).
     const { pricePaise, dealId } = await this.planPrice(spaceId, dto.plan, dto.billingCycle);
-    if (!dealId) assertSelfServeBilling(subscription.billingModel);
     if (subscription.pendingPlan) {
       throw new BadRequestException(
         'A plan change is already scheduled for the end of this period. Contact support to change it.',
@@ -452,8 +406,7 @@ export class SubscriptionService {
     // Orders made before T8 carry no kind: they extended, like a renewal.
     let kind = (n.kind as PlanChangeKind) ?? 'renew';
     const amountPaise = Math.round(Number(order.amount));
-    // A deal-priced order (T4) records the deal's price and moves the space
-    // onto SUBSCRIPTION billing, so a FREE / REVENUE_SHARE space gets its plan.
+    // A deal-priced order (T4) records the deal it was priced under.
     const dealId = typeof n.dealId === 'string' ? n.dealId : null;
     // The plan price the order bought, before credit. Orders made before T6
     // without one were rate-card priced.
@@ -509,7 +462,6 @@ export class SubscriptionService {
         isActive: true,
         lastPaymentAt: now,
         nextPaymentAt: expiresAt,
-        ...(dealId ? { billingModel: BillingModel.SUBSCRIPTION } : {}),
       };
       const subscription = await tx.orgSubscription.update({
         where: { id: sub.id },
@@ -545,7 +497,7 @@ export class SubscriptionService {
             billingCycle,
             amount: amountPaise / 100,
             expiresAt: this.formatDate(expiresAt!),
-            features: SUBSCRIPTION_PLAN_FEATURES[plan] || [],
+            features: planHighlights(this.planConfig.getLimits(plan)),
           })
           .catch((err) =>
             this.logger.error('Failed to send subscription activated email', err),
@@ -557,7 +509,7 @@ export class SubscriptionService {
             userName: recipient.name,
             fromPlan,
             toPlan: plan,
-            newFeatures: SUBSCRIPTION_PLAN_FEATURES[plan] || [],
+            newFeatures: planHighlights(this.planConfig.getLimits(plan)),
           })
           .catch((err) =>
             this.logger.error('Failed to send subscription upgraded email', err),
@@ -579,7 +531,6 @@ export class SubscriptionService {
     if (subscription.plan === OrgPlan.STARTER) {
       throw new BadRequestException('Cannot cancel free plan');
     }
-    assertSelfServeBilling(subscription.billingModel);
     if (subscription.cancelledAt) {
       throw new BadRequestException('This plan is already cancelled');
     }
@@ -672,19 +623,15 @@ export class SubscriptionService {
     }
 
     if (dto.plan !== undefined && dto.plan !== subscription.plan && !SELLABLE_PLANS.includes(dto.plan)) {
-      throw new BadRequestException('That plan is retired; pick Starter, Pro or Enterprise');
+      throw new BadRequestException('That plan is not available');
     }
 
     const data: Prisma.OrgSubscriptionUpdateInput = {};
-    if (dto.billingModel !== undefined) data.billingModel = dto.billingModel;
     if (dto.billingCycle !== undefined) data.billingCycle = dto.billingCycle;
     if (dto.amount !== undefined) data.amount = dto.amount;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.expiresAt !== undefined) {
       data.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
-    }
-    if (dto.revenueSharePercent !== undefined) {
-      data.revenueSharePercent = dto.revenueSharePercent;
     }
     if (dto.plan !== undefined) data.plan = dto.plan;
     // A plan or cycle change with no amount takes the space deal's price (T6).
@@ -699,7 +646,7 @@ export class SubscriptionService {
     }
 
     // Every admin change is logged with it, in one transaction (from = to plan
-    // when only the arrangement changed).
+    // when only the cycle, price or dates changed).
     const sub = subscription;
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.subscriptionHistory.create({
@@ -769,7 +716,6 @@ export class SubscriptionService {
       return tx.orgSubscription.update({
         where: { id: sub.id },
         data: {
-          billingModel: BillingModel.SUBSCRIPTION,
           plan: dto.plan,
           billingCycle: dto.billingCycle,
           amount: new Prisma.Decimal(dto.amount ?? amountPaise / 100),
@@ -800,7 +746,6 @@ export class SubscriptionService {
     page = 1,
     limit = 20,
     filters: {
-      billingModel?: BillingModel;
       plan?: OrgPlan;
       isActive?: boolean;
       search?: string;
@@ -810,7 +755,6 @@ export class SubscriptionService {
 
     const where: Prisma.SpaceWhereInput = {};
     const subFilter: Prisma.OrgSubscriptionWhereInput = {};
-    if (filters.billingModel) subFilter.billingModel = filters.billingModel;
     if (filters.plan) subFilter.plan = filters.plan;
     if (filters.isActive !== undefined) subFilter.isActive = filters.isActive;
     if (Object.keys(subFilter).length > 0) {
@@ -873,8 +817,6 @@ export class SubscriptionService {
         configured: !!own,
         /** Legacy field kept for payload shape; always false post-contract. */
         inherited: false,
-        billingModel: eff?.billingModel ?? null,
-        revenueSharePercent: eff?.revenueSharePercent ?? null,
         plan: eff?.plan ?? null,
         billingCycle: eff?.billingCycle ?? BillingCycle.MONTHLY,
         amount: eff?.amount ?? 0,
@@ -914,18 +856,11 @@ export class SubscriptionService {
     const spaces = await this.prisma.space.findMany({
       select: {
         createdBy: true,
-        subscription: {
-          select: {
-            billingModel: true,
-            isActive: true,
-          },
-        },
+        subscription: { select: { plan: true, isActive: true } },
       },
     });
 
-    let free = 0;
-    let revenueShare = 0;
-    let subscription = 0;
+    const byPlan = Object.fromEntries(SELLABLE_PLANS.map((p) => [p, 0])) as Record<OrgPlan, number>;
     let notConfigured = 0;
     let active = 0;
     for (const sp of spaces) {
@@ -935,9 +870,7 @@ export class SubscriptionService {
         continue;
       }
       if (s.isActive) active += 1;
-      if (s.billingModel === BillingModel.FREE) free += 1;
-      else if (s.billingModel === BillingModel.REVENUE_SHARE) revenueShare += 1;
-      else if (s.billingModel === BillingModel.SUBSCRIPTION) subscription += 1;
+      byPlan[s.plan] = (byPlan[s.plan] ?? 0) + 1;
     }
 
     // MRR from what was actually paid: each live, uncancelled subscription's
@@ -948,7 +881,7 @@ export class SubscriptionService {
     const payments = await this.prisma.subscriptionHistory.findMany({
       where: {
         amountPaise: { gt: 0 },
-        subscription: { billingModel: BillingModel.SUBSCRIPTION, cancelledAt: null },
+        subscription: { cancelledAt: null },
       },
       orderBy: { changedAt: 'desc' },
       distinct: ['subscriptionId'],
@@ -968,19 +901,21 @@ export class SubscriptionService {
       },
     });
     let mrrPaise = 0;
+    let paying = 0;
     for (const p of payments) {
       const s = p.subscription;
       if (s.plan === OrgPlan.STARTER || subscriptionStatus(s) === 'EXPIRED') continue;
       const cycle = s.pendingBillingCycle ?? s.billingCycle;
       mrrPaise += (p.pricePaise ?? p.amountPaise ?? 0) / (cycle === BillingCycle.ANNUAL ? 12 : 1);
+      paying += 1;
     }
     const mrr = mrrPaise / 100;
 
     return {
       total: spaces.length,
-      free,
-      revenueShare,
-      subscription,
+      byPlan,
+      /** Spaces on a paid plan with a live payment behind it (comps excluded). */
+      paying,
       notConfigured,
       active,
       mrr: Math.round(mrr),

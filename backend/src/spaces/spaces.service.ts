@@ -2510,7 +2510,6 @@ export class SpacesService {
     } = this.planConfig.getEffectiveLimits(sub);
     return {
       plan: sub.plan,
-      billingModel: sub.billingModel,
       status: subscriptionStatus(sub),
       features,
       limits: { spaces, eventsPerMonth, attendeesPerEvent, ticketTypes, coCurators },

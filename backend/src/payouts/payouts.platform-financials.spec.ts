@@ -1,10 +1,10 @@
-import { BillingModel, Prisma } from '@prisma/client';
+import { OrgPlan, Prisma } from '@prisma/client';
 import { maskUpiId, PayoutsService } from './payouts.service';
 import { NOT_DEMO_EVENT, NOT_DEMO_SPACE } from '../common/demo-data';
 import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
- * S34: the platform fee on Apex financials is summed per revenue-share space
+ * S34: the platform fee on Apex financials is summed per space
  * with a fixed number of queries (it used to run an event lookup + six
  * aggregates per space). Pins both the money and the query count.
  */
@@ -34,9 +34,9 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
       refundRequest: zeroAggregate,
       space: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 's1', subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: d(10) } },
-          { id: 's2', subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: d(5) } },
-          { id: 's3', subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: d(0) } },
+          { id: 's1', subscription: { plan: OrgPlan.CLUB } },
+          { id: 's2', subscription: { plan: OrgPlan.GROWTH } },
+          { id: 's3', subscription: { plan: OrgPlan.PRO } },
         ]),
       },
       event: {
@@ -48,7 +48,12 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
       },      session: { findMany: jest.fn().mockResolvedValue([]) },
       sessionRegistration: { findMany: jest.fn().mockResolvedValue([]) },
     };
-    return { svc: new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any)), prisma };
+    // Each plan's rate: Club 10%, Growth 5%, Pro 0%.
+    const planConfig = new PlanConfigService({} as any);
+    jest
+      .spyOn(planConfig, 'getLimits')
+      .mockImplementation((plan) => ({ platformFeePercent: { CLUB: 10, GROWTH: 5, PRO: 0 }[plan as string] ?? 0 }) as any);
+    return { svc: new PayoutsService(prisma, {} as any, {} as any, planConfig), prisma };
   };
 
   it('charges each space its own percent of its held gross', async () => {
