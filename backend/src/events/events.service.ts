@@ -1325,7 +1325,7 @@ export class EventsService {
   private async assertCanEditTeamMember(userId: string, eventId: string, targetUserId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, spaceId: true, space: { select: { coCuratorLimit: true } } },
+      select: { id: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
     await this.assertEventAction(userId, eventId, Action.EVENT_ASSIGN_CREW, 'You cannot change this event team');
@@ -1435,15 +1435,14 @@ export class EventsService {
     if (!isMember) {
       throw new BadRequestException('Only members of this space can join the event team');
     }
-    if (code === RoleCode.CO_CURATOR) {
+    if (code === RoleCode.CO_CURATOR && currentCode !== RoleCode.CO_CURATOR) {
       const coCurators = await this.prisma.userRole.count({
         where: { eventId, userId: { not: targetUserId }, role: { code: RoleCode.CO_CURATOR } },
       });
-      if (coCurators >= event.space.coCuratorLimit) {
-        throw new BadRequestException(
-          `This event already has ${event.space.coCuratorLimit} co-curators, the most this space allows`,
-        );
-      }
+      await this.planConfig.assertLimit(event.spaceId, 'coCurators', coCurators, [
+        'co-curator per event',
+        'co-curators per event',
+      ]);
     }
     const role = await this.prisma.role.findFirst({
       where: { code },
@@ -1544,6 +1543,8 @@ export class EventsService {
         'You must be a Space Admin of this space',
       );
     }
+    if (dto.waitlistEnabled) await this.planConfig.assertFeature(dto.spaceId, 'hasWaitlist');
+    if (dto.recurrenceRule) await this.planConfig.assertFeature(dto.spaceId, 'hasRecurringEvents');
 
     // Plan limits are enforced against the SPACE's subscription now (P0.2),
     // with a transition-safe fallback to the creator's legacy row pre-P2.2.
@@ -2341,6 +2342,9 @@ export class EventsService {
 
     if (event.status === EventStatus.CANCELLED) {
       throw new BadRequestException('Cannot update cancelled event');
+    }
+    if (dto.waitlistEnabled && !event.waitlistEnabled) {
+      await this.planConfig.assertFeature(event.spaceId, 'hasWaitlist');
     }
 
     // Absorbing the buyer fee cuts the organiser's take, so it is a money
@@ -3141,6 +3145,7 @@ export class EventsService {
     const price = kind === 'RSVP' ? 0 : dto.price;
 
     this.validateWaitlistConfig(dto.waitlistEnabled, dto.totalQuantity ?? null);
+    if (dto.waitlistEnabled) await this.planConfig.assertFeature(event.spaceId, 'hasWaitlist');
 
     // Append after existing tiers unless the caller picked a slot, so a new
     // ticket never jumps above ones the organiser already ordered.
@@ -3306,6 +3311,9 @@ export class EventsService {
     const totalQuantity =
       dto.totalQuantity !== undefined ? dto.totalQuantity : existing.totalQuantity;
     this.validateWaitlistConfig(waitlistEnabled, totalQuantity ?? null);
+    if (dto.waitlistEnabled && !existing.waitlistEnabled) {
+      await this.planConfig.assertFeature(event.spaceId, 'hasWaitlist');
+    }
 
     const updated = await this.prisma.eventTicketType.update({
       where: { id: typeId },

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -12,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { sniffMime, UPLOAD_EXT } from '../registrations/form-uploads.service';
 import { Action, AuthorizationService } from '../auth/authorization';
+import { PlanConfigService } from '../subscription/plan-config.service';
 import {
   Prisma,
   SupportTicketStatus,
@@ -164,6 +166,7 @@ export class SupportService {
     private readonly authz: AuthorizationService,
     private readonly storage: StorageService,
     private readonly events: EventEmitter2,
+    @Optional() private readonly planConfig?: PlanConfigService,
   ) {}
 
   private notify(e: SupportCaseEvent) {
@@ -377,12 +380,24 @@ export class SupportService {
       }
     }
 
+    // Priority support (T9): a Space Admin's "contact Unifesto" case from a
+    // plan that includes it opens at HIGH, so its SLA clock runs shorter.
+    // Triage only re-rates NORMAL cases, so HIGH stays.
+    const prioritySupport =
+      !dto.priority &&
+      !toSpace &&
+      !eventSpaceId &&
+      !!dto.spaceId &&
+      !!this.planConfig &&
+      (await this.planConfig.spaceLimits(dto.spaceId)).hasPrioritySupport &&
+      (await this.authz.can({ id: requesterId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: dto.spaceId }));
+
     const now = new Date();
     const ticket = await this.prisma.supportTicket.create({
       data: {
         subject: dto.subject,
         category,
-        priority: dto.priority ?? SupportTicketPriority.NORMAL,
+        priority: dto.priority ?? (prioritySupport ? SupportTicketPriority.HIGH : SupportTicketPriority.NORMAL),
         ...(opts.bot ? { status: SupportTicketStatus.BOT } : {}),
         requesterId,
         spaceId: toSpace ? targetSpaceId : dto.spaceId ?? null,

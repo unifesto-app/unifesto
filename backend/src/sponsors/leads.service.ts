@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { LeadSource, LeadStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
 import {
   CaptureLeadDto,
   CreateLeadDto,
@@ -22,7 +23,10 @@ import {
  */
 @Injectable()
 export class LeadsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planConfig: PlanConfigService,
+  ) {}
 
   // ---- Public capture -----------------------------------------------------
 
@@ -103,6 +107,7 @@ export class LeadsService {
     spaceId: string,
     filters: { status?: LeadStatus; source?: LeadSource; eventId?: string },
   ) {
+    await this.planConfig.assertFeature(spaceId, 'hasSponsors');
     const where: Prisma.LeadWhereInput = { spaceId };
     if (filters.status) where.status = filters.status;
     if (filters.source) where.source = filters.source;
@@ -116,6 +121,7 @@ export class LeadsService {
   }
 
   async createLead(spaceId: string, dto: CreateLeadDto) {
+    await this.planConfig.assertFeature(spaceId, 'hasSponsors');
     if (dto.eventId) await this.assertEventInSpace(spaceId, dto.eventId);
     return this.prisma.lead.create({
       data: {
@@ -152,7 +158,9 @@ export class LeadsService {
     return { deleted: true };
   }
 
+  /** Update and delete come through here: the plan gate, then ownership. */
   private async getOwnedLead(spaceId: string, id: string) {
+    await this.planConfig.assertFeature(spaceId, 'hasSponsors');
     const lead = await this.prisma.lead.findFirst({ where: { id, spaceId } });
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;

@@ -27,7 +27,18 @@ export async function takeTicketSeats(
   if (took !== 1) throw new SoldOutError(message);
 }
 
-/** Take n seats on the ticket type (atomic, see above) and count n attendees on the event. */
+/** The event is at its plan's attendee limit (T9). */
+export const PLAN_FULL =
+  "This event has reached its plan's attendee limit. The organiser can upgrade to add more.";
+
+/**
+ * Take n seats on the ticket type (atomic, see above) and count n attendees on
+ * the event, atomically against the space plan's attendees per event (T9):
+ * every add path (checkout, payment claim, restore, import, manual add, group
+ * seats) comes through here. ponytail: reads the subscription row's plan, so a
+ * lapsed plan keeps its cap until the expiry cron moves it to General; no row =
+ * no cap.
+ */
 export async function takeSeats(
   tx: Prisma.TransactionClient,
   reg: { eventId: string; ticketTypeId?: string | null },
@@ -35,7 +46,13 @@ export async function takeSeats(
   message?: string,
 ): Promise<void> {
   await takeTicketSeats(tx, reg.ticketTypeId, n, message);
-  await tx.event.update({ where: { id: reg.eventId }, data: { registeredCount: { increment: n } } });
+  const took = await tx.$executeRaw`
+    UPDATE events e SET registered_count = e.registered_count + ${n}, updated_at = now()
+    WHERE e.id = ${reg.eventId}::uuid
+      AND (SELECT p.attendees_per_event IS NULL OR e.registered_count + ${n} <= p.attendees_per_event
+             FROM org_subscriptions s JOIN plan_configs p ON p.plan = s.plan
+            WHERE s.space_id = e.space_id) IS NOT FALSE`;
+  if (took !== 1) throw new SoldOutError(PLAN_FULL);
 }
 
 /**

@@ -1,8 +1,15 @@
-import { Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
+import { ForbiddenException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { OrgPlan, PlanConfig } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PLAN_LIMITS, PlanLimits } from './plan-limits.config';
+import {
+  FEATURE_LABELS,
+  PLAN_LIMITS,
+  PLAN_NAMES,
+  PlanFeatureFlag,
+  PlanLimitKey,
+  PlanLimits,
+} from './plan-limits.config';
 
 /**
  * Plans a space can buy or be put on, in ladder order: General (STARTER),
@@ -120,6 +127,58 @@ export class PlanConfigService implements OnModuleInit {
     pendingPlan?: OrgPlan | null;
   }): PlanLimits {
     return this.getLimits(subscriptionStatus(sub) === 'EXPIRED' ? OrgPlan.STARTER : sub.plan);
+  }
+
+  /**
+   * The plan a space is on now and its limits (T9): a lapsed plan reads as
+   * General (STARTER), and so does a space with no subscription row, so no
+   * gate fails open.
+   */
+  async spaceLimits(spaceId: string): Promise<PlanLimits & { plan: OrgPlan }> {
+    const sub = await this.prisma.orgSubscription.findUnique({
+      where: { spaceId },
+      select: { plan: true, expiresAt: true, cancelledAt: true, pendingPlan: true },
+    });
+    const plan = !sub || subscriptionStatus(sub) === 'EXPIRED' ? OrgPlan.STARTER : sub.plan;
+    return { plan, ...this.getLimits(plan) };
+  }
+
+  /** The cheapest plan that passes `test`, for the "comes with X and up" hint. */
+  private cheapestPlan(test: (l: PlanLimits) => boolean): OrgPlan | undefined {
+    return SELLABLE_PLANS.find((p) => test(this.getLimits(p)));
+  }
+
+  /** 403 unless the space's plan includes `flag` (T9). */
+  async assertFeature(spaceId: string, flag: PlanFeatureFlag): Promise<void> {
+    const limits = await this.spaceLimits(spaceId);
+    if (limits[flag]) return;
+    const up = this.cheapestPlan((l) => l[flag]);
+    throw new ForbiddenException(
+      `Not on the ${PLAN_NAMES[limits.plan]} plan: ${FEATURE_LABELS[flag]}.` +
+        (up ? ` It comes with ${PLAN_NAMES[up]} and up.` : ''),
+    );
+  }
+
+  /**
+   * 403 when `current + adding` would pass the space plan's `limit` (null =
+   * unlimited). `what` names the counted thing, singular and plural:
+   * ['co-curator per event', 'co-curators per event'].
+   */
+  async assertLimit(
+    spaceId: string,
+    limit: PlanLimitKey,
+    current: number,
+    what: [string, string],
+    adding = 1,
+  ): Promise<void> {
+    const limits = await this.spaceLimits(spaceId);
+    const max = limits[limit];
+    if (max === null || current + adding <= max) return;
+    const up = this.cheapestPlan((l) => l[limit] === null || l[limit]! >= current + adding);
+    throw new ForbiddenException(
+      `The ${PLAN_NAMES[limits.plan]} plan allows ${max} ${max === 1 ? what[0] : what[1]}.` +
+        (up ? ` ${PLAN_NAMES[up]} allows more.` : ''),
+    );
   }
 
   /**

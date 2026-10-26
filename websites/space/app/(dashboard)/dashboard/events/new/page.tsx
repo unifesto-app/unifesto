@@ -228,7 +228,7 @@ function CreateEventInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const spaceId = useSpaceId();
-  const { can } = useSession();
+  const { can, hasFeature } = useSession();
   const allowed = can("space:create-event");
 
   const parentId = searchParams.get("parentId") || undefined;
@@ -612,10 +612,19 @@ function CreateEventInner() {
                 this when creating one under a parent. */}
             {!isSubEvent && (
               <Field label="Repeat">
-                <RecurrenceEditor
-                  value={form.recurrence}
-                  onChange={(next) => set("recurrence", next)}
-                />
+                {hasFeature("hasRecurringEvents") ? (
+                  <RecurrenceEditor
+                    value={form.recurrence}
+                    onChange={(next) => set("recurrence", next)}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Repeating series aren&apos;t on this space&apos;s plan.{" "}
+                    <a href="/dashboard/billing" className="underline">
+                      See plans
+                    </a>
+                  </p>
+                )}
               </Field>
             )}
             <Field label="Description" htmlFor="description">

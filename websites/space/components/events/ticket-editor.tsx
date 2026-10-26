@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useSession } from "@/lib/context/SessionContext";
 import {
   type EventTicketType,
   type TicketKind,
@@ -131,6 +133,8 @@ function WaitlistToggle({
 }) {
   const hasCapacity = draft.capacity.trim() !== "" && Number(draft.capacity) > 0;
   const isPaid = Number(draft.price) > 0;
+  // Off the plan: a list already on can still be switched off, not on (T9).
+  const onPlan = useSession().hasFeature("hasWaitlist") || draft.waitlistEnabled;
 
   return (
     <div className="rounded-lg border border-border p-4">
@@ -139,7 +143,7 @@ function WaitlistToggle({
           type="checkbox"
           className="mt-1"
           checked={hasCapacity && draft.waitlistEnabled}
-          disabled={!hasCapacity}
+          disabled={!hasCapacity || !onPlan}
           onChange={(e) => set({ waitlistEnabled: e.target.checked })}
         />
         <span className="min-w-0">
@@ -147,7 +151,14 @@ function WaitlistToggle({
             Keep a waiting list when this sells out
           </span>
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            {hasCapacity
+            {!onPlan ? (
+              <>
+                Waiting lists aren&apos;t on this space&apos;s plan.{" "}
+                <Link href="/dashboard/billing" className="underline">
+                  See plans
+                </Link>
+              </>
+            ) : hasCapacity
               ? "Buyers join a queue instead of being turned away. You choose who gets in when a seat frees up."
               : draft.waitlistEnabled
                 ? "Saving with no capacity turns the waiting list off: an unlimited ticket never sells out. Anyone already queued stays on the list."

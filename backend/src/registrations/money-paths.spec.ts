@@ -20,7 +20,13 @@ function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number }
   let seatsLeft = opts.seatsLeft ?? 100;
   const prisma: any = {
     space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
-    $executeRaw: jest.fn(async (_sql: TemplateStringsArray, n: number) => {
+    $executeRaw: jest.fn(async (sql: TemplateStringsArray, n: number, eventId: string) => {
+      // The plan-capped attendee count (T9) is raw SQL; record it as the
+      // event.update these assertions read. No plan row here = no cap.
+      if (sql.join('?').includes('UPDATE events')) {
+        await prisma.event.update({ where: { id: eventId }, data: { registeredCount: { increment: n } } });
+        return 1;
+      }
       if (seatsLeft < n) return 0;
       seatsLeft -= n;
       return 1;
@@ -359,7 +365,7 @@ describe('verify vs webhook race (S45)', () => {
     await svc.verifyPayment('event-1', 'user-1', verifyDto).catch(() => undefined);
     await expect((svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBeUndefined();
 
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1); // one seat take
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2); // one seat take: the ticket, then the event's plan-capped count
     expect(prisma.event.update).toHaveBeenCalledTimes(1); // one attendee count
     expect(prisma.eventTicket.create).toHaveBeenCalledTimes(1);
     expect(coupons.confirmByRegistration).toHaveBeenCalledTimes(1);
@@ -375,7 +381,7 @@ describe('verify vs webhook race (S45)', () => {
     const res = await svc.verifyPayment('event-1', 'user-1', verifyDto);
 
     expect(res.message).toMatch(/verified/);
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2); // one seat take (ticket + event count)
     expect(prisma.eventTicket.create).toHaveBeenCalledTimes(1);
   });
 });
@@ -476,7 +482,7 @@ describe('register → pay → cancel (S45 flow)', () => {
     });
     await svc.verifyPayment('event-1', 'user-1', verifyDto).catch(() => undefined);
     expect(state.paymentStatus).toBe(PaymentStatus.PAID);
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2); // ticket seat + event count
 
     // Cancel: a paid ticket becomes a cancellation refund (D6), and gives no seat back here.
     prisma.event.update.mockClear();

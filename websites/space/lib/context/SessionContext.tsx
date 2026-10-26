@@ -44,10 +44,9 @@ export type Capability =
 
 export type SpaceFeature = keyof PlanFeatures;
 
-/** Plan gate: off while loading; on when the space has no plan (backend doesn't enforce then). */
+/** Plan gate: off while loading, and off with no plan (the backend reads that as General). */
 export function featureOn(access: SpaceAccess | null, key: SpaceFeature): boolean {
-  if (!access) return false;
-  return !access.plan || access.plan.features[key];
+  return !!access?.plan?.features[key];
 }
 
 /** Capability gate: off while loading. */

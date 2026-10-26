@@ -12,7 +12,8 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
 import { PaymentsService } from '../payments/payments.service';
-import { takeSeats } from './capacity.util';
+import { PLAN_FULL, takeSeats } from './capacity.util';
+import { PlanConfigService } from '../subscription/plan-config.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
 import {
   EventRegistration,
@@ -22,6 +23,7 @@ import {
   WaitlistStatus,
   CouponRedemptionStatus,
   EventVisibility,
+  OrgPlan,
 } from '@prisma/client';
 import { canAccessSpaceOnlyEvent } from '../events/event-access';
 import { assertSpaceLive } from '../spaces/space-access';
@@ -66,6 +68,7 @@ export class RegistrationCheckoutService {
     private readonly coupons: CouponsService,
     private readonly confirmations: RegistrationConfirmationsService,
     private readonly terms: TermsService,
+    private readonly planConfig: PlanConfigService,
   ) {}
 
   /**
@@ -441,6 +444,15 @@ export class RegistrationCheckoutService {
         });
       }
       throw new BadRequestException('Not enough tickets available');
+    }
+
+    // The plan's attendees per event (T9), before payment so nobody pays for a
+    // seat the plan can't give. takeSeats enforces it atomically on the way in.
+    const cap = this.planConfig.getEffectiveLimits(
+      event.space?.subscription ?? { plan: OrgPlan.STARTER },
+    ).attendeesPerEvent;
+    if (cap !== null && event.registeredCount + plannedSeats > cap) {
+      throw new BadRequestException(PLAN_FULL);
     }
 
     if (dto.quantity > ticketType.perUserLimit) {
