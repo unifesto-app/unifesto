@@ -126,16 +126,6 @@ enum BillingCycle {
   @@map("billing_cycle")
 }
 
-// DEPRECATED since the plan lineup (#396): unused, kept so a rolling deploy
-// never reads a dropped column. Dropped by a later contract-step migration.
-enum BillingModel {
-  FREE // onboarded free — no platform fee, no subscription
-  REVENUE_SHARE // platform takes a % of event sales
-  SUBSCRIPTION // recurring plan fee (STARTER..ENTERPRISE)
-
-  @@map("billing_model")
-}
-
 enum EventType {
   IN_PERSON
   ONLINE
@@ -1251,10 +1241,6 @@ model OrgSubscription {
   spaceId String? @unique @map("space_id") @db.Uuid
   space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  /// DEPRECATED (#396): every space is on a plan; dropped by the contract step.
-  billingModel        BillingModel @default(SUBSCRIPTION) @map("billing_model")
-  revenueSharePercent Decimal?     @map("revenue_share_percent") @db.Decimal(5, 2)
-
   plan         OrgPlan      @default(STARTER)
   billingCycle BillingCycle @default(MONTHLY) @map("billing_cycle")
   amount       Decimal      @default(0) @db.Decimal(10, 2)
@@ -1364,44 +1350,6 @@ model PlanConfig {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("plan_configs")
-}
-
-// DEPRECATED since the plan lineup (#396): unused, kept so a rolling deploy
-// never reads a dropped column. Dropped by a later contract-step migration.
-model BillingModelConfig {
-  billingModel BillingModel @id @map("billing_model")
-
-  // For REVENUE_SHARE: the % prefilled when assigning this model.
-  defaultRevenueSharePercent Decimal? @map("default_revenue_share_percent") @db.Decimal(5, 2)
-
-  // Limits (null = unlimited)
-  spaces            Int?
-  eventsPerMonth    Int? @map("events_per_month")
-  attendeesPerEvent Int? @map("attendees_per_event")
-  ticketTypes       Int? @map("ticket_types")
-  coCurators        Int? @map("co_organisers")
-
-  // Feature flags
-  hasWaitlist        Boolean @default(false) @map("has_waitlist")
-  hasBulkExport      Boolean @default(false) @map("has_bulk_export")
-  hasAnalytics       Boolean @default(false) @map("has_analytics")
-  hasWhatsappBlast   Boolean @default(false) @map("has_whatsapp_blast")
-  hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
-  hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
-  hasPrioritySupport Boolean @default(false) @map("has_priority_support")
-  // Gates the whole Sessions feature: creating, listing and hosting them.
-  hasSessions        Boolean @default(false) @map("has_sessions")
-  // Gates the competitive dashboard (hack.unifesto.app): whether an event may
-  // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
-  hasLeaderboard     Boolean @default(false) @map("has_leaderboard")
-  // Gates the certificate system: designing templates and issuing certificates.
-  hasCertificates    Boolean @default(false) @map("has_certificates")
-  // Gates the sponsors & lead-generation feature (see PlanConfig.hasSponsors).
-  hasSponsors        Boolean @default(false) @map("has_sponsors")
-
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@map("billing_model_configs")
 }
 
 /// Negotiated terms for one space, or one event of it (T4). Every null field
