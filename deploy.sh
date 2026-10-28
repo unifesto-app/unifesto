@@ -285,10 +285,19 @@ trap release_lock EXIT
 # old one with the 60s drain. Peak is replicas+1 (4 x 1G, 4 x 10 DB conns).
 # A new replica that never turns healthy is removed and the deploy fails with
 # the old replicas still serving.
+# autoheal is paused for the roll: the drain (`docker stop -t 60`) turns the old
+# replica unhealthy, autoheal restarted it mid-drain and the plain `docker rm`
+# then failed on a running container, killing the deploy half-rolled
+# (2026-10-26). The trap starts autoheal again however the roll ends.
 roll_backend() {
   ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" <<'ROLLOUT'
 set -euo pipefail
 cd "$1"
+if [ -n "$(docker compose ps -q autoheal 2>/dev/null)" ]; then
+  docker compose stop autoheal >/dev/null
+  trap 'docker compose start autoheal >/dev/null' EXIT
+  echo "    autoheal paused for the roll"
+fi
 OLD="$(docker compose ps -q backend)"
 if [ -z "${OLD}" ]; then
   docker compose up -d --no-deps backend
@@ -318,7 +327,8 @@ for old in ${OLD}; do
   echo "    ${new:0:12} healthy; draining ${old:0:12}"
   sleep 12
   docker stop -t 60 "${old}" >/dev/null
-  docker rm "${old}" >/dev/null
+  # -f: even if something restarted it during the drain, it's out of rotation now.
+  docker rm -f "${old}" >/dev/null
 done
 ROLLOUT
 }
