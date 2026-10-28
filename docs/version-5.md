@@ -939,3 +939,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · Mobile tabs: removed StatusBarScrim, which blacked out the status bar in dark mode (#395)
 - **2026-10-27** · Plan lineup General/Club/Growth/Pro/Enterprise, Free and Revenue-share models removed (6 Free spaces → General), buyer fee 4%, Apex Plans/Subscriptions, Space billing and /pricing redesigned on one feature catalog (#396)
 - **2026-10-27** · T9 plan enforcement: waiting list, recurring events, WhatsApp blasts, leads, attendees per event (atomic), co-curators, spaces and priority support are enforced server side; Space shows the gates (#397)
+- **2026-10-28** · deploy.sh pauses autoheal during the backend roll and force-removes drained replicas, fixing the half-rolled deploy of 2026-10-26 (#398)
