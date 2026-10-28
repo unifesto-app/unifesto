@@ -27,7 +27,11 @@ export function OnEvent(
         throw err; // Nest still logs it (or rethrows when suppressErrors is false)
       }
     };
+    // `async` alone makes EventEmitter2 return its setImmediate handle (Nest's
+    // wrapper isn't an AsyncFunction), so emitAsync never saw the listener's
+    // result (UNIFESTO-BACKEND-9). `promisify` stays async and returns it.
+    const opts = options?.async ? { promisify: true, ...options } : options;
     // After the swap: OnEvent stores its metadata on descriptor.value.
-    return NestOnEvent(event, options)(target, key, descriptor);
+    return NestOnEvent(event, opts)(target, key, descriptor);
   };
 }
