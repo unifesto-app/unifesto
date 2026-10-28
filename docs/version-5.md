@@ -941,3 +941,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-27** · T9 plan enforcement: waiting list, recurring events, WhatsApp blasts, leads, attendees per event (atomic), co-curators, spaces and priority support are enforced server side; Space shows the gates (#397)
 - **2026-10-28** · deploy.sh pauses autoheal during the backend roll and force-removes drained replicas, fixing the half-rolled deploy of 2026-10-26 (#398)
 - **2026-10-28** · Contract step for the plan lineup, dropped the retired billing_model / revenue_share_percent columns, billing_model_configs table and billing_model enum (deploy alone with ALLOW_DESTRUCTIVE=1) (#399)
+- **2026-10-28** · Async event listeners return their result to emitAsync, fixing WhatsApp convert-to-case and hackathon help escalation always failing (Sentry BACKEND-9) (#400)
