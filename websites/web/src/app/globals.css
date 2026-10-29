@@ -744,6 +744,21 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .legal li + li { margin-top: 0.4rem; }
 .legal li::marker { color: rgb(var(--glow) / 0.35); }
 .legal strong { color: var(--paper); font-weight: 500; }
+
+/* ─── Liquid glass ───────────────────────────────────────────────────── */
+/* LiquidGlassRoot: once the effect runs (`lg-live`), the card's own fill and
+   shadow give way to the frosted glass canvas drawn behind its content. */
+.lg-live > [data-glass] > div { background: transparent; box-shadow: none; }
+/* What the glass refracts: the page's ground, reaching past the root so a card
+   hanging off its edge (the hero's sits 6% left) still has something behind
+   it. The edges fade, so thin lines behind it fade out instead of stopping. */
+.lg-ground {
+  position: absolute; inset: -40px -24px -40px -128px; background: var(--night);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  mask-composite: intersect;
+}
 .legal h3 { margin: 1.4rem 0 0.5rem; font-size: 15px; color: var(--paper); }
 .legal a:not([class]) { color: var(--paper); text-decoration: underline; text-decoration-color: rgb(var(--glow) / 0.35); }
 .legal table { width: 100%; font-size: 14px; border-collapse: collapse; }

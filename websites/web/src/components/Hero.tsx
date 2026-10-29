@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "@unifesto/unicon/react";
 import CosmicBackdrop, { HorizonFloor } from "@/components/site/CosmicBackdrop";
 import CosmosPointer from "@/components/site/CosmosPointer";
+import LiquidGlassRoot from "@/components/site/LiquidGlassRoot";
 import { PassScreen } from "@/components/visuals/AppScreens";
 import { DoorVisual } from "@/components/visuals/Product";
 
@@ -51,14 +52,15 @@ export default function Hero() {
 
           {/* The two sides of the door: the attendee's pass, the Crew's count
               in front of it. Desktop only; phones meet these screens on /app. */}
-          <div className="relative hidden h-[32rem] lg:block">
+          <LiquidGlassRoot className="relative hidden h-[32rem] lg:block">
             <div className="enter absolute bottom-0 right-0 origin-bottom-right scale-[0.9]" style={{ ["--d" as string]: "300ms" }}>
               <PassScreen />
             </div>
-            <div className="enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "420ms" }}>
+            {/* Frosted glass over the phone (solid until the effect runs). */}
+            <div data-glass className="enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "420ms" }}>
               <DoorVisual />
             </div>
-          </div>
+          </LiquidGlassRoot>
         </div>
       </div>
       <HorizonFloor />
