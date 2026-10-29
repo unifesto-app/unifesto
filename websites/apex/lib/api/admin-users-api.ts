@@ -99,8 +99,24 @@ export interface UserDetail {
   roles: UserRoleAssignment[];
   identities: UserIdentity[];
   pushDevices: UserPushDevice[];
+  /** F4: set = suspended until `suspendedUntil`, or banned when that is null. */
+  suspendedAt: string | null;
+  suspendedUntil: string | null;
+  suspensionReason: string | null;
+  capabilityOverrides: CapabilityOverride[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** F4: a per-user exception to the role matrix. Denials win. */
+export interface CapabilityOverride {
+  id: string;
+  action: string;
+  allow: boolean;
+  reason: string | null;
+  createdAt: string;
+  /** Null = every space. */
+  space: { id: string; name: string; slug: string } | null;
 }
 
 export interface UserListParams {
@@ -187,5 +203,38 @@ export async function removeUserAvatar(
 ): Promise<{ data: { avatarUrl: null } | null; error: ApiError | null }> {
   return apiCall<{ avatarUrl: null }>(
     backendClient.delete(`/admin/users/${id}/avatar`)
+  );
+}
+
+/** Suspend until `until` (ISO date), or ban when it is null. Signs the user out everywhere. */
+export async function suspendUser(id: string, reason: string, until: string | null) {
+  return apiCall<{ userId: string }>(
+    backendClient.put(`/admin/users/${id}/suspension`, { reason, until })
+  );
+}
+
+/** Lift a suspension or ban. */
+export async function liftSuspension(id: string) {
+  return apiCall<{ userId: string }>(backendClient.delete(`/admin/users/${id}/suspension`));
+}
+
+/** Sign the user out of every device. */
+export async function forceLogout(id: string) {
+  return apiCall<{ userId: string }>(backendClient.post(`/admin/users/${id}/logout`));
+}
+
+/** Add or replace a per-user override. Grants need a space. */
+export async function setCapabilityOverride(
+  id: string,
+  body: { action: string; allow: boolean; spaceId: string | null; reason?: string }
+) {
+  return apiCall<CapabilityOverride>(
+    backendClient.put(`/admin/users/${id}/capability-overrides`, body)
+  );
+}
+
+export async function removeCapabilityOverride(id: string, overrideId: string) {
+  return apiCall<{ success: boolean }>(
+    backendClient.delete(`/admin/users/${id}/capability-overrides/${overrideId}`)
   );
 }

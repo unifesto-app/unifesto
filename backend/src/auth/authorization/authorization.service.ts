@@ -26,6 +26,31 @@ interface Assignment {
   eventId: string | null;
 }
 
+/** A per-user override row (F4), as `can()` reads it. */
+interface Override {
+  action: string;
+  allow: boolean;
+  spaceId: string | null;
+}
+
+/**
+ * F4: a per-user override for `action` in `contextSpaceId` (null for platform
+ * actions). A denial, everywhere or in this space, wins; then a grant in this
+ * space; otherwise undefined and the roles decide.
+ */
+export function overrideFor(
+  overrides: Override[],
+  action: Action,
+  contextSpaceId: string | null,
+): boolean | undefined {
+  const hits = overrides.filter(
+    (o) => o.action === action && (o.spaceId === null || o.spaceId === contextSpaceId),
+  );
+  if (hits.some((o) => !o.allow)) return false;
+  if (hits.some((o) => o.allow)) return true;
+  return undefined;
+}
+
 /**
  * Central authorization. Controllers ask `can(user, action, resource)` (or the
  * throwing `assertCan`) instead of hand-rolling role checks. Hand-rolled role
@@ -66,9 +91,12 @@ export class AuthorizationService {
     resources: AuthResource[],
   ): Promise<boolean> {
     if (resources.length === 0) return false;
-    const assignments = await this.loadAssignments(user.id);
-    // No roles at all: nothing can grant, so skip the event-space lookups.
-    if (assignments.length === 0) return false;
+    const [assignments, overrides] = await Promise.all([
+      this.loadAssignments(user.id),
+      this.loadOverrides(user.id),
+    ]);
+    // No roles and no grants: nothing can allow, so skip the event-space lookups.
+    if (assignments.length === 0 && !overrides.some((o) => o.allow)) return false;
     const scope = ACTION_SCOPE[action];
 
     for (const resource of resources) {
@@ -78,7 +106,14 @@ export class AuthorizationService {
         scope === RoleScope.EVENT && resource.eventId
           ? await this.resolveEventSpace(resource.eventId)
           : null;
+      const override = overrideFor(
+        overrides,
+        action,
+        scope === RoleScope.SPACE ? resource.spaceId ?? null : eventSpaceId,
+      );
+      if (override === false) continue;
       if (
+        override === true ||
         assignments.some((a) =>
           this.grants(a, action, scope, resource, eventSpaceId),
         )
@@ -103,10 +138,14 @@ export class AuthorizationService {
 
   /** Every PLATFORM action the caller holds (one role load), for the Apex nav. */
   async platformActions(user: Pick<User, 'id'>): Promise<Action[]> {
-    const assignments = await this.loadAssignments(user.id);
+    const [assignments, overrides] = await Promise.all([
+      this.loadAssignments(user.id),
+      this.loadOverrides(user.id),
+    ]);
     return (Object.keys(ACTION_SCOPE) as Action[]).filter(
       (action) =>
         ACTION_SCOPE[action] === RoleScope.PLATFORM &&
+        overrideFor(overrides, action, null) !== false &&
         assignments.some((a) =>
           this.grants(a, action, RoleScope.PLATFORM, {}, null),
         ),
@@ -126,7 +165,10 @@ export class AuthorizationService {
     spaceId: string,
     eventId?: string,
   ): Promise<{ spaceRole: RoleCode | null; eventRole: RoleCode | null; capabilities: Action[] }> {
-    const assignments = await this.loadAssignments(user.id);
+    const [assignments, overrides] = await Promise.all([
+      this.loadAssignments(user.id),
+      this.loadOverrides(user.id),
+    ]);
     const eventSpaceId = eventId ? await this.resolveEventSpace(eventId) : null;
     // No eventId: where each event role's event lives, to keep this space's.
     const eventIds = eventId ? [] : assignments.flatMap((a) => (a.eventId ? [a.eventId] : []));
@@ -170,12 +212,19 @@ export class AuthorizationService {
         capabilities.push(Action.EVENT_EDIT);
       }
     }
+    // F4: per-user overrides on top, in this space (or the event's).
+    const context = eventSpaceId ?? spaceId;
+    const allowed = (Object.keys(ACTION_SCOPE) as Action[]).filter((action) => {
+      if (ACTION_SCOPE[action] === RoleScope.PLATFORM) return false;
+      const o = overrideFor(overrides, action, ACTION_SCOPE[action] === RoleScope.SPACE ? spaceId : context);
+      return o ?? capabilities.includes(action);
+    });
     const highest = (match: (a: Assignment) => boolean) =>
       ROLE_RANK.find((code) => assignments.some((a) => a.code === code && match(a))) ?? null;
     return {
       spaceRole: highest((a) => a.scope === RoleScope.SPACE && a.spaceId === spaceId),
       eventRole: eventId ? highest((a) => a.scope === RoleScope.EVENT && a.eventId === eventId) : null,
-      capabilities,
+      capabilities: allowed,
     };
   }
 
@@ -233,6 +282,13 @@ export class AuthorizationService {
       spaceId: r.spaceId,
       eventId: r.eventId,
     }));
+  }
+
+  private loadOverrides(userId: string): Promise<Override[]> {
+    return this.prisma.userCapabilityOverride.findMany({
+      where: { userId },
+      select: { action: true, allow: true, spaceId: true },
+    });
   }
 
   private async resolveEventSpace(eventId: string): Promise<string | null> {
