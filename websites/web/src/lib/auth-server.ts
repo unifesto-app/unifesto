@@ -19,10 +19,24 @@ export const PENDING_COOKIE = "uf_pending";
 const secure = process.env.NODE_ENV === "production";
 const cookie = (maxAge: number) => ({ httpOnly: true, secure, sameSite: "lax" as const, path: "/auth", maxAge });
 /** Matches the backend's REFRESH_EXPIRES_IN (180d); the backend still enforces its own cap. */
-export const refreshCookie = cookie(180 * 24 * 60 * 60);
+const refreshCookie = cookie(180 * 24 * 60 * 60);
 export const shortCookie = cookie(15 * 60);
 
 export const clearCookie = (res: NextResponse, name: string) => res.cookies.set(name, "", { ...cookie(0), maxAge: 0 });
+
+/** Readable by pages, holds no secret: lets the navbar say "My account" without asking the server. */
+const HINT_COOKIE = "uf_in";
+const hintCookie = { secure, sameSite: "lax" as const, path: "/" };
+
+/** The refresh cookie and its signed-in hint always move together. */
+export function setRefresh(res: NextResponse, refreshToken: string) {
+  res.cookies.set(REFRESH_COOKIE, refreshToken, refreshCookie);
+  res.cookies.set(HINT_COOKIE, "1", { ...hintCookie, maxAge: refreshCookie.maxAge });
+}
+export function clearRefresh(res: NextResponse) {
+  clearCookie(res, REFRESH_COOKIE);
+  res.cookies.set(HINT_COOKIE, "", { ...hintCookie, maxAge: 0 });
+}
 
 /** Only same-site paths: never an open redirect. */
 export function safeNext(next: string | null | undefined): string {

@@ -254,6 +254,8 @@ services:
         # K18: Google sign-in on the web; empty keeps the button hidden.
         NEXT_PUBLIC_COGNITO_DOMAIN: ${WEB_COGNITO_DOMAIN:-}
         NEXT_PUBLIC_COGNITO_CLIENT_ID: ${WEB_COGNITO_CLIENT_ID:-}
+        # "1" once Cognito has Sign in with Apple; empty keeps that button hidden.
+        NEXT_PUBLIC_APPLE_SIGNIN: ${WEB_APPLE_SIGNIN:-}
       secrets:
         - sentry_auth_token
     image: unifesto-web:latest
