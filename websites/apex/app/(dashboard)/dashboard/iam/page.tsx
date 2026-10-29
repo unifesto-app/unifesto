@@ -38,7 +38,7 @@ import {
 
 /**
  * The editable scopes, in display order. ADMIN is shown separately; PLATFORM
- * holds the Employee row (the backend refuses platform/company manage for it).
+ * holds the Employee row (cells in `role.locked` render as locked).
  */
 const EDITABLE_SCOPES: RoleScope[] = ["PLATFORM", "SPACE", "EVENT"];
 
@@ -93,7 +93,7 @@ export default function IamPage() {
   );
 
   const onCellClick = (role: MatrixRole, action: string, granted: boolean) => {
-    if (!role.editable) return;
+    if (!role.editable || role.locked?.includes(action)) return;
     if (granted) {
       // Revoking access — confirm first.
       setConfirm({ code: role.code, action });
@@ -298,6 +298,19 @@ function ScopeMatrix({
                   {actions.map((a) => {
                     const granted = role.grants.includes(a.key);
                     const saving = pending.has(cellKey(role.code, a.key));
+                    if (role.locked?.includes(a.key)) {
+                      return (
+                        <td key={a.key} className="px-3 py-2 text-center">
+                          <span
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground"
+                            title={`${actionLabel(a.key)} can never be granted to ${roleLabel(role.code)}`}
+                            aria-label={`${actionLabel(a.key)}: locked for ${roleLabel(role.code)}`}
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                          </span>
+                        </td>
+                      );
+                    }
                     return (
                       <td key={a.key} className="px-3 py-2 text-center">
                         <GrantCell

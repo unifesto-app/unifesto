@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils/cn";
+import { useSession } from "@/lib/context/SessionContext";
 import {
   PM_MCP_URL,
   PM_STATUSES,
@@ -90,6 +91,8 @@ const selectCls =
 type Editing = { task: PmTask } | { status: PmStatus } | null;
 
 export default function ProductPage() {
+  // PM tokens (and the MCP they unlock) are ADMIN-only.
+  const isAdmin = useSession().role === "platform_admin";
   const [tracks, setTracks] = useState<PmTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -178,7 +181,7 @@ export default function ProductPage() {
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="claude">Connect Claude</TabsTrigger>
+          {isAdmin && <TabsTrigger value="claude">Connect Claude</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="board" className="mt-4 space-y-4">
@@ -283,9 +286,11 @@ export default function ProductPage() {
           <ActivityList />
         </TabsContent>
 
-        <TabsContent value="claude" className="mt-4">
-          <ConnectClaude />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="claude" className="mt-4">
+            <ConnectClaude />
+          </TabsContent>
+        )}
       </Tabs>
 
       {editing && (

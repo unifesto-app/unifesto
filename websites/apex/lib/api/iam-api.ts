@@ -23,6 +23,8 @@ export interface MatrixRole {
   editable: boolean;
   note?: string;
   grants: string[];
+  /** Actions this role can never be granted; shown locked. */
+  locked?: string[];
 }
 
 export interface CapabilityMatrix {

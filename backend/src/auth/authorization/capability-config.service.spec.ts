@@ -87,6 +87,7 @@ describe('CapabilityConfigService.setGrant', () => {
     const { svc } = build();
     const row = svc.getMatrix().roles.find((r) => r.code === RoleCode.EMPLOYEE);
     expect(row?.editable).toBe(true);
+    expect(row?.locked).toEqual([Action.PLATFORM_MANAGE, Action.COMPANY_MANAGE]);
     expect(row?.grants.sort()).toEqual(
       [
         Action.COMPANY_VIEW,
