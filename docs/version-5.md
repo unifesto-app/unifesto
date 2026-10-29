@@ -394,7 +394,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | done (#412) |
 | E6 | Hackathon certificates from awards | done |
-| E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
+| E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | done (#413) |
 | E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | done (#366) |
 | E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | done (#PR) (#407) |
 
@@ -976,3 +976,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · F1 per-event attendee feedback: 1-5 rating, NPS and curators' own questions (registration question types), one editable response per attendee; Space Feedback page + mobile Rate this event (#417)
 - **2026-10-29** · E1 shared collaborator invite: one find-or-create by email (never renames an account), invite email for sponsor portal, judges/mentors and space members; sponsor invite no longer needs an existing account (#422)
 - **2026-10-29** · E10 sponsors: plan gate no longer fails open without a subscription, opt-in and booth scan check the plan, booth scan only valid tickets, UUID-validated routes, roster/opt-in/scan/funnel tests (#410)
+- **2026-10-29** · E7 BoothScan works offline: consented scans queue on the phone and sync on reconnect/foreground; refused ones listed for review (StayScan skipped, Stays removed in S59) (#413)
