@@ -158,7 +158,8 @@ export function currentItem(items: NavItem[], pathname: string): NavItem | undef
     .sort((a, b) => b.href.length - a.href.length)[0];
 }
 
-const PERSONAL = ["/tickets", "/account", "/feedback"].map((p) => `${BASE_URL}${p}`);
+// My Spaces too: event-only operators open it as well, and it carries the Account sidebar.
+const PERSONAL = ["/tickets", "/account", "/feedback", "/spaces"].map((p) => `${BASE_URL}${p}`);
 
 /** Pages for every signed-in person; the rest of /console needs a space role. */
 export function isPersonalPath(pathname: string): boolean {

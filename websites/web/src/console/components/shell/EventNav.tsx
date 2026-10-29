@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft,
   CaretDown,
   SquaresFour,
   Ticket,
@@ -35,6 +34,7 @@ import type { Icon } from "@unifesto/unicon/react";
 import { useAccess, type Capability, type SpaceFeature } from "@/console/lib/context/SessionContext";
 import { cn } from "@/console/lib/utils/cn";
 import { AssistInboxLink } from "./AssistInboxLink";
+import { BackLink } from "./SpaceNav";
 
 interface EventNavItem {
   href: string;
@@ -141,7 +141,7 @@ interface EventNavProps {
  * to events" control returns to the space-level nav.
  */
 /** This event's sections, filtered by what I may do there. Shared by the icon rail and the sidebar tree. */
-export function useEventNavGroups(eventId: string) {
+function useEventNavGroups(eventId: string) {
   // This event's capabilities from the backend: event-only operators, per-space
   // overrides and Space Admin inheritance included.
   const { can, hasFeature } = useAccess(eventId);
@@ -173,19 +173,7 @@ export function EventNav({
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
-      {/* Back to the space-level events list */}
-      <Link
-        href="/console/events"
-        onClick={onNavigate}
-        title={collapsed ? "All events" : undefined}
-        className={cn(
-          "mb-4 flex items-center rounded-lg text-sm font-semibold text-foreground transition-colors hover:bg-muted",
-          collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2"
-        )}
-      >
-        <ArrowLeft className="h-[18px] w-[18px] flex-shrink-0" />
-        {!collapsed && "All events"}
-      </Link>
+      <BackLink href="/console/events" label="All events" collapsed={collapsed} onNavigate={onNavigate} />
       {/* Event-only operators have no space rail; renders nothing for everyone else. */}
       <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
 

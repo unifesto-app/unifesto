@@ -8,7 +8,7 @@ import { useMobileNav } from "@/console/lib/context/MobileNavContext";
 import { useDrawerBehavior } from "@/console/lib/hooks/useDrawerBehavior";
 import { useCollapsibleRail } from "@/console/lib/hooks/useCollapsibleRail";
 import { SpaceNav } from "@/console/components/shell/SpaceNav";
-import { ConsoleNav } from "@/console/components/shell/ConsoleNav";
+import { AccountNav } from "@/console/components/shell/AccountNav";
 import { isPersonalPath } from "@/console/components/shell/nav-config";
 import { EventNav } from "@/console/components/shell/EventNav";
 import { EventAccessNav } from "@/console/components/shell/EventAccessNav";
@@ -77,11 +77,12 @@ export default function SpaceDashboardLayout({
   // Escape-to-close + background scroll-lock while the drawer is open.
   useDrawerBehavior(open, () => setOpen(false));
 
-  // Chooses the rail contents for the current context (shared by the desktop
-  // rail and the mobile drawer).
+  // One sidebar per context (shared by the desktop rail and the mobile drawer):
+  // my own pages and the My Spaces list, a space, or an event.
   const renderNav = (opts: { collapsed?: boolean; onNavigate?: () => void }) => {
-    // The full rail and the drawer show the whole tree; the icon strip keeps the flat context nav.
-    if (!opts.collapsed) return <ConsoleNav onNavigate={opts.onNavigate} />;
+    if (!hasAccess || isPersonalPath(pathname)) {
+      return <AccountNav collapsed={opts.collapsed} onNavigate={opts.onNavigate} />;
+    }
     if (eventOnly) {
       return viewingOwnEvent ? (
         <EventNav
