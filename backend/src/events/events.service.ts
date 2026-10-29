@@ -20,7 +20,7 @@ import { EmailService } from '../email/email.service';
 import { esc } from '../email/layout';
 import { openCancelledEventRefunds } from '../refunds/cancelled-event-refunds';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { BRANDING_SPACE_SELECT, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
+import { BRANDING_SPACE_SELECT, CUSTOM_DOMAIN_SPACE_SELECT, liveCustomDomain, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { EventPublishFanout } from './event-publish-fanout';
 import { formatEventDate, formatEventTime } from './event-dates';
@@ -1767,6 +1767,7 @@ export class EventsService {
               name: true,
               slug: true,
               logoUrl: true,
+              ...CUSTOM_DOMAIN_SPACE_SELECT,
             },
           },
           creator: {
@@ -1799,7 +1800,15 @@ export class EventsService {
     ]);
 
     return {
-      data: events.map((e) => this.inheritPricingFromChildren(e)),
+      data: events.map(({ space, ...e }) => {
+        // K2: the sitemap skips white-labelled events, whose canonical is the
+        // space's own domain (it lists them in its own sitemap).
+        const customDomain = space?.subscription
+          ? liveCustomDomain(space, this.planConfig.getEffectiveLimits(space.subscription).hasRemoveBranding)
+          : null;
+        const publicSpace = space && { id: space.id, name: space.name, slug: space.slug, logoUrl: space.logoUrl };
+        return { ...this.inheritPricingFromChildren({ ...e, space: publicSpace }), customDomain };
+      }),
       total,
       page,
       limit,
