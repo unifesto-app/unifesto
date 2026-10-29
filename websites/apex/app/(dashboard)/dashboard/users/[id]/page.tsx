@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTrail } from "@/components/shared/AuditTrail";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -749,6 +750,8 @@ export default function UserDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <AuditTrail filter={{ userId: id }} />
 
           {/* Messages (C6): everything sent to this account, by id or address */}
           <Card>
