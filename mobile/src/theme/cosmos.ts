@@ -1,4 +1,5 @@
-// "Monochrome cosmos": the 2026 web brand (websites/web/src/app/globals.css),
+// Unifesto Horizon. Theme locked 29 Oct 2026; the spec is marketing/brand-2026/guidelines.html.
+// The 2026 web brand (websites/web/src/app/globals.css),
 // ported for the login, splash and Home. Black ground, light type, one silver accent; the
 // light set flips the same roles exactly like the web's [data-theme="light"].
 import React, { createContext, useContext, useMemo } from 'react';

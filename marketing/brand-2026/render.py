@@ -1,5 +1,7 @@
-"""Render svg/ → png/ (and favicon.ico) with headless Chrome. Run after build.py."""
+"""Render svg/ → png/ (and favicon.ico) with headless Chrome. Run after build.py.
+`python3 render.py docs` renders the guidelines PDF and brand sheet instead."""
 import os
+import random
 import re
 import subprocess
 import tempfile
@@ -70,9 +72,40 @@ def shot(svg_name, png_name, w, h, bg):
     os.unlink(f.name)
 
 
+def docs():
+    """Grain tiles, the Horizon sky backgrounds, then the guidelines PDF and brand sheet."""
+    rnd = random.Random(7)  # fixed seed: re-renders don't churn the files
+    # Page grain: white specks by night, ink by day (a CSS invert would print as a full-page raster).
+    alpha = [max(0, min(255, int(rnd.gauss(70, 30)))) for _ in range(180 * 180)]
+    for name, rgb in (("grain-180.png", (255, 255, 255)), ("grain-180-ink.png", (17, 17, 19))):
+        grain = Image.new("RGBA", (180, 180))
+        grain.putdata([(*rgb, a) for a in alpha])
+        grain.save(os.path.join(OUT, name))
+    noise = Image.new("L", (128, 128))  # shade-card grain, blended with overlay
+    noise.putdata([max(0, min(255, int(rnd.gauss(128, 42)))) for _ in range(128 * 128)])
+    noise.save(os.path.join(OUT, "noise-128.png"))
+
+    base = [CHROME, "--headless=new", "--hide-scrollbars", "--force-device-scale-factor=1", "--virtual-time-budget=12000"]
+    for theme, frag in (("night", ""), ("day", "#day")):
+        png = os.path.join(OUT, f"horizon-sky-{theme}.png")
+        subprocess.run(base + ["--window-size=1920,1080", f"--screenshot={png}", f"file://{HERE}/horizon-sky.html{frag}"],
+                       stderr=subprocess.DEVNULL, check=True)
+        Image.open(png).convert("RGB").save(os.path.join(OUT, f"horizon-sky-{theme}-1920x1080.jpg"), quality=90)
+        os.unlink(png)
+    subprocess.run(base + ["--no-pdf-header-footer", f"--print-to-pdf={HERE}/Unifesto-Brand-Guidelines.pdf",
+                           f"file://{HERE}/guidelines.html"], stderr=subprocess.DEVNULL, check=True)
+    subprocess.run(base + ["--window-size=1600,1180", f"--screenshot={HERE}/brand-sheet.png", f"file://{HERE}/sheet.html"],
+                   stderr=subprocess.DEVNULL, check=True)
+    print("grain tiles, horizon-sky night/day, Unifesto-Brand-Guidelines.pdf, brand-sheet.png")
+
+
 if __name__ == "__main__":
     import sys
     os.makedirs(OUT, exist_ok=True)
+    # `python3 render.py docs` re-renders only the guidelines PDF, brand sheet and their images.
+    if sys.argv[1:] == ["docs"]:
+        docs()
+        sys.exit()
     # `python3 render.py alt-icon` re-renders only jobs whose svg starts with that prefix.
     only = sys.argv[1] if len(sys.argv) > 1 else ""
     jobs = [j for j in JOBS if j[0].startswith(only)]
@@ -85,6 +118,13 @@ if __name__ == "__main__":
     for name in opaque & {j[1] for j in jobs}:
         p = os.path.join(OUT, name)
         Image.open(p).convert("RGB").save(p)
+    # The in-app picker's "Auto" (iOS: Day in light mode, Night in dark): the two previews split diagonally.
+    if {"alt-icon-day-180.png", "alt-icon-night-180.png"} & {j[1] for j in jobs}:
+        day = Image.open(os.path.join(OUT, "alt-icon-day-180.png")).convert("RGB")
+        night = Image.open(os.path.join(OUT, "alt-icon-night-180.png")).convert("RGB")
+        mask = Image.new("L", day.size)
+        mask.putdata([255 if x + y < day.width else 0 for y in range(day.height) for x in range(day.width)])
+        Image.composite(day, night, mask).save(os.path.join(OUT, "alt-icon-auto-180.png"))
     Image.open(os.path.join(OUT, "favicon-48.png")).save(
         os.path.join(HERE, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
     print(f"{len(jobs)} PNGs + favicon.ico")

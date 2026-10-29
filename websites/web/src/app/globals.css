@@ -6,7 +6,8 @@
 
 /* ─── Unifesto Design Tokens ─────────────────────────────────────────── */
 :root {
-  /* Monochrome cosmos: everything is night. "Paper" sections are the
+  /* Unifesto Horizon. Theme locked 29 Oct 2026; the spec is marketing/brand-2026/guidelines.html.
+     Everything is night. "Paper" sections are the
      charcoal step above black (no light sections anymore), "ink" is the
      light text that sits on them, and the one accent is starlight silver. */
   --night: #000000;

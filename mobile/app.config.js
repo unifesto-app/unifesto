@@ -48,7 +48,11 @@ module.exports = () => {
       supportsTablet: true,
       bundleIdentifier: "com.unifesto.app",
       appleTeamId: "9AH3Z5C5DH",
-      icon: "./assets/app-icon-light.png",
+      // Follows the system appearance: the Day icon by day, Night by night.
+      icon: {
+        light: "./assets/app-icon-light.png",
+        dark: "./assets/app-icon-dark.png",
+      },
       googleServicesFile: "./GoogleService-Info.plist",
       appStoreUrl: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
       infoPlist: {
@@ -244,7 +248,8 @@ module.exports = () => {
       ["@sentry/react-native/expo", { organization: "unifesto", project: "unifesto-mobile", url: "https://sentry.io/" }],
       // Alternate app icons, picked in Profile › Appearance. Art comes from
       // marketing/brand-2026 (build.py ALT_ICONS → render.py alt-icon). iOS's
-      // default is Day and Android's is Night, so choosing those resets instead.
+      // default follows the system appearance (the picker's "Auto") and
+      // Android's is Night, so choosing those resets instead.
       // Names must match APP_ICONS in src/lib/appIcon.ts. Needs a native rebuild.
       [
         "expo-alternate-app-icons",

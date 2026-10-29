@@ -86,8 +86,36 @@ def svg(body, defs="", vb="0 0 1024 1024", size=None):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb}"{wh}><defs>{defs}</defs>{body}</svg>'
 
 
-def app_icon(theme, rounded=False, **kw):
-    defs, body = scene(theme, **kw)
+GRAIN = ('<filter id="grain{uid}" x="0" y="0" width="100%" height="100%">'
+         '<feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" stitchTiles="stitch"/>'
+         '<feColorMatrix values="0 0 0 0 {c} 0 0 0 0 {c} 0 0 0 0 {c} 0 0 0 .6 0"/></filter>')
+
+
+def horizon_scene(theme, u_width=470, u_cy=512, uid="a"):
+    """Unifesto Horizon app icon (approved 29 Oct 2026): the u centred on night
+    (starlight and the Horizon-blue glow rising from the bottom-right) or on
+    paper (ink u, pale-blue glow, no stars). No lines at all: no horizon, no
+    orbits, no planet."""
+    dark = theme == "dark"
+    glow, glow_a = ("77,141,255", .5) if dark else ("143,180,255", .7)
+    defs = ((SILVER if dark else INK).format(id=f"u{uid}")
+            + f'<radialGradient id="sun{uid}"><stop offset="0" stop-color="rgb({glow})" stop-opacity="{glow_a}"/>'
+            f'<stop offset=".5" stop-color="rgb({glow})" stop-opacity="{glow_a * .45:.3f}"/>'
+            f'<stop offset="1" stop-color="rgb({glow})" stop-opacity="0"/></radialGradient>'
+            + GRAIN.format(uid=uid, c=1 if dark else 0))
+    stars = "".join(f'<circle cx="{x}" cy="{y}" r="{r * .9:.1f}" fill="#fff" opacity="{o * .9:.2f}"/>'
+                    for x, y, r, o in STARS[:6]) if dark else ""
+    body = (f'<rect width="1024" height="1024" fill="{"#000" if dark else "#f2f2f5"}"/>'
+            f'<ellipse cx="880" cy="1010" rx="760" ry="360" fill="url(#sun{uid})"/>' + stars
+            + u_path(512, u_cy, u_width, f"url(#u{uid})", "rgba(255,255,255,.5)" if dark else None)
+            + f'<rect width="1024" height="1024" filter="url(#grain{uid})" opacity="{.12 if dark else .08}"/>')
+    return defs, body
+
+
+def app_icon(theme, rounded=False, hue=None, **kw):
+    # The main Night and Day icons are the Horizon scene; the hued alternates
+    # (Aurora, Nebula, Ember, Ocean) keep the older planet scene for now.
+    defs, body = scene(theme, hue=hue, **kw) if hue else horizon_scene(theme, **kw)
     if rounded:  # for previews / web PWA; iOS and Android apply their own masks
         defs += '<clipPath id="sq"><rect width="1024" height="1024" rx="228"/></clipPath>'
         body = f'<g clip-path="url(#sq)">{body}</g>'
@@ -101,8 +129,8 @@ def mono_icon(u_width=495, u_cy=500):
 
 # Alternate app icons (expo-alternate-app-icons). name → (iOS 1024 svg, Android foreground svg)
 ALT_ICONS = {
-    "night": (lambda: app_icon("dark"), lambda: app_icon("dark", u_width=330, u_cy=505, horizon_top=760)),
-    "day": (lambda: app_icon("light"), lambda: app_icon("light", u_width=330, u_cy=505, horizon_top=760)),
+    "night": (lambda: app_icon("dark"), lambda: app_icon("dark", u_width=330)),
+    "day": (lambda: app_icon("light"), lambda: app_icon("light", u_width=330)),
     **{h: ((lambda h=h: app_icon("dark", hue=h)),
            (lambda h=h: app_icon("dark", hue=h, u_width=330, u_cy=505, horizon_top=760))) for h in HUES},
     "mono": (lambda: mono_icon(), lambda: mono_icon(u_width=330, u_cy=512)),
@@ -427,7 +455,7 @@ if __name__ == "__main__":
         "app-icon-dark-rounded.svg": app_icon("dark", rounded=True),
         "app-icon-light-rounded.svg": app_icon("light", rounded=True),
         # Android adaptive: full-bleed, u shrunk into the 66% safe circle
-        "android-foreground.svg": app_icon("dark", u_width=330, u_cy=505, horizon_top=760),
+        "android-foreground.svg": app_icon("dark", u_width=330),
         "android-monochrome.svg": svg(u_path(512, 512, 330, "#ffffff")),
         "favicon.svg": favicon(),
         "linkedin-banner.svg": linkedin_banner(),
