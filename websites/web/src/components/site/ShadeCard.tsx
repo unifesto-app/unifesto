@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import LiquidGlassRoot from "@/components/site/LiquidGlassRoot";
 
-export type Shade = "sky" | "mint" | "ivory" | "blue";
+/* "door" is sky blending into mint: the container the two sides merge into. */
+export type Shade = "sky" | "mint" | "ivory" | "blue" | "door";
 
 /* A card painted in one accent's shade (soft blended shapes: orbs, a horizon,
    a beam or a fan) under heavy overlay grain, with a product picture floating
@@ -18,7 +19,7 @@ export default function ShadeCard({
   shade: Shade;
   glass?: boolean;
   className?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const classes = `shade-card shade-${shade} ${className}`;
   const layers = (

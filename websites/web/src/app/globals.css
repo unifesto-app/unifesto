@@ -730,10 +730,12 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    --s2 its partner, --s3 the base. Base, shapes and grain are one element:
    the glass photographs each child of its root alone, so a separate grain
    layer would lose its blend and land as a grey wash. */
-.shade-card { position: relative; isolation: isolate; overflow: hidden; border-radius: 1rem; }
+/* overflow: clip, not hidden: hidden would make each card a scroll
+   container and capture any scroll-driven animation inside it (the door). */
+.shade-card { position: relative; isolation: isolate; overflow: clip; border-radius: 1rem; }
 .shade-fill {
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  isolation: isolate; overflow: hidden;
+  isolation: isolate; overflow: clip;
   background: var(--s3);
 }
 /* The blur melts every edge into the base; the layer overhangs the card so
@@ -770,6 +772,47 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 :root[data-theme="light"] .shade-mint  { --s1: #90e4c1; --s2: #b7ead3; --s3: #eef9f3; }
 :root[data-theme="light"] .shade-ivory { --s1: #f7f0e0; --s2: #e8d3ad; --s3: #fbf7ee; }
 :root[data-theme="light"] .shade-blue  { --s1: #b9cfff; --s2: #8fb4ff; --s3: #eef3ff; }
+
+/* ─── Door: two sides, one event ──────────────────────────────────────── */
+/* On wide screens the sky and mint cards close the gap as the section
+   scrolls in, squaring their inner corners, then their own colour gives way
+   to one shared container (.door-stage, the "door" shade: the sky card's
+   orbs on the left melting into the mint card's horizon on the right).
+   Scroll-driven, so it follows the hand. The resting state is the merged
+   one, which is what reduced motion and browsers without scroll timelines
+   show. Phones keep two separate cards. */
+/* The halves overlap across the middle, where an aqua bridge (sky mixed
+   with mint) joins them, and a heavier blur than a single card's leaves no
+   seam. */
+.shade-door {
+  --s3: linear-gradient(90deg, #070d1c, #06100f 50%, #061410);
+  --shapes: radial-gradient(30% 52% at 28% 24%, var(--d1), transparent 76%), radial-gradient(24% 46% at 9% 84%, var(--d2), transparent 76%),
+            radial-gradient(34% 58% at 50% 50%, color-mix(in oklab, var(--d1), var(--d3)), transparent 76%),
+            radial-gradient(46% 42% at 74% 100%, var(--d3), transparent 74%), radial-gradient(24% 46% at 88% 18%, var(--d4), transparent 76%);
+  --d1: #90d5ff; --d2: #2f6bff; --d3: #90e4c1; --d4: #1f7a5c;
+}
+.shade-door .shade-shapes { filter: blur(56px); opacity: .65; }
+:root[data-theme="light"] .shade-door { --s3: linear-gradient(90deg, #e9f3ff, #ebf6f9 50%, #eef9f3); --d1: #90d5ff; --d2: #8fb4ff; --d3: #90e4c1; --d4: #b7ead3; }
+:root[data-theme="light"] .shade-door .shade-shapes { opacity: .8; }
+@media (min-width: 768px) {
+  .door-l { translate: 1.5rem 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .door-r { translate: -1.5rem 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .door-l > .shade-fill, .door-r > .shade-fill { opacity: 0; }
+}
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  /* The shorthand resets the timeline, so the timeline comes after it. */
+  /* Close the gap as the cards rise into view, form the shared container
+     under them, then dissolve their own colour fast, all done before the
+     pair reaches the middle of the screen. */
+  .door-l { animation: door-close-l linear both; animation-timeline: view(); animation-range: entry 40% cover 26%; }
+  .door-r { animation: door-close-r linear both; animation-timeline: view(); animation-range: entry 40% cover 26%; }
+  .door-stage { animation: door-form linear both; animation-timeline: view(); animation-range: cover 24% cover 30%; }
+  .door-l > .shade-fill, .door-r > .shade-fill { animation: door-dissolve linear both; animation-timeline: view(); animation-range: cover 30% cover 36%; }
+}
+@keyframes door-close-l { from { translate: 0 0; border-top-right-radius: 1rem; border-bottom-right-radius: 1rem; } }
+@keyframes door-close-r { from { translate: 0 0; border-top-left-radius: 1rem; border-bottom-left-radius: 1rem; } }
+@keyframes door-dissolve { from { opacity: 1; } }
+@keyframes door-form { from { opacity: 0; } }
 /* Frosted glass over a vivid shade keeps a translucent fill, so the panel's
    small text stays readable while the colour shows through. */
 .shade-card.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.5); }
