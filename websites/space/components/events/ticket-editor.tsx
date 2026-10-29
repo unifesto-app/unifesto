@@ -1,5 +1,6 @@
 "use client";
 
+import { cloneElement, isValidElement, useId, type ReactElement } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/context/SessionContext";
 import {
@@ -108,10 +109,20 @@ export function Field({
   label: string;
   children: React.ReactNode;
 }) {
+  const id = useId();
+  // A single input gets a real label; composite children (a Radix Select,
+  // a row of chips) get a named group instead.
+  const direct = isValidElement<{ id?: string }>(children) && children.type !== Select && children.type !== "div";
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      {children}
+    <div
+      className="space-y-1.5"
+      role={direct ? undefined : "group"}
+      aria-labelledby={direct ? undefined : `${id}-label`}
+    >
+      <Label id={`${id}-label`} htmlFor={direct ? id : undefined} className="text-xs">
+        {label}
+      </Label>
+      {direct ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children}
     </div>
   );
 }

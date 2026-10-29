@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { cloneElement, useCallback, useEffect, useId, useState, type ReactElement } from "react";
 import {
   createSpaceDeal,
   endDeal,
@@ -240,11 +240,12 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactElement<{ id?: string }> }) {
+  const id = useId();
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
-      {children}
+      <Label htmlFor={id} className="text-xs">{label}</Label>
+      {cloneElement(children, { id })}
     </div>
   );
 }

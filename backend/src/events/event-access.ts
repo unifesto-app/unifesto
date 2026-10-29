@@ -11,6 +11,15 @@ import { PrismaService } from '../prisma/prisma.service';
  * Everything else (PUBLIC, PRIVATE) is unaffected here.
  */
 
+/**
+ * A co-host link counts only once the invited space accepted it (F8). Spread
+ * into every `eventCoHost` / `coHosts: { some }` read that grants access,
+ * lists or credits; a pending invite grants nothing.
+ */
+export const ACCEPTED_CO_HOST = {
+  acceptedAt: { not: null },
+} satisfies Prisma.EventCoHostWhereInput;
+
 /** Space ids the viewer belongs to, or 'ALL' for a platform admin. */
 export async function memberSpaceIds(
   prisma: PrismaService,
@@ -47,7 +56,7 @@ export function spaceOnlyVisibleWhere(
     OR: [
       notSpaceOnly,
       { spaceId: { in: memberIds } },
-      { coHosts: { some: { spaceId: { in: memberIds } } } },
+      { coHosts: { some: { spaceId: { in: memberIds }, ...ACCEPTED_CO_HOST } } },
     ],
   };
 }
@@ -87,7 +96,7 @@ export async function canAccessSpaceOnlyEvent(
   if (memberIds.length > 0) {
     if (memberIds.includes(event.spaceId)) return true;
     const coHost = await prisma.eventCoHost.findFirst({
-      where: { eventId: event.id, spaceId: { in: memberIds } },
+      where: { eventId: event.id, spaceId: { in: memberIds }, ...ACCEPTED_CO_HOST },
       select: { id: true },
     });
     if (coHost) return true;

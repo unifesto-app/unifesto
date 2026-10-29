@@ -193,7 +193,7 @@ export default function EventCoHostingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Co-Hosting"
-        subtitle="Invite other spaces to co-host this event and share management access"
+        subtitle="Invite other spaces to co-host this event. Each one accepts before it is listed or credited."
       />
 
       {error && <ErrorNotice message={error} />}
@@ -277,8 +277,9 @@ export default function EventCoHostingPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Each co-host space&apos;s admins and curators get full management access to this
-              event, and it appears in their own event list.
+              The invited space&apos;s Space Admins accept or decline. Once accepted, the event
+              is listed on their space, credited to them, and their Space Admins can edit it.
+              Publishing, the team and money stay with your space.
             </p>
             <div className="relative">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -323,7 +324,7 @@ export default function EventCoHostingPage() {
                           </div>
                           {already ? (
                             <Badge variant="neutral">
-                              {s.id === data?.owner.id ? "Host" : "Added"}
+                              {s.id === data?.owner.id ? "Host" : "Invited"}
                             </Badge>
                           ) : (
                             <Button
@@ -379,6 +380,8 @@ export default function EventCoHostingPage() {
             {(data?.coHosts ?? []).map((c) => {
               // The host can remove anyone; a co-host can remove itself (leave).
               const canRemove = isOwner || c.space.id === spaceId;
+              // Invited but not yet accepted (F8): no access, listing or credit.
+              const invited = c.acceptedAt == null;
               return (
                 <li
                   key={c.id}
@@ -396,8 +399,8 @@ export default function EventCoHostingPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="neutral">Co-host</Badge>
-                    {isOwner && !pending && (
+                    <Badge variant="neutral">{invited ? "Invited" : "Co-host"}</Badge>
+                    {isOwner && !pending && !invited && (
                       <Button
                         variant="secondary"
                         size="sm"

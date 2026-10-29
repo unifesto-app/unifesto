@@ -67,6 +67,7 @@ import {
   spaceHiddenError,
 } from '../spaces/space-access';
 import {
+  ACCEPTED_CO_HOST,
   canAccessSpaceOnlyEvent,
   listableEventsWhere,
   memberSpaceIds,
@@ -167,7 +168,7 @@ export class EventsService {
     // the event. `SPACE_CREATE_EVENT` on a co-host space is exactly that check.
     if (eventId) {
       const coHostSpaces = await this.prisma.eventCoHost.findMany({
-        where: { eventId },
+        where: { eventId, ...ACCEPTED_CO_HOST },
         select: { spaceId: true },
       });
       if (
@@ -348,16 +349,14 @@ export class EventsService {
       //      attaching an existing child (a brand-new event has no co-hosts yet).
       // Either direction proves the two spaces already collaborate, so the
       // umbrella stays coherent.
-      const childSpaceCoHostsParent = await this.prisma.eventCoHost.findUnique({
-        where: { eventId_spaceId: { eventId: parentId, spaceId } },
+      const childSpaceCoHostsParent = await this.prisma.eventCoHost.findFirst({
+        where: { eventId: parentId, spaceId, ...ACCEPTED_CO_HOST },
         select: { id: true },
       });
       let allowed = childSpaceCoHostsParent != null;
       if (!allowed && childId) {
-        const parentSpaceCoHostsChild = await this.prisma.eventCoHost.findUnique({
-          where: {
-            eventId_spaceId: { eventId: childId, spaceId: parent.spaceId },
-          },
+        const parentSpaceCoHostsChild = await this.prisma.eventCoHost.findFirst({
+          where: { eventId: childId, spaceId: parent.spaceId, ...ACCEPTED_CO_HOST },
           select: { id: true },
         });
         allowed = parentSpaceCoHostsChild != null;
@@ -960,6 +959,8 @@ export class EventsService {
         select: {
           id: true,
           createdAt: true,
+          // Null = invited, waiting for that space to accept (F8).
+          acceptedAt: true,
           space: { select: this.coHostSpaceSelect },
         },
       }),
@@ -975,11 +976,15 @@ export class EventsService {
     return { owner: event.space, coHosts, pendingTransfer };
   }
 
-  /** Invite a space to co-host. Owning-space organisers only. */
+  /**
+   * Invite a space to co-host. Owning-space organisers only. The link starts
+   * pending: it grants no access, listing or public credit until a Space Admin
+   * of the invited space accepts (F8), so no space can claim another's name.
+   */
   async addCoHost(userId: string, eventId: string, spaceId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, spaceId: true },
+      select: { id: true, title: true, spaceId: true, space: { select: { name: true } } },
     });
     if (!event) throw new NotFoundException('Event not found');
 
@@ -996,20 +1001,88 @@ export class EventsService {
     const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
     if (!space) throw new NotFoundException('Space not found');
 
-    await this.prisma.eventCoHost.upsert({
+    const existing = await this.prisma.eventCoHost.findUnique({
       where: { eventId_spaceId: { eventId, spaceId } },
-      create: { eventId, spaceId, invitedBy: userId },
-      update: {},
+      select: { id: true },
     });
+    if (existing) return { success: true };
 
+    const invite = await this.prisma.eventCoHost.create({
+      data: { eventId, spaceId, invitedBy: userId },
+      select: { id: true },
+    });
+    // The invited space decides, so the case sits on its desk.
+    openSubjectCase(this.events, {
+      subjectType: 'EventCoHost',
+      subjectId: invite.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'EVENT_CO_HOST',
+      desk: SupportDesk.SPACE,
+      spaceId,
+      subject: `Co-host ${event.title}`,
+      message: `${event.space.name} invited ${space.name} to co-host ${event.title}. Accept or decline it under Events, Co-host invites.`,
+    });
     return { success: true };
   }
 
-  /** Remove a co-host. The owning space's organisers, or the co-host itself. */
+  /**
+   * Pending co-host invites addressed to a space, for its Space Admins to
+   * accept or decline. The event isn't theirs yet, so this is the only place
+   * they can see it.
+   */
+  async listCoHostInvites(userId: string, spaceId: string) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId }))) {
+      throw new ForbiddenException('Only a Space Admin can review co-host invites');
+    }
+    return this.prisma.eventCoHost.findMany({
+      where: { spaceId, acceptedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdAt: true,
+        event: { select: this.attachEventSelect },
+      },
+    });
+  }
+
+  /** Accept a pending invite. Space Admins of the invited space only. */
+  async acceptCoHost(userId: string, eventId: string, spaceId: string) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId }))) {
+      throw new ForbiddenException('Only a Space Admin of the invited space can accept');
+    }
+    const invite = await this.prisma.eventCoHost.findUnique({
+      where: { eventId_spaceId: { eventId, spaceId } },
+      select: { id: true, acceptedAt: true, event: { select: { slug: true } } },
+    });
+    if (!invite || invite.acceptedAt) {
+      throw new NotFoundException('No pending co-host invite found');
+    }
+    await this.prisma.eventCoHost.update({
+      where: { id: invite.id },
+      data: { acceptedAt: new Date(), acceptedBy: userId },
+    });
+    // The public page now credits this space.
+    await this.cache.invalidateEventCache(invite.event.slug);
+    updateSubjectCase(this.events, {
+      subjectType: 'EventCoHost',
+      subjectId: invite.id,
+      actorId: userId,
+      text: 'Accepted. This space now co-hosts the event.',
+      status: SupportTicketStatus.RESOLVED,
+    });
+    return { success: true };
+  }
+
+  /**
+   * Remove a co-host. The owning space's organisers, or the co-host itself.
+   * On a pending invite this is the host withdrawing it or the invited space
+   * declining it.
+   */
   async removeCoHost(userId: string, eventId: string, spaceId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, spaceId: true },
+      select: { id: true, slug: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
 
@@ -1019,7 +1092,23 @@ export class EventsService {
       throw new ForbiddenException('You cannot manage this co-host');
     }
 
-    await this.prisma.eventCoHost.deleteMany({ where: { eventId, spaceId } });
+    const link = await this.prisma.eventCoHost.findUnique({
+      where: { eventId_spaceId: { eventId, spaceId } },
+      select: { id: true, acceptedAt: true },
+    });
+    if (!link) return { success: true };
+    await this.prisma.eventCoHost.delete({ where: { id: link.id } });
+    if (link.acceptedAt) {
+      await this.cache.invalidateEventCache(event.slug);
+    } else {
+      updateSubjectCase(this.events, {
+        subjectType: 'EventCoHost',
+        subjectId: link.id,
+        actorId: userId,
+        text: isThisCoHost ? 'Declined by the invited space.' : 'The host withdrew the invite.',
+        status: isThisCoHost ? SupportTicketStatus.RESOLVED : SupportTicketStatus.CLOSED,
+      });
+    }
     return { success: true };
   }
 
@@ -1075,8 +1164,8 @@ export class EventsService {
       throw new BadRequestException('This space already owns the event');
     }
 
-    const coHost = await this.prisma.eventCoHost.findUnique({
-      where: { eventId_spaceId: { eventId, spaceId: toSpaceId } },
+    const coHost = await this.prisma.eventCoHost.findFirst({
+      where: { eventId, spaceId: toSpaceId, ...ACCEPTED_CO_HOST },
       select: { id: true },
     });
     if (!coHost) {
@@ -1185,8 +1274,8 @@ export class EventsService {
         'This event is now part of a sub-event hierarchy. Detach it before accepting.',
       );
     }
-    const stillCoHost = await this.prisma.eventCoHost.findUnique({
-      where: { eventId_spaceId: { eventId, spaceId: transfer.toSpaceId } },
+    const stillCoHost = await this.prisma.eventCoHost.findFirst({
+      where: { eventId, spaceId: transfer.toSpaceId, ...ACCEPTED_CO_HOST },
       select: { id: true },
     });
     if (!stillCoHost) {
@@ -2262,7 +2351,7 @@ export class EventsService {
     // owning space is already `event.space`. Runs on cache miss, then rides
     // along in the cached event object like `curators` above.
     const coHostLinks = await this.prisma.eventCoHost.findMany({
-      where: { eventId: event.id },
+      where: { eventId: event.id, ...ACCEPTED_CO_HOST },
       orderBy: { createdAt: 'asc' },
       select: { space: { select: this.coHostSpaceSelect } },
     });
@@ -2981,7 +3070,7 @@ export class EventsService {
     const where: Prisma.EventWhereInput = {
       ...deletedWhere(deleted),
       seriesParentId: null,
-      OR: [{ spaceId }, { coHosts: { some: { spaceId } } }],
+      OR: [{ spaceId }, { coHosts: { some: { spaceId, ...ACCEPTED_CO_HOST } } }],
       AND: [visibilityWhere],
     };
     if (status) {

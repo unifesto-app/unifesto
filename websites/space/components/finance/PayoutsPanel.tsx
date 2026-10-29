@@ -346,10 +346,11 @@ export function RequestPayoutDialog({
                 {/* Destination — own or another space admin's verified method. */}
                 {accounts.length > 0 && (
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor="payout-account" className="text-xs font-medium text-muted-foreground">
                       Pay to
                     </label>
                     <select
+                      id="payout-account"
                       value={accountId}
                       onChange={(e) => setAccountId(e.target.value)}
                       className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
