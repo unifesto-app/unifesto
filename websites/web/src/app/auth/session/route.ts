@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PENDING_COOKIE, REFRESH_COOKIE, clearCookie, profile, refreshCookie, rotate, sameOrigin } from "@/lib/auth-server";
+import { PENDING_COOKIE, REFRESH_COOKIE, clearCookie, clearRefresh, profile, rotate, sameOrigin, setRefresh } from "@/lib/auth-server";
 
 /**
  * K18: POST /auth/session. Pages call it once per load to get an access token
@@ -18,7 +18,12 @@ export async function POST(req: NextRequest) {
 
   if (!given && !stored) {
     const pending = req.cookies.get(PENDING_COOKIE)?.value;
-    if (!pending) return NextResponse.json({ message: "Signed out" }, { status: 401 });
+    if (!pending) {
+      // Drops a signed-in hint left without its refresh cookie.
+      const res = NextResponse.json({ message: "Signed out" }, { status: 401 });
+      clearRefresh(res);
+      return res;
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(pending);
@@ -34,11 +39,11 @@ export async function POST(req: NextRequest) {
   const tokens = await rotate(given || stored);
   if (!tokens) {
     const res = NextResponse.json({ message: "Signed out" }, { status: 401 });
-    clearCookie(res, REFRESH_COOKIE);
+    clearRefresh(res);
     return res;
   }
   const res = NextResponse.json({ accessToken: tokens.accessToken, ...(await profile(tokens.accessToken)) });
-  res.cookies.set(REFRESH_COOKIE, tokens.refreshToken, refreshCookie);
+  setRefresh(res, tokens.refreshToken);
   res.headers.set("Cache-Control", "no-store");
   return res;
 }

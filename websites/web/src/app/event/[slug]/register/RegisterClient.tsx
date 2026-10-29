@@ -31,7 +31,7 @@ import {
   type RegTicket,
 } from "@/lib/api/registration";
 import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
-import GoogleSignIn from "@/components/GoogleSignIn";
+import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { storedUtm, withStoredUtm } from "@/lib/utm";
 
@@ -479,7 +479,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     body = (
       <form onSubmit={submitForm} className="space-y-6">
         {/* K18: before the questions, so nothing typed is lost on the trip to Google. */}
-        {ready && !session && <GoogleSignIn next={`/event/${event.slug}/register`} />}
+        {ready && !session && <SocialSignIn next={`/event/${event.slug}/register`} />}
         {individual.length > 1 ? (
           <fieldset className="space-y-2">
             <legend className="mb-2 text-sm font-semibold text-paper">Ticket</legend>

@@ -82,6 +82,20 @@ export function useWebSession(): State {
   return useSyncExternalStore(subscribe, () => state, () => SERVER_STATE);
 }
 
+const noop = () => () => {};
+
+/**
+ * Signed in, without asking the server: the session once this page has
+ * checked, else the `uf_in` hint cookie the auth routes keep beside the
+ * refresh cookie. For chrome on every page (the navbar), so a visitor who
+ * never signed in makes no /auth/session call.
+ */
+export function useSignedIn(): boolean {
+  const { session, ready } = useSyncExternalStore(subscribe, () => state, () => SERVER_STATE);
+  const hint = useSyncExternalStore(noop, () => /(?:^|; )uf_in=1/.test(document.cookie), () => false);
+  return ready ? Boolean(session) : hint;
+}
+
 export const getSession = () => state.session;
 
 /** Keep page-side changes (a name just saved) in the session. */
@@ -117,5 +131,5 @@ export function clearSession(): void {
   void post("/auth/logout", undefined, token).catch(() => undefined);
 }
 
-/** Where "Continue with Google" goes: back to `next` signed in. */
-export const googleSignInHref = (next: string) => `/auth/google?next=${encodeURIComponent(next)}`;
+/** Where "Continue with Google/Apple" goes: back to `next` signed in. */
+export const signInHref = (provider: "google" | "apple", next: string) => `/auth/${provider}?next=${encodeURIComponent(next)}`;

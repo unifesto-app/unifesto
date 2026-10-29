@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import GoogleSignIn from "@/components/GoogleSignIn";
+import SocialSignIn from "@/components/SocialSignIn";
 import { sendEmailCode, verifyEmailCode } from "@/lib/api/registration";
 import { clearSession, startSession, type PendingSignIn } from "@/lib/auth";
 
@@ -93,7 +93,7 @@ export default function SignIn({
     </form>
   ) : (
     <form onSubmit={sendCode} className="space-y-4">
-      <GoogleSignIn next={next} />
+      <SocialSignIn next={next} />
       <p className="text-paper/75">{intro}</p>
       <input
         required

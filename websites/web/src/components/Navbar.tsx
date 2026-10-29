@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useLightSurfaceAt } from "@/lib/surface";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useSignedIn } from "@/lib/auth";
 import { DUR, EASE_IN_OUT_CUBIC, EASE_OUT_QUART } from "@/lib/motion";
 import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
 import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
@@ -168,6 +169,7 @@ export default function Navbar() {
   const empty = useEmptySections();
   const menus = MENUS.map((m) => ({ ...m, items: m.items.filter((i) => !empty.has(i.href)) }));
   const onLight = useLightSurfaceAt(() => [window.innerWidth / 2, 40]);
+  const account = useSignedIn() ? { label: "My account", href: "/account" } : { label: "Sign in", href: "/login" };
 
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
@@ -290,6 +292,14 @@ export default function Navbar() {
 
           <div className="hidden items-center gap-2 lg:flex">
             <ThemeToggle />
+            {/* No room for it in the bar below xl; the app menu carries it there. */}
+            <a
+              href={account.href}
+              aria-current={isActive(pathname, account.href) ? "page" : undefined}
+              className={`${linkClass(isActive(pathname, account.href))} hidden whitespace-nowrap xl:flex`}
+            >
+              {account.label}
+            </a>
             <Menu
               label="Get the app"
               {...menuState("app")}
@@ -316,6 +326,13 @@ export default function Navbar() {
                 >
                   See what&rsquo;s inside
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+                <a
+                  href={account.href}
+                  onClick={() => setOpenMenu(null)}
+                  className="link-draw mt-2 flex w-fit text-xs font-semibold text-paper/80 hover:text-paper xl:hidden"
+                >
+                  {account.label} on the web
                 </a>
               </div>
             </Menu>
@@ -402,6 +419,9 @@ export default function Navbar() {
                 ])}
               </motion.ul>
               <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
+                <a href={account.href} className="btn btn-secondary w-full">
+                  {account.label}
+                </a>
                 <a href="/request-space" className="btn btn-primary w-full">
                   Host an event
                   <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />

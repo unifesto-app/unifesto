@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { OAUTH_COOKIE, PENDING_COOKIE, REFRESH_COOKIE, api, clearCookie, refreshCookie, safeNext, shortCookie } from "@/lib/auth-server";
+import { OAUTH_COOKIE, PENDING_COOKIE, api, clearCookie, safeNext, setRefresh, shortCookie } from "@/lib/auth-server";
 import { COGNITO_CLIENT_ID, COGNITO_DOMAIN, COGNITO_REDIRECT_URI } from "@/lib/cognito";
 
 interface CognitoLogin {
@@ -10,7 +10,7 @@ interface CognitoLogin {
 }
 
 /**
- * K18: GET /auth/callback, where Cognito returns after Google. Checks the
+ * K18: GET /auth/callback, where Cognito returns after Google or Apple. Checks the
  * state, swaps the code (with the PKCE verifier) for an ID token, signs in
  * through POST /auth/cognito like the app, and keeps the refresh token in the
  * httpOnly cookie. Tokens never appear in a URL.
@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   const back = (error?: string) => {
     const url = new URL(next, req.url);
     if (error) url.searchParams.set("signin_error", error);
-    const res = NextResponse.redirect(url);
+    // Relative: standalone Next's req.url carries its bind address (0.0.0.0:3000), not ours.
+    const res = new NextResponse(null, { status: 307, headers: { Location: url.pathname + url.search + url.hash } });
     clearCookie(res, OAUTH_COOKIE);
     return res;
   };
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     const res = back();
     if (data.accessToken && data.refreshToken) {
-      res.cookies.set(REFRESH_COOKIE, data.refreshToken, refreshCookie);
+      setRefresh(res, data.refreshToken);
     } else if (data.requiresMobileVerification && data.tempToken) {
       // New to Unifesto: the page asks for a mobile number next (/auth/session hands this over once).
       const email = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString()).email ?? "";
