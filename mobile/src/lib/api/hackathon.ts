@@ -894,6 +894,8 @@ export interface MySubmissions {
     /** Links lock then (else when the round closes). */
     closesAt: string | null;
     canEdit: boolean;
+    /** A judge has scored the team in this round: the links are frozen. */
+    locked?: boolean;
     links: SubmissionLink[];
     notes: string | null;
     updatedAt: string | null;
