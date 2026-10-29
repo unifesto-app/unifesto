@@ -1009,3 +1009,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Space console served at /console/* on space.unifesto.app; old /dashboard, /login, /no-access, /sponsor and /present links 308 there with the query kept (#447)
 - **2026-10-29** · Console moved into web at www.unifesto.app/console (own root layout and CSS, console gate and CSP in web's proxy, camera/mic headers); space.unifesto.app frozen on its last image (#448)
 - **2026-10-29** · One sign-in for the console: web's /login and session (renew on 401, old space cookie read until it expires); /console/login 308s to /login; proxy tests run in npm test (#450)
+- **2026-10-29** · CI: website steps fail on lint, audit and test errors again (an && chain under bash -e was passing them); web's 8 link lint errors fixed (#449)
