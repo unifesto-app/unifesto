@@ -526,6 +526,7 @@ model User {
   sponsorMemberships           SponsorUser[]                 @relation("SponsorUserAccount")
   couponRedemptions            CouponRedemption[]
   questions                    Question[]
+  feedbackResponses            EventFeedbackResponse[]
   questionVotes                QuestionVote[]
   partnerLinks                 EventPartnerLink[]            @relation("PartnerLinkContact")
   stayBookings                 StayBooking[]                 @relation("StayBooker")
@@ -1499,6 +1500,10 @@ model Event {
   // L2 live Q&A: new questions wait for a moderator (true) or go straight up (false).
   qaPremoderated Boolean @default(true) @map("qa_premoderated")
 
+  // F1: attendees can rate the event (1-5, NPS and the curators' own questions).
+  // On by default; a curator can switch it off per event.
+  feedbackEnabled Boolean @default(true) @map("feedback_enabled")
+
   // L4 projector: random read-only display link secret. Regenerating it
   // revokes every screen opened with the old link. Null until first asked for.
   displayToken String? @map("display_token") @db.VarChar(64)
@@ -1600,6 +1605,8 @@ model Event {
   stayBookings                   StayBooking[]
   polls                          Poll[]
   quizzes                        Quiz[]
+  feedbackQuestions              EventFeedbackQuestion[]
+  feedbackResponses              EventFeedbackResponse[]
 
   // One occurrence per slot: replicas reconciling at once can't duplicate.
   @@unique([seriesParentId, startDateTime])
@@ -6223,4 +6230,49 @@ model OrbitApplication {
   @@index([status])
   @@index([userId])
   @@map("orbit_applications")
+}
+
+/// F1: a curator's own question on an event's feedback form, asked after the
+/// fixed 1-5 rating and NPS. Same shape and rules as EventFormField and
+/// StayQuestion (registrations/form-answers.util.ts); no FILE answers.
+model EventFeedbackQuestion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  label      String        @db.VarChar(255)
+  type       FormFieldType
+  options    String[]
+  isRequired Boolean       @default(false) @map("is_required")
+  order      Int           @default(0)
+  helpText   String?       @map("help_text") @db.VarChar(500)
+  config     Json?
+  showIf     Json?         @map("show_if")
+
+  @@index([eventId])
+  @@map("event_feedback_questions")
+}
+
+/// F1: one attendee's feedback on an event. One per attendee (editable until
+/// feedback closes): `rating` 1-5, `nps` 0-10 ("how likely to recommend"),
+/// and `answers` to the curators' questions keyed by question id.
+model EventFeedbackResponse {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String @map("user_id") @db.Uuid
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating  Int     @db.SmallInt
+  nps     Int?    @db.SmallInt
+  comment String? @db.Text
+  answers Json?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([eventId, userId])
+  @@map("event_feedback_responses")
 }

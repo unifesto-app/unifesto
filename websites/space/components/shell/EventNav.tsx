@@ -29,6 +29,7 @@ import {
   ListChecks,
   ChatsCircle,
   Timer,
+  Star,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useAccess, type Capability, type SpaceFeature } from "@/lib/context/SessionContext";
@@ -102,6 +103,7 @@ const NAV_GROUPS: EventNavGroup[] = [
       { href: "/questions", label: "Live Q&A", icon: ChatsCircle, requires: "event:edit", ownersOnly: true },
       { href: "/quizzes", label: "Live quizzes", icon: Timer, requires: "event:edit", ownersOnly: true },
       { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", ownersOnly: true, feature: "hasCertificates" },
+      { href: "/feedback", label: "Feedback", icon: Star, requires: "event:edit" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
       { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-leaderboard" },
       // Unifesto Stay. Crew get the property desk; setup and approvals are gated in-page.

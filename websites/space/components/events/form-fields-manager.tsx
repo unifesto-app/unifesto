@@ -161,6 +161,7 @@ export function FormFieldsManager({
   isGroup,
   onChanged,
   store,
+  noFiles,
 }: {
   eventId: string;
   ticketTypeId?: string;
@@ -169,6 +170,8 @@ export function FormFieldsManager({
   isGroup: boolean;
   onChanged: () => Promise<void>;
   store?: QuestionStore;
+  /** Hide the File type (lists that can't take uploads, e.g. feedback). */
+  noFiles?: boolean;
 }) {
   const api: QuestionStore = store ?? {
     create: (b) => createFormField(eventId, { ticketTypeId: ticketTypeId!, ...b, order: b.order ?? fields.length }),
@@ -360,7 +363,7 @@ export function FormFieldsManager({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FIELD_TYPES.map((ft) => (
+                  {FIELD_TYPES.filter((ft) => !noFiles || ft.value !== "FILE").map((ft) => (
                     <SelectItem key={ft.value} value={ft.value}>
                       {ft.label}
                       <span className="ml-2 text-xs text-muted-foreground">{ft.hint}</span>
