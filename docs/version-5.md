@@ -428,7 +428,7 @@ One support system for everything a person needs help with. Every item is an **A
 | G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | done (#276) |
 | G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | done (#265) |
 | G13 | **Polish mobile from the 18 Oct device audit.** Low and medium items from the real-iPhone pass. | done (#274) |
-| G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | done (#390) |
+| G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | done (#404) |
 
 ### H · White-label, the big version
 
@@ -958,3 +958,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Assist bot replies with an amount, link, email or phone no tool returned are held and go to a person; Apex AI card shows each feature's last 30 days (calls, cost, failures, cache share) (#401)
 - **2026-10-29** · 5.0.0 release and final deadline moved to Sun 15 Nov (freeze 6 Nov, submit 9 Nov); marketing and non-Z8 work parked on the board (#402)
 - **2026-10-29** · U1–U3 follow-ups: IAM console shows never-grantable Employee cells as locked; Connect Claude (PM tokens) tab hidden from employees (#403)
+- **2026-10-29** · G14 finished: last ~30 Apex/Space labels tied to their controls, shared Field + question inputs label automatically (#404)
