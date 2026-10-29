@@ -406,7 +406,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
-| F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
+| F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | done (#418) |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
 | F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | done (#405) |
@@ -967,3 +967,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E5 hackathon submissions: curator Project links page per round (missing filter, CSV), links lock once a judge scores them, mobile stale draft fixed (#412)
 - **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
 - **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)
+- **2026-10-29** · F5 audit trail: @Audit records who changed roles, permissions, status, plans and reconciled payments (audit_logs), shown on Apex user, space, event detail and IAM (#418)
