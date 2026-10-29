@@ -3,8 +3,9 @@ import LiquidGlassRoot from "@/components/site/LiquidGlassRoot";
 
 export type Shade = "sky" | "mint" | "ivory" | "blue";
 
-/* A card painted in one accent's shade (glowing along the hero's two orbit
-   lines) under heavy overlay grain, with a product picture floating on it. With `glass`, the
+/* A card painted in one accent's shade (soft blended shapes: orbs, a horizon,
+   a beam or a fan) under heavy overlay grain, with a product picture floating
+   on it. With `glass`, the
    picture is a panel that turns to frosted glass and bends the shade behind
    it; without, it's anything (a phone) sitting on the shade. Tones and
    grain live in globals.css under "Shade cards". */
@@ -22,7 +23,7 @@ export default function ShadeCard({
   const classes = `shade-card shade-${shade} ${className}`;
   const layers = (
     <div aria-hidden="true" className="shade-fill">
-      <div className="shade-orbits" />
+      <div className="shade-shapes" />
     </div>
   );
   if (!glass) {
