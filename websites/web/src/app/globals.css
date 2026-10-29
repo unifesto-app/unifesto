@@ -160,7 +160,12 @@ body {
   --color-sand: var(--sand);
   --color-ink: var(--ink);
   --color-primary-deep: var(--primary);
-  --color-ivory: #fffff0;
+  /* Card accents, inside cards only (never borders or chrome): mint = live
+     and check-in, sky = tickets and events, ivory = money. */
+  --color-mint: var(--mint);
+  --color-sky: var(--sky);
+  --color-ivory: var(--ivory);
+  --color-snow: #ffffff; /* never flips: type over photos */
   --color-steel: var(--muted-foreground);
   --color-beige: #dccfc0;
   --color-signal: var(--primary);
@@ -345,6 +350,12 @@ body {
   animation: draw-x 1200ms var(--ease-out-expo) 200ms both;
 }
 @keyframes draw-x { from { transform: scaleX(0); } }
+
+/* Card accent values (text-mint, bg-sky… via @theme). Night uses the light
+   accents; day uses their deep shades, since the light ones are ~1.3:1 on
+   white. */
+:root { --mint: #90e4c1; --sky: #90d5ff; --ivory: #f7f0e0; }
+:root[data-theme="light"] { --mint: #15745a; --sky: #0369a1; --ivory: #7a5a1e; }
 
 
 /* ─── Pop-in (popovers) ─────────────────────────────────────────────── */

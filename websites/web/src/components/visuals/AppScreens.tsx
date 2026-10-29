@@ -105,7 +105,7 @@ export function PassScreen() {
         </div>
         <div className="flex justify-between text-[9px]">
           <span className="text-paper/55">Team Byte Me · Seat 2 of 4</span>
-          <span className="text-primary">Confirmed</span>
+          <span className="text-sky">Confirmed</span>
         </div>
       </div>
       <div className="mt-3 space-y-1.5">

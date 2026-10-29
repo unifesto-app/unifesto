@@ -150,23 +150,28 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
           }
         />
 
-        {/* Category pill, bottom-left, matching the blog card kicker. */}
-        <span className="blur-bg pointer-events-none relative z-10 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
+        {/* Category, bottom-left, as plain text: white over a photo's scrim,
+            muted on the plain card. */}
+        <span
+          className={`pointer-events-none relative z-10 text-[11px] font-semibold ${
+            imageUrl ? "text-snow [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]" : "text-paper/70"
+          }`}
+        >
           {event.category || "Event"}
         </span>
 
-        {/* Status badges, top-right: restrained, brand-consistent. */}
-        <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-wrap justify-end gap-1.5">
-          {isTrending && (
-            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-ink">
-              Trending
-            </span>
-          )}
-          {isFeatured && (
-            <span className="blur-bg rounded-full px-2 py-0.5 text-[10px] font-semibold text-paper">
-              Featured
-            </span>
-          )}
+        {/* Status, top-right, as plain text; photos get a soft top scrim. Over a
+            photo the sky is the night shade, since the scrim is always dark. */}
+        {(isTrending || isFeatured) && imageUrl && (
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-scrim/55 to-transparent" />
+        )}
+        <div
+          className={`pointer-events-none absolute right-3 top-3 z-10 flex gap-2 text-[10px] font-semibold ${
+            imageUrl ? "text-snow [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]" : "text-paper/70"
+          }`}
+        >
+          {isTrending && <span className={imageUrl ? "text-[#90d5ff]" : "text-sky"}>Trending</span>}
+          {isFeatured && <span>Featured</span>}
         </div>
       </div>
 
@@ -227,7 +232,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
             )}
           </div>
           {isCompleted ? (
-            <span className="rounded-full bg-paper/[0.06] px-3 py-1.5 text-xs font-medium text-paper/60">
+            <span className="text-xs font-medium text-paper/55">
               {status === "cancelled" ? "Cancelled" : "Completed"}
             </span>
           ) : (

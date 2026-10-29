@@ -18,11 +18,11 @@ export function StaySetupVisual() {
   return (
     <Panel title="Stay · Nav Nirman 4.0">
       <div className={`aspect-[4/3] w-full rounded-md ${cover}`} />
-      <div className="mt-3 flex flex-wrap gap-1.5 text-[9px] text-paper/70">
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-[9px] text-paper/60">
         {[[WifiHigh, "Wi-Fi"], [Drop, "Hot water"], [ForkKnife, "Mess"], [Clock, "Check-in 12:00 PM"]].map(([I, t]) => {
           const Icon = I as typeof WifiHigh;
           return (
-            <span key={t as string} className="flex items-center gap-1 rounded-full bg-night-3 px-2 py-1">
+            <span key={t as string} className="flex items-center gap-1">
               <Icon className="h-2.5 w-2.5" /> {t as string}
             </span>
           );
@@ -89,7 +89,7 @@ export function StayPassScreen() {
         </div>
         <div className="flex justify-between text-[9px]">
           <span className="tabular text-paper/55">ST-7K2Q</span>
-          <span className="text-primary">Confirmed</span>
+          <span className="text-sky">Confirmed</span>
         </div>
       </div>
       <div className="mt-3 space-y-1.5 text-[10px] text-paper/70">
@@ -109,7 +109,7 @@ export function StayScanVisual() {
           <span className="block text-[12px] text-paper">Ananya R. + 1</span>
           <span className="block text-[9px] text-paper/50">ST-7K2Q · Girls hostel</span>
         </span>
-        <span className="flex items-center gap-1 text-[11px] text-primary">
+        <span className="flex items-center gap-1 text-[11px] text-mint">
           <Check weight="bold" className="h-3 w-3" /> Checked in
         </span>
       </div>
@@ -128,7 +128,7 @@ export function StayScanVisual() {
         <span className="text-[10px] text-paper/55">of 84 guests checked in</span>
       </div>
       <div className="mt-2 h-1 rounded-full bg-white/[0.06]">
-        <div data-reveal="fill" className="h-full origin-left rounded-full bg-primary" style={{ transform: "scaleX(0.76)" }} />
+        <div data-reveal="fill" className="h-full origin-left rounded-full bg-mint" style={{ transform: "scaleX(0.76)" }} />
       </div>
     </Panel>
   );

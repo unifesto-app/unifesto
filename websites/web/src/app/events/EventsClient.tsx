@@ -87,7 +87,8 @@ function FeatureCard({ event }: { event: Event }) {
               : "absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.22),transparent_60%)]"
           }
         />
-        <span className="absolute left-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-ink">
+        <div aria-hidden className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-scrim/55 to-transparent" />
+        <span className="absolute left-4 top-4 text-[11px] font-semibold text-[#90d5ff] [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
           {event.registered_count ? `${event.registered_count.toLocaleString("en-IN")} going` : "Trending"}
         </span>
       </div>
