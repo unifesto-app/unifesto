@@ -226,6 +226,8 @@ export const getEvents = async (params?: {
   endDate?: string;
   /** No paid ticket type. */
   free?: boolean;
+  /** K1: one college or club's events. */
+  spaceId?: string;
 }) => {
   const query = new URLSearchParams();
   if (params?.page) query.append('page', String(params.page));
@@ -238,6 +240,7 @@ export const getEvents = async (params?: {
   if (params?.startDate) query.append('startDate', params.startDate);
   if (params?.endDate) query.append('endDate', params.endDate);
   if (params?.free) query.append('free', 'true');
+  if (params?.spaceId) query.append('spaceId', params.spaceId);
 
   // Throws on failure so lists can show "Couldn't load" instead of "No events yet".
   return expectOk(await makePublicRequest(`/events?${query.toString()}`), "Couldn't load events");

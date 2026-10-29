@@ -82,9 +82,11 @@ export class SpacesController {
     @Query('visibility') visibility?: SpaceVisibility,
     @Query('search') search?: string,
     @Query('parentId') parentId?: string,
+    @Query('city') city?: string,
   ) {
     return this.spacesService.getAllSpaces({
       parentId,
+      city: city?.trim().slice(0, 100) || undefined,
       page: toPage(page),
       limit: toLimit(limit, 10, 50),
       // An unknown enum value reached Prisma as a 500; ignore it instead.

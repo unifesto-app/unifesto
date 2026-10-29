@@ -158,9 +158,20 @@ function SpacesSkeleton() {
 
 const ITEMS_PER_PAGE = 12;
 
-type SortMode = "name" | "location";
+type SortMode = "active" | "name" | "location";
+
+// K1: a placeholder space (unverified, no events, just its creator) stays out
+// of the default view, so the directory doesn't read as a ghost town.
+const isEmpty = (s: Space) => !s.is_verified && !s.event_count && (s.member_count ?? 0) <= 1;
 
 const byName = (a: Space, b: Space) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+
+// Most active: verified, then most events, then most members (K1).
+const byActivity = (a: Space, b: Space) =>
+  Number(b.is_verified) - Number(a.is_verified) ||
+  (b.event_count ?? 0) - (a.event_count ?? 0) ||
+  (b.member_count ?? 0) - (a.member_count ?? 0) ||
+  byName(a, b);
 
 // Location sort: state → city → name; spaces with no location sink to the end.
 function byLocation(a: Space, b: Space) {
@@ -174,7 +185,8 @@ function byLocation(a: Space, b: Space) {
 
 function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortMode>("name");
+  const [sort, setSort] = useState<SortMode>("active");
+  const [showAll, setShowAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [allSpaces, setAllSpaces] = useState<Space[]>(initialSpaces ?? []);
   const [loading, setLoading] = useState(!initialSpaces);
@@ -207,7 +219,7 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
   }, [allSpaces]);
 
   // Top-level spaces only — sub-spaces are listed on their parent's page.
-  const filtered = useMemo(() => {
+  const { filtered, hidden } = useMemo(() => {
     const lc = query.trim().toLowerCase();
     const roots = allSpaces.filter((s) => !s.parent_space_id);
     const hits = !lc
@@ -215,12 +227,17 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
       : roots.filter((s) =>
           [s.name, s.description, s.city, s.state].some((v) => v?.toLowerCase().includes(lc))
         );
-    return [...hits].sort(sort === "location" ? byLocation : byName);
-  }, [allSpaces, query, sort]);
+    // A search shows every match; the default view skips placeholder spaces.
+    const shown = showAll || lc ? hits : hits.filter((s) => !isEmpty(s));
+    return {
+      filtered: [...shown].sort(sort === "active" ? byActivity : sort === "location" ? byLocation : byName),
+      hidden: hits.length - shown.length,
+    };
+  }, [allSpaces, query, sort, showAll]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, sort]);
+  }, [query, sort, showAll]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const page = Math.min(currentPage, totalPages);
@@ -279,9 +296,17 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
               <p className="text-sm text-paper/60">
                 {filtered.length} space{filtered.length !== 1 ? "s" : ""}
                 {totalPages > 1 && ` · page ${page} of ${totalPages}`}
+                {hidden > 0 && (
+                  <>
+                    {" · "}
+                    <button type="button" onClick={() => setShowAll(true)} className="underline hover:text-paper">
+                      Show {hidden} without events yet
+                    </button>
+                  </>
+                )}
               </p>
               <div role="group" aria-label="Sort spaces" className="flex gap-1 rounded-full bg-paper/[0.07] p-1">
-                {([["name", "A–Z"], ["location", "Location"]] as const).map(([mode, label]) => (
+                {([["active", "Most active"], ["name", "A–Z"], ["location", "Location"]] as const).map(([mode, label]) => (
                   <button
                     key={mode}
                     type="button"

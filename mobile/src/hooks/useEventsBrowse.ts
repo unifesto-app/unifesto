@@ -32,11 +32,21 @@ function presetParams(preset: Preset | null) {
  * paged results. Every request carries a sequence number so a slow response
  * for an old query/category can never overwrite a newer one.
  */
-export function useEventsBrowse(initial: { category?: string; search?: string; preset?: string }) {
+export function useEventsBrowse(initial: {
+  category?: string;
+  search?: string;
+  preset?: string;
+  /** K1: browse one city, or one college or club (Home's "near you" and space links). */
+  city?: string;
+  spaceId?: string;
+  spaceName?: string;
+}) {
   const [categories, setCategories] = useState<string[]>([ALL]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [category, setCategory] = useState(initial.category || ALL);
   const [preset, setPreset] = useState<Preset | null>(isPreset(initial.preset) ? initial.preset : null);
+  const [city, setCity] = useState(initial.city || '');
+  const [space, setSpace] = useState(initial.spaceId ? { id: initial.spaceId, name: initial.spaceName || 'This space' } : null);
   const [query, setQuery] = useState(initial.search || '');
   const [debouncedQuery, setDebouncedQuery] = useState(query.trim());
 
@@ -81,6 +91,8 @@ export function useEventsBrowse(initial: { category?: string; search?: string; p
           limit: PAGE_SIZE,
           status: 'PUBLISHED',
           ...(category !== ALL ? { category } : {}),
+          ...(city ? { city } : {}),
+          ...(space ? { spaceId: space.id } : {}),
           ...presetParams(preset),
           ...(debouncedQuery ? { search: debouncedQuery } : {}),
         } as any);
@@ -99,7 +111,7 @@ export function useEventsBrowse(initial: { category?: string; search?: string; p
         }
       }
     },
-    [category, preset, debouncedQuery],
+    [category, city, space, preset, debouncedQuery],
   );
 
   useEffect(() => {
@@ -116,6 +128,8 @@ export function useEventsBrowse(initial: { category?: string; search?: string; p
     setQuery('');
     setCategory(ALL);
     setPreset(null);
+    setCity('');
+    setSpace(null);
   }, []);
 
   return {
@@ -125,9 +139,13 @@ export function useEventsBrowse(initial: { category?: string; search?: string; p
     setCategory,
     preset,
     setPreset,
+    city,
+    clearCity: () => setCity(''),
+    space,
+    clearSpace: () => setSpace(null),
     query,
     setQuery,
-    filtered: category !== ALL || !!preset || !!debouncedQuery,
+    filtered: category !== ALL || !!preset || !!debouncedQuery || !!city || !!space,
     events,
     loading,
     refreshing,

@@ -34,8 +34,22 @@ export default function EventsScreen() {
   const defaults = useDefaultImages();
   const { width } = useWindowDimensions();
   const topSpacing = useTopSpacing(8);
-  const params = useLocalSearchParams<{ category?: string; search?: string; preset?: string }>();
-  const b = useEventsBrowse({ category: params.category, search: params.search, preset: params.preset });
+  const params = useLocalSearchParams<{
+    category?: string;
+    search?: string;
+    preset?: string;
+    city?: string;
+    spaceId?: string;
+    spaceName?: string;
+  }>();
+  const b = useEventsBrowse({
+    category: params.category,
+    search: params.search,
+    preset: params.preset,
+    city: params.city,
+    spaceId: params.spaceId,
+    spaceName: params.spaceName,
+  });
 
   // Keep the selected chip in view (e.g. arriving from a Home category tile).
   const chipScroll = useRef<ScrollView>(null);
@@ -122,6 +136,9 @@ export default function EventsScreen() {
           : [
               // The active quick filter rides first so it's visible and one tap to drop.
               presetLabel ? chip(`preset-${b.preset}`, presetLabel, true, () => b.setPreset(null), true) : null,
+              // K1: browsing a city or a college/club rides first too.
+              b.city ? chip('city', `In ${b.city}`, true, b.clearCity, true) : null,
+              b.space ? chip('space', b.space.name, true, b.clearSpace, true) : null,
               ...b.categories.map((name) => chip(name, name, b.category === name, () => b.setCategory(name))),
             ]}
       </ScrollView>

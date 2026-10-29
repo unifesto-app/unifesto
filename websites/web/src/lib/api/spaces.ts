@@ -32,6 +32,8 @@ export interface Space {
   created_at: string;
   updated_at: string;
   member_count?: number;
+  /** Events the space has run or is running (K1: empty spaces sink). */
+  event_count?: number;
   sub_space_count?: number;
   organisers?: SpaceMember[];
   /**
@@ -115,6 +117,7 @@ function mapSpace(raw: Record<string, unknown> | null | undefined): Space | null
     created_at: (r.createdAt ?? r.created_at) as string,
     updated_at: (r.updatedAt ?? r.updated_at) as string,
     member_count: (count.userRoles ?? count.members) as number | undefined,
+    event_count: count.events as number | undefined,
     sub_space_count: (count.childSpaces ?? count.children) as number | undefined,
     organisers: (r.organisers as SpaceMember[] | undefined) ?? undefined,
     branding: (r.branding ?? null) as Space["branding"],

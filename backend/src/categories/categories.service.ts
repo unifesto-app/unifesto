@@ -50,9 +50,23 @@ export class CategoriesService {
     });
   }
 
+  /**
+   * Events store category names as text, so a rename carries over to them
+   * (K1); otherwise they'd drop out of the renamed category's listing.
+   */
   async update(id: string, data: any) {
     if (data.name) data.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return this.prisma.eventCategory.update({ where: { id }, data });
+    const before = data.name ? await this.prisma.eventCategory.findUnique({ where: { id }, select: { name: true } }) : null;
+    if (!before || before.name === data.name) return this.prisma.eventCategory.update({ where: { id }, data });
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.eventCategory.update({ where: { id }, data }),
+      this.prisma.$executeRaw`
+        UPDATE "events"
+        SET "category" = CASE WHEN "category" = ${before.name} THEN ${data.name} ELSE "category" END,
+            "categories" = array_replace("categories", ${before.name}, ${data.name})
+        WHERE "category" = ${before.name} OR ${before.name} = ANY("categories")`,
+    ]);
+    return updated;
   }
 
   async delete(id: string) {
