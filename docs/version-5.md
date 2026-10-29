@@ -1005,3 +1005,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Web routes moved under a (public) route group with a [...missing] 404 catch-all; old opengraph-image URLs kept via rewrites (#443)
 - **2026-10-29** · Web: edit my registration details (team and own answers, file answers kept) and post-event feedback; certificates held for feedback link the form (#444)
 - **2026-10-29** · Space components and lib moved under console/ (1,193 imports rewritten), so the move into web needs no import edits (#445)
+- **2026-10-29** · Web: my support requests (Assist, thread, solve, reopen, rate) and inbox on /account, with unread counts; tickets link to help (#446)
