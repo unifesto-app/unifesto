@@ -113,7 +113,7 @@ export default function StayPassScreen() {
         description: `${b.stay.name} · ${b.event.title}`,
         image: b.stay.coverImageUrl || b.event.coverImageUrl || 'https://unifesto.app/logo.png',
         prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
-        theme: { color: '#3491ff' },
+        theme: { color: '#111113' },
       } as any);
       const verified = await verifyStayPayment(b.id, {
         razorpayOrderId: payment.razorpay_order_id,

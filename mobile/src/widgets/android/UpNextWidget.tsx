@@ -6,8 +6,8 @@ import type { UpNextWidgetProps } from '../upNext';
 type Palette = { bg: string; text: string; muted: string; accent: string };
 
 // Mirrors the app's dark / light tokens (src/theme/tokens.ts).
-const DARK: Palette = { bg: '#0b0b0d', text: '#ffffff', muted: '#94a3b8', accent: '#3491ff' };
-const LIGHT: Palette = { bg: '#ffffff', text: '#0a0a0b', muted: '#52525b', accent: '#0062ff' };
+const DARK: Palette = { bg: '#0b0b0d', text: '#ffffff', muted: '#94a3b8', accent: '#e8e8ea' };
+const LIGHT: Palette = { bg: '#ffffff', text: '#0a0a0b', muted: '#52525b', accent: '#111113' };
 
 /**
  * Android "Up next" widget. Rendered to RemoteViews by react-native-android-widget,

@@ -113,7 +113,7 @@ function CrashFallback({ onRetry }: { onRetry: () => void }) {
         onPress={onRetry}
         style={({ pressed }) => [crashStyles.button, { backgroundColor: t.accent, opacity: pressed ? 0.8 : 1 }]}
       >
-        <Text style={crashStyles.buttonText}>Try again</Text>
+        <Text style={[crashStyles.buttonText, { color: t.accentFg }]}>Try again</Text>
       </Pressable>
     </View>
   );

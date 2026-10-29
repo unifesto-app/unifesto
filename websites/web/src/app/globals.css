@@ -38,7 +38,7 @@
   --muted-foreground: #8a8a90;
   --accent: #e8e8ea;
   --accent-foreground: var(--void);
-  --destructive: #ff6b6b;
+  --destructive: #ec2f58; /* crimson lifted to read on black (5.1:1) */
   --border: rgb(var(--glow) / 0.1);
   --input: rgb(var(--glow) / 0.18);
   --ring: #e8e8ea;
@@ -71,8 +71,8 @@
    stored choice from ThemeToggle). */
 :root[data-theme="light"] {
   color-scheme: light;
-  --night: #ffffff;
-  --night-2: #f4f4f5;
+  --night: #f2f2f5; /* paper page */
+  --night-2: #ffffff; /* white cards */
   --night-3: #e9e9ec;
   --paper: #111113;
   --paper-bg: #f7f7f8;
@@ -81,13 +81,13 @@
   --ink: #111113;
   --void: #ffffff;
   --glow: 17 17 19;
-  --ground: 255 255 255;
+  --ground: 242 242 245;
 
   --primary: #111113;
   --primary-bright: #000000;
   --accent: #111113;
   --muted-foreground: #63636a;
-  --destructive: #d93636;
+  --destructive: #be123c;
   --border: rgba(0, 0, 0, 0.1);
   --input: rgba(0, 0, 0, 0.18);
   --ring: #111113;
