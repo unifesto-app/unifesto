@@ -24,6 +24,7 @@ import {
   UserCircle,
   Heart,
   Certificate,
+  Buildings,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import {
@@ -139,6 +140,13 @@ export const ME_GROUP: NavGroup = {
     { href: "/account", label: "My account", icon: UserCircle, keywords: "profile circles notifications sign-in delete" },
   ],
 };
+
+/** The spaces I help run, listed on their own page; the sidebar opens the one I'm in under it. */
+export const MY_SPACES_ITEM: NavItem = { href: "/spaces", label: "My Spaces", icon: Buildings, keywords: "spaces switch space clubs" };
+
+/** The Account menu: everyone's pages, then My Spaces once I hold a space role. */
+export const accountGroup = (hasAccess: boolean): NavGroup =>
+  hasAccess ? { ...ME_GROUP, items: [...ME_GROUP.items, MY_SPACES_ITEM] } : ME_GROUP;
 
 /** The item this page belongs to: the longest href that matches, so Inbox (not My account) on /console/account/inbox. */
 export function currentItem(items: NavItem[], pathname: string): NavItem | undefined {

@@ -12,7 +12,7 @@ import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { useCommandPalette } from "@/console/lib/context/CommandPaletteContext";
 import { signOut } from "@/console/lib/utils/auth";
-import { BASE_URL, ME_GROUP, resolveNavGroups } from "./nav-config";
+import { BASE_URL, accountGroup, resolveNavGroups } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 
 interface Command {
@@ -60,7 +60,7 @@ export function CommandPalette() {
     const space = hasAccess ? currentSpace : null;
 
     // Navigation destinations, in the same order/grouping as the sidebar.
-    for (const group of [ME_GROUP, ...(space ? resolveNavGroups(space, access) : [])]) {
+    for (const group of [accountGroup(hasAccess), ...(space ? resolveNavGroups(space, access) : [])]) {
       for (const item of group.items) {
         list.push({
           id: `nav:${item.href}`,

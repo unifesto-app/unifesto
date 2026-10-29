@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "@/console/lib/context/SessionContext";
-import { ROLE_LABEL, apexUrl, appRoleFromCode, isPlatformStaff, type SpaceMembership } from "@/console/lib/types/rbac";
+import { apexUrl, isPlatformStaff } from "@/console/lib/types/rbac";
 import { getMyPortal } from "@/console/lib/api/sponsor-portal-api";
 import { currentToken } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import { Card, CardContent } from "@/console/components/ui/card";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { isOver, loadTickets, type Ticket } from "@/lib/api/tickets";
+import { SpaceList } from "./spaces/SpaceList";
 import { when, where } from "./tickets/TicketsClient";
 
 /**
@@ -19,8 +19,7 @@ import { when, where } from "./tickets/TicketsClient";
  * their portal.
  */
 export default function ConsoleHome() {
-  const router = useRouter();
-  const { user, spaces, hasAccess, setCurrentSpace } = useSession();
+  const { user, spaces, hasAccess } = useSession();
   const [upcoming, setUpcoming] = useState<Ticket[] | null>(null);
   const [sponsor, setSponsor] = useState(false);
 
@@ -40,11 +39,6 @@ export default function ConsoleHome() {
       live = false;
     };
   }, []);
-
-  const openSpace = (space: SpaceMembership) => {
-    setCurrentSpace(space);
-    router.push("/console/space");
-  };
 
   const firstName = user?.name?.split(" ")[0];
 
@@ -92,22 +86,13 @@ export default function ConsoleHome() {
 
       {hasAccess && spaces.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">My spaces</h2>
-          <Card>
-            <ul className="divide-y divide-border">
-              {spaces.map((s) => {
-                const role = ROLE_LABEL[appRoleFromCode(s.userRole?.code)] || (s.eventAccess?.length ? "Event team" : "");
-                return (
-                  <li key={s.id}>
-                    <button type="button" onClick={() => openSpace(s)} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-muted">
-                      <span className="truncate font-medium text-foreground">{s.name}</span>
-                      {role && <span className="shrink-0 text-xs text-muted-foreground">{role}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-sm font-semibold text-foreground">My Spaces</h2>
+            <Link href="/console/spaces" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              All my spaces
+            </Link>
+          </div>
+          <SpaceList limit={3} />
         </section>
       )}
 

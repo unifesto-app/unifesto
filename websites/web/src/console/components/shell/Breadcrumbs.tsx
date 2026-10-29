@@ -46,8 +46,8 @@ export function useCrumbName(href: string, name: string | undefined) {
 }
 
 /**
- * Where I am, in the header: Dashboard › space › section › …. Every crumb but
- * the last is a link (the sidebar lists my spaces to switch between). On a
+ * Where I am, in the header: Dashboard › My Spaces › space › …. Every crumb but
+ * the last is a link (My Spaces lists my spaces to switch between). On a
  * phone only the last one shows.
  */
 export function Breadcrumbs() {
