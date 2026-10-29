@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/feedback";
 import type { Result } from "@/lib/api/call";
 import { FormFieldsManager, type QuestionStore } from "@/components/events/form-fields-manager";
+import { FeedbackResults } from "@/components/events/FeedbackResults";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,7 +43,7 @@ export default function EventFeedbackPage() {
     void load();
   }, [load]);
 
-  const toggle = async (patch: { enabled?: boolean; unlocksCertificate?: boolean }) => {
+  const toggle = async (patch: { enabled?: boolean; unlocksCertificate?: boolean; public?: boolean }) => {
     const r = await setFeedbackSettings(eventId, patch);
     if (r.ok) setForm(r.data);
     else setError(r.message);
@@ -65,6 +66,8 @@ export default function EventFeedbackPage() {
         <Skeleton className="h-48 w-full rounded-lg" />
       ) : (
         <>
+          <FeedbackResults eventId={eventId} />
+
           <Card>
             <CardContent className="flex items-start gap-3 p-4">
               <input
@@ -98,6 +101,24 @@ export default function EventFeedbackPage() {
                   <span className="block text-muted-foreground">
                     An attendee&apos;s certificate is emailed and shown in the app only after they give
                     feedback.
+                  </span>
+                </label>
+              </CardContent>
+            )}
+            {form.enabled && (
+              <CardContent className="flex items-start gap-3 border-t border-border p-4">
+                <input
+                  id="feedback-public"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-primary"
+                  checked={form.public}
+                  onChange={(e) => void toggle({ public: e.target.checked })}
+                />
+                <label htmlFor="feedback-public" className="text-sm">
+                  <span className="font-medium text-foreground">Show the rating on the event page</span>
+                  <span className="block text-muted-foreground">
+                    The average and number of ratings appear publicly once at least 5 attendees have
+                    rated. Comments and answers always stay private.
                   </span>
                 </label>
               </CardContent>

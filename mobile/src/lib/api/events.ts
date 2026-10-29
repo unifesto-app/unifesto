@@ -72,6 +72,8 @@ export interface Event {
     slug: string;
     logoUrl: string | null;
   }[];
+  /** F3: average 1-5 and how many rated; only when the curators opted in and 5+ rated. */
+  rating?: { average: number; count: number } | null;
   /**
    * The event's Curators and Co-Curators, for the attendee-facing "Curated by"
    * card. Space Admins and Crew are intentionally excluded by the backend.

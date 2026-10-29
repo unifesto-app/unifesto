@@ -80,6 +80,8 @@ export interface Event {
   custom_domain?: string | null;
   /** Spaces co-hosting alongside `space` ("by Host & Co-host"). */
   co_hosts?: { id: string; name: string; slug?: string; logo_url?: string; visibility?: string }[];
+  /** F3: average 1-5 and how many rated; only when the organisers opted in and 5+ rated. */
+  rating?: { average: number; count: number } | null;
   /**
    * The parent "big event" this event is a sub-event of, or null/undefined for
    * a top-level event. Present on the event-detail response.
@@ -339,6 +341,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     updated_at: (r.updatedAt ?? r.updated_at) as string,
     branding: (r.branding ?? null) as Event["branding"],
     custom_domain: (r.customDomain ?? null) as string | null,
+    rating: (r.rating ?? null) as Event["rating"],
     co_hosts: ((r.coHosts ?? []) as Array<Record<string, unknown>>).map((h) => ({
       id: h.id as string,
       name: h.name as string,

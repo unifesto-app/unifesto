@@ -59,3 +59,14 @@ export function toCustomField(q: FeedbackQuestion, eventId: string): CustomField
     updated_at: '',
   };
 }
+
+/** F3: an event's results, for its curators. */
+export interface FeedbackResults {
+  count: number;
+  averageRating: number | null;
+  distribution: { value: number; count: number }[];
+  nps: { score: number | null; answered: number; promoters: number; passives: number; detractors: number };
+  comments: { rating: number; comment: string; createdAt: string }[];
+}
+
+export const getFeedbackResults = (eventId: string) => call<FeedbackResults>(`/events/${eventId}/feedback/results`);
