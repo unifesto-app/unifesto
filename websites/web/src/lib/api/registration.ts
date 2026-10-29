@@ -40,7 +40,28 @@ export interface FormField {
   helpText: string | null;
   config: { minLength?: number; maxLength?: number; min?: number; max?: number; minDate?: string; maxDate?: string; scale?: 5 | 10 } | null;
   showIf: { fieldId: string; anyOf: string[] } | null;
+  /** On a group ticket: asked once for the team (true) or of every member (false). */
+  perGroup: boolean;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw backend JSON
+const mapField = (f: Record<string, any>): FormField => ({
+  id: f.id,
+  ticketTypeId: f.ticketTypeId ?? null,
+  label: f.label,
+  type: f.type,
+  options: (f.options as string[]) ?? [],
+  isRequired: Boolean(f.isRequired),
+  order: Number(f.order ?? 0),
+  helpText: f.helpText ?? null,
+  config: f.config ?? null,
+  showIf: f.showIf ?? null,
+  perGroup: Boolean(f.perGroup),
+});
+
+/** Browser-side: an event's questions, for editing answers after registering. */
+export const getEventFields = (eventId: string) =>
+  call<{ formFields?: Record<string, unknown>[] }>("GET", `/events/${eventId}`).then((raw) => (raw.formFields ?? []).map(mapField));
 
 /** Server-side: the event plus the raw tickets and questions the form needs. */
 export async function getRegistrationForm(
@@ -65,20 +86,7 @@ export async function getRegistrationForm(
     saleEndsAt: t.saleEndsAt ?? null,
     waitlistEnabled: Boolean(t.waitlistEnabled),
   }));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw backend JSON
-  const fields: FormField[] = (raw.formFields ?? []).map((f: Record<string, any>) => ({
-    id: f.id,
-    ticketTypeId: f.ticketTypeId ?? null,
-    label: f.label,
-    type: f.type,
-    options: (f.options as string[]) ?? [],
-    isRequired: Boolean(f.isRequired),
-    order: Number(f.order ?? 0),
-    helpText: f.helpText ?? null,
-    config: f.config ?? null,
-    showIf: f.showIf ?? null,
-  }));
-  return { event, tickets, fields };
+  return { event, tickets, fields: (raw.formFields ?? []).map(mapField) };
 }
 
 /** Thrown for a non-2xx response, carrying the backend's message and status. */
