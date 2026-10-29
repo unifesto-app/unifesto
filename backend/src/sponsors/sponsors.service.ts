@@ -477,6 +477,7 @@ export class SponsorsService {
       email: r.email,
       phone: r.phone,
       source: r.source,
+      status: r.status,
       note: r.note,
       createdAt: r.createdAt,
     }));
@@ -509,6 +510,7 @@ export class SponsorsService {
       email: r.email,
       phone: r.phone,
       source: r.source,
+      status: r.status,
       note: r.note,
       createdAt: r.createdAt,
     }));

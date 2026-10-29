@@ -4696,6 +4696,8 @@ model SponsorLead {
   phone String? @db.VarChar(50)
 
   source SponsorLeadSource @default(OPT_IN)
+  // The sponsor's own follow-up (E3): where this lead stands and their notes.
+  status LeadStatus        @default(NEW)
   note   String?           @db.Text
 
   // Who captured it (crew/sponsor user id) for booth/manual sources.
