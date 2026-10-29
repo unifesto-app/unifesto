@@ -3,9 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import SignIn from "@/components/SignIn";
+import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { ApiError, verifyPayment } from "@/lib/api/registration";
 import {
   getWaitlist,
@@ -17,6 +15,7 @@ import {
   type WaitlistEntry,
 } from "@/lib/api/tickets";
 import { clearSession, useWebSession } from "@/lib/auth";
+import { signOut } from "@/console/lib/utils/auth";
 import { CHECKOUT_JS, checkout } from "@/lib/razorpay";
 import { IST } from "@/lib/site";
 
@@ -34,19 +33,13 @@ export const when = (iso: string) =>
 export const where = (e: { venueName: string | null; city: string | null; type?: string }) =>
   e.venueName || e.city || (e.type === "ONLINE" ? "Online" : "Venue TBA");
 
-/** The page around My tickets and a ticket: navbar, title, card. */
+/** The page around My tickets and a ticket, inside the console shell: title, card. */
 export function TicketsFrame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-canvas">
-      <Navbar />
-      <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
-        <div className="mx-auto max-w-xl">
-          <h1 className="font-display text-[clamp(1.5rem,3vw,2.2rem)] leading-tight text-paper">{title}</h1>
-          <div className="mt-8 rounded-3xl bg-night-2 p-6 sm:p-8">{children}</div>
-        </div>
-      </section>
-      <Footer />
-    </main>
+    <div className="mx-auto max-w-xl">
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">{title}</h1>
+      <div className="mt-6 rounded-xl border border-border bg-night-2 p-6 sm:p-8">{children}</div>
+    </div>
   );
 }
 
@@ -55,7 +48,7 @@ export function TicketsFrame({ title, children }: { title: string; children: Rea
  * each ticket opening its own page with the QR and what I can do with it.
  */
 export default function TicketsClient({ nonce }: { nonce?: string }) {
-  const { session, ready, pending } = useWebSession();
+  const { session, ready } = useWebSession();
   const token = session?.token ?? "";
   const [tab, setTab] = useState<Tab>("upcoming");
   const [lists, setLists] = useState<{ live: Ticket[]; cancelled: Ticket[] } | null>(null);
@@ -134,12 +127,7 @@ export default function TicketsClient({ nonce }: { nonce?: string }) {
   if (!ready) body = null;
   else if (!session)
     body = (
-      <SignIn
-        next="/tickets"
-        pending={pending}
-        intro="Enter the email you registered with. We send you a code to confirm it's you."
-        submitLabel="Show My tickets"
-      />
+      <SignInPrompt />
     );
   else {
     // Upcoming until the event ends, so the pass is still up front at the door. Soonest first; history newest first.
@@ -153,11 +141,11 @@ export default function TicketsClient({ nonce }: { nonce?: string }) {
       <div className="space-y-6">
         <p className="text-sm text-paper/65">
           Signed in as <strong className="text-paper">{session.email}</strong>.{" "}
-          <Link href="/account" className="underline hover:text-paper">
+          <Link href="/console/account" className="underline hover:text-paper">
             My account
           </Link>
           {" · "}
-          <button type="button" onClick={clearSession} className="underline hover:text-paper">
+          <button type="button" onClick={() => void signOut().then(() => window.location.assign("/login"))} className="underline hover:text-paper">
             Sign out
           </button>
         </p>
@@ -203,7 +191,7 @@ export default function TicketsClient({ nonce }: { nonce?: string }) {
             <ul className="divide-y divide-white/[0.06]">
               {shown.map((t) => (
                 <li key={`${t.id}${t.isGroupMember ? "-seat" : ""}`}>
-                  <Link href={`/tickets/${t.id}`} className="group block py-4">
+                  <Link href={`/console/tickets/${t.id}`} className="group block py-4">
                     <p className="font-semibold text-paper group-hover:underline">{t.event.title}</p>
                     <p className="mt-1 text-sm text-paper/65">
                       {when(t.event.startDateTime)} · {where(t.event)}

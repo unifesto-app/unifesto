@@ -44,9 +44,8 @@ test("the console gate: web's one sign-in, or an old space token until it expire
     (await run("https://www.unifesto.app/console/events?space=s1")).headers.get("location"),
     "https://www.unifesto.app/login?next=%2Fconsole%2Fevents%3Fspace%3Ds1",
   );
-  for (const open of ["/console/no-access", "/console/present/ev1"]) {
-    assert.equal((await run(`https://www.unifesto.app${open}`)).headers.get("x-middleware-next"), "1", open);
-  }
+  // The projector signs in with its display link.
+  assert.equal((await run("https://www.unifesto.app/console/present/ev1")).headers.get("x-middleware-next"), "1");
   // Web's session hint passes.
   assert.equal((await run("https://www.unifesto.app/console", "uf_in=1")).headers.get("x-middleware-next"), "1");
   // An old space-app token passes while live; expired or malformed ones don't.

@@ -8,6 +8,7 @@ import { useMobileNav } from "@/console/lib/context/MobileNavContext";
 import { useDrawerBehavior } from "@/console/lib/hooks/useDrawerBehavior";
 import { useCollapsibleRail } from "@/console/lib/hooks/useCollapsibleRail";
 import { SpaceNav } from "@/console/components/shell/SpaceNav";
+import { isPersonalPath } from "@/console/components/shell/nav-config";
 import { EventNav } from "@/console/components/shell/EventNav";
 import { EventAccessNav } from "@/console/components/shell/EventAccessNav";
 import { EventAccessChooser } from "@/console/components/shell/EventAccessChooser";
@@ -33,7 +34,7 @@ export default function SpaceDashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentSpace, loading, can } = useSession();
+  const { currentSpace, loading, can, hasAccess } = useSession();
   const { open, setOpen } = useMobileNav();
   const [collapsed, toggleCollapsed] = useCollapsibleRail();
 
@@ -55,7 +56,8 @@ export default function SpaceDashboardLayout({
     (pathname === "/console/assist" || pathname.startsWith("/console/assist/")) &&
     can("event:manage-support");
   // Any other space-level page is off-limits to an event-only user.
-  const blockedForEventOnly = eventOnly && !viewingOwnEvent && !onDeskInbox;
+  // Personal pages (home, tickets, account) are everyone's, so never blocked.
+  const blockedForEventOnly = eventOnly && !viewingOwnEvent && !onDeskInbox && !isPersonalPath(pathname);
 
   // Auto-close the drawer whenever the route changes — tapping a destination
   // (or the browser back button) should always drop us back to the page.
@@ -99,7 +101,8 @@ export default function SpaceDashboardLayout({
     );
   };
 
-  if (loading || !currentSpace) {
+  // Without a space role there is no space to wait for: the rail is just the personal section.
+  if (loading || (hasAccess && !currentSpace)) {
     return (
       <>
         <aside className="fixed left-0 top-16 bottom-0 z-10 hidden w-60 border-r border-border bg-sidebar p-4 lg:block">

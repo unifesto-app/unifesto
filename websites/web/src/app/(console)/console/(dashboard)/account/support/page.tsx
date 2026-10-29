@@ -21,7 +21,7 @@ export default function SupportPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-paper/70">Ask about a booking, a refund or an event. Assist answers first and hands it to a person when it can&apos;t.</p>
-        <Link href="/account/support/new" className="btn btn-sm btn-primary">
+        <Link href="/console/account/support/new" className="btn btn-sm btn-primary">
           Ask for help
         </Link>
       </div>
@@ -33,7 +33,7 @@ export default function SupportPage() {
         <ul className="divide-y divide-white/[0.06]">
           {cases.map((c) => (
             <li key={c.id}>
-              <Link href={`/account/support/${c.id}`} className="group flex items-start gap-3 py-4">
+              <Link href={`/console/account/support/${c.id}`} className="group flex items-start gap-3 py-4">
                 <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 rounded-full ${c.unread ? "bg-primary" : "bg-transparent"}`} />
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate group-hover:underline ${c.unread ? "font-semibold text-paper" : "text-paper/85"}`}>

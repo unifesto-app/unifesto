@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { List, MagnifyingGlass } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import {
@@ -17,27 +17,31 @@ import { signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { SpaceSwitcher } from "./SpaceSwitcher";
+import { isPersonalPath } from "./nav-config";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
 import { FeeNoticeBanner } from "./FeeNoticeBanner";
 import { LegalAcceptSheet } from "./LegalAcceptSheet";
 
 /**
- * Authenticated shell. Waits for the session, sends accounts with no operator
- * role (signed in, but attendee/member only) to /no-access, and frames the
- * space-scoped chrome: wordmark, space switcher, and the signed-in user.
+ * Authenticated shell for everyone signed in (V9). Waits for the session;
+ * accounts with no space role (attendees, members) get the personal pages,
+ * and any space page sends them home. Frames the chrome: wordmark, space
+ * switcher (with a role), and the signed-in user.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, hasAccess, loading } = useSession();
+  const offLimits = !hasAccess && !isPersonalPath(pathname);
 
   useEffect(() => {
-    if (!loading && !hasAccess) {
-      router.replace("/console/no-access");
+    if (!loading && offLimits) {
+      router.replace("/console");
     }
-  }, [loading, hasAccess, router]);
+  }, [loading, offLimits, router]);
 
-  if (loading || !hasAccess) {
+  if (loading || offLimits) {
     // Redirect in flight (or still loading) — keep the skeleton up rather than
     // flashing operator content at an unauthorised account.
     return <ShellSkeleton />;
@@ -69,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Space
           </span>
           <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
-          <SpaceSwitcher />
+          {hasAccess && <SpaceSwitcher />}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -95,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             space sidebar and its own centered content column; other authed
             screens render children directly. */}
         <main className="min-h-screen pt-16">
-          <FeeNoticeBanner />
+          {hasAccess && <FeeNoticeBanner />}
           {children}
         </main>
       </div>

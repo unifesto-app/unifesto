@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import SignIn from "@/components/SignIn";
+import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { Question } from "@/components/FormQuestion";
 import { getEventFields, visibleFieldIds, type FormField } from "@/lib/api/registration";
 import { findTicket, getMyDetails, updateMyDetails, type Answers, type MyDetails, type Ticket } from "@/lib/api/tickets";
@@ -17,7 +17,7 @@ import { TicketsFrame, when } from "../../TicketsClient";
  * because a save replaces the whole set).
  */
 export default function DetailsClient({ id }: { id: string }) {
-  const { session, ready, pending } = useWebSession();
+  const { session, ready } = useWebSession();
   const token = session?.token ?? "";
   const [t, setT] = useState<Ticket | null>(null);
   const [details, setDetails] = useState<MyDetails | null>(null);
@@ -53,7 +53,7 @@ export default function DetailsClient({ id }: { id: string }) {
   if (!session)
     return (
       <TicketsFrame title="My details">
-        <SignIn next={`/tickets/${id}/details`} pending={pending} intro="Enter the email you registered with. We send you a code to confirm it's you." submitLabel="Continue" />
+        <SignInPrompt />
       </TicketsFrame>
     );
   if (!details || !t)
@@ -92,7 +92,7 @@ export default function DetailsClient({ id }: { id: string }) {
     <TicketsFrame title="My details">
       <div className="space-y-6">
         <div>
-          <Link href={`/tickets/${id}`} className="text-sm text-paper/65 hover:text-paper hover:underline">
+          <Link href={`/console/tickets/${id}`} className="text-sm text-paper/65 hover:text-paper hover:underline">
             ← {t.event.title}
           </Link>
           {details.editable ? (

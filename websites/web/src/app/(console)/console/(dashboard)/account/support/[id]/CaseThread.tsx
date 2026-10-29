@@ -92,7 +92,7 @@ export default function CaseThread({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
+      <Link href="/console/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
         ← My requests
       </Link>
       <div>
@@ -186,7 +186,7 @@ function AssistActions({ actions, busy, act, reload, token }: { actions: AssistA
     <div className="flex max-w-[85%] flex-col items-start gap-2">
       {actions.map((a) =>
         a.type === "REQUEST_REFUND" ? (
-          <Link key={`${a.type}:${a.registrationId}`} href={`/tickets/${a.registrationId}`} className="btn btn-sm btn-secondary">
+          <Link key={`${a.type}:${a.registrationId}`} href={`/console/tickets/${a.registrationId}`} className="btn btn-sm btn-secondary">
             {a.label}
           </Link>
         ) : sure === a.registrationId ? (

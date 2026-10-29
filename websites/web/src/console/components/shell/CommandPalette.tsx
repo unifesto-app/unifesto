@@ -12,7 +12,7 @@ import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { useCommandPalette } from "@/console/lib/context/CommandPaletteContext";
 import { signOut } from "@/console/lib/utils/auth";
-import { BASE_URL, resolveNavGroups } from "./nav-config";
+import { BASE_URL, ME_GROUP, resolveNavGroups } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 
 interface Command {
@@ -33,7 +33,7 @@ interface Command {
  */
 export function CommandPalette() {
   const router = useRouter();
-  const { currentSpace, access, spaces, setCurrentSpace } = useSession();
+  const { currentSpace, access, spaces, setCurrentSpace, hasAccess } = useSession();
   const { open, setOpen } = useCommandPalette();
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -55,11 +55,12 @@ export function CommandPalette() {
   }, [open]);
 
   const commands = useMemo<Command[]>(() => {
-    if (!currentSpace) return [];
     const list: Command[] = [];
+    // The space sections need a role there; the personal one is everyone's (V9).
+    const space = hasAccess ? currentSpace : null;
 
     // Navigation destinations, in the same order/grouping as the sidebar.
-    for (const group of resolveNavGroups(currentSpace, access)) {
+    for (const group of [ME_GROUP, ...(space ? resolveNavGroups(space, access) : [])]) {
       for (const item of group.items) {
         list.push({
           id: `nav:${item.href}`,
@@ -73,15 +74,15 @@ export function CommandPalette() {
     }
 
     // Switch to any other space the operator runs.
-    for (const space of spaces) {
-      if (space.id === currentSpace.id) continue;
+    for (const other of space ? spaces : []) {
+      if (other.id === space?.id) continue;
       list.push({
-        id: `space:${space.id}`,
-        label: `Switch to ${space.name}`,
+        id: `space:${other.id}`,
+        label: `Switch to ${other.name}`,
         group: "Spaces",
         icon: Buildings,
         keywords: "change switch space org",
-        run: () => setCurrentSpace(space),
+        run: () => setCurrentSpace(other),
       });
     }
 
@@ -97,7 +98,7 @@ export function CommandPalette() {
     });
 
     return list;
-  }, [currentSpace, access, spaces, router, setCurrentSpace]);
+  }, [currentSpace, access, spaces, router, setCurrentSpace, hasAccess]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

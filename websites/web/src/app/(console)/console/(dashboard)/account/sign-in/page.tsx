@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppleLogo, EnvelopeSimple, GoogleLogo, Phone } from "@unifesto/unicon/react";
 import { getIdentities, makePrimary, removeIdentity, signOutEverywhere, type Identity } from "@/lib/api/account";
-import { clearSession, useWebSession } from "@/lib/auth";
+import { useWebSession } from "@/lib/auth";
+import { signOut } from "@/console/lib/utils/auth";
 import { useAccount } from "../AccountShell";
 
 const PROVIDER = {
@@ -66,7 +67,8 @@ export default function SignInPage() {
     setError("");
     try {
       await signOutEverywhere(token);
-      clearSession();
+      // Both sessions here too: this one and any old space-app cookie.
+      await signOut();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't sign out everywhere.");
       setBusy(false);

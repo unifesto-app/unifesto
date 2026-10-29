@@ -24,7 +24,7 @@ export default function AssistStart({ registrationId, eventId }: { registrationI
     setError("");
     try {
       const c = await startAssist(session.token, { message: message.trim(), ...(registrationId ? { registrationId } : eventId ? { eventId } : {}) });
-      router.push(`/account/support/${c.id}`);
+      router.push(`/console/account/support/${c.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't start the request.");
       setBusy(false);
@@ -33,7 +33,7 @@ export default function AssistStart({ registrationId, eventId }: { registrationI
 
   return (
     <form onSubmit={send} className="space-y-4">
-      <Link href="/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
+      <Link href="/console/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
         ← My requests
       </Link>
       <h2 className="font-display text-xl text-paper">How can we help?</h2>

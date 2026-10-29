@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { appRoleFromCode, type SpaceAppRole } from "@/console/lib/types/rbac";
 
-const ROLE_LABEL: Record<SpaceAppRole, string> = {
+export const ROLE_LABEL: Record<SpaceAppRole, string> = {
   space_admin: "Space Admin",
   curator: "Curator",
   co_curator: "Co-Curator",
