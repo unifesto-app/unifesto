@@ -6,6 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Camera, Flashlight, UsersThree } from '@unifesto/unicon/react-native';
 import { boothScan, getPortalLeads } from '../lib/api/sponsorPortal';
+import { OFFLINE_MESSAGE } from '../lib/api/errors';
+import { isOnline } from '../lib/offline/connectivity';
+import { enqueueBoothScan, useBoothScanQueue } from '../lib/offline/boothScanQueue';
+import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
@@ -71,6 +75,8 @@ export default function BoothScanScreen({
   const processingRef = useRef(false);
   const lastScanRef = useRef<{ code: string; at: number } | null>(null);
   const known = useRef<Set<string>>(new Set());
+  const userId = useAuth().user?.id;
+  const waiting = useBoothScanQueue(userId, sponsorId).filter((q) => q.state === 'pending' && q.eventSponsorId === eventSponsorId).length;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Seed the leads we already have here, so re-scanning an old one says so.
@@ -112,8 +118,18 @@ export default function BoothScanScreen({
         show({ kind: 'error', title: 'Not added', detail: 'The attendee chose not to share their details.' });
         return;
       }
+      // No signal (E7): keep the consented scan; it is added once the phone is back.
+      const saveForLater = async () => {
+        processingRef.current = false;
+        setProcessing(false);
+        if (!userId) return show({ kind: 'error', title: "Couldn't add", detail: 'Sign in again to keep scanning.' });
+        await enqueueBoothScan(userId, { sponsorId, eventSponsorId, qrCode: code });
+        show({ kind: 'success', title: 'Saved offline', detail: 'Added to your leads once you have signal.' });
+      };
+      if (!isOnline()) return saveForLater();
       setProcessing(true);
       const res = await boothScan(sponsorId, eventSponsorId, code);
+      if (!res.ok && res.message === OFFLINE_MESSAGE) return saveForLater();
       processingRef.current = false;
       setProcessing(false);
 
@@ -131,7 +147,7 @@ export default function BoothScanScreen({
       setCaptured((n) => n + 1);
       show({ kind: 'success', title: 'Lead added', name, detail: lead.email ?? undefined });
     },
-    [sponsorId, eventSponsorId, sponsorName, show],
+    [sponsorId, eventSponsorId, sponsorName, show, userId],
   );
 
   if (!permission) {
@@ -180,6 +196,7 @@ export default function BoothScanScreen({
           <UsersThree size={14} color={WHITE} weight="fill" />
           <Text style={styles.pillText}>
             {captured ? `${captured} new lead${captured === 1 ? '' : 's'} this session` : 'Scan attendee tickets'}
+            {waiting ? ` · ${waiting} waiting for signal` : ''}
           </Text>
         </View>
       </View>
