@@ -10,7 +10,7 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from "axios";
-import { getAuthToken, clearAuthToken } from "@/console/lib/utils/auth";
+import { clearLegacyToken, currentToken, loginHref, renewToken } from "@/console/lib/utils/auth";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
@@ -25,12 +25,12 @@ const backendClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor — attach the NestJS JWT.
+// Request interceptor — attach the access token, once this page knows its session (V8).
 backendClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = getAuthToken();
-      if (token) {
+      const token = await currentToken();
+      if (token && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
@@ -41,7 +41,7 @@ backendClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — normalize errors, bounce to /login on 401.
+// Response interceptor — normalize errors; on a 401 renew once, else sign in again.
 backendClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -52,12 +52,22 @@ backendClient.interceptors.response.use(
         errors?: unknown;
       };
 
-      // A 401 from a sign-in call is a wrong code, not an expired session:
-      // reloading /login would throw away the step the user is on.
+      // A 401 from a sign-in call is a wrong code, not an expired session.
       const isAuthCall = error.config?.url?.startsWith("/auth/") ?? false;
       if (status === 401 && !isAuthCall && typeof window !== "undefined") {
-        clearAuthToken();
-        window.location.href = "/console/login";
+        // Check-in tabs stay open for hours, longer than an access token
+        // lasts: renew it from the web session once and retry.
+        const config = error.config as (InternalAxiosRequestConfig & { _renewed?: boolean }) | undefined;
+        if (config && !config._renewed) {
+          config._renewed = true;
+          const token = await renewToken();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+            return backendClient(config);
+          }
+        }
+        clearLegacyToken();
+        window.location.href = loginHref();
       }
 
       return Promise.reject({

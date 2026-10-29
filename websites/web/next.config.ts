@@ -45,6 +45,9 @@ const nextConfig: NextConfig = {
       { source: '/hackathons', destination: '/sprint', permanent: true },
       // There is no public API yet; the old /docs page described one.
       { source: '/docs', destination: '/help', permanent: true },
+      // One sign-in for everyone (Track V8): the console's own login is gone.
+      // `next` passes through, so a console deep link still comes back.
+      { source: '/console/login', destination: '/login', permanent: true },
     ];
   },
   async rewrites() {

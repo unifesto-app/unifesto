@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Handshake, SignOut } from "@unifesto/unicon/react";
-import { clearAuthToken } from "@/console/lib/utils/auth";
+import { signOut as endSession } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 
 /**
@@ -13,9 +13,9 @@ import { Button } from "@/console/components/ui/button";
  */
 export default function SponsorLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const signOut = () => {
-    clearAuthToken();
-    router.replace("/console/login");
+  const signOut = async () => {
+    await endSession();
+    router.replace("/login");
   };
 
   return (

@@ -8,6 +8,8 @@ const src = new URL("../src/", import.meta.url);
 registerHooks({
   resolve(specifier, context, next) {
     if (specifier.startsWith("@/")) specifier = new URL(specifier.slice(2), src).href;
+    // next ships no `exports` map, so ESM needs the explicit file (src/proxy.test.ts).
+    if (specifier === "next/server") specifier = "next/server.js";
     try {
       return next(specifier, context);
     } catch (err) {

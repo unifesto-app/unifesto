@@ -9,7 +9,7 @@ import {
   CheckCircle,
   Users,
 } from "@unifesto/unicon/react";
-import { getAuthToken } from "@/console/lib/utils/auth";
+import { currentToken, loginHref } from "@/console/lib/utils/auth";
 import { apexUrl } from "@/console/lib/types/rbac";
 import {
   getMyPortal,
@@ -58,11 +58,11 @@ export default function SponsorPortalPage() {
   const [leadsLoading, setLeadsLoading] = useState(false);
 
   useEffect(() => {
-    if (!getAuthToken()) {
-      router.replace("/console/login");
-      return;
-    }
     (async () => {
+      if (!(await currentToken())) {
+        router.replace(loginHref());
+        return;
+      }
       const { data } = await getMyPortal();
       if (!data || data.length === 0) {
         setPhase("no-access");

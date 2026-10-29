@@ -4,22 +4,27 @@
  * The backend answers a missing permission with 400 "Unauthorized" or 403,
  * so both count as `denied`.
  */
-import { getAuthToken } from "@/console/lib/utils/auth";
+import { currentToken, renewToken } from "@/console/lib/utils/auth";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; denied: boolean; message: string };
 
-/** fetch against the backend with the session token (JSON content type unless FormData). */
-export function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(init.headers);
-  const token = getAuthToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  return fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+/** fetch against the backend with the session token (JSON content type unless FormData). On a 401 it renews the token once and retries (V8). */
+export async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const send = (token: string | null) => {
+    const headers = new Headers(init.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    return fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+  };
+  const res = await send(await currentToken());
+  if (res.status !== 401) return res;
+  const fresh = await renewToken();
+  return fresh ? send(fresh) : res;
 }
 
 export async function call<T>(path: string, init?: RequestInit): Promise<Result<T>> {

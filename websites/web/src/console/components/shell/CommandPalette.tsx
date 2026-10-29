@@ -11,7 +11,7 @@ import {
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { useCommandPalette } from "@/console/lib/context/CommandPaletteContext";
-import { clearAuthToken } from "@/console/lib/utils/auth";
+import { signOut } from "@/console/lib/utils/auth";
 import { BASE_URL, resolveNavGroups } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 
@@ -92,8 +92,7 @@ export function CommandPalette() {
       icon: SignOut,
       keywords: "logout leave",
       run: () => {
-        clearAuthToken();
-        router.replace("/console/login");
+        void signOut().then(() => router.replace("/login"));
       },
     });
 
