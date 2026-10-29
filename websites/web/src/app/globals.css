@@ -678,7 +678,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
   background: radial-gradient(70% 60% at 22% 45%, rgb(var(--ground) / .72), rgb(var(--ground) / .35) 55%, transparent 80%);
 }
 
-/* Pointer depth (CosmosPointer sets --mx/--my in -0.5..0.5 and --px/--py).
+/* Pointer depth (CosmosPointer sets --mx/--my in -0.5..0.5).
    Nearer layers travel further, so the sky has depth. The individual
    `translate` property composes with each layer's transform animation;
    the transition gives the drift inertia, and retargets smoothly. */
@@ -686,19 +686,6 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .cosmos-stars:not(.cosmos-stars-far) { translate: calc(var(--mx, 0) * -22px) calc(var(--my, 0) * -16px); }
 .cosmos-orbit { translate: calc(var(--mx, 0) * -30px) calc(var(--my, 0) * -22px); }
 .cosmos-stars, .cosmos-orbit { transition: translate 900ms var(--ease-out-quart); }
-
-/* A soft light that follows the pointer: one fixed-size disc moved by
-   translate, never a repainted full-screen gradient. Fades in on first
-   move, out when the pointer leaves. */
-.cosmos-glow {
-  position: absolute; left: 0; top: 0; width: 56rem; height: 56rem; margin: -28rem 0 0 -28rem;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(var(--glow) / .07), rgb(var(--glow) / .02) 55%, transparent);
-  translate: var(--px, 50vw) var(--py, 40vh);
-  opacity: 0;
-  transition: translate 500ms var(--ease-out-quart), opacity 600ms ease;
-}
-.cosmos[data-live] .cosmos-glow { opacity: 1; }
 
 /* Hero horizon (HorizonFloor): a zero-height strip pinned to the hero's
    bottom edge. The line sits on the edge and its bloom rises into the hero. */
