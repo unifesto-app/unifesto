@@ -557,8 +557,8 @@ function SingleAddForm({
 
       {/* Team-wide questions (asked once for the whole group). */}
       {isGroup && teamFields.length > 0 && (
-        <div className="space-y-3 rounded-md border p-3">
-          <Label className="text-muted-foreground">Team details</Label>
+        <div role="group" aria-labelledby="add-team-details" className="space-y-3 rounded-md border p-3">
+          <Label id="add-team-details" className="text-muted-foreground">Team details</Label>
           <QuestionInputs
             eventId={event.id}
             fields={teamFields}
@@ -572,9 +572,13 @@ function SingleAddForm({
 
       {/* Lead's own per-member answers (individual: the attendee's answers). */}
       {perMemberFields.length > 0 && (
-        <div className="space-y-3">
+        <div
+          className="space-y-3"
+          role={isGroup ? "group" : undefined}
+          aria-labelledby={isGroup ? "add-lead-details" : undefined}
+        >
           {isGroup && (
-            <Label className="text-muted-foreground">
+            <Label id="add-lead-details" className="text-muted-foreground">
               {name.trim() || "Lead"}&rsquo;s details
             </Label>
           )}

@@ -513,9 +513,9 @@ function ComposeDialog({
           )}
 
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Category</label>
+            <label htmlFor="push-category" className="mb-1 block text-xs text-muted-foreground">Category</label>
             <Select value={category} onValueChange={(v) => setCategory(v as "productUpdates" | "promotions")}>
-              <SelectTrigger aria-label="Category">
+              <SelectTrigger id="push-category">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -533,8 +533,8 @@ function ComposeDialog({
           <Input value={deepLink} onChange={(e) => setDeepLink(e.target.value)} placeholder="Deep link (optional, e.g. unifesto://event/slug)" aria-label="Deep link" />
 
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Schedule (optional)</label>
-            <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} aria-label="Schedule" />
+            <label htmlFor="push-schedule" className="mb-1 block text-xs text-muted-foreground">Schedule (optional)</label>
+            <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} id="push-schedule" />
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

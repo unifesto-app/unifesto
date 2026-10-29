@@ -127,8 +127,8 @@ export default function EventPollsPage() {
               placeholder="Which session should we repeat tomorrow?"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Options</Label>
+          <div role="group" aria-labelledby="poll-options" className="space-y-2">
+            <Label id="poll-options">Options</Label>
             {options.map((o, i) => (
               <div key={i} className="flex gap-2">
                 <Input
