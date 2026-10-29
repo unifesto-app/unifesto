@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 const STATUSES = ['DRAFT', 'PUBLISHED'] as const;
@@ -61,6 +63,9 @@ export class CreateBlogDto {
   @IsOptional() @IsString() @MaxLength(60) metaTitle?: string;
   @IsOptional() @IsString() @MaxLength(155) metaDescription?: string;
   @IsOptional() @IsString() @MaxLength(300) coverAlt?: string;
+
+  /** K3: a DRAFT goes live on its own at this ISO time. */
+  @IsOptional() @IsDateString() scheduledFor?: string;
 }
 
 export class UpdateBlogDto {
@@ -77,6 +82,8 @@ export class UpdateBlogDto {
   @IsOptional() @IsString() @MaxLength(60) metaTitle?: string;
   @IsOptional() @IsString() @MaxLength(155) metaDescription?: string;
   @IsOptional() @IsString() @MaxLength(300) coverAlt?: string;
+  /** K3: ISO time to publish a DRAFT; null clears the schedule. */
+  @ValidateIf((_, v) => v !== null) @IsOptional() @IsDateString() scheduledFor?: string | null;
 }
 
 export class SearchConsoleDto {

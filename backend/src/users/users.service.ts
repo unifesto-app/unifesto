@@ -253,6 +253,17 @@ export class UsersService {
             },
           },
         },
+        capabilityOverrides: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            action: true,
+            allow: true,
+            reason: true,
+            createdAt: true,
+            space: { select: { id: true, name: true, slug: true } },
+          },
+        },
         pushDevices: {
           orderBy: { lastSeenAt: 'desc' },
           select: {
@@ -293,6 +304,11 @@ export class UsersService {
         appPlatform: user.appPlatform,
         appVersionLastReportedAt: user.appVersionLastReportedAt,
         lastSeenAt: user.lastSeenAt,
+        // F4
+        suspendedAt: user.suspendedAt,
+        suspendedUntil: user.suspendedUntil,
+        suspensionReason: user.suspensionReason,
+        capabilityOverrides: user.capabilityOverrides,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         email: user.identities.find((i) => i.email)?.email || null,

@@ -392,7 +392,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
 | E3 | Sponsor portal: lead notes + status, per-event booth stats | planned |
 | E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
-| E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
+| E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | done (#412) |
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
 | E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | done (#366) |
@@ -405,7 +405,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | planned |
 | F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
-| F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
+| F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
@@ -517,7 +517,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
 | K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | done (#322) |
-| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
+| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | done (#416) (#416) |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
 | K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#349) |
@@ -963,3 +963,7 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · K17 help centre hides itself (404, no links, not in sitemap) until an article is published; 13 starter articles as a draft seed script (#406)
 - **2026-10-29** · E9 lead capture throttled, public-only, no overwrite; notify-me emails changes + day-before reminder; inquiries alert Space Admins; booth scan and I'm interested ask for consent (#407)
 - **2026-10-29** · H15 Apex half: White-label History + Apply branding removed, suspend/restore moved to space detail; route + table drop wait for O6 (#408)
+- **2026-10-29** · F4 user IAM: Apex can suspend (with end date) or ban a user with a reason, sign them out everywhere, and add per-user capability overrides (removals win; grants one space, never platform); auth rejects suspended users at login, refresh and every request (#411)
+- **2026-10-29** · E5 hackathon submissions: curator Project links page per round (missing filter, CSV), links lock once a judge scores them, mobile stale draft fixed (#412)
+- **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
+- **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)

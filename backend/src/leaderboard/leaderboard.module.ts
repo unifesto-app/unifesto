@@ -5,7 +5,9 @@ import { EmailModule } from '../email/email.module';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
-import { HackathonController } from './hackathon.controller';
+import { HackathonTeamsController } from './hackathon-teams.controller';
+import { HackathonJudgingController } from './hackathon-judging.controller';
+import { HackathonResultsController } from './hackathon-results.controller';
 import { HackathonSetupService } from './hackathon-setup.service';
 import { HackathonTeamsService } from './hackathon-teams.service';
 import { HackathonStatementsService } from './hackathon-statements.service';
@@ -27,7 +29,12 @@ import { HackathonHelpService } from './hackathon-help.service';
  */
 @Module({
   imports: [AuthModule, CertificatesModule, EmailModule],
-  controllers: [LeaderboardController, HackathonController],
+  controllers: [
+    LeaderboardController,
+    HackathonTeamsController,
+    HackathonJudgingController,
+    HackathonResultsController,
+  ],
   providers: [
     LeaderboardService,
     LeaderboardGateway,

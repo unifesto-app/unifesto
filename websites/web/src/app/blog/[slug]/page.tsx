@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import Markdown from "@/components/site/Markdown";
@@ -36,6 +36,8 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await getPost(slug);
 
   if (!post) notFound();
+  // K3: a renamed post answers at its old slug; send readers and crawlers on.
+  if (post.slug !== slug) permanentRedirect(`/blog/${post.slug}`);
 
   const { date, readTime } = postMeta(post);
   const url = `${SITE.url}/blog/${post.slug}`;
