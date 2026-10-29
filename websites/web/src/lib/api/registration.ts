@@ -88,7 +88,8 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+/** JSON call to the API from the browser, with the session's token when given. */
+export async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${PUBLIC_API}${path}`, {

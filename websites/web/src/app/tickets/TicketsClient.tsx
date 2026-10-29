@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import QRCode from "qrcode";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ApiError, myTickets, resendTicket, sendEmailCode, verifyEmailCode, type MyTicket } from "@/lib/api/registration";
-import { clearSession, startSession, useWebSession } from "@/lib/auth";
-import GoogleSignIn from "@/components/GoogleSignIn";
+import { ApiError, myTickets, resendTicket, type MyTicket } from "@/lib/api/registration";
+import { clearSession, useWebSession } from "@/lib/auth";
+import SignIn from "@/components/SignIn";
 import { IST } from "@/lib/site";
-
-const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
 
 /**
  * K15: a web-only attendee's way back to their ticket. Signs in with the same
@@ -22,10 +19,6 @@ export default function TicketsClient() {
   // K18: restored from our httpOnly cookie on load; the token lives in memory.
   const { session, ready, pending } = useWebSession();
   const [tickets, setTickets] = useState<MyTicket[] | null>(null);
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const signOut = () => {
@@ -48,93 +41,26 @@ export default function TicketsClient() {
     };
   }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const run = (fn: () => Promise<void>) => async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await fn();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  const sendCode = run(async () => {
-    await sendEmailCode(email.trim());
-    setOtp("");
-    setCodeSent(true);
-  });
-  const verify = run(async () => {
-    const res = await verifyEmailCode(email.trim(), otp.trim());
-    // A fresh email has no account yet, so no tickets either.
-    if (!res.accessToken) throw new Error("There's no Unifesto account with this email yet.");
-    await startSession(res, { email: email.trim(), fullName: res.user?.fullName || null });
-  });
-
   let body;
   if (!ready) body = null;
-  else if (!session && pending) {
-    // K18: a Google account that isn't on Unifesto yet has no tickets to show.
+  else if (!session) {
     body = (
-      <p className="text-paper/75">
-        <strong className="text-paper">{pending.email}</strong> isn&apos;t on Unifesto yet, so it has no tickets. Sign in
-        with the email you registered with instead.{" "}
-        <button type="button" onClick={signOut} className="underline hover:text-paper">
-          Use my email
-        </button>
-      </p>
-    );
-  } else if (!session) {
-    body = codeSent ? (
-      <form onSubmit={verify} className="space-y-4">
-        <p className="text-paper/75">
-          We emailed a code to <strong className="text-paper">{email.trim()}</strong>.
-        </p>
-        <input
-          required
-          autoFocus
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          aria-label="Verification code"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          placeholder="Verification code"
-          className={FIELD}
-        />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button type="submit" disabled={busy} className="btn btn-primary w-full">
-          {busy ? "Verifying…" : "Show My tickets"}
-        </button>
-        <button type="button" onClick={() => setCodeSent(false)} className="text-sm text-paper/65 hover:text-paper">
-          Change email
-        </button>
-      </form>
-    ) : (
-      <form onSubmit={sendCode} className="space-y-4">
-        <GoogleSignIn next="/tickets" />
-        <p className="text-paper/75">Enter the email you registered with. We send you a code to confirm it&apos;s you.</p>
-        <input
-          required
-          type="email"
-          autoComplete="email"
-          aria-label="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          className={FIELD}
-        />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button type="submit" disabled={busy} className="btn btn-primary w-full">
-          {busy ? "Sending code…" : "Email me a code"}
-        </button>
-      </form>
+      <SignIn
+        next="/tickets"
+        pending={pending}
+        intro="Enter the email you registered with. We send you a code to confirm it's you."
+        submitLabel="Show My tickets"
+      />
     );
   } else {
     body = (
       <div className="space-y-6">
         <p className="text-sm text-paper/65">
           Signed in as <strong className="text-paper">{session.email}</strong>.{" "}
+          <Link href="/account" className="underline hover:text-paper">
+            My account
+          </Link>
+          {" · "}
           <button type="button" onClick={signOut} className="underline hover:text-paper">
             Sign out
           </button>

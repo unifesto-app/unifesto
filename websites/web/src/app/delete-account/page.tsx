@@ -6,7 +6,8 @@ import { LEGAL } from "@/lib/legal";
 /* Account deletion, as the backend actually does it (users.service:
    requestAccountDeletion → 30-day grace → purgeDueDeletions/closeAccount).
    This page is the web deletion URL listed on Google Play and the App
-   Store, so it must stay accurate and reachable without signing in. */
+   Store, so it must stay accurate and reachable without signing in.
+   K19: it leads with the self-serve flow at /account/delete. */
 
 export const metadata: Metadata = withSocial({
   title: "Delete your account",
@@ -20,6 +21,17 @@ const mail = (e: string, subject?: string) => (
 );
 
 const sections: LegalSection[] = [
+  {
+    id: "on-the-web",
+    title: "Delete on the web",
+    body: (
+      <ol>
+        <li>Go to <a href="/account/delete">My account → Delete account</a> and sign in with your email code (or Google).</li>
+        <li>Confirm, and choose <strong>Delete my account</strong>.</li>
+        <li>You can cancel on the same page until the day it closes.</li>
+      </ol>
+    ),
+  },
   {
     id: "in-app",
     title: "Delete in the app",
@@ -48,7 +60,7 @@ const sections: LegalSection[] = [
     body: (
       <p>
         Nothing is removed straight away. Your account closes automatically 30 days after you ask. Change your mind before
-        then and you can cancel the deletion from the app and keep your account as it is.
+        then and you can cancel the deletion from the app or on the web and keep your account as it is.
       </p>
     ),
   },
@@ -101,7 +113,7 @@ export default function DeleteAccountPage() {
       title="Delete your account"
       path="/delete-account"
       lines={["Delete your", "Unifesto account"]}
-      lede="You can delete your account at any time, in the Unifesto app or by email. Here is exactly what happens."
+      lede="You can delete your account at any time, on the web, in the Unifesto app or by email. Here is exactly what happens."
       sections={sections}
     />
   );

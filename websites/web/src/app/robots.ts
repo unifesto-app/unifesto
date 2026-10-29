@@ -4,7 +4,7 @@ import { SITE } from "@/lib/site";
 /* Public pages are open to every crawler, including AI search and answer
    engines, named explicitly so an over-broad default never shuts them out.
    Private and transactional routes stay out of every index. */
-const PRIVATE = ["/api/", "/auth/", "/claim/", "/signup", "/download", "/event/*/register"];
+const PRIVATE = ["/api/", "/auth/", "/account", "/claim/", "/signup", "/download", "/event/*/register"];
 
 const AI_CRAWLERS = [
   "GPTBot",
