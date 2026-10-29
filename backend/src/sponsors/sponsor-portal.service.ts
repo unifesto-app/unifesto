@@ -4,7 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SponsorLeadSource, SponsorUserStatus } from '@prisma/client';
+import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
 import { BoothScanDto } from './dto/sponsor.dto';
 
 /**
@@ -15,7 +17,10 @@ import { BoothScanDto } from './dto/sponsor.dto';
  */
 @Injectable()
 export class SponsorPortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planConfig: PlanConfigService,
+  ) {}
 
   /** Throws unless the user is an active member of the sponsor. */
   private async assertMember(userId: string, sponsorId: string): Promise<void> {
@@ -135,7 +140,7 @@ export class SponsorPortalService {
 
     const es = await this.prisma.eventSponsor.findFirst({
       where: { id: dto.eventSponsorId, sponsorId },
-      select: { id: true, eventId: true, leadCaptureEnabled: true },
+      select: { id: true, eventId: true, leadCaptureEnabled: true, event: { select: { spaceId: true } } },
     });
     if (!es) {
       throw new NotFoundException('That booth is not linked to your sponsor.');
@@ -145,12 +150,14 @@ export class SponsorPortalService {
         'Lead capture is turned off for your sponsor at this event.',
       );
     }
+    await this.planConfig.assertFeature(es.event.spaceId, 'hasSponsors');
 
-    const reg = await this.prisma.eventRegistration.findUnique({
-      where: { qrCode: dto.qrCode.trim() },
-      select: { id: true, eventId: true, userId: true },
+    // Only a ticket that still counts (not cancelled or unpaid) becomes a lead.
+    const reg = await this.prisma.eventRegistration.findFirst({
+      where: { qrCode: dto.qrCode.trim(), eventId: es.eventId, ...COUNTS_AS_ATTENDING },
+      select: { id: true, userId: true },
     });
-    if (!reg || reg.eventId !== es.eventId) {
+    if (!reg) {
       throw new NotFoundException('That ticket is not valid for this event.');
     }
 

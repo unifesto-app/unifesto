@@ -74,24 +74,13 @@ export class SponsorsService {
     );
   }
 
-  /** Rejects when the space's plan does not include the sponsors feature. */
-  private async assertPlanAllowsSponsors(spaceId: string): Promise<void> {
-    const space = await this.prisma.space.findUnique({
-      where: { id: spaceId },
-      select: { id: true, subscription: true },
-    });
-    if (!space) throw new NotFoundException('Space not found');
-
-    const subscription = space.subscription;
-    // No subscription row yet: mirror Sessions — don't lock out a space whose
-    // billing hasn't been set up, leave enforcement to when a plan exists.
-    if (!subscription) return;
-
-    if (!this.planConfig.getEffectiveLimits(subscription).hasSponsors) {
-      throw new ForbiddenException(
-        'Sponsors & lead generation are not included in this plan. Ask an admin to enable it for your plan.',
-      );
-    }
+  /**
+   * Rejects unless the space's plan includes sponsors (Growth and up). Same
+   * gate as the leads funnel: a space with no subscription row is on General,
+   * so it no longer gets sponsors for free.
+   */
+  private assertPlanAllowsSponsors(spaceId: string): Promise<void> {
+    return this.planConfig.assertFeature(spaceId, 'hasSponsors');
   }
 
   /** Confirms an event belongs to the space, else 404. Returns the event id. */
@@ -369,12 +358,14 @@ export class SponsorsService {
   async optIn(userId: string, eventId: string, eventSponsorId: string) {
     const es = await this.prisma.eventSponsor.findFirst({
       where: { id: eventSponsorId, eventId },
-      select: { id: true, leadCaptureEnabled: true },
+      select: { id: true, leadCaptureEnabled: true, event: { select: { spaceId: true } } },
     });
     if (!es) throw new NotFoundException('Sponsor not found for this event');
     if (!es.leadCaptureEnabled) {
       throw new ForbiddenException('This sponsor is not collecting leads.');
     }
+    // A space that dropped below Growth keeps its leads but takes no new ones.
+    await this.assertPlanAllowsSponsors(es.event.spaceId);
 
     const reg = await this.getAttendingRegistration(userId, eventId);
     if (!reg) {
