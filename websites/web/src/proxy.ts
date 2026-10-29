@@ -58,12 +58,15 @@ function csp(nonce: string, isConsole: boolean): string {
   ].join('; ');
 }
 
-/* The console (/console/**, Track V). Its JWT is the JS-readable
-   `unifesto_token` cookie on .unifesto.app; this is a light gate and the
-   backend stays the authority. Login and no-access handle signed-out visitors
-   themselves, and the projector signs in with its display link. */
-const TOKEN_COOKIE = 'unifesto_token';
-const CONSOLE_PUBLIC = ['/console/login', '/console/no-access', '/console/present'];
+/* The console (/console/**, Track V). One sign-in (V8): web's /login and its
+   session. The proxy can't see that session's refresh cookie (uf_rt is scoped
+   to /auth), so it lets through its `uf_in` hint, or a live `unifesto_token`
+   from the old space app until those expire. A light gate: the backend stays
+   the authority. No-access handles signed-out visitors itself, and the
+   projector signs in with its display link. */
+const HINT_COOKIE = 'uf_in';
+const LEGACY_TOKEN_COOKIE = 'unifesto_token';
+const CONSOLE_PUBLIC = ['/console/no-access', '/console/present'];
 const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(`${p}/`);
 
 /** Well-formed, has a subject and isn't past `exp`. No signature check (Edge-safe). */
@@ -79,35 +82,15 @@ function isTokenLive(token: string | undefined): boolean {
   }
 }
 
-// ponytail: per-process login limiter (40 a minute per IP); a shared store if web runs more than one container.
-const attempts = new Map<string, { count: number; resetAt: number }>();
-function loginLimited(request: NextRequest): boolean {
-  // Caddy sets X-Forwarded-For to the one visitor IP it resolved from
-  // Cf-Connecting-Ip, so the last entry is ours.
-  const ip = request.headers.get('x-forwarded-for')?.split(',').pop()?.trim() || 'unknown';
-  const now = Date.now();
-  if (attempts.size > 1000) for (const [k, v] of attempts) if (now > v.resetAt) attempts.delete(k);
-  const hit = attempts.get(ip);
-  if (!hit || now > hit.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  hit.count += 1;
-  return hit.count > 40;
-}
-
 function consoleGate(request: NextRequest, reqHeaders: Headers): NextResponse {
   const { pathname, search } = request.nextUrl;
-  if (pathname === '/console/login' && loginLimited(request)) {
-    return NextResponse.json({ error: 'Too many authentication attempts. Please try again in a minute.' }, { status: 429 });
-  }
-  const live = isTokenLive(request.cookies.get(TOKEN_COOKIE)?.value);
-  if (!live && !CONSOLE_PUBLIC.some((p) => under(pathname, p))) {
-    const login = new URL('/console/login', request.url);
+  const signedIn =
+    request.cookies.get(HINT_COOKIE)?.value === '1' || isTokenLive(request.cookies.get(LEGACY_TOKEN_COOKIE)?.value);
+  if (!signedIn && !CONSOLE_PUBLIC.some((p) => under(pathname, p))) {
+    const login = new URL('/login', request.url);
     login.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(login);
   }
-  if (pathname === '/console/login' && live) return NextResponse.redirect(new URL('/console', request.url));
   return NextResponse.next({ request: { headers: reqHeaders } });
 }
 

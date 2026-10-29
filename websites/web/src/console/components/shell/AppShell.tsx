@@ -13,7 +13,7 @@ import {
   CommandPaletteProvider,
   useCommandPalette,
 } from "@/console/lib/context/CommandPaletteContext";
-import { clearAuthToken } from "@/console/lib/utils/auth";
+import { signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { SpaceSwitcher } from "./SpaceSwitcher";
@@ -43,9 +43,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <ShellSkeleton />;
   }
 
-  const handleSignOut = () => {
-    clearAuthToken();
-    router.replace("/console/login");
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace("/login");
   };
 
   return (

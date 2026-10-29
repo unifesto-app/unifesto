@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/console/lib/api/current-user-api";
 import { getMyPortal } from "@/console/lib/api/sponsor-portal-api";
 import { resolveLanding, apexUrl, type CurrentUser } from "@/console/lib/types/rbac";
-import { clearAuthToken, getAuthToken } from "@/console/lib/utils/auth";
+import { currentToken, loginHref, signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import {
   Card,
@@ -37,8 +37,8 @@ export default function NoAccessPage() {
     let cancelled = false;
 
     async function verify() {
-      if (!getAuthToken()) {
-        router.replace("/console/login");
+      if (!(await currentToken())) {
+        router.replace(loginHref("/console"));
         return;
       }
       const { data } = await getCurrentUser();
@@ -74,9 +74,9 @@ export default function NoAccessPage() {
     };
   }, [router]);
 
-  const handleSignOut = () => {
-    clearAuthToken();
-    router.replace("/console/login");
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace("/login");
   };
 
   if (status === "checking") {

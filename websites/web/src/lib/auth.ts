@@ -74,6 +74,35 @@ function restore(): Promise<void> {
   return restoring;
 }
 
+/** Resolves once this page has asked /auth/session. The console waits on it before its first API call. */
+export const sessionReady = (): Promise<void> => restore();
+
+let renewing: Promise<WebSession | null> | null = null;
+
+/**
+ * After a 401 (an access token outlived by a long-open tab): ask /auth/session
+ * again. Calls made while one is in flight share it, so a burst of 401s
+ * rotates the refresh cookie once. null when there is no session to renew.
+ */
+export function refreshSession(): Promise<WebSession | null> {
+  renewing ??= (async () => {
+    try {
+      const res = await post("/auth/session");
+      const data = res.ok ? await res.json() : null;
+      const session: WebSession | null = data?.accessToken
+        ? { token: data.accessToken, email: data.email, fullName: data.fullName }
+        : null;
+      update({ session });
+      return session;
+    } catch {
+      return null;
+    } finally {
+      renewing = null;
+    }
+  })();
+  return renewing;
+}
+
 /** The current session, once the page has checked. Kicks off that check. */
 export function useWebSession(): State {
   useEffect(() => {
@@ -124,11 +153,14 @@ export async function startSession(
   return session;
 }
 
-/** Sign out here and on the backend. */
-export function clearSession(): void {
+/** Sign out here and on the backend. Await it before navigating away, or the request can be cut off. */
+export function clearSession(): Promise<void> {
   const token = state.session?.token;
   update({ session: null, pending: null });
-  void post("/auth/logout", undefined, token).catch(() => undefined);
+  return post("/auth/logout", undefined, token).then(
+    () => undefined,
+    () => undefined,
+  );
 }
 
 /** Where "Continue with Google/Apple" goes: back to `next` signed in. */

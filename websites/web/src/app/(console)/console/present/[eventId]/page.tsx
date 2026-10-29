@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { io } from "socket.io-client";
 import { call } from "@/console/lib/api/call";
-import { getAuthToken } from "@/console/lib/utils/auth";
+import { currentToken } from "@/console/lib/utils/auth";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -73,7 +73,7 @@ export default function ProjectorPage() {
 
   const load = useCallback(async () => {
     if (token === undefined) return;
-    if (!token && !getAuthToken()) {
+    if (!token && !(await currentToken())) {
       setError("Sign in to the Space app, or open this screen with the display link from Live polls.");
       return;
     }
@@ -99,7 +99,8 @@ export default function ProjectorPage() {
     void load();
     const socket = io(`${BACKEND_URL}/leaderboard`, {
       transports: ["websocket"],
-      auth: token ? {} : { token: getAuthToken() },
+      // A function, so each (re)connect waits for the session and sends the current token.
+      auth: token ? {} : (cb) => void currentToken().then((t) => cb({ token: t })),
     });
     const subscribe = () =>
       socket.emit("engagement:subscribe", token ? { eventId, displayToken: token } : { eventId }, (ack: { error?: string }) => {
