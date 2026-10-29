@@ -405,7 +405,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | planned |
 | F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
-| F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
+| F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
@@ -963,3 +963,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · K17 help centre hides itself (404, no links, not in sitemap) until an article is published; 13 starter articles as a draft seed script (#406)
 - **2026-10-29** · E9 lead capture throttled, public-only, no overwrite; notify-me emails changes + day-before reminder; inquiries alert Space Admins; booth scan and I'm interested ask for consent (#407)
 - **2026-10-29** · H15 Apex half: White-label History + Apply branding removed, suspend/restore moved to space detail; route + table drop wait for O6 (#408)
+- **2026-10-29** · F4 user IAM: Apex can suspend (with end date) or ban a user with a reason, sign them out everywhere, and add per-user capability overrides (removals win; grants one space, never platform); auth rejects suspended users at login, refresh and every request (#411)
