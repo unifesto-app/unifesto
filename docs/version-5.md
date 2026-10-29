@@ -981,3 +981,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · F2 feedback timing: checked-in attendees get a push 2 h after the end and a reminder at 48 h (notify() low kinds, once per event), feedback closes at 7 days, optional feedback-unlocks-certificate (#427)
 - **2026-10-29** · F3 feedback results: averages, NPS, rating spread, question summaries, comments and CSV in Space web and mobile; opt-in public rating on the event page once 5+ attendees rated (#428)
 - **2026-10-29** · G15 DM Sans 500 replaces Michroma for headlines on web, Space, Apex, mobile and share cards; tracking max(calc(0.9px - 0.062em), -0.04em); ₹ now drawn by DM Sans (Hanken lacks it); web hero up to 64px; mobile legacy font helpers and Plus Jakarta removed. Rebuild web, space, apex; mobile JS-only. (#429)
+- **2026-10-29** · web backdrop is thin lines only; planet crescents and horizon bars removed from the hero and inner pages. Rebuild web. (#430)
