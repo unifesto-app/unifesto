@@ -389,9 +389,9 @@ One support system for everything a person needs help with. Every item is an **A
 | # | Item | Status |
 |---|---|---|
 | E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | done (#422) |
-| E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
+| E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | dropped (covered by X7 Tracking) (#414) |
 | E3 | Sponsor portal: lead notes + status, per-event booth stats | done (#423) |
-| E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
+| E4 | Partner: multiple links, share kit (tracked link + QR) | done (#414) |
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | done (#412) |
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | done (#413) |
@@ -977,3 +977,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E1 shared collaborator invite: one find-or-create by email (never renames an account), invite email for sponsor portal, judges/mentors and space members; sponsor invite no longer needs an existing account (#422)
 - **2026-10-29** · E10 sponsors: plan gate no longer fails open without a subscription, opt-in and booth scan check the plan, booth scan only valid tickets, UUID-validated routes, roster/opt-in/scan/funnel tests (#410)
 - **2026-10-29** · E7 BoothScan works offline: consented scans queue on the phone and sync on reconnect/foreground; refused ones listed for review (StayScan skipped, Stays removed in S59) (#413)
+- **2026-10-29** · E4 partner share kit done: QR for a partner's tracked link on Partner stats (link + share were already there); E2 web partner portal dropped, covered by X7 Tracking + app Partner stats (#414)
