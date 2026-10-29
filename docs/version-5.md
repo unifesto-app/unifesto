@@ -1013,3 +1013,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · /console is everyone's home: my next events and spaces, a Me section in the rail; my tickets, account and feedback moved under /console (old URLs 308); sign-in lands on /console (#451)
 - **2026-10-29** · Console header shows breadcrumbs (Home › space › section › …) instead of the space switcher; spaces switch from Home (#452)
 - **2026-10-29** · Console sidebar is one tree (Account, Spaces › space › Events › event, each with its Dashboard; other spaces switch from it); header says Unifesto Console (#453)
+- **2026-10-29** · Web console: Inbox, My tickets, Support, Saved events and My certificates in the sidebar with unread counts; My account keeps its settings tabs; "My Spaces" (#454)
