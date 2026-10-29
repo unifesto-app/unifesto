@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { CalendarBlank, Globe, Stack, Timer } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { StatCard } from "@/components/shared/StatCard";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { getOrbitCampus, type OrbitCampusView } from "@/lib/api/orbit";
-import { useSession } from "@/lib/context/SessionContext";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Badge } from "@/console/components/ui/badge";
+import { getOrbitCampus, type OrbitCampusView } from "@/console/lib/api/orbit";
+import { useSession } from "@/console/lib/context/SessionContext";
 
 const ORBIT_URL = "https://www.unifesto.app/orbit";
 const GOAL_LABEL = { clubs: "Clubs onboarded", activeClubs: "Active clubs", paidEvents: "Paid events" } as const;

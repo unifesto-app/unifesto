@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { IdentificationCard } from "@unifesto/unicon/react";
-import { BADGE_LAYOUTS, printBadges, type BadgeLayout } from "@/lib/api/registrations-api";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { BADGE_LAYOUTS, printBadges, type BadgeLayout } from "@/console/lib/api/registrations-api";
+import { Button } from "@/console/components/ui/button";
+import { Label } from "@/console/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 /**
  * Badge / pass printing (N1): everyone matching the roster's filters, or the

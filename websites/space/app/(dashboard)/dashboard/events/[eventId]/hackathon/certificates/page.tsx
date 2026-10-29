@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Certificate, CheckCircle, Hourglass, WarningCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, Field, FormCard, HackPage, useResult } from "@/components/hackathon/HackParts";
-import { getHackathonCertificates, issueHackathonCertificates } from "@/lib/api/hackathon";
-import { formatWhen } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, Field, FormCard, HackPage, useResult } from "@/console/components/hackathon/HackParts";
+import { getHackathonCertificates, issueHackathonCertificates } from "@/console/lib/api/hackathon";
+import { formatWhen } from "@/console/lib/hackathon";
 
 type Audience = "PARTICIPANTS" | "WINNERS";
 

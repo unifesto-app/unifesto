@@ -19,29 +19,29 @@ import {
   setAttendeeControls,
   type AttendeeControls,
   type Event,
-} from "@/lib/api/events-api";
-import { toLocalDatetime } from "@/lib/constants/event-form";
-import { Toggle } from "@/components/hackathon/HackParts";
-import { useAccess } from "@/lib/context/SessionContext";
+} from "@/console/lib/api/events-api";
+import { toLocalDatetime } from "@/console/lib/constants/event-form";
+import { Toggle } from "@/console/components/hackathon/HackParts";
+import { useAccess } from "@/console/lib/context/SessionContext";
 import {
   getEventEligibleAccounts,
   setEventPayoutAccount,
   type EligibleAccount,
-} from "@/lib/api/payouts-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+} from "@/console/lib/api/payouts-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Button } from "@/console/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { Label } from "@/console/components/ui/label";
+import { Badge } from "@/console/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 export default function EventSettingsPage() {
   const params = useParams();
@@ -279,7 +279,7 @@ export default function EventSettingsPage() {
                       if (!window.confirm("Publish this event? It will be visible to attendees.")) return;
                       setLoading(true);
                       setError("");
-                      const { publishEvent } = await import("@/lib/api/events-api");
+                      const { publishEvent } = await import("@/console/lib/api/events-api");
                       const { error: publishError } = await publishEvent(eventId);
                       if (publishError) {
                         setError(publishError.message);

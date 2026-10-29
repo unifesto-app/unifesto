@@ -9,8 +9,8 @@ import {
   CheckCircle,
   Users,
 } from "@unifesto/unicon/react";
-import { getAuthToken } from "@/lib/utils/auth";
-import { apexUrl } from "@/lib/types/rbac";
+import { getAuthToken } from "@/console/lib/utils/auth";
+import { apexUrl } from "@/console/lib/types/rbac";
 import {
   getMyPortal,
   getPortalLeads,
@@ -19,21 +19,21 @@ import {
   type PortalLeadStatus,
   type PortalSponsor,
   type PortalLead,
-} from "@/lib/api/sponsor-portal-api";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { EmptyState } from "@/components/shared/EmptyState";
+} from "@/console/lib/api/sponsor-portal-api";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { EmptyState } from "@/console/components/shared/EmptyState";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 const STATUS_LABEL: Record<PortalLeadStatus, string> = {
   NEW: "New",

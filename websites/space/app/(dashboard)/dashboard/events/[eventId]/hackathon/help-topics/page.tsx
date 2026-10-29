@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Field, FormCard, HackPage, MultiChips, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { createHelpTopic, deleteHelpTopic, getHelpTopics, staffName, updateHelpTopic, type HelpTopics } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Field, FormCard, HackPage, MultiChips, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { createHelpTopic, deleteHelpTopic, getHelpTopics, staffName, updateHelpTopic, type HelpTopics } from "@/console/lib/api/hackathon";
 
 type Topic = HelpTopics["topics"][number];
 

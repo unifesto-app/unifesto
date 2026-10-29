@@ -8,12 +8,12 @@ import {
   ArrowsClockwise,
   Bank,
 } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OverviewPanel } from "@/components/finance/OverviewPanel";
-import { PayoutsPanel } from "@/components/finance/PayoutsPanel";
-import { RefundsPanel } from "@/components/finance/RefundsPanel";
-import { BankAccountsPanel } from "@/components/finance/BankAccountsPanel";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/console/components/ui/tabs";
+import { OverviewPanel } from "@/console/components/finance/OverviewPanel";
+import { PayoutsPanel } from "@/console/components/finance/PayoutsPanel";
+import { RefundsPanel } from "@/console/components/finance/RefundsPanel";
+import { BankAccountsPanel } from "@/console/components/finance/BankAccountsPanel";
 
 const TABS = [
   { value: "overview", label: "Overview", icon: ChartBar },

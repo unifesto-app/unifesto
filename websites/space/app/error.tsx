@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/console/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/console/components/ui/card";
 
 /** Any page that throws lands here, reported to Sentry, with a retry. */
 export default function ErrorPage({

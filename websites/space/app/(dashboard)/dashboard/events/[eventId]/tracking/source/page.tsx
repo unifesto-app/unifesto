@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { Users } from "@unifesto/unicon/react";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getSourceAttendees, sourceLabel, type SourceAttendee } from "@/lib/api/tracking";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { getSourceAttendees, sourceLabel, type SourceAttendee } from "@/console/lib/api/tracking";
 
 /** Who registered through one source of an event's breakdown (port of SourceAttendeesScreen). */
 export default function SourceAttendeesPage() {

@@ -1,10 +1,10 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Check, Minus, Lock } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSession } from "@/console/lib/context/SessionContext";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   getSpaceSubscription,
   getSpaceUsage,
@@ -24,16 +24,16 @@ import {
   type CatalogRow,
   type OrgPlan,
   type BillingCycle,
-} from "@/lib/api/subscriptions-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { GO_LIVE, RATE } from "@/components/shell/FeeNoticeBanner";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { confirmDialog } from "@/components/shared/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/subscriptions-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { GO_LIVE, RATE } from "@/console/components/shell/FeeNoticeBanner";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { confirmDialog } from "@/console/components/shared/ConfirmDialog";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { cn } from "@/console/lib/utils/cn";
 
 /** Best annual saving across plans, from the API's prices: "Save 17%". */
 function annualSaving(plans: PlanInfo[]): string | null {

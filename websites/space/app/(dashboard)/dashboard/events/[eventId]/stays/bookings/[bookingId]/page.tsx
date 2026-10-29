@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { CalendarBlank, CheckCircle, CurrencyInr, Phone, SignIn, SignOut, Warning, XCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { AnswerValue } from "@/components/events/answer-value";
-import { Field, FormCard, HackPage as Page, Notice, Toggle } from "@/components/hackathon/HackParts";
-import { isFileAnswer } from "@/lib/form-questions";
-import type { Result } from "@/lib/api/call";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { AnswerValue } from "@/console/components/events/answer-value";
+import { Field, FormCard, HackPage as Page, Notice, Toggle } from "@/console/components/hackathon/HackParts";
+import { isFileAnswer } from "@/console/lib/form-questions";
+import type { Result } from "@/console/lib/api/call";
 import {
   approveStayBooking,
   cancelStayBooking,
@@ -28,9 +28,9 @@ import {
   staysBase,
   updateStayBooking,
   type TeamStayBooking,
-} from "@/lib/api/stays";
-import { useAccess } from "@/lib/context/SessionContext";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/stays";
+import { useAccess } from "@/console/lib/context/SessionContext";
+import { cn } from "@/console/lib/utils/cn";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });

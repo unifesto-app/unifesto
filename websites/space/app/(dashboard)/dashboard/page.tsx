@@ -1,6 +1,6 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -17,18 +17,18 @@ import {
   Ticket,
   CurrencyInr,
 } from "@unifesto/unicon/react";
-import { getSpaceEvents } from "@/lib/api/events-api";
-import type { Event } from "@/lib/api/events-api";
-import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { useSession } from "@/lib/context/SessionContext";
-import { StatCard } from "@/components/shared/StatCard";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils/cn";
+import { getSpaceEvents } from "@/console/lib/api/events-api";
+import type { Event } from "@/console/lib/api/events-api";
+import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
+import { useSession } from "@/console/lib/context/SessionContext";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { StatusBadge } from "@/console/components/shared/StatusBadge";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { cn } from "@/console/lib/utils/cn";
 
 /* ---------------------------------------------------------------------------
  * Prioritisation — the one spot where product judgment lives.

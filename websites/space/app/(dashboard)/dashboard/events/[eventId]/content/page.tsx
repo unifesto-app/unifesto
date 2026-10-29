@@ -9,8 +9,8 @@ import {
   Phone,
   Question,
 } from "@unifesto/unicon/react";
-import { getEventById, type Event } from "@/lib/api/events-api";
-import { SectionEditor, type FieldDef } from "@/components/events/SectionEditor";
+import { getEventById, type Event } from "@/console/lib/api/events-api";
+import { SectionEditor, type FieldDef } from "@/console/components/events/SectionEditor";
 import {
   createAgenda,
   updateAgenda,
@@ -32,11 +32,11 @@ import {
   type EventPrize,
   type EventContact,
   type EventFaq,
-} from "@/lib/api/events-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/console/lib/api/events-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/console/components/ui/tabs";
 
 /** Convert ISO string to `datetime-local` value (YYYY-MM-DDTHH:mm). */
 function toLocalDatetime(iso?: string): string {

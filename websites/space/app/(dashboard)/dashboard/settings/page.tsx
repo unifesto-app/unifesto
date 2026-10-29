@@ -1,6 +1,6 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -8,7 +8,7 @@ import {
   ArrowClockwise,
   CheckCircle,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   getSpace,
   updateSpace,
@@ -16,32 +16,32 @@ import {
   uploadSpaceBanner,
   type UpdateSpacePayload,
   type SpaceVisibility,
-} from "@/lib/api/spaces-api";
-import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
-import { ParentSpaceCard } from "@/components/settings/ParentSpaceCard";
-import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/console/lib/api/spaces-api";
+import { ImageUploadCard } from "@/console/components/shared/ImageUploadCard";
+import { ParentSpaceCard } from "@/console/components/settings/ParentSpaceCard";
+import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Textarea } from "@/console/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+} from "@/console/components/ui/card";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Badge } from "@/console/components/ui/badge";
 
 // Fields the API returns (in either casing) that SpaceWithHierarchy doesn't declare.
 type SpaceFields = Partial<

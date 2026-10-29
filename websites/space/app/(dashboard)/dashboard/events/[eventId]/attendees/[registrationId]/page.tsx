@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -31,30 +31,30 @@ import {
   type TransferRequest,
   REGISTRATION_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
-} from "@/lib/api/registrations-api";
+} from "@/console/lib/api/registrations-api";
 import type {
   Registration,
   RegistrationStatus,
   PaymentStatus,
-} from "@/lib/api/registrations-api";
-import { getEventById } from "@/lib/api/events-api";
-import { requestRefundOnBehalf } from "@/lib/api/refunds-api";
-import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { AnswerValue } from "@/components/events/answer-value";
-import { formatAnswer } from "@/lib/form-questions";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/registrations-api";
+import { getEventById } from "@/console/lib/api/events-api";
+import { requestRefundOnBehalf } from "@/console/lib/api/refunds-api";
+import { Textarea } from "@/console/components/ui/textarea";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { AnswerValue } from "@/console/components/events/answer-value";
+import { formatAnswer } from "@/console/lib/form-questions";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +62,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 function initials(name?: string | null, username?: string | null): string {
   return (name || username || "?").substring(0, 2).toUpperCase();

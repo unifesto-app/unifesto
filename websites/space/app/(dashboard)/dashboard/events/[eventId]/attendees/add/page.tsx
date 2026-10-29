@@ -3,36 +3,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle, WarningCircle } from "@unifesto/unicon/react";
-import { getEventById, getManageTicketTypes } from "@/lib/api/events-api";
-import type { Event, EventTicketType, EventFormField } from "@/lib/api/events-api";
+import { getEventById, getManageTicketTypes } from "@/console/lib/api/events-api";
+import type { Event, EventTicketType, EventFormField } from "@/console/lib/api/events-api";
 import {
   manualAddAttendee,
   type ManualGroupMember,
-} from "@/lib/api/registrations-api";
+} from "@/console/lib/api/registrations-api";
 import {
   createFreeAddRequest,
   getEventFreeAddRequests,
   freeSeatsLeft,
   type FreeAddRequest,
   type FreeAddRequestStatus,
-} from "@/lib/api/free-add-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { QuestionInputs } from "@/components/events/question-inputs";
-import { formatAnswer, visibleFieldIds } from "@/lib/form-questions";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/free-add-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { QuestionInputs } from "@/console/components/events/question-inputs";
+import { formatAnswer, visibleFieldIds } from "@/console/lib/form-questions";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { Label } from "@/console/components/ui/label";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 /** Attendee-facing gender labels (match the mobile registration options). */
 const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];

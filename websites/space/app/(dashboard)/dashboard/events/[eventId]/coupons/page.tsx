@@ -1,10 +1,10 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Percent, Plus, Trash, PencilSimple, Tag } from "@unifesto/unicon/react";
-import { Field } from "@/components/hackathon/HackParts";
+import { Field } from "@/console/components/hackathon/HackParts";
 import {
   getEventCoupons,
   createCoupon,
@@ -13,26 +13,26 @@ import {
   type Coupon,
   type CouponInput,
   type CouponDiscountType,
-} from "@/lib/api/coupons-api";
-import { getEventById, type Event } from "@/lib/api/events-api";
-import { EventExportMenu } from "@/components/shared/EventExportMenu";
-import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/coupons-api";
+import { getEventById, type Event } from "@/console/lib/api/events-api";
+import { EventExportMenu } from "@/console/components/shared/EventExportMenu";
+import { matches, Pager, SearchBox, usePaged } from "@/console/components/shared/ListControls";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 // ---- Draft shape: every field a string so the form inputs stay controlled ----
 interface Draft {

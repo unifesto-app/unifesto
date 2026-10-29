@@ -1,6 +1,6 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -15,7 +15,7 @@ import {
   X,
   Download,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   getSpaceMembers,
   searchAddableUsers,
@@ -29,32 +29,32 @@ import {
   type SpaceMemberRoleCode,
   type AddableUser,
   type SpaceOwnershipRequest,
-} from "@/lib/api/spaces-api";
-import { downloadCsv } from "@/lib/utils/csv";
-import { Pager } from "@/components/shared/ListControls";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/console/lib/api/spaces-api";
+import { downloadCsv } from "@/console/lib/utils/csv";
+import { Pager } from "@/console/components/shared/ListControls";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 
 const MEMBERS_PAGE_SIZE = 20;
 

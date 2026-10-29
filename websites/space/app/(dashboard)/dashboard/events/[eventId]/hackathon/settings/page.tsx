@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Chips, Field, FormCard, HackPage, Toggle, fromLocalInput, hackBase, toLocalInput } from "@/components/hackathon/HackParts";
-import { getHackathonOverview, updateHackathonConfig, type HackathonOverview, type PsMode, type ThemeMode } from "@/lib/api/hackathon";
-import { PS_MODE_OPTIONS, TEAM_CODE_PREFIX_RE, THEME_MODE_OPTIONS, formatTeamCode } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { Chips, Field, FormCard, HackPage, Toggle, fromLocalInput, hackBase, toLocalInput } from "@/console/components/hackathon/HackParts";
+import { getHackathonOverview, updateHackathonConfig, type HackathonOverview, type PsMode, type ThemeMode } from "@/console/lib/api/hackathon";
+import { PS_MODE_OPTIONS, TEAM_CODE_PREFIX_RE, THEME_MODE_OPTIONS, formatTeamCode } from "@/console/lib/hackathon";
 
 const DIGITS = ["1", "2", "3", "4", "5", "6"].map((d) => ({ value: d, label: d }));
 const LEAD_NAMES = "__lead__";

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Chips, Field, FormCard, HackPage, MultiChips, Toggle, hackBase } from "@/components/hackathon/HackParts";
-import { addJudge, getJudge, getRounds, getThemes, removeJudge, updateJudge, type Judge, type RoundRow, type Theme } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Chips, Field, FormCard, HackPage, MultiChips, Toggle, hackBase } from "@/console/components/hackathon/HackParts";
+import { addJudge, getJudge, getRounds, getThemes, removeJudge, updateJudge, type Judge, type RoundRow, type Theme } from "@/console/lib/api/hackathon";
 
 const ALL_ROUNDS = "__all__";
 

@@ -1,15 +1,15 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CaretRight } from "@unifesto/unicon/react";
-import { getEventById } from "@/lib/api/events-api";
-import type { Event } from "@/lib/api/events-api";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { EventLayoutContext } from "@/components/events/EventLayoutContext";
+import { getEventById } from "@/console/lib/api/events-api";
+import type { Event } from "@/console/lib/api/events-api";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Badge } from "@/console/components/ui/badge";
+import { EventLayoutContext } from "@/console/components/events/EventLayoutContext";
 
 /**
  * Event-scoped chrome. The event's SECTION nav lives in the shared left rail

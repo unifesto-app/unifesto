@@ -1,6 +1,6 @@
 "use client";
 
-import { inr, BUYER_FEE_PERCENT, BUYER_FEE_CAP, includedFeeKeeps } from "@/lib/utils/money";
+import { inr, BUYER_FEE_PERCENT, BUYER_FEE_CAP, includedFeeKeeps } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -27,26 +27,26 @@ import {
   type Event,
   type EventTicketType,
   type ManagedTicketType,
-} from "@/lib/api/events-api";
+} from "@/console/lib/api/events-api";
 import {
   SALE_STATUS_META,
   isOffSale,
   ticketSaleStatus,
-} from "@/components/events/ticket-status";
+} from "@/console/components/events/ticket-status";
 import {
   type Draft,
   EMPTY_DRAFT,
   TicketForm,
   toDraft,
   localToIso,
-} from "@/components/events/ticket-editor";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/components/events/ticket-editor";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 
 export default function EventTicketsPage() {
   const params = useParams();

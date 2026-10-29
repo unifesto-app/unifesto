@@ -3,12 +3,12 @@
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { DownloadSimple, LinkSimple, LockSimple } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { HackPage, StatsRow, Toggle, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getRoundSubmissions } from "@/lib/api/hackathon";
-import { downloadCsv } from "@/lib/utils/csv";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { HackPage, StatsRow, Toggle, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getRoundSubmissions } from "@/console/lib/api/hackathon";
+import { downloadCsv } from "@/console/lib/utils/csv";
 
 /**
  * E5: every team's project links for one round. Curators chase the teams that

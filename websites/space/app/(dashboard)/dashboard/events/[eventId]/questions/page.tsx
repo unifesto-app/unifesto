@@ -10,14 +10,14 @@ import {
   type QaBoard,
   type Question,
   type QuestionStatus,
-} from "@/lib/api/questions-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/console/lib/api/questions-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/console/components/ui/tabs";
 
 // Questions arrive any time the event is on, so the queue refetches on a timer.
 // ponytail: plain polling like Live polls; switch to the engagement socket if moderators need sub-second updates.

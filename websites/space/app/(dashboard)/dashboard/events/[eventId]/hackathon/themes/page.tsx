@@ -2,11 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, useResult } from "@/components/hackathon/HackParts";
-import { createTheme, deleteTheme, getThemes, updateTheme, type Theme } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, useResult } from "@/console/components/hackathon/HackParts";
+import { createTheme, deleteTheme, getThemes, updateTheme, type Theme } from "@/console/lib/api/hackathon";
 
 /** "2 statements · 5 teams" */
 const usage = (t: Theme) =>

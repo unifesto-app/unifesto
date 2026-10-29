@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { RefundsPanel } from "@/components/finance/RefundsPanel";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { RefundsPanel } from "@/console/components/finance/RefundsPanel";
 
 /** This event's refund requests: review, forward or reject (B15, mobile parity). */
 export default function EventRefundsPage() {

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Handshake } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/console/components/ui/tabs";
 import { RosterTab } from "./RosterTab";
 import { TiersTab } from "./TiersTab";
 import { EventSponsorsTab } from "./EventSponsorsTab";

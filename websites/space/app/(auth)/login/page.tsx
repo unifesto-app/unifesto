@@ -3,20 +3,20 @@
 import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import backendClient from "@/lib/api/backend-client";
-import { getCurrentUser } from "@/lib/api/current-user-api";
-import { resolveLanding, apexUrl } from "@/lib/types/rbac";
-import { setAuthToken } from "@/lib/utils/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import backendClient from "@/console/lib/api/backend-client";
+import { getCurrentUser } from "@/console/lib/api/current-user-api";
+import { resolveLanding, apexUrl } from "@/console/lib/types/rbac";
+import { setAuthToken } from "@/console/lib/utils/auth";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 
 function LoginForm() {
   const router = useRouter();

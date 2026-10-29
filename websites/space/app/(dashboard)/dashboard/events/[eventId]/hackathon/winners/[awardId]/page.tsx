@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CheckCircle, CircleDashed, EyeSlash, Trash } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Field, FormCard, HackPage, hackBase } from "@/components/hackathon/HackParts";
-import { createAward, deleteAward, getAwards, unpublishAward, updateAward, type Award, type AwardsList } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Field, FormCard, HackPage, hackBase } from "@/console/components/hackathon/HackParts";
+import { createAward, deleteAward, getAwards, unpublishAward, updateAward, type Award, type AwardsList } from "@/console/lib/api/hackathon";
 
 interface Draft {
   title: string;

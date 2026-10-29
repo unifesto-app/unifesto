@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { DoorOpen, Plus } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, Notice, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { autoAllocateRooms, getRooms } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, Notice, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { autoAllocateRooms, getRooms } from "@/console/lib/api/hackathon";
 
 /**
  * Rooms at the venue and how full they are (port of HackathonRoomsScreen).

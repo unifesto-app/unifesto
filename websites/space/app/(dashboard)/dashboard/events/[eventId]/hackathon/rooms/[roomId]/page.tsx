@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Field, FormCard, HackPage, MultiChips, hackBase } from "@/components/hackathon/HackParts";
-import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Field, FormCard, HackPage, MultiChips, hackBase } from "@/console/components/hackathon/HackParts";
+import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from "@/console/lib/api/hackathon";
 
 interface Draft {
   name: string;

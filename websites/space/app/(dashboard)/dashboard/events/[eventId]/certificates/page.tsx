@@ -18,22 +18,22 @@ import {
   EnvelopeSimple,
   ArrowClockwise,
 } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Badge } from "@/console/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CertificateDesigner } from "@/components/events/certificates/CertificateDesigner";
+} from "@/console/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/console/components/ui/tabs";
+import { CertificateDesigner } from "@/console/components/events/certificates/CertificateDesigner";
 import {
   CertificateAudience,
   CertificateTemplate,
@@ -53,11 +53,11 @@ import {
   revokeCertificate,
   reissueCertificate,
   reissueRevokedCertificates,
-} from "@/lib/api/certificates-api";
+} from "@/console/lib/api/certificates-api";
 import {
   getEventRegistrations,
   type Registration,
-} from "@/lib/api/registrations-api";
+} from "@/console/lib/api/registrations-api";
 
 const AUDIENCE_LABEL: Record<CertificateAudience, string> = {
   CHECKED_IN: "Checked-in attendees",

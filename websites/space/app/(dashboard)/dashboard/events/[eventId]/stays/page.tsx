@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Bed, ClipboardText, House, Plus, QrCode } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage as Page, StatsRow, useResult } from "@/components/hackathon/HackParts";
-import { dayLabel, getTeamStays, lookupStayPass, PROPERTY_LABELS, staysBase } from "@/lib/api/stays";
-import { useAccess } from "@/lib/context/SessionContext";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage as Page, StatsRow, useResult } from "@/console/components/hackathon/HackParts";
+import { dayLabel, getTeamStays, lookupStayPass, PROPERTY_LABELS, staysBase } from "@/console/lib/api/stays";
+import { useAccess } from "@/console/lib/context/SessionContext";
 
 /**
  * Unifesto Stay for the event team (port of StaysManageScreen + the pass desk

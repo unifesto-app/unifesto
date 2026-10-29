@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { ClipboardText, FileCsv, MagnifyingGlass } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, HackPage as Page } from "@/components/hackathon/HackParts";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, HackPage as Page } from "@/console/components/hackathon/HackParts";
 import {
   dayLabel,
   getStayBookings,
@@ -17,8 +17,8 @@ import {
   staysBase,
   type StayBookingStatus,
   type TeamStayBooking,
-} from "@/lib/api/stays";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/stays";
+import { cn } from "@/console/lib/utils/cn";
 
 type Tab = "requests" | "pay" | "guests" | "all";
 const IN_TAB: Record<Tab, StayBookingStatus[] | null> = {

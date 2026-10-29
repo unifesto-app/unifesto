@@ -3,17 +3,17 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { X, CaretLeft, CaretRight } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
-import { useMobileNav } from "@/lib/context/MobileNavContext";
-import { useDrawerBehavior } from "@/lib/hooks/useDrawerBehavior";
-import { useCollapsibleRail } from "@/lib/hooks/useCollapsibleRail";
-import { SpaceNav } from "@/components/shell/SpaceNav";
-import { EventNav } from "@/components/shell/EventNav";
-import { EventAccessNav } from "@/components/shell/EventAccessNav";
-import { EventAccessChooser } from "@/components/shell/EventAccessChooser";
-import { isEventScopedSpace } from "@/lib/types/rbac";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils/cn";
+import { useSession } from "@/console/lib/context/SessionContext";
+import { useMobileNav } from "@/console/lib/context/MobileNavContext";
+import { useDrawerBehavior } from "@/console/lib/hooks/useDrawerBehavior";
+import { useCollapsibleRail } from "@/console/lib/hooks/useCollapsibleRail";
+import { SpaceNav } from "@/console/components/shell/SpaceNav";
+import { EventNav } from "@/console/components/shell/EventNav";
+import { EventAccessNav } from "@/console/components/shell/EventAccessNav";
+import { EventAccessChooser } from "@/console/components/shell/EventAccessChooser";
+import { isEventScopedSpace } from "@/console/lib/types/rbac";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { cn } from "@/console/lib/utils/cn";
 
 /**
  * When the route is inside a specific event, the shared rail morphs to that

@@ -2,15 +2,15 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { CaretDown, CaretRight, Ticket } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/components/tracking/TrackingParts";
-import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from "@/lib/api/tracking";
-import { conversion, getTraffic, type SpaceTrafficStats, type TrafficScope } from "@/lib/api/traffic";
-import { useSession } from "@/lib/context/SessionContext";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
+import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from "@/console/lib/api/tracking";
+import { conversion, getTraffic, type SpaceTrafficStats, type TrafficScope } from "@/console/lib/api/traffic";
+import { useSession } from "@/console/lib/context/SessionContext";
 
 const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campaign}`;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -11,8 +11,8 @@ import {
   Plus,
   Trash,
 } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   createEvent,
   createTicketType,
@@ -21,40 +21,40 @@ import {
   type EventType,
   type RegistrationType,
   type EventVisibility,
-} from "@/lib/api/events-api";
-import { getCategories, type Category } from "@/lib/api/categories-api";
+} from "@/console/lib/api/events-api";
+import { getCategories, type Category } from "@/console/lib/api/categories-api";
 import {
   EVENT_TYPES,
   VISIBILITY_OPTIONS,
   INDIAN_STATES,
   toIso,
   toLocalDatetime,
-} from "@/lib/constants/event-form";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { RecurrenceEditor } from "@/components/events/RecurrenceEditor";
-import { PlaceSearch } from "@/components/events/PlaceSearch";
-import type { PickedPlace } from "@/lib/googlePlaces";
+} from "@/console/lib/constants/event-form";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { RecurrenceEditor } from "@/console/components/events/RecurrenceEditor";
+import { PlaceSearch } from "@/console/components/events/PlaceSearch";
+import type { PickedPlace } from "@/console/lib/googlePlaces";
 import {
   buildRRule,
   defaultRecurrence,
   describeRecurrence,
   recurrenceError,
   type RecurrenceState,
-} from "@/lib/recurrence";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/console/lib/recurrence";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Textarea } from "@/console/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/components/ui/select";
+import { cn } from "@/console/lib/utils/cn";
 
 // ---------------------------------------------------------------------------
 // Shape

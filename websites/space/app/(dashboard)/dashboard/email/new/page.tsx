@@ -11,7 +11,7 @@ import {
   CalendarBlank,
   Clock,
 } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   countAudience,
   createCampaign,
@@ -19,32 +19,32 @@ import {
   sendTestEmail,
   type EmailTargetType,
   type CreateCampaignPayload,
-} from "@/lib/api/email-campaigns-api";
-import { listTemplates, type EmailTemplate } from "@/lib/api/email-templates-api";
-import { getSpaceEvents, type Event } from "@/lib/api/events-api";
-import { getSpaceMembers, type SpaceMember } from "@/lib/api/spaces-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { EmailBodyEditor } from "@/components/shared/EmailBodyEditor";
-import { audienceLine, confirmDialog } from "@/components/shared/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/email-campaigns-api";
+import { listTemplates, type EmailTemplate } from "@/console/lib/api/email-templates-api";
+import { getSpaceEvents, type Event } from "@/console/lib/api/events-api";
+import { getSpaceMembers, type SpaceMember } from "@/console/lib/api/spaces-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { EmailBodyEditor } from "@/console/components/shared/EmailBodyEditor";
+import { audienceLine, confirmDialog } from "@/console/components/shared/ConfirmDialog";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Badge } from "@/console/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 const TARGETS: { value: EmailTargetType; label: string; needs?: "event" | "member" }[] = [
   { value: "SPACE_MEMBERS", label: "All space members" },

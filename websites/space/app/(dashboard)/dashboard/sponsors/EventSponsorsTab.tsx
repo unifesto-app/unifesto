@@ -10,7 +10,7 @@ import {
   CheckCircle,
   Circle,
 } from "@unifesto/unicon/react";
-import { getSpaceEvents, type Event } from "@/lib/api/events-api";
+import { getSpaceEvents, type Event } from "@/console/lib/api/events-api";
 import {
   listEventSponsors,
   listSponsors,
@@ -23,28 +23,28 @@ import {
   type Sponsor,
   type SponsorTier,
   type EventLead,
-} from "@/lib/api/sponsors-api";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+} from "@/console/lib/api/sponsors-api";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Label } from "@/console/components/ui/label";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 const NO_TIER = "__none__";
 

@@ -3,13 +3,13 @@
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { Megaphone } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Chips, Field, FormCard, HackPage, Notice, useResult } from "@/components/hackathon/HackParts";
-import { getAnnouncements, sendAnnouncement, type AnnouncementAudience, type Announcements } from "@/lib/api/hackathon";
-import { formatWhen } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { Chips, Field, FormCard, HackPage, Notice, useResult } from "@/console/components/hackathon/HackParts";
+import { getAnnouncements, sendAnnouncement, type AnnouncementAudience, type Announcements } from "@/console/lib/api/hackathon";
+import { formatWhen } from "@/console/lib/hackathon";
 
 const AUDIENCES: { value: AnnouncementAudience; label: string; hint: string }[] = [
   { value: "ALL", label: "Everyone", hint: "Every team member, judge and mentor." },

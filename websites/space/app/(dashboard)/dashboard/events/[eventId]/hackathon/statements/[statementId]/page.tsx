@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, Field, FormCard, HackPage, hackBase } from "@/components/hackathon/HackParts";
-import { createStatement, deleteStatement, getStatements, getThemes, updateStatement, type Statement, type Theme } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, Field, FormCard, HackPage, hackBase } from "@/console/components/hackathon/HackParts";
+import { createStatement, deleteStatement, getStatements, getThemes, updateStatement, type Statement, type Theme } from "@/console/lib/api/hackathon";
 
 interface Draft {
   code: string;

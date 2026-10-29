@@ -7,20 +7,20 @@ import {
   type SessionPlatform,
   type SessionVisibility,
   type CreateSessionPayload,
-} from "@/lib/api/sessions-api";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/sessions-api";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Button } from "@/console/components/ui/button";
+import { Textarea } from "@/console/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 const PLATFORMS: SessionPlatform[] = [
   "UNIFESTO_LIVE",

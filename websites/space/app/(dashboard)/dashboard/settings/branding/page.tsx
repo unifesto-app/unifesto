@@ -1,20 +1,20 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useId, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 import { CalendarBlank } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { DomainCard } from "@/components/white-label/DomainCard";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { DomainCard } from "@/console/components/white-label/DomainCard";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   getWhiteLabelOverview,
   updateEventBranding,
@@ -25,7 +25,7 @@ import {
   type EventWhiteLabelState,
   type SpaceWhiteLabelState,
   type WhiteLabelOverview,
-} from "@/lib/api/white-label-api";
+} from "@/console/lib/api/white-label-api";
 
 const DEFAULT_COLOR = "#7a5af8";
 const HEX = /^#[0-9a-f]{6}$/i;

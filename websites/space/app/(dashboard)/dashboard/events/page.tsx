@@ -1,6 +1,6 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,31 +19,31 @@ import {
   Check,
   X,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   getSpaceEvents,
   getCoHostInvites,
   acceptCoHost,
   removeCoHost,
-} from "@/lib/api/events-api";
-import type { CoHostInvite, Event, EventStatus } from "@/lib/api/events-api";
-import { parseRRuleToState, describeRecurrence } from "@/lib/recurrence";
-import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/events-api";
+import type { CoHostInvite, Event, EventStatus } from "@/console/lib/api/events-api";
+import { parseRRuleToState, describeRecurrence } from "@/console/lib/recurrence";
+import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { StatusBadge } from "@/console/components/shared/StatusBadge";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 /**
  * Status filter, plus one pseudo-option.

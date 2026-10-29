@@ -1,7 +1,7 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { inr } from "@/console/lib/utils/money";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -40,14 +40,14 @@ import {
   PLATFORM_LABELS,
   type Session,
   type SessionAttendee,
-} from "@/lib/api/sessions-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/sessions-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { StatusBadge } from "@/console/components/shared/StatusBadge";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -55,8 +55,8 @@ import {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/console/components/ui/dialog";
+import { Textarea } from "@/console/components/ui/textarea";
 
 function formatWhen(iso: string, timezone: string) {
   return new Date(iso).toLocaleString("en-IN", {

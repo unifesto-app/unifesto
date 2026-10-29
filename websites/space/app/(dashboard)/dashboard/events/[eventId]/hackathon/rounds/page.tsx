@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useCallback } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle, CircleDashed, PlayCircle, Plus } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getRounds, type RoundRow } from "@/lib/api/hackathon";
-import { JUDGING_MODE_OPTIONS, roundStatusLabel } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getRounds, type RoundRow } from "@/console/lib/api/hackathon";
+import { JUDGING_MODE_OPTIONS, roundStatusLabel } from "@/console/lib/hackathon";
 
 /** One line of progress for a round: open rounds show evaluations and the queue, closed ones decisions. */
 function roundSummary(r: RoundRow): string {

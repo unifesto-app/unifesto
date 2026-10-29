@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { announceToAttendees } from "@/lib/api/events-api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { announceToAttendees } from "@/console/lib/api/events-api";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 /** Push notification to every attendee of the event. */
 export function AnnounceDialog({

@@ -12,24 +12,24 @@ import {
   type WaitlistEntry,
   type WaitlistSummaryRow,
   type WaitlistStatus,
-} from "@/lib/api/waitlist-api";
-import { EventExportMenu } from "@/components/shared/EventExportMenu";
-import { Pager } from "@/components/shared/ListControls";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/waitlist-api";
+import { EventExportMenu } from "@/console/components/shared/EventExportMenu";
+import { Pager } from "@/console/components/shared/ListControls";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 const STATUS_LABEL: Record<WaitlistStatus, string> = {
   WAITING: "Waiting",

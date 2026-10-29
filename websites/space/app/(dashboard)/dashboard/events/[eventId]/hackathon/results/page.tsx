@@ -3,12 +3,12 @@
 import { useCallback, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, FormCard, HackPage, Toggle, hackBase, useLivePoll, useResult } from "@/components/hackathon/HackParts";
-import { getResults, getResultsCsv, setRoundDecisions, updateHackathonConfig, type ResultTeam, type ScoringMode } from "@/lib/api/hackathon";
-import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, FormCard, HackPage, Toggle, hackBase, useLivePoll, useResult } from "@/console/components/hackathon/HackParts";
+import { getResults, getResultsCsv, setRoundDecisions, updateHackathonConfig, type ResultTeam, type ScoringMode } from "@/console/lib/api/hackathon";
+import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from "@/console/lib/hackathon";
 
 const OVERALL = "__overall__";
 const teamLabel = (t: ResultTeam) => `${t.teamCode ?? "—"}  ${t.name}`;

@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Coffee, Gavel, Hourglass, LockOpen, Timer, UsersFour } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, useLivePoll, useResult, useEventRunning } from "@/components/hackathon/HackParts";
+import { Button } from "@/console/components/ui/button";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, useLivePoll, useResult, useEventRunning } from "@/console/components/hackathon/HackParts";
 import {
   forceComplete,
   getQueues,
@@ -17,10 +17,10 @@ import {
   type MonitorQueue,
   type QueueMonitor,
   type QueueTeam,
-} from "@/lib/api/hackathon";
-import type { Result } from "@/lib/api/call";
-import { evalStatusLabel, formatClock, secondsUntil } from "@/lib/hackathon";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/hackathon";
+import type { Result } from "@/console/lib/api/call";
+import { evalStatusLabel, formatClock, secondsUntil } from "@/console/lib/hackathon";
+import { cn } from "@/console/lib/utils/cn";
 
 const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? "—"}  ${t.name}` : "Team");
 
