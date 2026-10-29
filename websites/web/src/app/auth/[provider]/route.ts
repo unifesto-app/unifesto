@@ -22,7 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const next = safeNext(req.nextUrl.searchParams.get("next"));
   const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
   // Cognito can't list every white-label domain, so they keep the email code.
-  if (!provider.enabled || !isOwnHost(host)) return NextResponse.redirect(new URL(next, req.url));
+  // Relative: standalone Next's req.url carries its bind address (0.0.0.0:3000), not ours.
+  if (!provider.enabled || !isOwnHost(host)) return new NextResponse(null, { status: 307, headers: { Location: next } });
 
   const verifier = b64url(randomBytes(32));
   const state = b64url(randomBytes(16));

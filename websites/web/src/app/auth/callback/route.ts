@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   const back = (error?: string) => {
     const url = new URL(next, req.url);
     if (error) url.searchParams.set("signin_error", error);
-    const res = NextResponse.redirect(url);
+    // Relative: standalone Next's req.url carries its bind address (0.0.0.0:3000), not ours.
+    const res = new NextResponse(null, { status: 307, headers: { Location: url.pathname + url.search + url.hash } });
     clearCookie(res, OAUTH_COOKIE);
     return res;
   };

@@ -6,7 +6,7 @@
 export const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN ?? "";
 export const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "";
 /** Must be listed in the app client's allowed callback URLs (AWS console). */
-export const COGNITO_REDIRECT_URI = process.env.COGNITO_REDIRECT_URI || "https://unifesto.app/auth/callback";
+export const COGNITO_REDIRECT_URI = process.env.COGNITO_REDIRECT_URI || "https://www.unifesto.app/auth/callback";
 
 export const googleSignInEnabled = Boolean(COGNITO_DOMAIN && COGNITO_CLIENT_ID);
 /**
