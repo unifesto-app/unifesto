@@ -517,7 +517,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
 | K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | done (#322) |
-| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
+| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | done (#416) (#416) |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
 | K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#349) |
@@ -965,3 +965,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · H15 Apex half: White-label History + Apply branding removed, suspend/restore moved to space detail; route + table drop wait for O6 (#408)
 - **2026-10-29** · F4 user IAM: Apex can suspend (with end date) or ban a user with a reason, sign them out everywhere, and add per-user capability overrides (removals win; grants one space, never platform); auth rejects suspended users at login, refresh and every request (#411)
 - **2026-10-29** · E5 hackathon submissions: curator Project links page per round (missing filter, CSV), links lock once a judge scores them, mobile stale draft fixed (#412)
+- **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
