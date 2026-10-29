@@ -968,3 +968,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
 - **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)
 - **2026-10-29** · F5 audit trail: @Audit records who changed roles, permissions, status, plans and reconciled payments (audit_logs), shown on Apex user, space, event detail and IAM (#418)
+- **2026-10-29** · K18 web: Continue with Google (Cognito code + PKCE) and sessions that survive via a host-only httpOnly refresh cookie; access token in memory only; custom domains keep the email code (#421)
