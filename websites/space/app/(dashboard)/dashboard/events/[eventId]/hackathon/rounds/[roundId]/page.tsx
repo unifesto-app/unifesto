@@ -298,6 +298,11 @@ export default function HackathonRoundPage() {
                 </Button>
               </>
             ))}
+          {round && (
+            <Button variant="outline" onClick={() => router.push(`${listHref}/${round.id}/submissions`)}>
+              Project links
+            </Button>
+          )}
           <Button onClick={save} disabled={!dirty || saving || acting}>
             {saving ? "Saving…" : isNew ? "Add round" : "Save round"}
           </Button>

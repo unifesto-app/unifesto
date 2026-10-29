@@ -1,9 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Export, QrCode } from '@unifesto/unicon/react-native';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
+import { useAuth } from '../context/AuthContext';
+import { dismissBoothScan, syncBoothScans, useBoothScanQueue } from '../lib/offline/boothScanQueue';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { getPortalLeads, type PortalLead } from '../lib/api/sponsorPortal';
@@ -38,6 +40,10 @@ export default function SponsorPortalScreen() {
   const [eventFilter, setEventFilter] = useState('');
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const userId = useAuth().user?.id;
+  const queued = useBoothScanQueue(userId, sponsorId ?? '');
+  const waiting = queued.filter((q) => q.state === 'pending').length;
+  const refused = queued.filter((q) => q.state === 'failed');
 
   const load = useCallback(async () => {
     if (!sponsorId) return;
@@ -57,6 +63,12 @@ export default function SponsorPortalScreen() {
       void load();
     }, [load]),
   );
+  // Offline scans just synced: show them.
+  const lastWaiting = useRef(waiting);
+  useEffect(() => {
+    if (waiting < lastWaiting.current) void load();
+    lastWaiting.current = waiting;
+  }, [waiting, load]);
 
   const now = new Date();
   const events = useMemo(
@@ -144,9 +156,37 @@ export default function SponsorPortalScreen() {
           ))}
         </SettingsGroup>
         <Text style={[styles.note, { color: c.muted }]}>
-          Tap an event to scan attendees' ticket QR codes at your booth. Scanning a ticket shares that attendee's contact with you.
+          Tap an event to scan attendees' ticket QR codes at your booth. The attendee confirms on your phone before their
+          contact is shared. Scans work without signal and are added once you're back online.
         </Text>
       </View>
+
+      {waiting || refused.length ? (
+        <View style={{ marginTop: spacing[8] }}>
+          <SettingsGroup title="Offline scans">
+            {waiting ? (
+              <SettingsRow
+                label={`${waiting} waiting for signal`}
+                value="Send now"
+                onPress={() => userId && void syncBoothScans(userId)}
+              />
+            ) : null}
+            {refused.map((q) => (
+              <SettingsRow
+                key={q.id}
+                label={`Not added: ${q.message ?? 'refused'}`}
+                value={shortDate(q.scannedAt)}
+                onPress={() =>
+                  AppAlert.alert('Scan not added', q.message, [
+                    { text: 'Keep', style: 'cancel' },
+                    { text: 'Dismiss', onPress: () => void dismissBoothScan(q.id) },
+                  ])
+                }
+              />
+            ))}
+          </SettingsGroup>
+        </View>
+      ) : null}
 
       <View style={{ marginTop: spacing[8] }}>
         <Text style={[styles.section, { color: c.text }]} accessibilityRole="header">Leads</Text>

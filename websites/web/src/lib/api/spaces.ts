@@ -39,6 +39,8 @@ export interface Space {
    * gates it (switched on + plan perk + not suspended).
    */
   branding?: Branding | null;
+  /** List payloads: the white-label domain this space's canonical points at (K2). */
+  custom_domain?: string | null;
 }
 
 export interface SpaceMember {
@@ -116,6 +118,7 @@ function mapSpace(raw: Record<string, unknown> | null | undefined): Space | null
     sub_space_count: (count.childSpaces ?? count.children) as number | undefined,
     organisers: (r.organisers as SpaceMember[] | undefined) ?? undefined,
     branding: (r.branding ?? null) as Space["branding"],
+    custom_domain: (r.customDomain ?? null) as string | null,
   };
 }
 
@@ -166,6 +169,18 @@ export async function getSpaces(
     console.error('[API] Error fetching spaces:', error);
     return { spaces: [], total: 0, page: 1, limit: 50 };
   }
+}
+
+/** Every listed space, page by page (the API caps a page at 50). */
+export async function getAllSpaces(): Promise<Space[]> {
+  const all: Space[] = [];
+  // ponytail: 40 pages = 2,000 spaces; search server-side before that.
+  for (let page = 1; page <= 40; page++) {
+    const { spaces, total } = await getSpaces(page, 50);
+    all.push(...spaces);
+    if (!spaces.length || all.length >= total) break;
+  }
+  return all;
 }
 
 /**

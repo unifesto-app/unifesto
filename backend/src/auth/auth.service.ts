@@ -20,6 +20,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { OtpService, OtpVerifyResult } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
 import { AppleSignInService } from './apple-sign-in.service';
+import { assertNotSuspended, isSuspended, type SuspensionFields } from './suspension';
 import { findIdentityByEmail, normalizeEmail, normalizeMobile } from './identifiers';
 import {
   AppleLoginDto,
@@ -88,7 +89,7 @@ interface SessionTokenPayload {
   exp?: number;
 }
 
-type TokenUser = { id: string; tokenVersion: number };
+type TokenUser = { id: string; tokenVersion: number } & SuspensionFields;
 
 /** IdPs send `email_verified` as a boolean or the string "true". */
 const isVerified = (v: unknown): boolean => v === true || v === 'true';
@@ -758,6 +759,8 @@ export class AuthService {
     user: TokenUser,
     authTime = Math.floor(Date.now() / 1000),
   ): { accessToken: string; refreshToken: string } {
+    // F4: no new session for a suspended or banned account (login and refresh).
+    assertNotSuspended(user);
     const tv = user.tokenVersion ?? 0;
     return {
       accessToken: jwt.sign(
@@ -841,7 +844,7 @@ export class AuthService {
     }
     const user = await this.prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, deletedAt: true, tokenVersion: true },
+      select: { id: true, deletedAt: true, tokenVersion: true, suspendedAt: true, suspendedUntil: true },
     });
     if (!user || user.deletedAt) {
       throw new UnauthorizedException('User no longer exists');
@@ -942,7 +945,7 @@ export class AuthService {
         where: { id: decoded.userId },
       });
 
-      if (!user || user.deletedAt) {
+      if (!user || user.deletedAt || isSuspended(user)) {
         throw new UnauthorizedException('Invalid token');
       }
       if ((decoded.tv ?? 0) !== user.tokenVersion) {
@@ -1049,7 +1052,7 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || user.deletedAt) {
+    if (!user || user.deletedAt || isSuspended(user)) {
       throw new UnauthorizedException('User not found');
     }
 

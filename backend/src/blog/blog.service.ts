@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { BlogStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -7,6 +8,8 @@ import { blogChangeUrls, pingIndexNow } from '../common/indexnow';
 
 @Injectable()
 export class BlogService {
+  private readonly logger = new Logger(BlogService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -21,17 +24,25 @@ export class BlogService {
     const where: Prisma.BlogPostWhereInput = { status: BlogStatus.PUBLISHED };
     if (category && category !== 'all') where.category = category;
 
+    // K3: the index never shows bodies, so they stay out of the list.
     return this.prisma.blogPost.findMany({
       where,
+      omit: { content: true },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
-  /** One published post by slug (full content). */
+  /**
+   * One published post by slug (full content). A slug the post had before a
+   * rename still finds it (K3); the web redirects to the current `slug`.
+   */
   async getBySlug(slug: string) {
-    const post = await this.prisma.blogPost.findFirst({
-      where: { slug, status: BlogStatus.PUBLISHED },
-    });
+    const post =
+      (await this.prisma.blogPost.findFirst({ where: { slug, status: BlogStatus.PUBLISHED } })) ??
+      (await this.prisma.blogPost.findFirst({
+        where: { previousSlugs: { has: slug }, status: BlogStatus.PUBLISHED },
+        orderBy: { updatedAt: 'desc' },
+      }));
     if (!post) throw new NotFoundException('Post not found');
     return post;
   }
@@ -64,6 +75,7 @@ export class BlogService {
         featured: dto.featured ?? false,
         status,
         publishedAt: status === BlogStatus.PUBLISHED ? new Date() : null,
+        scheduledFor: status === BlogStatus.DRAFT && dto.scheduledFor ? new Date(dto.scheduledFor) : null,
         createdBy: adminId,
       },
     });
@@ -79,7 +91,13 @@ export class BlogService {
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.slug !== undefined) {
       data.slug = await this.uniqueSlug(dto.slug, id);
+      // K3: a post that has been public keeps answering at its old address.
+      if (data.slug !== existing.slug) {
+        const kept = existing.publishedAt ? [...existing.previousSlugs, existing.slug] : existing.previousSlugs;
+        data.previousSlugs = [...new Set(kept)].filter((old) => old !== data.slug);
+      }
     }
+    if (dto.scheduledFor !== undefined) data.scheduledFor = dto.scheduledFor ? new Date(dto.scheduledFor) : null;
     if (dto.excerpt !== undefined) data.excerpt = dto.excerpt;
     if (dto.content !== undefined) data.content = dto.content;
     if (dto.category !== undefined) data.category = dto.category;
@@ -101,11 +119,34 @@ export class BlogService {
       } else if (status === BlogStatus.DRAFT) {
         data.publishedAt = null;
       }
+      // Publishing by hand overrides any schedule.
+      if (status === BlogStatus.PUBLISHED) data.scheduledFor = null;
     }
 
     const post = await this.prisma.blogPost.update({ where: { id }, data });
     pingIndexNow(blogChangeUrls(existing, post));
     return post;
+  }
+
+  /**
+   * K3: publish drafts whose scheduled time has come. Every API replica runs
+   * this; the conditional update flips each post once, so only the replica
+   * that won pings IndexNow.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async publishScheduled(now = new Date()) {
+    const due = await this.prisma.blogPost.findMany({
+      where: { status: BlogStatus.DRAFT, scheduledFor: { lte: now } },
+    });
+    for (const post of due) {
+      const { count } = await this.prisma.blogPost.updateMany({
+        where: { id: post.id, status: BlogStatus.DRAFT, scheduledFor: { lte: now } },
+        data: { status: BlogStatus.PUBLISHED, publishedAt: now, scheduledFor: null },
+      });
+      if (!count) continue;
+      this.logger.log(`Published scheduled post ${post.slug}`);
+      pingIndexNow(blogChangeUrls(post, { ...post, status: BlogStatus.PUBLISHED }));
+    }
   }
 
   async remove(id: string) {

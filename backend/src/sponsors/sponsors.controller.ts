@@ -6,6 +6,7 @@ import {
   Get,
   MaxFileSizeValidator,
   Param,
+  ParseUUIDPipe,
   ParseFilePipe,
   Patch,
   Post,
@@ -62,7 +63,7 @@ export class SponsorsController {
   @UseInterceptors(FileInterceptor('logo', uploadLimit(2)))
   @ApiOperation({ summary: 'Upload a sponsor logo' })
   uploadLogo(
-    @Param('spaceId') spaceId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -80,7 +81,7 @@ export class SponsorsController {
 
   @Get('tiers')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  listTiers(@Param('spaceId') spaceId: string) {
+  listTiers(@Param('spaceId', ParseUUIDPipe) spaceId: string) {
     return this.sponsors.listTiers(spaceId);
   }
 
@@ -88,7 +89,7 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Create a sponsorship tier' })
   createTier(
-    @Param('spaceId') spaceId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Body() dto: CreateSponsorTierDto,
   ) {
     return this.sponsors.createTier(spaceId, dto);
@@ -97,8 +98,8 @@ export class SponsorsController {
   @Patch('tiers/:id')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   updateTier(
-    @Param('spaceId') spaceId: string,
-    @Param('id') id: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateSponsorTierDto,
   ) {
     return this.sponsors.updateTier(spaceId, id, dto);
@@ -106,7 +107,7 @@ export class SponsorsController {
 
   @Delete('tiers/:id')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  deleteTier(@Param('spaceId') spaceId: string, @Param('id') id: string) {
+  deleteTier(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.sponsors.deleteTier(spaceId, id);
   }
 
@@ -116,8 +117,8 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'List the sponsors attached to an event' })
   listEventSponsors(
-    @Param('spaceId') spaceId: string,
-    @Param('eventId') eventId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
   ) {
     return this.sponsors.listEventSponsors(spaceId, eventId);
   }
@@ -126,8 +127,8 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'List sponsor leads captured at an event' })
   listEventLeads(
-    @Param('spaceId') spaceId: string,
-    @Param('eventId') eventId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Query('eventSponsorId') eventSponsorId?: string,
   ) {
     return this.sponsors.listEventLeads(spaceId, eventId, eventSponsorId);
@@ -137,8 +138,8 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Attach a roster sponsor to an event' })
   attachSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('eventId') eventId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() dto: AttachSponsorDto,
   ) {
     return this.sponsors.attachSponsor(spaceId, eventId, dto);
@@ -147,9 +148,9 @@ export class SponsorsController {
   @Patch('events/:eventId/:eventSponsorId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   updateEventSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('eventId') eventId: string,
-    @Param('eventSponsorId') eventSponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,
     @Body() dto: UpdateEventSponsorDto,
   ) {
     return this.sponsors.updateEventSponsor(
@@ -163,9 +164,9 @@ export class SponsorsController {
   @Delete('events/:eventId/:eventSponsorId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   detachSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('eventId') eventId: string,
-    @Param('eventSponsorId') eventSponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,
   ) {
     return this.sponsors.detachSponsor(spaceId, eventId, eventSponsorId);
   }
@@ -174,7 +175,7 @@ export class SponsorsController {
 
   @Get()
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  listSponsors(@Param('spaceId') spaceId: string) {
+  listSponsors(@Param('spaceId', ParseUUIDPipe) spaceId: string) {
     return this.sponsors.listSponsors(spaceId);
   }
 
@@ -182,7 +183,7 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Add a sponsor to the space roster' })
   createSponsor(
-    @Param('spaceId') spaceId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Body() dto: CreateSponsorDto,
   ) {
     return this.sponsors.createSponsor(spaceId, dto);
@@ -191,8 +192,8 @@ export class SponsorsController {
   @Get(':sponsorId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   getSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
   ) {
     return this.sponsors.getSponsor(spaceId, sponsorId);
   }
@@ -201,8 +202,8 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'List all leads for a sponsor across events' })
   listSponsorLeads(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
   ) {
     return this.sponsors.listSponsorLeads(spaceId, sponsorId);
   }
@@ -212,8 +213,8 @@ export class SponsorsController {
   @Get(':sponsorId/users')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   listSponsorUsers(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
   ) {
     return this.sponsors.listSponsorUsers(spaceId, sponsorId);
   }
@@ -222,8 +223,8 @@ export class SponsorsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Invite a person to the sponsor portal' })
   inviteSponsorUser(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
     @CurrentUser() user: User,
     @Body() dto: InviteSponsorUserDto,
   ) {
@@ -233,9 +234,9 @@ export class SponsorsController {
   @Delete(':sponsorId/users/:sponsorUserId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   revokeSponsorUser(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
-    @Param('sponsorUserId') sponsorUserId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
+    @Param('sponsorUserId', ParseUUIDPipe) sponsorUserId: string,
   ) {
     return this.sponsors.revokeSponsorUser(spaceId, sponsorId, sponsorUserId);
   }
@@ -243,8 +244,8 @@ export class SponsorsController {
   @Patch(':sponsorId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   updateSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
     @Body() dto: UpdateSponsorDto,
   ) {
     return this.sponsors.updateSponsor(spaceId, sponsorId, dto);
@@ -253,8 +254,8 @@ export class SponsorsController {
   @Delete(':sponsorId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   deleteSponsor(
-    @Param('spaceId') spaceId: string,
-    @Param('sponsorId') sponsorId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
   ) {
     return this.sponsors.deleteSponsor(spaceId, sponsorId);
   }

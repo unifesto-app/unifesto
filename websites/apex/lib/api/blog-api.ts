@@ -21,6 +21,10 @@ export interface BlogPost {
   featured: boolean;
   status: BlogStatus;
   publishedAt: string | null;
+  /** A DRAFT with this set goes live on its own then (K3). */
+  scheduledFor: string | null;
+  /** Old addresses that redirect here (K3). */
+  previousSlugs: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +40,7 @@ export interface BlogInput {
   readMinutes?: number;
   featured?: boolean;
   status?: BlogStatus;
+  scheduledFor?: string | null;
 }
 
 type Result<T> = Promise<{ data: T | null; error: ApiError | null }>;

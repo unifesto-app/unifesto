@@ -2,7 +2,6 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CalendarBlank, MapPin, ArrowRight } from "@unifesto/unicon/react";
 import type { Event } from "@/lib/api/events";
 import { IST } from "@/lib/site";
@@ -73,7 +72,6 @@ function getLocation(event: Event): string {
 }
 
 export default function EventCard({ event, index = 0 }: EventCardProps) {
-  const router = useRouter();
 
   const space = event.space ?? event.organization;
   // The backend sends COMPLETED / CANCELLED; the mock data is lowercase.
@@ -126,20 +124,12 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
     space?.slug || space?.id ? `/space/${space?.slug || space?.id}` : null;
 
   return (
-    // Outer div: NOT an <a>, avoids nested <a> violation
-    <div
+    // K2: a real link for crawlers. The title's link stretches over the whole
+    // card (::after), and the space link sits above it, so no nested <a>.
+    <article
       id={`event-card-${event.id}`}
-      role="article"
       aria-label={`${event.title} by ${organizerName}`}
-      onClick={() => router.push(eventHref)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          router.push(eventHref);
-        }
-      }}
-      tabIndex={0}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
+      className="group relative flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
     >
       {/* Poster: real image when available, else dark field with the on-brand radial gradient. */}
       <div className="relative flex aspect-[4/3] items-end overflow-hidden bg-night-3 p-5">
@@ -161,12 +151,12 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         />
 
         {/* Category pill, bottom-left, matching the blog card kicker. */}
-        <span className="blur-bg relative z-10 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
+        <span className="blur-bg pointer-events-none relative z-10 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
           {event.category || "Event"}
         </span>
 
         {/* Status badges, top-right: restrained, brand-consistent. */}
-        <div className="absolute right-3 top-3 z-10 flex flex-wrap justify-end gap-1.5">
+        <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-wrap justify-end gap-1.5">
           {isTrending && (
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-ink">
               Trending
@@ -184,13 +174,17 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
       <div className="flex flex-1 flex-col gap-3 p-6">
         <div>
           <h3 className="text-base font-bold leading-snug text-paper line-clamp-2">
-            {event.title}
+            <Link
+              href={eventHref}
+              className="after:absolute after:inset-0 after:z-[5] after:rounded-3xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary"
+            >
+              {event.title}
+            </Link>
           </h3>
           {spaceHref ? (
             <Link
               href={spaceHref}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-1 block truncate text-xs font-medium text-paper/60 transition-colors duration-150 hover:text-primary"
+              className="relative z-10 mt-1 block truncate text-xs font-medium text-paper/60 transition-colors duration-150 hover:text-primary"
             >
               {organizerName}
             </Link>
@@ -244,6 +238,6 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
