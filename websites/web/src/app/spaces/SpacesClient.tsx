@@ -112,7 +112,7 @@ function SpaceCard({ space, childCount }: { space: Space; childCount: number }) 
           {members > 0 && (
             <span className="inline-flex items-center gap-1.5">
               <UsersThree className="h-4 w-4 text-primary/80" aria-hidden />
-              {members.toLocaleString()} <span className="text-paper/50">members</span>
+              {members.toLocaleString("en-IN")} <span className="text-paper/50">{members === 1 ? "member" : "members"}</span>
             </span>
           )}
           {childCount > 0 && (

@@ -191,15 +191,30 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
       <section className="px-5 pt-28 sm:px-8 md:pt-32">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-8 md:grid-cols-2 md:gap-12">
           <div
-            className="enter relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center md:sticky md:top-28"
+            className="enter relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 md:sticky md:top-28"
             style={
               imageUrl
-                ? { backgroundImage: `url(${optimized(imageUrl)})` }
+                ? undefined
                 : { background: "radial-gradient(120% 120% at 80% 0%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 60%), var(--night-2)" }
             }
-            role={imageUrl ? "img" : undefined}
-            aria-label={imageUrl ? `${event.title} poster` : undefined}
           >
+            {/* K11: a portrait poster fits whole (contain) over a blurred copy of
+                itself, instead of being cropped to 4:3. A 4:3 banner fills as before. */}
+            {imageUrl && (
+              <>
+                <div
+                  aria-hidden
+                  className="absolute inset-0 scale-110 bg-cover bg-center opacity-60 blur-2xl"
+                  style={{ backgroundImage: `url(${optimized(imageUrl, 640)})` }}
+                />
+                <div
+                  role="img"
+                  aria-label={`${event.title} poster`}
+                  className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url(${optimized(imageUrl)})` }}
+                />
+              </>
+            )}
             {event.category && (
               <span className="blur-bg absolute bottom-4 left-4 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
                 {event.category}

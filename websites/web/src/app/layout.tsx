@@ -7,6 +7,9 @@ import UtmCapture from "@/components/UtmCapture";
 import MotionRuntime from "@/components/MotionRuntime";
 import { SITE } from "@/lib/site";
 import { getHelpArticles } from "@/lib/api/help";
+import { getPosts } from "@/lib/api/blog";
+import { getOpenRoles } from "@/lib/api/careers";
+import { SiteContentProvider, type EmptySection } from "@/components/SiteContent";
 
 const michroma = Michroma({
   weight: "400",
@@ -98,7 +101,12 @@ export default async function RootLayout({
   // K14: the proxy's per-request CSP nonce. Reading it renders every page per
   // request, which a nonce needs (a prerendered page can't carry one).
   const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const hasHelp = (await getHelpArticles()).length > 0;
+  // Cached fetches (60s/300s): sections with no content hide their links (K17, K11).
+  const [help, posts, roles] = await Promise.all([getHelpArticles(), getPosts(), getOpenRoles()]);
+  const hasHelp = help.length > 0;
+  const empty = ([["/blog", posts], ["/careers", roles]] as const)
+    .filter(([, items]) => !items.length)
+    .map(([path]): EmptySection => path);
   return (
     <html lang="en-IN" className={`${michroma.variable} ${hanken.variable} ${martian.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
@@ -106,7 +114,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen bg-night antialiased">
         <UtmCapture />
-        {children}
+        <SiteContentProvider empty={empty}>{children}</SiteContentProvider>
         <FloatingSupport hasHelp={hasHelp} />
         <MotionRuntime />
       </body>

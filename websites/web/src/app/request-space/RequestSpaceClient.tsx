@@ -9,6 +9,16 @@ const FIELD =
   "w-full rounded-3xl bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
 const CTA = "btn btn-primary";
 
+/* K11: visible labels (placeholders were doing the labelling and vanished on type). */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="block text-sm font-medium text-paper/75">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 const TYPES = [
   { value: "REGULAR", title: "Regular", body: "A community, club or startup" },
   { value: "SUPER", title: "Super", body: "A university, college or institution" },
@@ -242,18 +252,18 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
           {isEmail ? "We emailed a code to " : "We sent a WhatsApp code to "}
           <strong className="text-white">{isEmail ? email : `+91 ${form.phone}`}</strong>.
         </p>
-        <input
-          key={step}
-          required
-          autoFocus
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          aria-label="Verification code"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          placeholder="Verification code"
-          className={FIELD}
-        />
+        <Field label="Verification code">
+          <input
+            key={step}
+            required
+            autoFocus
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            className={FIELD}
+          />
+        </Field>
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className={CTA}>
           {busy ? "Verifying…" : isEmail ? "Verify email" : "Verify phone and send request"}
@@ -280,103 +290,107 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
       {isOrbit ? (
         <>
           <h2 className="pt-2 text-lg font-bold">Your campus</h2>
-          <select
-            required
-            aria-label="Campus"
-            value={form.campusId}
-            onChange={(e) => set("campusId", e.target.value)}
-            className={FIELD}
-          >
-            <option value="">Choose your campus</option>
-            {campuses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.city ? `, ${c.city}` : ""}
-                {c.open ? "" : " (has a Lead)"}
-              </option>
-            ))}
-            <option value="other">My college isn&apos;t listed</option>
-          </select>
-          {form.campusId === "other" && (
-            <input
+          <Field label="Campus">
+            <select
               required
-              maxLength={200}
-              aria-label="College name"
-              value={form.collegeName}
-              onChange={(e) => set("collegeName", e.target.value)}
-              placeholder="Full name of your college, and its city"
+              value={form.campusId}
+              onChange={(e) => set("campusId", e.target.value)}
+              className={FIELD}
+            >
+              <option value="">Choose your campus</option>
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.city ? `, ${c.city}` : ""}
+                  {c.open ? "" : " (has a Lead)"}
+                </option>
+              ))}
+              <option value="other">My college isn&apos;t listed</option>
+            </select>
+          </Field>
+          {form.campusId === "other" && (
+            <Field label="College name">
+              <input
+                required
+                maxLength={200}
+                value={form.collegeName}
+                onChange={(e) => set("collegeName", e.target.value)}
+                placeholder="Full name and city"
+                className={FIELD}
+              />
+            </Field>
+          )}
+          <Field label="Year of study">
+            <select
+              required
+              value={form.yearOfStudy}
+              onChange={(e) => set("yearOfStudy", e.target.value)}
+              className={FIELD}
+            >
+              <option value="">Choose your year</option>
+              {["1st year", "2nd year", "3rd year", "4th year", "5th year", "Postgraduate"].map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Clubs or fest teams you are part of, and your role">
+            <textarea
+              required
+              rows={2}
+              minLength={2}
+              maxLength={1000}
+              value={form.myClubs}
+              onChange={(e) => set("myClubs", e.target.value)}
               className={FIELD}
             />
-          )}
-          <select
-            required
-            aria-label="Year of study"
-            value={form.yearOfStudy}
-            onChange={(e) => set("yearOfStudy", e.target.value)}
-            className={FIELD}
-          >
-            <option value="">Year of study</option>
-            {["1st year", "2nd year", "3rd year", "4th year", "5th year", "Postgraduate"].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <textarea
-            required
-            rows={2}
-            minLength={2}
-            maxLength={1000}
-            aria-label="Clubs or fest teams you are part of"
-            value={form.myClubs}
-            onChange={(e) => set("myClubs", e.target.value)}
-            placeholder="Clubs or fest teams you are part of, and your role"
-            className={FIELD}
-          />
-          <textarea
-            required
-            rows={6}
-            minLength={20}
-            maxLength={4000}
-            aria-label="Active clubs on your campus"
-            value={form.campusClubs}
-            onChange={(e) => set("campusClubs", e.target.value)}
-            placeholder={"Active clubs on your campus, one per line, with their next event if you know it. Aim for 15.\nCoding Club: hackathon in January\nDance Club: annual showcase"}
-            className={FIELD}
-          />
-          <textarea
-            required
-            rows={3}
-            minLength={20}
-            maxLength={2000}
-            aria-label="Why you want to be an Orbit Lead"
-            value={form.why}
-            onChange={(e) => set("why", e.target.value)}
-            placeholder="Why you want to be your campus's Orbit Lead"
-            className={FIELD}
-          />
+          </Field>
+          <Field label="Active clubs on your campus (aim for 15)">
+            <textarea
+              required
+              rows={6}
+              minLength={20}
+              maxLength={4000}
+              value={form.campusClubs}
+              onChange={(e) => set("campusClubs", e.target.value)}
+              placeholder={"One per line, with their next event if you know it.\nCoding Club: hackathon in January\nDance Club: annual showcase"}
+              className={FIELD}
+            />
+          </Field>
+          <Field label="Why you want to be your campus's Orbit Lead">
+            <textarea
+              required
+              rows={3}
+              minLength={20}
+              maxLength={2000}
+              value={form.why}
+              onChange={(e) => set("why", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
         </>
       ) : isEvent ? (
         <>
           <h2 className="pt-2 text-lg font-bold">Your event</h2>
-          <input
-            required
-            maxLength={500}
-            aria-label="Event name"
-            value={form.eventTitle}
-            onChange={(e) => set("eventTitle", e.target.value)}
-            placeholder="Event name"
-            className={FIELD}
-          />
-          <textarea
-            rows={4}
-            maxLength={2000}
-            aria-label="What is the event about?"
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-            placeholder="What is the event about? (optional)"
-            className={FIELD}
-          />
+          <Field label="Event name">
+            <input
+              required
+              maxLength={500}
+              value={form.eventTitle}
+              onChange={(e) => set("eventTitle", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
+          <Field label="What is the event about? (optional)">
+            <textarea
+              rows={4}
+              maxLength={2000}
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-sm text-paper/65">
               <span>Starts</span>
@@ -413,14 +427,14 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               </label>
             ))}
           </fieldset>
-          <input
-            maxLength={100}
-            aria-label="City"
-            value={form.city}
-            onChange={(e) => set("city", e.target.value)}
-            placeholder="City (optional)"
-            className={FIELD}
-          />
+          <Field label="City (optional)">
+            <input
+              maxLength={100}
+              value={form.city}
+              onChange={(e) => set("city", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
           <p className="text-sm text-paper/65">
             Running a club or community?{" "}
             <Link href="/request-space" className="underline hover:text-white">
@@ -432,25 +446,25 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
       ) : (
         <>
           <h2 className="pt-2 text-lg font-bold">Your space</h2>
-          <input
-            required
-            maxLength={255}
-            aria-label="Space name"
-            value={form.spaceName}
-            onChange={(e) => set("spaceName", e.target.value)}
-            placeholder="Space name"
-            className={FIELD}
-          />
-          <textarea
-            required
-            rows={4}
-            maxLength={2000}
-            aria-label="What is your space about?"
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-            placeholder="What is your space about?"
-            className={FIELD}
-          />
+          <Field label="Space name">
+            <input
+              required
+              maxLength={255}
+              value={form.spaceName}
+              onChange={(e) => set("spaceName", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
+          <Field label="What is your space about?">
+            <textarea
+              required
+              rows={4}
+              maxLength={2000}
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
           <fieldset className="grid gap-3 sm:grid-cols-2">
             <legend className="sr-only">Space type</legend>
             {TYPES.map((t) => (
@@ -473,21 +487,21 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               </label>
             ))}
           </fieldset>
-          <input
-            maxLength={100}
-            aria-label="City"
-            value={form.city}
-            onChange={(e) => set("city", e.target.value)}
-            placeholder="City (optional)"
-            className={FIELD}
-          />
-          <input
-            aria-label="Website"
-            value={form.websiteUrl}
-            onChange={(e) => set("websiteUrl", e.target.value)}
-            placeholder="Website (optional)"
-            className={FIELD}
-          />
+          <Field label="City (optional)">
+            <input
+              maxLength={100}
+              value={form.city}
+              onChange={(e) => set("city", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
+          <Field label="Website (optional)">
+            <input
+              value={form.websiteUrl}
+              onChange={(e) => set("websiteUrl", e.target.value)}
+              className={FIELD}
+            />
+          </Field>
           <p className="text-sm text-paper/65">
             Just one event?{" "}
             <Link href="/request-event" className="underline hover:text-white">
@@ -504,50 +518,51 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
           ? "We verify your email and WhatsApp number. If you are already on Unifesto, use the same email."
           : `We create your Unifesto account with these details. You will run the ${isEvent ? "event" : "space"} from it.`}
       </p>
-      <input
-        required
-        maxLength={255}
-        autoComplete="name"
-        aria-label="Full name"
-        value={form.fullName}
-        onChange={(e) => set("fullName", e.target.value)}
-        placeholder="Full name"
-        className={FIELD}
-      />
-      {!isEvent && !isOrbit && (
-        <input
-          maxLength={120}
-          aria-label="Your role"
-          value={form.requesterRole}
-          onChange={(e) => set("requesterRole", e.target.value)}
-          placeholder="Your role, e.g. President, Coding Club (optional)"
-          className={FIELD}
-        />
-      )}
-      <input
-        required
-        type="email"
-        autoComplete="email"
-        aria-label="Email"
-        value={form.email}
-        onChange={(e) => set("email", e.target.value)}
-        placeholder="Email"
-        className={FIELD}
-      />
-      <div className="flex items-center rounded-3xl bg-night-2 focus-within:border-primary/50">
-        <span className="pl-4 text-sm text-paper/65">+91</span>
+      <Field label="Full name">
         <input
           required
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel-national"
-          aria-label="Mobile number"
-          value={form.phone}
-          onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-          placeholder="Mobile number (WhatsApp)"
-          className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none"
+          maxLength={255}
+          autoComplete="name"
+          value={form.fullName}
+          onChange={(e) => set("fullName", e.target.value)}
+          className={FIELD}
         />
-      </div>
+      </Field>
+      {!isEvent && !isOrbit && (
+        <Field label="Your role (optional)">
+          <input
+            maxLength={120}
+            value={form.requesterRole}
+            onChange={(e) => set("requesterRole", e.target.value)}
+            placeholder="e.g. President, Coding Club"
+            className={FIELD}
+          />
+        </Field>
+      )}
+      <Field label="Email">
+        <input
+          required
+          type="email"
+          autoComplete="email"
+          value={form.email}
+          onChange={(e) => set("email", e.target.value)}
+          className={FIELD}
+        />
+      </Field>
+      <Field label="Mobile number (WhatsApp)">
+        <div className="flex items-center rounded-3xl bg-night-2 focus-within:border-primary/50">
+          <span className="pl-4 text-sm text-paper/65">+91</span>
+          <input
+            required
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+            className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none"
+          />
+        </div>
+      </Field>
       {isOrbit && (
         <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/75">
           <input
