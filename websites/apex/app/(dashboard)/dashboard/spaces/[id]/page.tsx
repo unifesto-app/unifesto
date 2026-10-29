@@ -61,6 +61,7 @@ import {
   createSubSpaceRequest,
   type SubSpaceRequestType,
 } from "@/lib/api/requests-api";
+import { setSpaceBrandingSuspended } from "@/lib/api/white-label-api";
 import type {
   SpaceWithHierarchy,
   SpaceStatus,
@@ -354,6 +355,8 @@ function SpaceManagement({
           </Card>
 
           <SpaceBrandingCard space={space} />
+
+          <SuspendBrandingCard spaceId={space.id} />
         </div>
 
         <div className="space-y-4">
@@ -460,6 +463,53 @@ function SpaceBrandingCard({ space }: { space: SpaceWithHierarchy }) {
           }}
           onUploaded={(url) => setBannerUrl(url)}
         />
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Kill switch: hides a space's white-label theme everywhere without deleting
+ * it. The space payload doesn't expose the current state, so both actions show.
+ */
+function SuspendBrandingCard({ spaceId }: { spaceId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [state, setState] = useState<"suspended" | "restored" | null>(null);
+
+  async function run(suspended: boolean) {
+    setBusy(true);
+    setError("");
+    const { error: apiError } = await setSpaceBrandingSuspended(spaceId, suspended);
+    if (apiError) setError(apiError.message || "Could not update suspension.");
+    else setState(suspended ? "suspended" : "restored");
+    setBusy(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Suspend white-label</CardTitle>
+        <CardDescription>
+          For abuse or impersonation. Attendees see the default Unifesto look; the space keeps its
+          settings but can&rsquo;t make them render until you restore it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <ErrorNotice message={error} />}
+        <div className="flex gap-2">
+          <Button variant="destructive" onClick={() => run(true)} disabled={busy}>
+            Suspend
+          </Button>
+          <Button variant="outline" onClick={() => run(false)} disabled={busy}>
+            Restore
+          </Button>
+        </div>
+        {state && (
+          <p className="text-sm text-muted-foreground">
+            White-label {state}. Event pages refresh on their next load.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
