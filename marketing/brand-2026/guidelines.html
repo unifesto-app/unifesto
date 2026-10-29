@@ -34,18 +34,20 @@
   .x { position: relative; }
   .x::after { content: "✕"; position: absolute; top: 14px; right: 18px; font-size: 18px; color: var(--no); }
 
-  /* Shade cards: the two orbits again at card scale, one accent glowing
-     each filled with an accent that deepens toward its hairline, grain blended on top, a frosted glass panel floating. */
+  /* Shade cards, as on the site: soft shapes in one accent, fully blended
+     into a deep base by a blur (no lines, no edges), grain on top, a frosted
+     glass panel floating. Each accent has its own shape. */
   .shade { position: relative; isolation: isolate; overflow: hidden; border-radius: 16px; display: grid; place-items: center; padding: 30px; }
-  .shade .fill { position: absolute; inset: 0; z-index: -1; isolation: isolate; container-type: inline-size; background: var(--s3); }
-  .shade .orbits { position: absolute; inset: 0; }
-  .shade .orbits::before, .shade .orbits::after { content: ""; position: absolute; border-radius: 50%;
-    background: radial-gradient(closest-side, transparent var(--from), var(--band)); box-shadow: inset 0 0 0 1px var(--hair); }
-  .shade .orbits::before { --band: var(--s1); --from: 60%; width: 150cqw; height: 150cqw; top: -88cqw; right: -66cqw; }
-  .shade .orbits::after { --band: var(--s2); --from: 55%; width: 180cqw; height: 120cqw; left: -60cqw; bottom: -96cqw; }
+  .shade .fill { position: absolute; inset: 0; z-index: -1; isolation: isolate; overflow: hidden; background: var(--s3); }
+  .shade .shapes { position: absolute; inset: -15%; background: var(--shapes); filter: blur(32px); opacity: .7; }
+  .light .shade .shapes { opacity: .85; }
   .shade .fill::after { content: ""; position: absolute; inset: 0; background: url(png/noise-128.png) 0 0 / 128px; mix-blend-mode: overlay; opacity: .6; }
-  .dark .shade { --hair: rgb(255 255 255 / .16); }
-  .light .shade { --hair: rgb(17 17 19 / .16); }
+  .s-sky   { --shapes: radial-gradient(42% 42% at 80% 22%, var(--s1), transparent 72%), radial-gradient(40% 40% at 22% 80%, var(--s2), transparent 72%); }
+  .s-mint  { --shapes: radial-gradient(85% 38% at 50% 100%, var(--s1), transparent 70%), radial-gradient(30% 30% at 18% 22%, var(--s2), transparent 72%); }
+  .s-ivory { --shapes: linear-gradient(125deg, transparent 22%, var(--s1) 48%, transparent 74%), radial-gradient(34% 34% at 86% 86%, var(--s2), transparent 72%); }
+  .s-blue  { --shapes: conic-gradient(from 250deg at 92% 92%, transparent, var(--s2) 6%, var(--s1) 12%, var(--s2) 18%, transparent 26%), radial-gradient(26% 26% at 18% 18%, var(--s2), transparent 72%); }
+  .s-blue .shapes { opacity: .45; }
+  .light .s-blue .shapes { opacity: .7; }
   .s-sky   { --s1: #90d5ff; --s2: #2f6bff; --s3: #070d1c; }
   .s-mint  { --s1: #90e4c1; --s2: #1f7a5c; --s3: #061410; }
   .s-ivory { --s1: #f7f0e0; --s2: #9a7444; --s3: #140f08; }
@@ -106,10 +108,10 @@
   <h2>Unifesto Horizon</h2>
   <p class="muted" style="margin-top:18px; max-width:1180px">Our visual theme on the website, Space, Apex and the app: night first, thin lines, and colour only where the work is. Locked on 29 October 2026. Changing a colour, line, light, glass effect or typeface needs a new edition of these guidelines.</p>
   <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 52px; gap: 44px 56px">
-    <div class="rule"><p><b>Night first.</b> <span class="muted">Black ground and silver type. By day the same roles sit on paper #F2F2F5 with white cards.</span></p></div>
-    <div class="rule"><p><b>Thin lines only.</b> <span class="muted">Stars, two orbit hairlines, edge rules and the horizon. Never planets, bars or glowing shapes.</span></p></div>
+    <div class="rule"><p><b>Night first.</b> <span class="muted">Black ground and silver type. By day the same roles sit on paper #F2F2F5 with white sections and cards, and light turns pale blue.</span></p></div>
+    <div class="rule"><p><b>Thin lines only.</b> <span class="muted">Stars, two white orbit hairlines, edge rules and the horizon, with a soft blue glow rising off it. Never planets, bars or coloured lines.</span></p></div>
     <div class="rule"><p><b>Colour lives in cards.</b> <span class="muted">Mint, sky and ivory sit inside cards, on the work they describe. Navigation, links and buttons stay monochrome.</span></p></div>
-    <div class="rule"><p><b>Shades fill the orbits.</b> <span class="muted">Colour fills an orbit's shape and deepens toward its hairline, the crisp edge. Never a free blob.</span></p></div>
+    <div class="rule"><p><b>Colour blends.</b> <span class="muted">Inside a card, an accent's soft shapes (orbs, a horizon, a beam, a fan) melt into a deep base. No lines, no hard edges.</span></p></div>
     <div class="rule"><p><b>Grain on everything.</b> <span class="muted">A fine film grain over every surface, heavier inside shade cards.</span></p></div>
     <div class="rule"><p><b>Frosted glass floats.</b> <span class="muted">Panels over a shade are frosted, untinted glass. Statuses are plain text, never pills.</span></p></div>
   </div>
@@ -196,8 +198,8 @@
       <p style="margin-top:14px; font-size:17px"><b>Sky</b> · tickets and events</p><p class="hex">#90D5FF night · #0369A1 day</p></div>
     <div><div class="card" style="height:150px; padding:22px 24px"><p class="cap">Net payout</p><p class="display t-ivory" style="font-size:40px; margin-top:12px">₹1,38,413</p></div>
       <p style="margin-top:14px; font-size:17px"><b>Ivory</b> · money and payouts</p><p class="hex">#F7F0E0 night · #7A5A1E day</p></div>
-    <div><div class="card" style="height:150px; overflow:hidden"><img src="png/horizon-sky-night-1920x1080.jpg" style="display:block; width:100%; height:100%; object-fit:cover; object-position:40% 20%"></div>
-      <p style="margin-top:14px; font-size:17px"><b>Horizon blue</b> · the shade</p><p class="hex">#0062FF, lightened: #4D8DFF night · #8FB4FF day</p></div>
+    <div><div class="card" style="height:150px; overflow:hidden"><img src="png/horizon-sky-night-1920x1080.jpg" style="display:block; width:100%; height:100%; object-fit:cover; object-position:100% 100%"></div>
+      <p style="margin-top:14px; font-size:17px"><b>Horizon blue</b> · the glow</p><p class="hex">#0062FF, lightened: #4D8DFF night · #8FB4FF day</p></div>
   </div>
   <div class="grid" style="grid-template-columns: 1fr 1fr 2fr; margin-top: 40px; gap: 28px; align-items:start">
     <div style="display:flex; gap:16px; align-items:center"><div class="sw" style="width:64px; height:64px; background:linear-gradient(90deg,#ec2f58 50%,#be123c 50%)"></div><div><p style="font-size:17px"><b>Crimson</b> · errors</p><p class="hex">#EC2F58 night · #BE123C day</p></div></div>
@@ -236,10 +238,10 @@
   <div class="grid" style="grid-template-columns: 880px 1fr; margin-top: 40px; gap: 56px">
     <div class="card" style="height:500px; overflow:hidden; background:#000"><img src="png/horizon-sky-night-1920x1080.jpg" style="display:block; width:100%; height:100%; object-fit:cover"></div>
     <div class="grid" style="gap:18px; align-content:start">
-      <div class="rule" style="padding-top:14px"><p><b>Stars.</b> <span class="muted">Two layers of faint 1 px points.</span></p></div>
+      <div class="rule" style="padding-top:14px"><p><b>Stars.</b> <span class="muted">Two layers of faint 1 px points, by night only.</span></p></div>
       <div class="rule" style="padding-top:14px"><p><b>Orbits.</b> <span class="muted">Two 1 px hairlines: a large circle from the top right, a wide ellipse rising from the bottom left. They drift too slowly to notice.</span></p></div>
-      <div class="rule" style="padding-top:14px"><p><b>Horizon blue.</b> <span class="muted">Fills the orbits, deepening toward the line: #4D8DFF at 45% by night, #8FB4FF at 60% by day.</span></p></div>
-      <div class="rule" style="padding-top:14px"><p><b>Horizon.</b> <span class="muted">One line of light with a soft bloom. It anchors heroes and closes pages.</span></p></div>
+      <div class="rule" style="padding-top:14px"><p><b>Horizon blue.</b> <span class="muted">A wide, flat glow rising off the horizon: from the bottom-right corner behind the hero's product, and along the foot of the page. #4D8DFF by night, a pale #8FB4FF by day. Never on the orbits.</span></p></div>
+      <div class="rule" style="padding-top:14px"><p><b>Horizon.</b> <span class="muted">One line of light with a soft bloom, white by night and pale blue by day. It anchors heroes and closes pages.</span></p></div>
       <div class="rule" style="padding-top:14px"><p><b>Edge rules and grain.</b> <span class="muted">Faint vertical rules near each side; film grain at 12% by night, 9% by day.</span></p></div>
     </div>
   </div>
@@ -250,18 +252,18 @@
 <section class="page dark">
   <p class="ey">08 · Shade cards</p>
   <h2>Product on a shade</h2>
-  <p class="muted" style="margin-top:18px; max-width:1220px">The hero's two orbits, redrawn at card scale and filled with accents that deepen toward each line. Grain is blended on top (128 px tile, overlay, 60%), and the product floats on it as frosted glass.</p>
+  <p class="muted" style="margin-top:18px; max-width:1220px">Soft shapes in one accent, fully blended into a deep base: two orbs for sky, a horizon rising from below for mint, a diagonal beam for ivory, a fan of light for blue. Grain on top (128 px tile, overlay, 60%), and the product floats on it as frosted glass.</p>
   <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 36px; gap: 20px">
-    <div><div class="shade s-sky" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-sky" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Hack League 2026 · Tickets</p><div class="row"><span>Early bird · ₹199</span><span class="muted">Sold out</span></div><div class="row"><span>Regular · ₹349</span><span class="t-sky">212 left</span></div><div class="row"><span>Team of 4 · ₹1,099</span><span class="t-sky">38 left</span></div></div></div>
       <p class="cap" style="margin-top:12px">Sky · tickets</p></div>
-    <div><div class="shade s-mint" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-mint" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Live check-in</p><p class="big">387 <span class="muted" style="font-size:14px; letter-spacing:0">of 412</span></p><div class="bar"><i></i></div><div class="row"><span>Main gate</span><span class="t-mint">241</span></div><div class="row"><span>Lunch</span><span>198</span></div></div></div>
       <p class="cap" style="margin-top:12px">Mint · the door</p></div>
-    <div><div class="shade s-ivory" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-ivory" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Financials · Nav Nirman 4.0</p><div class="row"><span>Collected</span><span>₹1,42,650</span></div><div class="row"><span>Refunds</span><span>−₹2,097</span></div><div class="row"><span>Net payout</span><span class="t-ivory">₹1,38,413</span></div></div></div>
       <p class="cap" style="margin-top:12px">Ivory · money</p></div>
-    <div><div class="shade s-blue" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-blue" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Leaderboard · Finals</p><div class="row"><span>1 · Byte Me</span><span>92.4</span></div><div class="row"><span>2 · Null Pointers</span><span>89.1</span></div><div class="row"><span>3 · Kernel Panic</span><span>86.7</span></div></div></div>
       <p class="cap" style="margin-top:12px">Horizon blue · hackathons</p></div>
   </div>
@@ -272,18 +274,18 @@
 <section class="page light">
   <p class="ey">08 · Shade cards</p>
   <h2>By day</h2>
-  <p class="muted" style="margin-top:18px; max-width:1220px">The same orbits in pastel on a near-white base. Glass turns to white frost and accents switch to their day text shades.</p>
+  <p class="muted" style="margin-top:18px; max-width:1220px">The same shapes in pastel on a near-white base. Glass turns to white frost and accents switch to their day text shades.</p>
   <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-top: 36px; gap: 20px">
-    <div><div class="shade s-sky" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-sky" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Hack League 2026 · Tickets</p><div class="row"><span>Early bird · ₹199</span><span class="muted">Sold out</span></div><div class="row"><span>Regular · ₹349</span><span class="t-sky">212 left</span></div><div class="row"><span>Team of 4 · ₹1,099</span><span class="t-sky">38 left</span></div></div></div>
       <p class="cap" style="margin-top:12px">Sky · tickets</p></div>
-    <div><div class="shade s-mint" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-mint" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Live check-in</p><p class="big">387 <span class="muted" style="font-size:14px; letter-spacing:0">of 412</span></p><div class="bar"><i></i></div><div class="row"><span>Main gate</span><span class="t-mint">241</span></div><div class="row"><span>Lunch</span><span>198</span></div></div></div>
       <p class="cap" style="margin-top:12px">Mint · the door</p></div>
-    <div><div class="shade s-ivory" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-ivory" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Financials · Nav Nirman 4.0</p><div class="row"><span>Collected</span><span>₹1,42,650</span></div><div class="row"><span>Refunds</span><span>−₹2,097</span></div><div class="row"><span>Net payout</span><span class="t-ivory">₹1,38,413</span></div></div></div>
       <p class="cap" style="margin-top:12px">Ivory · money</p></div>
-    <div><div class="shade s-blue" style="height:380px"><div class="fill"><div class="orbits"></div></div>
+    <div><div class="shade s-blue" style="height:380px"><div class="fill"><div class="shapes"></div></div>
       <div class="glass"><p class="hd">Leaderboard · Finals</p><div class="row"><span>1 · Byte Me</span><span>92.4</span></div><div class="row"><span>2 · Null Pointers</span><span>89.1</span></div><div class="row"><span>3 · Kernel Panic</span><span>86.7</span></div></div></div>
       <p class="cap" style="margin-top:12px">Horizon blue · hackathons</p></div>
   </div>
@@ -296,10 +298,10 @@
   <h2>Keep Horizon as it is</h2>
   <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 44px; gap: 22px">
     <div><div class="card x" style="height:170px; position:relative; overflow:hidden; background:#000"><div style="position:absolute; left:-20%; right:-20%; top:96px; height:600px; border-radius:50%; background:radial-gradient(ellipse at 50% 0%, #2a2a2e, #000 50%); box-shadow:0 -2px 0 rgb(255 255 255 / .5), 0 -40px 90px rgb(255 255 255 / .14)"></div></div><p class="cap" style="margin-top:12px">Planets, crescents or glowing bars on the backdrop</p></div>
-    <div><div class="card x" style="height:170px; background:radial-gradient(40% 55% at 30% 45%, #90d5ff, transparent 70%), radial-gradient(35% 50% at 75% 60%, #90e4c1, transparent 70%), #0a0a0b"></div><p class="cap" style="margin-top:12px">Colour blobs. A shade always fills an orbit.</p></div>
+    <div><div class="card x" style="height:170px; position:relative; overflow:hidden; background:#070d1c"><div style="position:absolute; width:260px; height:260px; right:-40px; top:-90px; border-radius:50%; background:#90d5ff; box-shadow:inset 0 0 0 2px #fff"></div></div><p class="cap" style="margin-top:12px">Hard edges or lines in a card's colour. It always blends out.</p></div>
     <div><div class="card x" style="height:170px; display:grid; place-items:center"><div style="border:1px solid #90e4c1; border-radius:12px; padding:18px 26px; display:flex; gap:22px; align-items:center"><span style="font-size:17px">Main gate</span><span style="background:#90e4c1; color:#000; border-radius:6px; padding:8px 14px; font-size:14px">Scan</span></div></div><p class="cap" style="margin-top:12px">Accents on borders, buttons or links</p></div>
     <div><div class="card x" style="height:170px; display:grid; place-items:center"><span style="background:rgb(144 228 193 / .16); color:#90e4c1; border-radius:999px; padding:8px 18px; font-size:15px">Checked in</span></div><p class="cap" style="margin-top:12px">Pill badges. Write the status as plain text: ✓ Checked in.</p></div>
-    <div><div class="card x shade s-sky" style="height:170px; padding:28px 40px"><div class="fill"><div class="orbits"></div></div><div class="glass" style="background:rgb(0 70 220 / .55); box-shadow: inset 0 0 0 2px rgb(255 255 255 / .5), 0 0 30px rgb(80 140 255 / .7)">Live check-in · 387</div></div><p class="cap" style="margin-top:12px">Tinted, dark or glowing glass. Glass is frosted, untinted.</p></div>
+    <div><div class="card x shade s-sky" style="height:170px; padding:28px 40px"><div class="fill"><div class="shapes"></div></div><div class="glass" style="background:rgb(0 70 220 / .55); box-shadow: inset 0 0 0 2px rgb(255 255 255 / .5), 0 0 30px rgb(80 140 255 / .7)">Live check-in · 387</div></div><p class="cap" style="margin-top:12px">Tinted, dark or glowing glass. Glass is frosted, untinted.</p></div>
     <div><div class="card x" style="height:170px; display:grid; place-items:center"><span style="background:#2563eb; color:#fff; border-radius:6px; padding:14px 26px; font-size:14px; letter-spacing:.2em">HOST AN EVENT</span></div><p class="cap" style="margin-top:12px">A brand colour in buttons or navigation (including the old blue)</p></div>
   </div>
   <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>12</span></div>
@@ -340,15 +342,6 @@
   <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>14</span></div>
 </section>
 
-<!-- 15 · Powered by in use -->
-<section class="page dark">
-  <p class="ey">10 · Powered by in use</p>
-  <h2 style="font-size:36px">On organiser posters</h2>
-  <div class="grid" style="grid-template-columns: repeat(4, 312px); margin-top: 32px; gap: 28px"><div><img src="png/poster-powered-by-photo.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">On a photo: boxed dark badge in a corner.</p></div><div><img src="png/poster-powered-by-colour.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">On a plain colour: one-colour white, in the footer.</p></div><div><img src="png/poster-powered-by-light.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">On a light colour: one-colour black, beside sponsors.</p></div><div><img src="png/poster-powered-by-stacked.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Square space: stacked badge, top corner.</p></div></div>
-  <p class="muted" style="margin-top:28px; font-size:17px">The badge signs off the organiser's poster. Their colours lead; the badge stays small and in a corner or the footer.</p>
-  <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>15</span></div>
-</section>
-
 <!-- 16 · Products -->
 <section class="page dark">
   <p class="ey">11 · Products</p>
@@ -366,23 +359,7 @@
     <p style="font-size:18px"><b>Build.</b> <span class="muted">Use the supplied lockup. Don't type a product name next to the wordmark yourself.</span></p>
     <p style="font-size:18px"><b>Size.</b> <span class="muted">At least 160 px wide on screen, 40 mm in print, so the name stays readable.</span></p>
   </div>
-  <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>16</span></div>
-</section>
-
-<!-- 17 · On session posters -->
-<section class="page light">
-  <p class="ey">12 · Huddle in use</p>
-  <h2 style="font-size:36px">On session posters</h2>
-  <div class="grid" style="grid-template-columns: repeat(3, 392px); margin-top: 32px; gap: 32px"><div><img src="png/poster-huddle-header.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Masthead: lockup top left, the session title leads.</p></div><div><img src="png/poster-huddle-signoff.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Sign-off: content first, &ldquo;Join live on&rdquo; and the lockup at the foot.</p></div><div><img src="png/poster-huddle-light.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Light: ink lockup top centre, with a hairline below it.</p></div></div>
-  <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>17</span></div>
-</section>
-
-<!-- 18 · On hackathon posters -->
-<section class="page dark">
-  <p class="ey">13 · Sprint in use</p>
-  <h2 style="font-size:36px">On hackathon posters</h2>
-  <div class="grid" style="grid-template-columns: repeat(3, 392px); margin-top: 32px; gap: 32px"><div><img src="png/poster-sprint-header.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Headline: the lockup as the title, the hackathon name below.</p></div><div><img src="png/poster-sprint-signoff.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Co-brand: the host's logo, &times;, then the lockup. Equal height.</p></div><div><img src="png/poster-sprint-light.png" style="width:100%; display:block; border-radius:14px; border:1px solid var(--line)"><p class="cap" style="margin-top:12px">Footer: &ldquo;Registrations on&rdquo; and the lockup beside sponsors.</p></div></div>
-  <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>18</span></div>
+  <div class="foot"><span>Unifesto Brand Guidelines · Horizon</span><span>15</span></div>
 </section>
 
 <!-- 19 · Contact -->
