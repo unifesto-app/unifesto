@@ -278,13 +278,27 @@ export class HackathonTeamsService {
 
   // ── Curator: list / detail / edit ─────────────────────────────────────────
 
-  async listTeams(userId: string, eventId: string) {
+  /**
+   * The curator's team list in Team ID order. `page` (E11) returns one slice:
+   * the order is worked out on ids and sort keys only, then the heavy part
+   * (statements, rooms, leads, seats) is loaded for that slice alone. No page
+   * = every team, as the shipped apps expect.
+   */
+  async listTeams(userId: string, eventId: string, page?: { take: number; skip: number }) {
     await this.leaderboard.assertCanManage(userId, eventId);
     const board = await this.getBoardOrThrow(eventId);
     await this.syncCancellations(board.id);
 
+    let ids: string[] | undefined;
+    if (page) {
+      const keys = await this.prisma.leaderboardEntrant.findMany({
+        where: { leaderboardId: board.id },
+        select: { id: true, teamSeq: true, teamCode: true },
+      });
+      ids = keys.sort(compareTeams).slice(page.skip, page.skip + page.take).map((k) => k.id);
+    }
     const teams = await this.prisma.leaderboardEntrant.findMany({
-      where: { leaderboardId: board.id },
+      where: { leaderboardId: board.id, ...(ids ? { id: { in: ids } } : {}) },
       select: {
         id: true,
         teamCode: true,
@@ -317,7 +331,7 @@ export class HackathonTeamsService {
       : [[], []];
     const regById = new Map(regs.map((r) => [r.id, r]));
     const joinedByReg = new Map(joined.map((j) => [j.registrationId, j._count._all]));
-    const eliminated = await this.eliminatedIds(board.id);
+    const eliminated = await this.eliminatedIds(board.id, ids);
 
     return teams.sort(compareTeams).map((t) => {
       const reg = t.registrationId ? regById.get(t.registrationId) : undefined;
