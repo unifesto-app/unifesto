@@ -92,7 +92,7 @@ export function ExportMenu({
                 CSV, Excel or PDF.
               </p>
               <Button asChild size="sm" className="mt-3 w-full">
-                <Link href="/dashboard/billing" onClick={() => setOpen(false)}>
+                <Link href="/console/billing" onClick={() => setOpen(false)}>
                   Upgrade plan
                   <ArrowUpRight className="h-4 w-4" />
                 </Link>

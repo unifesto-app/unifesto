@@ -25,7 +25,7 @@ export function ProjectorButton({ eventId }: { eventId: string }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const path = `/present/${eventId}`;
+  const path = `/console/present/${eventId}`;
   const link = token && typeof window !== "undefined" ? `${window.location.origin}${path}#k=${token}` : "";
 
   const fetchToken = async (regenerate: boolean) => {

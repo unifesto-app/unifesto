@@ -31,7 +31,7 @@ export function EventAccessNav({ events, onNavigate, collapsed = false }: EventA
       )}
       <nav className="flex-1 space-y-0.5">
         {events.map((ev) => {
-          const href = `/dashboard/events/${ev.eventId}`;
+          const href = `/console/events/${ev.eventId}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link

@@ -47,7 +47,7 @@ export function AssistInboxLink({
 
   if (!enabled) return null;
 
-  const href = "/dashboard/assist";
+  const href = "/console/assist";
   const active = pathname === href || pathname.startsWith(`${href}/`);
 
   return (

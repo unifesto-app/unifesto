@@ -169,7 +169,7 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
  * the tab where the organiser actually fills it in.
  */
 export function EventCompleteness({ event }: { event: Event }) {
-  const base = `/dashboard/events/${event.id}`;
+  const base = `/console/events/${event.id}`;
   const { essentials, enhancements } = buildChecklist(event, base);
 
   const doneCount = essentials.filter((i) => i.done).length;

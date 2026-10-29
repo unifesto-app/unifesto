@@ -93,7 +93,7 @@ export function CommandPalette() {
       keywords: "logout leave",
       run: () => {
         clearAuthToken();
-        router.replace("/login");
+        router.replace("/console/login");
       },
     });
 

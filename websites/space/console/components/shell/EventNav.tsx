@@ -149,7 +149,7 @@ export function EventNav({
   // This event's capabilities from the backend: event-only operators, per-space
   // overrides and Space Admin inheritance included.
   const { can, hasFeature } = useAccess(eventId);
-  const baseUrl = `/dashboard/events/${eventId}`;
+  const baseUrl = `/console/events/${eventId}`;
 
   const navGroups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -171,7 +171,7 @@ export function EventNav({
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
       {/* Back to the space-level events list */}
       <Link
-        href="/dashboard/events"
+        href="/console/events"
         onClick={onNavigate}
         title={collapsed ? "All events" : undefined}
         className={cn(

@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !hasAccess) {
-      router.replace("/no-access");
+      router.replace("/console/no-access");
     }
   }, [loading, hasAccess, router]);
 
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = () => {
     clearAuthToken();
-    router.replace("/login");
+    router.replace("/console/login");
   };
 
   return (

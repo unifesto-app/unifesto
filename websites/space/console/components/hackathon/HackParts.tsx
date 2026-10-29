@@ -17,7 +17,7 @@ import type { Result } from "@/console/lib/api/call";
  * manage/event/[eventId]/hackathon/** screens.
  */
 
-export const hackBase = (eventId: string) => `/dashboard/events/${eventId}/hackathon`;
+export const hackBase = (eventId: string) => `/console/events/${eventId}/hackathon`;
 
 /**
  * Load one Result-returning call; `reload` re-runs it. `denied` gets the

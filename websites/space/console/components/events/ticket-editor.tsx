@@ -165,7 +165,7 @@ function WaitlistToggle({
             {!onPlan ? (
               <>
                 Waiting lists aren&apos;t on this space&apos;s plan.{" "}
-                <Link href="/dashboard/billing" className="underline">
+                <Link href="/console/billing" className="underline">
                   See plans
                 </Link>
               </>

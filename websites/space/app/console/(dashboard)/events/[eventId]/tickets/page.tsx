@@ -1,0 +1,507 @@
+"use client";
+
+import { inr, BUYER_FEE_PERCENT, BUYER_FEE_CAP, includedFeeKeeps } from "@/console/lib/utils/money";
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Ticket,
+  Plus,
+  Trash,
+  CaretRight,
+  UsersThree,
+  User,
+  Copy,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  EyeSlash,
+} from "@unifesto/unicon/react";
+import {
+  getEventById,
+  updateEvent,
+  getManageTicketTypes,
+  createTicketType,
+  updateTicketType,
+  deleteTicketType,
+  reorderTicketTypes,
+  type Event,
+  type EventTicketType,
+  type ManagedTicketType,
+} from "@/console/lib/api/events-api";
+import {
+  SALE_STATUS_META,
+  isOffSale,
+  ticketSaleStatus,
+} from "@/console/components/events/ticket-status";
+import {
+  type Draft,
+  EMPTY_DRAFT,
+  TicketForm,
+  toDraft,
+  localToIso,
+} from "@/console/components/events/ticket-editor";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+
+export default function EventTicketsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const eventId = params.eventId as string;
+
+  // Every tier of the event (incl. RSVP + hidden), in display order.
+  const [allTickets, setAllTickets] = useState<ManagedTicketType[]>([]);
+  // Only for the sale status: a finished event reads "Sales ended".
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const [{ data, error }, ev] = await Promise.all([
+      getManageTicketTypes(eventId),
+      getEventById(eventId),
+    ]);
+    if (error) setError(error.message);
+    else setAllTickets(data ?? []);
+    if (ev.data) setEvent(ev.data);
+    setLoading(false);
+  }, [eventId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const tickets = allTickets.filter(
+    (t) => t.kind === "INDIVIDUAL" || t.kind === "GROUP"
+  );
+
+  const totals = tickets.reduce(
+    (acc, t) => ({
+      registrations: acc.registrations + t.stats.registrations,
+      checkedIn: acc.checkedIn + t.stats.checkedIn,
+      waitlist: acc.waitlist + t.stats.waitlistWaiting + t.stats.waitlistOffered,
+      revenue:
+        t.stats.revenue == null || acc.revenue == null
+          ? null
+          : acc.revenue + t.stats.revenue,
+    }),
+    { registrations: 0, checkedIn: 0, waitlist: 0, revenue: 0 as number | null }
+  );
+
+  const ticketHref = (id: string) =>
+    `/console/events/${eventId}/tickets/${id}`;
+
+  const create = async () => {
+    if (!draft) return;
+    if (!draft.name.trim()) {
+      setError("Ticket name is required.");
+      return;
+    }
+    const price = Number(draft.price) || 0;
+    const capacity = draft.capacity.trim() ? Number(draft.capacity) : undefined;
+    const saleStartsAt = localToIso(draft.saleStartsAt);
+    const saleEndsAt = localToIso(draft.saleEndsAt);
+    if (saleStartsAt && saleEndsAt && saleEndsAt <= saleStartsAt) {
+      setError("Sales end must be after sales start.");
+      return;
+    }
+    const payload = {
+      name: draft.name.trim(),
+      description: draft.description.trim() || undefined,
+      kind: draft.kind,
+      price,
+      totalQuantity: capacity,
+      saleStartsAt,
+      saleEndsAt,
+      perUserLimit: Number(draft.perUserLimit) || 1,
+      // Only send the waiting list when there is a capacity for it to guard;
+      // the API rejects the flag otherwise.
+      ...(capacity && draft.waitlistEnabled
+        ? {
+            waitlistEnabled: true,
+            waitlistOfferTtlHours: Number(draft.waitlistOfferTtlHours) || 24,
+          }
+        : {}),
+      ...(draft.kind === "GROUP"
+        ? {
+            groupPricingMode: draft.groupPricingMode,
+            minGroupSize: Number(draft.minGroupSize) || 1,
+            maxGroupSize: Number(draft.maxGroupSize) || 1,
+          }
+        : {}),
+    };
+
+    setSaving(true);
+    setError("");
+    const { data, error } = await createTicketType(eventId, payload);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setDraft(null);
+    // Jump straight to the new ticket's detail page to add its custom form.
+    if (data?.id) router.push(ticketHref(data.id));
+    else await load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this ticket type?")) return;
+    const { error } = await deleteTicketType(eventId, id);
+    if (error) setError(error.message);
+    else await load();
+  };
+
+  // Hidden and paused both take a ticket off sale (the backend checks either
+  // flag), so the one control flips both to keep them from drifting apart.
+  const toggleVisible = async (t: ManagedTicketType) => {
+    const next = isOffSale(t);
+    setError("");
+    const { error } = await updateTicketType(eventId, t.id, {
+      isVisible: next,
+      isActive: next,
+    });
+    if (error) setError(error.message);
+    else await load();
+  };
+
+  // Swap with the neighbouring paid/free tier. Positions are swapped in the
+  // full list so RSVP tiers (managed on their own tab) keep their slots.
+  const move = async (t: ManagedTicketType, dir: -1 | 1) => {
+    const i = tickets.findIndex((x) => x.id === t.id);
+    const neighbour = tickets[i + dir];
+    if (!neighbour) return;
+    const next = [...allTickets];
+    const a = next.findIndex((x) => x.id === t.id);
+    const b = next.findIndex((x) => x.id === neighbour.id);
+    [next[a], next[b]] = [next[b], next[a]];
+    setAllTickets(next);
+    const { error } = await reorderTicketTypes(
+      eventId,
+      next.map((x) => x.id)
+    );
+    if (error) {
+      setError(error.message);
+      await load();
+    }
+  };
+
+  // Seed the create form from an existing ticket. The copy is a plain draft (no
+  // id), so saving runs the normal create path — nothing is persisted until the
+  // organiser reviews the prefilled form and hits "Create ticket".
+  const duplicate = (t: EventTicketType) => {
+    setError("");
+    const copy = toDraft(t);
+    delete copy.id;
+    setDraft({ ...copy, name: `${copy.name} (copy)` });
+    if (typeof window !== "undefined")
+      window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-40 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Tickets"
+        subtitle="Paid or free tickets, for individuals or groups, each with its own form"
+        actions={
+          !draft ? (
+            <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+              <Plus className="h-4 w-4" weight="bold" />
+              Add ticket
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {error && <ErrorNotice message={error} />}
+
+      {tickets.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Bookings, not people: a group of five is one (B14). Overview counts people. */}
+          <Stat label="Bookings sold" value={totals.registrations.toLocaleString("en-IN")} />
+          <Stat label="Bookings checked in" value={totals.checkedIn.toLocaleString("en-IN")} />
+          <Stat label="On waiting list" value={totals.waitlist.toLocaleString("en-IN")} />
+          {totals.revenue != null && (
+            <Stat label="Net ticket revenue" value={formatInr(totals.revenue)} />
+          )}
+        </div>
+      )}
+
+      {tickets.some((t) => t.price > 0) && event && (
+        <FeeCard event={event} onSaved={(absorb) => setEvent({ ...event, absorbProcessingFee: absorb })} />
+      )}
+
+      {draft && (
+        <TicketForm
+          title="New ticket"
+          draft={draft}
+          setDraft={setDraft}
+          onSave={create}
+          onCancel={() => {
+            setDraft(null);
+            setError("");
+          }}
+          saving={saving}
+          saveLabel="Create ticket"
+        />
+      )}
+
+      {tickets.length === 0 && !draft ? (
+        <Card>
+          <CardContent className="py-0">
+            <EmptyState
+              icon={Ticket}
+              title="No ticket types yet"
+              description="Create individual or group tickets, free or paid. For one-click free entry, use the RSVPs tab instead."
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {tickets.map((t, i) => (
+            <TicketRow
+              key={t.id}
+              ticket={t}
+              event={event}
+              isFirst={i === 0}
+              isLast={i === tickets.length - 1}
+              onOpen={() => router.push(ticketHref(t.id))}
+              onMove={(dir) => move(t, dir)}
+              onToggleVisible={() => toggleVisible(t)}
+              onDuplicate={() => duplicate(t)}
+              onDelete={() => remove(t.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatInr(n: number) {
+  return inr(n);
+}
+
+/**
+ * Who pays the buyer fee on this event's paid tickets (A33). Off: it is
+ * added on top at checkout. On: buyers pay the listed price and the fee comes
+ * out of the organiser's share. Changing it affects new sales only. Needs the
+ * event's or space's money rights; the server refuses anyone else.
+ */
+function FeeCard({ event, onSaved }: { event: Event; onSaved: (absorb: boolean) => void }) {
+  const absorb = !!event.absorbProcessingFee;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const toggle = async () => {
+    const next = !absorb;
+    const msg = next
+      ? `Include the fee in your ticket prices? Buyers will pay exactly the listed price and the ${BUYER_FEE_PERCENT}% fee comes out of your share. New sales only.`
+      : `Add the fee on top again? Buyers will pay the listed price plus ${BUYER_FEE_PERCENT}% at checkout. New sales only.`;
+    if (!window.confirm(msg)) return;
+    setSaving(true);
+    setError("");
+    const { error } = await updateEvent(event.id, { absorbProcessingFee: next });
+    setSaving(false);
+    if (error) setError(error.message);
+    else onSaved(next);
+  };
+  return (
+    <Card>
+      <CardContent className="space-y-2 py-4">
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" className="mt-0.5" checked={absorb} disabled={saving} onChange={toggle} />
+          <span>
+            <span className="font-medium text-foreground">Include the processing fee in my ticket prices</span>
+            <span className="block text-muted-foreground">
+              {absorb
+                ? `On a ₹500 ticket the buyer pays ₹500 and you get ${formatInr(includedFeeKeeps(500))}. The ${BUYER_FEE_PERCENT}% fee (max ₹${BUYER_FEE_CAP} a ticket) comes out of your share.`
+                : `On a ₹500 ticket the buyer pays ${formatInr(500 * (1 + BUYER_FEE_PERCENT / 100))} (${BUYER_FEE_PERCENT}% fee on top, max ₹${BUYER_FEE_CAP} a ticket) and you get ₹500.`}{" "}
+              Changes apply to new sales only.
+            </span>
+          </span>
+        </label>
+        {error && <ErrorNotice message={error} />}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="py-3">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-lg font-semibold text-foreground">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TicketRow({
+  ticket,
+  event,
+  isFirst,
+  isLast,
+  onOpen,
+  onMove,
+  onToggleVisible,
+  onDuplicate,
+  onDelete,
+}: {
+  ticket: ManagedTicketType;
+  event: Event | null;
+  isFirst: boolean;
+  isLast: boolean;
+  onOpen: () => void;
+  onMove: (dir: -1 | 1) => void;
+  onToggleVisible: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const price = Number(ticket.price);
+  const isGroup = ticket.kind === "GROUP";
+  const status = SALE_STATUS_META[ticketSaleStatus(ticket, event)];
+  const offSale = isOffSale(ticket);
+  const { stats } = ticket;
+  const waitlist = stats.waitlistWaiting + stats.waitlistOffered;
+  const pct =
+    ticket.totalQuantity != null && ticket.totalQuantity > 0
+      ? Math.min(100, Math.round((ticket.soldCount / ticket.totalQuantity) * 100))
+      : null;
+
+  const stop =
+    (fn: () => void) =>
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      fn();
+    };
+
+  return (
+    <Card
+      className={`cursor-pointer transition-colors hover:border-primary/40 ${
+        offSale ? "opacity-70" : ""
+      }`}
+      onClick={onOpen}
+    >
+      <CardContent className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4 sm:flex-nowrap">
+        <div className="flex shrink-0 flex-col">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1"
+            disabled={isFirst}
+            onClick={stop(() => onMove(-1))}
+            aria-label="Move up"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1"
+            disabled={isLast}
+            onClick={stop(() => onMove(1))}
+            aria-label="Move down"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">{ticket.name}</span>
+            <Badge variant={status.variant}>{status.label}</Badge>
+            <Badge variant={isGroup ? "brand" : "neutral"}>
+              {isGroup ? (
+                <UsersThree className="mr-1 h-3 w-3" />
+              ) : (
+                <User className="mr-1 h-3 w-3" />
+              )}
+              {isGroup ? "Group" : "Individual"}
+            </Badge>
+            {price === 0 && <Badge variant="success">Free</Badge>}
+          </div>
+          {ticket.description && (
+            <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
+              {ticket.description}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {price > 0
+              ? `${inr(price)}${
+                  isGroup
+                    ? ticket.groupPricingMode === "PER_PERSON"
+                      ? " / person"
+                      : " / group"
+                    : ""
+                }`
+              : "Free"}
+            {isGroup && ` · ${ticket.minGroupSize}–${ticket.maxGroupSize} people`}
+            {" · "}
+            {ticket.totalQuantity != null
+              ? `${ticket.soldCount}/${ticket.totalQuantity} seats taken`
+              : `${ticket.soldCount} seats taken · unlimited`}
+            {` · ${stats.checkedIn} checked in`}
+            {waitlist > 0 && ` · ${waitlist} on waiting list`}
+            {stats.revenue != null && stats.revenue > 0 && ` · ${formatInr(stats.revenue)} net`}
+          </p>
+          {pct != null && (
+            <div className="mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          )}
+        </div>
+        {/* Own row on phones so the details keep the full width. */}
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={stop(onToggleVisible)}
+            aria-label={offSale ? "Put ticket on sale" : "Hide ticket"}
+            title={offSale ? "Put on sale" : "Hide from the event page"}
+          >
+            {offSale ? (
+              <EyeSlash className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={stop(onDuplicate)}
+            aria-label="Duplicate ticket"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={stop(onDelete)}
+            aria-label="Delete ticket"
+          >
+            <Trash className="h-4 w-4 text-destructive" />
+          </Button>
+          <CaretRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

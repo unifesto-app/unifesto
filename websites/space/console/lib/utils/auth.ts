@@ -83,7 +83,7 @@ export function setAuthToken(token: string) {
  * server-side. localStorage is a per-origin mirror; reading it first caused a
  * split-brain when another subdomain (hack) had signed in more recently — the
  * client would use a stale per-origin token while the proxy trusted the fresh
- * cookie, producing a 401 loop between /dashboard and /no-access.
+ * cookie, producing a 401 loop between /console and /no-access.
  */
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;

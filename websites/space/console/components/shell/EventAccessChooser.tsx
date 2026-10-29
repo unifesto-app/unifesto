@@ -23,7 +23,7 @@ export function EventAccessChooser({ events }: { events: EventAccessEntry[] }) {
         {events.map((ev) => (
           <Link
             key={ev.eventId}
-            href={`/dashboard/events/${ev.eventId}`}
+            href={`/console/events/${ev.eventId}`}
             className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-border-strong hover:bg-muted"
           >
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
