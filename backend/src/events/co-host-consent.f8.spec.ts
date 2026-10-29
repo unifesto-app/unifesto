@@ -33,6 +33,7 @@ function build() {
           .map((r) => ({ ...r, eventId: null, role: { code: r.code, scope: r.scope } })),
       ),
     },
+    userCapabilityOverride: { findMany: jest.fn(async () => []) },
     eventCoHost: {
       findUnique: jest.fn(async ({ where }: any) => {
         const l = links.find((x) => match(x, where.eventId_spaceId));

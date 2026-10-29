@@ -94,6 +94,22 @@ export function isSpaceBrandingLive(
   return !!space && space.whiteLabelEnabled && !space.brandingSuspendedAt && hasRemoveBranding;
 }
 
+/** What list payloads need to know a space's live custom domain (K2 sitemap). */
+export const CUSTOM_DOMAIN_SPACE_SELECT = {
+  whiteLabelEnabled: true,
+  brandingSuspendedAt: true,
+  domains: BRANDING_SPACE_SELECT.domains,
+  subscription: true,
+} as const;
+
+/** The custom domain a space's pages canonicalise to, under the same gate as resolveSpaceBranding. */
+export function liveCustomDomain(
+  space: (Pick<BrandSpace, 'whiteLabelEnabled' | 'brandingSuspendedAt' | 'domains'>) | null | undefined,
+  hasRemoveBranding: boolean,
+): string | null {
+  return isSpaceBrandingLive(space, hasRemoveBranding) ? (space!.domains?.[0]?.hostname ?? null) : null;
+}
+
 export function resolveSpaceBranding(
   space: BrandSpace | null | undefined,
   hasRemoveBranding: boolean,

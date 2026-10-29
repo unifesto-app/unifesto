@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { isOnline } from '../lib/offline/connectivity';
+import { syncBoothScans } from '../lib/offline/boothScanQueue';
 import {
   dismissReviewItem,
   downloadRoster,
@@ -65,10 +66,10 @@ export function useOfflineCheckin(eventId: string) {
 }
 
 /**
- * App-wide, mounted once: pushes every offline check-in queue this account
- * left on the device on sign-in and each time the app comes to the
- * foreground (reconnects are handled in the queue module), and saves the
- * guest list for check-in events on now or within a day.
+ * App-wide, mounted once: pushes every offline check-in queue (and booth scan
+ * queue, E7) this account left on the device on sign-in and each time the app
+ * comes to the foreground (reconnects are handled in the queue modules), and
+ * saves the guest list for check-in events on now or within a day.
  */
 export function useCheckinBackgroundSync(
   events: { id: string; startDateTime: string; endDateTime: string }[],
@@ -79,8 +80,11 @@ export function useCheckinBackgroundSync(
   useEffect(() => {
     if (!userId) return;
     void syncAllQueues(userId);
+    void syncBoothScans(userId);
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void syncAllQueues(userId);
+      if (state !== 'active') return;
+      void syncAllQueues(userId);
+      void syncBoothScans(userId);
     });
     return () => sub.remove();
   }, [userId]);

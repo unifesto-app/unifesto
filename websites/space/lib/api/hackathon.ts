@@ -394,6 +394,25 @@ export type RoundInput = Partial<Omit<RoundSettings, 'id' | 'order' | 'status'>>
 
 export const getRounds = (eventId: string) => call<RoundRow[]>(`${base(eventId)}/rounds`);
 export const getRound = (eventId: string, roundId: string) => call<RoundDetail>(`${base(eventId)}/rounds/${roundId}`);
+/** E5: every team's project links in a round (curator). */
+export interface RoundSubmissions {
+  round: { id: string; name: string; status: RoundStatus; closesAt: string | null };
+  teams: {
+    teamId: string;
+    teamCode: string | null;
+    name: string | null;
+    links: { label: string; url: string }[];
+    notes: string | null;
+    updatedAt: string | null;
+    updatedBy: string | null;
+    /** No links yet. */
+    missing: boolean;
+    /** A judge has scored the team in this round, so its links are locked. */
+    judged: boolean;
+  }[];
+}
+export const getRoundSubmissions = (eventId: string, roundId: string) =>
+  call<RoundSubmissions>(`${base(eventId)}/rounds/${roundId}/submissions`);
 export const createRound = (eventId: string, input: RoundInput & { name: string }) =>
   call<RoundDetail>(`${base(eventId)}/rounds`, json('POST', input));
 export const updateRound = (eventId: string, roundId: string, input: RoundInput) =>

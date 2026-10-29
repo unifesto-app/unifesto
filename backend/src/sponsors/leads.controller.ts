@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -34,7 +35,7 @@ export class LeadsController {
   @Get()
   @Can(Action.SPACE_MANAGE_SPONSORS)
   list(
-    @Param('spaceId') spaceId: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Query('status') status?: LeadStatus,
     @Query('source') source?: LeadSource,
     @Query('eventId') eventId?: string,
@@ -45,7 +46,7 @@ export class LeadsController {
   @Post()
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Manually add a lead to the funnel' })
-  create(@Param('spaceId') spaceId: string, @Body() dto: CreateLeadDto) {
+  create(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Body() dto: CreateLeadDto) {
     return this.leads.createLead(spaceId, dto);
   }
 
@@ -53,8 +54,8 @@ export class LeadsController {
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @ApiOperation({ summary: 'Re-stage or edit a lead' })
   update(
-    @Param('spaceId') spaceId: string,
-    @Param('id') id: string,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLeadDto,
   ) {
     return this.leads.updateLead(spaceId, id, dto);
@@ -62,7 +63,7 @@ export class LeadsController {
 
   @Delete(':id')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  remove(@Param('spaceId') spaceId: string, @Param('id') id: string) {
+  remove(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Param('id', ParseUUIDPipe) id: string) {
     return this.leads.deleteLead(spaceId, id);
   }
 }
