@@ -2,46 +2,111 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createContext, useContext, useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SignIn from "@/components/SignIn";
+import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
+import { myTickets, type MyTicket } from "@/lib/api/registration";
 import { clearSession, useWebSession } from "@/lib/auth";
+import { IST } from "@/lib/site";
 
-const TABS = [
-  { href: "/account", label: "Profile" },
-  { href: "/account/notifications", label: "Notifications" },
-  { href: "/account/saved", label: "Saved events" },
-  { href: "/account/certificates", label: "My certificates" },
-  { href: "/tickets", label: "My tickets" },
-  { href: "/account/delete", label: "Delete account" },
-];
+interface Account {
+  me: Me;
+  setMe: (me: Me) => void;
+  /** One row per role I hold, as the API sends it. */
+  spaces: MySpace[];
+  setSpaces: (spaces: MySpace[]) => void;
+  partnerLinks: PartnerLink[];
+}
+
+const AccountContext = createContext<Account | null>(null);
+/** What the shell loaded once for every account tab. Only inside the shell, once signed in. */
+export const useAccount = () => useContext(AccountContext)!;
 
 /**
- * K19: the web account pages, signed in through K18. The same settings the
- * app has, on the same APIs; linked sign-in methods and the notification
- * inbox stay in the app.
+ * K19: the web account pages, signed in through K18. The app's Profile tab
+ * on the same APIs: a header with my name and counts, then one tab per area.
+ * Push settings and the share card stay in the app.
  */
 export default function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/account";
   const { session, ready, pending } = useWebSession();
+  const token = session?.token ?? "";
+  const [me, setMe] = useState<Me | null>(null);
+  const [spaces, setSpaces] = useState<MySpace[]>([]);
+  const [counts, setCounts] = useState({ going: 0, been: 0 });
+  const [partnerLinks, setPartnerLinks] = useState<PartnerLink[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) return;
+    let live = true;
+    // Only the profile is required; the counts and tabs it feeds just stay empty.
+    Promise.allSettled([getMe(token), myTickets(token), getMySpaces(token), getMyPartnerLinks(token)]).then(([m, t, s, p]) => {
+      if (!live) return;
+      if (m.status === "fulfilled") setMe(m.value);
+      else setError(m.reason instanceof Error ? m.reason.message : "Couldn't load My account.");
+      if (t.status === "fulfilled") setCounts(eventCounts(t.value));
+      if (s.status === "fulfilled") setSpaces(s.value);
+      if (p.status === "fulfilled") setPartnerLinks(p.value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [token]);
+
+  const tabs = [
+    { href: "/account", label: "Profile" },
+    { href: "/account/sign-in", label: "Sign-in" },
+    { href: "/account/notifications", label: "Notifications" },
+    { href: "/tickets", label: "My tickets" },
+    { href: "/account/saved", label: "Saved events" },
+    { href: "/account/certificates", label: "My certificates" },
+    { href: "/account/circles", label: "My circles" },
+    ...(partnerLinks.length ? [{ href: "/account/partner", label: "Partner stats" }] : []),
+    { href: "/account/delete", label: "Delete account" },
+  ];
+
+  let body;
+  if (!ready) body = null;
+  else if (!session)
+    body = (
+      <SignIn
+        next={pathname}
+        pending={pending}
+        intro="Sign in with the email on your Unifesto account. We send you a code to confirm it's you."
+        submitLabel="Sign in"
+      />
+    );
+  else if (!me) body = error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading My account…</p>;
+  else
+    body = (
+      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks }}>{children}</AccountContext.Provider>
+    );
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
         <div className="mx-auto max-w-3xl">
-          <h1 className="font-display text-[clamp(1.5rem,3vw,2.2rem)] leading-tight text-paper">My account</h1>
-          {session && (
-            <p className="mt-2 text-sm text-paper/65">
-              Signed in as <strong className="text-paper">{session.email}</strong>.{" "}
-              <button type="button" onClick={clearSession} className="underline hover:text-paper">
-                Sign out
-              </button>
+          {session && me ? (
+            <Header me={me} email={session.email} {...counts} circles={new Set(spaces.map((s) => s.id)).size} />
+          ) : (
+            <h1 className="font-display text-[clamp(1.5rem,3vw,2.2rem)] leading-tight text-paper">My account</h1>
+          )}
+          {session && me?.deletionScheduledFor && pathname !== "/account/delete" && (
+            <p className="mt-5 rounded-2xl bg-night-2 px-4 py-3 text-sm text-paper/80">
+              My account closes on{" "}
+              {new Date(me.deletionScheduledFor).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: IST })}.{" "}
+              <Link href="/account/delete" className="font-medium text-primary hover:underline">
+                Keep my account
+              </Link>
             </p>
           )}
-          {session && (
+          {session && me && (
             <nav aria-label="Account" className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-              {TABS.map((t) => {
+              {tabs.map((t) => {
                 const active = pathname === t.href;
                 return (
                   <Link
@@ -58,21 +123,61 @@ export default function AccountShell({ children }: { children: React.ReactNode }
               })}
             </nav>
           )}
-          <div className="mt-8 rounded-3xl bg-night-2 p-6 sm:p-8">
-            {!ready ? null : session ? (
-              children
-            ) : (
-              <SignIn
-                next={pathname}
-                pending={pending}
-                intro="Sign in with the email on your Unifesto account. We send you a code to confirm it's you."
-                submitLabel="Sign in"
-              />
-            )}
-          </div>
+          <div className="mt-8 rounded-3xl bg-night-2 p-6 sm:p-8">{body}</div>
         </div>
       </section>
       <Footer />
     </main>
+  );
+}
+
+/** One per event, split at now, as the app counts them. */
+function eventCounts(tickets: MyTicket[]) {
+  const now = Date.now();
+  const starts = new Map(tickets.map((t) => [t.event.slug, new Date(t.event.startDateTime).getTime()]));
+  const going = [...starts.values()].filter((at) => at >= now).length;
+  return { going, been: starts.size - going };
+}
+
+/** The app's identity card: who I am and the same three counts. */
+function Header({ me, email, going, been, circles }: { me: Me; email: string; going: number; been: number; circles: number }) {
+  const stats = [
+    { label: "Going to", value: going, href: "/tickets" },
+    { label: "Been to", value: been, href: "/tickets" },
+    { label: "Circles", value: circles, href: "/account/circles" },
+  ];
+  const name = me.fullName || me.username || email;
+  const since = new Date(me.createdAt).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: IST });
+
+  return (
+    <header className="flex items-start gap-4 sm:gap-5">
+      {me.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={me.avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover sm:h-20 sm:w-20" />
+      ) : (
+        <div aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-night-3 text-xl font-semibold text-paper sm:h-20 sm:w-20">
+          {name.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+      <div className="min-w-0">
+        <h1 className="truncate font-display text-[clamp(1.4rem,3vw,2rem)] leading-tight text-paper">{name}</h1>
+        <p className="mt-1 text-sm text-paper/60">
+          {me.username && <>@{me.username} · </>}Member since {since}
+        </p>
+        <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          {stats.map((s) => (
+            <Link key={s.label} href={s.href} className="text-paper/60 hover:text-paper">
+              <strong className="font-semibold text-paper">{s.value}</strong> {s.label}
+            </Link>
+          ))}
+        </p>
+        <p className="mt-2 text-xs text-paper/55">
+          Signed in as {email}.{" "}
+          <button type="button" onClick={clearSession} className="underline hover:text-paper">
+            Sign out
+          </button>
+        </p>
+      </div>
+    </header>
   );
 }

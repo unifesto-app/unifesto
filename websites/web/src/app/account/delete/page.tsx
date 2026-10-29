@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { cancelDeletion, getMe, requestDeletion } from "@/lib/api/account";
+import { useState } from "react";
+import { cancelDeletion, requestDeletion } from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
+import { useAccount } from "../AccountShell";
 
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
@@ -17,20 +18,17 @@ const day = (iso: string) =>
 export default function DeleteAccountPage() {
   const { session } = useWebSession();
   const token = session?.token ?? "";
-  const [due, setDue] = useState<string | null | undefined>(undefined);
+  const { me, setMe } = useAccount();
+  const due = me.deletionScheduledFor;
   const [sure, setSure] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (token) getMe(token).then((m) => setDue(m.deletionScheduledFor), (e) => setError(e.message));
-  }, [token]);
 
   const act = (fn: () => Promise<{ deletionScheduledFor: string | null }>) => async () => {
     setBusy(true);
     setError("");
     try {
-      setDue((await fn()).deletionScheduledFor);
+      setMe({ ...me, deletionScheduledFor: (await fn()).deletionScheduledFor });
       setSure(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -38,8 +36,6 @@ export default function DeleteAccountPage() {
       setBusy(false);
     }
   };
-
-  if (due === undefined) return error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>;
 
   if (due)
     return (

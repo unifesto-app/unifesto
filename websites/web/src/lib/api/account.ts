@@ -5,17 +5,31 @@ import { mapEvent, type Event } from "@/lib/api/events";
 
 const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
 
+export type Gender = "MALE" | "FEMALE" | "NON_BINARY" | "PREFER_NOT_TO_SAY";
+
 export interface Me {
   fullName: string | null;
   username: string | null;
   avatarUrl: string | null;
+  bio: string | null;
+  gender: Gender | null;
+  linkedinUrl: string | null;
+  instagramUrl: string | null;
+  githubUrl: string | null;
+  websiteUrl: string | null;
+  mobileNumber: string;
+  createdAt: string;
   /** Set while a deletion request is pending: when the account closes. */
   deletionScheduledFor: string | null;
 }
 
+/** null clears a field: the API skips validation for null and stores it. */
+export type ProfilePatch = Partial<
+  Pick<Me, "fullName" | "username" | "bio" | "gender" | "linkedinUrl" | "instagramUrl" | "githubUrl" | "websiteUrl">
+>;
+
 export const getMe = (token: string) => call<Me>("GET", "/users/me", undefined, token);
-export const updateMe = (token: string, body: { fullName?: string; username?: string }) =>
-  call<Me>("PATCH", "/users/me", body, token);
+export const updateMe = (token: string, body: ProfilePatch) => call<Me>("PATCH", "/users/me", body, token);
 export const checkUsername = (username: string) =>
   call<{ available: boolean }>("POST", "/users/check-username", { username });
 
@@ -70,3 +84,51 @@ export interface MyCertificate {
   event: { id: string; title: string; slug: string };
 }
 export const getMyCertificates = (token: string) => call<MyCertificate[]>("GET", "/certificates/mine", undefined, token);
+
+/** How I sign in: one row per provider and address. Pages group them by email, like the app. */
+export interface Identity {
+  id: string;
+  provider: "EMAIL" | "GOOGLE" | "APPLE" | "PHONE";
+  email: string | null;
+  emailVerified: boolean;
+  isPrimary: boolean;
+}
+export const getIdentities = (token: string) => call<Identity[]>("GET", "/users/me/identities", undefined, token);
+/** The primary address gets my emails. */
+export const makePrimary = (token: string, id: string) => call("PATCH", `/users/me/identities/${id}/primary`, undefined, token);
+export const removeIdentity = (token: string, id: string) => call("DELETE", `/users/me/identities/${id}`, undefined, token);
+/** Revokes every access and refresh token of mine, this browser's included. */
+export const signOutEverywhere = (token: string) => call("POST", "/auth/logout-all", undefined, token);
+
+/** One row per role I hold in a space (`GET /users/me/spaces`). */
+export interface MySpace {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  city: string | null;
+  userRole: { code: string; name: string };
+}
+export const getMySpaces = (token: string) => call<MySpace[]>("GET", "/users/me/spaces", undefined, token);
+export const leaveSpace = (token: string, spaceId: string) => call("POST", `/spaces/${spaceId}/leave`, undefined, token);
+
+export interface SpaceRequest {
+  id: string;
+  name: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewNote: string | null;
+  createdAt: string;
+}
+export const getMySpaceRequests = (token: string) => call<SpaceRequest[]>("GET", "/spaces/my-requests", undefined, token);
+
+/** Links an organiser made for me to share. Only partners have any. */
+export interface PartnerLink {
+  id: string;
+  name: string;
+  event: { slug: string; title: string; startDateTime: string; space: { name: string } | null };
+  registrations: number;
+  trackingUrl: string;
+}
+export const getMyPartnerLinks = (token: string) => call<PartnerLink[]>("GET", "/partner-links/mine", undefined, token);
+export const getPartnerToday = (token: string, id: string) =>
+  call<{ today: number }>("GET", `/partner-links/${id}/stats`, undefined, token).then((r) => r.today);
