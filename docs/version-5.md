@@ -966,3 +966,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · F4 user IAM: Apex can suspend (with end date) or ban a user with a reason, sign them out everywhere, and add per-user capability overrides (removals win; grants one space, never platform); auth rejects suspended users at login, refresh and every request (#411)
 - **2026-10-29** · E5 hackathon submissions: curator Project links page per round (missing filter, CSV), links lock once a judge scores them, mobile stale draft fixed (#412)
 - **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
+- **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)
