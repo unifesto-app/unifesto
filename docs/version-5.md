@@ -409,7 +409,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
-| F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | planned |
+| F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | done (#405) |
 
 ### G · Mobile scope, design and performance
 
@@ -959,3 +959,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · 5.0.0 release and final deadline moved to Sun 15 Nov (freeze 6 Nov, submit 9 Nov); marketing and non-Z8 work parked on the board (#402)
 - **2026-10-29** · U1–U3 follow-ups: IAM console shows never-grantable Employee cells as locked; Connect Claude (PM tokens) tab hidden from employees (#403)
 - **2026-10-29** · G14 finished: last ~30 Apex/Space labels tied to their controls, shared Field + question inputs label automatically (#404)
+- **2026-10-29** · F8 co-hosting is now a request: invites stay pending (no access, listing or credit) until a Space Admin of the invited space accepts on Space Events; existing links backfilled as accepted (#405)
