@@ -2,7 +2,7 @@
 
 import { optimized } from "@/lib/img";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   MagnifyingGlass,
   SlidersHorizontal,
@@ -21,7 +21,8 @@ import EmptyState from "@/components/EmptyState";
 import {
   getListedEvents,
   filterEvents,
-  ALL_CATEGORIES,
+  browseFacets,
+  trendingEvents,
   STATUS_TABS,
   DATE_FILTERS,
   PRICE_FILTERS,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/api/events";
 import PageHero from "@/components/site/PageHero";
 import { IST } from "@/lib/site";
+import { detectCity } from "@/lib/near-city";
 
 type PriceKey = "all" | "free" | "paid";
 type DateKey = "all" | "today" | "week" | "upcoming";
@@ -47,7 +49,6 @@ function formatFeatureDate(iso?: string): string {
    so the top of the page has a clear focal rhythm instead of an identical
    card wall. Reuses the same clickable-article pattern as EventCard. */
 function FeatureCard({ event }: { event: Event }) {
-  const router = useRouter();
   const space = event.space ?? event.organization;
   const organizer = space?.name || "Organizer";
   const image = event.banner_url || event.thumbnail_url || event.image_url;
@@ -65,18 +66,10 @@ function FeatureCard({ event }: { event: Event }) {
   const freeAvailable = !isFree && !!event.has_free_tickets;
 
   return (
-    <article
-      role="link"
-      tabIndex={0}
+    <Link
+      href={href}
       aria-label={`${event.title} by ${organizer}`}
-      onClick={() => router.push(href)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          router.push(href);
-        }
-      }}
-      className="group relative flex h-full w-[300px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3 sm:w-[360px]"
+      className="group relative flex h-full w-[300px] flex-shrink-0 flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3 sm:w-[360px]"
     >
       <div className="relative h-44 overflow-hidden bg-night-3">
         {image && (
@@ -95,7 +88,7 @@ function FeatureCard({ event }: { event: Event }) {
           }
         />
         <span className="absolute left-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-ink">
-          {event.is_trending ? "Trending" : "Featured"}
+          {event.registered_count ? `${event.registered_count.toLocaleString("en-IN")} going` : "Trending"}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-2.5 p-6">
@@ -124,7 +117,7 @@ function FeatureCard({ event }: { event: Event }) {
           </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
@@ -166,17 +159,53 @@ function FilterGroup({
   );
 }
 
+/* A labelled dropdown inside the filter panel, for long option lists. */
+function FilterSelect({
+  label,
+  all,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  all: string;
+  options: { key: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold text-paper/60">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-full bg-paper/[0.06] px-4 py-2 text-xs font-medium text-paper outline-none [&>option]:bg-night-2"
+      >
+        <option value="">{all}</option>
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  // K1: browse by city and by college or club (a space's slug); "" = all.
+  const [city, setCity] = useState("");
+  const [space, setSpace] = useState("");
+  // The visitor's city, only when they already allowed location (never asks).
+  const [nearCity, setNearCity] = useState<string | null>(null);
   const [status, setStatus] = useState("all");
   const [price, setPrice] = useState<PriceKey>("all");
   const [dateRange, setDateRange] = useState<DateKey>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [allEvents, setAllEvents] = useState<Event[]>(initialEvents ?? []);
   const [loading, setLoading] = useState(!initialEvents);
-  // The server already fetched the unfiltered list; skip refetching it on mount.
-  const seeded = useRef(!!initialEvents);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const itemsPerPage = 12;
   const gridTopRef = useRef<HTMLDivElement>(null);
@@ -193,49 +222,34 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (c) setCategory(c);
     if (st) setStatus(st);
+    if (params.get("city")) setCity(params.get("city")!);
+    if (params.get("space")) setSpace(params.get("space")!);
+    detectCity({ prompt: false }).then(setNearCity);
   }, []);
 
+  // The server sends every listed event (K1), so filters run here. Fetch only
+  // when the server came back empty.
   useEffect(() => {
-    if (seeded.current && category === "All" && price === "all") {
-      seeded.current = false;
-      return;
-    }
-    seeded.current = false;
-    const loadEvents = async () => {
-      setLoading(true);
-      try {
-        const filters: Record<string, unknown> = {};
-        if (category !== "All") filters.category = category;
-        if (price === "free") filters.is_free = true;
-        if (price === "paid") filters.is_free = false;
-
-        setAllEvents(await getListedEvents(filters));
-      } catch (error) {
-        console.error("Error loading events:", error);
-        setAllEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadEvents();
-  }, [category, price]);
+    if (initialEvents) return;
+    getListedEvents()
+      .then(setAllEvents, () => setAllEvents([]))
+      .finally(() => setLoading(false));
+  }, [initialEvents]);
 
   const filteredEvents = useMemo(
-    () => filterEvents(allEvents, { query, category, status, price, dateRange }),
-    [allEvents, query, category, status, price, dateRange]
+    () => filterEvents(allEvents, { query, category, city, space, status, price, dateRange }),
+    [allEvents, query, category, city, space, status, price, dateRange]
   );
 
-  // Featured strip: only surfaced on the neutral view (no active filters), so
-  // it never contradicts what the user is actively searching for.
-  const featuredEvents = useMemo(
-    () => allEvents.filter((e) => e.is_featured || e.is_trending).slice(0, 8),
-    [allEvents]
-  );
+  const facets = useMemo(() => browseFacets(allEvents), [allEvents]);
+  // "Trending near you": the chosen city, else where the visitor is.
+  const trendCity = city || nearCity;
+  const trending = useMemo(() => trendingEvents(allEvents, trendCity), [allEvents, trendCity]);
+  const trendsLocal = !!trendCity && trending.some((e) => e.city?.trim().toLowerCase() === trendCity.toLowerCase());
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, category, status, price, dateRange]);
+  }, [query, category, city, space, status, price, dateRange]);
 
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -245,6 +259,8 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
   const clearAll = () => {
     setQuery("");
     setCategory("All");
+    setCity("");
+    setSpace("");
     setStatus("all");
     setPrice("all");
     setDateRange("all");
@@ -258,6 +274,8 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
   const hasFilters =
     Boolean(query) ||
     category !== "All" ||
+    Boolean(city) ||
+    Boolean(space) ||
     status !== "all" ||
     price !== "all" ||
     dateRange !== "all";
@@ -271,6 +289,8 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
   const chips: { label: string; onClear: () => void }[] = [];
   if (query) chips.push({ label: `"${query}"`, onClear: () => setQuery("") });
   if (category !== "All") chips.push({ label: category, onClear: () => setCategory("All") });
+  if (city) chips.push({ label: `In ${city}`, onClear: () => setCity("") });
+  if (space) chips.push({ label: facets.spaces.find((s) => s.key === space)?.name ?? space, onClear: () => setSpace("") });
   if (status !== "all" && activeStatusLabel)
     chips.push({ label: activeStatusLabel, onClear: () => setStatus("all") });
   if (dateRange !== "all" && activeDateLabel)
@@ -291,19 +311,19 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
       {/* Same gap below the hero's horizon line as above it */}
       <div className="h-14 md:h-20" aria-hidden />
 
-      {/* Featured strip: only on the clean view so it never fights the filters.
-          No loading skeleton: most of the time nothing is featured, and a
-          placeholder that then vanishes shifted the whole grid (CLS).
-          ponytail: when featured events exist the strip still pops in above
-          the grid; server-render the event list if that shows up in CWV. */}
-      {!hasFilters && !loading && featuredEvents.length > 0 && (
+      {/* K1: "Trending near you", busiest live and upcoming events, in the
+          visitor's (or chosen) city first. Shown unless a filter other than
+          the city is on, so it never fights a search.
+          ponytail: it pops in above the grid once events load client-side
+          (no placeholder, to avoid CLS); server-render it if that shows in CWV. */}
+      {!loading && trending.length > 0 && !(hasFilters && !(city && chips.length === 1)) && (
         <section className="px-5 pb-6 sm:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="mb-4 flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-paper">Featured and trending</h2>
+              <h2 className="text-lg font-semibold text-paper">{trendsLocal ? `Trending in ${trendCity}` : "Trending now"}</h2>
             </div>
             <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:px-8 [&::-webkit-scrollbar]:hidden" data-stagger="rise">
-              {featuredEvents.map((e) => <FeatureCard key={e.id} event={e} />)}
+              {trending.map((e) => <FeatureCard key={e.id} event={e} />)}
             </div>
           </div>
         </section>
@@ -359,7 +379,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
               onClick={() => setFiltersOpen((o) => !o)}
               aria-expanded={filtersOpen}
               className={`btn btn-sm md:ml-auto ${
-                filtersOpen || category !== "All" || dateRange !== "all" || price !== "all" ? "btn-primary" : "btn-secondary"
+                filtersOpen || category !== "All" || city || space || dateRange !== "all" || price !== "all" ? "btn-primary" : "btn-secondary"
               }`}
             >
               <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -370,9 +390,23 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
           {/* Expandable filter panel */}
           {filtersOpen && (
             <div className="animate-pop-in mt-3 grid origin-top gap-5 rounded-3xl bg-night-2 p-6 sm:grid-cols-3">
+              <FilterSelect
+                label="City"
+                all="Every city"
+                options={facets.cities.map((c) => ({ key: c.key, label: `${c.key} (${c.count})` }))}
+                value={city}
+                onChange={setCity}
+              />
+              <FilterSelect
+                label="College or club"
+                all="Every college and club"
+                options={facets.spaces.map((s) => ({ key: s.key, label: `${s.name} (${s.count})` }))}
+                value={space}
+                onChange={setSpace}
+              />
               <FilterGroup
                 label="Category"
-                options={ALL_CATEGORIES.map((c) => ({ key: c, label: c }))}
+                options={[{ key: "All", label: "All" }, ...facets.categories.map((c) => ({ key: c.key, label: c.key }))]}
                 value={category}
                 onChange={setCategory}
               />
@@ -444,11 +478,14 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
           <div className="grid grid-cols-1">
             <EmptyState
               onClear={clearAll}
+              suggestions={facets.categories.length ? facets.categories.slice(0, 4).map((c) => c.key) : undefined}
               onCategory={(cat) => {
                 setQuery("");
                 setStatus("all");
                 setPrice("all");
                 setDateRange("all");
+                setCity("");
+                setSpace("");
                 setCategory(cat);
               }}
             />

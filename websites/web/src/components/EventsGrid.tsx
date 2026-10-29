@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { MagnifyingGlass, ArrowRight } from "@unifesto/unicon/react";
 import EventCard from "./EventCard";
 import { getListedEvents, filterEvents, type Event } from "@/lib/api/events";
+import { detectCity } from "@/lib/near-city";
 
 export default function EventsGrid() {
   const [query, setQuery] = useState("");
@@ -27,40 +28,7 @@ export default function EventsGrid() {
   // Detect device location → reverse-geocode to a city name (mirrors mobile app)
   useEffect(() => {
     let active = true;
-
-    // Check if geolocation is available
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-
-    // Check if we're in a secure context (HTTPS or localhost)
-    // Most modern browsers require secure context for geolocation
-    if (typeof window !== "undefined" && !window.isSecureContext) {
-      console.warn("Geolocation requires a secure context (HTTPS)");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          const data = await res.json();
-          const detected: string | null =
-            data?.city || data?.locality || data?.principalSubdivision || null;
-          if (active && detected) setCity(detected);
-        } catch (error) {
-          /* keep fallback heading */
-          console.error("Error fetching location:", error);
-        }
-      },
-      (error) => {
-        /* permission denied or unavailable — keep fallback heading */
-        // Silently handle - no need to log since it's an expected user action
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
-    );
-
+    detectCity({ prompt: true }).then((c) => active && c && setCity(c));
     return () => {
       active = false;
     };

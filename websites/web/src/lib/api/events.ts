@@ -30,6 +30,10 @@ export interface Event {
   country?: string;
   event_type: string;
   category?: string;
+  /** Every category the event is in, primary first (K1). */
+  categories?: string[];
+  /** Registrations so far; drives "Trending" (K1). */
+  registered_count?: number;
   tags?: string[];
   max_attendees?: number;
   is_free: boolean;
@@ -311,6 +315,8 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     country: r.country as string | undefined,
     event_type: (r.type ?? r.event_type) as string,
     category: r.category as string | undefined,
+    categories: ((r.categories as string[] | undefined)?.length ? r.categories : r.category ? [r.category] : []) as string[],
+    registered_count: (r.registeredCount ?? (r._count as Record<string, unknown> | undefined)?.registrations) as number | undefined,
     tags: (r.tags ?? []) as string[],
     max_attendees: (r.capacity ?? r.max_attendees) as number | undefined,
     is_free: isFree,
@@ -437,11 +443,14 @@ export async function getEvents(
  * Every listed event for `when`, page by page (the API caps a page at 100).
  * For the sitemap, which must not stop at the first page.
  */
-export async function getAllEvents(when: 'upcoming' | 'past'): Promise<Event[]> {
+export async function getAllEvents(
+  when: 'upcoming' | 'past',
+  filters?: Omit<NonNullable<Parameters<typeof getEvents>[2]>, 'when'>,
+): Promise<Event[]> {
   const all: Event[] = [];
   // ponytail: 50 pages = 5,000 events; split into a sitemap index past that.
   for (let page = 1; page <= 50; page++) {
-    const { events, total } = await getEvents(page, 100, { when });
+    const { events, total } = await getEvents(page, 100, { ...filters, when });
     all.push(...events);
     if (!events.length || all.length >= total) break;
   }
@@ -455,11 +464,12 @@ export async function getAllEvents(when: 'upcoming' | 'past'): Promise<Event[]> 
 export async function getListedEvents(
   filters?: Omit<NonNullable<Parameters<typeof getEvents>[2]>, 'when'>,
 ): Promise<Event[]> {
+  // K1: every upcoming event (it stopped at the first 100), plus the latest past ones.
   const [upcoming, past] = await Promise.all([
-    getEvents(1, 100, { ...filters, when: 'upcoming' }),
+    getAllEvents('upcoming', filters),
     getEvents(1, 50, { ...filters, when: 'past' }),
   ]);
-  return [...upcoming.events, ...past.events];
+  return [...upcoming, ...past.events];
 }
 
 /**
@@ -543,6 +553,9 @@ export function filterEvents(
   filters: {
     query?: string;
     category?: string;
+    /** K1: browse by city (any case) and by college/club (the hosting space's slug). */
+    city?: string;
+    space?: string;
     status?: string;
     price?: "all" | "free" | "paid";
     dateRange?: "all" | "today" | "week" | "upcoming";
@@ -561,11 +574,15 @@ export function filterEvents(
       e.description?.toLowerCase().includes(filters.query.toLowerCase()) ||
       e.organization?.name.toLowerCase().includes(filters.query.toLowerCase());
 
-    // Category filter
+    // Category filter (an event can be in up to three)
     const matchesCategory =
       !filters.category ||
       filters.category === "All" ||
-      e.category === filters.category;
+      e.category === filters.category ||
+      !!e.categories?.includes(filters.category);
+
+    const matchesCity = !filters.city || e.city?.trim().toLowerCase() === filters.city.toLowerCase();
+    const matchesSpace = !filters.space || (e.space ?? e.organization)?.slug === filters.space;
 
     // Price filter
     const matchesPrice =
@@ -598,24 +615,49 @@ export function filterEvents(
       (filters.status === "ongoing" && start <= now && end >= now) ||
       (filters.status === "past" && end < now);
 
-    return matchesQuery && matchesCategory && matchesPrice && matchesDate && matchesStatus;
+    return matchesQuery && matchesCategory && matchesCity && matchesSpace && matchesPrice && matchesDate && matchesStatus;
   });
 }
 
 // Constants for filters
-export const ALL_CATEGORIES = [
-  "All",
-  "Technology",
-  "Business",
-  "Arts & Culture",
-  "Sports",
-  "Education",
-  "Health & Wellness",
-  "Music",
-  "Food & Drink",
-  "Community",
-  "Other",
-];
+/**
+ * K1: what's actually listed, for browsing: categories, cities and the
+ * colleges or clubs hosting, each with how many events it has, busiest first.
+ * Derived from the events, so there's never an empty option.
+ */
+export function browseFacets(events: Event[]) {
+  const tally = <K extends string>(keyOf: (e: Event) => (K | undefined)[]) => {
+    const m = new Map<K, number>();
+    for (const e of events) for (const k of new Set(keyOf(e))) if (k) m.set(k, (m.get(k) ?? 0) + 1);
+    return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([key, count]) => ({ key, count }));
+  };
+  const names = new Map<string, string>();
+  // Cities count case-insensitively and show the first spelling seen.
+  const spelling = new Map<string, string>();
+  for (const e of events) {
+    const sp = e.space ?? e.organization;
+    if (sp?.slug) names.set(sp.slug, sp.name);
+    const c = e.city?.trim();
+    if (c && !spelling.has(c.toLowerCase())) spelling.set(c.toLowerCase(), c);
+  }
+  return {
+    categories: tally((e) => e.categories?.length ? e.categories : [e.category]),
+    cities: tally((e) => [e.city?.trim().toLowerCase()]).map((c) => ({ key: spelling.get(c.key) ?? c.key, count: c.count })),
+    spaces: tally((e) => [(e.space ?? e.organization)?.slug]).map((s) => ({ ...s, name: names.get(s.key) ?? s.key })),
+  };
+}
+
+/**
+ * K1: "Trending": live and upcoming events by registrations, in `city` first
+ * when there is one. The featured/trending flags were never set, so the old
+ * strip never showed.
+ */
+export function trendingEvents(events: Event[], city?: string | null, max = 8): Event[] {
+  const now = Date.now();
+  const live = events.filter((e) => new Date(e.end_date || e.start_date).getTime() >= now && (e.registered_count ?? 0) > 0);
+  const near = (e: Event) => (city && e.city?.trim().toLowerCase() === city.toLowerCase() ? 1 : 0);
+  return live.sort((a, b) => near(b) - near(a) || (b.registered_count ?? 0) - (a.registered_count ?? 0)).slice(0, max);
+}
 
 export const STATUS_TABS = [
   { key: "all", label: "All Events" },

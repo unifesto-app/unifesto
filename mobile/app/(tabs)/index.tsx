@@ -209,7 +209,11 @@ export default function HomeTab() {
           </Section>
         ) : null}
 
-        <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'} onSeeAll={() => router.push('/events')}>
+        <Section
+          title={data.detectedCity ? 'Happening near you' : 'Happening soon'}
+          // K1: "near you" opens that city's events.
+          onSeeAll={() => router.push(data.detectedCity ? { pathname: '/events', params: { city: data.detectedCity } } : '/events')}
+        >
           <HeroCarousel
             events={data.heroEvents}
             loading={data.isLoadingHero}

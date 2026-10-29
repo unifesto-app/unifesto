@@ -3,12 +3,14 @@ import { MagnifyingGlass } from "@unifesto/unicon/react";
 interface EmptyStateProps {
   onClear: () => void;
   onCategory: (cat: string) => void;
+  /** Categories that have events (K1); falls back to a few common ones. */
+  suggestions?: string[];
 }
 
 const SUGGESTIONS = ["Hackathon", "Workshop", "Cultural", "Entrepreneurship"];
 
 /* No results: say so plainly, offer a way back, and a few doors to try. */
-export default function EmptyState({ onClear, onCategory }: EmptyStateProps) {
+export default function EmptyState({ onClear, onCategory, suggestions = SUGGESTIONS }: EmptyStateProps) {
   return (
     <div className="animate-pop-in col-span-full flex flex-col items-center justify-center gap-5 rounded-3xl bg-night-2 px-6 py-20 text-center">
       <MagnifyingGlass className="h-10 w-10 text-primary" weight="bold" aria-hidden="true" />
@@ -17,7 +19,7 @@ export default function EmptyState({ onClear, onCategory }: EmptyStateProps) {
         <p className="mx-auto mt-1 max-w-xs text-sm text-paper/60">Try a different search, or one of these:</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        {SUGGESTIONS.map((cat) => (
+        {suggestions.map((cat) => (
           <button
             key={cat}
             onClick={() => onCategory(cat)}

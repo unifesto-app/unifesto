@@ -168,9 +168,11 @@ export class SpacesService {
     visibility?: SpaceVisibility;
     search?: string;
     parentId?: string;
+    /** K1: exact city, any case. */
+    city?: string;
     viewerId?: string;
   }) {
-    const { page = 1, limit = 10, status, visibility, search, parentId, viewerId } = params;
+    const { page = 1, limit = 10, status, visibility, search, parentId, city, viewerId } = params;
     const skip = (page - 1) * limit;
 
     // Private spaces only list for their members (platform admins see all).
@@ -188,6 +190,8 @@ export class SpacesService {
 
     
     if (parentId) { where.parentSpaceId = parentId; }
+    // K1: "Spaces near you" sends the device's city; it used to be ignored.
+    if (city) where.city = { equals: city, mode: 'insensitive' };
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -218,7 +222,14 @@ export class SpacesService {
           domains: CUSTOM_DOMAIN_SPACE_SELECT.domains,
           subscription: true,
         },
-        orderBy: { createdAt: 'desc' },
+        // K1: most active first, so the directory doesn't open on empty
+        // placeholder spaces: verified, then by events, then by members.
+        orderBy: [
+          { verifiedAt: { sort: 'desc', nulls: 'last' } },
+          { events: { _count: 'desc' } },
+          { userRoles: { _count: 'desc' } },
+          { createdAt: 'desc' },
+        ],
       }),
       this.prisma.space.count({ where }),
     ]);

@@ -71,6 +71,15 @@ export function rollUpToSuperEvents(events: Event[]): Event[] {
 }
 
 /**
+ * K1: a placeholder space (unverified, no events, just its creator) stays off
+ * Home's discovery rails, so they open on spaces that run things.
+ */
+export function isPlaceholderSpace(s: Space): boolean {
+  const count = (s as Space & { _count?: { events?: number; userRoles?: number } })._count;
+  return !s.verifiedAt && !(count?.events ?? s.event_count) && (count?.userRoles ?? s.member_count ?? 0) <= 1;
+}
+
+/**
  * /users/me/spaces returns one row per role, so a Space Admin who is also a
  * Member shows up twice. Keep one row per space, preferring a non-member role.
  */
@@ -182,8 +191,8 @@ export function useHomeData() {
   const loadAllSpaces = useCallback(async () => {
     try {
       setIsLoadingAllSpaces(true);
-      const response = await getAllSpaces({ page: 1, limit: 8 });
-      setAllSpaces(response.spaces);
+      const response = await getAllSpaces({ page: 1, limit: 24 });
+      setAllSpaces(response.spaces.filter((sp) => !isPlaceholderSpace(sp)).slice(0, 8));
     } catch (error) {
       if (__DEV__) console.error('Failed to load all spaces:', error);
       setAllSpaces([]);
@@ -285,10 +294,11 @@ export function useHomeData() {
       setIsLoadingNearby(true);
       const [eventsRes, spacesRes] = await Promise.all([
         getEvents({ page: 1, limit: 10, city }),
-        getAllSpaces({ page: 1, limit: 8, city }),
+        // Filtered by city on the server since K1 (it used to ignore `city`).
+        getAllSpaces({ page: 1, limit: 24, city }),
       ]);
       setNearbyEvents(eventsRes?.data || eventsRes?.events || []);
-      setNearbySpaces(spacesRes?.spaces || []);
+      setNearbySpaces((spacesRes?.spaces || []).filter((sp) => !isPlaceholderSpace(sp)).slice(0, 8));
     } catch {
       setNearbyEvents([]);
       setNearbySpaces([]);
