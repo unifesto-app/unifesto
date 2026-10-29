@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarBlank, CaretDown, CaretRight, Tray } from "@unifesto/unicon/react";
+import { CalendarBlank, CaretDown, Tray } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { getInboxUnread, getMyUnreadCases, MY_READ_EVENT } from "@/lib/api/support";
@@ -13,7 +13,7 @@ import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 import { useCrumbNames } from "./Breadcrumbs";
 import { useEventNavGroups } from "./EventNav";
-import { BASE_URL, ME_GROUP, currentItem, resolveNavGroups } from "./nav-config";
+import { BASE_URL, MY_SPACES_ITEM, accountGroup, currentItem, isPersonalPath, resolveNavGroups } from "./nav-config";
 
 const isAt = (pathname: string, href: string, exact?: boolean) =>
   pathname === href || (!exact && pathname.startsWith(`${href}/`));
@@ -21,32 +21,27 @@ const isAt = (pathname: string, href: string, exact?: boolean) =>
 /**
  * The sidebar as one tree (the full rail and the phone drawer):
  *
- *   Account     Dashboard · Inbox · My tickets · Support · Saved events · My certificates · My account
- *   My Spaces   ▾ the space I'm in: its Dashboard, Events, Members, Finance…
+ *   Account   Dashboard · Inbox · My tickets · Support · Saved events · My certificates · My account
+ *             My Spaces: the page listing them; while I work in one, it opens here
+ *               ▾ the space I'm in: its Dashboard, Events, Members, Finance…
  *                   ▾ the event I'm in, under Events: its Dashboard, Attendees…
- *               ▸ my other spaces: opening one switches to it
  *
  * Built from the same menus and capability filters as the icon rail.
  */
 export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { spaces, currentSpace, setCurrentSpace, access, can, hasAccess } = useSession();
+  const { currentSpace, access, can, hasAccess } = useSession();
   const names = useCrumbNames();
   const unread = useDeskUnread(currentSpace?.id, can("event:manage-support"), pathname);
   const mine = useMyUnread();
-  const personal = ME_GROUP.items.filter((i) => !i.paletteOnly);
+  const personal = accountGroup(hasAccess).items;
   const here = currentItem(personal, pathname);
+  // On a space page (none of my own, nor the list itself) that space opens under My Spaces.
+  const inSpace = hasAccess && !here && !isPersonalPath(pathname) ? currentSpace : null;
 
   const inEvent = pathname.match(/^\/console\/events\/([^/]+)/)?.[1];
   const openEvent = inEvent && inEvent !== "new" ? inEvent : null;
   const eventTitle = (id: string) => names.get(`${BASE_URL}/events/${id}`) ?? "Event";
-
-  const switchTo = (space: SpaceMembership) => {
-    setCurrentSpace(space);
-    router.push(`${BASE_URL}/space`);
-    onNavigate?.();
-  };
 
   const spaceMenu = (space: SpaceMembership) => {
     // Event-only operators: just the events they were added to, and the Assist inbox for those.
@@ -98,7 +93,7 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   return (
-    <nav aria-label="Console" className="space-y-6 p-3">
+    <nav aria-label="Console" className="p-3">
       <Section label="Account">
         {personal.map((i) => (
           <li key={i.href}>
@@ -110,33 +105,17 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
               badge={i.href === "/account/inbox" ? mine.inbox : i.href === "/account/support" ? mine.support : 0}
               onNavigate={onNavigate}
             />
+            {i === MY_SPACES_ITEM && inSpace && (
+              <Nest>
+                <li>
+                  <Branch href={`${BASE_URL}/space`} label={inSpace.name} onNavigate={onNavigate} />
+                  <Nest>{spaceMenu(inSpace)}</Nest>
+                </li>
+              </Nest>
+            )}
           </li>
         ))}
       </Section>
-
-      {hasAccess && spaces.length > 0 && (
-        <Section label="My Spaces">
-          {spaces.map((space) =>
-            space.id === currentSpace?.id ? (
-              <li key={space.id}>
-                <Branch href={`${BASE_URL}/space`} label={space.name} onNavigate={onNavigate} />
-                <Nest>{spaceMenu(space)}</Nest>
-              </li>
-            ) : (
-              <li key={space.id}>
-                <button
-                  type="button"
-                  onClick={() => switchTo(space)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <CaretRight aria-hidden className="h-3.5 w-3.5 shrink-0" weight="bold" />
-                  <span className="min-w-0 truncate">{space.name}</span>
-                </button>
-              </li>
-            ),
-          )}
-        </Section>
-      )}
     </nav>
   );
 }

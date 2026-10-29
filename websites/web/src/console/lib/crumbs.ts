@@ -1,6 +1,7 @@
 /**
- * The console header's breadcrumb trail, from the URL: Dashboard › space › section
- * › item › page. Pure, so it is tested without React (crumbs.test.ts).
+ * The console header's breadcrumb trail, from the URL: Dashboard › My Spaces ›
+ * space › section › item › page. Pure, so it is tested without React
+ * (crumbs.test.ts).
  */
 export interface Crumb {
   href: string;
@@ -48,9 +49,13 @@ export function trail(pathname: string, names: CrumbNames): Crumb[] {
   const segs = pathname.slice(BASE.length).split("/").filter(Boolean);
   if (!segs.length) return crumbs;
 
-  const personal = segs[0] in PERSONAL;
-  if (!personal && names.space) crumbs.push({ href: `${BASE}/space`, label: names.space, name: true });
-  if (segs[0] === "space") return crumbs;
+  // Space pages sit under My Spaces and the space; mine sit straight under Dashboard.
+  if (!(segs[0] in PERSONAL)) {
+    crumbs.push({ href: `${BASE}/spaces`, label: "My Spaces" });
+    if (segs[0] === "spaces") return crumbs;
+    if (names.space) crumbs.push({ href: `${BASE}/space`, label: names.space, name: true });
+    if (segs[0] === "space") return crumbs;
+  }
 
   let href = BASE;
   segs.forEach((seg, i) => {

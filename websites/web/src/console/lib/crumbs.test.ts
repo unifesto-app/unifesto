@@ -10,18 +10,19 @@ const names: CrumbNames = {
 };
 const labels = (path: string, n: CrumbNames = names) => trail(path, n).map((c) => c.label).join(" › ");
 
-test("space pages sit under Dashboard and the space", () => {
+test("space pages sit under Dashboard, My Spaces and the space", () => {
   assert.equal(labels("/console"), "Dashboard");
-  assert.equal(labels("/console/space"), "Dashboard › CBIT Coding Club");
-  assert.equal(labels("/console/events"), "Dashboard › CBIT Coding Club › Events");
-  assert.equal(labels("/console/settings/branding"), "Dashboard › CBIT Coding Club › Settings › Branding");
-  assert.equal(labels("/console/events/ev-1/attendees"), "Dashboard › CBIT Coding Club › Events › Tech Fest 2026 › Attendees");
-  assert.equal(labels("/console/events/ev-1/attendees/add"), "Dashboard › CBIT Coding Club › Events › Tech Fest 2026 › Attendees › Add");
-  assert.equal(labels("/console/events/ev-1/hackathon/judges"), "Dashboard › CBIT Coding Club › Events › Tech Fest 2026 › Sprint › Judges");
+  assert.equal(labels("/console/spaces"), "Dashboard › My Spaces");
+  assert.equal(labels("/console/space"), "Dashboard › My Spaces › CBIT Coding Club");
+  assert.equal(labels("/console/events"), "Dashboard › My Spaces › CBIT Coding Club › Events");
+  assert.equal(labels("/console/settings/branding"), "Dashboard › My Spaces › CBIT Coding Club › Settings › Branding");
+  assert.equal(labels("/console/events/ev-1/attendees"), "Dashboard › My Spaces › CBIT Coding Club › Events › Tech Fest 2026 › Attendees");
+  assert.equal(labels("/console/events/ev-1/attendees/add"), "Dashboard › My Spaces › CBIT Coding Club › Events › Tech Fest 2026 › Attendees › Add");
+  assert.equal(labels("/console/events/ev-1/hackathon/judges"), "Dashboard › My Spaces › CBIT Coding Club › Events › Tech Fest 2026 › Sprint › Judges");
   // Before the event layout names it.
-  assert.equal(labels("/console/events/ev-2"), "Dashboard › CBIT Coding Club › Events › Event");
+  assert.equal(labels("/console/events/ev-2"), "Dashboard › My Spaces › CBIT Coding Club › Events › Event");
   // While the space is loading, no space crumb.
-  assert.equal(labels("/console/members", { ...names, space: null }), "Dashboard › Members");
+  assert.equal(labels("/console/members", { ...names, space: null }), "Dashboard › My Spaces › Members");
 });
 
 test("personal pages sit under Dashboard only, and every crumb links to its own path", () => {
@@ -30,6 +31,6 @@ test("personal pages sit under Dashboard only, and every crumb links to its own 
   assert.equal(labels("/console/account/sign-in"), "Dashboard › My account › Sign-in");
   assert.deepEqual(
     trail("/console/events/ev-1/attendees", names).map((c) => c.href),
-    ["/console", "/console/space", "/console/events", "/console/events/ev-1", "/console/events/ev-1/attendees"],
+    ["/console", "/console/spaces", "/console/space", "/console/events", "/console/events/ev-1", "/console/events/ev-1/attendees"],
   );
 });

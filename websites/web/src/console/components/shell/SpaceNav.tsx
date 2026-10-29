@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/console/lib/context/SessionContext";
-import { BASE_URL, ME_GROUP, currentItem, resolveNavGroups, type NavGroup } from "./nav-config";
+import { BASE_URL, accountGroup, currentItem, resolveNavGroups, type NavGroup } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 
@@ -36,7 +36,7 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
 
   // Everyone gets the personal section; the space ones need a role there (V9).
   const space = hasAccess ? currentSpace : null;
-  const navGroups: NavGroup[] = [ME_GROUP, ...(space ? resolveNavGroups(space, access) : [])];
+  const navGroups: NavGroup[] = [accountGroup(hasAccess), ...(space ? resolveNavGroups(space, access) : [])];
 
   const current = currentItem(navGroups.flatMap((g) => g.items.filter((i) => !i.paletteOnly)), pathname);
 
