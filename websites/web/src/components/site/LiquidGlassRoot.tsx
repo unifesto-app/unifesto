@@ -13,9 +13,9 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
     const root = ref.current;
     if (!root || matchMedia("(prefers-reduced-transparency: reduce)").matches) return;
     let instance: { destroy(): void } | undefined;
-    let cancelled = false;
+    let run = 0; // bumping it cancels any start still in flight
 
-    (async () => {
+    const start = async (id: number) => {
       await document.fonts.ready;
       // The glass photographs the scene once: wait for the entrances to settle
       // (looping animations never finish, so they are skipped), at most 2 s in
@@ -30,19 +30,34 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
         new Promise((resolve) => setTimeout(resolve, 2000)),
       ]);
       const { LiquidGlass } = await import("@/vendor/liquidglass");
-      if (cancelled) return;
-      instance = await LiquidGlass.init({
+      if (id !== run) return;
+      const next = await LiquidGlass.init({
         root,
         glassElements: root.querySelectorAll<HTMLElement>(":scope > [data-glass]"),
         // Frosted glass: blur what's behind, no tint.
         defaults: { blurAmount: 0.35, cornerRadius: 12, zRadius: 24, edgeHighlight: 0.12 },
       });
-      if (cancelled) instance.destroy();
-      else root.classList.add("lg-live");
-    })().catch(() => undefined); // no WebGL: the solid cards stay
+      if (id !== run) return next.destroy();
+      instance = next;
+      root.classList.add("lg-live");
+    };
+
+    const restart = () => {
+      run += 1;
+      instance?.destroy();
+      instance = undefined;
+      root.classList.remove("lg-live");
+      start(run).catch(() => undefined); // no WebGL: the solid cards stay
+    };
+
+    restart();
+    // The photo is taken once, so a light/dark switch needs a new one.
+    const themeWatch = new MutationObserver(restart);
+    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     return () => {
-      cancelled = true;
+      run += 1;
+      themeWatch.disconnect();
       root.classList.remove("lg-live");
       instance?.destroy();
     };
