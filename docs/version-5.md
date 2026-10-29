@@ -1,6 +1,6 @@
 # Unifesto version 5
 
-The single plan and log for 5.x. **One fixed date: 5.0.0 releases on Wed 2 Dec 2026, and not before.** Everything else has no deadline and moves at its own pace, one track at a time. This replaces `version-4.md`, every per-feature plan doc, and the October 2026 audit. Everything still open from those has been carried over here.
+The single plan and log for 5.x. **Final deadline: Sun 15 Nov 2026, when 5.0.0 releases on both stores** (moved from Wed 2 Dec on 2026-10-29). Until then only Z8 work runs: events pipeline, revenue, safety fixes, the release and removals. Everything else is parked and moves at its own pace after 15 Nov. This replaces `version-4.md`, every per-feature plan doc, and the October 2026 audit. Everything still open from those has been carried over here.
 
 Covers mobile, backend, and all four websites (web, space, apex, plus the retired hack app's leftovers).
 
@@ -33,25 +33,25 @@ Covers mobile, backend, and all four websites (web, space, apex, plus the retire
 | D3 | Mobile scope: **on-site and time-critical work lives on mobile, desk work lives on web.** Mobile authoring screens get an "Open on web" handoff instead of new features. See [Track G](#g--mobile-scope-design-and-performance). |
 | D4 | Company books in Zoho Books. Apex pushes monthly platform revenue through its API. |
 | D5 | Load testing never touches production. Use a staging copy only. |
-| D6 | **No store release before Wed 2 Dec 2026.** 5.0.0 is the next store build and goes live on both stores that day. Whatever is done and device-QA'd by the freeze ships in it; the rest waits for 5.x. |
+| D6 | **5.0.0 goes live on both stores on Sun 15 Nov 2026** (moved from Wed 2 Dec on 2026-10-29). It is the next store build; no store release before it. Whatever is done and device-QA'd by the Fri 6 Nov freeze ships in it; the rest waits for 5.x. |
 | D7 | **AI in Assist suggests, never decides.** Claude Haiku 5.5 (`claude-haiku-5-5`) answers, triages, drafts and summarises; it never moves money, approves a request or sends a reply on its own. Any refusal or API error falls back to a human queue. |
 | D8 | **Plan, deal and role are three separate things.** Plan = what a space can do (features, limits). Deal = what it pays (plan price, buyer fee, organiser fee), per space or per event, versioned. Role = who can do it. Every paid row snapshots the terms it was sold under, so changing a deal never rewrites past money. See [Track T](#t--deals-billing-and-access). |
 | D9 | **Space Admin and Curator both move event money** (payouts, refund approvals). Money lands in the space's bank account, so Space Admins get it officially; Co-Curator and Crew never do. |
 | D10 | **Organiser platform fee rates live in `plan_configs.platformFeePercent`** (Starter 2.5, Pro 1.5, Enterprise 1). The backend, the A21 fee trigger and `/pricing` all read that column; Apex Plans edits it. A rate change only affects new sales (A21). GROWTH is retired and pays Starter's rate. When the launch offer ends on 31 Mar 2027, an admin edits the rates. See [A9](#a--money-and-trust). |
 | D11 | **Buyer fee stays 5%, capped at ₹99 per ticket; organisers can absorb it per event.** Copy says what students pay and what organisers keep, never "lowest fee". Unifesto isn't GST-registered yet: when it registers, the CA decides whether GST sits inside or on top of both fees, and whether Unifesto counts as an e-commerce operator (compulsory registration, TCS). See [A12](#a--money-and-trust). |
 
-### 5.0.0 · release Wed 2 Dec 2026
+### 5.0.0 · release Sun 15 Nov 2026
 
-Worked back from the date, with room for one store rejection. Only the release day is fixed; the other dates are suggestions.
+Worked back from the date, with room for one store rejection. Moved from Wed 2 Dec on 2026-10-29: 15 Nov is also the final deadline for every open task on the board. Each step's task carries its due date there.
 
 | When | Step |
 |---|---|
-| Now → Fri 20 Nov | Build tracks at your own pace. Native changes can merge freely until the freeze, because they all ride the 5.0.0 build |
-| Fri 20 Nov | **Freeze:** native + feature freeze for 5.0.0. After this, only fixes found in QA |
-| Fri 20 → Tue 24 Nov | `eas build --profile production --platform all`, then device QA on TestFlight / internal testing (O3) |
-| Wed 25 Nov | `eas submit` to both stores with **manual release**: App Store "Manually release this version", Play "Managed publishing". Approval then waits for you |
-| 25 Nov → 1 Dec | Buffer for review or a rejection fix plus resubmit. Record runtimes from EAS (O4). Backend changes 5.0.0 needs are deployed and backward compatible with 4.0.5 |
-| **Wed 2 Dec** | **Release on both stores.** Publish a tiny 5.0.1 OTA at 20% and confirm a phone gets it (O5). Soft update prompt on (O6) |
+| Now → Fri 6 Nov | Only Z8 work runs. Native changes merge until the freeze, because they all ride the 5.0.0 build |
+| Fri 6 Nov | **Freeze:** native + feature freeze for 5.0.0 (R1). After this, only fixes found in QA |
+| Fri 6 → Sun 8 Nov | `eas build --profile production --platform all` (O2), then device QA on TestFlight / internal testing (O3). The organiser beta runs on this build (Z10) |
+| Mon 9 Nov | `eas submit` to both stores with **manual release** (R3): App Store "Manually release this version", Play "Managed publishing". Approval then waits for you. Record runtimes from EAS (O4) |
+| 9 → 14 Nov | Buffer for review or a rejection fix plus resubmit (R4). Backend changes 5.0.0 needs are deployed and backward compatible with 4.0.5 |
+| **Sun 15 Nov** | **Release on both stores** (R5). Publish a tiny 5.0.1 OTA at 20% and confirm a phone gets it (O5). Soft update prompt on (O6) |
 
 
 ---
@@ -60,18 +60,18 @@ Worked back from the date, with room for one store rejection. Only the release d
 
 | Track | Item | Status |
 |---|---|---|
-| J, T, A, K, D, O | **Platform audit 2026-10-18 turned into the NEXT batch.** J13 deploy gate first, then T1, J8–J12, A19, A24, A25 and T8's hotfix with the next backend deploy; K8–K10 on web; D29 daily until the support (217 open) and WhatsApp (121 unread) backlog is clear; O17 before the 20 Nov freeze. Track S shipped on 2026-10-16 | next |
-| O | Guards merged (#109), secrets + `native` label done. OTA stays blocked until 5.0.0 on **2 Dec** (D6); `update:production` now refuses until the 5.0.0 runtime is recorded. Left: deploy #109 migrations + Apex with the S deploy, compare CI fingerprint once with `eas fingerprint:compare`, then O2–O5 on the [schedule](#500--release-wed-2-dec-2026) | next |
-| H | White-label P1–P3 live since the 14 Oct deploy, verified 16 Oct (H8, H10, H11 done). #146 (H12, H22, H24) waits for the next deploy. Left: H25 fixes, H14, H15, H20 (Resend plan), H23 decision | next |
-| U | Company section in Apex + Employee role, planned 20 Oct. One PR per phase: U1–U3 (role, IAM, restricted Apex), then U4–U6 (obligations), then U7–U9 (documents, KPIs, MCP + load items) | next |
-| P | Marketing to 5.0.0: "What is Unifesto?" is live (P0). Next: accounts, templates, baseline, content bank (P1–P4), W1 video Tue 20 Oct | next |
+| Z | **Final deadline Sun 15 Nov (re-plan 2026-10-29).** Z1 10 upcoming events published, Z2 organiser fee live Mon 2 Nov, Z3 owners and time split (1 Nov), Z7 weekly scorecard (2 Nov), Z10 organiser beta (9 Nov), Z11 age gate (6 Nov). Z8 decides what else may start | next |
+| R, O | **5.0.0 on the [15 Nov schedule](#500--release-sun-15-nov-2026).** Freeze Fri 6 Nov, submit Mon 9 Nov, release Sun 15 Nov. Native work merges by 6 Nov or waits for 5.1: G1, G3, G8, G14, H15, E9, Z11 and the S removals. O0 hotfix lane closes at release; OTA stays blocked until the 5.0.0 runtime is recorded (O4) | next |
+| J, A, T, F, S | **Safety and money fixes.** J14 prod secrets off the laptop and A36 Razorpay webhooks (31 Oct, before the fee goes live); deploy J20 + J21 (2 Nov); T2, T11, A35, F8 (10 Nov); T12, A30, J15, S62 (12 Nov); A6 GST invoices (13 Nov) | next |
+| S | **Removals and fixes before the freeze.** S61 dead code (3 Nov); S58 recurring series, S60 partner and short links, S64 the 11 known bugs (4 Nov); S59 Stays (5 Nov); S65 smoke tests (9 Nov) | next |
+| P, V, U, … | **Parked until after 15 Nov.** All marketing (track P, Z9), V (Space into Web), U4–U9 (company section), F1–F6, E10/E11, K18/K19, J6/J18, T7/T9 and the rest outside Z8. The reason is on each board task | parked |
 
 ## Suggested order
 
 There are no dates, only a sensible sequence. Each step makes the next one cheaper.
 
 1. **J13** first: deploy only CI-green `main` with a rollback image. Then the 2026-10-18 audit batch with the next backend deploy: **T1**, **J8–J12**, **A19**, **A24**, **A25** and **T8**'s hotfix. Track S shipped in the 2026-10-16 deploy.
-2. **O1–O6** on the [5.0.0 schedule](#500--release-wed-2-dec-2026) (O7–O16 guards are merged). No mobile change reaches users before 2 Dec.
+2. **O1–O6** on the [5.0.0 schedule](#500--release-sun-15-nov-2026) (O7–O16 guards are merged). No mobile change reaches users before 15 Nov.
 3. **T4–T6** before any custom client deal is signed, then **T7–T9**. T8 includes A1's checkout.
 4. Growth blockers on web: **K8** (past and live events in public lists), **K9** (event page fixes, remove the fake /docs page), **K10** (register and pay on the web). **D29** daily until the support and WhatsApp backlog is clear. **O17** and every mobile item meant for 5.0.0 merged by the Fri 20 Nov freeze.
 5. **A21** (freeze the fee per sale) before **A9** (organiser platform fee), then **A26–A32**: the rest of money and trust.
@@ -202,7 +202,7 @@ Preflight only runs at publish time. Nothing warned at merge time, so PRs kept b
 - Runtimes are recorded by hand.
 - Starting a new rollout silently made the previous one the base (seen with 4.1.0 → 4.1.1).
 
-**Phase 1: unblock with the 5.0.0 store build (release Wed 2 Dec, see [schedule](#500--release-wed-2-dec-2026))**
+**Phase 1: unblock with the 5.0.0 store build (release Sun 15 Nov, see [schedule](#500--release-sun-15-nov-2026))**
 
 Until then, the live 4.0.5 builds get **no** updates: `main` can't target their runtime. Backend changes must stay compatible with 4.0.5 clients until most users have moved.
 
