@@ -124,7 +124,7 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
     return NextResponse.rewrite(url, { request: { headers } });
   }
   if (pathname === `/space/${slug}`) return NextResponse.redirect(`https://${hostname}/`, 308);
-  // Its own robots.txt and sitemap, not Unifesto's (src/app/space/[spaceSlug]/).
+  // Its own robots.txt and sitemap, not Unifesto's (src/app/(public)/space/[spaceSlug]/).
   if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
     const url = request.nextUrl.clone();
     url.pathname = `/space/${slug}${pathname}`;
