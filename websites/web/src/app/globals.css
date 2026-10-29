@@ -788,6 +788,26 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 :root[data-theme="light"] .shade-ivory { --s1: #f7f0e0; --s2: #e8d3ad; --s3: #fbf7ee; }
 :root[data-theme="light"] .shade-blue  { --s1: #b9cfff; --s2: #8fb4ff; --s3: #eef3ff; }
 
+/* ─── Footer ─────────────────────────────────────────────────────────── */
+/* On the Horizon sky: a light Unifesto blue glow rising off the horizon like
+   the hero's (wide, flat, no edge), tall enough to sit behind the glass
+   card's lower half so the frost has colour; the card keeps a translucent
+   fill so its small text stays readable; the wordmark rises off the horizon
+   and fades into it. */
+.footer-glow {
+  position: absolute; left: -15%; right: -15%; bottom: -35%; height: 85%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(77 141 255 / .28), rgb(77 141 255 / .12) 50%, transparent);
+}
+:root[data-theme="light"] .footer-glow { background: radial-gradient(closest-side, rgb(143 180 255 / .45), rgb(143 180 255 / .2) 50%, transparent); }
+.footer-glass.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.4); }
+:root[data-theme="light"] .footer-glass.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.5); }
+.footer-wordmark {
+  aspect-ratio: 551 / 120;
+  background: linear-gradient(to bottom, rgb(var(--glow) / .5), rgb(var(--glow) / .04) 90%);
+  -webkit-mask: url(/press/wordmark-silver.svg) center bottom / contain no-repeat;
+  mask: url(/press/wordmark-silver.svg) center bottom / contain no-repeat;
+}
+
 /* ─── Door: two sides, one event ──────────────────────────────────────── */
 /* On wide screens the sky and mint cards close the gap as the section
    scrolls in, squaring their inner corners, then their own colour gives way
