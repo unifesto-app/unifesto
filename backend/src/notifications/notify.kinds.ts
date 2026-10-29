@@ -62,6 +62,8 @@ export interface NotifyKindData {
   'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string; approvedAt: Date };
   /** Not deduped by default (a resubmitted space can be rejected again). */
   'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
+  /** To each Space Admin: a note from the public space page. One per lead. */
+  'space.inquiry': MailData<T.SpaceInquiryData> & { spaceId: string; leadId: string };
 }
 
 export type NotifyKind = keyof NotifyKindData;
@@ -272,5 +274,17 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
       data: { type: 'space_rejected', spaceId: d.spaceId },
     }),
     email: (svc, to, d, delivery) => svc.sendSpaceRejected({ ...d, email: to }, delivery),
+  },
+  'space.inquiry': {
+    category: 'spaceUpdates',
+    criticality: 'normal',
+    entity: (d) => d.leadId,
+    push: (d) => ({
+      title: `New inquiry for ${d.spaceName}`,
+      body: d.message ? `${d.fromName || d.fromEmail}: ${d.message.slice(0, 120)}` : `${d.fromName || d.fromEmail} wants to get in touch.`,
+      deepLink: `unifesto://manage/space/${d.spaceId}/leads`,
+      data: { type: 'space_inquiry', spaceId: d.spaceId },
+    }),
+    email: (svc, to, d, delivery) => svc.sendSpaceInquiry({ ...d, email: to }, delivery),
   },
 };

@@ -335,7 +335,7 @@ export function useEventDetail(eventId: string | undefined) {
   }, [event]);
 
   const toggleSponsorOptIn = useCallback(
-    async (eventSponsorId: string) => {
+    async (eventSponsorId: string, confirmed = false) => {
       if (!event) return;
       if (!user) {
         AppAlert.alert('Sign in required', 'Please sign in to share your details with sponsors.');
@@ -343,6 +343,19 @@ export function useEventDetail(eventId: string | undefined) {
       }
       if (sponsorPending.has(eventSponsorId)) return;
       const alreadyIn = sponsorOptIns.has(eventSponsorId);
+      // Say exactly what goes to whom before anything is shared (E9).
+      if (!alreadyIn && !confirmed) {
+        const name = event.sponsors?.find((s) => s.eventSponsorId === eventSponsorId)?.name ?? 'This sponsor';
+        AppAlert.alert(
+          `Share your details with ${name}?`,
+          `${name} gets your name, email and phone number so they can reach out. You can take it back here any time.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Share', onPress: () => void toggleSponsorOptIn(eventSponsorId, true) },
+          ],
+        );
+        return;
+      }
       setSponsorPending((prev) => new Set(prev).add(eventSponsorId));
       try {
         if (alreadyIn) {

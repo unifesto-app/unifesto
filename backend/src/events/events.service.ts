@@ -30,6 +30,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { NewEventEvent, NotifyBatchEvent } from '../notifications/notifications.events';
+import { emailInterestLeads } from '../sponsors/interest-fanout';
 import {
   NOT_DELETED,
   deletedWhere,
@@ -2638,6 +2639,8 @@ export class EventsService {
           },
         })),
       } satisfies NotifyBatchEvent<'event.updated'>);
+      // And the people who tapped "Notify me" (E9), in the background.
+      void emailInterestLeads(this.prisma, this.emailService, updated.id, `updated:${edit}`, significantChanges);
     }
 
     return updated;

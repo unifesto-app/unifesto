@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  Equals,
   IsBoolean,
   IsEmail,
   IsHexColor,
@@ -101,6 +102,13 @@ export class InviteSponsorUserDto {
 export class BoothScanDto {
   @ApiProperty() @IsUUID() eventSponsorId: string;
   @ApiProperty() @IsString() @MaxLength(200) qrCode: string;
+  /**
+   * The attendee said yes on the scanner's prompt to sharing their name, email
+   * and phone with this sponsor. Scanning a ticket is not consent by itself.
+   */
+  @ApiProperty()
+  @Equals(true, { message: 'Ask the attendee first: they have to agree to share their contact details.' })
+  attendeeConsent: boolean;
 }
 
 /** Patch an existing event-sponsor attachment (all fields optional). */

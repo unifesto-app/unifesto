@@ -1,9 +1,11 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { LeadSource, LeadStatus, Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventStatus, LeadSource, LeadStatus, Prisma } from '@prisma/client';
+import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { NotificationEvents } from '../notifications/notifications.constants';
+import type { NotifyBatchEvent } from '../notifications/notifications.events';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import {
   CaptureLeadDto,
@@ -17,8 +19,10 @@ import {
  * page, or a manual/imported add. Distinct from SponsorLead (attendee→sponsor);
  * this stream belongs to the space and feeds the organiser's outreach.
  *
- * Public capture is unauthenticated (it happens on the marketing site / app);
- * management is space-scoped and gated at the controller by
+ * Public capture is unauthenticated (it happens on the marketing site / app),
+ * so it only takes leads for what the public can see, never rewrites an
+ * existing lead, and is throttled per caller in PublicLeadsController.
+ * Management is space-scoped and gated at the controller by
  * `space:manage-sponsors`.
  */
 @Injectable()
@@ -26,79 +30,105 @@ export class LeadsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
+    private readonly events: EventEmitter2,
   ) {}
 
   // ---- Public capture -----------------------------------------------------
 
-  /** "Notify me" / "I'm interested" on an event, before registering. */
+  /**
+   * "Notify me" on an event, before registering. Live events of a public, live
+   * space only. The person then gets the event's date or venue changes and the
+   * day-before reminder (interest-fanout.ts).
+   */
   async captureEventInterest(eventId: string, dto: CaptureLeadDto) {
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, deletedAt: null },
+      where: {
+        id: eventId,
+        deletedAt: null,
+        status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] },
+        space: PUBLIC_LIVE_SPACE_WHERE,
+      },
       select: { id: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    await this.upsertPublicLead({
-      spaceId: event.spaceId,
-      eventId: event.id,
-      source: LeadSource.EVENT_INTEREST,
-      dto,
-    });
-    return { captured: true };
-  }
-
-  /** An inquiry submitted from a public space page. */
-  async captureSpaceInquiry(spaceId: string, dto: CaptureLeadDto) {
-    const space = await this.prisma.space.findUnique({
-      where: { id: spaceId },
+    const email = dto.email.trim().toLowerCase();
+    // One per (event, email). A repeat is a no-op: an unauthenticated caller
+    // must not be able to rewrite someone else's name, phone or message.
+    const existing = await this.prisma.lead.findFirst({
+      where: {
+        spaceId: event.spaceId,
+        eventId: event.id,
+        source: LeadSource.EVENT_INTEREST,
+        email: { equals: email, mode: 'insensitive' },
+      },
       select: { id: true },
     });
-    if (!space) throw new NotFoundException('Space not found');
-
-    await this.upsertPublicLead({
-      spaceId: space.id,
-      eventId: null,
-      source: LeadSource.SPACE_INQUIRY,
-      dto,
-    });
+    if (!existing) {
+      await this.prisma.lead.create({
+        data: {
+          spaceId: event.spaceId,
+          eventId: event.id,
+          source: LeadSource.EVENT_INTEREST,
+          name: dto.name ?? null,
+          email,
+          phone: dto.phone ?? null,
+          message: dto.message ?? null,
+        },
+      });
+    }
     return { captured: true };
   }
 
   /**
-   * De-dupe public captures by (space, source, event, email): a second "notify
-   * me" from the same person refreshes their message rather than piling up rows.
-   * A NEW lead is never silently downgraded from a later status by this path —
-   * we only touch NEW rows on repeat.
+   * An inquiry from a public space page. Each inquiry is its own lead (a new
+   * message never overwrites an earlier one), and every Space Admin is told.
    */
-  private async upsertPublicLead(args: {
-    spaceId: string;
-    eventId: string | null;
-    source: LeadSource;
-    dto: CaptureLeadDto;
-  }): Promise<void> {
-    const { spaceId, eventId, source, dto } = args;
-    const existing = await this.prisma.lead.findFirst({
-      where: { spaceId, eventId, source, email: dto.email },
-      select: { id: true },
+  async captureSpaceInquiry(spaceId: string, dto: CaptureLeadDto) {
+    const space = await this.prisma.space.findFirst({
+      where: { id: spaceId, ...PUBLIC_LIVE_SPACE_WHERE },
+      select: { id: true, name: true },
     });
-    if (existing) {
-      await this.prisma.lead.update({
-        where: { id: existing.id },
-        data: { name: dto.name, phone: dto.phone, message: dto.message },
-      });
-      return;
-    }
-    await this.prisma.lead.create({
+    if (!space) throw new NotFoundException('Space not found');
+
+    const lead = await this.prisma.lead.create({
       data: {
-        spaceId,
-        eventId,
-        source,
+        spaceId: space.id,
+        eventId: null,
+        source: LeadSource.SPACE_INQUIRY,
         name: dto.name ?? null,
-        email: dto.email,
+        email: dto.email.trim().toLowerCase(),
         phone: dto.phone ?? null,
         message: dto.message ?? null,
       },
+      select: { id: true, name: true, email: true, phone: true, message: true },
     });
+    await this.alertSpaceAdmins(space, lead);
+    return { captured: true };
+  }
+
+  /** Push (email when push can't land) to each Space Admin, in the background. */
+  private async alertSpaceAdmins(
+    space: { id: string; name: string },
+    lead: { id: string; name: string | null; email: string | null; phone: string | null; message: string | null },
+  ) {
+    const admins = await this.prisma.userRole.findMany({
+      where: { spaceId: space.id, eventId: null, role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } } },
+      select: { userId: true },
+    });
+    const data = {
+      spaceId: space.id,
+      leadId: lead.id,
+      spaceName: space.name,
+      fromName: lead.name ?? undefined,
+      fromEmail: lead.email ?? '',
+      fromPhone: lead.phone ?? undefined,
+      message: lead.message ?? undefined,
+    };
+    this.events.emit(NotificationEvents.NotifyBatch, {
+      kind: 'space.inquiry',
+      items: [...new Set(admins.map((a) => a.userId))].map((userId) => ({ userId, data })),
+    } satisfies NotifyBatchEvent<'space.inquiry'>);
   }
 
   // ---- Curator management -------------------------------------------------
