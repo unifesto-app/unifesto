@@ -956,3 +956,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-28** · Contract step for the plan lineup, dropped the retired billing_model / revenue_share_percent columns, billing_model_configs table and billing_model enum (deploy alone with ALLOW_DESTRUCTIVE=1) (#399)
 - **2026-10-28** · Async event listeners return their result to emitAsync, fixing WhatsApp convert-to-case and hackathon help escalation always failing (Sentry BACKEND-9) (#400)
 - **2026-10-29** · Assist bot replies with an amount, link, email or phone no tool returned are held and go to a person; Apex AI card shows each feature's last 30 days (calls, cost, failures, cache share) (#401)
+- **2026-10-29** · 5.0.0 release and final deadline moved to Sun 15 Nov (freeze 6 Nov, submit 9 Nov); marketing and non-Z8 work parked on the board (#402)
