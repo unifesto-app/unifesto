@@ -33,7 +33,7 @@ export default function CertificatesPage() {
                 <Link href={`/event/${c.event.slug}`} className="font-semibold text-paper hover:underline">
                   {c.event.title}
                 </Link>
-                <Link href={`/feedback/${c.event.id}`} className="text-sm font-medium text-primary hover:underline">
+                <Link href={`/console/feedback/${c.event.id}`} className="text-sm font-medium text-primary hover:underline">
                   Give feedback to unlock
                 </Link>
               </li>

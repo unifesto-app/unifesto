@@ -152,29 +152,11 @@ export function hasSpaceAppAccess(user?: CurrentUser | null): boolean {
 const PLATFORM_STAFF_CODES = new Set(["ADMIN", "EMPLOYEE"]);
 
 /**
- * True when the account is platform staff (works in Apex). Used by the landing
- * gate to bounce staff with no operator space role over to Apex instead of
- * showing them the no-access screen.
+ * True when the account is platform staff (works in Apex). The console home
+ * offers them a way into Apex.
  */
 export function isPlatformStaff(user?: CurrentUser | null): boolean {
   return !!user?.platformRole && PLATFORM_STAFF_CODES.has(user.platformRole.toUpperCase());
-}
-
-/**
- * Where the landing gate should send a signed-in user:
- *   - operator role in ≥1 space → stay here (`/console`)
- *   - else platform staff       → Apex (they belong there)
- *   - else                      → no-access (signed in, nothing to operate)
- */
-export type LandingDestination =
-  | { kind: "dashboard" }
-  | { kind: "apex" }
-  | { kind: "no-access" };
-
-export function resolveLanding(user?: CurrentUser | null): LandingDestination {
-  if (hasSpaceAppAccess(user)) return { kind: "dashboard" };
-  if (isPlatformStaff(user)) return { kind: "apex" };
-  return { kind: "no-access" };
 }
 
 /** Absolute URL of the Apex console (platform staff surface). */

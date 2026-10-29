@@ -48,6 +48,14 @@ const nextConfig: NextConfig = {
       // One sign-in for everyone (Track V8): the console's own login is gone.
       // `next` passes through, so a console deep link still comes back.
       { source: '/console/login', destination: '/login', permanent: true },
+      // /console is everyone's home (Track V9): my tickets, account and
+      // feedback live there now. Old links, emails and app builds land on the
+      // same page; :path* also matches the bare path, and the query passes.
+      { source: '/tickets/:path*', destination: '/console/tickets/:path*', permanent: true },
+      { source: '/account/:path*', destination: '/console/account/:path*', permanent: true },
+      { source: '/feedback/:path*', destination: '/console/feedback/:path*', permanent: true },
+      // No one is turned away any more: an account without a space role gets the personal pages.
+      { source: '/console/no-access', destination: '/console', permanent: true },
     ];
   },
   async rewrites() {
@@ -93,15 +101,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
       },
       {
-        // My tickets pays for waiting-list spots with the same checkout.
-        source: '/tickets',
-        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
-      },
-      {
         // The console (Track V): the check-in scanner reads QR codes and hosts go
-        // live from sessions, so camera and mic for this origin. Billing and
-        // attendees/add take Razorpay payments, and console pages reach them
-        // by client-side navigation, so the popup-friendly COOP covers all of it.
+        // live from sessions, so camera and mic for this origin. Billing,
+        // attendees/add and My tickets (waiting-list spots) take Razorpay
+        // payments, reached by client-side navigation, so the popup-friendly
+        // COOP covers all of it.
         source: '/console/:path*',
         headers: [
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self)' },

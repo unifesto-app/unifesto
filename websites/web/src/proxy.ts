@@ -62,11 +62,10 @@ function csp(nonce: string, isConsole: boolean): string {
    session. The proxy can't see that session's refresh cookie (uf_rt is scoped
    to /auth), so it lets through its `uf_in` hint, or a live `unifesto_token`
    from the old space app until those expire. A light gate: the backend stays
-   the authority. No-access handles signed-out visitors itself, and the
-   projector signs in with its display link. */
+   the authority. The projector signs in with its display link. */
 const HINT_COOKIE = 'uf_in';
 const LEGACY_TOKEN_COOKIE = 'unifesto_token';
-const CONSOLE_PUBLIC = ['/console/no-access', '/console/present'];
+const CONSOLE_PUBLIC = ['/console/present'];
 const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(`${p}/`);
 
 /** Well-formed, has a subject and isn't past `exp`. No signature check (Edge-safe). */

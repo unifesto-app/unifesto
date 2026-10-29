@@ -40,7 +40,7 @@ export function clearRefresh(res: NextResponse) {
 
 /** Only same-site paths: never an open redirect. */
 export function safeNext(next: string | null | undefined): string {
-  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/tickets";
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/console";
 }
 
 /** Requests that change auth state must come from our own pages. */

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/console/lib/context/SessionContext";
-import { BASE_URL, resolveNavGroups, type NavItem } from "./nav-config";
+import { BASE_URL, ME_GROUP, resolveNavGroups, type NavGroup, type NavItem } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 
@@ -30,12 +30,13 @@ interface SpaceNavProps {
  */
 export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const pathname = usePathname();
-  const { currentSpace, access, can } = useSession();
+  const { currentSpace, access, can, hasAccess } = useSession();
   const unread = useDeskUnread(currentSpace?.id, can("event:manage-support"), pathname);
 
-  if (!currentSpace) return null;
 
-  const navGroups = resolveNavGroups(currentSpace, access);
+  // Everyone gets the personal section; the space ones need a role there (V9).
+  const space = hasAccess ? currentSpace : null;
+  const navGroups: NavGroup[] = [ME_GROUP, ...(space ? resolveNavGroups(space, access) : [])];
 
   const isActive = (item: NavItem) => {
     const fullPath = `${BASE_URL}${item.href}`;
@@ -46,14 +47,14 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
       {/* Space identity — hidden on the icon rail */}
-      {!collapsed && (
+      {!collapsed && space && (
         <div className="space-y-1 px-3 pb-6">
           <h2 className="text-base font-semibold text-foreground line-clamp-2">
-            {currentSpace.name}
+            {space.name}
           </h2>
-          {(currentSpace.description || currentSpace.tagline) && (
+          {(space.description || space.tagline) && (
             <p className="text-xs text-muted-foreground line-clamp-2">
-              {currentSpace.description || currentSpace.tagline}
+              {space.description || space.tagline}
             </p>
           )}
         </div>

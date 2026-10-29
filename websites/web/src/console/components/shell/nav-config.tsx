@@ -19,6 +19,11 @@ import {
   ChartLineUp,
   Tray,
   Globe,
+  House,
+  Ticket,
+  UserCircle,
+  Heart,
+  Certificate,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import {
@@ -60,7 +65,7 @@ export const BASE_URL = "/console";
 // matrix the backend enforces, so a Crew member never sees Finance.
 export const NAV_GROUPS: NavGroup[] = [
   {
-    items: [{ href: "", label: "Overview", icon: SquaresFour, exact: true, keywords: "home dashboard" }],
+    items: [{ href: "/space", label: "Overview", icon: SquaresFour, exact: true, keywords: "space dashboard stats" }],
   },
   {
     label: "Programming",
@@ -115,6 +120,31 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * The personal section (Track V9): /console is everyone's home, attendees
+ * included. Shown to every signed-in person, above the space sections, which
+ * need a role. Account's own tabs carry the rest; the palette finds them too.
+ */
+export const ME_GROUP: NavGroup = {
+  label: "Me",
+  items: [
+    { href: "", label: "Home", icon: House, exact: true, keywords: "home start" },
+    { href: "/tickets", label: "My tickets", icon: Ticket, keywords: "tickets bookings registrations qr waiting list" },
+    { href: "/account", label: "My account", icon: UserCircle, keywords: "profile account sign-in delete" },
+    { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "notifications messages", paletteOnly: true },
+    { href: "/account/support", label: "My help", icon: Lifebuoy, keywords: "help requests assist support", paletteOnly: true },
+    { href: "/account/saved", label: "Saved events", icon: Heart, keywords: "saved bookmarks", paletteOnly: true },
+    { href: "/account/certificates", label: "My certificates", icon: Certificate, keywords: "certificates", paletteOnly: true },
+  ],
+};
+
+const PERSONAL = ["/tickets", "/account", "/feedback"].map((p) => `${BASE_URL}${p}`);
+
+/** Pages for every signed-in person; the rest of /console needs a space role. */
+export function isPersonalPath(pathname: string): boolean {
+  return pathname === BASE_URL || PERSONAL.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 // SubSpaces navigation item — only shown for SUPER spaces with children.
 export const SUBSPACES_NAV_ITEM: NavItem = {

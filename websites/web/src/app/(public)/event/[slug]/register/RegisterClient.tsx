@@ -380,7 +380,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
             {(resent || error) && <p className={`mt-2 text-sm ${error ? "text-red-400" : "text-paper/65"}`}>{error || resent}</p>}
           </div>
         )}
-        <Link href="/tickets" className="link-draw mt-5 inline-block text-sm text-paper/65">
+        <Link href="/console/tickets" className="link-draw mt-5 inline-block text-sm text-paper/65">
           See My tickets on the web
         </Link>
         <br />

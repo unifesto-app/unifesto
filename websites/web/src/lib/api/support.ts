@@ -111,8 +111,8 @@ export function webLink(deepLink: string | null): string | null {
   if (!m) return null;
   const [kind, a, b] = m[1].split("/");
   if (kind === "event" && a) return `/event/${a}`;
-  if (kind === "manage" && a === "support" && b) return `/account/support/${b}`;
-  if (kind === "feedback" && a) return `/feedback/${a}`;
-  if (kind === "group" && a) return `/tickets/${a}`;
+  if (kind === "manage" && a === "support" && b) return `/console/account/support/${b}`;
+  if (kind === "feedback" && a) return `/console/feedback/${a}`;
+  if (kind === "group" && a) return `/console/tickets/${a}`;
   return null;
 }

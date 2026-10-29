@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import SignIn from "@/components/SignIn";
+import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { FIELD, Question } from "@/components/FormQuestion";
 import { visibleFieldIds, type FormField } from "@/lib/api/registration";
 import { getFeedback, submitFeedback, type Answers, type FeedbackForm } from "@/lib/api/tickets";
@@ -11,7 +11,7 @@ import { TicketsFrame, when } from "../../tickets/TicketsClient";
 
 /** The app's F1 feedback: a 1 to 5 rating, 0 to 10 recommend, a comment and the organiser's questions. */
 export default function FeedbackClient({ eventId }: { eventId: string }) {
-  const { session, ready, pending } = useWebSession();
+  const { session, ready } = useWebSession();
   const token = session?.token ?? "";
   const [form, setForm] = useState<FeedbackForm | null>(null);
   const [rating, setRating] = useState<number | null>(null);
@@ -42,7 +42,7 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
   if (!session)
     return (
       <TicketsFrame title="Feedback">
-        <SignIn next={`/feedback/${eventId}`} pending={pending} intro="Sign in with the email you registered with. We send you a code to confirm it's you." submitLabel="Continue" />
+        <SignInPrompt />
       </TicketsFrame>
     );
   if (!form) return <TicketsFrame title="Feedback">{error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>}</TicketsFrame>;
@@ -72,7 +72,7 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
       <p className="text-paper/85">
         Thanks, the organiser gets it.{" "}
         {form.unlocksCertificate && (
-          <Link href="/account/certificates" className="font-medium text-primary hover:underline">
+          <Link href="/console/account/certificates" className="font-medium text-primary hover:underline">
             My certificate is ready
           </Link>
         )}

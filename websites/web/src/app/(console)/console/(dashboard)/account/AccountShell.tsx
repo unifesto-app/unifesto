@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import SignIn from "@/components/SignIn";
+import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
 import { myTickets, type MyTicket } from "@/lib/api/registration";
 import { getInboxUnread, getMyUnreadCases } from "@/lib/api/support";
-import { clearSession, useWebSession } from "@/lib/auth";
+import { useWebSession } from "@/lib/auth";
+import { signOut } from "@/console/lib/utils/auth";
 import { IST } from "@/lib/site";
 
 interface Account {
@@ -34,8 +33,8 @@ export const useAccount = () => useContext(AccountContext)!;
  * Push settings and the share card stay in the app.
  */
 export default function AccountShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname() ?? "/account";
-  const { session, ready, pending } = useWebSession();
+  const pathname = usePathname() ?? "/console/account";
+  const { session, ready } = useWebSession();
   const token = session?.token ?? "";
   const [me, setMe] = useState<Me | null>(null);
   const [spaces, setSpaces] = useState<MySpace[]>([]);
@@ -70,29 +69,24 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   }, [token]);
 
   const tabs = [
-    { href: "/account", label: "Profile" },
-    { href: "/account/inbox", label: "Inbox", count: unread.inbox },
-    { href: "/tickets", label: "My tickets" },
-    { href: "/account/support", label: "Support", count: unread.support },
-    { href: "/account/saved", label: "Saved events" },
-    { href: "/account/certificates", label: "My certificates" },
-    { href: "/account/circles", label: "My circles" },
-    ...(partnerLinks.length ? [{ href: "/account/partner", label: "Partner stats" }] : []),
-    { href: "/account/notifications", label: "Notifications" },
-    { href: "/account/sign-in", label: "Sign-in" },
-    { href: "/account/delete", label: "Delete account" },
+    { href: "/console/account", label: "Profile" },
+    { href: "/console/account/inbox", label: "Inbox", count: unread.inbox },
+    { href: "/console/tickets", label: "My tickets" },
+    { href: "/console/account/support", label: "Support", count: unread.support },
+    { href: "/console/account/saved", label: "Saved events" },
+    { href: "/console/account/certificates", label: "My certificates" },
+    { href: "/console/account/circles", label: "My circles" },
+    ...(partnerLinks.length ? [{ href: "/console/account/partner", label: "Partner stats" }] : []),
+    { href: "/console/account/notifications", label: "Notifications" },
+    { href: "/console/account/sign-in", label: "Sign-in" },
+    { href: "/console/account/delete", label: "Delete account" },
   ];
 
   let body;
   if (!ready) body = null;
   else if (!session)
     body = (
-      <SignIn
-        next={pathname}
-        pending={pending}
-        intro="Sign in with the email on your Unifesto account. We send you a code to confirm it's you."
-        submitLabel="Sign in"
-      />
+      <SignInPrompt />
     );
   else if (!me) body = error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading My account…</p>;
   else
@@ -101,20 +95,17 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     );
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-canvas">
-      <Navbar />
-      <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
-        <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl">
           {session && me ? (
             <Header me={me} email={session.email} {...counts} circles={new Set(spaces.map((s) => s.id)).size} />
           ) : (
-            <h1 className="font-display text-[clamp(1.5rem,3vw,2.2rem)] leading-tight text-paper">My account</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">My account</h1>
           )}
-          {session && me?.deletionScheduledFor && pathname !== "/account/delete" && (
+          {session && me?.deletionScheduledFor && pathname !== "/console/account/delete" && (
             <p className="mt-5 rounded-2xl bg-night-2 px-4 py-3 text-sm text-paper/80">
               My account closes on{" "}
               {new Date(me.deletionScheduledFor).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: IST })}.{" "}
-              <Link href="/account/delete" className="font-medium text-primary hover:underline">
+              <Link href="/console/account/delete" className="font-medium text-primary hover:underline">
                 Keep my account
               </Link>
             </p>
@@ -123,7 +114,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
             <nav aria-label="Account" className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
               {tabs.map((t) => {
                 // A support case keeps its tab lit.
-                const active = pathname === t.href || (t.href !== "/account" && pathname.startsWith(`${t.href}/`));
+                const active = pathname === t.href || (t.href !== "/console/account" && pathname.startsWith(`${t.href}/`));
                 return (
                   <Link
                     key={t.href}
@@ -140,11 +131,8 @@ export default function AccountShell({ children }: { children: React.ReactNode }
               })}
             </nav>
           )}
-          <div className="mt-8 rounded-3xl bg-night-2 p-6 sm:p-8">{body}</div>
-        </div>
-      </section>
-      <Footer />
-    </main>
+          <div className="mt-6 rounded-xl border border-border bg-night-2 p-6 sm:p-8">{body}</div>
+    </div>
   );
 }
 
@@ -159,9 +147,9 @@ function eventCounts(tickets: MyTicket[]) {
 /** The app's identity card: who I am and the same three counts. */
 function Header({ me, email, going, been, circles }: { me: Me; email: string; going: number; been: number; circles: number }) {
   const stats = [
-    { label: "Going to", value: going, href: "/tickets" },
-    { label: "Been to", value: been, href: "/tickets" },
-    { label: "Circles", value: circles, href: "/account/circles" },
+    { label: "Going to", value: going, href: "/console/tickets" },
+    { label: "Been to", value: been, href: "/console/tickets" },
+    { label: "Circles", value: circles, href: "/console/account/circles" },
   ];
   const name = me.fullName || me.username || email;
   const since = new Date(me.createdAt).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: IST });
@@ -177,7 +165,7 @@ function Header({ me, email, going, been, circles }: { me: Me; email: string; go
         </div>
       )}
       <div className="min-w-0">
-        <h1 className="truncate font-display text-[clamp(1.4rem,3vw,2rem)] leading-tight text-paper">{name}</h1>
+        <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-paper">{name}</h1>
         <p className="mt-1 text-sm text-paper/60">
           {me.username && <>@{me.username} · </>}Member since {since}
         </p>
@@ -190,7 +178,7 @@ function Header({ me, email, going, been, circles }: { me: Me; email: string; go
         </p>
         <p className="mt-2 text-xs text-paper/55">
           Signed in as {email}.{" "}
-          <button type="button" onClick={clearSession} className="underline hover:text-paper">
+          <button type="button" onClick={() => void signOut().then(() => window.location.assign("/login"))} className="underline hover:text-paper">
             Sign out
           </button>
         </p>

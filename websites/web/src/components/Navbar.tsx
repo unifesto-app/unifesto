@@ -169,7 +169,7 @@ export default function Navbar() {
   const empty = useEmptySections();
   const menus = MENUS.map((m) => ({ ...m, items: m.items.filter((i) => !empty.has(i.href)) }));
   const onLight = useLightSurfaceAt(() => [window.innerWidth / 2, 40]);
-  const account = useSignedIn() ? { label: "My account", href: "/account" } : { label: "Sign in", href: "/login" };
+  const account = useSignedIn() ? { label: "My dashboard", href: "/console" } : { label: "Sign in", href: "/login" };
 
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));

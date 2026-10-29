@@ -2,6 +2,9 @@
 @import "tailwindcss" source(none);
 @source "../../console";
 @source ".";
+/* Shared components the personal pages still use (Track V9). */
+@source "../../components/FormQuestion.tsx";
+@source "../../components/EventCard.tsx";
 
 /* ============================================================================
    Space — Unifesto operator console · Unifesto Horizon
@@ -274,3 +277,27 @@
 
 /* Headings: DM Sans 500, tracking that tightens with size (same rule as unifesto.app). */
 .font-display { font-weight: 500; letter-spacing: max(calc(0.9px - 0.062em), -0.04em); }
+
+/* ============================================================================
+   Personal pages (Track V9). My tickets, My account and feedback moved here
+   from the public site as files, and they still use its names: paper, night-2,
+   canvas, ink and .btn. These map those names onto the console's roles, so the
+   pages follow its light and dark themes and its button style.
+   ========================================================================== */
+@theme inline {
+  --color-paper: hsl(var(--foreground));
+  --color-ink: hsl(var(--primary-foreground));
+  --color-canvas: hsl(var(--background));
+  --color-night-2: hsl(var(--card));
+  --color-night-3: hsl(var(--muted));
+  --color-scrim: #000000; /* image scrims (EventCard), never flips */
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm { @apply h-9 px-3; }
+  .btn-primary { @apply bg-primary text-primary-foreground hover:bg-primary-hover; }
+  .btn-secondary { @apply border border-input bg-card text-foreground hover:bg-muted; }
+}

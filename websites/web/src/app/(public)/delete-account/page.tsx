@@ -26,7 +26,7 @@ const sections: LegalSection[] = [
     title: "Delete on the web",
     body: (
       <ol>
-        <li>Go to <a href="/account/delete">My account → Delete account</a> and sign in with your email code (or Google).</li>
+        <li>Go to <a href="/console/account/delete">My account → Delete account</a> and sign in with your email code (or Google).</li>
         <li>Confirm, and choose <strong>Delete my account</strong>.</li>
         <li>You can cancel on the same page until the day it closes.</li>
       </ol>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { useEffect, useState, type FormEvent } from "react";
 import { DownloadSimple, GoogleLogo, MicrosoftOutlookLogo, WhatsappLogo } from "@unifesto/unicon/react";
-import SignIn from "@/components/SignIn";
+import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { ApiError, resendTicket } from "@/lib/api/registration";
 import {
   OPEN_REFUND,
@@ -48,7 +48,7 @@ const SYSTEM_REASONS = new Set(["Cancelled by attendee", "Superseded by a new re
 /** The app's ticket page: the pass, and everything I can do with this ticket. */
 export default function TicketClient({ id }: { id: string }) {
   const router = useRouter();
-  const { session, ready, pending } = useWebSession();
+  const { session, ready } = useWebSession();
   const token = session?.token ?? "";
   const [t, setT] = useState<Ticket | null | undefined>(undefined);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
@@ -98,7 +98,7 @@ export default function TicketClient({ id }: { id: string }) {
   if (!session)
     return (
       <TicketsFrame title="My ticket">
-        <SignIn next={`/tickets/${id}`} pending={pending} intro="Enter the email you registered with. We send you a code to confirm it's you." submitLabel="Show my ticket" />
+        <SignInPrompt />
       </TicketsFrame>
     );
   if (t === undefined)
@@ -108,7 +108,7 @@ export default function TicketClient({ id }: { id: string }) {
       <TicketsFrame title="My ticket">
         <p className="text-paper/75">
           This ticket isn&apos;t on my account.{" "}
-          <Link href="/tickets" className="underline">
+          <Link href="/console/tickets" className="underline">
             My tickets
           </Link>
         </p>
@@ -157,7 +157,7 @@ export default function TicketClient({ id }: { id: string }) {
     <TicketsFrame title={t.event.title}>
       <div className="space-y-8">
         <div>
-          <Link href="/tickets" className="text-sm text-paper/65 hover:text-paper hover:underline">
+          <Link href="/console/tickets" className="text-sm text-paper/65 hover:text-paper hover:underline">
             ← My tickets
           </Link>
           <p className={`mt-3 text-sm font-semibold ${cancelled ? "text-red-400" : checkedIn ? "text-primary" : "text-paper/75"}`}>{status}</p>
@@ -268,12 +268,12 @@ export default function TicketClient({ id }: { id: string }) {
         {!cancelled && (details?.editable || (feedback?.enabled && (feedback.open || feedback.response))) && (
           <section className="flex flex-wrap gap-3">
             {details?.editable && (
-              <Link href={`/tickets/${t.id}/details`} className="btn btn-sm btn-secondary">
+              <Link href={`/console/tickets/${t.id}/details`} className="btn btn-sm btn-secondary">
                 Edit my details
               </Link>
             )}
             {feedback?.enabled && (feedback.open || feedback.response) && (
-              <Link href={`/feedback/${t.event.id}`} className="btn btn-sm btn-secondary">
+              <Link href={`/console/feedback/${t.event.id}`} className="btn btn-sm btn-secondary">
                 {feedback.response ? "My feedback" : "Give feedback"}
               </Link>
             )}
@@ -322,7 +322,7 @@ export default function TicketClient({ id }: { id: string }) {
                   <button
                     type="button"
                     disabled={!!busy}
-                    onClick={() => act("delete", async () => { await deleteTicket(token, t.id); router.push("/tickets"); })}
+                    onClick={() => act("delete", async () => { await deleteTicket(token, t.id); router.push("/console/tickets"); })}
                     className="btn btn-sm btn-secondary"
                   >
                     {busy === "delete" ? "Deleting…" : "Yes, delete it from my list"}
@@ -341,7 +341,7 @@ export default function TicketClient({ id }: { id: string }) {
 
         {/* A case about this ticket goes to the organiser's desk. A member's ticket is the lead's registration, so it goes as the event. */}
         <Link
-          href={`/account/support/new?${member ? `eventId=${t.event.id}` : `registrationId=${t.id}`}`}
+          href={`/console/account/support/new?${member ? `eventId=${t.event.id}` : `registrationId=${t.id}`}`}
           className="block text-sm text-paper/65 hover:text-paper hover:underline"
         >
           Get help with this ticket
