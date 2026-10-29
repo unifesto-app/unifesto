@@ -1,4 +1,4 @@
-import { call } from "@/lib/api/registration";
+import { call, type FormField } from "@/lib/api/registration";
 
 /*
  * My tickets on the web: the app's Tickets tab and ticket page, on the same
@@ -144,6 +144,42 @@ export const REPORT_REASONS = [
 /** Re-reporting the same ticket updates the open report. */
 export const reportTicket = (token: string, id: string, reason: string, details?: string) =>
   call<{ alreadyReported: boolean }>("POST", "/content-reports", { targetType: "REGISTRATION", targetId: id, reason, details }, token);
+
+export type Answers = Record<string, unknown>;
+
+/** My answers on a registration and whether I may still change them. */
+export interface MyDetails {
+  ticketTypeId: string | null;
+  isGroup: boolean;
+  /** solo: their answers · lead: the team's and their own · member: their own. */
+  role: "solo" | "lead" | "member";
+  editable: boolean;
+  lockedReason: string | null;
+  editsUntil: string | null;
+  /** Registration-level answers; null for a member. */
+  formResponses: Answers | null;
+  member: { seatIndex: number; name: string | null; customFields: Answers } | null;
+}
+export const getMyDetails = (token: string, id: string) => call<MyDetails>("GET", `/registrations/${id}/details`, undefined, token);
+/** formResponses replaces the whole set, so send every answer, changed or not. */
+export const updateMyDetails = (token: string, id: string, body: { formResponses?: Answers; customFields?: Answers }) =>
+  call<MyDetails>("PATCH", `/registrations/${id}/details`, body, token);
+
+export interface FeedbackForm {
+  event: { id: string; title: string };
+  enabled: boolean;
+  /** I attended, the event has started and feedback hasn't closed (7 days after the end). */
+  open: boolean;
+  closesAt: string;
+  /** My certificate for this event waits for this feedback. */
+  unlocksCertificate: boolean;
+  /** The organiser's own questions (no file uploads). */
+  questions: Omit<FormField, "ticketTypeId" | "perGroup">[];
+  response: { rating: number; nps: number | null; comment: string | null; answers: Answers | null } | null;
+}
+export const getFeedback = (token: string, eventId: string) => call<FeedbackForm>("GET", `/events/${eventId}/feedback`, undefined, token);
+export const submitFeedback = (token: string, eventId: string, body: { rating: number; nps: number | null; comment?: string; answers: Answers }) =>
+  call("PUT", `/events/${eventId}/feedback`, body, token);
 
 export interface WaitlistEntry {
   registrationId: string;

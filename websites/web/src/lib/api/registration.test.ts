@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { visibleFieldIds, type FormField } from "@/lib/api/registration";
 
 const field = (id: string, order: number, extra: Partial<FormField> = {}): FormField => ({
-  id, order, ticketTypeId: null, label: id, type: "TEXT", options: [], isRequired: false, helpText: null, config: null, showIf: null, ...extra,
+  id, order, ticketTypeId: null, label: id, type: "TEXT", options: [], isRequired: false, helpText: null, config: null, showIf: null, perGroup: false, ...extra,
 });
 const ids = (s: Set<string>) => [...s].sort();
 

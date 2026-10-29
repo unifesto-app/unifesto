@@ -15,6 +15,8 @@ import {
   deleteTicket,
   findTicket,
   getCheckins,
+  getFeedback,
+  getMyDetails,
   getRefunds,
   getWhatsappGroup,
   isOver,
@@ -23,6 +25,8 @@ import {
   requestRefund,
   setWhatsappJoined,
   type Checkin,
+  type FeedbackForm,
+  type MyDetails,
   type Refund,
   type Ticket,
   type WhatsappGroup,
@@ -50,6 +54,8 @@ export default function TicketClient({ id }: { id: string }) {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [wa, setWa] = useState<WhatsappGroup | null>(null);
   const [refunds, setRefunds] = useState<Refund[]>([]);
+  const [details, setDetails] = useState<MyDetails | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackForm | null>(null);
   const [svg, setSvg] = useState("");
   const [now] = useState(() => Date.now());
   const [busy, setBusy] = useState("");
@@ -68,6 +74,10 @@ export default function TicketClient({ id }: { id: string }) {
         getCheckins(token, found.id).then((c) => live && setCheckins(c), () => undefined);
         getWhatsappGroup(token, found.id).then((w) => live && setWa(w), () => undefined);
         if (charged(found) > 0 && !found.isGroupMember) getRefunds(token, found.id).then((r) => live && setRefunds(r), () => undefined);
+        getMyDetails(token, found.id).then((d) => live && setDetails(d), () => undefined);
+        // Feedback is for after the event; it opens when the event starts.
+        if (new Date(found.event.startDateTime).getTime() <= Date.now())
+          getFeedback(token, found.event.id).then((f) => live && setFeedback(f), () => undefined);
       },
       (e) => {
         if (e instanceof ApiError && e.status === 401) clearSession();
@@ -252,6 +262,21 @@ export default function TicketClient({ id }: { id: string }) {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {!cancelled && (details?.editable || (feedback?.enabled && (feedback.open || feedback.response))) && (
+          <section className="flex flex-wrap gap-3">
+            {details?.editable && (
+              <Link href={`/tickets/${t.id}/details`} className="btn btn-sm btn-secondary">
+                Edit my details
+              </Link>
+            )}
+            {feedback?.enabled && (feedback.open || feedback.response) && (
+              <Link href={`/feedback/${t.event.id}`} className="btn btn-sm btn-secondary">
+                {feedback.response ? "My feedback" : "Give feedback"}
+              </Link>
+            )}
           </section>
         )}
 

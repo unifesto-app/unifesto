@@ -76,6 +76,8 @@ export const unsaveEvent = (token: string, eventId: string) => call("DELETE", `/
 
 export interface MyCertificate {
   id: string;
+  /** F2: issued but held until I give feedback; no files or code until then. */
+  locked?: boolean;
   certificateNumber: string;
   verificationCode: string;
   pdfUrl: string | null;
