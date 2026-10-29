@@ -11,11 +11,14 @@ import { COUNTS_AS_ATTENDING, isAttending } from '../common/attendance';
 import { NotifyService } from '../notifications/notify.service';
 import { FEEDBACK_SUBMITTED, type FeedbackSubmittedEvent } from './feedback.events';
 import {
+  CHOICE_TYPES,
   checkAnswers,
   checkFieldDefinition,
+  formatAnswer,
   sanitizeConfig,
   showIfOf,
 } from '../registrations/form-answers.util';
+import { toCsv } from '../common/csv';
 import { CreateStayQuestionDto as QuestionDto, UpdateStayQuestionDto as UpdateQuestionDto } from '../stays/dto';
 import { SubmitFeedbackDto } from './feedback.dto';
 
@@ -48,6 +51,7 @@ export class FeedbackService {
         endDateTime: true,
         feedbackEnabled: true,
         feedbackUnlocksCertificate: true,
+        feedbackPublic: true,
         deletedAt: true,
       },
     });
@@ -200,17 +204,118 @@ export class FeedbackService {
     return {
       enabled: event.feedbackEnabled,
       unlocksCertificate: event.feedbackUnlocksCertificate,
+      public: event.feedbackPublic,
       questions: await this.questions(eventId),
     };
   }
 
-  async setSettings(eventId: string, s: { enabled?: boolean; unlocksCertificate?: boolean }) {
+  async setSettings(eventId: string, s: { enabled?: boolean; unlocksCertificate?: boolean; public?: boolean }) {
     await this.loadEvent(eventId);
     await this.prisma.event.update({
       where: { id: eventId },
-      data: { feedbackEnabled: s.enabled, feedbackUnlocksCertificate: s.unlocksCertificate },
+      data: { feedbackEnabled: s.enabled, feedbackUnlocksCertificate: s.unlocksCertificate, feedbackPublic: s.public },
     });
     return this.getForTeam(eventId);
+  }
+
+  // ───────────────────────────── F3 results ─────────────────────────────
+
+  /**
+   * The event's results: average rating and its spread, NPS (promoters 9-10
+   * minus detractors 0-6, as a percentage of those who answered), a summary
+   * per curator question and the comments. Comments carry no names; the CSV
+   * export has them.
+   */
+  async results(eventId: string) {
+    const event = await this.loadEvent(eventId);
+    const [questions, responses] = await Promise.all([
+      this.questions(eventId),
+      this.prisma.eventFeedbackResponse.findMany({ where: { eventId }, orderBy: { createdAt: 'desc' } }),
+    ]);
+    const n = responses.length;
+    const npsAnswers = responses.flatMap((r) => (r.nps == null ? [] : [r.nps]));
+    const promoters = npsAnswers.filter((v) => v >= 9).length;
+    const detractors = npsAnswers.filter((v) => v <= 6).length;
+    const answersTo = (id: string) =>
+      responses
+        .map((r) => (r.answers as Record<string, unknown> | null)?.[id])
+        .filter((v) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
+
+    return {
+      count: n,
+      public: event.feedbackPublic,
+      averageRating: n ? Math.round((responses.reduce((t, r) => t + r.rating, 0) / n) * 10) / 10 : null,
+      distribution: [1, 2, 3, 4, 5].map((value) => ({ value, count: responses.filter((r) => r.rating === value).length })),
+      nps: {
+        score: npsAnswers.length ? Math.round(((promoters - detractors) * 100) / npsAnswers.length) : null,
+        answered: npsAnswers.length,
+        promoters,
+        passives: npsAnswers.length - promoters - detractors,
+        detractors,
+      },
+      questions: questions
+        .filter((q) => q.type !== 'SECTION')
+        .map((q) => {
+          const answers = answersTo(q.id);
+          if (q.type === 'RATING' || q.type === 'NUMBER') {
+            const nums = answers.map(Number).filter((v) => Number.isFinite(v));
+            return {
+              id: q.id,
+              label: q.label,
+              type: q.type,
+              answered: nums.length,
+              average: nums.length ? Math.round((nums.reduce((t, v) => t + v, 0) / nums.length) * 10) / 10 : null,
+            };
+          }
+          if (CHOICE_TYPES.includes(q.type)) {
+            const counts = new Map<string, number>();
+            for (const a of answers.flatMap((v) => (Array.isArray(v) ? v : [v]))) {
+              const key = formatAnswer(a);
+              counts.set(key, (counts.get(key) ?? 0) + 1);
+            }
+            return {
+              id: q.id,
+              label: q.label,
+              type: q.type,
+              answered: answers.length,
+              options: [...counts.entries()].map(([option, count]) => ({ option, count })).sort((a, b) => b.count - a.count),
+            };
+          }
+          return { id: q.id, label: q.label, type: q.type, answered: answers.length, texts: answers.slice(0, 100).map(formatAnswer) };
+        }),
+      comments: responses
+        .filter((r) => r.comment)
+        .slice(0, 200)
+        .map((r) => ({ rating: r.rating, comment: r.comment!, createdAt: r.createdAt })),
+    };
+  }
+
+  /** Every response as CSV, one row per attendee, with their name and email. */
+  async resultsCsv(eventId: string): Promise<string> {
+    await this.loadEvent(eventId);
+    const [questions, responses] = await Promise.all([
+      this.questions(eventId),
+      this.prisma.eventFeedbackResponse.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          user: { select: { fullName: true, identities: { where: { email: { not: null } }, select: { email: true }, take: 1 } } },
+        },
+      }),
+    ]);
+    const asked = questions.filter((q) => q.type !== 'SECTION');
+    return toCsv([
+      ['Submitted', 'Name', 'Email', 'Rating (1-5)', 'NPS (0-10)', 'Comment', ...asked.map((q) => q.label)],
+      ...responses.map((r) => [
+        r.updatedAt.toISOString(),
+        r.user.fullName ?? '',
+        r.user.identities[0]?.email ?? '',
+        r.rating,
+        r.nps ?? '',
+        r.comment ?? '',
+        ...asked.map((q) => formatAnswer((r.answers as Record<string, unknown> | null)?.[q.id])),
+      ]),
+    ]);
   }
 
   private async assertValidQuestion(eventId: string, def: Parameters<typeof checkFieldDefinition>[0]) {

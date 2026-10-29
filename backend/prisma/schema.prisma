@@ -1519,6 +1519,8 @@ model Event {
   feedbackUnlocksCertificate Boolean   @default(false) @map("feedback_unlocks_certificate")
   feedbackRequestedAt        DateTime? @map("feedback_requested_at") @db.Timestamptz(6)
   feedbackRemindedAt         DateTime? @map("feedback_reminded_at") @db.Timestamptz(6)
+  // F3: show the average rating on the public event page (opt-in, 5+ responses).
+  feedbackPublic             Boolean   @default(false) @map("feedback_public")
 
   // L4 projector: random read-only display link secret. Regenerating it
   // revokes every screen opened with the old link. Null until first asked for.

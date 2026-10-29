@@ -20,6 +20,7 @@ import {
   Globe,
   MapPin,
   ShareNetwork,
+  Star,
   Ticket,
   WhatsappLogo,
   XCircle,
@@ -301,6 +302,17 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             </Pressable>
           ) : null}
 
+          {/* F3: opt-in public rating, sent only once 5+ attendees rated. */}
+          {event.rating ? (
+            <View style={styles.rating} accessibilityLabel={`Rated ${event.rating.average} out of 5 by ${event.rating.count} attendees`}>
+              <Star size={16} color={c.text} weight="fill" />
+              <Text style={[styles.hostText, { color: c.muted }]}>
+                <Text style={{ color: c.text, ...cosmosFont.strong }}>{event.rating.average.toFixed(1)}</Text>
+                {` · ${event.rating.count} attendee ratings`}
+              </Text>
+            </View>
+          ) : null}
+
           {/* ── Facts: a ticket-stub date, then where, entry and stay ── */}
           <View style={[styles.facts, { backgroundColor: c.raised }]}>
             <Pressable
@@ -543,6 +555,7 @@ const styles = StyleSheet.create({
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
   hostInitial: { fontSize: 11, ...cosmosFont.display },
   hostText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
   stub: {

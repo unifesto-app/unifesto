@@ -254,6 +254,15 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
               </Link>
             )}
 
+            {/* F3: opt-in public rating, sent only once 5+ attendees rated. */}
+            {event.rating && (
+              <p className="enter mt-2 text-sm text-paper/55" style={{ ["--d" as string]: "140ms" }}>
+                <span aria-hidden>★ </span>
+                <span className="font-semibold text-paper">{event.rating.average.toFixed(1)}</span> ·{" "}
+                {event.rating.count} attendee ratings
+              </p>
+            )}
+
             {/* ── Facts: a ticket-stub date, then where and entry ── */}
             <Card className="enter mt-6" >
               <details className="group [&_summary::-webkit-details-marker]:hidden">

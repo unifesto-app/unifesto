@@ -17,6 +17,7 @@ import {
   Lightning,
   ListBullets,
   ListChecks,
+  Star,
   Timer,
   Medal,
   PencilSimple,
@@ -242,6 +243,14 @@ export default function ManageEventScreen() {
           ) : null}
           {h.access.hosts ? (
             <SettingsRow icon={icon(Timer)} label="Live quizzes" onPress={() => router.push(`/manage/event/${e.id}/quizzes`)} />
+          ) : null}
+          {/* F3: feedback results need event:edit, like the live tools above. */}
+          {h.access.hosts ? (
+            <SettingsRow
+              icon={icon(Star)}
+              label="Feedback"
+              onPress={() => router.push({ pathname: `/manage/event/${e.id}/feedback`, params: { spaceId: e.spaceId } })}
+            />
           ) : null}
           {h.access.hosts ? (
             <SettingsRow

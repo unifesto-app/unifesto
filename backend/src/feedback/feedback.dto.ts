@@ -37,4 +37,9 @@ export class FeedbackSettingsDto {
   @IsOptional()
   @IsBoolean()
   unlocksCertificate?: boolean;
+
+  @ApiPropertyOptional({ description: 'Show the average rating on the public event page once 5+ have rated (F3)' })
+  @IsOptional()
+  @IsBoolean()
+  public?: boolean;
 }

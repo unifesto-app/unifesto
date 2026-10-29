@@ -45,6 +45,7 @@ import {
   type AttendeeBreakdown,
 } from '../common/attendance';
 import { validateWhatsAppInviteLink } from '../common/whatsapp-links';
+import { publicRating } from '../feedback/public-rating';
 import { resolveEffectiveSponsor } from '../sponsors/sponsors.util';
 import {
   EventStatus,
@@ -2357,6 +2358,8 @@ export class EventsService {
       select: { space: { select: this.coHostSpaceSelect } },
     });
     (event as any).coHosts = coHostLinks.map((c) => c.space);
+    // F3: the opt-in public rating (5+ responses); rides the 10-minute event cache.
+    (event as any).rating = await publicRating(this.prisma, event);
 
     // Public sponsor display: every sponsor attached to this event, flattened to
     // its effective (roster + per-event override) shape and ordered by tier rank

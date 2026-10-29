@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, ParseUUIDPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
@@ -39,6 +39,23 @@ export class FeedbackController {
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
   getForTeam(@Param('eventId', uuid) eventId: string) {
     return this.feedback.getForTeam(eventId);
+  }
+
+  @Get('results')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
+  @ApiOperation({ summary: 'Averages, NPS, distribution, question summaries and comments (F3)' })
+  results(@Param('eventId', uuid) eventId: string) {
+    return this.feedback.results(eventId);
+  }
+
+  @Get('results.csv')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({ summary: 'Every response as CSV (F3)' })
+  resultsCsv(@Param('eventId', uuid) eventId: string) {
+    return this.feedback.resultsCsv(eventId);
   }
 
   @Patch('settings')
