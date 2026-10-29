@@ -90,7 +90,7 @@ describe('plan enforcement (T9)', () => {
 
   it('the leads funnel needs sponsors (Growth)', async () => {
     const prisma: any = onPlan(OrgPlan.CLUB, { lead: { findMany: jest.fn(async () => []) } });
-    const leads = new LeadsService(prisma, new PlanConfigService(prisma));
+    const leads = new LeadsService(prisma, new PlanConfigService(prisma), { emit: jest.fn() } as any);
     await expect(leads.listLeads('sp-1', {})).rejects.toThrow('Not on the Club plan: Sponsors and lead capture.');
     expect(prisma.lead.findMany).not.toHaveBeenCalled();
   });

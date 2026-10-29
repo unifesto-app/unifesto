@@ -66,6 +66,8 @@ export function boothScan(
     backendClient.post(`/sponsor-portal/sponsors/${sponsorId}/scan`, {
       eventSponsorId,
       qrCode,
+      // The caller only gets here after the attendee agreed (the consent box).
+      attendeeConsent: true,
     })
   );
 }

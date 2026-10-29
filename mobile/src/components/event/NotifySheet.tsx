@@ -79,8 +79,8 @@ export default function NotifySheet({
                 </Animated.View>
                 <Text style={[styles.doneTitle, { color: c.text }]}>You're on the list</Text>
                 <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
-                  We'll email <Text style={{ color: c.text, ...cosmosFont.strong }}>{email}</Text> with updates
-                  {eventTitle ? ` about ${eventTitle}` : ''}.
+                  We'll email <Text style={{ color: c.text, ...cosmosFont.strong }}>{email}</Text> if
+                  {eventTitle ? ` ${eventTitle}` : ' the event'} changes, and the day before it starts.
                 </Text>
                 <Button label="Done" size="lg" onPress={close} style={styles.button} />
               </View>
@@ -100,7 +100,7 @@ export default function NotifySheet({
                 </View>
 
                 <Text style={[styles.body, { color: c.soft, marginBottom: spacing[4] }]}>
-                  We'll email you updates about this event.
+                  We'll email you if the date or venue changes, and remind you the day before.
                 </Text>
 
                 <CardSurfaceProvider kind="solid">

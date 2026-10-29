@@ -501,9 +501,10 @@ export default function WhatsAppBroadcastPage() {
                   </p>
                   {params.map((value, i) => (
                     <div key={i} className="space-y-1.5">
-                      <Label>Variable {`{{${i + 1}}}`}</Label>
+                      <Label htmlFor={`broadcast-var-${i}`}>Variable {`{{${i + 1}}}`}</Label>
                       <div className="flex gap-2">
                         <Input
+                          id={`broadcast-var-${i}`}
                           value={value}
                           onChange={(e) =>
                             setParams((prev) =>

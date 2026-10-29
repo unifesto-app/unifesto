@@ -15,8 +15,6 @@ import {
   Stack,
   ArrowsLeftRight,
   HandArrowUp,
-  PaintBrush,
-  MagicWand,
   Ticket,
   Gift,
   Tag,
@@ -98,8 +96,6 @@ export const adminNav: NavGroup[] = [
       { href: "/dashboard/requests/ownership", label: "Ownership", icon: HandArrowUp, keywords: "transfer handover" },
       { href: "/dashboard/requests/ticket-transfers", label: "Ticket transfers", icon: Ticket },
       { href: "/dashboard/requests/free-adds", label: "Free adds", icon: Gift },
-      { href: "/dashboard/requests/white-label", label: "White-label", icon: PaintBrush, exact: true, keywords: "branding history" },
-      { href: "/dashboard/requests/white-label/apply", label: "Apply branding", icon: MagicWand, keywords: "white-label manage" },
     ],
   },
   {

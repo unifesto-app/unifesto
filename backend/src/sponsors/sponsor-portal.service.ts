@@ -126,8 +126,9 @@ export class SponsorPortalService {
 
   /**
    * Booth scan: a sponsor person scans an attendee's ticket QR at their booth.
-   * Per the locked consent model, the scan itself is consent — it creates a
-   * BOOTH_SCAN lead. Idempotent: scanning the same attendee twice is a no-op.
+   * The scanner shows the attendee a prompt first, and the DTO refuses a scan
+   * without their yes (`attendeeConsent`), so a BOOTH_SCAN lead is a consented
+   * share. Idempotent: scanning the same attendee twice is a no-op.
    */
   async boothScan(userId: string, sponsorId: string, dto: BoothScanDto) {
     await this.assertMember(userId, sponsorId);

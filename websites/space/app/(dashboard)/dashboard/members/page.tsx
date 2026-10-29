@@ -599,9 +599,9 @@ function TransferOwnershipCard({
         ) : (
           <>
             <div className="space-y-1.5">
-              <Label className="text-xs">New owner</Label>
+              <Label htmlFor="handover-owner" className="text-xs">New owner</Label>
               <Select value={newOwnerId} onValueChange={setNewOwnerId}>
-                <SelectTrigger className="sm:w-80">
+                <SelectTrigger id="handover-owner" className="sm:w-80">
                   <SelectValue placeholder="Choose a member" />
                 </SelectTrigger>
                 <SelectContent>
@@ -615,8 +615,9 @@ function TransferOwnershipCard({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Why are you handing it over?</Label>
+              <Label htmlFor="handover-reason" className="text-xs">Why are you handing it over?</Label>
               <textarea
+                id="handover-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}

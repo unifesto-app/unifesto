@@ -2492,6 +2492,12 @@ model EventCoHost {
 
   invitedBy String @map("invited_by") @db.Uuid
 
+  /// Null while the invite is pending. A Space Admin of the invited space must
+  /// accept before the link grants access, lists the event on that space or
+  /// credits it publicly (F8). Reads filter on `ACCEPTED_CO_HOST`.
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+  acceptedBy String?   @map("accepted_by") @db.Uuid
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([eventId, spaceId])

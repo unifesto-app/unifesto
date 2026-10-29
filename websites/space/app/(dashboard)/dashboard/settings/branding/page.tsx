@@ -1,7 +1,7 @@
 "use client";
 
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useId, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
 import { CalendarBlank } from "@unifesto/unicon/react";
@@ -369,9 +369,10 @@ function AssetField({
   onFile: (file: File | undefined) => void;
   onClear: () => void;
 }) {
+  const inputId = useId();
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label htmlFor={inputId}>{label}</Label>
       <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 p-2">
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element -- organiser upload of unknown ratio
@@ -385,6 +386,7 @@ function AssetField({
           <label className="cursor-pointer">
             Upload
             <input
+              id={inputId}
               type="file"
               accept="image/png,image/jpeg,image/webp,image/x-icon"
               className="sr-only"

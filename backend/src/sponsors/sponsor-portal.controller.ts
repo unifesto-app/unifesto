@@ -39,7 +39,7 @@ export class SponsorPortalController {
   }
 
   @Post('sponsors/:sponsorId/scan')
-  @ApiOperation({ summary: 'Booth scan an attendee ticket (scan = consent)' })
+  @ApiOperation({ summary: 'Booth scan an attendee ticket (the attendee agreed on the prompt)' })
   scan(
     @CurrentUser() user: User,
     @Param('sponsorId') sponsorId: string,

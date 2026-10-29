@@ -199,8 +199,9 @@ export default function ComposeCampaignPage() {
 
           {targetDef.needsId === "user" && (
             <div>
-              <Label>User</Label>
+              <Label htmlFor="email-target-user">User</Label>
               <EntitySearchSelect
+                id="email-target-user"
                 key="user"
                 placeholder="Search by name, email, or phone…"
                 onChange={(id) => setTargetId(id ?? "")}
@@ -217,8 +218,9 @@ export default function ComposeCampaignPage() {
 
           {targetDef.needsId === "event" && (
             <div>
-              <Label>Event</Label>
+              <Label htmlFor="email-target-event">Event</Label>
               <EntitySearchSelect
+                id="email-target-event"
                 key="event"
                 placeholder="Search events by title…"
                 onChange={(id) => setTargetId(id ?? "")}
@@ -235,8 +237,9 @@ export default function ComposeCampaignPage() {
 
           {targetDef.needsId === "space" && (
             <div>
-              <Label>Space</Label>
+              <Label htmlFor="email-target-space">Space</Label>
               <EntitySearchSelect
+                id="email-target-space"
                 key="space"
                 placeholder="Search spaces by name…"
                 onChange={(id) => setTargetId(id ?? "")}

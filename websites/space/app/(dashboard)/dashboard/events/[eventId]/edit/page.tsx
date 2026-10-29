@@ -718,8 +718,8 @@ export default function EditEventPage() {
                 Changing it regenerates future, unregistered, non-detached
                 occurrences; registered and individually-edited ones are kept. */}
             {event?.isRecurring && (
-              <div className="space-y-2">
-                <Label>Recurrence</Label>
+              <div role="group" aria-labelledby="edit-recurrence" className="space-y-2">
+                <Label id="edit-recurrence">Recurrence</Label>
                 <RecurrenceEditor
                   hideToggle
                   value={form.recurrence}
@@ -744,8 +744,8 @@ export default function EditEventPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-4 py-4">
-              <div className="space-y-2">
-                <Label>Find the venue</Label>
+              <div role="group" aria-labelledby="edit-venue-search" className="space-y-2">
+                <Label id="edit-venue-search">Find the venue</Label>
                 <PlaceSearch
                   onPick={pickPlace}
                   pinned={

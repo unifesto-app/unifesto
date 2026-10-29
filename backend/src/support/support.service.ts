@@ -139,6 +139,7 @@ const SUBJECT_MODELS = {
   RegistrationTransferRequest: 'registrationTransferRequest',
   EventOwnershipTransfer: 'eventOwnershipTransfer',
   SubEventAttachRequest: 'subEventAttachRequest',
+  EventCoHost: 'eventCoHost',
   ContentReport: 'contentReport',
   PayoutBankAccount: 'payoutBankAccount',
   Payout: 'payout',

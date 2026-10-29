@@ -400,8 +400,8 @@ function ChangePlan({ sub, onSaved }: { sub: SpaceSubscription; onSaved: (s: Spa
         {plan !== "STARTER" && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="block">Cycle</Label>
-              <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
+              <Label id="change-plan-cycle" className="block">Cycle</Label>
+              <div role="group" aria-labelledby="change-plan-cycle" className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
                 {CYCLES.map((c) => (
                   <button
                     key={c}
@@ -528,8 +528,8 @@ function OfflinePayment({ sub, onSaved }: { sub: SpaceSubscription; onSaved: (up
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label className="block">Cycle</Label>
-            <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
+            <Label id="offline-payment-cycle" className="block">Cycle</Label>
+            <div role="group" aria-labelledby="offline-payment-cycle" className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
               {CYCLES.map((c) => (
                 <button
                   key={c}

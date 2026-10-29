@@ -244,6 +244,7 @@ function BoothScanPanel({
   const scannable = sponsor.events.filter((e) => e.leadCaptureEnabled);
   const [eventSponsorId, setEventSponsorId] = useState(scannable[0]?.eventSponsorId ?? "");
   const [qr, setQr] = useState("");
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -259,7 +260,7 @@ function BoothScanPanel({
   }
 
   const scan = async () => {
-    if (!eventSponsorId || !qr.trim()) return;
+    if (!eventSponsorId || !qr.trim() || !consent) return;
     setBusy(true);
     setFeedback(null);
     const { data, error } = await boothScan(sponsor.sponsorId, eventSponsorId, qr.trim());
@@ -273,6 +274,7 @@ function BoothScanPanel({
       text: `Captured ${data?.lead.name ?? "attendee"}.`,
     });
     setQr("");
+    setConsent(false);
     onCaptured();
   };
 
@@ -283,7 +285,8 @@ function BoothScanPanel({
           <QrCode className="h-4 w-4" /> Booth scan
         </h2>
         <p className="text-xs text-muted-foreground">
-          Enter an attendee&apos;s ticket code to add them as a lead. Scanning is consent.
+          Enter an attendee&apos;s ticket code to add them as a lead. Ask them first: you get their name, email and
+          phone number.
         </p>
         <div className="flex flex-wrap items-end gap-2">
           {scannable.length > 1 && (
@@ -312,10 +315,19 @@ function BoothScanPanel({
               placeholder="Scan or type the ticket QR code"
             />
           </div>
-          <Button onClick={scan} disabled={busy || !qr.trim()}>
+          <Button onClick={scan} disabled={busy || !qr.trim() || !consent}>
             {busy ? "Adding…" : "Add lead"}
           </Button>
         </div>
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          The attendee agreed to share their name, email and phone number with {sponsor.name}.
+        </label>
         {feedback && (
           <p
             className={`flex items-center gap-1.5 text-sm ${

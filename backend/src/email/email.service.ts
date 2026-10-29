@@ -493,6 +493,10 @@ export class EmailService {
     return this.deliverBranded('resend', data.email, data, T.eventUpdatedEmail, delivery);
   }
 
+  async sendEventInterest(data: T.EventInterestData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.eventInterestEmail, delivery);
+  }
+
   async sendEventPublished(data: T.EventPublishedData, delivery?: DeliveryOpts): Promise<boolean> {
     return this.deliver('resend', data.email, T.eventPublishedEmail(data), { delivery });
   }
@@ -559,6 +563,10 @@ export class EmailService {
 
   async sendSpaceApproved(data: T.SpaceApprovedData, delivery?: DeliveryOpts): Promise<boolean> {
     return this.deliver('resend', data.email, T.spaceApprovedEmail(data), { delivery });
+  }
+
+  async sendSpaceInquiry(data: T.SpaceInquiryData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliver('resend', data.email, T.spaceInquiryEmail(data), { delivery });
   }
 
   async sendSpaceRejected(data: T.SpaceRejectedData, delivery?: DeliveryOpts): Promise<boolean> {

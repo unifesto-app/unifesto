@@ -16,6 +16,8 @@ interface EntitySearchSelectProps<T> {
   /** Muted second line (e.g. email, slug, host). */
   getSecondary: (item: T) => string;
   placeholder?: string;
+  /** id for the search input, so a <Label htmlFor> can name it. */
+  id?: string;
 }
 
 /**
@@ -31,6 +33,7 @@ export function EntitySearchSelect<T>({
   getPrimary,
   getSecondary,
   placeholder,
+  id,
 }: EntitySearchSelectProps<T>) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<T[]>([]);
@@ -102,6 +105,7 @@ export function EntitySearchSelect<T>({
       <div className="relative">
         <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          id={id}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
