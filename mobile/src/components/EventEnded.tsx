@@ -97,9 +97,11 @@ export function AfterEventGroup({
         <SettingsRow
           icon={<Certificate size={24} color={c.text} />}
           label="My certificate"
-          value={new Date(cert.issuedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-          external
+          value={cert.locked ? 'Rate to unlock' : new Date(cert.issuedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          external={!cert.locked}
           onPress={() => {
+            // F2: held for my feedback; the feedback row opens the form.
+            if (cert.locked) return feedback?.onPress();
             // The PDF when there is one (print quality), else the image.
             const url = cert.pdfUrl || cert.imageUrl;
             if (url) void WebBrowser.openBrowserAsync(url);

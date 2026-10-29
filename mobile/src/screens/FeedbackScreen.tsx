@@ -106,7 +106,11 @@ export default function FeedbackScreen() {
         <Stack.Screen options={{ title: 'Feedback' }} />
         <View style={[styles.empty, { backgroundColor: c.raised }]}>
           <Text style={[styles.muted, { color: c.soft }]}>
-            {form.enabled ? 'Feedback opens for attendees once the event starts.' : 'This event is not collecting feedback.'}
+            {!form.enabled
+              ? 'This event is not collecting feedback.'
+              : new Date(form.closesAt) < new Date()
+                ? 'Feedback for this event has closed.'
+                : 'Feedback opens for attendees once the event starts.'}
           </Text>
         </View>
       </CosmosScreen>
@@ -117,6 +121,10 @@ export default function FeedbackScreen() {
     <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={60 + insets.bottom} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Feedback' }} />
       <Text style={[styles.title, { color: c.text }]}>{form.event.title}</Text>
+      <Text style={[styles.hint, { color: c.muted, marginTop: spacing[1] }]}>
+        {form.unlocksCertificate ? 'Sending this unlocks your certificate. ' : ''}Open until{' '}
+        {new Date(form.closesAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.
+      </Text>
 
       <View style={styles.block}>
         <BlockTitle>How was it?</BlockTitle>

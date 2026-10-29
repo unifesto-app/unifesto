@@ -4,9 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventFeedbackQuestion, Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventFeedbackQuestion, EventStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { isAttending } from '../common/attendance';
+import { COUNTS_AS_ATTENDING, isAttending } from '../common/attendance';
+import { NotifyService } from '../notifications/notify.service';
+import { FEEDBACK_SUBMITTED, type FeedbackSubmittedEvent } from './feedback.events';
 import {
   checkAnswers,
   checkFieldDefinition,
@@ -16,6 +19,12 @@ import {
 import { CreateStayQuestionDto as QuestionDto, UpdateStayQuestionDto as UpdateQuestionDto } from '../stays/dto';
 import { SubmitFeedbackDto } from './feedback.dto';
 
+const HOUR = 3_600_000;
+/** F2 timing, counted from the event's end. */
+export const FEEDBACK_REQUEST_AFTER = 2 * HOUR;
+export const FEEDBACK_REMINDER_AFTER = 48 * HOUR;
+export const FEEDBACK_CLOSES_AFTER = 7 * 24 * HOUR;
+
 /**
  * F1: per-event attendee feedback. A fixed 1-5 rating and NPS, then the
  * curators' own questions (registration question types and rules, minus
@@ -23,12 +32,24 @@ import { SubmitFeedbackDto } from './feedback.dto';
  */
 @Injectable()
 export class FeedbackService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notify: NotifyService,
+    private readonly events: EventEmitter2,
+  ) {}
 
   private async loadEvent(eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, title: true, startDateTime: true, endDateTime: true, feedbackEnabled: true, deletedAt: true },
+      select: {
+        id: true,
+        title: true,
+        startDateTime: true,
+        endDateTime: true,
+        feedbackEnabled: true,
+        feedbackUnlocksCertificate: true,
+        deletedAt: true,
+      },
     });
     if (!event || event.deletedAt) throw new NotFoundException('Event not found');
     return event;
@@ -38,9 +59,13 @@ export class FeedbackService {
     return this.prisma.eventFeedbackQuestion.findMany({ where: { eventId }, orderBy: { order: 'asc' } });
   }
 
-  /** Feedback opens when the event starts. */
-  private isOpen(event: { feedbackEnabled: boolean; startDateTime: Date }, now = new Date()) {
-    return event.feedbackEnabled && event.startDateTime <= now;
+  private closesAt(event: { endDateTime: Date }) {
+    return new Date(event.endDateTime.getTime() + FEEDBACK_CLOSES_AFTER);
+  }
+
+  /** Feedback opens when the event starts and closes 7 days after it ends (F2). */
+  private isOpen(event: { feedbackEnabled: boolean; startDateTime: Date; endDateTime: Date }, now = new Date()) {
+    return event.feedbackEnabled && event.startDateTime <= now && now <= this.closesAt(event);
   }
 
   // ───────────────────────────── attendee ─────────────────────────────
@@ -57,6 +82,8 @@ export class FeedbackService {
       event: { id: event.id, title: event.title },
       enabled: event.feedbackEnabled,
       open: attending && this.isOpen(event),
+      closesAt: this.closesAt(event),
+      unlocksCertificate: event.feedbackUnlocksCertificate,
       questions,
       response,
     };
@@ -66,7 +93,11 @@ export class FeedbackService {
   async submit(userId: string, eventId: string, dto: SubmitFeedbackDto) {
     const event = await this.loadEvent(eventId);
     if (!event.feedbackEnabled) throw new BadRequestException('Feedback is off for this event');
-    if (!this.isOpen(event)) throw new BadRequestException('Feedback opens when the event starts');
+    if (!this.isOpen(event)) {
+      throw new BadRequestException(
+        event.startDateTime > new Date() ? 'Feedback opens when the event starts' : 'Feedback for this event has closed',
+      );
+    }
     if (!(await isAttending(this.prisma, eventId, userId))) {
       throw new ForbiddenException('Only attendees can give feedback');
     }
@@ -82,23 +113,103 @@ export class FeedbackService {
       comment: dto.comment?.trim() || null,
       answers: answers as Prisma.InputJsonObject,
     };
-    return this.prisma.eventFeedbackResponse.upsert({
+    const saved = await this.prisma.eventFeedbackResponse.upsert({
       where: { eventId_userId: { eventId, userId } },
       create: { eventId, userId, ...data },
       update: data,
     });
+    this.events.emit(FEEDBACK_SUBMITTED, { eventId, userId } satisfies FeedbackSubmittedEvent);
+    return saved;
+  }
+
+  /**
+   * F2 sweep: ask checked-in attendees 2 h after the end, remind those who
+   * haven't answered at 48 h. Each stage is stamped on the event before
+   * sending, so it runs once however often the sweep fires; notify() also
+   * dedups per attendee. Reminders only follow a request, so events that ended
+   * before this shipped are left alone.
+   */
+  async sendDue(now = new Date()) {
+    let sent = 0;
+    const stages = [
+      { stamp: 'feedbackRequestedAt', after: FEEDBACK_REQUEST_AFTER, until: FEEDBACK_REMINDER_AFTER, extra: {} },
+      {
+        stamp: 'feedbackRemindedAt',
+        after: FEEDBACK_REMINDER_AFTER,
+        until: FEEDBACK_CLOSES_AFTER,
+        extra: { feedbackRequestedAt: { not: null } },
+      },
+    ] as const;
+    for (const stage of stages) {
+      const due = await this.prisma.event.findMany({
+        where: {
+          feedbackEnabled: true,
+          deletedAt: null,
+          status: { not: EventStatus.CANCELLED },
+          [stage.stamp]: null,
+          ...stage.extra,
+          endDateTime: { lte: new Date(now.getTime() - stage.after), gt: new Date(now.getTime() - stage.until) },
+        },
+        select: { id: true, title: true, endDateTime: true },
+        take: 50,
+      });
+      for (const event of due) {
+        const claimed = await this.prisma.event.updateMany({
+          where: { id: event.id, [stage.stamp]: null },
+          data: { [stage.stamp]: now },
+        });
+        if (!claimed.count) continue; // another replica took it
+        const closesText = this.closesAt(event).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          timeZone: 'Asia/Kolkata',
+        });
+        for (const userId of await this.checkedInWithoutFeedback(event.id)) {
+          const data = { eventId: event.id, eventTitle: event.title };
+          if (stage.stamp === 'feedbackRequestedAt') await this.notify.notify(userId, 'feedback.request', data);
+          else await this.notify.notify(userId, 'feedback.reminder', { ...data, closesText });
+          sent++;
+        }
+      }
+    }
+    return { sent };
+  }
+
+  /** Accounts that checked in (bookings and group members) and haven't answered yet. */
+  private async checkedInWithoutFeedback(eventId: string): Promise<string[]> {
+    const [regs, members, answered] = await Promise.all([
+      this.prisma.eventRegistration.findMany({
+        where: { eventId, ...COUNTS_AS_ATTENDING, checkedInAt: { not: null } },
+        select: { userId: true },
+      }),
+      this.prisma.eventGroupMemberCheckin.findMany({
+        where: { registration: { eventId, ...COUNTS_AS_ATTENDING }, groupSeat: { claimedByUserId: { not: null } } },
+        select: { groupSeat: { select: { claimedByUserId: true } } },
+      }),
+      this.prisma.eventFeedbackResponse.findMany({ where: { eventId }, select: { userId: true } }),
+    ]);
+    const done = new Set(answered.map((a) => a.userId));
+    const ids = [...regs.map((r) => r.userId), ...members.map((m) => m.groupSeat?.claimedByUserId)];
+    return [...new Set(ids.filter((id): id is string => !!id && !done.has(id)))];
   }
 
   // ───────────────────────────── curators (event:edit) ─────────────────────────────
 
   async getForTeam(eventId: string) {
     const event = await this.loadEvent(eventId);
-    return { enabled: event.feedbackEnabled, questions: await this.questions(eventId) };
+    return {
+      enabled: event.feedbackEnabled,
+      unlocksCertificate: event.feedbackUnlocksCertificate,
+      questions: await this.questions(eventId),
+    };
   }
 
-  async setEnabled(eventId: string, enabled: boolean) {
+  async setSettings(eventId: string, s: { enabled?: boolean; unlocksCertificate?: boolean }) {
     await this.loadEvent(eventId);
-    await this.prisma.event.update({ where: { id: eventId }, data: { feedbackEnabled: enabled } });
+    await this.prisma.event.update({
+      where: { id: eventId },
+      data: { feedbackEnabled: s.enabled, feedbackUnlocksCertificate: s.unlocksCertificate },
+    });
     return this.getForTeam(eventId);
   }
 

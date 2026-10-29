@@ -25,6 +25,8 @@ import { PlatformConfigService } from '../subscription/platform-config.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { OnEvent } from '../common/on-event';
+import { FEEDBACK_SUBMITTED, type FeedbackSubmittedEvent } from '../feedback/feedback.events';
 import {
   CertificateRenderService,
   CertificateFieldDef,
@@ -1033,6 +1035,8 @@ export class CertificatesService {
     },
   ): Promise<boolean> {
     if (!recipient.email || !cert.pdfUrl) return false;
+    // F2: held until the attendee gives feedback; sent from onFeedbackSubmitted.
+    if (await this.heldForFeedback(event.id, cert.verificationCode)) return false;
 
     const sent = await this.email.sendCertificateIssued({
       email: recipient.email,
@@ -1615,19 +1619,64 @@ export class CertificatesService {
 
   /** Attendee view: my certificates across all events. */
   async listMine(userId: string) {
-    return this.prisma.certificate.findMany({
-      where: { userId, status: CertificateStatus.ISSUED },
-      orderBy: { issuedAt: 'desc' },
+    const [certs, answered] = await Promise.all([
+      this.prisma.certificate.findMany({
+        where: { userId, status: CertificateStatus.ISSUED },
+        orderBy: { issuedAt: 'desc' },
+        select: {
+          id: true,
+          certificateNumber: true,
+          verificationCode: true,
+          pdfUrl: true,
+          imageUrl: true,
+          issuedAt: true,
+          event: { select: { id: true, title: true, slug: true, feedbackUnlocksCertificate: true } },
+        },
+      }),
+      this.prisma.eventFeedbackResponse.findMany({ where: { userId }, select: { eventId: true } }),
+    ]);
+    // F2: a certificate held for feedback is listed, but locked and without its files.
+    const done = new Set(answered.map((a) => a.eventId));
+    return certs.map(({ event: { feedbackUnlocksCertificate, ...event }, ...c }) =>
+      feedbackUnlocksCertificate && !done.has(event.id)
+        ? { ...c, event, locked: true, verificationCode: null, pdfUrl: null, imageUrl: null }
+        : { ...c, event, locked: false },
+    );
+  }
+
+  /** F2: does this certificate wait for its recipient's feedback? Guests (no account) never do. */
+  private async heldForFeedback(eventId: string, verificationCode: string): Promise<boolean> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { feedbackUnlocksCertificate: true },
+    });
+    if (!event?.feedbackUnlocksCertificate) return false;
+    const cert = await this.prisma.certificate.findUnique({ where: { verificationCode }, select: { userId: true } });
+    if (!cert?.userId) return false;
+    const answered = await this.prisma.eventFeedbackResponse.findUnique({
+      where: { eventId_userId: { eventId, userId: cert.userId } },
+      select: { id: true },
+    });
+    return !answered;
+  }
+
+  /** F2: feedback given, so send any certificate that was held for it. */
+  @OnEvent(FEEDBACK_SUBMITTED)
+  async onFeedbackSubmitted({ eventId, userId }: FeedbackSubmittedEvent) {
+    const held = await this.prisma.certificate.findMany({
+      where: { eventId, userId, status: CertificateStatus.ISSUED, emailedAt: null, pdfUrl: { not: null } },
       select: {
-        id: true,
+        recipientName: true,
+        recipientEmail: true,
         certificateNumber: true,
         verificationCode: true,
         pdfUrl: true,
-        imageUrl: true,
-        issuedAt: true,
-        event: { select: { id: true, title: true, slug: true } },
+        event: { select: { id: true, title: true, space: { select: { name: true } } } },
       },
     });
+    for (const c of held) {
+      await this.deliverCertificate({ name: c.recipientName, email: c.recipientEmail }, c.event, c);
+    }
   }
 
   // =====================================================

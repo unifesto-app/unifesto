@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { FeedbackSchedulerService } from './feedback-scheduler.service';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
 
-/** F1 per-event attendee feedback. PrismaModule is @Global. */
+/** F1/F2 per-event attendee feedback and its timed asks. Prisma and Redis are @Global. */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, NotificationsModule],
   controllers: [FeedbackController],
-  providers: [FeedbackService],
+  providers: [FeedbackService, FeedbackSchedulerService],
   exports: [FeedbackService],
 })
 export class FeedbackModule {}

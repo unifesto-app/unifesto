@@ -12,6 +12,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -77,8 +78,10 @@ export default function CertificatesScreen() {
     setRefreshing(false);
   }, [load]);
 
+  // F2: held for my feedback; listed apart, they open the feedback form.
+  const locked = certificates.filter((cert) => cert.locked);
   // Newest first from the server; the first is the hero, the rest by year.
-  const [latest, ...earlier] = certificates;
+  const [latest, ...earlier] = certificates.filter((cert) => !cert.locked);
   const years = useMemo(() => {
     const groups = new Map<number, MyCertificate[]>();
     for (const cert of earlier) {
@@ -96,7 +99,7 @@ export default function CertificatesScreen() {
         <Skeleton key={i} width="100%" height={92} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[3] }} />
       ))}
     </View>
-  ) : !latest ? (
+  ) : !latest && !locked.length ? (
     <View style={[styles.prompt, { backgroundColor: c.raised }]}>
       <CertificateIcon size={40} color={c.soft} weight="duotone" />
       <Text style={[styles.promptTitle, { color: c.text }]}>No certificates yet</Text>
@@ -107,12 +110,29 @@ export default function CertificatesScreen() {
     </View>
   ) : (
     <>
-      <View style={styles.pad}>
-        <Text style={[styles.eyebrow, { color: c.muted }]}>
-          {certificates.length === 1 ? 'Your certificate' : `Latest of ${certificates.length}`}
-        </Text>
-        <LatestCard cert={latest} onOpenEvent={() => router.push(`/event/${latest.event.slug || latest.event.id}`)} />
-      </View>
+      {locked.length ? (
+        <View style={styles.pad}>
+          <SettingsGroup title="Waiting for my feedback" surface={c.raised}>
+            {locked.map((cert) => (
+              <SettingsRow
+                key={cert.id}
+                icon={<CertificateIcon size={24} color={c.text} />}
+                label={cert.event.title}
+                value="Rate to unlock"
+                onPress={() => router.push(`/feedback/${cert.event.id}` as never)}
+              />
+            ))}
+          </SettingsGroup>
+        </View>
+      ) : null}
+      {latest ? (
+        <View style={styles.pad}>
+          <Text style={[styles.eyebrow, { color: c.muted }]}>
+            {certificates.length === 1 ? 'Your certificate' : `Latest of ${certificates.length - locked.length}`}
+          </Text>
+          <LatestCard cert={latest} onOpenEvent={() => router.push(`/event/${latest.event.slug || latest.event.id}`)} />
+        </View>
+      ) : null}
       {years.map(([year, certs], i) => (
         <Section key={year} title={String(year)} style={i === 0 ? styles.firstSection : undefined}>
           <View style={[styles.pad, styles.list]}>

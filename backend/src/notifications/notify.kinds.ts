@@ -64,6 +64,16 @@ export interface NotifyKindData {
   'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
   /** To each Space Admin: a note from the public space page. One per lead. */
   'space.inquiry': MailData<T.SpaceInquiryData> & { spaceId: string; leadId: string };
+  /** F2: to checked-in attendees 2 h after the event ends. Push + inbox only. */
+  'feedback.request': FeedbackNotice;
+  /** F2: the same, at 48 h, to those who haven't answered. */
+  'feedback.reminder': FeedbackNotice & { closesText: string };
+}
+
+/** A feedback ask (F2): the event and where the form opens. */
+export interface FeedbackNotice {
+  eventId: string;
+  eventTitle: string;
 }
 
 export type NotifyKind = keyof NotifyKindData;
@@ -119,6 +129,21 @@ function stayKind<D extends StayNotice>(title: string, body: (d: D) => string): 
     push,
     email: (svc, to, d, delivery) =>
       svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body: body(d) }, delivery),
+  };
+}
+
+/** A feedback ask: low (push + inbox, no email), once per event per attendee. */
+function feedbackKind<D extends FeedbackNotice>(title: (d: D) => string, body: (d: D) => string): KindDef<D> {
+  return {
+    category: 'eventReminders',
+    criticality: 'low',
+    entity: (d) => d.eventId,
+    push: (d) => ({
+      title: title(d),
+      body: body(d),
+      deepLink: `unifesto://feedback/${d.eventId}`,
+      data: { type: 'feedback', eventId: d.eventId },
+    }),
   };
 }
 
@@ -287,4 +312,12 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     }),
     email: (svc, to, d, delivery) => svc.sendSpaceInquiry({ ...d, email: to }, delivery),
   },
+  'feedback.request': feedbackKind(
+    (d) => `How was ${d.eventTitle}?`,
+    () => 'Rate it in a few taps. The organisers read every answer.',
+  ),
+  'feedback.reminder': feedbackKind(
+    (d) => `Rate ${d.eventTitle}`,
+    (d) => `Feedback closes ${d.closesText}. It takes under a minute.`,
+  ),
 };

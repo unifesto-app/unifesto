@@ -12,6 +12,11 @@ export interface MyCertificate {
   id: string;
   certificateNumber: string;
   verificationCode: string;
+  /**
+   * F2: issued but held until I give feedback on the event. A locked
+   * certificate carries no files or code (empty strings / null here).
+   */
+  locked?: boolean;
   pdfUrl: string | null;
   imageUrl: string | null;
   issuedAt: string;

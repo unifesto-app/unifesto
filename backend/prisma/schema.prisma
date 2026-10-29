@@ -1511,7 +1511,14 @@ model Event {
 
   // F1: attendees can rate the event (1-5, NPS and the curators' own questions).
   // On by default; a curator can switch it off per event.
-  feedbackEnabled Boolean @default(true) @map("feedback_enabled")
+  feedbackEnabled            Boolean   @default(true) @map("feedback_enabled")
+  // F2: checked-in attendees are asked 2 h after the end and reminded at 48 h
+  // (stamped once each by the feedback sweep); feedback closes 7 days after.
+  // `feedbackUnlocksCertificate` holds an attendee's certificate back until
+  // they have given feedback.
+  feedbackUnlocksCertificate Boolean   @default(false) @map("feedback_unlocks_certificate")
+  feedbackRequestedAt        DateTime? @map("feedback_requested_at") @db.Timestamptz(6)
+  feedbackRemindedAt         DateTime? @map("feedback_reminded_at") @db.Timestamptz(6)
 
   // L4 projector: random read-only display link secret. Regenerating it
   // revokes every screen opened with the old link. Null until first asked for.

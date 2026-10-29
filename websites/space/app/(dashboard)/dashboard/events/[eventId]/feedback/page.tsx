@@ -6,7 +6,7 @@ import {
   createFeedbackQuestion,
   deleteFeedbackQuestion,
   getFeedbackForm,
-  setFeedbackEnabled,
+  setFeedbackSettings,
   updateFeedbackQuestion,
   type FeedbackForm,
 } from "@/lib/api/feedback";
@@ -42,8 +42,8 @@ export default function EventFeedbackPage() {
     void load();
   }, [load]);
 
-  const toggle = async (enabled: boolean) => {
-    const r = await setFeedbackEnabled(eventId, enabled);
+  const toggle = async (patch: { enabled?: boolean; unlocksCertificate?: boolean }) => {
+    const r = await setFeedbackSettings(eventId, patch);
     if (r.ok) setForm(r.data);
     else setError(r.message);
   };
@@ -72,16 +72,36 @@ export default function EventFeedbackPage() {
                 type="checkbox"
                 className="mt-1 h-4 w-4 accent-primary"
                 checked={form.enabled}
-                onChange={(e) => void toggle(e.target.checked)}
+                onChange={(e) => void toggle({ enabled: e.target.checked })}
               />
               <label htmlFor="feedback-enabled" className="text-sm">
                 <span className="font-medium text-foreground">Ask attendees for feedback</span>
                 <span className="block text-muted-foreground">
                   Every form asks for a rating from 1 to 5 and how likely they are to recommend the
                   event (0 to 10), plus an optional comment. Each attendee answers once and can edit it.
+                  Checked-in attendees get a push 2 hours after the event ends and a reminder at 48
+                  hours. Feedback closes 7 days after the end.
                 </span>
               </label>
             </CardContent>
+            {form.enabled && (
+              <CardContent className="flex items-start gap-3 border-t border-border p-4">
+                <input
+                  id="feedback-unlocks"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-primary"
+                  checked={form.unlocksCertificate}
+                  onChange={(e) => void toggle({ unlocksCertificate: e.target.checked })}
+                />
+                <label htmlFor="feedback-unlocks" className="text-sm">
+                  <span className="font-medium text-foreground">Feedback unlocks the certificate</span>
+                  <span className="block text-muted-foreground">
+                    An attendee&apos;s certificate is emailed and shown in the app only after they give
+                    feedback.
+                  </span>
+                </label>
+              </CardContent>
+            )}
           </Card>
 
           {form.enabled && (

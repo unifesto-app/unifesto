@@ -44,8 +44,8 @@ export class FeedbackController {
   @Patch('settings')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
-  setEnabled(@Param('eventId', uuid) eventId: string, @Body() dto: FeedbackSettingsDto) {
-    return this.feedback.setEnabled(eventId, dto.enabled);
+  setSettings(@Param('eventId', uuid) eventId: string, @Body() dto: FeedbackSettingsDto) {
+    return this.feedback.setSettings(eventId, dto);
   }
 
   @Post('questions')

@@ -28,7 +28,13 @@ export class SubmitFeedbackDto {
 }
 
 export class FeedbackSettingsDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
-  enabled: boolean;
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ description: "Hold attendees' certificates until they give feedback (F2)" })
+  @IsOptional()
+  @IsBoolean()
+  unlocksCertificate?: boolean;
 }
