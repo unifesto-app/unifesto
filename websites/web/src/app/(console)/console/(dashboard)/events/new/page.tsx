@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { inr } from "@/console/lib/utils/money";
 import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -620,9 +621,9 @@ function CreateEventInner() {
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Repeating series aren&apos;t on this space&apos;s plan.{" "}
-                    <a href="/console/billing" className="underline">
+                    <Link href="/console/billing" className="underline">
                       See plans
-                    </a>
+                    </Link>
                   </p>
                 )}
               </Field>

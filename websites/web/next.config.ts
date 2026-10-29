@@ -95,6 +95,17 @@ const nextConfig: NextConfig = {
         headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
       },
       {
+        // The console (Track V): the check-in scanner reads QR codes and hosts go
+        // live from sessions, so camera and mic for this origin. Billing and
+        // attendees/add take Razorpay payments, and console pages reach them
+        // by client-side navigation, so the popup-friendly COOP covers all of it.
+        source: '/console/:path*',
+        headers: [
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self)' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+        ],
+      },
+      {
         // Serve apple-app-site-association with correct content type for iOS Universal Links
         source: '/.well-known/apple-app-site-association',
         headers: [

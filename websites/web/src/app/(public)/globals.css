@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* The console has its own stylesheet ((console)/console.css); keep its classes out of this one. */
+@source not "../../console";
+@source not "../(console)";
 
 @custom-variant dark (&:is(.dark *));
 

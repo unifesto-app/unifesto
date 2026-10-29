@@ -124,6 +124,8 @@ unifesto.app, www.unifesto.app {
 		reverse_proxy web:3000 {
 			lb_try_duration 15s
 			lb_try_interval 250ms
+			# The console's login limiter (Track V) keys on this; one trusted value, not the client's chain.
+			header_up X-Forwarded-For {client_ip}
 		}
 	}
 }

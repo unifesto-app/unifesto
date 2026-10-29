@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { DM_Sans, Hanken_Grotesk, Martian_Mono } from "next/font/google";
-import "./globals.css";
+// The console's own root layout and stylesheet (Track V): public pages never load
+// console.css and the console never loads globals.css. Crossing is a full page load.
+import "./console.css";
 
 // Cosmos type, same as unifesto.app: DM Sans for titles, Hanken for UI.
 // Headlines. Variable weight + optical size; latin-ext carries the ₹, which
@@ -34,6 +36,15 @@ export const metadata: Metadata = {
   title: "Space • Unifesto",
   description:
     "Run your space on Unifesto — plan, members, events and money, in one operator console.",
+  robots: { index: false, follow: false },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
