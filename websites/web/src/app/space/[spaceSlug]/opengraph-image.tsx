@@ -24,7 +24,7 @@ export default async function Image({ params }: Props) {
 
   const members =
     typeof space?.member_count === "number" && space.member_count > 0
-      ? `${space.member_count.toLocaleString("en-IN")} members`
+      ? `${space.member_count.toLocaleString("en-IN")} ${space.member_count === 1 ? "member" : "members"}`
       : null;
 
   return new ImageResponse(

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useEmptySections } from "@/components/SiteContent";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, type Variants } from "motion/react";
 import { ArrowRight, CaretDown } from "@unifesto/unicon/react";
 import Image from "next/image";
@@ -164,6 +165,8 @@ export default function Navbar() {
     setOpen: (v: boolean) => setOpenMenu((cur) => (v ? key : cur === key ? null : cur)),
   });
   const [hovered, setHovered] = useState<string | null>(null);
+  const empty = useEmptySections();
+  const menus = MENUS.map((m) => ({ ...m, items: m.items.filter((i) => !empty.has(i.href)) }));
   const onLight = useLightSurfaceAt(() => [window.innerWidth / 2, 40]);
 
   const { scrollY } = useScroll();
@@ -228,7 +231,7 @@ export default function Navbar() {
   // Mobile sheet groups: the flat links (plus the app page), then each menu.
   const SHEET = [
     { label: null, items: [...LINKS, { label: "The app", href: "/app" }] },
-    ...MENUS,
+    ...menus,
   ];
 
   return (
@@ -258,7 +261,7 @@ export default function Navbar() {
           {/* Desktop. A soft pill slides to whichever link is hovered:
               the same plate moving between items (morph, 240ms). */}
           <div className="hidden items-center lg:flex" onMouseLeave={() => setHovered(null)}>
-            {MENUS.slice(0, 1).map(renderMenu)}
+            {menus.slice(0, 1).map(renderMenu)}
             {LINKS.map((l) => {
               const active = isActive(pathname, l.href);
               return (
@@ -282,7 +285,7 @@ export default function Navbar() {
                 </a>
               );
             })}
-            {MENUS.slice(1).map(renderMenu)}
+            {menus.slice(1).map(renderMenu)}
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">

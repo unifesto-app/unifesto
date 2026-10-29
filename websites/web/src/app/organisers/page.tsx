@@ -69,10 +69,16 @@ export default function OrganisersPage() {
 
       {/* In-page index: quick jumps for people, sitelinks for search. */}
       <nav aria-label="On this page" className="mx-auto max-w-7xl px-5 sm:px-8">
-        <ul className="flex flex-wrap gap-x-6 gap-y-2 pb-4 pt-10 text-sm text-paper/60 md:pt-14">
+        {/* K11: chips that scroll sideways on phones, instead of wrapping into grey text. */}
+        <ul className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-4 pt-10 [scrollbar-width:none] sm:mx-0 sm:px-0 md:flex-wrap md:pt-14">
           {PILLARS.map((p) => (
-            <li key={p.id}>
-              <a href={`#${p.id}`} className="link-draw hover:text-paper">{p.title}</a>
+            <li key={p.id} className="shrink-0">
+              <a
+                href={`#${p.id}`}
+                className="inline-block whitespace-nowrap rounded-full bg-night-2 px-3.5 py-1.5 text-sm text-paper/80 transition-colors duration-150 hover:bg-night-3 hover:text-paper"
+              >
+                {p.title}
+              </a>
             </li>
           ))}
         </ul>

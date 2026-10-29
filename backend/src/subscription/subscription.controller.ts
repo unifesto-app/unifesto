@@ -33,6 +33,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Action, Can, CanGuard } from '../auth/authorization';
 import { RoleCode, OrgPlan } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
+import { Audit } from '../audit/audit';
 
 @ApiTags('Subscription')
 @ApiBearerAuth()
@@ -130,6 +131,7 @@ export class SubscriptionController {
   }
 
   @Patch('admin/plans/:plan')
+  @Audit('plan.definition')
   @Roles(RoleCode.ADMIN)
   @ApiOperation({ summary: "Edit a plan's definition (admin only)" })
   @ApiResponse({ status: 200 })
@@ -141,6 +143,7 @@ export class SubscriptionController {
   }
 
   @Patch('admin/space/:spaceId')
+  @Audit('space.plan', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
   @ApiOperation({ summary: "Manually update a space's subscription (admin only)" })
   @ApiResponse({ status: 200 })
@@ -152,6 +155,7 @@ export class SubscriptionController {
   }
 
   @Post('admin/space/:spaceId/offline-payment')
+  @Audit('space.plan.payment', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
   @ApiOperation({ summary: "Record an offline payment for a space's plan (admin only)" })
   @ApiResponse({ status: 201 })
@@ -183,6 +187,7 @@ export class SubscriptionController {
   }
 
   @Post('admin/space/:spaceId/deals')
+  @Audit('space.deal', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
   @ApiOperation({ summary: 'Create a deal for a space or one of its events (admin only)' })
   async createDeal(@Request() req, @Param('spaceId') spaceId: string, @Body() dto: CreateDealDto) {
@@ -190,6 +195,7 @@ export class SubscriptionController {
   }
 
   @Post('admin/deals/:dealId/end')
+  @Audit('space.deal.end', (r, prisma) => prisma.deal.findUnique({ where: { id: r.params.dealId }, select: { spaceId: true } }).then((x) => x ?? {}))
   @Roles(RoleCode.ADMIN)
   @ApiOperation({ summary: 'End a deal now (admin only); it is kept for the sales it priced' })
   async endDeal(@Param('dealId') dealId: string) {

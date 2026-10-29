@@ -126,8 +126,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/request-space', 'monthly', 0.7),
     page('/request-event', 'monthly', 0.6),
     page('/about', 'monthly', 0.7),
-    page('/blog', 'weekly', 0.7),
-    page('/careers', 'weekly', 0.6),
     page('/press', 'monthly', 0.5),
     page('/support', 'monthly', 0.6),
     page('/privacy', 'yearly', 0.3),
@@ -152,8 +150,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getCareerRoutes(),
   ])
 
-  // K17: /help 404s until an article is published, so list it only then.
-  const helpIndex = helpRoutes.length ? [page('/help', 'weekly', 0.6)] : []
+  // K17, K11: /help, /blog and /careers 404 while empty, so list each only
+  // once it has something in it.
+  const sectionIndexes = [
+    ...(helpRoutes.length ? [page('/help', 'weekly', 0.6)] : []),
+    ...(blogRoutes.length ? [page('/blog', 'weekly', 0.7)] : []),
+    ...(careerRoutes.length ? [page('/careers', 'weekly', 0.6)] : []),
+  ]
 
-  return [...staticRoutes, ...helpIndex, ...eventRoutes, ...spaceRoutes, ...blogRoutes, ...helpRoutes, ...careerRoutes]
+  return [...staticRoutes, ...sectionIndexes, ...eventRoutes, ...spaceRoutes, ...blogRoutes, ...helpRoutes, ...careerRoutes]
 }
