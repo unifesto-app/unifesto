@@ -26,6 +26,7 @@ import { UsersService } from '../users/users.service';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { EventsService } from '../events/events.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
+import { AiService } from '../ai/ai.service';
 import { UpdateProfileDto } from '../users/dto';
 import { AdminResolvePendingDto } from '../registrations/dto';
 import { CancelEventDto } from '../events/dto';
@@ -52,6 +53,7 @@ export class AdminController {
     private readonly eventsService: EventsService,
     private readonly platformConfig: PlatformConfigService,
     private readonly scorecard: ScorecardService,
+    private readonly ai: AiService,
   ) {}
 
   @Get('health')
@@ -80,6 +82,16 @@ export class AdminController {
   @Roles(RoleCode.ADMIN)
   async getPlatformConfig() {
     return this.platformConfig.getConfig();
+  }
+
+  /**
+   * Each AI feature's last 30 days: runs, outcomes, cost, cache share.
+   * GET /admin/ai-usage
+   */
+  @Get('ai-usage')
+  @Roles(RoleCode.ADMIN)
+  getAiUsage() {
+    return this.ai.usage(30);
   }
 
   /**

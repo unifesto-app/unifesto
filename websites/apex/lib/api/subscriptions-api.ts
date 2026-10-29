@@ -282,6 +282,23 @@ export async function getPlatformConfig(): Promise<Result<PlatformConfig>> {
   return apiCall<PlatformConfig>(backendClient.get("/admin/platform-config"));
 }
 
+/** One AI feature's calls over the last 30 days. */
+export interface AiUsage {
+  runs: number;
+  ok: number;
+  refused: number;
+  error: number;
+  costUsd: number;
+  /** Share of prompt tokens read from cache, 0 to 1. */
+  cacheShare: number;
+  avgLatencyMs: number;
+}
+
+/** `GET /admin/ai-usage` — each AI feature's last 30 days, keyed by feature (admin). */
+export async function getAiUsage(): Promise<Result<Record<string, AiUsage>>> {
+  return apiCall<Record<string, AiUsage>>(backendClient.get("/admin/ai-usage"));
+}
+
 /**
  * `PATCH /admin/platform-config` — update app-wide settings (admin). Each field
  * is optional; only the ones present are applied. Returns the full config.

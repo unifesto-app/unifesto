@@ -47,6 +47,18 @@ export type AiResult =
     }
   | { ok: false; reason: 'disabled' | 'capped' | 'refused' | 'error' };
 
+/** One feature's calls over a window (GET /admin/ai-usage). */
+export interface AiUsage {
+  runs: number;
+  ok: number;
+  refused: number;
+  error: number;
+  costUsd: number;
+  /** Share of prompt tokens read from cache, 0 to 1. */
+  cacheShare: number;
+  avgLatencyMs: number;
+}
+
 /** Claude Haiku 5.5 USD per million tokens, for prompts up to 100K tokens. */
 const PRICE_PER_MTOK = {
   input: 0.1,
@@ -193,6 +205,37 @@ export class AiService {
       ok: false,
       reason: outcome === AiRunOutcome.REFUSED ? 'refused' : 'error',
     };
+  }
+
+  /**
+   * Each feature's AiRun rows over the last `days`, for the Apex AI card.
+   * `cacheShare` is the part of prompt tokens read from cache: near 0 on a busy
+   * feature means something per-request leaked into the cached prefix.
+   */
+  async usage(days = 30): Promise<Record<string, AiUsage>> {
+    const rows = await this.prisma.aiRun.groupBy({
+      by: ['feature', 'outcome'],
+      where: { createdAt: { gte: new Date(Date.now() - days * DAY_MS) } },
+      _count: { _all: true },
+      _sum: { costUsd: true, latencyMs: true, inputTokens: true, cacheReadTokens: true, cacheWriteTokens: true },
+    });
+    const out: Record<string, AiUsage & { prompt: number; cached: number; latency: number }> = {};
+    for (const r of rows) {
+      const f = (out[r.feature] ??= { runs: 0, ok: 0, refused: 0, error: 0, costUsd: 0, cacheShare: 0, avgLatencyMs: 0, prompt: 0, cached: 0, latency: 0 });
+      const n = r._count._all;
+      f.runs += n;
+      f[r.outcome === AiRunOutcome.OK ? 'ok' : r.outcome === AiRunOutcome.REFUSED ? 'refused' : 'error'] += n;
+      f.costUsd += Number(r._sum.costUsd ?? 0);
+      f.latency += r._sum.latencyMs ?? 0;
+      f.cached += r._sum.cacheReadTokens ?? 0;
+      f.prompt += (r._sum.inputTokens ?? 0) + (r._sum.cacheReadTokens ?? 0) + (r._sum.cacheWriteTokens ?? 0);
+    }
+    return Object.fromEntries(
+      Object.entries(out).map(([k, { prompt, cached, latency, ...f }]) => [
+        k,
+        { ...f, costUsd: Math.round(f.costUsd * 1e4) / 1e4, cacheShare: prompt ? cached / prompt : 0, avgLatencyMs: Math.round(latency / f.runs) },
+      ]),
+    );
   }
 
   private async log(

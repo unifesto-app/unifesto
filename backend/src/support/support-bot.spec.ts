@@ -1,5 +1,5 @@
 import { EventStatus, PaymentStatus, RegistrationStatus, SupportMessageSide, SupportTicketStatus } from '@prisma/client';
-import { bookingFacts } from './case-facts';
+import { bookingFacts, describeBooking } from './case-facts';
 import {
   BOT_SYSTEM,
   BOT_TOOLS,
@@ -9,6 +9,7 @@ import {
   actionCard,
   botHistory,
   botTurn,
+  ungrounded,
   type BotIo,
 } from './support-bot';
 import type { AiResult, AiService } from '../ai/ai.service';
@@ -51,7 +52,9 @@ describe('Assist bot (D14)', () => {
     const replies = [toolCall('booking_facts', { registrationId: 'r1' }), toolCall('propose_action', { action: 'REQUEST_REFUND', registrationId: 'r1' }), answer('Confirm the card to request ₹500.')];
     const io: BotIo = {
       call: jest.fn(async () => replies.shift()!),
-      exec: jest.fn(async (name, input) => (name === 'propose_action' ? actionCard(input.action as any, facts) : { facts: [] })),
+      exec: jest.fn(async (name, input) =>
+        name === 'propose_action' ? actionCard(input.action as any, facts) : { registrationId: 'r1', facts: describeBooking(facts) },
+      ),
     };
     const turn = await botTurn([{ role: 'user', content: 'refund?' }], false, io);
     expect(turn).toMatchObject({ text: 'Confirm the card to request ₹500.', handoff: null, tools: ['booking_facts', 'propose_action'] });
@@ -74,6 +77,35 @@ describe('Assist bot (D14)', () => {
     expect(await botTurn([], false, { call: loop, exec })).toMatchObject({ text: null });
     expect(loop).toHaveBeenCalledTimes(6);
     expect((loop.mock.calls as any)[1][0].messages.at(-1).content[0]).toMatchObject({ is_error: true });
+  });
+
+  it('holds a reply whose amount, link, email or phone no tool gave, and hands it to a person', async () => {
+    const said = [
+      { role: 'user' as const, content: 'My ₹5,000 refund, call me on 98765 43210 or a@b.com' },
+      { role: 'assistant' as const, content: 'Your booking was ₹1,25,000.' },
+      { role: 'user' as const, content: [{ type: 'tool_result' as const, tool_use_id: 't', content: JSON.stringify({ facts: describeBooking(facts), faq: 'Mail help@fest.in, call +91 90000-11111, see https://fest.in/map' }) }] },
+    ];
+    // Grounded: amounts from facts (any formatting) or an earlier Assist reply, links/contacts a tool returned.
+    for (const ok of ['You can get ₹500 back; you paid Rs. 520 incl. ₹20.', 'That was 125000 rupees.', 'See https://unifesto.app/help/refunds or www.fest.in/map.', 'Mail help@fest.in or call 9000011111.', 'Banks take 5 to 7 working days, by 01-01-2099.'])
+      expect(ungrounded(ok, said)).toBeNull();
+    // Only the person said these, or nobody did.
+    expect(ungrounded('Your ₹5,000 refund is approved.', said)).toBe('amount "₹5,000" is not in the facts');
+    expect(ungrounded('You get INR 499.', said)).toMatch(/amount/);
+    expect(ungrounded('Pay at https://rzp.io/x', said)).toBe('link to rzp.io is not from a tool');
+    expect(ungrounded('We will mail a@b.com', said)).toBe('email address is not from a tool');
+    expect(ungrounded('We will call +91 98765 43210', said)).toBe('phone number is not from a tool');
+
+    const replies = [toolCall('booking_facts', { registrationId: 'r1' }), answer('Your ₹5,000 refund is on its way.')];
+    const turn = await botTurn([{ role: 'user', content: 'refund?' }], false, {
+      call: async () => replies.shift()!,
+      exec: async () => ({ facts: describeBooking(facts) }),
+    });
+    expect(turn).toMatchObject({ text: null, held: { why: 'amount "₹5,000" is not in the facts', draft: 'Your ₹5,000 refund is on its way.' } });
+
+    const { bot, prisma, support } = setup(answer('Your ₹5,000 refund is approved.'));
+    await bot.say('t1', 'u1', 'help');
+    expect(prisma.supportMessage.create).toHaveBeenCalledWith({ data: expect.objectContaining({ body: expect.stringContaining('passed it to a person') }) });
+    expect(support.handoff).toHaveBeenCalledWith('t1', 'u1', 'reply held, amount "₹5,000" is not in the facts. Draft: Your ₹5,000 refund is approved.');
   });
 
   it('cards follow the booking facts, not the model', () => {
