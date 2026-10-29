@@ -22,6 +22,10 @@
      so rgb(var(--glow) / .1) flips with the theme. */
   --glow: 255 255 255;
   --ground: 0 0 0;
+  /* Light sources (horizon, blooms, glows) stay light by day: white by
+     night, a pale Horizon blue by day. --glow flips to ink, which would
+     turn every glow into a grey smudge. */
+  --bloom: 255 255 255;
 
   --background: var(--night);
   --foreground: var(--paper);
@@ -75,13 +79,14 @@
   --night-2: #ffffff; /* white cards */
   --night-3: #e9e9ec;
   --paper: #111113;
-  --paper-bg: #f7f7f8;
+  --paper-bg: #ffffff; /* one step lighter than the page, as by night */
   --paper-2: #ededf0;
   --sand: #e4e4e7;
   --ink: #111113;
   --void: #ffffff;
   --glow: 17 17 19;
   --ground: 242 242 245;
+  --bloom: 143 180 255;
 
   --primary: #111113;
   --primary-bright: #000000;
@@ -248,11 +253,11 @@ body {
 
   0%,
   100% {
-    box-shadow: 0 0 20px rgb(var(--glow) / 0.4), 0 0 40px rgb(var(--glow) / 0.15);
+    box-shadow: 0 0 20px rgb(var(--bloom) / 0.4), 0 0 40px rgb(var(--bloom) / 0.15);
   }
 
   50% {
-    box-shadow: 0 0 30px rgb(var(--glow) / 0.6), 0 0 60px rgb(var(--glow) / 0.25);
+    box-shadow: 0 0 30px rgb(var(--bloom) / 0.6), 0 0 60px rgb(var(--bloom) / 0.25);
   }
 }
 
@@ -517,7 +522,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    tall either side, so the two halves meet as one glow with no seam. */
 .surface-blue {
   background:
-    radial-gradient(60% 360px at 50% 100%, rgb(var(--glow) / 0.16), transparent 70%),
+    radial-gradient(60% 360px at 50% 100%, rgb(var(--bloom) / 0.16), transparent 70%),
     linear-gradient(to bottom, var(--night) 40%, var(--night-2));
   color: var(--paper);
   box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.08);
@@ -595,7 +600,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* QR scan sweep (ScanVisual): eases both ways, loops. */
 .scan-sweep {
-  filter: drop-shadow(0 0 6px rgb(var(--glow) / 0.9));
+  filter: drop-shadow(0 0 6px rgb(var(--bloom) / 0.9));
   animation: scan-sweep 2.2s cubic-bezier(.77, 0, .175, 1) infinite alternate;
 }
 @keyframes scan-sweep { to { transform: translateY(56px); } }
@@ -647,6 +652,8 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
   animation: fade-in 2400ms var(--ease-out-expo) both, twinkle 7s ease-in-out 2400ms infinite alternate;
 }
 .cosmos-stars-far { background-size: 260px 260px; opacity: .5; animation-delay: 300ms, 3s; }
+/* No stars by day: in ink they read as dust. */
+:root[data-theme="light"] .cosmos-stars { display: none; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes twinkle { to { opacity: .45; } }
 
@@ -666,13 +673,13 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 /* Horizon: a line of light with a soft bloom, drawn outward from centre. */
 .cosmos-horizon {
   position: absolute; left: 0; right: 0; top: 70%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(var(--glow) / .18) 25%, rgb(var(--glow) / .6) 50%, rgb(var(--glow) / .18) 75%, transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--bloom) / .18) 25%, rgb(var(--bloom) / .6) 50%, rgb(var(--bloom) / .18) 75%, transparent);
   transform-origin: center;
   animation: horizon-in var(--dur-cinema) var(--ease-out-expo) 350ms both;
 }
 .cosmos-horizon::after {
   content: ""; position: absolute; left: 10%; right: 10%; top: -90px; height: 180px;
-  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--glow) / .1), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--bloom) / .1), transparent 70%);
   animation: breathe 9s ease-in-out 2s infinite alternate;
 }
 @keyframes horizon-in { from { transform: scaleX(0); opacity: 0; } }
@@ -814,7 +821,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    .surface-blue), and its sky fades in from the top edge. */
 .site-footer {
   background:
-    radial-gradient(60% 360px at 50% 0%, rgb(var(--glow) / 0.16), transparent 70%),
+    radial-gradient(60% 360px at 50% 0%, rgb(var(--bloom) / 0.16), transparent 70%),
     linear-gradient(to bottom, var(--night-2), var(--night) 480px);
 }
 footer > .cosmos { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 220px); mask-image: linear-gradient(to bottom, transparent, #000 220px); }
