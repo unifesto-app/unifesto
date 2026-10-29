@@ -620,8 +620,8 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    transform/opacity/filter animate (compositor-only), except the floor's
    background-position. */
 .cosmos { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-/* The shade: a light Unifesto blue (#0062ff) glowing along the orbits. */
-:root { --shade: 77 141 255; --shade-a: 0.3; }
+/* The shade: a light Unifesto blue (#0062ff) filling the orbits. */
+:root { --shade: 77 141 255; --shade-a: 0.45; }
 :root[data-theme="light"] { --shade: 143 180 255; --shade-a: 0.6; }
 
 .cosmos-stars {
@@ -642,11 +642,12 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 @keyframes twinkle { to { opacity: .45; } }
 
 /* Orbits: hairline ellipses, drifting so slowly you feel rather than see it.
-   The shade is a soft band of light hugging each line, both sides. */
+   The shade fills each orbit, deepening toward the line, so the hairline is
+   the shape's crisp edge. */
 .cosmos-orbit {
   position: absolute; border-radius: 50%;
-  --band: rgb(var(--shade) / var(--shade-a));
-  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07), inset 0 0 7vmax 2vmax var(--band), 0 0 7vmax 2vmax var(--band);
+  background: radial-gradient(closest-side, transparent 60%, rgb(var(--shade) / var(--shade-a)));
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07);
   animation: fade-in 2000ms var(--ease-out-expo) 600ms both, orbit 140s linear infinite;
 }
 .cosmos-orbit-a { width: 150vmax; height: 150vmax; top: -88vmax; right: -66vmax; }
@@ -728,8 +729,8 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* ─── Shade cards ────────────────────────────────────────────────────── */
 /* ShadeCard: the hero's two orbits redrawn at card scale (same numbers, in
-   card widths instead of vmax), each a hairline with one accent's shade
-   glowing along it, under heavy overlay grain (ElevenLabs' card recipe:
+   card widths instead of vmax), each filled with one accent's shade that
+   deepens toward its hairline edge, under heavy overlay grain (ElevenLabs' card recipe:
    colour, then a 128px noise tile blended with overlay at ~half strength).
    By night the shade glows out of a deep base; by day it's airy. --s1 is the
    accent itself (the big orbit), --s2 its partner (the low one), --s3 the
@@ -745,10 +746,11 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .shade-orbits { position: absolute; inset: 0; }
 .shade-orbits::before, .shade-orbits::after {
   content: ""; position: absolute; border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .16), inset 0 0 14cqw 4cqw var(--band), 0 0 14cqw 4cqw var(--band);
+  background: radial-gradient(closest-side, transparent var(--from), var(--band));
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .16);
 }
-.shade-orbits::before { --band: var(--s1); width: 150cqw; height: 150cqw; top: -88cqw; right: -66cqw; }
-.shade-orbits::after { --band: var(--s2); width: 180cqw; height: 120cqw; left: -60cqw; bottom: -96cqw; }
+.shade-orbits::before { --band: var(--s1); --from: 60%; width: 150cqw; height: 150cqw; top: -88cqw; right: -66cqw; }
+.shade-orbits::after { --band: var(--s2); --from: 55%; width: 180cqw; height: 120cqw; left: -60cqw; bottom: -96cqw; }
 .shade-fill::after {
   content: ""; position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
