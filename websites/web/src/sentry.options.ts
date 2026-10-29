@@ -9,6 +9,16 @@ export const sentryOptions = {
   tracesSampleRate: 0,
   sendDefaultPii: false,
   beforeSend<T>(event: T): T {
+    // The public site and the console (Track V) share this project; `surface` tells them apart.
+    const e = event as { request?: { url?: string }; tags?: Record<string, unknown> };
+    const path = (() => {
+      try {
+        return new URL(e.request?.url ?? "", "https://www.unifesto.app").pathname;
+      } catch {
+        return "";
+      }
+    })();
+    e.tags = { ...e.tags, surface: path === "/console" || path.startsWith("/console/") ? "console" : "public" };
     return JSON.parse(
       JSON.stringify(event).replace(EMAIL, "[email]").replace(PHONE, "[phone]"),
     );

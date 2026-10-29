@@ -47,9 +47,6 @@ jobs:
             web:
               - *ci
               - 'websites/web/**'
-            space:
-              - *ci
-              - 'websites/space/**'
             apex:
               - *ci
               - 'websites/apex/**'
@@ -155,32 +152,6 @@ jobs:
           # (on purpose: keep the cached page). A stub that 404s everything
           # builds them as not-found instead.
           node -e "require('http').createServer((q,r)=>{r.writeHead(404,{'content-type':'application/json'});r.end('{}')}).listen(4999,'127.0.0.1')" &
-          echo "::group::Build"; npm run build; echo "::endgroup::"
-
-      - uses: actions/setup-node@v7
-        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: websites/space/package-lock.json
-      - uses: actions/cache@v6
-        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
-        with:
-          path: websites/space/.next/cache
-          key: next-space-${{ hashFiles('websites/space/package-lock.json') }}-${{ github.sha }}
-          restore-keys: next-space-${{ hashFiles('websites/space/package-lock.json') }}-
-      - name: Space
-        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
-        working-directory: websites/space
-        env:
-          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:4999
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:4999
-          NEXT_PUBLIC_WEB_URL: http://127.0.0.1:3000
-          NEXT_PUBLIC_APEX_URL: http://127.0.0.1:3002
-          DEPLOYMENT_ID: ci
-          NEXT_TELEMETRY_DISABLED: 1
-        run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       - uses: actions/setup-node@v7

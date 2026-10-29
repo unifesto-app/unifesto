@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -306,9 +307,9 @@ export default function EventWhatsAppPage() {
             <p className="text-sm text-muted-foreground">
               WhatsApp blasts aren&apos;t on this space&apos;s plan. New attendees still get the
               link with their confirmation.{" "}
-              <a href="/console/billing" className="underline">
+              <Link href="/console/billing" className="underline">
                 See plans
-              </a>
+              </Link>
             </p>
           )}
           <Button

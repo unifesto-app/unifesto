@@ -219,17 +219,10 @@ services:
         limits:
           memory: 384M
 
+  # Frozen on its last image (Track V2): the console's source moved into web
+  # (www.unifesto.app/console), so there is nothing left here to build. It keeps
+  # serving space.unifesto.app until V3 points that host at www; V4 removes it.
   space:
-    build:
-      context: ./websites/space
-      args:
-        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
-        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_SPACE:-}
-        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
-      secrets:
-        - sentry_auth_token
     image: unifesto-space:latest
     restart: unless-stopped
     logging: *logging
@@ -256,6 +249,9 @@ services:
         NEXT_PUBLIC_COGNITO_CLIENT_ID: ${WEB_COGNITO_CLIENT_ID:-}
         # "1" once Cognito has Sign in with Apple; empty keeps that button hidden.
         NEXT_PUBLIC_APPLE_SIGNIN: ${WEB_APPLE_SIGNIN:-}
+        # The console (Track V). The Maps key is the browser key space used.
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        NEXT_PUBLIC_APEX_URL: ${NEXT_PUBLIC_APEX_URL:-}
       secrets:
         - sentry_auth_token
     image: unifesto-web:latest

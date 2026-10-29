@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Scan only console code, so no public-site class lands in this bundle. */
+@import "tailwindcss" source(none);
+@source "../../console";
+@source ".";
 
 /* ============================================================================
    Space — Unifesto operator console · Unifesto Horizon

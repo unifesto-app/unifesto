@@ -135,7 +135,8 @@ export default function BillingPage() {
       setBusyPlan(null);
       return;
     }
-    if (!(await loadRazorpay())) {
+    // window.Razorpay is declared (optional) in @/lib/razorpay, shared with the public checkout.
+    if (!(await loadRazorpay()) || !window.Razorpay) {
       setActionError("Could not load the payment window. Check your connection.");
       setBusyPlan(null);
       return;
@@ -636,13 +637,6 @@ type RazorpaySuccess = {
   razorpay_payment_id: string;
   razorpay_signature: string;
 };
-
-declare global {
-  interface Window {
-    // ponytail: untyped checkout.js options; add a types package if we use more of it.
-    Razorpay: new (options: Record<string, unknown>) => { open(): void };
-  }
-}
 
 /** Inject Razorpay's checkout.js once; resolves false if it can't load. */
 function loadRazorpay(): Promise<boolean> {

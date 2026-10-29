@@ -25,9 +25,10 @@ const origin = (url: string | undefined) => {
  * browsers without CSP3. Styles stay 'unsafe-inline': React style attributes
  * need it, and a style can't read localStorage.
  */
-function csp(nonce: string): string {
+function csp(nonce: string, isConsole: boolean): string {
   const dev = process.env.NODE_ENV === 'development';
   const razorpay = 'https://checkout.razorpay.com https://api.razorpay.com';
+  const api = origin(process.env.NEXT_PUBLIC_API_URL) || 'https://api.unifesto.app';
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com${dev ? " 'unsafe-eval'" : ''}`,
@@ -37,11 +38,15 @@ function csp(nonce: string): string {
     "img-src 'self' data: blob: https:",
     [
       "connect-src 'self'",
-      origin(process.env.NEXT_PUBLIC_API_URL) || 'https://api.unifesto.app',
+      api,
       origin(process.env.NEXT_PUBLIC_SENTRY_DSN),
       'https://api.bigdatacloud.net', // events near me (EventsGrid)
       'https://lumberjack.razorpay.com',
       razorpay,
+      // Console only: socket.io to the API (projector, live updates), LiveKit
+      // Cloud for live sessions, and Google Maps + Places for venue search.
+      isConsole ? `${api.replace(/^http/, 'ws')} wss://*.livekit.cloud https://*.livekit.cloud` : '',
+      isConsole ? 'https://*.googleapis.com https://*.gstatic.com https://*.google.com' : '',
       dev ? 'ws:' : '',
     ].filter(Boolean).join(' '),
     `frame-src ${razorpay} https://maps.google.com https://www.google.com`,
@@ -51,6 +56,59 @@ function csp(nonce: string): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
   ].join('; ');
+}
+
+/* The console (/console/**, Track V). Its JWT is the JS-readable
+   `unifesto_token` cookie on .unifesto.app; this is a light gate and the
+   backend stays the authority. Login and no-access handle signed-out visitors
+   themselves, and the projector signs in with its display link. */
+const TOKEN_COOKIE = 'unifesto_token';
+const CONSOLE_PUBLIC = ['/console/login', '/console/no-access', '/console/present'];
+const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(`${p}/`);
+
+/** Well-formed, has a subject and isn't past `exp`. No signature check (Edge-safe). */
+function isTokenLive(token: string | undefined): boolean {
+  const parts = token?.split('.') ?? [];
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number; userId?: string; sub?: string };
+    if (!payload.userId && !payload.sub) return false;
+    return typeof payload.exp !== 'number' || payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+// ponytail: per-process login limiter (40 a minute per IP); a shared store if web runs more than one container.
+const attempts = new Map<string, { count: number; resetAt: number }>();
+function loginLimited(request: NextRequest): boolean {
+  // Caddy sets X-Forwarded-For to the one visitor IP it resolved from
+  // Cf-Connecting-Ip, so the last entry is ours.
+  const ip = request.headers.get('x-forwarded-for')?.split(',').pop()?.trim() || 'unknown';
+  const now = Date.now();
+  if (attempts.size > 1000) for (const [k, v] of attempts) if (now > v.resetAt) attempts.delete(k);
+  const hit = attempts.get(ip);
+  if (!hit || now > hit.resetAt) {
+    attempts.set(ip, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  hit.count += 1;
+  return hit.count > 40;
+}
+
+function consoleGate(request: NextRequest, reqHeaders: Headers): NextResponse {
+  const { pathname, search } = request.nextUrl;
+  if (pathname === '/console/login' && loginLimited(request)) {
+    return NextResponse.json({ error: 'Too many authentication attempts. Please try again in a minute.' }, { status: 429 });
+  }
+  const live = isTokenLive(request.cookies.get(TOKEN_COOKIE)?.value);
+  if (!live && !CONSOLE_PUBLIC.some((p) => under(pathname, p))) {
+    const login = new URL('/console/login', request.url);
+    login.searchParams.set('next', `${pathname}${search}`);
+    return NextResponse.redirect(login);
+  }
+  if (pathname === '/console/login' && live) return NextResponse.redirect(new URL('/console', request.url));
+  return NextResponse.next({ request: { headers: reqHeaders } });
 }
 
 const tenants = new Map<string, { slug: string | null; until: number }>();
@@ -77,14 +135,15 @@ async function tenantSlug(host: string): Promise<string | null> {
 /**
  * 1. .well-known paths pass untouched (App/Universal Links need a plain 200).
  * 2. unifesto.app → www.unifesto.app.
- * 3. A space's custom domain serves only that space: `/` is its space page,
+ * 3. On our own hosts, /console/** goes through the console gate.
+ * 4. A space's custom domain serves only that space: `/` is its space page,
  *    `/event/*` its events (the page 404s other spaces' events), its sign-in
  *    session routes and static files pass, and every other path goes to the
  *    main site.
  */
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-  const policy = csp(nonce);
+  const policy = csp(nonce, under(request.nextUrl.pathname, '/console'));
   // Next reads the nonce from the request's CSP header while rendering.
   const headers = new Headers(request.headers);
   headers.set('x-nonce', nonce);
@@ -108,6 +167,7 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
     // Only this proxy may set the tenant headers; drop any a client sent.
     reqHeaders.delete('x-tenant-host');
     reqHeaders.delete('x-tenant-space');
+    if (under(pathname, '/console')) return consoleGate(request, reqHeaders);
     return NextResponse.next({ request: { headers: reqHeaders } });
   }
 
