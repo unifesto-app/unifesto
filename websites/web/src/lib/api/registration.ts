@@ -112,6 +112,8 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
 
 export interface AuthResponse {
   accessToken: string;
+  /** K18: handed straight to our server (startSession), never stored here. */
+  refreshToken?: string;
   requiresMobileVerification?: boolean;
   tempToken?: string;
   user?: { fullName?: string | null };

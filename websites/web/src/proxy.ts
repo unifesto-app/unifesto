@@ -78,8 +78,9 @@ async function tenantSlug(host: string): Promise<string | null> {
  * 1. .well-known paths pass untouched (App/Universal Links need a plain 200).
  * 2. unifesto.app → www.unifesto.app.
  * 3. A space's custom domain serves only that space: `/` is its space page,
- *    `/event/*` its events (the page 404s other spaces' events), static files
- *    pass, and every other path goes to the main site.
+ *    `/event/*` its events (the page 404s other spaces' events), its sign-in
+ *    session routes and static files pass, and every other path goes to the
+ *    main site.
  */
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -131,6 +132,10 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
   }
   if (
     pathname.startsWith('/event/') ||
+    // K18: the email-code session (host-only cookie on this domain). Google
+    // sign-in stays on our own hosts: Cognito can't list every client domain.
+    pathname === '/auth/session' ||
+    pathname === '/auth/logout' ||
     pathname.startsWith(`/space/${slug}/`) || // its OG image
     pathname.startsWith('/public/') ||
     /\.[a-z0-9]+$/i.test(pathname) // files from /public

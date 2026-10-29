@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import QRCode from "qrcode";
-import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ApiError, myTickets, resendTicket, sendEmailCode, verifyEmailCode, type MyTicket } from "@/lib/api/registration";
-import { clearSession, getSession, setSession, type WebSession } from "@/lib/auth";
+import { clearSession, startSession, useWebSession } from "@/lib/auth";
+import GoogleSignIn from "@/components/GoogleSignIn";
 import { IST } from "@/lib/site";
 
 const FIELD =
   "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
-const noopSubscribe = () => () => {};
 
 /**
  * K15: a web-only attendee's way back to their ticket. Signs in with the same
@@ -19,9 +19,8 @@ const noopSubscribe = () => () => {};
  * door scans (the app renders `qrCode || id` too).
  */
 export default function TicketsClient() {
-  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
-  const [sessionOverride, setSessionState] = useState<WebSession | null | undefined>(undefined);
-  const session = sessionOverride !== undefined ? sessionOverride : hydrated ? getSession() : null;
+  // K18: restored from our httpOnly cookie on load; the token lives in memory.
+  const { session, ready, pending } = useWebSession();
   const [tickets, setTickets] = useState<MyTicket[] | null>(null);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -31,7 +30,6 @@ export default function TicketsClient() {
 
   const signOut = () => {
     clearSession();
-    setSessionState(null);
     setTickets(null);
   };
 
@@ -71,14 +69,23 @@ export default function TicketsClient() {
     const res = await verifyEmailCode(email.trim(), otp.trim());
     // A fresh email has no account yet, so no tickets either.
     if (!res.accessToken) throw new Error("There's no Unifesto account with this email yet.");
-    const s: WebSession = { token: res.accessToken, email: email.trim(), fullName: res.user?.fullName || null };
-    setSession(s);
-    setSessionState(s);
+    await startSession(res, { email: email.trim(), fullName: res.user?.fullName || null });
   });
 
   let body;
-  if (!hydrated) body = null;
-  else if (!session) {
+  if (!ready) body = null;
+  else if (!session && pending) {
+    // K18: a Google account that isn't on Unifesto yet has no tickets to show.
+    body = (
+      <p className="text-paper/75">
+        <strong className="text-paper">{pending.email}</strong> isn&apos;t on Unifesto yet, so it has no tickets. Sign in
+        with the email you registered with instead.{" "}
+        <button type="button" onClick={signOut} className="underline hover:text-paper">
+          Use my email
+        </button>
+      </p>
+    );
+  } else if (!session) {
     body = codeSent ? (
       <form onSubmit={verify} className="space-y-4">
         <p className="text-paper/75">
@@ -105,6 +112,7 @@ export default function TicketsClient() {
       </form>
     ) : (
       <form onSubmit={sendCode} className="space-y-4">
+        <GoogleSignIn next="/tickets" />
         <p className="text-paper/75">Enter the email you registered with. We send you a code to confirm it&apos;s you.</p>
         <input
           required
