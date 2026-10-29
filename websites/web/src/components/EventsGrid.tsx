@@ -84,7 +84,7 @@ export default function EventsGrid() {
   }, [allEvents]);
 
   return (
-    <section id="events" aria-labelledby="events-heading" className="surface-night relative px-5 py-24 sm:px-8 md:py-32">
+    <section id="events" aria-labelledby="events-heading" className="surface-night relative px-5 pb-24 pt-14 sm:px-8 md:pb-32 md:pt-20">
 
       <div className="relative z-10 max-w-6xl mx-auto">
         {/* Section header */}
