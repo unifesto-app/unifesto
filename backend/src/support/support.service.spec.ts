@@ -19,6 +19,7 @@ const ADMIN: Role = { code: RoleCode.ADMIN, scope: RoleScope.PLATFORM };
 function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = null as any, message = null as any, attachment = null as any } = {}) {
   const assignments = admin ? [ADMIN, ...roles] : roles;
   const prisma: any = {
+    userCapabilityOverride: { findMany: jest.fn(async () => []) },
     userRole: {
       findMany: jest.fn(async () =>
         assignments.map((r) => ({

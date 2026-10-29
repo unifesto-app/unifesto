@@ -473,11 +473,19 @@ model User {
   // their foreign keys. Auth rejects any user with this set.
   deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
 
+  // F4: set by a platform admin. Suspended until `suspendedUntil`, or banned
+  // when that is null. Login, access tokens and refresh all reject it.
+  suspendedAt      DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspendedUntil   DateTime? @map("suspended_until") @db.Timestamptz(6)
+  suspensionReason String?   @map("suspension_reason") @db.Text
+  suspendedBy      String?   @map("suspended_by") @db.Uuid
+
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
+  capabilityOverrides          UserCapabilityOverride[]
   identities                   UserIdentity[]
   spaceRequests                SpaceRequest[]
   eventRequests                EventRequest[]
@@ -1072,7 +1080,8 @@ model UserRole {
 // =====================================================
 
 model Space {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userCapabilityOverrides UserCapabilityOverride[]
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   // Basic Information
   name        String  @db.VarChar(255)
@@ -6223,4 +6232,28 @@ model OrbitApplication {
   @@index([status])
   @@index([userId])
   @@map("orbit_applications")
+}
+
+/// F4: a platform admin's per-user exception to the role matrix, applied in
+/// AuthorizationService. `allow: false` takes an action away, everywhere
+/// (spaceId null) or in one space; denials win over any role. `allow: true`
+/// grants a space or event action in one space without a role. Platform
+/// actions are never granted this way (roles only).
+model UserCapabilityOverride {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action  String  @db.VarChar(64)
+  allow   Boolean
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  reason    String?  @db.Text
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("user_capability_overrides")
 }
