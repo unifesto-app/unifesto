@@ -388,7 +388,7 @@ One support system for everything a person needs help with. Every item is an **A
 
 | # | Item | Status |
 |---|---|---|
-| E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
+| E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | done (#422) |
 | E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
 | E3 | Sponsor portal: lead notes + status, per-event booth stats | done (#423) |
 | E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
@@ -974,3 +974,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · K1 discovery: web /events browse by city, college and real categories with every upcoming event and a trending-near-you strip; /spaces opens on active spaces; GET /spaces honours city; category renames keep events; mobile city/college browse (#425)
 - **2026-10-29** · K19 web account pages: profile (username check, photo), email/marketing notification settings, self-serve account deletion with grace and cancel, saved events, my certificates; /delete-account leads with the web flow (#426)
 - **2026-10-29** · F1 per-event attendee feedback: 1-5 rating, NPS and curators' own questions (registration question types), one editable response per attendee; Space Feedback page + mobile Rate this event (#417)
+- **2026-10-29** · E1 shared collaborator invite: one find-or-create by email (never renames an account), invite email for sponsor portal, judges/mentors and space members; sponsor invite no longer needs an existing account (#422)
