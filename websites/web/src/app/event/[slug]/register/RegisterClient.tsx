@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { BrandTheme, brandStyle } from "@/components/BrandedChrome";
@@ -30,7 +30,8 @@ import {
   type Quote,
   type RegTicket,
 } from "@/lib/api/registration";
-import { clearSession, getSession, setSession, type WebSession } from "@/lib/auth";
+import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
+import GoogleSignIn from "@/components/GoogleSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { storedUtm, withStoredUtm } from "@/lib/utm";
 
@@ -39,7 +40,6 @@ const FIELD =
 const CHOICE = "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition-colors";
 const NOT_OPEN = { upcoming: "Registration opens soon", sold_out: "Sold out", closed: "Registration closed", open: "" } as const;
 
-const noopSubscribe = () => () => {};
 
 type Step = "form" | "email-otp" | "phone" | "phone-otp" | "done";
 type Done = { kind: "in" | "already" | "waitlisted" | "confirming"; registrationId?: string };
@@ -97,11 +97,9 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   else if (fields.some((f) => f.type === "FILE" && individual.some((t) => appliesTo(f, t.id))))
     handoff = { title: "Finish in the app", body: "This registration asks for a file upload, which works in the Unifesto app.", app: true };
 
-  // The stored session is read after hydration (the server has none); signing
-  // in or out overrides it.
-  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
-  const [sessionOverride, setSessionState] = useState<WebSession | null | undefined>(undefined);
-  const session = sessionOverride !== undefined ? sessionOverride : hydrated ? getSession() : null;
+  // K18: the session comes back from our httpOnly cookie after load (the
+  // server render has none); signing in or out updates it.
+  const { session, ready, pending } = useWebSession();
   const [ticketId, setTicketIdState] = useState(individual[0]?.id ?? "");
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [fullName, setFullName] = useState("");
@@ -149,9 +147,10 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   const shown = paid && quote?.basePaise === basePaise && quote.couponDiscountPaise === discountPaise ? quote : null;
 
   // A returning visitor who already holds a ticket sees it, not the form.
+  // Runs once, when the page learns whether it's signed in.
   useEffect(() => {
     const s = getSession();
-    if (!s || handoff) return;
+    if (!ready || !s || handoff) return;
     myRegistrations(event.id, s.token)
       .then((regs) => {
         if (regs.length) {
@@ -160,13 +159,19 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         }
       })
       .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) {
-          clearSession();
-          setSessionState(null);
-        }
+        if (e instanceof ApiError && e.status === 401) clearSession();
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
+
+  // K18: back from Google with an account that has no mobile number yet: the
+  // usual phone step finishes it.
+  useEffect(() => {
+    if (!pending) return;
+    setEmail(pending.email);
+    setTempToken(pending.tempToken);
+    setStep("phone");
+  }, [pending]);
 
   const ticketFields = fields.filter((f) => appliesTo(f, ticketId)).sort((a, b) => a.order - b.order);
   const visible = visibleFieldIds(ticketFields, answers);
@@ -234,7 +239,6 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         clearSession();
-        setSessionState(null);
         goTo("form");
         throw new Error("Your sign-in expired. Enter your email to continue.");
       }
@@ -280,13 +284,12 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
 
   /** After the code checks out: name a fresh account, keep the session, register. */
   const signedIn = async (auth: AuthResponse) => {
-    const s: WebSession = { token: auth.accessToken, email: email.trim(), fullName: auth.user?.fullName || null };
+    const s: WebSession = await startSession(auth, { email: email.trim(), fullName: auth.user?.fullName || null });
     if (!s.fullName && fullName.trim()) {
       await saveName(fullName.trim(), s.token);
       s.fullName = fullName.trim();
+      setSession(s);
     }
-    setSession(s);
-    setSessionState(s);
     // K13: a code entered signed out is checked now. Back on the form the quote
     // refreshes, so the buyer sees the real total (or why the code failed) and
     // presses Pay themselves instead of landing in Razorpay with a new amount.
@@ -316,7 +319,6 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         await saveName(fullName.trim(), session.token);
         const s = { ...session, fullName: fullName.trim() };
         setSession(s);
-        setSessionState(s);
       }
       return register(session);
     }
@@ -336,10 +338,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     goTo("phone-otp");
   });
   const verifyPhone = run(async () => signedIn(await verifyPhoneCode(mobileNumber, otp.trim(), tempToken)));
-  const signOut = () => {
-    clearSession();
-    setSessionState(null);
-  };
+  const signOut = () => clearSession();
 
   const openApp = (link: string) => openAppOrStore(withStoredUtm(link));
   const back = (
@@ -479,6 +478,8 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   } else {
     body = (
       <form onSubmit={submitForm} className="space-y-6">
+        {/* K18: before the questions, so nothing typed is lost on the trip to Google. */}
+        {ready && !session && <GoogleSignIn next={`/event/${event.slug}/register`} />}
         {individual.length > 1 ? (
           <fieldset className="space-y-2">
             <legend className="mb-2 text-sm font-semibold text-paper">Ticket</legend>
