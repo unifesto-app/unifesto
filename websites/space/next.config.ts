@@ -14,19 +14,6 @@ const nextConfig: NextConfig = {
   // not production. Re-enable if you want StrictMode's other checks back.
   reactStrictMode: false,
   // Note: eslint config moved to eslint.config.mjs (no longer supported in next.config)
-
-  // Ensure proper module resolution for client components
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-    }
-    return config;
-  },
 };
 
 // Source maps upload when SENTRY_AUTH_TOKEN is set (a BuildKit secret in the
