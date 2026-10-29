@@ -987,3 +987,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · web G18: mint/sky/ivory accents inside cards by role, statuses and tags as plain text instead of pills (event cards, banners, speakers, Stay). Rebuild web. (#433)
 - **2026-10-29** · web G19: frosted liquid glass on the hero check-in card (vendored liquidglass, font embedding patched out); solid fallback without WebGL. Rebuild web. (#434)
 - **2026-10-29** · web glass re-captures on light/dark switch (no stale black card); follow-up to #434. Rebuild web. (#435)
+- **2026-10-29** · web home: frosted glass on every panel over orbit-shaped accent shade cards (sky/mint/ivory/#0062ff) + hero #0062ff orbit band + stronger grain + hero pointer light removed; glass lazy-starts, restarts on theme switch. Rebuild web. (#436)
