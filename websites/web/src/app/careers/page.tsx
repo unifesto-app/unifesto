@@ -15,22 +15,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
-
-interface Career {
-  id: string;
-  title: string;
-  department: string;
-  location: string;
-  type: string;
-  experience_level: string;
-  description: string;
-  requirements: string[];
-  responsibilities: string[];
-  benefits: string[];
-  salary_range?: string;
-  status: string;
-  created_at: string;
-}
+import type { Career } from "@/lib/api/careers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
 
@@ -59,7 +44,15 @@ export default function CareersPage() {
 
         const res = await fetch(`${API_BASE}/careers?${params}`);
         const json = await res.json();
-        setCareers(json.data || []);
+        const roles: Career[] = json.data || [];
+        setCareers(roles);
+        // K2: a role page's "Apply" lands here as ?apply=<id>.
+        const apply = new URLSearchParams(window.location.search).get("apply");
+        const role = apply && roles.find((r) => r.id === apply);
+        if (role) {
+          setApplyFor(role);
+          window.history.replaceState(null, "", "/careers");
+        }
       } catch (error) {
         console.error("Failed to load careers:", error);
       } finally {

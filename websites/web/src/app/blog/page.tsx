@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
-import { getPosts, postMeta, type BlogPost } from "@/lib/api/blog";
+import { getPosts, postMeta, type BlogPostSummary as BlogPost } from "@/lib/api/blog";
 
 export const metadata: Metadata = withSocial({
   alternates: { canonical: "/blog", types: { "application/rss+xml": "/blog/rss.xml" } },

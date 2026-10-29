@@ -26,12 +26,15 @@ export interface BlogPost {
   updatedAt: string;
 }
 
+/** A list row: the API leaves the body out of the index (K3). */
+export type BlogPostSummary = Omit<BlogPost, "content">;
+
 /** All published posts, newest first. Returns [] on any failure. */
-export async function getPosts(): Promise<BlogPost[]> {
+export async function getPosts(): Promise<BlogPostSummary[]> {
   try {
     const res = await fetch(`${API_URL}/blog`, withInternal({ next: { revalidate: 60 } }));
     if (!res.ok) return [];
-    return (await res.json()) as BlogPost[];
+    return (await res.json()) as BlogPostSummary[];
   } catch {
     return [];
   }
@@ -52,7 +55,7 @@ export async function getPost(slug: string): Promise<BlogPost | null> {
 }
 
 /** Human-friendly date + read-time for a post's meta line. */
-export function postMeta(post: BlogPost): { date: string; readTime: string } {
+export function postMeta(post: BlogPostSummary): { date: string; readTime: string } {
   const iso = post.publishedAt ?? post.createdAt;
   const date = new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",

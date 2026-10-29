@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +25,8 @@ interface LinkDraft {
 
 /**
  * The team's project links per round (repo, demo, deck…). Any member can edit
- * them until the round's cut-off; judges and mentors see them while evaluating.
+ * them until the round's cut-off or until a judge scores them; judges and
+ * mentors see them while evaluating.
  */
 export default function HackathonSubmissionScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -50,14 +51,21 @@ export default function HackathonSubmissionScreen() {
     setError('');
   }, []);
 
+  // Read inside load: a refresh must not throw away what the member is typing.
+  const dirtyRef = useRef(false);
+  dirtyRef.current = JSON.stringify({ links, notes }) !== initial;
+
   const load = useCallback(async () => {
     if (!eventId) return;
     const res = await getMySubmissions(eventId);
     if (!res.ok) return setError(res.message);
     setData(res.data);
-    // Default to the first round that's still open, else the latest.
+    // Default to the first round that's still open, else the latest. Coming
+    // back to the screen re-reads the round shown (a teammate may have saved
+    // since), unless there are unsaved edits.
     const first = res.data.rounds.find((r) => r.canEdit) ?? res.data.rounds[res.data.rounds.length - 1];
-    if (first && !roundId) pick(res.data, first.roundId);
+    const id = roundId || first?.roundId;
+    if (id && !(roundId && dirtyRef.current)) pick(res.data, id);
   }, [eventId, roundId, pick]);
 
   useFocusEffect(
@@ -130,7 +138,9 @@ export default function HackathonSubmissionScreen() {
               ? round.closesAt
                 ? `Add your repo, demo, deck or video. You can change them until ${formatWhen(round.closesAt)}.`
                 : 'Add your repo, demo, deck or video. You can change them until the round closes.'
-              : data.stage === 'NEEDS_PS'
+              : round.locked
+                ? 'Judges have scored these links, so they are locked.'
+                : data.stage === 'NEEDS_PS'
                 ? 'Lock in your problem statement to add links.'
                 : round.status === 'CLOSED' || (round.closesAt && new Date(round.closesAt).getTime() <= Date.now())
                   ? 'Links for this round are closed.'

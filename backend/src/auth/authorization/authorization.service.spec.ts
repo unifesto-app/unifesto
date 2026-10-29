@@ -27,6 +27,7 @@ describe('AuthorizationService', () => {
 
   const build = (assignments: Assignment[]) => {
     const prisma = {
+      userCapabilityOverride: { findMany: jest.fn().mockResolvedValue([]) },
       userRole: {
         findMany: jest.fn().mockResolvedValue(
           assignments.map((a) => ({
@@ -205,6 +206,7 @@ describe('AuthorizationService', () => {
   describe('canAny (S34: one assignment load for a list of resources)', () => {
     const buildWithPrisma = (assignments: Assignment[]) => {
       const prisma = {
+        userCapabilityOverride: { findMany: jest.fn().mockResolvedValue([]) },
         userRole: {
           findMany: jest.fn().mockResolvedValue(
             assignments.map((a) => ({

@@ -319,6 +319,16 @@ export class HackathonController {
     return this.rounds.getRound(user.id, eventId, roundId);
   }
 
+  @Get('events/:eventId/hackathon/rounds/:roundId/submissions')
+  @ApiOperation({ summary: "Every team's project links for a round, with missing and judged flags" })
+  roundSubmissions(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('roundId', ParseUUIDPipe) roundId: string,
+  ) {
+    return this.submissions.listForRound(user.id, eventId, roundId);
+  }
+
   @Patch('events/:eventId/hackathon/rounds/:roundId')
   updateRound(
     @CurrentUser() user: User,

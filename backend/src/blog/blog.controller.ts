@@ -2,10 +2,13 @@ import {
   Body,
   Controller,
   Delete,
+  FileTypeValidator,
   Get,
   Headers,
   HttpCode,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   Patch,
   Post,
   Query,
@@ -92,7 +95,18 @@ export class BlogController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
-  uploadCover(@UploadedFile() file: Express.Multer.File) {
+  uploadCover(
+    // K3: images only (it was any file), within the upload cap.
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
     return this.blog.uploadCover(file);
   }
 

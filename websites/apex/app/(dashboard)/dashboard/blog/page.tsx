@@ -36,6 +36,7 @@ import {
   type BlogPost,
   type BlogStatus,
 } from "@/lib/api/blog-api";
+import { useUnsavedGuard } from "@/lib/utils/use-unsaved-guard";
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -67,6 +68,8 @@ export default function BlogPage() {
 
   const fmt = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—";
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
 
   return (
     <div className="space-y-6">
@@ -132,12 +135,12 @@ export default function BlogPage() {
                     <Star className="h-3.5 w-3.5 text-warning" weight="fill" />
                   )}
                   <Badge variant={p.status === "PUBLISHED" ? "success" : "warning"}>
-                    {p.status === "PUBLISHED" ? "Published" : "Draft"}
+                    {p.status === "PUBLISHED" ? "Published" : p.scheduledFor ? "Scheduled" : "Draft"}
                   </Badge>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {p.category} · {p.author}
-                  {p.status === "PUBLISHED" ? ` · ${fmt(p.publishedAt)}` : ""}
+                  {p.status === "PUBLISHED" ? ` · ${fmt(p.publishedAt)}` : p.scheduledFor ? ` · goes live ${when(p.scheduledFor)}` : ""}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -171,6 +174,12 @@ export default function BlogPage() {
   );
 }
 
+/** An ISO instant as the value a datetime-local input wants, in local time. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 function PostDialog({
   post,
   onClose,
@@ -180,7 +189,7 @@ function PostDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({
+  const [initial] = useState(() => ({
     title: post?.title ?? "",
     slug: post?.slug ?? "",
     excerpt: post?.excerpt ?? "",
@@ -191,8 +200,11 @@ function PostDialog({
     readMinutes: post?.readMinutes?.toString() ?? "",
     featured: post?.featured ?? false,
     status: (post?.status ?? "DRAFT") as BlogStatus,
-  });
+    scheduledFor: post?.scheduledFor ? toLocalInput(post.scheduledFor) : "",
+  }));
+  const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const guardedClose = useUnsavedGuard(!saving && JSON.stringify(form) !== JSON.stringify(initial));
   const [err, setErr] = useState("");
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -215,7 +227,13 @@ function PostDialog({
       readMinutes: form.readMinutes ? Number(form.readMinutes) : undefined,
       featured: form.featured,
       status: form.status,
+      // datetime-local is the editor's local time; send it as an instant.
+      scheduledFor: form.status === "DRAFT" && form.scheduledFor ? new Date(form.scheduledFor).toISOString() : null,
     };
+    if (payload.scheduledFor && new Date(payload.scheduledFor) <= new Date()) {
+      setSaving(false);
+      return setErr("Pick a publish time in the future, or publish now.");
+    }
     const { error } = post
       ? await updatePost(post.id, payload)
       : await createPost(payload);
@@ -225,7 +243,7 @@ function PostDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && guardedClose(onClose)}>
       <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{post ? "Edit post" : "New post"}</DialogTitle>
@@ -248,6 +266,11 @@ function PostDialog({
               onChange={(e) => set("slug", e.target.value)}
               placeholder="auto-generated-from-title"
             />
+            {post?.publishedAt && form.slug.trim() && form.slug.trim() !== post.slug && (
+              <p className="text-xs text-muted-foreground">
+                The old address, /blog/{post.slug}, will redirect to the new one.
+              </p>
+            )}
           </div>
 
           <ImageUploadCard
@@ -331,6 +354,20 @@ function PostDialog({
             </div>
           </div>
 
+          {form.status === "DRAFT" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="blog-schedule">Publish later (optional)</Label>
+              <Input id="blog-schedule"
+                type="datetime-local"
+                value={form.scheduledFor}
+                onChange={(e) => set("scheduledFor", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                The draft goes live on its own at this time (checked every 5 minutes). Leave empty to publish by hand.
+              </p>
+            </div>
+          )}
+
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -345,7 +382,7 @@ function PostDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
+          <Button variant="outline" onClick={() => guardedClose(onClose)} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
