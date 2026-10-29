@@ -47,7 +47,8 @@ const mockPrisma = (plan: OrgPlan | null, over: Record<string, any> = {}): any =
 });
 
 const cache = { invalidateEventCache: jest.fn() };
-const sponsors = (prisma: any) => new SponsorsService(prisma, new PlanConfigService(prisma), cache as any, {} as any);
+const email = { sendCollaboratorInvite: jest.fn(async () => true) };
+const sponsors = (prisma: any) => new SponsorsService(prisma, new PlanConfigService(prisma), cache as any, {} as any, email as any);
 const portal = (prisma: any) => new SponsorPortalService(prisma, new PlanConfigService(prisma));
 
 describe('sponsor roster', () => {
@@ -161,5 +162,25 @@ describe('curator lead funnel', () => {
     prisma.event.findFirst.mockResolvedValueOnce(null);
     await expect(leads(prisma).createLead('sp-1', { email: 'a@b.co', eventId: 'ev-x' })).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.event.findFirst.mock.calls[0][0].where).toMatchObject({ id: 'ev-x', spaceId: 'sp-1' });
+  });
+});
+
+describe('sponsor portal invite (E1)', () => {
+  it('invites by email without revealing whether they have an account, and emails them', async () => {
+    const prisma = mockPrisma(OrgPlan.GROWTH, {
+      userIdentity: { findMany: jest.fn(async () => []) },
+      user: { create: jest.fn(async () => ({ id: 'new-user' })), findUnique: jest.fn(async () => ({ fullName: 'Curator' })) },
+      space: { findUnique: jest.fn(async () => ({ id: 'sp-1', name: 'Robotics Club' })) },
+      sponsorUser: { create: jest.fn(async ({ data }: any) => ({ id: 'su-1', ...data })) },
+    });
+    prisma.sponsor.findFirst = jest.fn(async () => ({ id: 's-1', name: 'Acme' }));
+    email.sendCollaboratorInvite.mockClear();
+
+    await expect(sponsors(prisma).inviteSponsorUser('sp-1', 's-1', 'Rep@Acme.com', 'cur-1')).resolves.toMatchObject({ id: 'su-1' });
+    expect(prisma.sponsorUser.create.mock.calls[0][0].data).toMatchObject({ userId: 'new-user', status: 'INVITED', invitedEmail: 'rep@acme.com' });
+    expect(email.sendCollaboratorInvite).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'rep@acme.com', target: 'Acme at Robotics Club', url: 'https://space.unifesto.app/sponsor' }),
+      expect.objectContaining({ dedupKey: 'invite.sponsor:su-1' }),
+    );
   });
 });

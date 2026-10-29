@@ -8,7 +8,8 @@ describe('Assist guest contact (D11)', () => {
 
   function setup(existing: { userId: string } | null = null) {
     const prisma = {
-      userIdentity: { findFirst: jest.fn().mockResolvedValue(existing) },
+      // findIdentityByEmail re-checks the address on the rows it gets back.
+      userIdentity: { findMany: jest.fn().mockResolvedValue(existing ? [{ ...existing, email: 'a@b.co', user: { fullName: null } }] : []) },
       user: { create: jest.fn().mockResolvedValue({ id: 'new-user' }), update: jest.fn() },
       supportTicket: {
         findUnique: jest.fn().mockResolvedValue({ id, requesterId: 'u1', ticketNumber: 7, status: 'BOT', contactEmail: 'a@b.co', messages: [] }),

@@ -105,7 +105,8 @@ export function SponsorUsersDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              The person must already have a Unifesto account with this email.
+              We email them an invite. They sign in with this email to open the sponsor portal, no account needed
+              first.
             </p>
           </div>
 
