@@ -6,6 +6,7 @@ import FloatingSupport from "@/components/FloatingSupport";
 import UtmCapture from "@/components/UtmCapture";
 import MotionRuntime from "@/components/MotionRuntime";
 import { SITE } from "@/lib/site";
+import { getHelpArticles } from "@/lib/api/help";
 
 const michroma = Michroma({
   weight: "400",
@@ -97,6 +98,7 @@ export default async function RootLayout({
   // K14: the proxy's per-request CSP nonce. Reading it renders every page per
   // request, which a nonce needs (a prerendered page can't carry one).
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const hasHelp = (await getHelpArticles()).length > 0;
   return (
     <html lang="en-IN" className={`${michroma.variable} ${hanken.variable} ${martian.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
@@ -105,7 +107,7 @@ export default async function RootLayout({
       <body className="min-h-screen bg-night antialiased">
         <UtmCapture />
         {children}
-        <FloatingSupport />
+        <FloatingSupport hasHelp={hasHelp} />
         <MotionRuntime />
       </body>
     </html>

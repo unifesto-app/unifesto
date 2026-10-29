@@ -9,7 +9,8 @@ import { SupportRow, supportMailto, whatsappHref } from "@/components/support";
 
 /* Help button. Asking Assist opens a support request (D11): Assist answers and
    hands off to a person. WhatsApp and email stay as the other real channels. */
-export default function FloatingSupport() {
+/** hasHelp: K17, the help-articles row shows only once an article is published. */
+export default function FloatingSupport({ hasHelp }: { hasHelp: boolean }) {
   const [open, setOpen] = useState(false);
   const onLight = useLightSurfaceAt(() => [window.innerWidth - 52, window.innerHeight - 52]);
 
@@ -60,12 +61,14 @@ export default function FloatingSupport() {
                 href={`mailto:${SITE.email}`}
                 onClickHref={supportMailto}
               />
-              <SupportRow
-                icon={<Lifebuoy className="h-7 w-7 text-paper/60" />}
-                label="Help articles"
-                value="Common questions"
-                href="/help"
-              />
+              {hasHelp && (
+                <SupportRow
+                  icon={<Lifebuoy className="h-7 w-7 text-paper/60" />}
+                  label="Help articles"
+                  value="Common questions"
+                  href="/help"
+                />
+              )}
             </div>
           </div>
         )}
