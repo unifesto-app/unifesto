@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 
 /* Makes the hero sky respond to the visitor: layers drift at different
-   depths as the pointer moves, and a soft light follows it. Writes four
-   CSS variables on the backdrop once per frame; every layer moves with the
+   depths as the pointer moves. Writes two CSS variables on the backdrop
+   once per frame; every layer moves with the
    individual `translate` property (compositor-only, composes with the
    layers' own transform animations). Fine pointers only; off under reduced
    motion. Runs after hydration, so it never races React. */
@@ -24,13 +24,10 @@ export default function CosmosPointer({ targetId }: { targetId: string }) {
       const r = section.getBoundingClientRect();
       sky.style.setProperty("--mx", ((x - r.left) / r.width - 0.5).toFixed(3));
       sky.style.setProperty("--my", ((y - r.top) / r.height - 0.5).toFixed(3));
-      sky.style.setProperty("--px", `${Math.round(x - r.left)}px`);
-      sky.style.setProperty("--py", `${Math.round(y - r.top)}px`);
     };
     const move = (e: PointerEvent) => {
       x = e.clientX;
       y = e.clientY;
-      sky.dataset.live = "";
       if (!raf) raf = requestAnimationFrame(apply);
     };
     const leave = () => {
@@ -38,7 +35,6 @@ export default function CosmosPointer({ targetId }: { targetId: string }) {
       raf = 0;
       sky.style.setProperty("--mx", "0");
       sky.style.setProperty("--my", "0");
-      delete sky.dataset.live;
     };
 
     section.addEventListener("pointermove", move, { passive: true });

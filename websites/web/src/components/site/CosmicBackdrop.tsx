@@ -15,7 +15,6 @@ export default function CosmicBackdrop({ variant = "hero" }: { variant?: "hero" 
       <div className="cosmos-orbit cosmos-orbit-b" />
 
       <div className="cosmos-frame" />
-      {hero && <div className="cosmos-glow" />}
 
       {/* The hero draws its horizon with <HorizonFloor />; inner pages get
           the same line on their bottom edge. */}
