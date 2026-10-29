@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { MagnifyingGlass, ArrowRight } from "@unifesto/unicon/react";
 import EventCard from "./EventCard";
 import { getListedEvents, filterEvents, type Event } from "@/lib/api/events";
@@ -67,13 +68,13 @@ export default function EventsGrid() {
               )}
             </h2>
           </div>
-          <a
+          <Link
             href="/events"
             className="link-draw text-sm font-semibold text-primary transition-colors duration-150 hover:text-primary-bright group flex items-center gap-1 whitespace-nowrap"
           >
             View all events
             <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
-          </a>
+          </Link>
         </div>
 
         {/* Quick search */}

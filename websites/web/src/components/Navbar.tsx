@@ -319,14 +319,14 @@ export default function Navbar() {
                     </a>
                   ))}
                 </div>
-                <a
+                <Link
                   href="/app"
                   onClick={() => setOpenMenu(null)}
                   className="link-draw mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-paper/80 hover:text-paper"
                 >
                   See what&rsquo;s inside
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </a>
+                </Link>
                 <a
                   href={account.href}
                   onClick={() => setOpenMenu(null)}
@@ -336,10 +336,10 @@ export default function Navbar() {
                 </a>
               </div>
             </Menu>
-            <a href="/request-space" className="btn btn-sm btn-primary">
+            <Link href="/request-space" className="btn btn-sm btn-primary">
               Host an event
               <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
-            </a>
+            </Link>
           </div>
 
           <ThemeToggle className="ml-auto mr-1 lg:hidden" />
@@ -422,10 +422,10 @@ export default function Navbar() {
                 <a href={account.href} className="btn btn-secondary w-full">
                   {account.label}
                 </a>
-                <a href="/request-space" className="btn btn-primary w-full">
+                <Link href="/request-space" className="btn btn-primary w-full">
                   Host an event
                   <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
-                </a>
+                </Link>
                 <div className="flex items-center justify-center gap-3">
                   {STORES.map((s) => (
                     <a key={s.label} href={s.href}>

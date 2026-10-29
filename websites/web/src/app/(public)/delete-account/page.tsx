@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { withSocial } from "@/lib/seo";
 import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
 import { LEGAL } from "@/lib/legal";
@@ -26,7 +27,7 @@ const sections: LegalSection[] = [
     title: "Delete on the web",
     body: (
       <ol>
-        <li>Go to <a href="/console/account/delete">My account → Delete account</a> and sign in with your email code (or Google).</li>
+        <li>Go to <Link href="/console/account/delete">My account → Delete account</Link> and sign in with your email code (or Google).</li>
         <li>Confirm, and choose <strong>Delete my account</strong>.</li>
         <li>You can cancel on the same page until the day it closes.</li>
       </ol>
@@ -100,7 +101,7 @@ const sections: LegalSection[] = [
         </ul>
         <p>
           To also erase your registration answers and stay details, say so in your email to{" "}
-          {mail(LEGAL.email.privacy, "Delete my account")}. See the <a href="/privacy">Privacy Policy</a> for more.
+          {mail(LEGAL.email.privacy, "Delete my account")}. See the <Link href="/privacy">Privacy Policy</Link> for more.
         </p>
       </>
     ),

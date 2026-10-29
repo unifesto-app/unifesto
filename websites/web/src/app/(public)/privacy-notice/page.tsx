@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { withSocial } from "@/lib/seo";
 import { LegalDocPage } from "@/components/site/LegalPage";
 
@@ -25,7 +26,7 @@ export default function PrivacyNoticePage() {
       title="Privacy Notice"
       path="/privacy-notice"
       lines={["Privacy Notice"]}
-      lede={<>The one-page version: what we ask for, why, and how to take it back. The <a href="/privacy" className="link-draw text-paper">Privacy Policy</a> has the detail.</>}
+      lede={<>The one-page version: what we ask for, why, and how to take it back. The <Link href="/privacy" className="link-draw text-paper">Privacy Policy</Link> has the detail.</>}
     />
   );
 }

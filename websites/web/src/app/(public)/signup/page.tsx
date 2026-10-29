@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { DeviceMobile } from '@unifesto/unicon/react';
@@ -51,9 +52,9 @@ function SignupRedirect() {
           </a>
           <p className="mt-6 text-sm text-paper/60">
             Don&apos;t have it yet?{' '}
-            <a href="/download" className="link-draw font-semibold text-primary">
+            <Link href="/download" className="link-draw font-semibold text-primary">
               Get Unifesto
-            </a>
+            </Link>
           </p>
         </div>
       </div>
