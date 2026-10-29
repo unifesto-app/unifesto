@@ -22,7 +22,7 @@ const FROM: Record<string, Kf> = {
   rise: { opacity: 0, transform: "translateY(28px)" },
   blur: { opacity: 0, transform: "translateY(12px)", filter: "blur(10px)" },
   scale: { opacity: 0, transform: "translateY(20px) scale(0.96)" },
-  // Overhanging mask: Michroma's descenders sit outside the line box.
+  // Overhanging mask: heading descenders sit outside the line box.
   clip: { opacity: 1, clipPath: "inset(-0.2em -0.1em 100% -0.1em)", transform: "translateY(16px)" },
   grow: { transform: "scaleY(0)" },
   fill: { transform: "scaleX(0)" },

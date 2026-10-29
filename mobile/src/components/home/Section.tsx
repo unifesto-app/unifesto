@@ -20,7 +20,7 @@ interface SectionProps {
 }
 
 /**
- * Home section in the web's voice: a Michroma title (a VoiceOver heading, so
+ * Home section in the web's voice: a DM Sans title (a VoiceOver heading, so
  * the rotor can jump between sections), a quiet subtitle and a "See all →" link.
  */
 export function Section({ title, subtitle, onSeeAll, children, style }: SectionProps) {
@@ -75,8 +75,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
     gap: spacing[3],
   },
-  // Michroma runs wide: a size below the old xl reads the same weight.
-  title: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  title: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   subtitle: { fontSize: typography.fontSize.sm, marginTop: 4, ...cosmosFont.body },
   seeAll: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 3 },
   seeAllText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

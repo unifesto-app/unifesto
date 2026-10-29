@@ -33,7 +33,7 @@ export function brandStyle(b: Branding | null | undefined): CSSProperties | unde
   if (b.color) Object.assign(style, { "--primary": b.color, "--accent": b.color });
   if (b.font) {
     const family = `"${b.font}", system-ui, sans-serif`;
-    Object.assign(style, { "--font-hanken": family, "--font-michroma": family, fontFamily: family });
+    Object.assign(style, { "--font-hanken": family, "--font-dm-sans": family, fontFamily: family });
   }
   return Object.keys(style).length ? (style as CSSProperties) : undefined;
 }

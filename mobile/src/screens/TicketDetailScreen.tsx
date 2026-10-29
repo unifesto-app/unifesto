@@ -542,8 +542,7 @@ const styles = StyleSheet.create({
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 12, ...cosmosFont.strong },
-  // Michroma runs wide: 17 here reads like a 21.
-  title: { marginTop: spacing[2], fontSize: 17, lineHeight: 25, ...cosmosFont.display },
+  title: { marginTop: spacing[2], fontSize: 21, lineHeight: 27, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center' },
   perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },

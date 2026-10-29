@@ -2,25 +2,10 @@ import { Platform } from 'react-native';
 
 // Unifesto Typography System
 //
-// Two families:
-//   • Plus Jakarta Sans (500 Medium) — headlines, hero text, big numbers/stats,
-//     screen titles. Only ever used at 18px and above.
-//   • DM Sans (400 / 500 / 600 / 700) — body text, buttons, nav labels, form
-//     fields, captions, every other UI string. Each weight is a distinct static
-//     face, so emphasis (medium / semibold / bold) renders as a real weight.
-//
-// The faces are registered in app/_layout.tsx and selected through the theme
-// `font(weight)` helper (see fontHelpers.ts). The logo is a wordmark PNG
+// Font families live in theme/cosmos.ts (`cosmosFont`): DM Sans for headlines
+// and figures, Hanken Grotesk for text, registered in app/_layout.tsx. This file
+// holds the type scale. The logo is a wordmark PNG
 // (see components/UnifestoAppWordmark.tsx), not a font.
-
-// Central font-family constants. Prefer the `font()` / `font('heading')`
-// helpers in styles, but these are exported for anywhere a raw family string
-// is needed.
-export const FONT_HEADING = 'PlusJakartaSans-Medium';
-export const FONT_BODY_REGULAR = 'DMSans';
-export const FONT_BODY_MEDIUM = 'DMSans-Medium';
-export const FONT_BODY_SEMIBOLD = 'DMSans-SemiBold';
-export const FONT_BODY_BOLD = 'DMSans-Bold';
 
 // Global type scale. Text was running a touch large, so every size is nudged
 // down via a single factor. Android also renders the same pt visually larger
@@ -35,17 +20,6 @@ const scaleFont = (size: number): number => {
 };
 
 export const typography = {
-  // Font Families — DM Sans (body, 400/500/600/700) + Plus Jakarta Sans (headings).
-  fontFamily: {
-    // DM Sans body faces, one static family per installed weight.
-    primary: FONT_BODY_REGULAR,     // 400
-    medium: FONT_BODY_MEDIUM,       // 500
-    semibold: FONT_BODY_SEMIBOLD,   // 600
-    bold: FONT_BODY_BOLD,           // 700
-    // Plus Jakarta Sans — headings/hero/screen titles/big numbers, 18px and up.
-    heading: FONT_HEADING,
-  },
-
   // Font Sizes — scaled down globally via scaleFont (see FONT_SCALE above), with
   // an extra reduction on Android so text doesn't render oversized there.
   fontSize: {
@@ -63,8 +37,8 @@ export const typography = {
     '8xl': scaleFont(64),
   },
 
-  // Font Weights — 400/500/600/700 have real faces; the weight lives in the
-  // family name (see fontHelpers), so these numeric values are informational.
+  // Font Weights — the weight lives in the family name (see `cosmosFont` in
+  // cosmos.ts), so these numeric values are informational.
   fontWeight: {
     normal: '400' as const,
     medium: '500' as const,

@@ -3,7 +3,7 @@ import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View, useWi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont } from '../../theme/cosmos';
 import { TopLayer } from './TopLayer';
 
 /**
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   frame: { position: 'absolute', borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)' },
   guideV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)' },
   guideH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)' },
-  hint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: typography.fontSize.sm, ...font() },
+  hint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bar: {
     position: 'absolute',
     left: 0,
@@ -207,6 +207,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingTop: spacing[4],
   },
-  action: { color: '#fff', fontSize: typography.fontSize.lg, ...font() },
-  primary: { ...font('medium') },
+  action: { color: '#fff', fontSize: typography.fontSize.lg, ...cosmosFont.body },
+  primary: { ...cosmosFont.strong },
 });

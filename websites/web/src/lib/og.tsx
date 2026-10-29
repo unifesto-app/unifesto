@@ -7,7 +7,7 @@ import type { CSSProperties, ReactNode } from "react";
  * default, event, space, blog post, certificate).
  *
  * Look: the site's "monochrome cosmos" — black ground, one soft starlight
- * glow, silver wordmark, Michroma headings over Hanken Grotesk body, hairline
+ * glow, silver wordmark, DM Sans headings over Hanken Grotesk body, hairline
  * borders and a silver CTA. Left column: wordmark, kind chip, title (≤2
  * lines), subtitle (≤2 lines), meta rows, CTA + domain. Right: the artwork in
  * a hairline frame (4:3 banner / 1:1 logo), or a monogram when there is none.
@@ -31,12 +31,12 @@ export const BRAND = {
 const PAD = 64;
 const GAP = 56;
 
-type OgFont = { name: string; data: Buffer; weight: 400 | 600; style: "normal" };
+type OgFont = { name: string; data: Buffer; weight: 400 | 500 | 600; style: "normal" };
 let fontsCache: OgFont[] | null = null;
 
 /**
- * Michroma (display) + Hanken Grotesk (body), the same faces the site loads
- * through next/font. Satori needs raw TTF buffers, so static TTFs live in
+ * DM Sans Medium (display) + Hanken Grotesk (body), the same faces the site
+ * loads through next/font. Satori needs raw TTF buffers, so static TTFs live in
  * `public/fonts/og/` (shipped into the standalone runtime). On failure we
  * return [] and next/og falls back to its default font.
  */
@@ -45,12 +45,12 @@ export async function loadOgFonts(): Promise<OgFont[]> {
   try {
     const dir = join(process.cwd(), "public", "fonts", "og");
     const [display, regular, semibold] = await Promise.all([
-      readFile(join(dir, "Michroma-Regular.ttf")),
+      readFile(join(dir, "DMSans-Medium.ttf")),
       readFile(join(dir, "HankenGrotesk-Regular.ttf")),
       readFile(join(dir, "HankenGrotesk-SemiBold.ttf")),
     ]);
     fontsCache = [
-      { name: "Michroma", data: display, weight: 400, style: "normal" },
+      { name: "DM Sans", data: display, weight: 500, style: "normal" },
       { name: "Hanken Grotesk", data: regular, weight: 400, style: "normal" },
       { name: "Hanken Grotesk", data: semibold, weight: 600, style: "normal" },
     ];
@@ -148,15 +148,15 @@ function wrappedLines(text: string, perLine: number): number {
 }
 
 /**
- * Pick the largest Michroma size that fits the title in two lines of `width`,
- * then cap the length so the smallest size still fits. Michroma is an
- * extended face: ~0.67em per lowercase glyph, wider for capitals, so 0.72;
- * wrapping is simulated per word.
+ * Pick the largest heading size that fits the title in two lines of `width`,
+ * then cap the length so the smallest size still fits. DM Sans Medium runs
+ * ~0.5em per lowercase glyph, wider for capitals, so 0.55; wrapping is
+ * simulated per word.
  * ponytail: width estimate, not measured; swap for real text metrics if titles clip.
  */
 function fitTitle(title: string, width: number): { text: string; size: number } {
-  const perChar = 0.72;
-  const sizes = [56, 48, 40, 34];
+  const perChar = 0.55;
+  const sizes = [64, 56, 48, 40];
   for (const size of sizes) {
     if (wrappedLines(title, Math.floor(width / (size * perChar))) <= 2) return { text: title, size };
   }
@@ -245,7 +245,7 @@ export function OgCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={wordmark} alt="Unifesto" width={156} height={34} />
           ) : (
-            <div style={{ display: "flex", fontFamily: "Michroma", fontSize: 30 }}>unifesto</div>
+            <div style={{ display: "flex", fontFamily: "DM Sans", fontWeight: 500, fontSize: 30 }}>unifesto</div>
           )}
         </div>
 
@@ -270,10 +270,12 @@ export function OgCard({
           <div
             style={{
               ...clamp2,
-              fontFamily: "Michroma",
+              fontFamily: "DM Sans",
+              fontWeight: 500,
               fontSize: fitted.size,
-              lineHeight: 1.18,
-              letterSpacing: -0.5,
+              lineHeight: 1.12,
+              // Same rule as the site's .font-display: tighter as it grows.
+              letterSpacing: Math.max(0.9 - 0.062 * fitted.size, -0.04 * fitted.size),
               color: BRAND.text,
             }}
           >
@@ -363,7 +365,7 @@ export function OgCard({
                 }}
               />
             ) : (
-              <div style={{ display: "flex", fontFamily: "Michroma", fontSize: 150, color: BRAND.text }}>
+              <div style={{ display: "flex", fontFamily: "DM Sans", fontWeight: 500, fontSize: 150, color: BRAND.text }}>
                 {(title.trim()[0] ?? "U").toUpperCase()}
               </div>
             )}

@@ -369,7 +369,7 @@ export default function ApexScreen() {
     );
   };
 
-  /** Michroma section heading behind a short silver rule, like Home's sections. */
+  /** Headline-face section heading behind a short silver rule, like Home's sections. */
   const heading = (title: string, extra?: string) => (
     <View style={styles.heading}>
       <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
@@ -797,8 +797,7 @@ const styles = StyleSheet.create({
   resultCount: { marginTop: spacing[5], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   heading: { marginTop: spacing[8], marginBottom: spacing[3] },
   rule: { width: 32, height: 1, marginBottom: spacing[2] },
-  // Michroma runs wide: smaller than it looks.
-  headingText: { fontSize: 15, lineHeight: 22, ...cosmosFont.display },
+  headingText: { fontSize: 18, lineHeight: 24, ...cosmosFont.display },
   // Rails run edge to edge; the first card still lines up with the gutter.
   bleed: { marginHorizontal: -GUTTER },
   rail: { paddingHorizontal: GUTTER, gap: GAP },

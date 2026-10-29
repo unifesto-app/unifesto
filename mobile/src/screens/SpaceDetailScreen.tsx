@@ -24,7 +24,7 @@ import type { Event } from '../lib/api/events';
 import { relativeWhen, shortPrice, spaceBanner, spaceLogo } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 import { useBrandFont } from '../lib/brandFont';
@@ -385,8 +385,7 @@ const styles = StyleSheet.create({
   },
   logo: { width: LOGO, height: LOGO, borderRadius: 18, overflow: 'hidden' },
   logoText: { fontSize: 28, ...cosmosFont.display },
-  // Michroma runs wide: 24 reads like a 30 in a narrower face.
-  name: { marginTop: spacing[4], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
+  name: { marginTop: spacing[4], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   disclaimer: { marginTop: spacing[10], paddingHorizontal: GUTTER, fontSize: typography.fontSize.xs, lineHeight: 18, ...cosmosFont.body },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[3] },

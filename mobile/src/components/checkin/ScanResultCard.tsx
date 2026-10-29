@@ -4,7 +4,7 @@ import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { CheckCircle, ClockCounterClockwise, XCircle } from '@unifesto/unicon/react-native';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont } from '../../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 export type ScanFeedback = {
@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
     padding: spacing[5],
     borderRadius: borderRadius['2xl'],
   },
-  title: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  name: { fontSize: typography.fontSize.xl, color: '#ffffff', ...font('heading') },
+  title: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  name: { fontSize: typography.fontSize.xl, color: '#ffffff', ...cosmosFont.display },
   undo: {
     height: 36,
     paddingHorizontal: spacing[4],
@@ -92,6 +92,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.16)',
   },
-  undoText: { fontSize: typography.fontSize.sm, color: '#ffffff', ...font('semibold') },
-  detail: { fontSize: typography.fontSize.sm, color: 'rgba(255, 255, 255, 0.65)', ...font() },
+  undoText: { fontSize: typography.fontSize.sm, color: '#ffffff', ...cosmosFont.strong },
+  detail: { fontSize: typography.fontSize.sm, color: 'rgba(255, 255, 255, 0.65)', ...cosmosFont.body },
 });

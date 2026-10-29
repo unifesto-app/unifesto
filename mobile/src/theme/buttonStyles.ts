@@ -2,6 +2,7 @@
 import { StyleSheet } from 'react-native';
 import { spacing, borderRadius } from './spacing';
 import { typography } from './typography';
+import { cosmosFont } from './cosmos';
 
 // Standard blue gradient colors
 export const blueGradientColors = ['#3491ff', '#0062ff'];
@@ -36,7 +37,7 @@ export const buttonStyles = StyleSheet.create({
   // Text style for blue gradient buttons
   blueButtonText: {
     fontSize: typography.fontSize.base,
-    fontFamily: typography.fontFamily.primary,
+    fontFamily: cosmosFont.body.fontFamily,
     fontWeight: '400',
     color: '#000000',
     lineHeight: typography.fontSize.base * 1.5,

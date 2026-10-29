@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Michroma, Hanken_Grotesk, Martian_Mono } from "next/font/google";
+import { DM_Sans, Hanken_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
 import FloatingSupport from "@/components/FloatingSupport";
 import UtmCapture from "@/components/UtmCapture";
@@ -11,10 +11,12 @@ import { getPosts } from "@/lib/api/blog";
 import { getOpenRoles } from "@/lib/api/careers";
 import { SiteContentProvider, type EmptySection } from "@/components/SiteContent";
 
-const michroma = Michroma({
-  weight: "400",
-  variable: "--font-michroma",
-  subsets: ["latin"],
+// Headlines. Variable weight + optical size; latin-ext carries the ₹, which
+// Hanken lacks, so body text borrows that one glyph from here.
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin", "latin-ext"],
+  axes: ["opsz"],
   display: "swap",
 });
 
@@ -108,7 +110,7 @@ export default async function RootLayout({
     .filter(([, items]) => !items.length)
     .map(([path]): EmptySection => path);
   return (
-    <html lang="en-IN" className={`${michroma.variable} ${hanken.variable} ${martian.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en-IN" className={`${dmSans.variable} ${hanken.variable} ${martian.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

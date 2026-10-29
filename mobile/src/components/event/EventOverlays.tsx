@@ -7,7 +7,7 @@ import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardS
 import type { RegisterMode } from '../../hooks/useEventDetail';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont } from '../../theme/cosmos';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
@@ -185,11 +185,11 @@ const styles = StyleSheet.create({
   // Glass draws its own depth; a heavy black shadow under it just muddies it.
   barGlass: { shadowOpacity: 0, elevation: 0 },
   priceCol: { flex: 1, minWidth: 0 },
-  barLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...font('heading') },
+  barLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...cosmosFont.display },
   cta: { height: 52, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
   // Sized by its label (never squeezed below a comfortable tap target).
   ctaBeside: { flexShrink: 0, minWidth: 148, paddingHorizontal: spacing[6] },
   ctaFull: { flex: 1 },
-  ctaText: { fontSize: typography.fontSize.base, ...font('semibold') },
+  ctaText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

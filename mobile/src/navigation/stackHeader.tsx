@@ -2,7 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import type { Tokens } from '../theme/tokens';
-import { FONT_BODY_SEMIBOLD } from '../theme/typography';
+import { cosmosFont } from '../theme/cosmos';
 
 /** `#rrggbb` → `rgba(r,g,b,a)`. */
 function withAlpha(hex: string, alpha: number) {
@@ -65,7 +65,7 @@ export function stackHeaderDefaults(tokens: Tokens) {
     headerBackButtonDisplayMode: 'minimal' as const,
     headerTitleAlign: 'center' as const,
     headerTitleStyle: {
-      fontFamily: FONT_BODY_SEMIBOLD,
+      fontFamily: cosmosFont.strong.fontFamily,
       fontSize: 17,
       color: tokens.text,
     },

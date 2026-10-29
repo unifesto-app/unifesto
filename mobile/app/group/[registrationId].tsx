@@ -29,8 +29,6 @@ import { Button } from '../../src/components/ui';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
 
 const AVATAR = 40;
-/** Page titles are Michroma, except ones with a number in them ("Member 3"): its 0 reads as O. */
-const titleFont = (t: string) => (/\d/.test(t) ? cosmosFont.figure : cosmosFont.display);
 
 /**
  * "Manage group" — one page for both group models (pay-first seats and the
@@ -82,7 +80,7 @@ export default function ManageGroupRoute() {
       >
             {header}
             <View style={styles.editHead}>
-              <Text style={[styles.title, titleFont(editTitle), { color: c.text }]} accessibilityRole="header">
+              <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
                 {editTitle}
               </Text>
               <Pressable onPress={g.closeEditing} disabled={g.saving} hitSlop={10}>
@@ -199,7 +197,7 @@ export default function ManageGroupRoute() {
       <CosmosScreen bottom={spacing[10] + insets.bottom} contentContainerStyle={styles.pad}>
           {header}
           <View style={styles.editHead}>
-            <Text style={[styles.title, titleFont(title), { color: c.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
+            <Text style={[styles.title, { color: c.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
               {title}
             </Text>
             <Pressable onPress={g.closeSeat} hitSlop={10}>

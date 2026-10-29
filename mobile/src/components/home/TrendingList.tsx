@@ -14,7 +14,7 @@ import PressableScale from '../ui/PressableScale';
 const MAX = 5;
 
 /**
- * Ranked "Trending now" list: a Michroma 01–05 index (the web's instrument
+ * Ranked "Trending now" list: a DM Sans 01–05 index (the web's instrument
  * numerals), a 4:3 thumb, title and date · price. Vertical on purpose, so it
  * breaks up the run of horizontal rails.
  */

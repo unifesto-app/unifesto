@@ -41,7 +41,7 @@ const initials = (name: string) =>
 
 /**
  * The Profile tab's top card in the web's cosmos voice: silver-ringed avatar
- * beside a Michroma name, bio, two actions, then a hairline and my numbers.
+ * beside a DM Sans name, bio, two actions, then a hairline and my numbers.
  */
 export default function IdentityCard({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityCardProps) {
   const c = useCosmos();
@@ -139,8 +139,7 @@ const styles = StyleSheet.create({
   initials: { fontSize: 22, ...cosmosFont.display },
   who: { flex: 1 },
   stack: { flexDirection: 'column', alignItems: 'flex-start' },
-  // Michroma runs wide: 18 reads like a 22 in Hanken.
-  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  name: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bio: {
     marginTop: spacing[4],

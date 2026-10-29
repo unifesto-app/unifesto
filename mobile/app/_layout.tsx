@@ -200,17 +200,12 @@ export default function RootLayout() {
     async function prepare() {
       try {
         await Font.loadAsync({
-          // Two families only — DM Sans (body, 400/500) + Plus Jakarta Sans
-          // (headings, 500). Each weight is a distinct STATIC face registered
-          // under its own family name; the theme `font(weight)` helper maps to
-          // these names (RN can't drive a variable weight axis via fontWeight).
-          'DMSans': require('../assets/fonts/dm-sans/static/dm-sans-latin-400-normal.ttf'),
+          // Cosmos type (theme/cosmos.ts): DM Sans for headlines (500) and
+          // figures (600), Hanken Grotesk for text (400, 600). Each weight is a
+          // distinct STATIC face registered under its own family name (RN can't
+          // drive a variable weight axis via fontWeight).
           'DMSans-Medium': require('../assets/fonts/dm-sans/static/dm-sans-latin-500-normal.ttf'),
           'DMSans-SemiBold': require('../assets/fonts/dm-sans/static/dm-sans-latin-600-normal.ttf'),
-          'DMSans-Bold': require('../assets/fonts/dm-sans/static/dm-sans-latin-700-normal.ttf'),
-          'PlusJakartaSans-Medium': require('../assets/fonts/plus-jakarta-sans/static/PlusJakartaSans_500Medium.ttf'),
-          // 2026 web brand (login screen): Michroma display + Hanken Grotesk text.
-          'Michroma': require('../assets/fonts/michroma/Michroma-Regular.ttf'),
           'HankenGrotesk': require('../assets/fonts/hanken-grotesk/HankenGrotesk-Regular.ttf'),
           'HankenGrotesk-SemiBold': require('../assets/fonts/hanken-grotesk/HankenGrotesk-SemiBold.ttf'),
         });

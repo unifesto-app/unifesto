@@ -95,17 +95,21 @@ export function CosmosWash({ active, children }: { active: boolean; children: Re
   return React.createElement(WashContext.Provider, { value }, children);
 }
 
-/** Families registered in app/_layout.tsx. Michroma has one weight: never bold it. */
+/** Families registered in app/_layout.tsx. */
 export const cosmosFont = {
-  display: { fontFamily: 'Michroma', letterSpacing: 0.3 },
+  /** Headlines: DM Sans Medium. Titles of 24pt and up add `displayTracking(size)`. */
+  display: { fontFamily: 'DMSans-Medium', letterSpacing: -0.3 },
   body: { fontFamily: 'HankenGrotesk' },
   strong: { fontFamily: 'HankenGrotesk-SemiBold' },
   /**
-   * Counts, prices, dates, codes. Michroma's 0 is a rounded box that reads as O
-   * and it has no ₹ or tabular figures, so numbers never use `display`.
+   * Counts, prices, dates, codes. DM Sans SemiBold, because Hanken has no ₹
+   * glyph (prices set in it borrowed the system font's).
    */
-  figure: { fontFamily: 'HankenGrotesk-SemiBold', fontVariant: ['tabular-nums', 'lining-nums'] as TextStyle['fontVariant'] },
+  figure: { fontFamily: 'DMSans-SemiBold', fontVariant: ['tabular-nums', 'lining-nums'] as TextStyle['fontVariant'] },
 } as const;
+
+/** Headline tracking that tightens with size, capped at -4%: the web's max(calc(0.9px - 0.062em), -0.04em). */
+export const displayTracking = (size: number) => Math.round(Math.max(0.9 - 0.062 * size, -0.04 * size) * 10) / 10;
 
 /** Controls (fields, buttons, segments): soft, rounded corners. Never square boxes. */
 export const cosmosRadius = 14;

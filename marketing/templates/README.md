@@ -1,6 +1,6 @@
 # Content templates (Track P2)
 
-Reusable pieces on the Unifesto cosmos look: black night, silver type, planet with a lit edge, orbit hairlines, horizon, stars. Michroma for display, Hanken Grotesk for body. Each template is an HTML page. A piece is a small JSON file that fills it in. `render.py` turns pieces into PNGs (and a LinkedIn PDF for carousels) with headless Chrome.
+Reusable pieces on the Unifesto cosmos look: black night, silver type, planet with a lit edge, orbit hairlines, horizon, stars. DM Sans (500) for display, Hanken Grotesk for body. Each template is an HTML page. A piece is a small JSON file that fills it in. `render.py` turns pieces into PNGs (and a LinkedIn PDF for carousels) with headless Chrome.
 
 | Template | Size | Pages out |
 |---|---|---|

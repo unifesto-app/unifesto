@@ -8,7 +8,7 @@ import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
 import { HeaderMenu, type HeaderMenuItem } from '../../navigation/HeaderActions';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import PressableScale from '../ui/PressableScale';
 
@@ -44,7 +44,7 @@ interface HomeHeaderProps {
 
 /**
  * Home masthead in the web's layout: wordmark left with place + me on the
- * right (like the site's navbar), then a Michroma headline and the search
+ * right (like the site's navbar), then a DM Sans headline and the search
  * field. Scrolls inline with the page (not sticky), so it's content layer:
  * solid fills, no Liquid Glass (glass is for floating chrome only).
  */
@@ -201,8 +201,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { fontSize: 10, lineHeight: 12, ...cosmosFont.strong },
-  // Michroma has one weight and runs wide: 28px fits "What's on in Hyderabad?" in two lines.
-  headline: { marginTop: spacing[8], fontSize: 28, lineHeight: 36, ...cosmosFont.display },
+  headline: { marginTop: spacing[8], fontSize: 32, lineHeight: 38, ...cosmosFont.display, letterSpacing: displayTracking(32) },
   searchRow: { marginTop: spacing[6], flexDirection: 'row', gap: spacing[2] },
   search: {
     flex: 1,

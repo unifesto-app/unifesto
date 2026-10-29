@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   center: { alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontSize: 13, ...cosmosFont.display },
+  logoText: { fontSize: 13, ...cosmosFont.strong },
   eyebrow: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   name: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.2, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },

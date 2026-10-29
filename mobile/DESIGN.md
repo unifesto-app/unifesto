@@ -17,42 +17,42 @@ colors:
   brand-gradient-start: "#3491ff"
   brand-gradient-end: "#0062ff"
 typography:
-  logo:
-    fontFamily: "SweetApricot"
-    fontSize: "2rem"
-    fontWeight: 400
-    lineHeight: 1.1
-    letterSpacing: "normal"
   display:
-    fontFamily: "Agrandir-Bold"
+    fontFamily: "DMSans-Medium"
     fontSize: "2rem"
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: "-0.5px"
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: "-1.1px"
   headline:
-    fontFamily: "Agrandir-Bold"
+    fontFamily: "DMSans-Medium"
     fontSize: "1.5rem"
-    fontWeight: 700
+    fontWeight: 500
     lineHeight: 1.25
-    letterSpacing: "-0.25px"
+    letterSpacing: "-0.6px"
   title:
-    fontFamily: "Agrandir-Regular"
-    fontSize: "1.125rem"
-    fontWeight: 400
-    lineHeight: 1.25
-    letterSpacing: "normal"
+    fontFamily: "DMSans-Medium"
+    fontSize: "1.25rem"
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: "-0.3px"
   body:
-    fontFamily: "Agrandir-Regular"
+    fontFamily: "HankenGrotesk"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
   label:
-    fontFamily: "Agrandir-Regular"
+    fontFamily: "HankenGrotesk-SemiBold"
     fontSize: "0.6875rem"
-    fontWeight: 400
+    fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "0.5px"
+    letterSpacing: "normal"
+  figure:
+    fontFamily: "DMSans-SemiBold"
+    fontSize: "1rem"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "normal"
 rounded:
   sm: "8px"
   md: "12px"
@@ -134,20 +134,24 @@ A dark, high-contrast palette: pure black as the stage, white as the voice, and 
 
 ## 3. Typography
 
-**Display / Body Font:** Agrandir — `Agrandir-Bold` for emphasis, `Agrandir-Regular` for text
-**Logo Font:** Sweet Apricot — the Unifesto wordmark only
+**Headline Font:** DM Sans Medium (500), set in code as `cosmosFont.display`
+**Text Font:** Hanken Grotesk, Regular (400) and SemiBold (600), as `cosmosFont.body` / `cosmosFont.strong`
+**Figures:** DM Sans SemiBold (600), as `cosmosFont.figure`, for prices, counts, dates and codes. Hanken has no ₹ glyph.
+**Logo:** the wordmark is artwork (components/UnifestoAppWordmark.tsx), not a font.
 
-**Character:** Agrandir gives the app a clean, confident, modern voice that stays sharp against black. Bold weights carry event titles and hero moments; regular carries the reading text. Sweet Apricot's script is reserved for the brand mark.
+**Character:** DM Sans is a friendly geometric grotesk at normal width: round O, single-storey g, a 0 that never reads as O. One weight (500) carries every headline; size and tracking do the rest. Hanken Grotesk carries everything people read or tap.
 
 ### Hierarchy
-- **Display** (Bold, 2rem, 1.1, -0.5px): Hero titles, screen headers, event names on detail screens.
-- **Headline** (Bold, 1.5rem, 1.25): Section headers, card titles.
-- **Title** (Regular, 1.125rem, 1.25): List item titles, sheet headers.
-- **Body** (Regular, 1rem, 1.5): Descriptions, chat, reading content.
-- **Label** (Regular, 0.6875rem, +0.5px, 1.4): Tab labels, captions, timestamps, metadata.
+- **Display** (DM Sans 500, 32pt, 1.2, `displayTracking(32)`): Home headline.
+- **Headline** (DM Sans 500, 24–30pt, 1.2, `displayTracking(size)`): Event, space and session titles; registration step titles.
+- **Title** (DM Sans 500, 17–22pt, 1.25, -0.3): Section titles, sheet headers, names on profile cards.
+- **Body** (Hanken 400, 15pt, 1.5): Descriptions and reading content.
+- **Label** (Hanken 600, 11–13pt, 1.4): Tab labels, captions, avatar initials, anything under 14pt.
 
 ### Named Rules
-**The One Type Voice Rule.** Agrandir does the whole hierarchy through weight and size. Sweet Apricot stays in the logo.
+**The Tightening Rule.** Headline tracking tightens as size grows: `displayTracking(size)` in cosmos.ts, the same rule as the web's `max(calc(0.9px - 0.062em), -0.04em)`. About -1.1 at 32pt, -0.6 at 24pt, near zero at 14pt, never tighter than -4%.
+
+**The Small-Text Rule.** Nothing under 14pt uses the headline font. Small text is Hanken SemiBold.
 
 ## 4. Elevation
 
@@ -200,5 +204,5 @@ Depth on black is built by **tonal layering**, not big shadows — a surface ste
 - **Don't** feel like a ported website — this is native; use native motion and gestures, not web patterns.
 - **Don't** overuse blue; if the whole screen glows, nothing does.
 - **Don't** rely on low-contrast gray for anything critical.
-- **Don't** add a second type family beyond Agrandir (Sweet Apricot stays in the logo).
+- **Don't** add a third type family: DM Sans for headlines and figures, Hanken Grotesk for everything else.
 - **Don't** put the ticket/QR behind a required network call or a spinner it can get stuck on.

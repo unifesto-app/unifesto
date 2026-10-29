@@ -133,7 +133,7 @@ export function roleOf(space: Space): string | null {
 
 /**
  * "My circles": a rail of membership tiles. Logo and my role up top, then the
- * name, place · members, and the event count in Michroma, closing with a
+ * name, place · members, and the event count in DM Sans, closing with a
  * dashed "Find more circles" tile so the row always leads somewhere.
  */
 export function CircleRow({

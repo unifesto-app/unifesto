@@ -5,8 +5,7 @@ import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-
 import { MapPin } from '@unifesto/unicon/react-native';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { spacing, borderRadius, typography } from '../theme';
-import { useCosmos } from '../theme/cosmos';
-import { getFontFamily } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 export const HEADER_CONTENT_HEIGHT = 80;
 
@@ -117,6 +116,6 @@ const styles = StyleSheet.create({
   },
   locationPillText: {
     fontSize: typography.fontSize.xs,
-    fontFamily: getFontFamily('bold'),
+    fontFamily: cosmosFont.strong.fontFamily,
   },
 });

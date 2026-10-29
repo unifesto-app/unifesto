@@ -116,8 +116,8 @@
 
 @theme inline {
   /* Fonts */
-  --font-sans: var(--font-hanken), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-michroma), var(--font-hanken), system-ui, sans-serif;
+  --font-sans: var(--font-hanken), var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-dm-sans), var(--font-hanken), system-ui, sans-serif;
   --font-mono: var(--font-martian), ui-monospace, monospace;
 
   /* Colors → utilities. hsl() wrapping lets `/opacity` modifiers work. */
@@ -253,3 +253,6 @@
     }
   }
 }
+
+/* Headings: DM Sans 500, tracking that tightens with size (same rule as unifesto.app). */
+.font-display { font-weight: 500; letter-spacing: max(calc(0.9px - 0.062em), -0.04em); }

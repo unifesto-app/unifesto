@@ -24,7 +24,7 @@ export default function Hero() {
           <div>
             <h1
               id="hero-heading"
-              className="waterline-load font-display text-[clamp(1.75rem,3vw,2.75rem)] leading-[1.12] text-paper"
+              className="waterline-load font-display text-[clamp(2.125rem,4.2vw,4rem)] leading-[1.05] text-paper"
             >
               {LINES.map((line, i) => (
                 <span key={line} className="line" style={{ ["--l" as string]: i }}>
