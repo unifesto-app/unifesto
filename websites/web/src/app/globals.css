@@ -22,6 +22,10 @@
      so rgb(var(--glow) / .1) flips with the theme. */
   --glow: 255 255 255;
   --ground: 0 0 0;
+  /* Light sources (horizon, blooms, glows) stay light by day: white by
+     night, a pale Horizon blue by day. --glow flips to ink, which would
+     turn every glow into a grey smudge. */
+  --bloom: 255 255 255;
 
   --background: var(--night);
   --foreground: var(--paper);
@@ -75,13 +79,14 @@
   --night-2: #ffffff; /* white cards */
   --night-3: #e9e9ec;
   --paper: #111113;
-  --paper-bg: #f7f7f8;
+  --paper-bg: #ffffff; /* one step lighter than the page, as by night */
   --paper-2: #ededf0;
   --sand: #e4e4e7;
   --ink: #111113;
   --void: #ffffff;
   --glow: 17 17 19;
   --ground: 242 242 245;
+  --bloom: 143 180 255;
 
   --primary: #111113;
   --primary-bright: #000000;
@@ -248,11 +253,11 @@ body {
 
   0%,
   100% {
-    box-shadow: 0 0 20px rgb(var(--glow) / 0.4), 0 0 40px rgb(var(--glow) / 0.15);
+    box-shadow: 0 0 20px rgb(var(--bloom) / 0.4), 0 0 40px rgb(var(--bloom) / 0.15);
   }
 
   50% {
-    box-shadow: 0 0 30px rgb(var(--glow) / 0.6), 0 0 60px rgb(var(--glow) / 0.25);
+    box-shadow: 0 0 30px rgb(var(--bloom) / 0.6), 0 0 60px rgb(var(--bloom) / 0.25);
   }
 }
 
@@ -511,11 +516,13 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .surface-night { background: var(--night); color: var(--paper); --stage-ground: var(--night); }
 .surface-night-2 { background: var(--night-2); color: var(--paper); }
 .surface-paper { background: var(--paper-bg); color: var(--ink); box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.06); --stage-ground: var(--paper-bg); }
-/* The old blue CTA band becomes a horizon: black with light rising from
-   the bottom edge, the same glow as the hero floor. */
+/* The old blue CTA band becomes a horizon: black with light rising to the
+   bottom edge, the same glow as the hero floor. The footer below continues
+   it (.site-footer): same colour, the same glow mirrored, a fixed 360px
+   tall either side, so the two halves meet as one glow with no seam. */
 .surface-blue {
   background:
-    radial-gradient(60% 55% at 50% 100%, rgb(var(--glow) / 0.16), transparent 70%),
+    radial-gradient(60% 360px at 50% 100%, rgb(var(--bloom) / 0.16), transparent 70%),
     linear-gradient(to bottom, var(--night) 40%, var(--night-2));
   color: var(--paper);
   box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.08);
@@ -593,7 +600,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* QR scan sweep (ScanVisual): eases both ways, loops. */
 .scan-sweep {
-  filter: drop-shadow(0 0 6px rgb(var(--glow) / 0.9));
+  filter: drop-shadow(0 0 6px rgb(var(--bloom) / 0.9));
   animation: scan-sweep 2.2s cubic-bezier(.77, 0, .175, 1) infinite alternate;
 }
 @keyframes scan-sweep { to { transform: translateY(56px); } }
@@ -620,9 +627,16 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    transform/opacity/filter animate (compositor-only), except the floor's
    background-position. */
 .cosmos { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-/* The shade: a light Unifesto blue (#0062ff) glowing along the orbits. */
-:root { --shade: 77 141 255; --shade-a: 0.3; }
-:root[data-theme="light"] { --shade: 143 180 255; --shade-a: 0.6; }
+/* Hero glow: light Unifesto blue (#0062ff) rising like a horizon from the
+   bottom-right corner behind the product (Hero, wide screens): a wide, flat
+   bloom centred low on that corner, fading out softly with no edge. A short
+   fade, done before the glass takes its photo (it waits up to 2 s). */
+.hero-glow {
+  position: absolute; width: 230%; height: 95%; right: -95%; bottom: -42%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(77 141 255 / .32), rgb(77 141 255 / .14) 50%, transparent);
+  animation: fade-in 1200ms var(--ease-out-expo) 200ms both;
+}
+:root[data-theme="light"] .hero-glow { background: radial-gradient(closest-side, rgb(143 180 255 / .5), rgb(143 180 255 / .22) 50%, transparent); }
 
 .cosmos-stars {
   position: absolute; inset: -10%;
@@ -638,15 +652,15 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
   animation: fade-in 2400ms var(--ease-out-expo) both, twinkle 7s ease-in-out 2400ms infinite alternate;
 }
 .cosmos-stars-far { background-size: 260px 260px; opacity: .5; animation-delay: 300ms, 3s; }
+/* No stars by day: in ink they read as dust. */
+:root[data-theme="light"] .cosmos-stars { display: none; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes twinkle { to { opacity: .45; } }
 
-/* Orbits: hairline ellipses, drifting so slowly you feel rather than see it.
-   The shade is a soft band of light hugging each line, both sides. */
+/* Orbits: hairline ellipses, drifting so slowly you feel rather than see it. */
 .cosmos-orbit {
   position: absolute; border-radius: 50%;
-  --band: rgb(var(--shade) / var(--shade-a));
-  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07), inset 0 0 7vmax 2vmax var(--band), 0 0 7vmax 2vmax var(--band);
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07);
   animation: fade-in 2000ms var(--ease-out-expo) 600ms both, orbit 140s linear infinite;
 }
 .cosmos-orbit-a { width: 150vmax; height: 150vmax; top: -88vmax; right: -66vmax; }
@@ -659,13 +673,13 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 /* Horizon: a line of light with a soft bloom, drawn outward from centre. */
 .cosmos-horizon {
   position: absolute; left: 0; right: 0; top: 70%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(var(--glow) / .18) 25%, rgb(var(--glow) / .6) 50%, rgb(var(--glow) / .18) 75%, transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--bloom) / .18) 25%, rgb(var(--bloom) / .6) 50%, rgb(var(--bloom) / .18) 75%, transparent);
   transform-origin: center;
   animation: horizon-in var(--dur-cinema) var(--ease-out-expo) 350ms both;
 }
 .cosmos-horizon::after {
   content: ""; position: absolute; left: 10%; right: 10%; top: -90px; height: 180px;
-  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--glow) / .1), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--bloom) / .1), transparent 70%);
   animation: breathe 9s ease-in-out 2s infinite alternate;
 }
 @keyframes horizon-in { from { transform: scaleX(0); opacity: 0; } }
@@ -714,41 +728,59 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .lg-live > [data-glass] > div { background: transparent; box-shadow: none; }
 /* The glass canvas sits at z-index -1 inside its card: keep it in the card. */
 [data-glass] { isolation: isolate; }
-/* What the glass refracts: the section's ground, reaching past the root so a
-   card hanging off its edge (the hero's sits 6% left) still has something
-   behind it. The edges fade, so thin lines behind it fade out instead of
-   stopping. */
-.lg-ground {
-  position: absolute; inset: -40px -24px -40px -128px; background: var(--stage-ground, var(--night));
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
-  mask-composite: intersect;
+/* Inner cards turn to glass too: the panel's own tiles (rows, check-in
+   points, leaderboard places) once the panel is glass, and the cards on the
+   phone mockups' screens. A clear pane with a fine top highlight instead of
+   a solid slab. */
+.lg-live [data-glass] .bg-night-3, .phone-screen .bg-night-2 {
+  background: rgb(255 255 255 / 0.05);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.05);
+}
+:root[data-theme="light"] .lg-live [data-glass] .bg-night-3,
+:root[data-theme="light"] .phone-screen .bg-night-2 {
+  background: rgb(255 255 255 / 0.6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 0 0 1px rgb(17 17 19 / 0.06), 0 1px 2px rgb(17 17 19 / 0.05);
 }
 
 /* ─── Shade cards ────────────────────────────────────────────────────── */
-/* ShadeCard: the hero's two orbits redrawn at card scale (same numbers, in
-   card widths instead of vmax), each a hairline with one accent's shade
-   glowing along it, under heavy overlay grain (ElevenLabs' card recipe:
-   colour, then a 128px noise tile blended with overlay at ~half strength).
-   By night the shade glows out of a deep base; by day it's airy. --s1 is the
-   accent itself (the big orbit), --s2 its partner (the low one), --s3 the
-   base. Base, orbits and grain are one element: the glass photographs each
-   child of its root alone, so a separate grain layer would lose its blend
-   and land as a grey wash. */
-.shade-card { position: relative; isolation: isolate; overflow: hidden; border-radius: 1rem; }
+/* ShadeCard: soft colour shapes in one accent, fully blended into a deep
+   base, under heavy overlay grain (ElevenLabs' card recipe: colour, then a
+   128px noise tile blended with overlay at ~half strength). Each accent has
+   its own composition: sky two full orbs, mint a horizon rising from below,
+   ivory a diagonal beam, blue a fan of light from a corner. By night the
+   colour glows out of a deep base; by day it's airy. --s1 is the accent,
+   --s2 its partner, --s3 the base. Base, shapes and grain are one element:
+   the glass photographs each child of its root alone, so a separate grain
+   layer would lose its blend and land as a grey wash. */
+/* overflow: clip, not hidden: hidden would make each card a scroll
+   container and capture any scroll-driven animation inside it (the door). */
+.shade-card { position: relative; isolation: isolate; overflow: clip; border-radius: 1rem; }
 .shade-fill {
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  isolation: isolate; container-type: inline-size;
+  isolation: isolate; overflow: clip;
   background: var(--s3);
 }
-.shade-orbits { position: absolute; inset: 0; }
-.shade-orbits::before, .shade-orbits::after {
-  content: ""; position: absolute; border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .16), inset 0 0 14cqw 4cqw var(--band), 0 0 14cqw 4cqw var(--band);
+/* The blur melts every edge into the base; the layer overhangs the card so
+   the blur never pulls the base colour in at the sides. */
+.shade-shapes { position: absolute; inset: -15%; background: var(--shapes); filter: blur(32px); opacity: .7; }
+:root[data-theme="light"] .shade-shapes { opacity: .85; }
+.shade-sky {
+  --shapes: radial-gradient(42% 42% at 80% 22%, var(--s1), transparent 72%), radial-gradient(40% 40% at 22% 80%, var(--s2), transparent 72%);
 }
-.shade-orbits::before { --band: var(--s1); width: 150cqw; height: 150cqw; top: -88cqw; right: -66cqw; }
-.shade-orbits::after { --band: var(--s2); width: 180cqw; height: 120cqw; left: -60cqw; bottom: -96cqw; }
+.shade-mint {
+  --shapes: radial-gradient(85% 38% at 50% 100%, var(--s1), transparent 70%), radial-gradient(30% 30% at 18% 22%, var(--s2), transparent 72%);
+}
+.shade-ivory {
+  --shapes: linear-gradient(125deg, transparent 22%, var(--s1) 48%, transparent 74%), radial-gradient(34% 34% at 86% 86%, var(--s2), transparent 72%);
+}
+.shade-blue {
+  --shapes: conic-gradient(from 250deg at 92% 92%, transparent, var(--s2) 6%, var(--s1) 12%, var(--s2) 18%, transparent 26%), radial-gradient(26% 26% at 18% 18%, var(--s2), transparent 72%);
+}
+/* #0062ff is far more saturated than the other partners: hold it back. */
+.shade-blue .shade-shapes { opacity: .45; }
+:root[data-theme="light"] .shade-blue .shade-shapes { opacity: .7; }
 .shade-fill::after {
   content: ""; position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -764,6 +796,76 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 :root[data-theme="light"] .shade-mint  { --s1: #90e4c1; --s2: #b7ead3; --s3: #eef9f3; }
 :root[data-theme="light"] .shade-ivory { --s1: #f7f0e0; --s2: #e8d3ad; --s3: #fbf7ee; }
 :root[data-theme="light"] .shade-blue  { --s1: #b9cfff; --s2: #8fb4ff; --s3: #eef3ff; }
+
+/* ─── Footer ─────────────────────────────────────────────────────────── */
+/* On the Horizon sky: a light Unifesto blue glow rising off the horizon like
+   the hero's (wide, flat, no edge), tall enough to sit behind the glass
+   card's lower half so the frost has colour; the card keeps a translucent
+   fill so its small text stays readable. */
+.footer-glow {
+  position: absolute; inset: 8% -10% -20%; pointer-events: none;
+  background:
+    radial-gradient(60% 48% at 50% 100%, rgb(77 141 255 / .34), transparent 72%),
+    radial-gradient(18% 26% at 64% 40%, rgb(143 180 255 / .22), transparent 72%);
+}
+:root[data-theme="light"] .footer-glow {
+  background:
+    radial-gradient(60% 48% at 50% 100%, rgb(143 180 255 / .55), transparent 72%),
+    radial-gradient(18% 26% at 64% 40%, rgb(185 207 255 / .5), transparent 72%);
+}
+/* The orb sits wholly behind the card, so it's only ever seen through the
+   glass; one spilling past the card's edge showed a seam there. */
+.footer-glass.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.25); }
+:root[data-theme="light"] .footer-glass.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.4); }
+/* The footer picks up where the CTA band's horizon glow leaves off (see
+   .surface-blue), and its sky fades in from the top edge. */
+.site-footer {
+  background:
+    radial-gradient(60% 360px at 50% 0%, rgb(var(--bloom) / 0.16), transparent 70%),
+    linear-gradient(to bottom, var(--night-2), var(--night) 480px);
+}
+footer > .cosmos { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 220px); mask-image: linear-gradient(to bottom, transparent, #000 220px); }
+
+/* ─── Door: two sides, one event ──────────────────────────────────────── */
+/* On wide screens the sky and mint cards close the gap as the section
+   scrolls in, squaring their inner corners, then their own colour gives way
+   to one shared container (.door-stage, the "door" shade: the sky card's
+   orbs on the left melting into the mint card's horizon on the right).
+   Scroll-driven, so it follows the hand. The resting state is the merged
+   one, which is what reduced motion and browsers without scroll timelines
+   show. Phones keep two separate cards. */
+/* The halves overlap across the middle, where an aqua bridge (sky mixed
+   with mint) joins them, and a heavier blur than a single card's leaves no
+   seam. */
+.shade-door {
+  --s3: linear-gradient(90deg, #070d1c, #06100f 50%, #061410);
+  --shapes: radial-gradient(30% 52% at 28% 24%, var(--d1), transparent 76%), radial-gradient(24% 46% at 9% 84%, var(--d2), transparent 76%),
+            radial-gradient(34% 58% at 50% 50%, color-mix(in oklab, var(--d1), var(--d3)), transparent 76%),
+            radial-gradient(46% 42% at 74% 100%, var(--d3), transparent 74%), radial-gradient(24% 46% at 88% 18%, var(--d4), transparent 76%);
+  --d1: #90d5ff; --d2: #2f6bff; --d3: #90e4c1; --d4: #1f7a5c;
+}
+.shade-door .shade-shapes { filter: blur(56px); opacity: .65; }
+:root[data-theme="light"] .shade-door { --s3: linear-gradient(90deg, #e9f3ff, #ebf6f9 50%, #eef9f3); --d1: #90d5ff; --d2: #8fb4ff; --d3: #90e4c1; --d4: #b7ead3; }
+:root[data-theme="light"] .shade-door .shade-shapes { opacity: .8; }
+@media (min-width: 768px) {
+  .door-l { translate: 1.5rem 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .door-r { translate: -1.5rem 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .door-l > .shade-fill, .door-r > .shade-fill { opacity: 0; }
+}
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  /* The shorthand resets the timeline, so the timeline comes after it. */
+  /* Close the gap as the cards rise into view, form the shared container
+     under them, then dissolve their own colour fast, all done before the
+     pair reaches the middle of the screen. */
+  .door-l { animation: door-close-l linear both; animation-timeline: view(); animation-range: entry 40% cover 26%; }
+  .door-r { animation: door-close-r linear both; animation-timeline: view(); animation-range: entry 40% cover 26%; }
+  .door-stage { animation: door-form linear both; animation-timeline: view(); animation-range: cover 24% cover 30%; }
+  .door-l > .shade-fill, .door-r > .shade-fill { animation: door-dissolve linear both; animation-timeline: view(); animation-range: cover 30% cover 36%; }
+}
+@keyframes door-close-l { from { translate: 0 0; border-top-right-radius: 1rem; border-bottom-right-radius: 1rem; } }
+@keyframes door-close-r { from { translate: 0 0; border-top-left-radius: 1rem; border-bottom-left-radius: 1rem; } }
+@keyframes door-dissolve { from { opacity: 1; } }
+@keyframes door-form { from { opacity: 0; } }
 /* Frosted glass over a vivid shade keeps a translucent fill, so the panel's
    small text stays readable while the colour shows through. */
 .shade-card.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.5); }

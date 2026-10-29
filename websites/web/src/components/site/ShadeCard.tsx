@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import LiquidGlassRoot from "@/components/site/LiquidGlassRoot";
 
-export type Shade = "sky" | "mint" | "ivory" | "blue";
+/* "door" is sky blending into mint: the container the two sides merge into. */
+export type Shade = "sky" | "mint" | "ivory" | "blue" | "door";
 
-/* A card painted in one accent's shade (glowing along the hero's two orbit
-   lines) under heavy overlay grain, with a product picture floating on it. With `glass`, the
+/* A card painted in one accent's shade (soft blended shapes: orbs, a horizon,
+   a beam or a fan) under heavy overlay grain, with a product picture floating
+   on it. With `glass`, the
    picture is a panel that turns to frosted glass and bends the shade behind
    it; without, it's anything (a phone) sitting on the shade. Tones and
    grain live in globals.css under "Shade cards". */
@@ -17,12 +19,12 @@ export default function ShadeCard({
   shade: Shade;
   glass?: boolean;
   className?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const classes = `shade-card shade-${shade} ${className}`;
   const layers = (
     <div aria-hidden="true" className="shade-fill">
-      <div className="shade-orbits" />
+      <div className="shade-shapes" />
     </div>
   );
   if (!glass) {
@@ -34,9 +36,11 @@ export default function ShadeCard({
     );
   }
   return (
-    <LiquidGlassRoot className={classes} ground={false}>
+    <LiquidGlassRoot className={classes}>
       {layers}
-      <div data-glass className="relative z-10">
+      {/* The panels' own width (Panel is max-w-sm), centred, so the glass
+          covers exactly the panel and the gaps match on both sides. */}
+      <div data-glass className="relative z-10 mx-auto w-full max-w-sm">
         {children}
       </div>
     </LiquidGlassRoot>

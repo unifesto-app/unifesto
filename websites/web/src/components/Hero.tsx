@@ -53,6 +53,9 @@ export default function Hero() {
           {/* The two sides of the door: the attendee's pass, the Crew's count
               in front of it. Desktop only; phones meet these screens on /app. */}
           <LiquidGlassRoot className="relative hidden h-[32rem] lg:block">
+            {/* A soft glow rising from the bottom-right corner, in here so the
+                glass card has colour to frost (it can't see the backdrop). */}
+            <div aria-hidden="true" className="hero-glow" />
             <div className="enter absolute bottom-0 right-0 origin-bottom-right scale-[0.9]" style={{ ["--d" as string]: "300ms" }}>
               <PassScreen />
             </div>

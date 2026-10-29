@@ -61,8 +61,10 @@ const PANEL_CARD = "w-full max-w-[30rem] p-8 sm:p-10";
 
 export default function Home() {
   const pillars = HIGHLIGHTS.map((id) => ({ ...PILLARS.find((p) => p.id === id)!, shade: PILLAR_SHADES[id] }));
+  // overflow-x-clip, not hidden: hidden makes <main> a scroll container,
+  // which would capture the door's scroll-driven animation.
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-canvas">
+    <main className="min-h-[100dvh] overflow-x-clip bg-canvas">
       <JsonLd data={orgLd} />
       <Navbar />
       <Hero />
@@ -73,9 +75,14 @@ export default function Home() {
         <h2 id="sides-heading" data-reveal="clip" className="max-w-3xl font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-ink [text-wrap:balance]">
           One event, two sides of the door.
         </h2>
-        <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-12">
-          <article className="flex flex-col">
-            <ShadeCard shade="sky" className="flex justify-center px-6 py-10">
+        {/* On wide screens the two cards close the gap as the section
+            scrolls in and become one container (.door-stage); see "Door"
+            in globals.css. The articles are subgrids so both cards share
+            the first row, the one the stage fills. */}
+        <div className="relative isolate mt-14 grid gap-16 md:grid-cols-2 md:gap-x-12 md:gap-y-0">
+          <ShadeCard shade="door" className="door-stage hidden md:col-span-2 md:col-start-1 md:row-start-1 md:mx-6 md:block" />
+          <article className="flex flex-col md:col-start-1 md:row-span-4 md:row-start-1 md:grid md:grid-rows-subgrid">
+            <ShadeCard shade="sky" className="door-l flex justify-center px-6 py-10">
               <PassScreen />
             </ShadeCard>
             <h3 className="mt-10 text-xl text-ink">For people going</h3>
@@ -87,8 +94,8 @@ export default function Home() {
               See the app <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
             </Link>
           </article>
-          <article className="flex flex-col">
-            <ShadeCard shade="mint" className="flex justify-center px-6 py-10">
+          <article className="flex flex-col md:col-start-2 md:row-span-4 md:row-start-1 md:grid md:grid-rows-subgrid">
+            <ShadeCard shade="mint" className="door-r flex justify-center px-6 py-10">
               <ManageScreen />
             </ShadeCard>
             <h3 className="mt-10 text-xl text-ink">For people running it</h3>

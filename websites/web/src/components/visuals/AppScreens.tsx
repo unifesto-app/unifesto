@@ -22,7 +22,8 @@ export function Phone({ children, className = "" }: { children: ReactNode; class
       <span className={`${key} -right-[1px] top-[17.5rem] h-8 rounded-r-sm opacity-70`} />
       <div className={`rounded-[2.65rem] p-[3px] ${metal} shadow-[0_40px_80px_-30px_rgb(var(--glow)/0.18)]`}>
         <div className="rounded-[2.5rem] bg-black p-[6px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]">
-          <div className="relative flex aspect-[402/874] flex-col overflow-hidden rounded-[2.15rem] bg-black">
+          {/* Night by night, paper by day: the white cards stand off it (bg-black flips to white). */}
+          <div className="phone-screen relative flex aspect-[402/874] flex-col overflow-hidden rounded-[2.15rem] bg-night">
             <StatusBar />
             <div className="flex-1 overflow-hidden px-4 pt-2">{children}</div>
             <TabBar />
@@ -38,7 +39,7 @@ function StatusBar() {
   return (
     <div className="relative flex h-9 shrink-0 items-center justify-between px-6 pt-1 text-[10px] font-semibold text-paper">
       <span>9:41</span>
-      <span className="absolute left-1/2 top-[9px] flex h-[22px] w-[74px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-2 ring-1 ring-white/[0.04]">
+      <span className="absolute left-1/2 top-[9px] flex h-[22px] w-[74px] -translate-x-1/2 items-center justify-end rounded-full bg-[#000] pr-2 ring-1 ring-white/[0.04]">
         <span className="h-2 w-2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#2b3550,#07080c_70%)]" />
       </span>
       <span className="flex items-center gap-1">

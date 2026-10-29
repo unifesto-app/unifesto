@@ -2,6 +2,8 @@ import Image from "next/image";
 import { LEGAL } from "@/lib/legal";
 import { SOCIAL } from "@/lib/site";
 import { IfNotEmpty } from "@/components/SiteContent";
+import CosmicBackdrop from "@/components/site/CosmicBackdrop";
+import LiquidGlassRoot from "@/components/site/LiquidGlassRoot";
 import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
 import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
 
@@ -100,88 +102,95 @@ const LEGAL_LINKS = [
   { label: "Security", href: "/security" },
 ];
 
-/* The page's anchor: one big line, the four ways onward, the stores, and
-   the legal row.
+/* The page's anchor, on the Horizon sky: one frosted glass card holding the
+   big line, the four ways onward, the stores and the legal row, over a soft
+   blue glow rising off the horizon.
    No newsletter box: there is nothing behind it to subscribe to. */
 export default function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer aria-label="Site footer" className="surface-night relative">
-      <div className="mx-auto max-w-7xl px-5 pb-10 pt-20 sm:px-8 md:pt-28">
-        <div className="grid gap-14 lg:grid-cols-[1.1fr_1.4fr] lg:gap-20">
-          <div>
-            <p
-              data-reveal="blur"
-              className="max-w-md font-display text-[clamp(1.75rem,3.4vw,2.5rem)] font-bold leading-[1.05] text-paper [text-wrap:balance]"
-              style={{ letterSpacing: "-0.03em" }}
-            >
-              Run the whole event. <span className="text-primary">From one Space.</span>
-            </p>
-            <div className="mt-8 flex items-center gap-3">
-              {[
-                { label: "App Store", href: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496", image: AppStoreBadge },
-                { label: "Google Play", href: "https://play.google.com/store/apps/details?id=com.unifesto.app", image: GooglePlayBadge },
-              ].map((s) => (
-                <a key={s.label} href={s.href} className="transition-opacity duration-150 hover:opacity-80">
-                  <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-4" data-stagger="rise">
-            {COLUMNS.map((col) => (
-              <div key={col.title}>
-                <h2 className="mb-4 text-sm font-semibold text-paper">{col.title}</h2>
-                <ul className="flex flex-col gap-3">
-                  {col.links.map((l) => (
-                    <IfNotEmpty key={l.href} href={l.href}>
-                      <li>
-                        <a href={l.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+    <footer aria-label="Site footer" className="surface-night site-footer relative isolate overflow-hidden">
+      <CosmicBackdrop variant="page" />
+      <LiquidGlassRoot className="footer-glass relative mx-auto max-w-7xl px-5 pb-16 pt-20 sm:px-8 md:pb-24 md:pt-28">
+        {/* Inside the glass root so the card has colour to frost. */}
+        <div aria-hidden="true" className="footer-glow" />
+        <div data-glass className="relative z-10">
+          <div className="rounded-xl bg-night-2 p-6 sm:p-10 md:p-12">
+            <div className="grid gap-14 lg:grid-cols-[1.1fr_1.4fr] lg:gap-20">
+              <div>
+                <p
+                  data-reveal="blur"
+                  className="max-w-md font-display text-[clamp(1.75rem,3.4vw,2.5rem)] font-bold leading-[1.05] text-paper [text-wrap:balance]"
+                  style={{ letterSpacing: "-0.03em" }}
+                >
+                  Run the whole event. <span className="text-primary">From one Space.</span>
+                </p>
+                <div className="mt-8 flex items-center gap-3">
+                  {[
+                    { label: "App Store", href: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496", image: AppStoreBadge },
+                    { label: "Google Play", href: "https://play.google.com/store/apps/details?id=com.unifesto.app", image: GooglePlayBadge },
+                  ].map((s) => (
+                    <a key={s.label} href={s.href} className="transition-opacity duration-150 hover:opacity-80">
+                      <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
+                    </a>
+                  ))}
+                </div>
+                <nav aria-label="Legal" className="mt-8">
+                  <ul className="flex max-w-md flex-wrap gap-x-5 gap-y-2">
+                    {LEGAL_LINKS.map((l) => (
+                      <li key={l.href}>
+                        <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
                           {l.label}
                         </a>
                       </li>
-                    </IfNotEmpty>
-                  ))}
-                </ul>
+                    ))}
+                  </ul>
+                </nav>
               </div>
-            ))}
-          </nav>
-        </div>
 
-        <div className="mt-20 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-1">
-            {socials.map((s) => (
-              <a
-                key={s.label}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={s.label}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-paper/60 transition-colors duration-150 hover:bg-paper/[0.07] hover:text-paper"
-              >
-                {s.icon}
-              </a>
-            ))}
-            <a href="mailto:support@unifesto.app" className="link-draw ml-3 text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
-              support@unifesto.app
-            </a>
-          </div>
-          <p className="text-xs text-paper/50">© {year} {LEGAL.company} · CIN {LEGAL.cin}</p>
-        </div>
+              <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-4" data-stagger="rise">
+                {COLUMNS.map((col) => (
+                  <div key={col.title}>
+                    <h2 className="mb-4 text-sm font-semibold text-paper">{col.title}</h2>
+                    <ul className="flex flex-col gap-3">
+                      {col.links.map((l) => (
+                        <IfNotEmpty key={l.href} href={l.href}>
+                          <li>
+                            <a href={l.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+                              {l.label}
+                            </a>
+                          </li>
+                        </IfNotEmpty>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </nav>
+            </div>
 
-        <nav aria-label="Legal" className="mt-8 border-t border-paper/10 pt-6">
-          <ul className="flex flex-wrap gap-x-5 gap-y-2">
-            {LEGAL_LINKS.map((l) => (
-              <li key={l.href}>
-                <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
-                  {l.label}
+            <div className="mt-16 flex flex-col gap-6 border-t border-paper/10 pt-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-1">
+                {socials.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-paper/60 transition-colors duration-150 hover:bg-paper/[0.07] hover:text-paper"
+                  >
+                    {s.icon}
+                  </a>
+                ))}
+                <a href="mailto:support@unifesto.app" className="link-draw ml-3 text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+                  support@unifesto.app
                 </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
+              </div>
+              <p className="text-xs text-paper/50">© {year} {LEGAL.company} · CIN {LEGAL.cin}</p>
+            </div>
+          </div>
+        </div>
+      </LiquidGlassRoot>
     </footer>
   );
 }
