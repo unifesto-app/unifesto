@@ -33,12 +33,22 @@ export interface PortalLead {
   email: string | null;
   phone: string | null;
   source: SponsorLeadSource;
+  status: PortalLeadStatus;
   note: string | null;
   createdAt: string;
   eventSponsorId: string;
   eventId: string;
   eventTitle: string;
 }
+
+export type PortalLeadStatus = 'NEW' | 'CONTACTED' | 'CONVERTED' | 'ARCHIVED';
+
+/** My follow-up on one of my leads (E3). */
+export const updatePortalLead = (sponsorId: string, leadId: string, patch: { status?: PortalLeadStatus; note?: string | null }) =>
+  call<{ id: string; status: PortalLeadStatus; note: string | null }>(`/sponsor-portal/sponsors/${sponsorId}/leads/${leadId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
 
 export interface BoothScanResult {
   /** false = this attendee was already a lead for this sponsor at this event. */

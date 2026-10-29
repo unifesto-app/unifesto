@@ -7,7 +7,7 @@ import { SponsorLeadSource, SponsorUserStatus } from '@prisma/client';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { BoothScanDto } from './dto/sponsor.dto';
+import { BoothScanDto, UpdatePortalLeadDto } from './dto/sponsor.dto';
 
 /**
  * The sponsor portal (P5): what a signed-in sponsor person sees and does. Access
@@ -107,6 +107,7 @@ export class SponsorPortalService {
         email: true,
         phone: true,
         source: true,
+        status: true,
         note: true,
         createdAt: true,
         eventSponsor: {
@@ -121,12 +122,31 @@ export class SponsorPortalService {
       email: r.email,
       phone: r.phone,
       source: r.source,
+      status: r.status,
       note: r.note,
       createdAt: r.createdAt,
       eventSponsorId: r.eventSponsor.id,
       eventId: r.eventSponsor.event.id,
       eventTitle: r.eventSponsor.event.title,
     }));
+  }
+
+  /** The sponsor's follow-up on one of its own leads: status and note (E3). */
+  async updateLead(userId: string, sponsorId: string, leadId: string, dto: UpdatePortalLeadDto) {
+    await this.assertMember(userId, sponsorId);
+    const lead = await this.prisma.sponsorLead.findFirst({
+      where: { id: leadId, eventSponsor: { sponsorId } },
+      select: { id: true },
+    });
+    if (!lead) throw new NotFoundException('Lead not found');
+    return this.prisma.sponsorLead.update({
+      where: { id: leadId },
+      data: {
+        status: dto.status,
+        note: dto.note === undefined ? undefined : dto.note?.trim() || null,
+      },
+      select: { id: true, status: true, note: true },
+    });
   }
 
   /**

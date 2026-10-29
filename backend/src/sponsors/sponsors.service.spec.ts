@@ -163,3 +163,25 @@ describe('curator lead funnel', () => {
     expect(prisma.event.findFirst.mock.calls[0][0].where).toMatchObject({ id: 'ev-x', spaceId: 'sp-1' });
   });
 });
+
+describe('sponsor portal follow-up (E3)', () => {
+  it("a member sets status and note on its own sponsor's lead only", async () => {
+    const prisma = mockPrisma(OrgPlan.GROWTH, {
+      sponsorLead: {
+        findFirst: jest.fn(async ({ where }: any) => (where.eventSponsor.sponsorId === 's-1' && where.id === 'sl-1' ? { id: 'sl-1' } : null)),
+        update: jest.fn(async ({ data }: any) => ({ id: 'sl-1', ...data })),
+      },
+    });
+    const svc = portal(prisma);
+    await expect(svc.updateLead('u-9', 's-1', 'sl-1', { status: 'CONTACTED', note: '  call back Monday ' })).resolves.toEqual({
+      id: 'sl-1',
+      status: 'CONTACTED',
+      note: 'call back Monday',
+    });
+    await expect(svc.updateLead('u-9', 's-1', 'sl-other', { status: 'CONVERTED' })).rejects.toBeInstanceOf(NotFoundException);
+
+    prisma.sponsorUser.findUnique.mockResolvedValueOnce(null);
+    await expect(svc.updateLead('u-x', 's-1', 'sl-1', { note: null })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.sponsorLead.update).toHaveBeenCalledTimes(1);
+  });
+});
