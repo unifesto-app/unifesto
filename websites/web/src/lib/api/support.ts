@@ -104,6 +104,8 @@ export const getInboxUnread = (token: string) =>
 /** ids marks those; none marks the whole inbox. */
 export const markRead = (token: string, ids?: string[]) =>
   call("POST", "/users/me/notifications/read", ids ? { ids } : { excludeType: "help_desk" }, token);
+/** Fired after I read inbox items or a support reply, so the sidebar recounts. */
+export const MY_READ_EVENT = "my:read";
 
 /** The web page for an app link, when there is one. */
 export function webLink(deepLink: string | null): string | null {

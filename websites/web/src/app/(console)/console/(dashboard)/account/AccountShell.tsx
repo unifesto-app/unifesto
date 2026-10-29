@@ -6,7 +6,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
 import { myTickets, type MyTicket } from "@/lib/api/registration";
-import { getInboxUnread, getMyUnreadCases } from "@/lib/api/support";
 import { useWebSession } from "@/lib/auth";
 import { signOut } from "@/console/lib/utils/auth";
 import { IST } from "@/lib/site";
@@ -18,9 +17,6 @@ interface Account {
   spaces: MySpace[];
   setSpaces: (spaces: MySpace[]) => void;
   partnerLinks: PartnerLink[];
-  /** Unread inbox items and support cases, for the tab counts. */
-  unread: { inbox: number; support: number };
-  setUnread: React.Dispatch<React.SetStateAction<{ inbox: number; support: number }>>;
 }
 
 const AccountContext = createContext<Account | null>(null);
@@ -29,8 +25,9 @@ export const useAccount = () => useContext(AccountContext)!;
 
 /**
  * K19: the web account pages, signed in through K18. The app's Profile tab
- * on the same APIs: a header with my name and counts, then one tab per area.
- * Push settings and the share card stay in the app.
+ * on the same APIs: a header with my name and counts, then a tab per setting.
+ * Inbox, Support, Saved events and My certificates open from the sidebar, so
+ * they get just their title. Push settings and the share card stay in the app.
  */
 export default function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/console/account";
@@ -40,7 +37,6 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const [spaces, setSpaces] = useState<MySpace[]>([]);
   const [counts, setCounts] = useState({ going: 0, been: 0 });
   const [partnerLinks, setPartnerLinks] = useState<PartnerLink[]>([]);
-  const [unread, setUnread] = useState({ inbox: 0, support: 0 });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -52,16 +48,13 @@ export default function AccountShell({ children }: { children: React.ReactNode }
       myTickets(token),
       getMySpaces(token),
       getMyPartnerLinks(token),
-      getInboxUnread(token),
-      getMyUnreadCases(token),
-    ]).then(([m, t, s, p, i, c]) => {
+    ]).then(([m, t, s, p]) => {
       if (!live) return;
       if (m.status === "fulfilled") setMe(m.value);
       else setError(m.reason instanceof Error ? m.reason.message : "Couldn't load My account.");
       if (t.status === "fulfilled") setCounts(eventCounts(t.value));
       if (s.status === "fulfilled") setSpaces(s.value);
       if (p.status === "fulfilled") setPartnerLinks(p.value);
-      setUnread({ inbox: i.status === "fulfilled" ? i.value : 0, support: c.status === "fulfilled" ? c.value : 0 });
     });
     return () => {
       live = false;
@@ -70,17 +63,13 @@ export default function AccountShell({ children }: { children: React.ReactNode }
 
   const tabs = [
     { href: "/console/account", label: "Profile" },
-    { href: "/console/account/inbox", label: "Inbox", count: unread.inbox },
-    { href: "/console/tickets", label: "My tickets" },
-    { href: "/console/account/support", label: "Support", count: unread.support },
-    { href: "/console/account/saved", label: "Saved events" },
-    { href: "/console/account/certificates", label: "My certificates" },
     { href: "/console/account/circles", label: "My circles" },
     ...(partnerLinks.length ? [{ href: "/console/account/partner", label: "Partner stats" }] : []),
     { href: "/console/account/notifications", label: "Notifications" },
     { href: "/console/account/sign-in", label: "Sign-in" },
     { href: "/console/account/delete", label: "Delete account" },
   ];
+  const page = PAGES[pathname.split("/")[3]];
 
   let body;
   if (!ready) body = null;
@@ -91,12 +80,14 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   else if (!me) body = error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading My account…</p>;
   else
     body = (
-      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks, unread, setUnread }}>{children}</AccountContext.Provider>
+      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks }}>{children}</AccountContext.Provider>
     );
 
   return (
     <div className="mx-auto max-w-3xl">
-          {session && me ? (
+          {page ? (
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">{page}</h1>
+          ) : session && me ? (
             <Header me={me} email={session.email} {...counts} circles={new Set(spaces.map((s) => s.id)).size} />
           ) : (
             <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">My account</h1>
@@ -110,7 +101,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
               </Link>
             </p>
           )}
-          {session && me && (
+          {session && me && !page && (
             <nav aria-label="Account" className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
               {tabs.map((t) => {
                 // A support case keeps its tab lit.
@@ -125,7 +116,6 @@ export default function AccountShell({ children }: { children: React.ReactNode }
                     }`}
                   >
                     {t.label}
-                    {!!t.count && <span className="ml-1.5 font-semibold">{t.count}</span>}
                   </Link>
                 );
               })}
@@ -135,6 +125,9 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     </div>
   );
 }
+
+/** Pages the sidebar opens on their own, by their segment under /console/account. */
+const PAGES: Record<string, string> = { inbox: "Inbox", support: "Support", saved: "Saved events", certificates: "My certificates" };
 
 /** One per event, split at now, as the app counts them. */
 function eventCounts(tickets: MyTicket[]) {

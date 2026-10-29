@@ -2,10 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getInbox, markRead, webLink, type InboxItem } from "@/lib/api/support";
+import { getInbox, markRead, MY_READ_EVENT, webLink, type InboxItem } from "@/lib/api/support";
 import { useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
-import { useAccount } from "../AccountShell";
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: IST });
@@ -15,7 +14,6 @@ export default function InboxPage() {
   const router = useRouter();
   const { session } = useWebSession();
   const token = session?.token ?? "";
-  const { unread, setUnread } = useAccount();
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,7 +50,7 @@ export default function InboxPage() {
       await markRead(token);
       const now = new Date().toISOString();
       setItems((cur) => cur?.map((n) => ({ ...n, readAt: n.readAt ?? now })) ?? null);
-      setUnread({ ...unread, inbox: 0 });
+      window.dispatchEvent(new Event(MY_READ_EVENT));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't mark them read.");
     } finally {
@@ -62,9 +60,8 @@ export default function InboxPage() {
 
   const open = (n: InboxItem) => {
     if (!n.readAt) {
-      void markRead(token, [n.id]).catch(() => undefined);
+      void markRead(token, [n.id]).then(() => window.dispatchEvent(new Event(MY_READ_EVENT)), () => undefined);
       setItems((cur) => cur?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? null);
-      setUnread({ ...unread, inbox: Math.max(0, unread.inbox - 1) });
     }
     const to = webLink(n.deepLink);
     if (to) router.push(to);
