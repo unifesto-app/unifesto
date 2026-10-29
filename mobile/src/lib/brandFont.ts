@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import * as Font from 'expo-font';
-import { FONT_BODY_MEDIUM } from '../theme/typography';
+import { cosmosFont } from '../theme/cosmos';
 
 const GSTATIC = 'https://fonts.gstatic.com/s/';
 
@@ -26,8 +26,8 @@ const failed = new Set<string>();
 
 /** Font family to set on brand headings, or undefined to keep the app font. */
 export function useBrandFont(font: string | null | undefined): string | undefined {
-  // DM Sans is already the app's body font; no load needed.
-  const bundled = font === 'DM Sans' ? FONT_BODY_MEDIUM : undefined;
+  // DM Sans is already the app's headline font; no load needed.
+  const bundled = font === 'DM Sans' ? cosmosFont.display.fontFamily : undefined;
   const source = font ? SOURCES[font] : undefined;
   const family = font ? familyName(font) : '';
   const [ready, setReady] = useState(() => !!source && Font.isLoaded(family));

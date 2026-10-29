@@ -21,7 +21,7 @@ import { countdownLabel } from '../utils/eventFormat';
 import { getSessionBySlug, getMySessions, joinSession, PLATFORM_LABELS, type Session } from '../lib/api/sessions';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, CosmosWash, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, CosmosWash, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const ICON = 24;
@@ -414,11 +414,10 @@ const styles = StyleSheet.create({
   liveWrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
-  // Michroma runs wide: 24 reads like a 30 in a narrower face.
-  title: { marginTop: spacing[2], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
+  title: { marginTop: spacing[2], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
-  hostInitial: { fontSize: 11, ...cosmosFont.display },
+  hostInitial: { fontSize: 11, ...cosmosFont.strong },
   hostText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
   noteText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },

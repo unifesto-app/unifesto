@@ -363,7 +363,7 @@ export default function JudgingEntrantScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   header: { marginBottom: spacing[5] },
-  // Usually "T-042 · Team name": the Team ID is a code, so no Michroma here.
+  // Usually "T-042 · Team name": the Team ID is a code, so it stays in the text face.
   entrantName: { fontSize: 22, lineHeight: 30, ...cosmosFont.strong },
   roundName: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.strong },
   pill: {

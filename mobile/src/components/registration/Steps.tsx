@@ -22,7 +22,7 @@ import { relativeWhen } from '../../utils/eventFormat';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** ₹1,200 or ₹1,062.50: whole amounts stay clean, paise show when present. */
 export function money(symbol: string, n: number) {
@@ -32,7 +32,7 @@ export function money(symbol: string, n: number) {
 
 // ── Shared bits ─────────────────────────────────────────────────────────────
 
-/** The step's one title (Michroma, a VoiceOver heading) and a quiet line under it. */
+/** The step's one title (DM Sans, a VoiceOver heading) and a quiet line under it. */
 function Heading({ children, sub }: { children: string; sub?: string }) {
   const c = useCosmos();
   return (
@@ -641,8 +641,7 @@ const NOTCH = 18;
 
 const styles = StyleSheet.create({
   heading: { marginBottom: spacing[6] },
-  // Michroma runs wide and has one weight: size carries the hierarchy, never bold.
-  h1: { fontSize: 21, lineHeight: 30, ...cosmosFont.display },
+  h1: { fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   sub: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   label: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...cosmosFont.strong },
   fieldLabel: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },

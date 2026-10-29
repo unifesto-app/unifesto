@@ -69,7 +69,7 @@ empty, error, success are designed, never left to chance.
 6. **Consistency over surprise.** The same button, the same form control, the
    same icon style everywhere. Delight lives in moments, not on every page.
 7. **Cosmos, WCAG 2.1 AA.** Same monochrome cosmos as unifesto.app and the
-   space app: night by default, follows the OS to the light set. Michroma
+   space app: night by default, follows the OS to the light set. DM Sans
    for page titles, Hanken Grotesk for UI. `prefers-reduced-motion` always
    honoured.
 

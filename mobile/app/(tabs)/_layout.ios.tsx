@@ -1,8 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useCosmos } from '../../src/theme/cosmos';
+import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
 import { useSpaceAccess } from '../../src/context/SpaceAccessContext';
 import usePlatformAdmin from '../../src/hooks/usePlatformAdmin';
-import { FONT_BODY_MEDIUM } from '../../src/theme/typography';
 
 // iOS: the system tab bar (Liquid Glass on iOS 26+). It floats over content,
 // shrinks while scrolling down and returns on scroll up. Icons are plain SF
@@ -20,8 +19,8 @@ export default function TabsLayout() {
       tintColor={c.primary}
       iconColor={{ default: c.muted, selected: c.primary }}
       labelStyle={{
-        default: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: c.muted },
-        selected: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: c.primary },
+        default: { fontFamily: cosmosFont.strong.fontFamily, fontSize: 10, color: c.muted },
+        selected: { fontFamily: cosmosFont.strong.fontFamily, fontSize: 10, color: c.primary },
       }}
       minimizeBehavior="onScrollDown"
     >

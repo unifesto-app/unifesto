@@ -292,8 +292,7 @@ const styles = StyleSheet.create({
   hero: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   logo: { width: LOGO, height: LOGO, borderRadius: 14, overflow: 'hidden' },
-  // Michroma runs wide: 18 reads like a 22 in Hanken.
-  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  name: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { flexDirection: 'row', marginTop: spacing[5], paddingTop: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },
   stat: { flex: 1, alignItems: 'center', gap: 4, minHeight: 44 },

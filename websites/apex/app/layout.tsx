@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Michroma, Hanken_Grotesk, Martian_Mono } from "next/font/google";
+import { DM_Sans, Hanken_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
-// Cosmos type, same as unifesto.app: Michroma for titles, Hanken for UI.
-const michroma = Michroma({
-  weight: "400",
-  variable: "--font-michroma",
-  subsets: ["latin"],
+// Cosmos type, same as unifesto.app: DM Sans for titles, Hanken for UI.
+// Headlines. Variable weight + optical size; latin-ext carries the ₹, which
+// Hanken lacks, so body text borrows that one glyph from here.
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin", "latin-ext"],
+  axes: ["opsz"],
   display: "swap",
 });
 
@@ -48,7 +50,7 @@ export default async function RootLayout({
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
-        className={`${michroma.variable} ${hanken.variable} ${martian.variable} font-sans antialiased min-h-full flex flex-col`}
+        className={`${dmSans.variable} ${hanken.variable} ${martian.variable} font-sans antialiased min-h-full flex flex-col`}
       >
         {children}
       </body>

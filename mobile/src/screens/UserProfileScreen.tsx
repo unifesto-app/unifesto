@@ -20,7 +20,7 @@ import { CircleRow } from '../components/home/SpaceCards';
 import { relativeWhen } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const AVATAR = 96;
@@ -285,8 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initials: { fontSize: 30, ...cosmosFont.display },
-  // Michroma runs wide: 22 reads like a 26 in Hanken.
-  name: { marginTop: spacing[5], fontSize: 22, lineHeight: 30, textAlign: 'center', ...cosmosFont.display },
+  name: { marginTop: spacing[5], fontSize: 26, lineHeight: 32, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(26) },
   sub: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bio: {
     marginTop: spacing[4],

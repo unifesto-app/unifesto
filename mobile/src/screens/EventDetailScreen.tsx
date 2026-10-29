@@ -53,7 +53,7 @@ import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
@@ -549,11 +549,10 @@ const styles = StyleSheet.create({
   coverTag: { position: 'absolute', left: spacing[4], bottom: spacing[4] },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[6] },
   partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  // Michroma runs wide: 24 reads like a 30 in a narrower face.
-  title: { marginTop: spacing[2], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
+  title: { marginTop: spacing[2], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
-  hostInitial: { fontSize: 11, ...cosmosFont.display },
+  hostInitial: { fontSize: 11, ...cosmosFont.strong },
   hostText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   rating: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },

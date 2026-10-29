@@ -1,7 +1,7 @@
 /* Shared look for every template: the cosmos sky from websites/web (globals.css .cosmos-*),
    rebuilt in px so it renders the same at any canvas size. Each .page sets --u = 1% of its longer side
    (the site's vmax). Fonts are local files, so renders never wait on Google Fonts. */
-@font-face { font-family: "Michroma"; font-weight: 400; src: url("../../../mobile/assets/fonts/michroma/Michroma-Regular.ttf") format("truetype"); }
+@font-face { font-family: "DM Sans"; font-weight: 500; src: url("../../../mobile/assets/fonts/dm-sans/static/dm-sans-latin-500-normal.ttf") format("truetype"); }
 @font-face { font-family: "Hanken Grotesk"; font-weight: 100 900; src: url("../../brand-2026/HankenGrotesk.ttf") format("truetype"); }
 
 :root {
@@ -61,7 +61,7 @@ body { font-family: "Hanken Grotesk", system-ui, sans-serif; color: var(--ink); 
 .sky .scrim { position: absolute; inset: 0; background: radial-gradient(70% 60% at var(--scrim-x, 22%) var(--scrim-y, 45%), rgb(0 0 0 / .72), rgb(0 0 0 / .35) 55%, transparent 80%); }
 
 /* ---------- type ---------- */
-.display { font-family: "Michroma", sans-serif; font-weight: 400; line-height: 1.16; letter-spacing: 0; text-wrap: balance; }
+.display { font-family: "DM Sans", sans-serif; font-weight: 500; line-height: 1.1; letter-spacing: max(calc(0.9px - 0.062em), -0.04em); text-wrap: balance; }
 .dim { color: rgb(var(--glow) / .5); }
 .muted { color: var(--muted); }
 .lede { font-weight: 300; line-height: 1.42; text-wrap: pretty; }

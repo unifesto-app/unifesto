@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   mark: { width: MARK_W, height: MARK_H },
   sweep: { width: MARK_W * 0.6, height: '100%' },
-  tagline: { marginTop: 18, fontSize: 12, ...cosmosFont.display },
+  tagline: { marginTop: 18, fontSize: 12, ...cosmosFont.strong },
   track: {
     position: 'absolute',
     bottom: '14%',

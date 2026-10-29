@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
   intro: { fontSize: typography.fontSize.sm, lineHeight: 20, marginBottom: spacing[6], ...cosmosFont.body },
   roundBlock: { marginBottom: spacing[6] },
   roundHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[3] },
-  // Round names carry numbers ("Round 2"), so no Michroma.
   roundName: { fontSize: 17, flex: 1, ...cosmosFont.strong },
   badge: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
