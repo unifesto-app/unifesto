@@ -438,12 +438,16 @@ export class SponsorsService {
     return { optedIn: false };
   }
 
-  /** The eventSponsor ids the caller has already opted into, for UI state. */
+  /**
+   * The eventSponsor ids the caller has opted into, for UI state. Only OPT_IN
+   * leads: a booth scan is not something the attendee can withdraw here, so
+   * showing it as "Details shared" would offer a withdraw that does nothing.
+   */
   async listMyOptIns(userId: string, eventId: string): Promise<string[]> {
     const reg = await this.getAttendingRegistration(userId, eventId);
     if (!reg) return [];
     const leads = await this.prisma.sponsorLead.findMany({
-      where: { registrationId: reg.id, eventSponsor: { eventId } },
+      where: { registrationId: reg.id, eventSponsor: { eventId }, source: SponsorLeadSource.OPT_IN },
       select: { eventSponsorId: true },
     });
     return leads.map((l) => l.eventSponsorId);
