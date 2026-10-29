@@ -246,6 +246,7 @@ export class AdminController {
 
   /** F4: suspend (with `until`) or ban (without). Ends every session. */
   @Put('users/:id/suspension')
+  @Audit('user.suspend', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async suspendUser(
     @Param('id', ParseUUIDPipe) id: string,
@@ -256,6 +257,7 @@ export class AdminController {
   }
 
   @Delete('users/:id/suspension')
+  @Audit('user.unsuspend', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async liftSuspension(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.liftSuspension(id);
@@ -263,6 +265,7 @@ export class AdminController {
 
   /** F4: sign the user out of every device (revokes all refresh tokens). */
   @Post('users/:id/logout')
+  @Audit('user.logout', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async forceLogout(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.forceLogout(id);
@@ -270,6 +273,7 @@ export class AdminController {
 
   /** F4: add or replace a per-user capability override. */
   @Put('users/:id/capability-overrides')
+  @Audit('user.override', (r) => ({ userId: r.params.id, spaceId: (r.body?.spaceId as string) ?? null }))
   @Roles(RoleCode.ADMIN)
   async setCapabilityOverride(
     @Param('id', ParseUUIDPipe) id: string,
@@ -280,6 +284,7 @@ export class AdminController {
   }
 
   @Delete('users/:id/capability-overrides/:overrideId')
+  @Audit('user.override.remove', (r, prisma) => prisma.userCapabilityOverride.findUnique({ where: { id: r.params.overrideId }, select: { userId: true, spaceId: true } }).then((x) => x ?? { userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async removeCapabilityOverride(
     @Param('id', ParseUUIDPipe) id: string,
