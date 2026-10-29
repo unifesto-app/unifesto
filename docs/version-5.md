@@ -998,3 +998,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Track V un-parked by the user (Z8 exempt) and re-planned as 7 PRs: V1 web `(public)` group alongside V5 space on Turbopack, then V6 imports under `console/`, V7 `/console` URLs live on space.unifesto.app, V2 move into web, V3 cutover, V4 remove the space app
 - **2026-10-29** · Web /account: app Profile parity part 1 (header counts, full profile fields, sign-in methods + sign out everywhere, My circles + space requests, partner stats) (#440)
 - **2026-10-29** · Space builds and runs dev on Turbopack (dropped --webpack and the fs/net/tls webpack fallback); console code is Turbopack-clean, so web keeps Turbopack after the merge (#441)
+- **2026-10-29** · Web My tickets: app tabs (upcoming, waiting list + pay, past, cancelled) and a ticket page (QR, calendar, WhatsApp, check-ins, cancel, refund request + timeline, delete, report) (#442)
