@@ -18,9 +18,13 @@ try {
   mod = null;
 }
 
-export type AppIconName = 'Night' | 'Day' | 'Aurora' | 'Nebula' | 'Ember' | 'Ocean' | 'Mono';
+/** 'Auto' (iOS only) is the store icon itself, which follows the system appearance: Day by day, Night by night. */
+export type AppIconName = 'Auto' | 'Night' | 'Day' | 'Aurora' | 'Nebula' | 'Ember' | 'Ocean' | 'Mono';
 
 export const APP_ICONS: { name: AppIconName; label: string; preview: ImageSourcePropType }[] = [
+  ...(Platform.OS === 'ios'
+    ? [{ name: 'Auto' as const, label: 'Auto', preview: require('../../assets/app-icons/auto-preview.png') }]
+    : []),
   { name: 'Night', label: 'Night', preview: require('../../assets/app-icons/night-preview.png') },
   { name: 'Day', label: 'Day', preview: require('../../assets/app-icons/day-preview.png') },
   { name: 'Aurora', label: 'Aurora', preview: require('../../assets/app-icons/aurora-preview.png') },
@@ -31,7 +35,7 @@ export const APP_ICONS: { name: AppIconName; label: string; preview: ImageSource
 ];
 
 /** The icon each store build ships with (app.config.js `ios.icon` / `android.icon`). */
-const PLATFORM_DEFAULT: AppIconName = Platform.OS === 'ios' ? 'Day' : 'Night';
+const PLATFORM_DEFAULT: AppIconName = Platform.OS === 'ios' ? 'Auto' : 'Night';
 
 export const appIconsSupported = (): boolean => {
   try {

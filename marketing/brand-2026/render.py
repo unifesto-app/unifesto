@@ -118,6 +118,13 @@ if __name__ == "__main__":
     for name in opaque & {j[1] for j in jobs}:
         p = os.path.join(OUT, name)
         Image.open(p).convert("RGB").save(p)
+    # The in-app picker's "Auto" (iOS: Day in light mode, Night in dark): the two previews split diagonally.
+    if {"alt-icon-day-180.png", "alt-icon-night-180.png"} & {j[1] for j in jobs}:
+        day = Image.open(os.path.join(OUT, "alt-icon-day-180.png")).convert("RGB")
+        night = Image.open(os.path.join(OUT, "alt-icon-night-180.png")).convert("RGB")
+        mask = Image.new("L", day.size)
+        mask.putdata([255 if x + y < day.width else 0 for y in range(day.height) for x in range(day.width)])
+        Image.composite(day, night, mask).save(os.path.join(OUT, "alt-icon-auto-180.png"))
     Image.open(os.path.join(OUT, "favicon-48.png")).save(
         os.path.join(HERE, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
     print(f"{len(jobs)} PNGs + favicon.ico")
