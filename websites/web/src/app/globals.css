@@ -601,8 +601,8 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* ─── Cosmos (hero backdrop) ─────────────────────────────────────────── */
 /* Motion map. Entrances: ease-out-expo, long (low-frequency, cinematic),
-   staggered so the scene assembles back to front: stars → planet → horizon
-   → monoliths → type. Loops that show time (floor travel,
+   staggered so the scene assembles back to front: stars → orbits → horizon
+   → type. Loops that show time (floor travel,
    orbit drift, highlight orbit) are linear; breathing loops ease in-out.
    Scroll parallax is scroll-driven CSS, so it tracks the hand. Only
    transform/opacity/filter animate (compositor-only), except the floor's
@@ -625,19 +625,6 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .cosmos-stars-far { background-size: 260px 260px; opacity: .5; animation-delay: 300ms, 3s; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes twinkle { to { opacity: .45; } }
-
-/* Planet: a black disc whose lower-left limb catches the light. */
-.cosmos-parallax-slow { position: absolute; inset: 0; }
-.cosmos-planet {
-  position: absolute; top: -66vmax; right: -54vmax;
-  width: 100vmax; height: 100vmax; border-radius: 50%;
-  background: radial-gradient(circle at 62% 38%, var(--night) 62%, var(--night-2) 70%, var(--sand) 71.6%, transparent 71.7%);
-  box-shadow:
-    inset 3vmax -2.4vmax 4vmax -2.2vmax rgb(var(--glow) / .34),
-    -3vmax 3vmax 12vmax -6vmax rgb(var(--glow) / .09);
-  animation: planet-in 2600ms var(--ease-out-expo) 150ms both;
-}
-@keyframes planet-in { from { opacity: 0; transform: translate(4%, -4%) scale(.98); } }
 
 /* Orbits: hairline ellipses, drifting so slowly you feel rather than see it. */
 .cosmos-orbit {
@@ -667,30 +654,6 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 @keyframes horizon-in { from { transform: scaleX(0); opacity: 0; } }
 @keyframes breathe { to { opacity: .6; } }
 
-/* Monoliths: glass bars standing on the horizon on the right. */
-.cosmos-monoliths { display: none; position: absolute; right: 8%; bottom: 30%; height: 34%; width: 9rem; align-items: flex-end; gap: 1.6rem; }
-.cosmos-monoliths span {
-  width: 3px; height: var(--h);
-  background: linear-gradient(to top, rgb(var(--glow) / .4), rgb(var(--glow) / .02));
-  box-shadow: 0 0 14px rgb(var(--glow) / .08);
-  transform-origin: bottom;
-  animation: rise-bar 1400ms var(--ease-out-expo) var(--d) both;
-}
-.cosmos-monoliths span:first-child { width: 8px; }
-@keyframes rise-bar { from { transform: scaleY(0); opacity: 0; } }
-
-@media (min-width: 768px) { .cosmos-monoliths { display: flex; } }
-
-/* Scroll parallax: the planet sinks slower than the page, the horizon
-   faster, so the scene has depth as you leave it. */
-@supports (animation-timeline: scroll()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .cosmos-parallax-slow { animation-timeline: scroll(root); animation-range: 0 100vh; animation-fill-mode: both; animation-timing-function: linear; }
-    .cosmos-parallax-slow { animation-name: drift-slow; }
-    @keyframes drift-slow { to { transform: translateY(18vh); } }
-  }
-}
-
 /* Scrim: a soft dark pool behind the copy column, so the scene can never
    out-shine the words. Sits above every backdrop layer, below content. */
 .cosmos::after {
@@ -705,8 +668,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .cosmos-stars-far { translate: calc(var(--mx, 0) * -10px) calc(var(--my, 0) * -8px); }
 .cosmos-stars:not(.cosmos-stars-far) { translate: calc(var(--mx, 0) * -22px) calc(var(--my, 0) * -16px); }
 .cosmos-orbit { translate: calc(var(--mx, 0) * -30px) calc(var(--my, 0) * -22px); }
-.cosmos-parallax-slow > .cosmos-planet { translate: calc(var(--mx, 0) * -48px) calc(var(--my, 0) * -34px); }
-.cosmos-stars, .cosmos-orbit, .cosmos-planet { transition: translate 900ms var(--ease-out-quart); }
+.cosmos-stars, .cosmos-orbit { transition: translate 900ms var(--ease-out-quart); }
 
 /* A soft light that follows the pointer: one fixed-size disc moved by
    translate, never a repainted full-screen gradient. Fades in on first
@@ -722,15 +684,12 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .cosmos[data-live] .cosmos-glow { opacity: 1; }
 
 /* Hero horizon (HorizonFloor): a zero-height strip pinned to the hero's
-   bottom edge. The line sits on the edge, its bloom rises into the hero,
-   and the monoliths stand on it. */
+   bottom edge. The line sits on the edge and its bloom rises into the hero. */
 .cosmos-anchor { position: absolute; left: 0; right: 0; bottom: 0; height: 0; pointer-events: none; }
 .cosmos-anchor .cosmos-horizon { top: auto; bottom: 0; }
-.cosmos-anchor .cosmos-monoliths { bottom: 0; height: 14rem; right: 2.5%; }
 
 /* Inner pages: the same sky, quieter. */
 .cosmos-page .cosmos-horizon { top: auto; bottom: 0; }
-.cosmos-page .cosmos-planet { top: -78vmax; right: -58vmax; }
 
 
 /* ─── Legal prose ────────────────────────────────────────────────────── */
