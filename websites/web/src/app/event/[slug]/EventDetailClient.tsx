@@ -519,7 +519,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
           <section className="mt-14">
             <LeadCaptureForm
               title="Get notified about this event"
-              description="Leave your email and we'll keep you posted on updates and reminders."
+              description="Leave your email and we'll tell you if the date or venue changes, and remind you the day before."
               cta="Notify me"
               successText="You're on the list. We'll be in touch."
               onSubmit={(body) => registerEventInterest(event.id, body)}

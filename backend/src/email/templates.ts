@@ -354,6 +354,45 @@ export function eventUpdatedEmail(d: EventUpdatedData): Email {
   };
 }
 
+/**
+ * To someone who tapped "Notify me" on an event (a lead, not an attendee): a
+ * date or venue change, or the day-before reminder. The web form promises
+ * exactly these two, so this mail says so and sends nothing else.
+ */
+export interface EventInterestData extends EventWhere {
+  brand?: EmailBrand | null;
+  eventId?: string;
+  email: string;
+  name?: string;
+  eventTitle: string;
+  eventSlug: string;
+  eventDate: string;
+  eventTime: string;
+  /** A date or venue change; absent for the day-before reminder. */
+  changes?: { field: string; oldValue: string; newValue: string }[];
+}
+
+export function eventInterestEmail(d: EventInterestData): Email {
+  const url = `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`;
+  const changed = !!d.changes?.length;
+  const rows = (d.changes ?? []).map(
+    (c): [string, string] => [c.field, `${faint(`<s>${esc(c.oldValue)}</s>`)}<br>${esc(c.newValue)}`],
+  );
+  return {
+    subject: changed ? `Updated: ${d.eventTitle}` : `Tomorrow: ${d.eventTitle}`,
+    html: layout(
+      `${h1(changed ? 'Event details changed' : "It's tomorrow")}
+      ${greet(d.name)}
+      ${p(changed ? `The organiser of ${strong(d.eventTitle)} changed a few things.` : `${strong(d.eventTitle)} is coming up tomorrow.`)}
+      ${changed ? details(rows) : eventCard(d)}
+      ${button('View event', url)}
+      ${small('You asked to hear about this event with Notify me, so you get its changes and a reminder the day before. Nothing else.')}`,
+      changed ? `${d.eventTitle} changed.` : `${d.eventTitle}, ${d.eventTime}.`,
+      d.brand,
+    ),
+  };
+}
+
 export interface EventPublishedData {
   email: string;
   userName: string;
@@ -684,6 +723,34 @@ export function spaceApprovedEmail(d: SpaceApprovedData): Email {
       ${list(['Create and publish events', 'Bring your team in as curators and crew', 'Build a following that hears about every event'])}
       ${button('Open my space', SPACE_APP)}
       ${small(`Public page: ${link(`unifesto.app/space/${d.spaceSlug}`, `${WEB}/space/${encodeURIComponent(d.spaceSlug)}`)}`)}`,
+    ),
+  };
+}
+
+/** To a Space Admin: someone sent the space a note from its public page. */
+export interface SpaceInquiryData {
+  email: string;
+  spaceName: string;
+  fromName?: string;
+  fromEmail: string;
+  fromPhone?: string;
+  message?: string;
+}
+
+export function spaceInquiryEmail(d: SpaceInquiryData): Email {
+  return {
+    subject: `New inquiry for ${d.spaceName}`,
+    html: layout(
+      `${h1('New inquiry')}
+      ${p(`Someone sent ${strong(d.spaceName)} a note from its public page.`)}
+      ${details([
+        ['Name', d.fromName && esc(d.fromName)],
+        ['Email', link(d.fromEmail, `mailto:${d.fromEmail}`)],
+        ['Phone', d.fromPhone && esc(d.fromPhone)],
+      ])}
+      ${d.message ? note(esc(d.message)) : ''}
+      ${button('Open leads', `${SPACE_APP}/dashboard/leads`)}`,
+      `From ${d.fromName || d.fromEmail}`,
     ),
   };
 }

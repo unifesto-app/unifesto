@@ -54,10 +54,10 @@ export async function getMySponsorships(): Promise<PortalSponsor[]> {
 
 export const getPortalLeads = (sponsorId: string) => call<PortalLead[]>(`/sponsor-portal/sponsors/${sponsorId}/leads`);
 
-/** Scan an attendee's ticket QR at the booth. Scanning is the attendee's consent. */
+/** Scan an attendee's ticket QR at the booth, once they said yes on the prompt. */
 export const boothScan = (sponsorId: string, eventSponsorId: string, qrCode: string) =>
   call<BoothScanResult>(`/sponsor-portal/sponsors/${sponsorId}/scan`, {
     method: 'POST',
-    body: JSON.stringify({ eventSponsorId, qrCode }),
+    body: JSON.stringify({ eventSponsorId, qrCode, attendeeConsent: true }),
     retry: true, // upserted server-side, so a repeat scan is safe
   });

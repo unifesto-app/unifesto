@@ -137,7 +137,7 @@ export default function SponsorPortalScreen() {
               value={e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
               onPress={
                 e.leadCaptureEnabled
-                  ? () => router.push({ pathname: `/sponsoring/${sponsorId}/scan`, params: { eventSponsorId: e.eventSponsorId, title: e.title } })
+                  ? () => router.push({ pathname: `/sponsoring/${sponsorId}/scan`, params: { eventSponsorId: e.eventSponsorId, title: e.title, sponsorName: sponsor.name } })
                   : () => AppAlert.alert('Booth scanning is off', `Ask the organiser to turn on lead capture for ${sponsor.name} at this event.`)
               }
             />

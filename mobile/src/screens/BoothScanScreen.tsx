@@ -15,6 +15,7 @@ import { cosmosFont, useCosmos } from '../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { Button } from '../components/ui';
+import { AppAlert } from '../components/ui/AppAlert';
 
 // Same rhythm as the door scanner: ignore the same QR for a moment, and keep
 // problems on screen longer than successes.
@@ -31,12 +32,34 @@ const WHITE_DIM = 'rgba(255, 255, 255, 0.7)';
 
 const buzz = (kind: ScanFeedback['kind']) => Vibration.vibrate(kind === 'success' ? 40 : [0, 90, 80, 90]);
 
+/** Hand the phone to the attendee: true only on an explicit yes. */
+const askAttendee = (sponsorName: string) =>
+  new Promise<boolean>((resolve) =>
+    AppAlert.alert(
+      `Share your details with ${sponsorName}?`,
+      `${sponsorName} gets your name, email and phone number so they can follow up after the event.`,
+      [
+        { text: 'No thanks', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Yes, share', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    ),
+  );
+
 /**
- * Booth lead capture: a sponsor's staff scan an attendee's ticket QR and the
- * attendee becomes a lead (scanning is the consent). The server is idempotent,
- * so a repeat scan is told apart by the lead id we've already seen.
+ * Booth lead capture: a sponsor's staff scan an attendee's ticket QR, the
+ * attendee agrees on the prompt, and they become a lead. The server is
+ * idempotent, so a repeat scan is told apart by the lead id we've already seen.
  */
-export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsorId: string; eventSponsorId: string }) {
+export default function BoothScanScreen({
+  sponsorId,
+  eventSponsorId,
+  sponsorName = 'This sponsor',
+}: {
+  sponsorId: string;
+  eventSponsorId: string;
+  sponsorName?: string;
+}) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing(spacing[2]);
@@ -81,7 +104,14 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
       if (last && last.code === code && now - last.at < RESCAN_COOLDOWN) return;
       lastScanRef.current = { code, at: now };
 
+      // Nothing is shared until the attendee says yes on this prompt (E9).
       processingRef.current = true;
+      const agreed = await askAttendee(sponsorName);
+      if (!agreed) {
+        processingRef.current = false;
+        show({ kind: 'error', title: 'Not added', detail: 'The attendee chose not to share their details.' });
+        return;
+      }
       setProcessing(true);
       const res = await boothScan(sponsorId, eventSponsorId, code);
       processingRef.current = false;
@@ -101,7 +131,7 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
       setCaptured((n) => n + 1);
       show({ kind: 'success', title: 'Lead added', name, detail: lead.email ?? undefined });
     },
-    [sponsorId, eventSponsorId, show],
+    [sponsorId, eventSponsorId, sponsorName, show],
   );
 
   if (!permission) {
@@ -179,7 +209,7 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
           <View style={[styles.tool, styles.toolWide]}>
             <CameraGlass />
             <Text style={styles.toolText} numberOfLines={2}>
-              Scanning a ticket shares that attendee's contact with you.
+              The attendee confirms on this phone before their contact is shared.
             </Text>
           </View>
         </View>

@@ -396,7 +396,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
 | E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | done (#366) |
-| E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | planned |
+| E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | done (#PR) (#407) |
 
 ### F · Feedback and user IAM (from 4.4.0)
 
@@ -457,7 +457,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | done (#146), live 19 Oct server side, mobile in 5.0.0; not seen on device |
 | H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | done, live 16 Oct (#135) |
 | H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | done (#280) |
-| H15 | **Retire legacy white-label requests in mobile, Apex and backend.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | in progress (#388) |
+| H15 | **Retire legacy white-label requests in mobile, Apex and backend.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | blocked: Apex half done, route + table drop wait for O6 (5.0.0 minimum) (#408) |
 | H16 | **Space app: gate Branding on manage-settings capability.** Space app `Capability` type has no `space:manage-settings`, so the Branding nav item gates on `manage-billing` (backend enforces manage-settings). Add the capability to the space RBAC types | done, live 16 Oct (#135) |
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
@@ -961,3 +961,5 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · G14 finished: last ~30 Apex/Space labels tied to their controls, shared Field + question inputs label automatically (#404)
 - **2026-10-29** · F8 co-hosting is now a request: invites stay pending (no access, listing or credit) until a Space Admin of the invited space accepts on Space Events; existing links backfilled as accepted (#405)
 - **2026-10-29** · K17 help centre hides itself (404, no links, not in sitemap) until an article is published; 13 starter articles as a draft seed script (#406)
+- **2026-10-29** · E9 lead capture throttled, public-only, no overwrite; notify-me emails changes + day-before reminder; inquiries alert Space Admins; booth scan and I'm interested ask for consent (#407)
+- **2026-10-29** · H15 Apex half: White-label History + Apply branding removed, suspend/restore moved to space detail; route + table drop wait for O6 (#408)

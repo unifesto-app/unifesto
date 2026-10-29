@@ -19,7 +19,6 @@ import {
   reviewSubSpaceRequest,
 } from "@/lib/api/requests-api";
 import { reviewOwnershipRequest } from "@/lib/api/spaces-api";
-import { reviewWhiteLabelRequest } from "@/lib/api/white-label-api";
 import { reviewFreeAddRequest } from "@/lib/api/free-add-api";
 import { reviewTransferRequest } from "@/lib/api/registrations-api";
 import { updateContentReport } from "@/lib/api/content-reports-api";
@@ -147,8 +146,8 @@ const SUBJECTS: Record<string, SubjectDef> = {
     actions: review(reviewSubSpaceRequest),
   },
   WhiteLabelRequest: {
+    // Legacy (H15): requests self-approve now, so old cases are read-only.
     title: "White-label request",
-    href: "/dashboard/requests/white-label",
     fields: (d) => [
       [
         "Colour",
@@ -162,7 +161,7 @@ const SUBJECTS: Record<string, SubjectDef> = {
       ["Scope", d.eventId ? "One event" : "Whole space"],
       ["Reason", d.reason],
     ],
-    actions: review(reviewWhiteLabelRequest),
+    actions: [],
   },
   FreeAttendeeAddRequest: {
     title: "Free attendee add",

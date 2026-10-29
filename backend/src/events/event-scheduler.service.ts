@@ -7,6 +7,7 @@ import { NOT_DELETED } from '../common/soft-delete';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { forEachPage, inChunks } from '../common/batching';
 import { CLAIMED_MEMBER_SEAT, COUNTS_AS_ATTENDING } from '../common/attendance';
+import { emailInterestLeads } from '../sponsors/interest-fanout';
 
 export const STARTING_SOON_CADENCE_MIN = 15;
 
@@ -194,8 +195,10 @@ export class EventSchedulerService {
         },
       );
 
+      const leads = await emailInterestLeads(this.prisma, this.emailService, event.id, 'reminder');
+
       this.logger.log(
-        `Sent reminders for event ${event.id} to ${sent} attendees`,
+        `Sent reminders for event ${event.id} to ${sent} attendees and ${leads} interested leads`,
       );
     }
 
