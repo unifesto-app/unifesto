@@ -215,6 +215,13 @@ export class AdminController {
     return this.usersService.getUserByIdAdmin(id);
   }
 
+  /** F6: the user's registrations and payments. GET /admin/users/:id/activity */
+  @Get('users/:id/activity')
+  @Roles(RoleCode.ADMIN)
+  async getUserActivity(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.getUserActivityAdmin(id);
+  }
+
   /**
    * Update a user's profile by ID (ADMIN only)
    * PATCH /admin/users/:id

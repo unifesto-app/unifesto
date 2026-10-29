@@ -38,6 +38,7 @@ import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
 import { MessageTable } from "@/components/messages/MessageTable";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { EMPLOYEE_ROLE_CODE } from "@/lib/types/rbac";
+import { UserActivity } from "@/components/users/UserActivity";
 import { AccountAccessCard } from "@/components/users/AccountAccessCard";
 import {
   Card,
@@ -709,6 +710,8 @@ export default function UserDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <UserActivity userId={id} />
 
           {/* Identities */}
           <Card>
