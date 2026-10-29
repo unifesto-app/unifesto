@@ -426,7 +426,7 @@ export function useManageGroup(registrationId: string) {
         name: 'Unifesto',
         description: `${addCount} extra seat${addCount > 1 ? 's' : ''} · ${order.data.eventTitle}`,
         prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
-        theme: { color: '#3491ff' },
+        theme: { color: '#111113' },
       } as any);
       const verified = await verifyAddSeats(order.data.purchaseId, {
         razorpayOrderId: payment.razorpay_order_id,

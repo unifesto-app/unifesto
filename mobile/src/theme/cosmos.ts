@@ -19,7 +19,8 @@ const dark = {
   border: 'rgba(255, 255, 255, 0.1)',
   input: 'rgba(255, 255, 255, 0.18)',
   outline: 'rgba(255, 255, 255, 0.28)',
-  danger: '#ff6b6b',
+  /** Crimson (#be123c by day), lifted to read on black: 5.1:1 (#be123c itself is 3.3:1). */
+  danger: '#ec2f58',
   /** Amber for counts and other text that needs attention; the light value holds 4.5:1 on cards. */
   warn: '#f59e0b',
   glow: '255, 255, 255',
@@ -28,7 +29,7 @@ const dark = {
   /** Cover placeholder when an image is missing: the web's night-3 field. */
   fallback: ['#1c1c20', '#0a0a0b'] as [string, string],
   /** Green for done states (Checked in); the light value holds 4.5:1 on its own tinted chip. */
-  success: '#10b981',
+  success: '#90e4c1',
   scheme: 'dark' as 'dark' | 'light',
 };
 
@@ -46,13 +47,14 @@ const light: typeof dark = {
   border: 'rgba(0, 0, 0, 0.1)',
   input: 'rgba(0, 0, 0, 0.18)',
   outline: 'rgba(0, 0, 0, 0.28)',
-  /** #d93636 was 4.15:1 on the grey ground; this holds 5:1 on it, 5.6:1 on cards. */
-  danger: '#c62828',
+  /** Crimson: 5.6:1 on the paper ground, 6.3:1 on cards. */
+  danger: '#be123c',
   warn: '#92400e',
   glow: '17, 17, 19',
   tint: 'rgba(0, 0, 0, 0.04)',
   fallback: ['#e4e4e7', '#f4f4f5'],
-  success: '#047857',
+  /** Deep mint (the #90e4c1 family): 5.7:1 on cards. */
+  success: '#15745a',
   scheme: 'light',
 };
 

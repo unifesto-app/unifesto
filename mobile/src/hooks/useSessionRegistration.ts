@@ -67,7 +67,7 @@ export function useSessionRegistration() {
           email: user?.email || '',
           contact: user?.mobileNumber || '',
         },
-        theme: { color: '#3491ff' },
+        theme: { color: '#111113' },
       };
 
       let payment;

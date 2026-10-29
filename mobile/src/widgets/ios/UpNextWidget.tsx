@@ -27,7 +27,7 @@ const UpNextWidget = (props: UpNextWidgetProps, env: WidgetEnvironment) => {
   const bg = dark ? '#0b0b0d' : '#ffffff';
   const text = dark ? '#ffffff' : '#0a0a0b';
   const muted = dark ? '#94a3b8' : '#52525b';
-  const accent = dark ? '#3491ff' : '#0062ff';
+  const accent = dark ? '#e8e8ea' : '#111113';
   const family = env.widgetFamily;
   const isLockScreen = family === 'accessoryRectangular' || family === 'accessoryInline';
 

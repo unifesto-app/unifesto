@@ -31,7 +31,7 @@ export interface Tokens {
   textSecondary: string;
   textMuted: string;
 
-  // Brand accent (Unifesto blue) + the text colour that sits on it
+  // Accent: monochrome (silver by night, ink by day) + the text colour that sits on it
   accent: string;
   accentStrong: string;
   accentFg: string;
@@ -54,7 +54,7 @@ export const darkTokens: Tokens = {
   surface: '#121214',
   elevated: '#1a1a1d',
   border: 'rgba(255, 255, 255, 0.1)',
-  borderStrong: 'rgba(52, 145, 255, 0.3)',
+  borderStrong: 'rgba(255, 255, 255, 0.28)',
   overlay: 'rgba(0, 0, 0, 0.8)',
   fill: 'rgba(255, 255, 255, 0.06)',
   fillStrong: 'rgba(255, 255, 255, 0.14)',
@@ -64,15 +64,15 @@ export const darkTokens: Tokens = {
   textSecondary: '#94a3b8',
   textMuted: '#8a8a90', // 4.1:1 was under AA; cosmos muted holds 5.7:1 on bg
 
-  accent: '#3491ff',
-  accentStrong: '#0062ff',
+  accent: '#e8e8ea',
+  accentStrong: '#ffffff',
   accentFg: '#000000',
-  accentGradient: ['#3491ff', '#0062ff'] as const,
+  accentGradient: ['#e8e8ea', '#e8e8ea'] as const,
 
-  success: '#10b981',
+  success: '#90e4c1',
   warning: '#f59e0b',
-  danger: '#ef4444',
-  info: '#3491ff',
+  danger: '#ec2f58',
+  info: '#90d5ff',
 
   scheme: 'dark',
 };
@@ -85,7 +85,7 @@ export const lightTokens: Tokens = {
   surface: '#e9e9ee',
   elevated: '#ffffff',
   border: 'rgba(0, 0, 0, 0.08)',
-  borderStrong: 'rgba(0, 98, 255, 0.3)',
+  borderStrong: 'rgba(0, 0, 0, 0.28)',
   overlay: 'rgba(0, 0, 0, 0.5)',
   fill: 'rgba(0, 0, 0, 0.05)',
   fillStrong: 'rgba(0, 0, 0, 0.12)',
@@ -95,15 +95,15 @@ export const lightTokens: Tokens = {
   textSecondary: '#52525b',
   textMuted: '#63636a',
 
-  accent: '#0062ff',
-  accentStrong: '#0052d9',
+  accent: '#111113',
+  accentStrong: '#000000',
   accentFg: '#ffffff',
-  accentGradient: ['#3491ff', '#0062ff'] as const,
+  accentGradient: ['#111113', '#111113'] as const,
 
-  success: '#047857',
+  success: '#15745a',
   warning: '#92400e',
-  danger: '#c62828', // with success/warning: AA (4.5:1) on the grey ground, as cosmos
-  info: '#0062ff',
+  danger: '#be123c', // with success/warning: AA (4.5:1) on the grey ground, as cosmos
+  info: '#0369a1',
 
   scheme: 'light',
 };

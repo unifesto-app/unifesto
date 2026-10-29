@@ -630,7 +630,7 @@ export function useEventRegistration() {
           email: attendees[0]?.email || '',
           contact: attendees[0]?.mobile || user?.mobileNumber || '',
         },
-        theme: { color: branding?.color || '#3491ff' },
+        theme: { color: branding?.color || '#111113' },
       };
 
       let paymentData: any;

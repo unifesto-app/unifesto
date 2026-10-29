@@ -219,7 +219,7 @@ export function useMyTickets() {
           email: '',
           contact: user?.mobileNumber || '',
         },
-        theme: { color: '#3491ff' },
+        theme: { color: '#111113' },
       });
 
       await verifyPayment(entry.event.id, {

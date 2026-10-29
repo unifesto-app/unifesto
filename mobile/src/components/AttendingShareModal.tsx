@@ -76,8 +76,8 @@ export const SHARE_FORMATS: ShareFormat[] = [
 const CANVAS = '#050505';
 const INK = '#ffffff';
 const SOFT = 'rgba(255,255,255,0.62)';
-const DEFAULT_ACCENT = '#3491ff';
-const DEFAULT_ACCENT_DEEP = '#0062ff';
+const DEFAULT_ACCENT = '#e8e8ea';
+const DEFAULT_ACCENT_DEEP = '#8a8a90';
 
 interface CardProps {
   width: number;

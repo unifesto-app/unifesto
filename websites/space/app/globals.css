@@ -39,15 +39,15 @@
   --sidebar-foreground: 240 5% 93%;
 
   /* --- Feedback (state only) --- */
-  --success: 142 69% 58%;
+  --success: 155 61% 73%;            /* mint #90e4c1 */
   --success-foreground: 0 0% 0%;
-  --success-soft: 145 50% 9%;
-  --warning: 38 92% 55%;
+  --success-soft: 158 22% 10%;
+  --warning: 38 92% 50%;             /* #f59e0b */
   --warning-foreground: 0 0% 0%;
   --warning-soft: 38 60% 9%;
-  --destructive: 0 100% 71%;          /* #ff6b6b */
+  --destructive: 346 83% 55%;         /* #ec2f58: crimson lifted to read on black */
   --destructive-foreground: 0 0% 0%;
-  --destructive-soft: 0 50% 10%;
+  --destructive-soft: 346 50% 10%;
 
   /* --- Lines & controls --- */
   --border: 240 4% 11%;               /* white/10 on black */
@@ -71,9 +71,9 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --background: 0 0% 100%;
+  --background: 240 13% 95%;        /* paper #f2f2f5 */
   --foreground: 240 6% 7%;          /* #111113 */
-  --card: 240 5% 96%;               /* #f4f4f5 */
+  --card: 0 0% 100%;                /* white cards */
   --card-foreground: 240 6% 7%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 6% 7%;
@@ -93,15 +93,15 @@
   --sidebar: 240 5% 96%;
   --sidebar-foreground: 240 6% 7%;
 
-  --success: 142 72% 29%;
+  --success: 164 69% 27%;           /* deep mint #15745a */
   --success-foreground: 0 0% 100%;
-  --success-soft: 138 76% 96%;
-  --warning: 32 95% 44%;
+  --success-soft: 153 56% 93%;
+  --warning: 23 82% 31%;            /* #92400e */
   --warning-foreground: 0 0% 100%;
-  --warning-soft: 48 100% 96%;
-  --destructive: 0 68% 53%;         /* #d93636 */
+  --warning-soft: 48 96% 89%;
+  --destructive: 345 83% 41%;       /* crimson #be123c */
   --destructive-foreground: 0 0% 100%;
-  --destructive-soft: 0 86% 97%;
+  --destructive-soft: 351 100% 95%;
 
   --border: 240 5% 90%;
   --border-strong: 240 5% 82%;
