@@ -27,7 +27,7 @@ import {
 } from '@unifesto/unicon/react-native';
 import AttendingShareModal from '../components/AttendingShareModal';
 import LivePollsPanel from '../components/tickets/LivePollsPanel';
-import { AfterEventGroup, EndedStub, useEventCertificate } from '../components/EventEnded';
+import { AfterEventGroup, EndedStub, useEventCertificate, useEventFeedback } from '../components/EventEnded';
 import LiveQaPanel from '../components/tickets/LiveQaPanel';
 import LiveQuizPanel from '../components/tickets/LiveQuizPanel';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -85,6 +85,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const [notchY, setNotchY] = useState<number | null>(null);
   const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
   const cert = useEventCertificate(t.eventId, t.ended);
+  const feedback = useEventFeedback(t.eventId, t.ended);
 
   const cancelled = t.status === 'cancelled';
   const qrSize = Math.min(220, width - GUTTER * 2 - spacing[16]);
@@ -372,6 +373,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         {t.ended ? (
           <AfterEventGroup
             cert={cert}
+            feedback={feedback && { ...feedback, onPress: () => router.push(`/feedback/${t.eventId}` as never) }}
             surface={c.raised}
             results={
               !t.eventId

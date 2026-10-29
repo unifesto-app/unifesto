@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Certificate, Confetti, Trophy } from '@unifesto/unicon/react-native';
+import { Certificate, Confetti, Star, Trophy } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from './profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
+import { getFeedback } from '../lib/api/feedback';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
@@ -26,6 +27,23 @@ export function useEventCertificate(eventId: string | undefined, ended: boolean)
   return cert;
 }
 
+/**
+ * Whether I can rate this event (F1), and whether I already did. Null while
+ * loading, when feedback is off, or before the event is over.
+ */
+export function useEventFeedback(eventId: string | undefined, ended: boolean): { sent: boolean } | null {
+  const [state, setState] = useState<{ sent: boolean } | null>(null);
+  useEffect(() => {
+    if (!eventId || !ended) return;
+    let live = true;
+    getFeedback(eventId).then((r) => live && setState(r.ok && r.data.open ? { sent: !!r.data.response } : null));
+    return () => {
+      live = false;
+    };
+  }, [eventId, ended]);
+  return state;
+}
+
 /** Takes the place of the entry QR once the event is over: nothing left to scan. */
 export function EndedStub({ checkedIn }: { checkedIn: boolean }) {
   const c = useCosmos();
@@ -41,23 +59,32 @@ export function EndedStub({ checkedIn }: { checkedIn: boolean }) {
 }
 
 /**
- * What's left after an event: results and my certificate, each only when it
- * exists. Renders nothing when there is neither.
- * ponytail: no feedback row yet; add it with the attendee feedback form (F1).
+ * What's left after an event: results, feedback and my certificate, each only
+ * when it exists. Renders nothing when there is none.
  */
 export function AfterEventGroup({
   cert,
   results,
+  feedback,
   surface,
 }: {
   cert: MyCertificate | null;
   results?: { value?: string; onPress: () => void } | null;
+  feedback?: { sent: boolean; onPress: () => void } | null;
   surface?: string;
 }) {
   const c = useCosmos();
-  if (!cert && !results) return null;
+  if (!cert && !results && !feedback) return null;
   return (
     <SettingsGroup title="After the event" surface={surface}>
+      {feedback ? (
+        <SettingsRow
+          icon={<Star size={24} color={c.text} />}
+          label={feedback.sent ? 'My feedback' : 'Rate this event'}
+          value={feedback.sent ? 'Sent' : undefined}
+          onPress={feedback.onPress}
+        />
+      ) : null}
       {results ? (
         <SettingsRow
           icon={<Trophy size={24} color={c.text} />}

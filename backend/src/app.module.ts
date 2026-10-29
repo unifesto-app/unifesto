@@ -56,6 +56,7 @@ import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
 import { DefaultImagesModule } from './default-images/default-images.module';
 import { StaysModule } from './stays/stays.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { LoggerModule } from 'nestjs-pino';
 import { jsonLogsEnabled, requestIdFor } from './common/observability';
 
@@ -211,6 +212,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     TrafficModule,
     DefaultImagesModule,
     StaysModule,
+    FeedbackModule,
     IamModule,
   ],
   controllers: [AppController],
