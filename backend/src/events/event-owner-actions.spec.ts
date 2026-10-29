@@ -55,6 +55,7 @@ function build(opts: { event?: Record<string, unknown>; plan?: string } = {}) {
       updateMany: jest.fn(async () => ({ count: 0 })),
       update: jest.fn(async () => event),
     },
+    userCapabilityOverride: { findMany: jest.fn(async () => []) },
     userRole: {
       findMany: jest.fn(async ({ where }: any) => rows.filter((r) => r.userId === where.userId).map(shaped)),
       findFirst: jest.fn(async ({ where }: any) => {

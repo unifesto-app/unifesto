@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -34,7 +35,7 @@ export class SponsorPortalController {
 
   @Get('sponsors/:sponsorId/leads')
   @ApiOperation({ summary: 'Leads captured for one of my sponsors' })
-  leads(@CurrentUser() user: User, @Param('sponsorId') sponsorId: string) {
+  leads(@CurrentUser() user: User, @Param('sponsorId', ParseUUIDPipe) sponsorId: string) {
     return this.portal.getSponsorLeads(user.id, sponsorId);
   }
 
@@ -42,7 +43,7 @@ export class SponsorPortalController {
   @ApiOperation({ summary: 'Booth scan an attendee ticket (the attendee agreed on the prompt)' })
   scan(
     @CurrentUser() user: User,
-    @Param('sponsorId') sponsorId: string,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
     @Body() dto: BoothScanDto,
   ) {
     return this.portal.boothScan(user.id, sponsorId, dto);

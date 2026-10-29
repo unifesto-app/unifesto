@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
 import { PlanConfigService, subscriptionStatus } from '../subscription/plan-config.service';
-import { BRANDING_SPACE_SELECT, resolveSpaceBranding } from '../white-label/branding.util';
+import { BRANDING_SPACE_SELECT, CUSTOM_DOMAIN_SPACE_SELECT, liveCustomDomain, resolveSpaceBranding } from '../white-label/branding.util';
 import { SPACE_DOMAINS_ORPHANED } from '../white-label/white-label.service';
 import {
   CreateSpaceDto,
@@ -215,6 +215,8 @@ export class SpacesService {
               events: { where: NOT_DELETED },
             },
           },
+          domains: CUSTOM_DOMAIN_SPACE_SELECT.domains,
+          subscription: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -235,9 +237,15 @@ export class SpacesService {
         brandingSuspendedAt, // internal branding state, never public
         emailFromName,
         emailReplyTo,
+        domains,
+        subscription,
         ...publicSpace
       } = space;
-      return publicSpace;
+      // K2: the sitemap skips spaces whose canonical is their own domain.
+      const customDomain = subscription
+        ? liveCustomDomain(space, this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding)
+        : null;
+      return { ...publicSpace, customDomain };
     });
 
     return {

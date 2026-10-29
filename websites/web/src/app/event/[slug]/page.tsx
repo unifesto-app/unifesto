@@ -4,7 +4,7 @@ import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { preload } from "react-dom";
-import { getEventBySlug as fetchEvent, UnavailableError, type Event } from "@/lib/api/events";
+import { getEventBySlug as fetchEvent, registrationState, UnavailableError, type Event } from "@/lib/api/events";
 import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
@@ -109,9 +109,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function eventLd(event: Event) {
   const domain = event.branding?.customDomain;
   const base = domain ? `https://${domain}` : SITE.url;
-  const online = /online|virtual/i.test(event.event_type ?? "");
+  const url = `${base}/event/${event.slug}`;
+  // K2: event_type is IN_PERSON | ONLINE | HYBRID; a hybrid event has both.
+  const mode = (event.event_type ?? "").toUpperCase();
+  const online = mode === "ONLINE";
   const host = event.space ?? event.organization;
   const image = event.banner_url ?? event.image_url ?? event.thumbnail_url;
+  const place = {
+    "@type": "Place",
+    name: event.venue || event.city || "Venue to be announced",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: event.city,
+      addressRegion: event.state,
+      addressCountry: event.country || "IN",
+    },
+  };
+  const virtual = { "@type": "VirtualLocation", url };
+  // What the Register button would say, never a blanket InStock. A sale that
+  // has ended (not sold out) has no honest schema.org value, so it's omitted.
+  const availability = {
+    open: "https://schema.org/InStock",
+    upcoming: "https://schema.org/PreOrder",
+    sold_out: "https://schema.org/SoldOut",
+    closed: undefined,
+  }[registrationState(event.tickets, Date.now())];
   return {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -119,33 +141,27 @@ function eventLd(event: Event) {
     description: toSummary(event.short_description) ?? toSummary(event.description, 500),
     startDate: event.start_date,
     endDate: event.end_date || undefined,
-    eventStatus: "https://schema.org/EventScheduled",
+    eventStatus:
+      event.status?.toUpperCase() === "CANCELLED"
+        ? "https://schema.org/EventCancelled"
+        : "https://schema.org/EventScheduled",
     eventAttendanceMode: online
       ? "https://schema.org/OnlineEventAttendanceMode"
-      : "https://schema.org/OfflineEventAttendanceMode",
-    location: online
-      ? { "@type": "VirtualLocation", url: `${base}/event/${event.slug}` }
-      : {
-          "@type": "Place",
-          name: event.venue || event.city || "Venue to be announced",
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: event.city,
-            addressRegion: event.state,
-            addressCountry: event.country || "IN",
-          },
-        },
+      : mode === "HYBRID"
+        ? "https://schema.org/MixedEventAttendanceMode"
+        : "https://schema.org/OfflineEventAttendanceMode",
+    location: online ? virtual : mode === "HYBRID" ? [place, virtual] : place,
     image: image ? [image] : undefined,
-    url: `${base}/event/${event.slug}`,
+    url,
     organizer: host
       ? { "@type": "Organization", name: host.name, url: domain ? `${base}/` : host.slug ? `${SITE.url}/space/${host.slug}` : undefined }
       : { "@type": "Organization", name: SITE.name, url: SITE.url },
     offers: {
       "@type": "Offer",
-      url: `${base}/event/${event.slug}`,
+      url,
       price: event.is_free || event.has_free_tickets ? 0 : (event.price ?? 0),
       priceCurrency: event.currency || "INR",
-      availability: "https://schema.org/InStock",
+      availability,
       validFrom: event.registration_start,
     },
   };
