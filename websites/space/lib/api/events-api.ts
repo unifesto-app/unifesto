@@ -1034,7 +1034,43 @@ export interface CoHostSpace {
 export interface CoHostEntry {
   id: string;
   createdAt: string;
+  /** Null while the invited space hasn't accepted yet. */
+  acceptedAt: string | null;
   space: CoHostSpace;
+}
+
+/** A pending invite for this space to co-host another space's event. */
+export interface CoHostInvite {
+  id: string;
+  createdAt: string;
+  event: {
+    id: string;
+    title: string;
+    slug: string;
+    coverImageUrl: string | null;
+    startDateTime: string;
+    status: string;
+    space: CoHostSpace;
+  };
+}
+
+/** Pending co-host invites for a space. `GET /events/space/:spaceId/co-host-invites`. */
+export async function getCoHostInvites(
+  spaceId: string
+): Promise<{ data: CoHostInvite[] | null; error: ApiError | null }> {
+  return apiCall<CoHostInvite[]>(
+    backendClient.get(`/events/space/${spaceId}/co-host-invites`)
+  );
+}
+
+/** Accept a co-host invite. Decline is `removeCoHost`. `POST /events/:id/co-hosts/:spaceId/accept`. */
+export async function acceptCoHost(
+  eventId: string,
+  spaceId: string
+): Promise<{ data: { success: boolean } | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.post(`/events/${eventId}/co-hosts/${spaceId}/accept`)
+  );
 }
 
 /** A pending offer to hand the event to a co-host. `null` when none is open. */

@@ -116,6 +116,14 @@ export class EventsController {
     );
   }
 
+  @Get('space/:spaceId/co-host-invites')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Pending co-host invites addressed to a space (its Space Admins)' })
+  async listCoHostInvites(@Request() req, @Param('spaceId') spaceId: string) {
+    return this.eventsService.listCoHostInvites(req.user.id, spaceId);
+  }
+
   @Get(':slug')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
@@ -686,6 +694,20 @@ export class EventsController {
       id,
       dto.reviewNote,
     );
+  }
+
+  // Declared after the /co-hosts/transfer/* routes, which it would otherwise
+  // shadow with spaceId="transfer".
+  @Post(':id/co-hosts/:spaceId/accept')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Accept a co-host invite (invited space only). Decline = DELETE' })
+  async acceptCoHost(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('spaceId') spaceId: string,
+  ) {
+    return this.eventsService.acceptCoHost(req.user.id, id, spaceId);
   }
 
   // --- Sub-events (a "big event" grouping several sub-events) ---

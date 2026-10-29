@@ -159,7 +159,11 @@ export class AuthorizationService {
     // i.e. EVENT_EDIT and nothing more. Publish/cancel/delete and team changes
     // stay with the owners (T1); money never flows to co-hosts (D9).
     if (eventId && !capabilities.includes(Action.EVENT_EDIT)) {
-      const coHosts = await this.prisma.eventCoHost.findMany({ where: { eventId }, select: { spaceId: true } });
+      const coHosts = await this.prisma.eventCoHost.findMany({
+        // Accepted links only: a pending invite grants nothing (F8).
+        where: { eventId, acceptedAt: { not: null } },
+        select: { spaceId: true },
+      });
       if (
         coHosts.some((c) =>
           assignments.some((a) =>

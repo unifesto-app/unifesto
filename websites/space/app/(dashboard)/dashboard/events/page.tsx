@@ -16,10 +16,17 @@ import {
   Stack,
   UsersThree,
   ArrowsClockwise,
+  Check,
+  X,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
-import { getSpaceEvents } from "@/lib/api/events-api";
-import type { Event, EventStatus } from "@/lib/api/events-api";
+import {
+  getSpaceEvents,
+  getCoHostInvites,
+  acceptCoHost,
+  removeCoHost,
+} from "@/lib/api/events-api";
+import type { CoHostInvite, Event, EventStatus } from "@/lib/api/events-api";
 import { parseRRuleToState, describeRecurrence } from "@/lib/recurrence";
 import type { SpaceWithHierarchy } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -29,7 +36,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -148,6 +155,87 @@ function EventCover({ event }: { event: Event }) {
   );
 }
 
+/**
+ * Invites from other spaces to co-host their events. Nothing about the event
+ * shows on this space until a Space Admin accepts here (F8).
+ */
+function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: () => void }) {
+  const [invites, setInvites] = useState<CoHostInvite[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    const { data } = await getCoHostInvites(spaceId);
+    setInvites(data ?? []);
+  }, [spaceId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const act = async (invite: CoHostInvite, accept: boolean) => {
+    if (!accept && !confirm(`Decline co-hosting ${invite.event.title}?`)) return;
+    setBusy(invite.id);
+    setError("");
+    const { error } = accept
+      ? await acceptCoHost(invite.event.id, spaceId)
+      : await removeCoHost(invite.event.id, spaceId);
+    setBusy(null);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    await load();
+    if (accept) onAccepted();
+  };
+
+  if (invites.length === 0) return null;
+  return (
+    <Card className="border-primary/30 bg-primary-soft">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShareNetwork className="h-4 w-4 text-primary" weight="bold" />
+          Co-host invites
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Accepting lists the event on this space and credits it as a co-host. Space Admins
+          here can then edit it. Publishing, the team and money stay with the host.
+        </p>
+        {error && <ErrorNotice message={error} />}
+        <ul className="divide-y divide-border rounded-md border border-border bg-background">
+          {invites.map((inv) => (
+            <li key={inv.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{inv.event.title}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  From {inv.event.space.name} · {formatDate(inv.event.startDateTime)}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={busy === inv.id} onClick={() => act(inv, true)}>
+                  <Check className="h-4 w-4" weight="bold" />
+                  Accept
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy === inv.id}
+                  onClick={() => act(inv, false)}
+                >
+                  <X className="h-4 w-4" />
+                  Decline
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SpaceEventsPage() {
   const router = useRouter();
   const spaceId = useSpaceId();
@@ -242,6 +330,10 @@ export default function SpaceEventsPage() {
           ) : undefined
         }
       />
+
+      {spaceId && can("space:manage-settings") && (
+        <CoHostInvites spaceId={spaceId} onAccepted={() => void load()} />
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
