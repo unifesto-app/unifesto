@@ -126,6 +126,8 @@ jobs:
       # source-map upload. .next/cache is restored per lockfile, so a PR's
       # later pushes rebuild incrementally. Lint fails on errors only
       # (--quiet hides the ~200 warnings; see each eslint.config.mjs).
+      # One check per line, never `a && b`: bash -e ignores a failure inside
+      # an && list, so a failing lint used to pass the step (#446).
       - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
@@ -147,7 +149,12 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical && npm test
+          npm ci
+          npx next typegen
+          npx tsc --noEmit -p .
+          npm run lint -- --quiet
+          npm audit --omit=dev --audit-level=critical
+          npm test
           # Legal pages prerender from the API and throw when it's unreachable
           # (on purpose: keep the cached page). A stub that 404s everything
           # builds them as not-found instead.
@@ -176,7 +183,11 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm run lint -- --quiet && npm audit --omit=dev --audit-level=critical
+          npm ci
+          npx next typegen
+          npx tsc --noEmit -p .
+          npm run lint -- --quiet
+          npm audit --omit=dev --audit-level=critical
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
