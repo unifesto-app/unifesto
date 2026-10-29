@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CalendarBlank, CaretDown, CaretRight, Tray } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
+import { getInboxUnread, getMyUnreadCases, MY_READ_EVENT } from "@/lib/api/support";
+import { useWebSession } from "@/lib/auth";
 import { isEventScopedSpace, type SpaceMembership } from "@/console/lib/types/rbac";
 import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 import { useCrumbNames } from "./Breadcrumbs";
 import { useEventNavGroups } from "./EventNav";
-import { BASE_URL, ME_GROUP, resolveNavGroups } from "./nav-config";
+import { BASE_URL, ME_GROUP, currentItem, resolveNavGroups } from "./nav-config";
 
 const isAt = (pathname: string, href: string, exact?: boolean) =>
   pathname === href || (!exact && pathname.startsWith(`${href}/`));
@@ -18,10 +21,10 @@ const isAt = (pathname: string, href: string, exact?: boolean) =>
 /**
  * The sidebar as one tree (the full rail and the phone drawer):
  *
- *   Account   Dashboard · My tickets · My account
- *   Spaces    ▾ the space I'm in: its Dashboard, Events, Members, Finance…
- *                 ▾ the event I'm in, under Events: its Dashboard, Attendees…
- *             ▸ my other spaces: opening one switches to it
+ *   Account     Dashboard · Inbox · My tickets · Support · Saved events · My certificates · My account
+ *   My Spaces   ▾ the space I'm in: its Dashboard, Events, Members, Finance…
+ *                   ▾ the event I'm in, under Events: its Dashboard, Attendees…
+ *               ▸ my other spaces: opening one switches to it
  *
  * Built from the same menus and capability filters as the icon rail.
  */
@@ -31,6 +34,9 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
   const { spaces, currentSpace, setCurrentSpace, access, can, hasAccess } = useSession();
   const names = useCrumbNames();
   const unread = useDeskUnread(currentSpace?.id, can("event:manage-support"), pathname);
+  const mine = useMyUnread();
+  const personal = ME_GROUP.items.filter((i) => !i.paletteOnly);
+  const here = currentItem(personal, pathname);
 
   const inEvent = pathname.match(/^\/console\/events\/([^/]+)/)?.[1];
   const openEvent = inEvent && inEvent !== "new" ? inEvent : null;
@@ -94,20 +100,22 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Console" className="space-y-6 p-3">
       <Section label="Account">
-        {ME_GROUP.items
-          .filter((i) => !i.paletteOnly)
-          .map((i) => {
-            const href = `${BASE_URL}${i.href}`;
-            return (
-              <li key={i.href}>
-                <Row href={href} label={i.label} icon={i.icon} active={isAt(pathname, href, i.exact)} onNavigate={onNavigate} />
-              </li>
-            );
-          })}
+        {personal.map((i) => (
+          <li key={i.href}>
+            <Row
+              href={`${BASE_URL}${i.href}`}
+              label={i.label}
+              icon={i.icon}
+              active={i === here}
+              badge={i.href === "/account/inbox" ? mine.inbox : i.href === "/account/support" ? mine.support : 0}
+              onNavigate={onNavigate}
+            />
+          </li>
+        ))}
       </Section>
 
       {hasAccess && spaces.length > 0 && (
-        <Section label="Spaces">
+        <Section label="My Spaces">
           {spaces.map((space) =>
             space.id === currentSpace?.id ? (
               <li key={space.id}>
@@ -131,6 +139,28 @@ export function ConsoleNav({ onNavigate }: { onNavigate?: () => void }) {
       )}
     </nav>
   );
+}
+
+/** My unread inbox items and support replies: counted on load, after I read some, and each minute. */
+function useMyUnread() {
+  const { session } = useWebSession();
+  const token = session?.token ?? "";
+  const [unread, setUnread] = useState({ inbox: 0, support: 0 });
+  useEffect(() => {
+    if (!token) return;
+    const load = () =>
+      Promise.allSettled([getInboxUnread(token), getMyUnreadCases(token)]).then(([i, c]) =>
+        setUnread({ inbox: i.status === "fulfilled" ? i.value : 0, support: c.status === "fulfilled" ? c.value : 0 }),
+      );
+    load();
+    const timer = setInterval(load, 60_000);
+    window.addEventListener(MY_READ_EVENT, load);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(MY_READ_EVENT, load);
+    };
+  }, [token]);
+  return unread;
 }
 
 /** The event I'm in, open under Events: its name, then its sections. */

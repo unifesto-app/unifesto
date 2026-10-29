@@ -124,20 +124,31 @@ export const NAV_GROUPS: NavGroup[] = [
 /**
  * The personal section (Track V9): /console is everyone's home, attendees
  * included. Shown to every signed-in person, above the space sections, which
- * need a role. Account's own tabs carry the rest; the palette finds them too.
+ * need a role. My account keeps the settings as its own tabs: profile,
+ * circles, notifications, sign-in and delete.
  */
 export const ME_GROUP: NavGroup = {
   label: "Account",
   items: [
     { href: "", label: "Dashboard", icon: House, exact: true, keywords: "home start dashboard" },
+    { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "notifications messages" },
     { href: "/tickets", label: "My tickets", icon: Ticket, keywords: "tickets bookings registrations qr waiting list" },
-    { href: "/account", label: "My account", icon: UserCircle, keywords: "profile account sign-in delete" },
-    { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "notifications messages", paletteOnly: true },
-    { href: "/account/support", label: "My help", icon: Lifebuoy, keywords: "help requests assist support", paletteOnly: true },
-    { href: "/account/saved", label: "Saved events", icon: Heart, keywords: "saved bookmarks", paletteOnly: true },
-    { href: "/account/certificates", label: "My certificates", icon: Certificate, keywords: "certificates", paletteOnly: true },
+    { href: "/account/support", label: "Support", icon: Lifebuoy, keywords: "my help requests assist" },
+    { href: "/account/saved", label: "Saved events", icon: Heart, keywords: "saved bookmarks" },
+    { href: "/account/certificates", label: "My certificates", icon: Certificate, keywords: "certificates" },
+    { href: "/account", label: "My account", icon: UserCircle, keywords: "profile circles notifications sign-in delete" },
   ],
 };
+
+/** The item this page belongs to: the longest href that matches, so Inbox (not My account) on /console/account/inbox. */
+export function currentItem(items: NavItem[], pathname: string): NavItem | undefined {
+  return items
+    .filter((i) => {
+      const href = `${BASE_URL}${i.href}`;
+      return pathname === href || (!i.exact && pathname.startsWith(`${href}/`));
+    })
+    .sort((a, b) => b.href.length - a.href.length)[0];
+}
 
 const PERSONAL = ["/tickets", "/account", "/feedback"].map((p) => `${BASE_URL}${p}`);
 

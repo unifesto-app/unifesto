@@ -8,7 +8,7 @@ import {
   assistStep,
   closeCase,
   getCase,
-  getMyUnreadCases,
+  MY_READ_EVENT,
   rateCase,
   reopenCase,
   replyToCase,
@@ -20,7 +20,6 @@ import {
 import { cancelTicket } from "@/lib/api/tickets";
 import { useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
-import { useAccount } from "../../AccountShell";
 
 const FIELD =
   "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
@@ -32,7 +31,6 @@ const stamp = (iso: string) =>
 export default function CaseThread({ id }: { id: string }) {
   const { session } = useWebSession();
   const token = session?.token ?? "";
-  const { setUnread } = useAccount();
   const [c, setCase] = useState<SupportCase | null>(null);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState("");
@@ -43,12 +41,12 @@ export default function CaseThread({ id }: { id: string }) {
 
   useEffect(() => {
     if (!token) return;
-    // Opening the case reads it on the server, so the Support tab count follows.
+    // Opening the case reads it on the server, so the sidebar's Support count follows.
     load().then(
-      () => getMyUnreadCases(token).then((n) => setUnread((u) => ({ ...u, support: n })), () => {}),
+      () => window.dispatchEvent(new Event(MY_READ_EVENT)),
       (e) => setError(e instanceof Error ? e.message : "Couldn't load this request."),
     );
-  }, [token, load, setUnread]);
+  }, [token, load]);
 
   const act = async (key: string, fn: () => Promise<unknown>, after?: string) => {
     setBusy(key);

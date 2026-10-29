@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/console/lib/context/SessionContext";
-import { BASE_URL, ME_GROUP, resolveNavGroups, type NavGroup, type NavItem } from "./nav-config";
+import { BASE_URL, ME_GROUP, currentItem, resolveNavGroups, type NavGroup } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 
@@ -38,11 +38,7 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const space = hasAccess ? currentSpace : null;
   const navGroups: NavGroup[] = [ME_GROUP, ...(space ? resolveNavGroups(space, access) : [])];
 
-  const isActive = (item: NavItem) => {
-    const fullPath = `${BASE_URL}${item.href}`;
-    if (item.exact) return pathname === fullPath;
-    return pathname === fullPath || pathname.startsWith(`${fullPath}/`);
-  };
+  const current = currentItem(navGroups.flatMap((g) => g.items.filter((i) => !i.paletteOnly)), pathname);
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
@@ -75,7 +71,7 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
               ))}
             <div className="space-y-0.5">
               {group.items.filter((i) => !i.paletteOnly).map((item) => {
-                const active = isActive(item);
+                const active = item === current;
                 const Icon = item.icon;
                 const href = `${BASE_URL}${item.href}`;
 
