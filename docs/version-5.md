@@ -521,7 +521,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
 | K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#349) |
-| K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
+| K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | done (#424) (#424) |
 
 ### L · Live engagement (new)
 
@@ -969,3 +969,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)
 - **2026-10-29** · F5 audit trail: @Audit records who changed roles, permissions, status, plans and reconciled payments (audit_logs), shown on Apex user, space, event detail and IAM (#418)
 - **2026-10-29** · K18 web: Continue with Google (Cognito code + PKCE) and sessions that survive via a host-only httpOnly refresh cookie; access token in memory only; custom domains keep the email code (#421)
+- **2026-10-29** · K11 public web polish: home band, 24px link targets, quicker hero, "1 member", no empty Space banner box, labelled request-space form, scrollable organisers nav on phones, bubble tucks on scroll, empty blog/careers hidden, clean event meta, uncropped portrait posters (#424)
