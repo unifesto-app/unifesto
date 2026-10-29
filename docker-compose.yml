@@ -251,6 +251,9 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_WEB:-}
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+        # K18: Google sign-in on the web; empty keeps the button hidden.
+        NEXT_PUBLIC_COGNITO_DOMAIN: ${WEB_COGNITO_DOMAIN:-}
+        NEXT_PUBLIC_COGNITO_CLIENT_ID: ${WEB_COGNITO_CLIENT_ID:-}
       secrets:
         - sentry_auth_token
     image: unifesto-web:latest
