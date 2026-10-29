@@ -59,6 +59,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { toPage } from '../common/pagination';
+import { Audit } from '../audit/audit';
 
 @ApiTags('Events')
 @Controller('events')
@@ -861,6 +862,7 @@ export class EventsController {
   }
 
   @Post(':id/team')
+  @Audit('event.team.add', (r) => ({ eventId: r.params.id, userId: (r.params.userId ?? r.body?.userId) as string }))
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Add a team member' })
@@ -878,6 +880,7 @@ export class EventsController {
   }
 
   @Delete(':id/team/:userId')
+  @Audit('event.team.remove', (r) => ({ eventId: r.params.id, userId: (r.params.userId ?? r.body?.userId) as string }))
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Remove a team member' })

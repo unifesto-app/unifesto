@@ -19,6 +19,7 @@ import type {
 } from '../auth/authorization/capability-config.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SetGrantDto } from './dto/set-grant.dto';
+import { Audit } from '../audit/audit';
 
 /**
  * Platform-Admin IAM: read and edit the capability matrix that decides which
@@ -45,6 +46,7 @@ export class IamController {
   }
 
   @Patch('matrix')
+  @Audit('iam.matrix')
   @Can(Action.PLATFORM_MANAGE)
   @ApiOperation({ summary: 'Grant or revoke one (role, action) pair' })
   setGrant(@Body() dto: SetGrantDto): Promise<CapabilityMatrix> {
@@ -70,6 +72,7 @@ export class IamController {
   }
 
   @Patch('space/:spaceId/matrix')
+  @Audit('iam.space-matrix', (r) => ({ spaceId: r.params.spaceId }))
   @Can(Action.SPACE_MANAGE_MEMBERS)
   @ApiOperation({ summary: 'Grant or revoke one (role, action) within a space' })
   setSpaceGrant(
@@ -85,6 +88,7 @@ export class IamController {
   }
 
   @Delete('space/:spaceId/role/:code')
+  @Audit('iam.space-reset', (r) => ({ spaceId: r.params.spaceId }))
   @Can(Action.SPACE_MANAGE_MEMBERS)
   @ApiOperation({ summary: "Reset a role to the platform default in this space" })
   resetSpaceRole(

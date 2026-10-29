@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTrail } from "@/components/shared/AuditTrail";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -174,6 +175,7 @@ export default function IamPage() {
                   onCellClick={onCellClick}
                 />
               ))}
+              <AuditTrail filter={{ action: "iam." }} />
             </>
           )}
         </TabsContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTrail } from "@/components/shared/AuditTrail";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -538,6 +539,8 @@ export default function AdminEventDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <AuditTrail filter={{ eventId: id }} />
 
           {/* Cancel dialog — reason is required and goes to attendees. */}
           <Dialog open={cancelOpen} onOpenChange={(o) => !acting && setCancelOpen(o)}>

@@ -1678,6 +1678,34 @@ export class AdminService {
     return { userId, employee: enabled };
   }
 
+  /**
+   * F5: the last 200 audit rows for a user, space or event, or with an action
+   * prefix (`iam.` for the IAM console). One filter is required, so this never
+   * dumps the whole table. Actor names are joined in by hand: rows keep no FKs.
+   */
+  async getAuditLog(f: { userId?: string; spaceId?: string; eventId?: string; action?: string }) {
+    const where: Prisma.AuditLogWhereInput = f.userId
+      ? { userId: f.userId }
+      : f.spaceId
+        ? { spaceId: f.spaceId }
+        : f.eventId
+          ? { eventId: f.eventId }
+          : f.action
+            ? { action: { startsWith: f.action } }
+            : { id: { in: [] } };
+    const rows = await this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
+    const actorIds = [...new Set(rows.flatMap((r) => (r.actorId ? [r.actorId] : [])))];
+    const actors = new Map(
+      (
+        await this.prisma.user.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, fullName: true, username: true },
+        })
+      ).map((u) => [u.id, u]),
+    );
+    return rows.map((r) => ({ ...r, actor: r.actorId ? actors.get(r.actorId) ?? null : null }));
+  }
+
   // ---------------------------------------------------------------------------
   // F4 user IAM: suspend / ban, force logout, per-user capability overrides.
   // Bumping tokenVersion kills every access and refresh token at once.
