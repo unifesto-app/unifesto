@@ -241,6 +241,7 @@ const SUBJECTS: Record<string, SubjectDef> = {
   // Space-to-space requests: the other space decides, Unifesto only watches.
   EventOwnershipTransfer: { title: "Event ownership transfer", href: "/dashboard/events", fields: () => [], actions: [] },
   SubEventAttachRequest: { title: "Sub-event attach", href: "/dashboard/events", fields: () => [], actions: [] },
+  EventCoHost: { title: "Co-host invite", href: "/dashboard/events", fields: () => [], actions: [] },
 };
 
 /** The typed record behind a case, with the actions its own endpoint allows. */
