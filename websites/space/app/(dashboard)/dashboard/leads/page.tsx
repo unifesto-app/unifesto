@@ -12,7 +12,7 @@ import {
   Archive,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   listLeads,
   createLead,
@@ -21,33 +21,33 @@ import {
   type Lead,
   type LeadStatus,
   type LeadSource,
-} from "@/lib/api/leads-api";
-import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/console/lib/api/leads-api";
+import { matches, Pager, SearchBox, usePaged } from "@/console/components/shared/ListControls";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Textarea } from "@/console/components/ui/textarea";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 const STATUS_ORDER: LeadStatus[] = ["NEW", "CONTACTED", "CONVERTED", "ARCHIVED"];
 const STATUS_LABEL: Record<LeadStatus, string> = {

@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { Megaphone, Plus, Trophy } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getAwards, publishAwards } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getAwards, publishAwards } from "@/console/lib/api/hackathon";
 
 /**
  * Winners (port of HackathonWinnersScreen): awards the curator declares for any

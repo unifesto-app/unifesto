@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ChatsCircle, Coffee, Gavel, Plus, UsersFour } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getJudges, getPanels, type Judge, type Panel } from "@/lib/api/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getJudges, getPanels, type Judge, type Panel } from "@/console/lib/api/hackathon";
 
 /** What a judge row says on the right: their queue, a break, or who they take. */
 function judgeSummary(j: Judge): string {

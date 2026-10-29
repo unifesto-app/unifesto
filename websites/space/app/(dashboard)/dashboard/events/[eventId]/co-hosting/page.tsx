@@ -1,6 +1,6 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -23,16 +23,16 @@ import {
   declineOwnershipTransfer,
   cancelOwnershipTransfer,
   type CoHostsResponse,
-} from "@/lib/api/events-api";
-import { searchSpaces, type SpaceSearchResult } from "@/lib/api/spaces-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/events-api";
+import { searchSpaces, type SpaceSearchResult } from "@/console/lib/api/spaces-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 
 function SpaceAvatar({
   name,

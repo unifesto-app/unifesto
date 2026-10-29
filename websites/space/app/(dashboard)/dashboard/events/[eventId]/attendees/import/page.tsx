@@ -11,30 +11,30 @@ import {
   CheckCircle,
   Info,
 } from "@unifesto/unicon/react";
-import { getEventById } from "@/lib/api/events-api";
-import type { Event, EventTicketType } from "@/lib/api/events-api";
+import { getEventById } from "@/console/lib/api/events-api";
+import type { Event, EventTicketType } from "@/console/lib/api/events-api";
 import {
   downloadImportTemplate,
   importAttendees,
   previewImportAttendees,
   type ImportReport,
   type ImportPreview,
-} from "@/lib/api/registrations-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/registrations-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Card, CardContent } from "@/console/components/ui/card";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from "@/console/components/ui/select";
+import { Badge } from "@/console/components/ui/badge";
 
 export default function ImportAttendeesPage() {
   const params = useParams();

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -15,7 +15,7 @@ import {
   UploadSimple,
   WhatsappLogo,
 } from "@unifesto/unicon/react";
-import { getEventById } from "@/lib/api/events-api";
+import { getEventById } from "@/console/lib/api/events-api";
 import {
   getEventRegistrations,
   exportRegistrations,
@@ -24,39 +24,39 @@ import {
   EXPORT_EXTENSION,
   REGISTRATION_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
-} from "@/lib/api/registrations-api";
-import { ExportMenu } from "@/components/shared/ExportMenu";
+} from "@/console/lib/api/registrations-api";
+import { ExportMenu } from "@/console/components/shared/ExportMenu";
 import {
   getManageTicketTypes,
   type Event,
   type EventTicketType,
-} from "@/lib/api/events-api";
+} from "@/console/lib/api/events-api";
 import type {
   Registration,
   RegistrationStatus,
   PaymentStatus,
   ExportFormat,
-} from "@/lib/api/registrations-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { useAccess } from "@/lib/context/SessionContext";
+} from "@/console/lib/api/registrations-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { useAccess } from "@/console/lib/context/SessionContext";
 import { PrintBadgesDialog } from "./PrintBadgesDialog";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 const ITEMS_PER_PAGE = 20;
 

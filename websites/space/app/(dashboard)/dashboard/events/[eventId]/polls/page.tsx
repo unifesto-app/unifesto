@@ -12,16 +12,16 @@ import {
   setPollVisibility,
   type Poll,
   type PollResultsVisibility,
-} from "@/lib/api/polls-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ProjectorButton } from "@/components/events/ProjectorButton";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/polls-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ProjectorButton } from "@/console/components/events/ProjectorButton";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 
 const VISIBILITY: { value: PollResultsVisibility; label: string }[] = [
   { value: "AFTER_VOTE", label: "Attendees see results after voting" },

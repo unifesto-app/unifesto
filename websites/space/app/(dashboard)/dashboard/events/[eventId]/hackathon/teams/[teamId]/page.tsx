@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from "@unifesto/unicon/react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Field, FormCard, HackPage, Notice, hackBase } from "@/components/hackathon/HackParts";
-import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from "@/lib/api/hackathon";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { Input } from "@/console/components/ui/input";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Field, FormCard, HackPage, Notice, hackBase } from "@/console/components/hackathon/HackParts";
+import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from "@/console/lib/api/hackathon";
 
 const NAME_SOURCE: Record<string, string> = {
   FORM: "From their registration",

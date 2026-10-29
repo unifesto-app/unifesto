@@ -16,15 +16,15 @@ import {
   type ManagedQuiz,
   type QuizInput,
   type QuizQuestionInput,
-} from "@/lib/api/quizzes-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/quizzes-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 
 // While a quiz runs, refetch this often so answer counts and the board move.
 // ponytail: plain polling like live polls; use the engagement socket if organisers need sub-second updates.

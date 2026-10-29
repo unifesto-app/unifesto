@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -12,14 +12,14 @@ import {
   Warning,
   ArrowsClockwise,
 } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils/cn";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Badge } from "@/console/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { cn } from "@/console/lib/utils/cn";
 import {
   EventReport,
   ReportSection,
@@ -29,7 +29,7 @@ import {
   generateReport,
   getEventReports,
   regenerateReport,
-} from "@/lib/api/reports-api";
+} from "@/console/lib/api/reports-api";
 
 const ALL_SECTIONS = REPORT_SECTIONS.map((s) => s.key);
 

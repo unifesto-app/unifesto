@@ -1,23 +1,23 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
 import { Lifebuoy, Plus, CaretLeft } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { NewTicketForm } from "@/components/support/NewTicketForm";
-import { RateCase } from "@/components/support/RateCase";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { NewTicketForm } from "@/console/components/support/NewTicketForm";
+import { RateCase } from "@/console/components/support/RateCase";
 import {
   TicketThread,
   statusBadgeVariant,
   priorityBadgeVariant,
-} from "@/components/support/TicketThread";
+} from "@/console/components/support/TicketThread";
 import {
   listTickets,
   getTicket,
@@ -28,7 +28,7 @@ import {
   CATEGORY_LABEL,
   PRIORITY_LABEL,
   type SupportTicket,
-} from "@/lib/api/support-api";
+} from "@/console/lib/api/support-api";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

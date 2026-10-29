@@ -27,7 +27,7 @@ import {
   checkinGroupMembers,
   getRecentCheckins,
   undoCheckin,
-} from "@/lib/api/registrations-api";
+} from "@/console/lib/api/registrations-api";
 import type {
   CheckinStats,
   CheckinAccessMember,
@@ -35,18 +35,18 @@ import type {
   AttendeeSearchResult,
   GroupScanResult,
   RecentCheckin,
-} from "@/lib/api/registrations-api";
-import { EventExportMenu } from "@/components/shared/EventExportMenu";
-import { useAccess } from "@/lib/context/SessionContext";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatCard } from "@/components/shared/StatCard";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/registrations-api";
+import { EventExportMenu } from "@/console/components/shared/EventExportMenu";
+import { useAccess } from "@/console/lib/context/SessionContext";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { cn } from "@/console/lib/utils/cn";
 
 function initials(name?: string | null, username?: string | null): string {
   return (name || username || "?").substring(0, 2).toUpperCase();

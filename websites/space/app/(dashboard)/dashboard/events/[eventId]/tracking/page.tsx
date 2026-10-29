@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { Ticket } from "@unifesto/unicon/react";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PartnersPanel } from "@/components/tracking/PartnersPanel";
-import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/components/tracking/TrackingParts";
-import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/lib/api/tracking";
-import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/lib/api/traffic";
-import { getEventById } from "@/lib/api/events-api";
-import { useAccess } from "@/lib/context/SessionContext";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { PartnersPanel } from "@/console/components/tracking/PartnersPanel";
+import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
+import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/console/lib/api/tracking";
+import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/console/lib/api/traffic";
+import { getEventById } from "@/console/lib/api/events-api";
+import { useAccess } from "@/console/lib/context/SessionContext";
 
 const WEB_URL = "https://www.unifesto.app";
 

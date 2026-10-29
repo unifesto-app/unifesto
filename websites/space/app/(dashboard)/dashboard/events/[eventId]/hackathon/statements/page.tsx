@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useCallback } from "react";
 import { useParams } from "next/navigation";
 import { GearSix, Lightbulb, Plus } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getStatements } from "@/lib/api/hackathon";
-import { psModeSummary } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getStatements } from "@/console/lib/api/hackathon";
+import { psModeSummary } from "@/console/lib/hackathon";
 
 /**
  * The organisers' list of problem statements (port of HackathonStatementsScreen),

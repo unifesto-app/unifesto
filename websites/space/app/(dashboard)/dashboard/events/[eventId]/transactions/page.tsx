@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -13,38 +13,38 @@ import {
   ArrowCounterClockwise,
   Receipt,
 } from "@unifesto/unicon/react";
-import { getEventById } from "@/lib/api/events-api";
-import { getEventTransactions, type EventTransactions } from "@/lib/api/payouts-api";
+import { getEventById } from "@/console/lib/api/events-api";
+import { getEventTransactions, type EventTransactions } from "@/console/lib/api/payouts-api";
 import {
   getAllEventRegistrations,
   exportRegistrations,
   EXPORT_EXTENSION,
-} from "@/lib/api/registrations-api";
-import { ExportMenu } from "@/components/shared/ExportMenu";
-import type { Event } from "@/lib/api/events-api";
+} from "@/console/lib/api/registrations-api";
+import { ExportMenu } from "@/console/components/shared/ExportMenu";
+import type { Event } from "@/console/lib/api/events-api";
 import type {
   Registration,
   PaymentStatus,
   ExportFormat,
-} from "@/lib/api/registrations-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { RequestPayoutDialog } from "@/components/finance/PayoutsPanel";
-import { useAccess } from "@/lib/context/SessionContext";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { StatCard } from "@/components/shared/StatCard";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/registrations-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { RequestPayoutDialog } from "@/console/components/finance/PayoutsPanel";
+import { useAccess } from "@/console/lib/context/SessionContext";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 const ITEMS_PER_PAGE = 20;
 

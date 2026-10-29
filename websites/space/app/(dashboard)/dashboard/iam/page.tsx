@@ -9,13 +9,13 @@ import {
   CircleNotch,
   ArrowCounterClockwise,
 } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 import {
   getSpaceCapabilityMatrix,
   setSpaceCapabilityGrant,
@@ -32,7 +32,7 @@ import {
   roleLabel,
   type SpaceCapabilityMatrix,
   type SpaceMatrixRole,
-} from "@/lib/api/iam-api";
+} from "@/console/lib/api/iam-api";
 
 const cellKey = (code: string, action: string) => `${code}|${action}`;
 

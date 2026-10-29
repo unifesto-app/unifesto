@@ -17,15 +17,15 @@ import {
   type Event,
   type SeriesOccurrence,
   type SeriesOccurrencesResponse,
-} from "@/lib/api/events-api";
-import { parseRRuleToState, describeRecurrence } from "@/lib/recurrence";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/events-api";
+import { parseRRuleToState, describeRecurrence } from "@/console/lib/recurrence";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);

@@ -25,52 +25,52 @@ import {
   type EventVisibility,
   type UpdateEventPayload,
   type Event,
-} from "@/lib/api/events-api";
-import { getCategories, type Category } from "@/lib/api/categories-api";
+} from "@/console/lib/api/events-api";
+import { getCategories, type Category } from "@/console/lib/api/categories-api";
 import {
   EVENT_TYPES,
   VISIBILITY_OPTIONS,
   INDIAN_STATES,
   toLocalDatetime,
   toIso,
-} from "@/lib/constants/event-form";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { RecurrenceEditor } from "@/components/events/RecurrenceEditor";
-import { PlaceSearch } from "@/components/events/PlaceSearch";
-import { AiDraftPanel } from "@/components/events/AiDraftPanel";
-import type { PickedPlace } from "@/lib/googlePlaces";
+} from "@/console/lib/constants/event-form";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { RecurrenceEditor } from "@/console/components/events/RecurrenceEditor";
+import { PlaceSearch } from "@/console/components/events/PlaceSearch";
+import { AiDraftPanel } from "@/console/components/events/AiDraftPanel";
+import type { PickedPlace } from "@/console/lib/googlePlaces";
 import {
   buildRRule,
   parseRRuleToState,
   recurrenceError,
   type RecurrenceState,
-} from "@/lib/recurrence";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/recurrence";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 interface FormState {
   title: string;

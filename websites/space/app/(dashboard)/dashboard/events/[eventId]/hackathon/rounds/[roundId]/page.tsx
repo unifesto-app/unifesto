@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CheckCircle, CircleDashed, Pause, Play, Plus, Stop, Trash, XCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, Field, FormCard, HackPage, Toggle, fromLocalInput, hackBase, toLocalInput, useLivePoll } from "@/components/hackathon/HackParts";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, Field, FormCard, HackPage, Toggle, fromLocalInput, hackBase, toLocalInput, useLivePoll } from "@/console/components/hackathon/HackParts";
 import {
   addCriterion,
   createRound,
@@ -23,8 +23,8 @@ import {
   type RoundKind,
   type RoundStatus,
   type Standing,
-} from "@/lib/api/hackathon";
-import { JUDGING_MODE_OPTIONS, evalStatusLabel, roundStatusLabel, standingLabel } from "@/lib/hackathon";
+} from "@/console/lib/api/hackathon";
+import { JUDGING_MODE_OPTIONS, evalStatusLabel, roundStatusLabel, standingLabel } from "@/console/lib/hackathon";
 
 interface Draft {
   name: string;

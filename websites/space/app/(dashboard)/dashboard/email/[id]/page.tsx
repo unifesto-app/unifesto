@@ -12,22 +12,22 @@ import {
   WarningCircle,
   Trophy,
 } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   getCampaign,
   cancelCampaign,
   type EmailCampaignDetail,
-} from "@/lib/api/email-campaigns-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils/cn";
+} from "@/console/lib/api/email-campaigns-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { StatusBadge } from "@/console/components/shared/StatusBadge";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { cn } from "@/console/lib/utils/cn";
 
 const TARGET_LABEL: Record<string, string> = {
   SPACE_MEMBERS: "All members",

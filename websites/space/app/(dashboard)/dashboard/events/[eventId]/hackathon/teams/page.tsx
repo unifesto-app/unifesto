@@ -4,15 +4,15 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { MagnifyingGlass, UsersThree } from "@unifesto/unicon/react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { Chips, HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getTeams } from "@/lib/api/hackathon";
-import { joinedLabel } from "@/lib/hackathon";
-import { Pager, usePaged } from "@/components/shared/ListControls";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { Chips, HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getTeams } from "@/console/lib/api/hackathon";
+import { joinedLabel } from "@/console/lib/hackathon";
+import { Pager, usePaged } from "@/console/components/shared/ListControls";
 
 type Filter = "all" | "active" | "nops" | "noroom" | "cancelled";
 const FILTERS: { value: Filter; label: string }[] = [

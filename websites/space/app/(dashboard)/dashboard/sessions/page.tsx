@@ -1,7 +1,7 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { inr } from "@/console/lib/utils/money";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,29 +12,29 @@ import {
   Clock,
   Users,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   listSpaceSessions,
   PLATFORM_LABELS,
   type Session,
   type SessionStatus,
-} from "@/lib/api/sessions-api";
-import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { Pager, usePaged } from "@/components/shared/ListControls";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/sessions-api";
+import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
+import { Pager, usePaged } from "@/console/components/shared/ListControls";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { StatusBadge } from "@/console/components/shared/StatusBadge";
+import { Input } from "@/console/components/ui/input";
+import { Button } from "@/console/components/ui/button";
+import { Card, CardContent } from "@/console/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/console/components/ui/select";
 
 /**
  * Status filter plus one pseudo-option: "hidden" is the soft-delete trash view,

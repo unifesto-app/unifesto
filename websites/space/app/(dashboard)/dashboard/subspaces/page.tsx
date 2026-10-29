@@ -1,7 +1,7 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { inr } from "@/console/lib/utils/money";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,20 +11,20 @@ import {
   Ticket,
   Coins,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
+import { useSession } from "@/console/lib/context/SessionContext";
 import {
   getSubSpaceAnalytics,
   type SubSpaceAnalytics,
   type SubSpaceAnalyticsRow,
-} from "@/lib/api/spaces-api";
-import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { StatCard } from "@/components/shared/StatCard";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/spaces-api";
+import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { Badge } from "@/console/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { Skeleton } from "@/console/components/ui/skeleton";
 
 const money = (v: number) => inr(v);
 

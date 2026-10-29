@@ -3,8 +3,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, type Capability } from "@/lib/context/SessionContext";
-import { cn } from "@/lib/utils/cn";
+import { useSession, type Capability } from "@/console/lib/context/SessionContext";
+import { cn } from "@/console/lib/utils/cn";
 
 const TABS: Array<{ href: string; label: string; requires: Capability }> = [
   { href: "/dashboard/settings", label: "General", requires: "space:manage-members" },

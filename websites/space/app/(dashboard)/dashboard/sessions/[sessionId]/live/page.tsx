@@ -1,14 +1,14 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "@unifesto/unicon/react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { joinSession } from "@/lib/api/sessions-api";
-import { Button } from "@/components/ui/button";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { joinSession } from "@/console/lib/api/sessions-api";
+import { Button } from "@/console/components/ui/button";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 
 /**
  * Organiser "go live" surface (web), powered by the LiveKit React SDK.

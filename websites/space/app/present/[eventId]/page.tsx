@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { io } from "socket.io-client";
-import { call } from "@/lib/api/call";
-import { getAuthToken } from "@/lib/utils/auth";
+import { call } from "@/console/lib/api/call";
+import { getAuthToken } from "@/console/lib/utils/auth";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";

@@ -3,12 +3,12 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { HackPage, useLivePoll, useResult, useEventRunning } from "@/components/hackathon/HackParts";
-import { HELP_STATUS_LABEL, escalateHelpQuery, getHelpInbox, setHelpQueryStatus, type HelpInboxQuery, type HelpQueryStatus } from "@/lib/api/hackathon";
-import { formatWhen } from "@/lib/hackathon";
-import { cn } from "@/lib/utils/cn";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { HackPage, useLivePoll, useResult, useEventRunning } from "@/console/components/hackathon/HackParts";
+import { HELP_STATUS_LABEL, escalateHelpQuery, getHelpInbox, setHelpQueryStatus, type HelpInboxQuery, type HelpQueryStatus } from "@/console/lib/api/hackathon";
+import { formatWhen } from "@/console/lib/hackathon";
+import { cn } from "@/console/lib/utils/cn";
 
 /** "5 min ago", falling back to the date after a day. */
 function timeAgo(iso: string): string {

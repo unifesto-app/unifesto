@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plus, Trash, X } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
-import { FormFieldsManager, type QuestionPayload, type QuestionStore } from "@/components/events/form-fields-manager";
-import { Chips, Field, FormCard, HackPage as Page, Toggle } from "@/components/hackathon/HackParts";
-import { getEventById } from "@/lib/api/events-api";
-import type { Result } from "@/lib/api/call";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { ImageUploadCard } from "@/console/components/shared/ImageUploadCard";
+import { FormFieldsManager, type QuestionPayload, type QuestionStore } from "@/console/components/events/form-fields-manager";
+import { Chips, Field, FormCard, HackPage as Page, Toggle } from "@/console/components/hackathon/HackParts";
+import { getEventById } from "@/console/lib/api/events-api";
+import type { Result } from "@/console/lib/api/call";
 import {
   addStayGalleryPhoto,
   createStay,
@@ -40,7 +40,7 @@ import {
   type StayPaymentMode,
   type StayPricing,
   type StayPropertyType,
-} from "@/lib/api/stays";
+} from "@/console/lib/api/stays";
 
 const TYPES = (Object.keys(PROPERTY_LABELS) as StayPropertyType[]).map((k) => ({ value: k, label: PROPERTY_LABELS[k] }));
 

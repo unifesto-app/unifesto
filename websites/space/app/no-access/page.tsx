@@ -3,19 +3,19 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/api/current-user-api";
-import { getMyPortal } from "@/lib/api/sponsor-portal-api";
-import { resolveLanding, apexUrl, type CurrentUser } from "@/lib/types/rbac";
-import { clearAuthToken, getAuthToken } from "@/lib/utils/auth";
-import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/console/lib/api/current-user-api";
+import { getMyPortal } from "@/console/lib/api/sponsor-portal-api";
+import { resolveLanding, apexUrl, type CurrentUser } from "@/console/lib/types/rbac";
+import { clearAuthToken, getAuthToken } from "@/console/lib/utils/auth";
+import { Button } from "@/console/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/components/ui/card";
+import { Skeleton } from "@/console/components/ui/skeleton";
 
 /**
  * Access-restricted screen.

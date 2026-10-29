@@ -14,21 +14,21 @@ import {
   updateEvent,
   updateTicketType,
   type WhatsAppTicketGroup,
-} from "@/lib/api/events-api";
-import { sendWhatsappGroupInvite } from "@/lib/api/registrations-api";
-import { useSession } from "@/lib/context/SessionContext";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/events-api";
+import { sendWhatsappGroupInvite } from "@/console/lib/api/registrations-api";
+import { useSession } from "@/console/lib/context/SessionContext";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 
 /**
  * The event's WhatsApp detail page. Home for the PRIVATE attendee invite group —

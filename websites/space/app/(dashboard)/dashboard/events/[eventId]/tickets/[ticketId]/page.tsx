@@ -1,6 +1,6 @@
 "use client";
 
-import { inr } from "@/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -17,13 +17,13 @@ import {
   updateTicketType,
   type ManagedTicketType,
   type Event,
-} from "@/lib/api/events-api";
+} from "@/console/lib/api/events-api";
 import {
   SALE_STATUS_META,
   isOffSale,
   ticketSaleStatus,
-} from "@/components/events/ticket-status";
-import { Input } from "@/components/ui/input";
+} from "@/console/components/events/ticket-status";
+import { Input } from "@/console/components/ui/input";
 import {
   type Draft,
   toDraft,
@@ -31,20 +31,20 @@ import {
   FormFieldsManager,
   DEFAULT_FIELDS,
   localToIso,
-} from "@/components/events/ticket-editor";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/components/events/ticket-editor";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { cn } from "@/console/lib/utils/cn";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/console/components/ui/card";
 
 export default function TicketDetailPage() {
   const params = useParams();

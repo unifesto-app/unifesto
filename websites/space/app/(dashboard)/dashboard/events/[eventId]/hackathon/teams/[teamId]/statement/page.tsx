@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowCounterClockwise, LockSimple, WarningCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Chips, Field, FormCard, HackPage, StatementCard, hackBase } from "@/components/hackathon/HackParts";
+import { Button } from "@/console/components/ui/button";
+import { Input } from "@/console/components/ui/input";
+import { Textarea } from "@/console/components/ui/textarea";
+import { Chips, Field, FormCard, HackPage, StatementCard, hackBase } from "@/console/components/hackathon/HackParts";
 import {
   assignTeamStatement,
   getStatements,
@@ -17,8 +17,8 @@ import {
   type StatementList,
   type TeamDetail,
   type Theme,
-} from "@/lib/api/hackathon";
-import { formatWhen, placesLabel } from "@/lib/hackathon";
+} from "@/console/lib/api/hackathon";
+import { formatWhen, placesLabel } from "@/console/lib/hackathon";
 
 type Source = "LIST" | "OWN";
 const SOURCES: { value: Source; label: string }[] = [

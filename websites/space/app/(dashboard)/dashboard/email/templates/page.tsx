@@ -11,7 +11,7 @@ import {
   Copy,
   GlobeSimple,
 } from "@unifesto/unicon/react";
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   listTemplates,
   createTemplate,
@@ -19,24 +19,24 @@ import {
   deleteTemplate,
   type EmailTemplate,
   type TemplatePayload,
-} from "@/lib/api/email-templates-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { EmailBodyEditor } from "@/components/shared/EmailBodyEditor";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/console/lib/api/email-templates-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { EmailBodyEditor } from "@/console/components/shared/EmailBodyEditor";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent } from "@/console/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 const EMPTY: TemplatePayload = { name: "", subject: "", body: "" };
 

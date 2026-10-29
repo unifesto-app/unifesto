@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/api/current-user-api";
-import { resolveLanding, apexUrl } from "@/lib/types/rbac";
-import { getAuthToken } from "@/lib/utils/auth";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/console/lib/api/current-user-api";
+import { resolveLanding, apexUrl } from "@/console/lib/types/rbac";
+import { getAuthToken } from "@/console/lib/utils/auth";
+import { Skeleton } from "@/console/components/ui/skeleton";
 
 /**
  * Landing gate. Resolves the signed-in user's surface and forwards them:

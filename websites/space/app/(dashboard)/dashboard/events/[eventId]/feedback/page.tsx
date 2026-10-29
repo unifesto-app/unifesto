@@ -9,14 +9,14 @@ import {
   setFeedbackSettings,
   updateFeedbackQuestion,
   type FeedbackForm,
-} from "@/lib/api/feedback";
-import type { Result } from "@/lib/api/call";
-import { FormFieldsManager, type QuestionStore } from "@/components/events/form-fields-manager";
-import { FeedbackResults } from "@/components/events/FeedbackResults";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/console/lib/api/feedback";
+import type { Result } from "@/console/lib/api/call";
+import { FormFieldsManager, type QuestionStore } from "@/console/components/events/form-fields-manager";
+import { FeedbackResults } from "@/console/components/events/FeedbackResults";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 
 /** Result → the `{ error }` shape FormFieldsManager expects. */
 const asStore = async (p: Promise<Result<unknown>>) => {

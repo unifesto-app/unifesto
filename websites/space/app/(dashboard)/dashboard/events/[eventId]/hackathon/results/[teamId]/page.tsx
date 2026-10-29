@@ -3,12 +3,12 @@
 import { useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { LinkSimple, LockOpen, WarningCircle } from "@unifesto/unicon/react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
-import { getResults, reopenJudgment } from "@/lib/api/hackathon";
-import { formatScore, formatWhen, standingLabel } from "@/lib/hackathon";
+import { Button } from "@/console/components/ui/button";
+import { Card } from "@/console/components/ui/card";
+import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { HackPage, hackBase, useResult } from "@/console/components/hackathon/HackParts";
+import { getResults, reopenJudgment } from "@/console/lib/api/hackathon";
+import { formatScore, formatWhen, standingLabel } from "@/console/lib/hackathon";
 
 /**
  * One team's results (port of HackathonResultTeamScreen): per round its score,

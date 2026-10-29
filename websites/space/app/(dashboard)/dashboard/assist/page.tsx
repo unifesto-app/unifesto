@@ -1,24 +1,24 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
 import { Tray, CaretLeft, ArrowUpRight, ChatCircleDots, Clock, Hourglass, Timer } from "@unifesto/unicon/react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
-import { CannedRepliesDialog } from "@/components/support/CannedRepliesDialog";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { SearchBox, Pager } from "@/components/shared/ListControls";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TicketThread, statusBadgeVariant } from "@/components/support/TicketThread";
-import { AssistCopilot } from "@/components/support/AssistCopilot";
-import { RefundCasePanel } from "@/components/support/RefundCasePanel";
-import { StayCasePanel, type StayCaseBooking } from "@/components/support/StayCasePanel";
-import type { RefundRequest } from "@/lib/api/refunds-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { CannedRepliesDialog } from "@/console/components/support/CannedRepliesDialog";
+import { EmptyState } from "@/console/components/shared/EmptyState";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { SearchBox, Pager } from "@/console/components/shared/ListControls";
+import { Badge } from "@/console/components/ui/badge";
+import { Button } from "@/console/components/ui/button";
+import { Skeleton } from "@/console/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
+import { TicketThread, statusBadgeVariant } from "@/console/components/support/TicketThread";
+import { AssistCopilot } from "@/console/components/support/AssistCopilot";
+import { RefundCasePanel } from "@/console/components/support/RefundCasePanel";
+import { StayCasePanel, type StayCaseBooking } from "@/console/components/support/StayCasePanel";
+import type { RefundRequest } from "@/console/lib/api/refunds-api";
 import {
   listSpaceDesk,
   getTicket,
@@ -38,7 +38,7 @@ import {
   type SupportTicketStatus,
   type CannedReply,
   type DeskTimes,
-} from "@/lib/api/support-api";
+} from "@/console/lib/api/support-api";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

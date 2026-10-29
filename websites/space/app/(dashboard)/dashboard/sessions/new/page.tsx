@@ -1,11 +1,11 @@
 "use client";
 
-import { useSpaceId } from "@/lib/hooks/useSpaceId";
+import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "@unifesto/unicon/react";
-import { createSession } from "@/lib/api/sessions-api";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Button } from "@/components/ui/button";
+import { createSession } from "@/console/lib/api/sessions-api";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { Button } from "@/console/components/ui/button";
 import { SessionForm } from "../SessionForm";
 
 export default function NewSessionPage() {

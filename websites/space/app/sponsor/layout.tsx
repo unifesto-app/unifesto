@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Handshake, SignOut } from "@unifesto/unicon/react";
-import { clearAuthToken } from "@/lib/utils/auth";
-import { Button } from "@/components/ui/button";
+import { clearAuthToken } from "@/console/lib/utils/auth";
+import { Button } from "@/console/components/ui/button";
 
 /**
  * Sponsor portal shell. Deliberately separate from the operator AppShell — a

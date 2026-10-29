@@ -8,18 +8,18 @@ import {
   revokeSponsorUser,
   type Sponsor,
   type SponsorUser,
-} from "@/lib/api/sponsors-api";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/console/lib/api/sponsors-api";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Input } from "@/console/components/ui/input";
+import { Label } from "@/console/components/ui/label";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/console/components/ui/dialog";
 
 /**
  * Manage who can sign in to a sponsor's portal (P5). Invite by the email on a

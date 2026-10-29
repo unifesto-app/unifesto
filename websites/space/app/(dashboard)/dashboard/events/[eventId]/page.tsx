@@ -13,28 +13,28 @@ import {
   CheckCircle,
   Megaphone,
 } from "@unifesto/unicon/react";
-import { publishEvent, deleteEvent } from "@/lib/api/events-api";
-import type { Event } from "@/lib/api/events-api";
-import { getCheckinStats, getAttendeeStats } from "@/lib/api/registrations-api";
-import type { CheckinStats, AttendeeStats } from "@/lib/api/registrations-api";
-import { useLayoutEvent } from "@/components/events/EventLayoutContext";
-import { useAccess } from "@/lib/context/SessionContext";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { publishEvent, deleteEvent } from "@/console/lib/api/events-api";
+import type { Event } from "@/console/lib/api/events-api";
+import { getCheckinStats, getAttendeeStats } from "@/console/lib/api/registrations-api";
+import type { CheckinStats, AttendeeStats } from "@/console/lib/api/registrations-api";
+import { useLayoutEvent } from "@/console/components/events/EventLayoutContext";
+import { useAccess } from "@/console/lib/context/SessionContext";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
+import { Button } from "@/console/components/ui/button";
+import { Badge } from "@/console/components/ui/badge";
+import { Skeleton } from "@/console/components/ui/skeleton";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { StatCard } from "@/components/shared/StatCard";
-import { RegistrationSourcesCard } from "@/components/shared/RegistrationSourcesCard";
-import { EventCompleteness } from "@/components/shared/EventCompleteness";
-import { EventEndOfEventChecklist } from "@/components/hackathon/EndOfEventChecklist";
+} from "@/console/components/ui/card";
+import { StatCard } from "@/console/components/shared/StatCard";
+import { RegistrationSourcesCard } from "@/console/components/shared/RegistrationSourcesCard";
+import { EventCompleteness } from "@/console/components/shared/EventCompleteness";
+import { EventEndOfEventChecklist } from "@/console/components/hackathon/EndOfEventChecklist";
 import { AnnounceDialog } from "./AnnounceDialog";
 
 function formatDateTime(iso: string) {
