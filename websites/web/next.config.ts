@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
       },
       {
+        // My tickets pays for waiting-list spots with the same checkout.
+        source: '/tickets',
+        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
+      },
+      {
         // Serve apple-app-site-association with correct content type for iOS Universal Links
         source: '/.well-known/apple-app-site-association',
         headers: [
