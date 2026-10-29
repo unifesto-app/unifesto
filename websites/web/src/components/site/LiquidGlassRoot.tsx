@@ -6,17 +6,10 @@ import { useEffect, useRef, type ReactNode } from "react";
    `data-glass` refract the root's other children behind them. Until the
    effect is running (and with no WebGL, or reduced transparency) the cards
    keep their solid fill; `lg-live` on the root hands the fill to the glass.
-   `ground` adds a class to the layer the glass refracts (see globals.css);
-   `false` drops it when the root's own children already cover it. */
-export default function LiquidGlassRoot({
-  className,
-  ground,
-  children,
-}: {
-  className?: string;
-  ground?: string | false;
-  children: ReactNode;
-}) {
+   The glass can't see the root's own background or anything outside the
+   root: what it refracts starts from the section's ground colour
+   (--stage-ground), with the root's children drawn on top. */
+export default function LiquidGlassRoot({ className, children }: { className?: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +40,7 @@ export default function LiquidGlassRoot({
         glassElements: root.querySelectorAll<HTMLElement>(":scope > [data-glass]"),
         // Frosted glass: blur what's behind, no tint.
         defaults: { blurAmount: 0.35, cornerRadius: 12, zRadius: 24, edgeHighlight: 0.12 },
+        backdrop: getComputedStyle(root).getPropertyValue("--stage-ground").trim() || "#000",
       });
       if (id !== run) return next.destroy();
       instance = next;
@@ -91,8 +85,6 @@ export default function LiquidGlassRoot({
 
   return (
     <div ref={ref} className={className}>
-      {/* The glass can't see the root's own background: this ground is what it refracts. */}
-      {ground !== false && <div aria-hidden="true" className={ground ? `lg-ground ${ground}` : "lg-ground"} />}
       {children}
     </div>
   );

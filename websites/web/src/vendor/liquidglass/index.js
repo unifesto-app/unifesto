@@ -5,9 +5,10 @@
  * MIT licence (declared in the package's package.json; the repo ships no
  * LICENSE file). Bundles html-to-image by bubkoo (MIT).
  *
- * Vendored as the package's built dist/index.js. Two local patches, marked
- * "Unifesto patch": prefetchFontEmbedCSS() skips font embedding, and the
- * renderer's destroy() releases its WebGL context.
+ * Vendored as the package's built dist/index.js. Three local patches, marked
+ * "Unifesto patch": prefetchFontEmbedCSS() skips font embedding, the
+ * renderer's destroy() releases its WebGL context, and a `backdrop` option
+ * sets the scene's starting colour (was always white).
  * Not installed from npm because the package's own postinstall runs
  * patch-package, which it lists only as a devDependency, so `npm ci` fails
  * for anyone who installs it. To update: copy a newer dist/index.js here.
@@ -1786,7 +1787,9 @@ var LiquidGlass = class _LiquidGlass {
   // ────────────────────────────────────────────
   // Constructor (prefer LiquidGlass.init)
   // ────────────────────────────────────────────
-  constructor({ root, glassElements, defaults = {} }) {
+  constructor({ root, glassElements, defaults = {}, backdrop = "#ffffff" }) {
+    // Unifesto patch: the colour the scene behind each glass starts from.
+    this.backdrop = backdrop;
     /** Current frames-per-second (updated every frame). */
     this.fps = 0;
     this._running = false;
@@ -2614,7 +2617,7 @@ var LiquidGlass = class _LiquidGlass {
     } else {
       this._sceneCtx.clearRect(0, 0, width, height);
     }
-    this._sceneCtx.fillStyle = "#ffffff";
+    this._sceneCtx.fillStyle = this.backdrop;
     this._sceneCtx.fillRect(0, 0, width, height);
   }
   _glassHasDynamicContributors(currentGlass, sampleRect, rootRect, dpr) {
