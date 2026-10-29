@@ -34,6 +34,7 @@ import { clearSession, getSession, setSession, startSession, useWebSession, type
 import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { storedUtm, withStoredUtm } from "@/lib/utm";
+import { CHECKOUT_JS, checkout } from "@/lib/razorpay";
 
 const FIELD =
   "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
@@ -47,17 +48,6 @@ type Done = { kind: "in" | "already" | "waitlisted" | "confirming"; registration
 /** ₹ from paise: "₹499", "₹524.95". */
 const inr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-interface RazorpayPayment {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-}
-declare global {
-  interface Window {
-    // Razorpay Standard Checkout (checkout.razorpay.com/v1/checkout.js).
-    Razorpay?: new (options: Record<string, unknown>) => { open(): void };
-  }
-}
 
 interface Props {
   event: Event;
@@ -246,24 +236,16 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     }
   };
 
-  /** Razorpay Standard Checkout: resolves with the signed payment, rejects when closed unpaid. */
   const pay = (key: string, orderId: string, amount: number, currency: string, s: WebSession) =>
-    new Promise<RazorpayPayment>((resolve, reject) => {
-      if (!window.Razorpay) return reject(new Error("Payment didn't load. Check your connection and try again."));
-      new window.Razorpay({
-        key,
-        order_id: orderId,
-        amount,
-        currency,
-        name: event.branding?.name ? event.space?.name || "Unifesto" : "Unifesto",
-        description: event.title,
-        prefill: { name: s.fullName || "", email: s.email, contact: phone ? mobileNumber : "" },
-        theme: { color: event.branding?.color || "#3491ff" },
-        handler: resolve,
-        // A failed attempt stays inside the sheet so the buyer can try another
-        // method; only closing it ends this attempt.
-        modal: { ondismiss: () => reject(new Error("Payment not completed. Nothing was charged. Try again when you're ready.")) },
-      }).open();
+    checkout({
+      key,
+      orderId,
+      amount,
+      currency,
+      name: event.branding?.name ? event.space?.name || "Unifesto" : "Unifesto",
+      description: event.title,
+      prefill: { name: s.fullName || "", email: s.email, contact: phone ? mobileNumber : "" },
+      color: event.branding?.color || "#3491ff",
     });
 
   const applyCoupon = run(async () => {
@@ -636,7 +618,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     <main className="min-h-screen overflow-x-hidden bg-canvas" style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {individual.some((t) => t.price > 0) && (
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" nonce={nonce} />
+        <Script src={CHECKOUT_JS} strategy="afterInteractive" nonce={nonce} />
       )}
       <Navbar />
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
