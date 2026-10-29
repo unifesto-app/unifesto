@@ -4859,8 +4859,12 @@ model BlogPost {
   featured Boolean    @default(false)
   status   BlogStatus @default(DRAFT)
 
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  createdBy   String?   @map("created_by") @db.Uuid
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  /// A DRAFT with this set goes live on its own at this time (K3).
+  scheduledFor  DateTime? @map("scheduled_for") @db.Timestamptz(6)
+  /// Slugs this post had while public; they redirect to `slug` (K3).
+  previousSlugs String[]  @default([]) @map("previous_slugs")
+  createdBy     String?   @map("created_by") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

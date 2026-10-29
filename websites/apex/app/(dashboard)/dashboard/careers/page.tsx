@@ -42,6 +42,7 @@ import {
   type CareerInput,
   type CareerStatus,
 } from "@/lib/api/careers-api";
+import { useUnsavedGuard } from "@/lib/utils/use-unsaved-guard";
 
 const STATUS_BADGE: Record<
   CareerStatus,
@@ -74,6 +75,18 @@ export default function CareersPage() {
   }, [load]);
 
   const handleDelete = async (c: Career) => {
+    // K3: a role with applicants is closed, never deleted (that would drop
+    // the applications and their résumés).
+    const applicants = c._count?.applications ?? 0;
+    if (applicants > 0) {
+      if (c.status === "CLOSED") {
+        return setError(`"${c.title}" has ${applicants} application${applicants === 1 ? "" : "s"}, so it stays closed instead of being deleted.`);
+      }
+      if (!window.confirm(`"${c.title}" has ${applicants} application${applicants === 1 ? "" : "s"}, so it can't be deleted. Close it instead? It leaves the careers page and the applications are kept.`)) return;
+      const { error: err } = await updateCareer(c.id, { status: "CLOSED" });
+      if (err) return setError(err.message);
+      return setCareers((cs) => cs.map((x) => (x.id === c.id ? { ...x, status: "CLOSED" } : x)));
+    }
     if (!window.confirm(`Delete "${c.title}"? This cannot be undone.`)) return;
     const { error: err } = await deleteCareer(c.id);
     if (err) return setError(err.message);
@@ -159,7 +172,8 @@ export default function CareersPage() {
                   >
                     <PencilSimple className="h-4 w-4" /> Edit
                   </Button>
-                  <Button aria-label="Delete"
+                  <Button aria-label={c._count?.applications ? "Close role" : "Delete"}
+                    title={c._count?.applications ? "Has applications: close instead of delete" : undefined}
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(c)}
@@ -203,7 +217,7 @@ function CareerDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({
+  const [initial] = useState(() => ({
     title: career?.title ?? "",
     department: career?.department ?? "",
     location: career?.location ?? "",
@@ -215,8 +229,10 @@ function CareerDialog({
     benefits: arrayToLines(career?.benefits ?? []),
     salaryRange: career?.salaryRange ?? "",
     status: (career?.status ?? "DRAFT") as CareerStatus,
-  });
+  }));
+  const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const guardedClose = useUnsavedGuard(!saving && JSON.stringify(form) !== JSON.stringify(initial));
   const [err, setErr] = useState("");
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
@@ -250,7 +266,7 @@ function CareerDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && guardedClose(onClose)}>
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{career ? "Edit role" : "New role"}</DialogTitle>
@@ -362,7 +378,7 @@ function CareerDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
+          <Button variant="outline" onClick={() => guardedClose(onClose)} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={save} disabled={saving}>
