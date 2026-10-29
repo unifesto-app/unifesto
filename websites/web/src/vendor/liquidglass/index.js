@@ -5,8 +5,9 @@
  * MIT licence (declared in the package's package.json; the repo ships no
  * LICENSE file). Bundles html-to-image by bubkoo (MIT).
  *
- * Vendored as the package's built dist/index.js. One local patch, marked
- * "Unifesto patch": prefetchFontEmbedCSS() skips font embedding.
+ * Vendored as the package's built dist/index.js. Two local patches, marked
+ * "Unifesto patch": prefetchFontEmbedCSS() skips font embedding, and the
+ * renderer's destroy() releases its WebGL context.
  * Not installed from npm because the package's own postinstall runs
  * patch-package, which it lists only as a devDependency, so `npm ci` fails
  * for anyone who installs it. To update: copy a newer dist/index.js here.
@@ -1674,6 +1675,9 @@ var GlassRenderer = class {
       gl.deleteProgram(this.blitP);
       gl.deleteProgram(this.blurP);
       gl.deleteProgram(this.glassP);
+      // Unifesto patch: give the context back now, not at garbage collection.
+      // A theme switch rebuilds every glass, and browsers keep ~16 contexts.
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     }
     this.canvas.remove();
   }

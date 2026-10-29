@@ -508,9 +508,9 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 }
 
 /* ─── Surfaces ───────────────────────────────────────────────────────── */
-.surface-night { background: var(--night); color: var(--paper); }
+.surface-night { background: var(--night); color: var(--paper); --stage-ground: var(--night); }
 .surface-night-2 { background: var(--night-2); color: var(--paper); }
-.surface-paper { background: var(--paper-bg); color: var(--ink); box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.06); }
+.surface-paper { background: var(--paper-bg); color: var(--ink); box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.06); --stage-ground: var(--paper-bg); }
 /* The old blue CTA band becomes a horizon: black with light rising from
    the bottom edge, the same glow as the hero floor. */
 .surface-blue {
@@ -620,6 +620,9 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
    transform/opacity/filter animate (compositor-only), except the floor's
    background-position. */
 .cosmos { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* The shade: a light Unifesto blue (#0062ff) glowing along the orbits. */
+:root { --shade: 77 141 255; --shade-a: 0.3; }
+:root[data-theme="light"] { --shade: 143 180 255; --shade-a: 0.6; }
 
 .cosmos-stars {
   position: absolute; inset: -10%;
@@ -638,10 +641,12 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes twinkle { to { opacity: .45; } }
 
-/* Orbits: hairline ellipses, drifting so slowly you feel rather than see it. */
+/* Orbits: hairline ellipses, drifting so slowly you feel rather than see it.
+   The shade is a soft band of light hugging each line, both sides. */
 .cosmos-orbit {
   position: absolute; border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07);
+  --band: rgb(var(--shade) / var(--shade-a));
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07), inset 0 0 7vmax 2vmax var(--band), 0 0 7vmax 2vmax var(--band);
   animation: fade-in 2000ms var(--ease-out-expo) 600ms both, orbit 140s linear infinite;
 }
 .cosmos-orbit-a { width: 150vmax; height: 150vmax; top: -88vmax; right: -66vmax; }
@@ -720,16 +725,62 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 /* LiquidGlassRoot: once the effect runs (`lg-live`), the card's own fill and
    shadow give way to the frosted glass canvas drawn behind its content. */
 .lg-live > [data-glass] > div { background: transparent; box-shadow: none; }
-/* What the glass refracts: the page's ground, reaching past the root so a card
-   hanging off its edge (the hero's sits 6% left) still has something behind
-   it. The edges fade, so thin lines behind it fade out instead of stopping. */
+/* The glass canvas sits at z-index -1 inside its card: keep it in the card. */
+[data-glass] { isolation: isolate; }
+/* What the glass refracts: the section's ground, reaching past the root so a
+   card hanging off its edge (the hero's sits 6% left) still has something
+   behind it. The edges fade, so thin lines behind it fade out instead of
+   stopping. */
 .lg-ground {
-  position: absolute; inset: -40px -24px -40px -128px; background: var(--night);
+  position: absolute; inset: -40px -24px -40px -128px; background: var(--stage-ground, var(--night));
   -webkit-mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(to right, transparent, #000 64px, #000 calc(100% - 24px), transparent), linear-gradient(to bottom, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   mask-composite: intersect;
 }
+
+/* ─── Shade cards ────────────────────────────────────────────────────── */
+/* ShadeCard: the hero's two orbits redrawn at card scale (same numbers, in
+   card widths instead of vmax), each a hairline with one accent's shade
+   glowing along it, under heavy overlay grain (ElevenLabs' card recipe:
+   colour, then a 128px noise tile blended with overlay at ~half strength).
+   By night the shade glows out of a deep base; by day it's airy. --s1 is the
+   accent itself (the big orbit), --s2 its partner (the low one), --s3 the
+   base. Base, orbits and grain are one element: the glass photographs each
+   child of its root alone, so a separate grain layer would lose its blend
+   and land as a grey wash. */
+.shade-card { position: relative; isolation: isolate; overflow: hidden; border-radius: 1rem; }
+.shade-fill {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  isolation: isolate; container-type: inline-size;
+  background: var(--s3);
+}
+.shade-orbits { position: absolute; inset: 0; }
+.shade-orbits::before, .shade-orbits::after {
+  content: ""; position: absolute; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .16), inset 0 0 14cqw 4cqw var(--band), 0 0 14cqw 4cqw var(--band);
+}
+.shade-orbits::before { --band: var(--s1); width: 150cqw; height: 150cqw; top: -88cqw; right: -66cqw; }
+.shade-orbits::after { --band: var(--s2); width: 180cqw; height: 120cqw; left: -60cqw; bottom: -96cqw; }
+.shade-fill::after {
+  content: ""; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px;
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+}
+.shade-sky   { --s1: #90d5ff; --s2: #2f6bff; --s3: #070d1c; }
+.shade-mint  { --s1: #90e4c1; --s2: #1f7a5c; --s3: #061410; }
+.shade-ivory { --s1: #f7f0e0; --s2: #9a7444; --s3: #140f08; }
+.shade-blue  { --s1: #8fb4ff; --s2: #0062ff; --s3: #050a1f; }
+:root[data-theme="light"] .shade-sky   { --s1: #90d5ff; --s2: #8fb4ff; --s3: #e9f3ff; }
+:root[data-theme="light"] .shade-mint  { --s1: #90e4c1; --s2: #b7ead3; --s3: #eef9f3; }
+:root[data-theme="light"] .shade-ivory { --s1: #f7f0e0; --s2: #e8d3ad; --s3: #fbf7ee; }
+:root[data-theme="light"] .shade-blue  { --s1: #b9cfff; --s2: #8fb4ff; --s3: #eef3ff; }
+/* Frosted glass over a vivid shade keeps a translucent fill, so the panel's
+   small text stays readable while the colour shows through. */
+.shade-card.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.5); }
+:root[data-theme="light"] .shade-card.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.55); }
 .legal h3 { margin: 1.4rem 0 0.5rem; font-size: 15px; color: var(--paper); }
 .legal a:not([class]) { color: var(--paper); text-decoration: underline; text-decoration-color: rgb(var(--glow) / 0.35); }
 .legal table { width: 100%; font-size: 14px; border-collapse: collapse; }
@@ -794,7 +845,7 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* ─── Grain ──────────────────────────────────────────────────────────── */
 /* Film grain over every page: a tiled SVG turbulence texture (rasterised
-   once, no animation), faint enough that text stays crisp. White specks by
+   once, no animation), strong but still under the text. White specks by
    night, dark specks by day (the same texture, inverted). Above the z-50
    chrome so the whole page shares one grain; it never takes clicks. */
 body::after {
@@ -804,6 +855,6 @@ body::after {
   z-index: 60;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.07;
+  opacity: 0.12;
 }
-:root[data-theme="light"] body::after { filter: invert(1); opacity: 0.05; }
+:root[data-theme="light"] body::after { filter: invert(1); opacity: 0.09; }

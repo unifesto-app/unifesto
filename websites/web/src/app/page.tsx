@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
+import ShadeCard, { type Shade } from "@/components/site/ShadeCard";
 import { PassScreen, ManageScreen } from "@/components/visuals/AppScreens";
 import { PILLAR_VISUALS } from "@/components/visuals/Product";
 import { LeaderboardVisual } from "@/components/visuals/Hackathon";
@@ -54,9 +55,12 @@ const orgLd = [
 ];
 
 const HIGHLIGHTS = ["tickets", "door", "money"] as const;
+/* Each job's card in its accent: tickets sky, the door mint, money ivory. */
+const PILLAR_SHADES: Record<(typeof HIGHLIGHTS)[number], Shade> = { tickets: "sky", door: "mint", money: "ivory" };
+const PANEL_CARD = "w-full max-w-[30rem] p-8 sm:p-10";
 
 export default function Home() {
-  const pillars = HIGHLIGHTS.map((id) => PILLARS.find((p) => p.id === id)!);
+  const pillars = HIGHLIGHTS.map((id) => ({ ...PILLARS.find((p) => p.id === id)!, shade: PILLAR_SHADES[id] }));
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-canvas">
       <JsonLd data={orgLd} />
@@ -71,7 +75,9 @@ export default function Home() {
         </h2>
         <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-12">
           <article className="flex flex-col">
-            <PassScreen />
+            <ShadeCard shade="sky" className="flex justify-center px-6 py-10">
+              <PassScreen />
+            </ShadeCard>
             <h3 className="mt-10 text-xl text-ink">For people going</h3>
             <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-ink/70">
               Find events near you, register in a few taps, and walk in with the pass on your phone. The Unifesto app is
@@ -82,7 +88,9 @@ export default function Home() {
             </Link>
           </article>
           <article className="flex flex-col">
-            <ManageScreen />
+            <ShadeCard shade="mint" className="flex justify-center px-6 py-10">
+              <ManageScreen />
+            </ShadeCard>
             <h3 className="mt-10 text-xl text-ink">For people running it</h3>
             <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-ink/70">
               Your club or institution gets a Space for the team, every event, the door and the money. Run the day from
@@ -105,7 +113,20 @@ export default function Home() {
         </p>
         {pillars.map((p, i) => {
           const Visual = PILLAR_VISUALS[p.id];
-          return <FeatureRow key={p.id} title={p.title} lede={p.lede} points={p.points.slice(0, 3)} visual={<Visual />} flip={i % 2 === 1} />;
+          return (
+            <FeatureRow
+              key={p.id}
+              title={p.title}
+              lede={p.lede}
+              points={p.points.slice(0, 3)}
+              visual={
+                <ShadeCard shade={p.shade} glass className={PANEL_CARD}>
+                  <Visual />
+                </ShadeCard>
+              }
+              flip={i % 2 === 1}
+            />
+          );
         })}
         <Link href="/organisers" className="btn btn-lg btn-secondary mt-4">
           Everything organisers get
@@ -119,7 +140,11 @@ export default function Home() {
           id="hack-heading"
           title="Hackathons, judged properly."
           lede="Teams, problem statements, rounds with weighted rubrics, judge panels, a help desk and a live leaderboard. The whole hackathon, from registration to certificates, in the same Space."
-          visual={<LeaderboardVisual />}
+          visual={
+            <ShadeCard shade="blue" glass className={PANEL_CARD}>
+              <LeaderboardVisual />
+            </ShadeCard>
+          }
         >
           <Link href="/sprint" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
             How hackathons run on Unifesto Sprint <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
