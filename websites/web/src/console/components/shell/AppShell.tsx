@@ -16,7 +16,7 @@ import {
 import { signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import { Skeleton } from "@/console/components/ui/skeleton";
-import { SpaceSwitcher } from "./SpaceSwitcher";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { isPersonalPath } from "./nav-config";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
@@ -27,7 +27,7 @@ import { LegalAcceptSheet } from "./LegalAcceptSheet";
  * Authenticated shell for everyone signed in (V9). Waits for the session;
  * accounts with no space role (attendees, members) get the personal pages,
  * and any space page sends them home. Frames the chrome: wordmark, space
- * switcher (with a role), and the signed-in user.
+ * where I am (breadcrumbs), and the signed-in user.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Space
           </span>
           <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
-          {hasAccess && <SpaceSwitcher />}
+          <Breadcrumbs />
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
