@@ -27,6 +27,8 @@ export declare class LiquidGlass {
     root: HTMLElement;
     glassElements?: NodeListOf<HTMLElement> | HTMLElement[];
     defaults?: Partial<GlassConfig>;
+    /** Unifesto patch: the scene's starting colour behind the glass (default white). */
+    backdrop?: string;
   }): Promise<LiquidGlass>;
   fps: number;
   destroy(): void;

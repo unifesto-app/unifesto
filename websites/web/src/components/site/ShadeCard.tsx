@@ -34,7 +34,7 @@ export default function ShadeCard({
     );
   }
   return (
-    <LiquidGlassRoot className={classes} ground={false}>
+    <LiquidGlassRoot className={classes}>
       {layers}
       {/* The panels' own width (Panel is max-w-sm), centred, so the glass
           covers exactly the panel and the gaps match on both sides. */}
