@@ -403,7 +403,7 @@ One support system for everything a person needs help with. Every item is an **A
 | # | Item | Status |
 |---|---|---|
 | F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | done (#417) |
-| F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
+| F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | done (#427) |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | done (#418) |
@@ -978,3 +978,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E10 sponsors: plan gate no longer fails open without a subscription, opt-in and booth scan check the plan, booth scan only valid tickets, UUID-validated routes, roster/opt-in/scan/funnel tests (#410)
 - **2026-10-29** · E7 BoothScan works offline: consented scans queue on the phone and sync on reconnect/foreground; refused ones listed for review (StayScan skipped, Stays removed in S59) (#413)
 - **2026-10-29** · E4 partner share kit done: QR for a partner's tracked link on Partner stats (link + share were already there); E2 web partner portal dropped, covered by X7 Tracking + app Partner stats (#414)
+- **2026-10-29** · F2 feedback timing: checked-in attendees get a push 2 h after the end and a reminder at 48 h (notify() low kinds, once per event), feedback closes at 7 days, optional feedback-unlocks-certificate (#427)
