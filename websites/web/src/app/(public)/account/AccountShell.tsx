@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import SignIn from "@/components/SignIn";
 import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
 import { myTickets, type MyTicket } from "@/lib/api/registration";
+import { getInboxUnread, getMyUnreadCases } from "@/lib/api/support";
 import { clearSession, useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
 
@@ -18,6 +19,9 @@ interface Account {
   spaces: MySpace[];
   setSpaces: (spaces: MySpace[]) => void;
   partnerLinks: PartnerLink[];
+  /** Unread inbox items and support cases, for the tab counts. */
+  unread: { inbox: number; support: number };
+  setUnread: React.Dispatch<React.SetStateAction<{ inbox: number; support: number }>>;
 }
 
 const AccountContext = createContext<Account | null>(null);
@@ -37,19 +41,28 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const [spaces, setSpaces] = useState<MySpace[]>([]);
   const [counts, setCounts] = useState({ going: 0, been: 0 });
   const [partnerLinks, setPartnerLinks] = useState<PartnerLink[]>([]);
+  const [unread, setUnread] = useState({ inbox: 0, support: 0 });
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!token) return;
     let live = true;
     // Only the profile is required; the counts and tabs it feeds just stay empty.
-    Promise.allSettled([getMe(token), myTickets(token), getMySpaces(token), getMyPartnerLinks(token)]).then(([m, t, s, p]) => {
+    Promise.allSettled([
+      getMe(token),
+      myTickets(token),
+      getMySpaces(token),
+      getMyPartnerLinks(token),
+      getInboxUnread(token),
+      getMyUnreadCases(token),
+    ]).then(([m, t, s, p, i, c]) => {
       if (!live) return;
       if (m.status === "fulfilled") setMe(m.value);
       else setError(m.reason instanceof Error ? m.reason.message : "Couldn't load My account.");
       if (t.status === "fulfilled") setCounts(eventCounts(t.value));
       if (s.status === "fulfilled") setSpaces(s.value);
       if (p.status === "fulfilled") setPartnerLinks(p.value);
+      setUnread({ inbox: i.status === "fulfilled" ? i.value : 0, support: c.status === "fulfilled" ? c.value : 0 });
     });
     return () => {
       live = false;
@@ -58,13 +71,15 @@ export default function AccountShell({ children }: { children: React.ReactNode }
 
   const tabs = [
     { href: "/account", label: "Profile" },
-    { href: "/account/sign-in", label: "Sign-in" },
-    { href: "/account/notifications", label: "Notifications" },
+    { href: "/account/inbox", label: "Inbox", count: unread.inbox },
     { href: "/tickets", label: "My tickets" },
+    { href: "/account/support", label: "Support", count: unread.support },
     { href: "/account/saved", label: "Saved events" },
     { href: "/account/certificates", label: "My certificates" },
     { href: "/account/circles", label: "My circles" },
     ...(partnerLinks.length ? [{ href: "/account/partner", label: "Partner stats" }] : []),
+    { href: "/account/notifications", label: "Notifications" },
+    { href: "/account/sign-in", label: "Sign-in" },
     { href: "/account/delete", label: "Delete account" },
   ];
 
@@ -82,7 +97,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   else if (!me) body = error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading My account…</p>;
   else
     body = (
-      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks }}>{children}</AccountContext.Provider>
+      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks, unread, setUnread }}>{children}</AccountContext.Provider>
     );
 
   return (
@@ -107,7 +122,8 @@ export default function AccountShell({ children }: { children: React.ReactNode }
           {session && me && (
             <nav aria-label="Account" className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
               {tabs.map((t) => {
-                const active = pathname === t.href;
+                // A support case keeps its tab lit.
+                const active = pathname === t.href || (t.href !== "/account" && pathname.startsWith(`${t.href}/`));
                 return (
                   <Link
                     key={t.href}
@@ -118,6 +134,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
                     }`}
                   >
                     {t.label}
+                    {!!t.count && <span className="ml-1.5 font-semibold">{t.count}</span>}
                   </Link>
                 );
               })}
