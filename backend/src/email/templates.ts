@@ -728,6 +728,39 @@ export function spaceApprovedEmail(d: SpaceApprovedData): Email {
 }
 
 /** To a Space Admin: someone sent the space a note from its public page. */
+/**
+ * E1: someone was given access by email (sponsor portal, judge or mentor, a
+ * space role). The access is already there: signing in with this address is
+ * all it takes, whether or not they had an account.
+ */
+export interface CollaboratorInviteData {
+  email: string;
+  name?: string | null;
+  inviterName?: string | null;
+  /** "a judge", "a Space Admin", "sponsor portal access"... */
+  role: string;
+  /** What it's for: an event, a space, "Acme at Robotics Club". */
+  target: string;
+  url: string;
+  cta: string;
+}
+
+export function collaboratorInviteEmail(d: CollaboratorInviteData): Email {
+  const by = d.inviterName ? strong(d.inviterName) : 'The organiser';
+  return {
+    subject: `You're invited: ${d.target}`,
+    html: layout(
+      `${h1("You're invited")}
+      ${greet(d.name)}
+      ${p(`${by} gave you ${esc(d.role)} for ${strong(d.target)}.`)}
+      ${p(`Sign in to Unifesto with ${strong(d.email)} and it's there. New to Unifesto? Signing in with this email sets up your account.`)}
+      ${button(d.cta, d.url)}
+      ${small('Not expecting this? Ignore this email. Nothing is shared until you sign in.')}`,
+      `${d.target}: ${d.role}`,
+    ),
+  };
+}
+
 export interface SpaceInquiryData {
   email: string;
   spaceName: string;

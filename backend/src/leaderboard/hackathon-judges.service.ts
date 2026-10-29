@@ -9,6 +9,9 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LeaderboardPanelistKind, Prisma, RoleCode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { findOrCreateUserByEmail, inviteeContact } from '../auth/collaborator-invite';
+import { EmailService } from '../email/email.service';
+import { WEB } from '../email/layout';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { HackathonJudgeUpdateEvent } from '../notifications/notifications.events';
 import { LeaderboardService } from './leaderboard.service';
@@ -50,6 +53,7 @@ export class HackathonJudgesService {
     @Inject(forwardRef(() => LeaderboardGateway))
     private readonly gateway: LeaderboardGateway,
     private readonly events: EventEmitter2,
+    private readonly email: EmailService,
   ) {}
 
   // ── Judges ────────────────────────────────────────────────────────────────
@@ -71,7 +75,8 @@ export class HackathonJudgesService {
 
   /**
    * Add a judge by phone number or email. Someone already judging here is
-   * refused (edit them instead). They're told in the app that they're judging.
+   * refused (edit them instead). They're told in the app that they're judging,
+   * and by email when the account has one (E1: a new judge has no app yet).
    */
   async addJudge(userId: string, eventId: string, dto: AddHackathonJudgeDto) {
     await this.leaderboard.assertCanManage(userId, eventId);
@@ -85,7 +90,7 @@ export class HackathonJudgesService {
       judgeUserId = await this.findOrCreateUserByMobile(mobile, name);
     } else if (dto.email?.trim()) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) throw new BadRequestException('Enter a valid email address.');
-      judgeUserId = await this.leaderboard.findOrCreateUserByEmail(dto.email, name);
+      judgeUserId = await findOrCreateUserByEmail(this.prisma, dto.email, name);
     } else {
       throw new BadRequestException('Add the judge’s phone number or email.');
     }
@@ -117,6 +122,7 @@ export class HackathonJudgesService {
     await this.leaderboard.grantPanelistRole(judgeUserId, eventId, kind, userId);
 
     if (board.enabled) await this.notifyJudges(eventId, [judgeUserId], kind === 'MENTOR' ? 'MENTOR_ADDED' : 'JUDGE_ADDED');
+    await this.sendInvite(userId, eventId, judgeUserId, kind);
     return this.getJudge(userId, eventId, profile.id);
   }
 
@@ -281,20 +287,42 @@ export class HackathonJudgesService {
     });
   }
 
+  /** E1: the judge's invite email, best effort. Accounts with no email are told in the app only. */
+  private async sendInvite(inviterId: string, eventId: string, judgeUserId: string, kind: LeaderboardPanelistKind) {
+    const [to, inviter, event] = await Promise.all([
+      inviteeContact(this.prisma, judgeUserId),
+      this.prisma.user.findUnique({ where: { id: inviterId }, select: { fullName: true } }),
+      this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } }),
+    ]);
+    if (!to || !event) return;
+    await this.email
+      .sendCollaboratorInvite(
+        {
+          email: to.email,
+          name: to.name,
+          inviterName: inviter?.fullName,
+          role: kind === LeaderboardPanelistKind.MENTOR ? 'a mentor spot' : 'a judge spot',
+          target: event.title,
+          url: `${WEB}/app`,
+          cta: 'Get the Unifesto app',
+        },
+        { dedupKey: `invite.${kind.toLowerCase()}:${eventId}:${judgeUserId}`, kind: 'collaborator.invite', userId: judgeUserId },
+      )
+      .catch(() => undefined);
+  }
+
   /**
    * Find an account by phone number, or make one that becomes the judge's when
    * they sign in with that number (sign-in links an unverified account by number).
+   * An existing account keeps its own name (E1).
    */
   private async findOrCreateUserByMobile(mobile: string, name: string): Promise<string> {
     const existing = await this.prisma.user.findUnique({
       where: { mobileNumber: mobile },
-      select: { id: true, fullName: true, deletedAt: true },
+      select: { id: true, deletedAt: true },
     });
     if (existing) {
       if (existing.deletedAt) throw new BadRequestException('That account was closed. Use another number or an email.');
-      if (!existing.fullName && name) {
-        await this.prisma.user.update({ where: { id: existing.id }, data: { fullName: name } }).catch(() => undefined);
-      }
       return existing.id;
     }
     try {

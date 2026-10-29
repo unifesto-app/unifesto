@@ -18,7 +18,10 @@ import {
   UpdateSponsorDto,
   UpdateSponsorTierDto,
 } from './dto/sponsor.dto';
-import { findIdentityByEmail } from '../auth/identifiers';
+import { normalizeEmail } from '../auth/identifiers';
+import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
+import { EmailService } from '../email/email.service';
+import { SPACE_APP } from '../email/layout';
 
 /**
  * Sponsors & lead generation — P1: the space-level sponsor roster, the per-space
@@ -36,6 +39,7 @@ export class SponsorsService {
     private readonly planConfig: PlanConfigService,
     private readonly cache: CacheService,
     private readonly storage: StorageService,
+    private readonly email: EmailService,
   ) {}
 
   /**
@@ -545,11 +549,11 @@ export class SponsorsService {
   }
 
   /**
-   * Invite a person to a sponsor's portal by the email on their Unifesto
-   * account. Access is per-User, so the invitee must already have an account —
-   * we resolve the email to a userId via their identities. No account → a clear
-   * error rather than a dangling invite the schema can't hold (userId is
-   * required, being the source of truth for portal access).
+   * Invite a person to a sponsor's portal by email (E1). Finds their account
+   * or makes a claimable one, so the curator never learns who is on Unifesto
+   * and nobody has to sign up first. The membership starts INVITED, becomes
+   * ACTIVE on their first portal visit (getMySponsors), and an email tells
+   * them where to sign in.
    */
   async inviteSponsorUser(
     spaceId: string,
@@ -558,24 +562,17 @@ export class SponsorsService {
     invitedBy: string,
   ) {
     await this.assertPlanAllowsSponsors(spaceId);
-    await this.getOwnedSponsor(spaceId, sponsorId);
+    const sponsor = await this.getOwnedSponsor(spaceId, sponsorId);
+    const userId = await findOrCreateUserByEmail(this.prisma, email);
 
-    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, email, {
-      select: { userId: true },
-    });
-    if (!identity) {
-      throw new BadRequestException(
-        'No Unifesto account uses that email. Ask them to sign up first, then invite again.',
-      );
-    }
-
+    let member;
     try {
-      return await this.prisma.sponsorUser.create({
+      member = await this.prisma.sponsorUser.create({
         data: {
           sponsorId,
-          userId: identity.userId,
+          userId,
           status: SponsorUserStatus.INVITED,
-          invitedEmail: email,
+          invitedEmail: normalizeEmail(email),
           invitedBy,
         },
         select: SponsorsService.SPONSOR_USER_SELECT,
@@ -591,6 +588,25 @@ export class SponsorsService {
       }
       throw e;
     }
+
+    const [space, inviter] = await Promise.all([
+      this.prisma.space.findUnique({ where: { id: spaceId }, select: { name: true } }),
+      this.prisma.user.findUnique({ where: { id: invitedBy }, select: { fullName: true } }),
+    ]);
+    await this.email
+      .sendCollaboratorInvite(
+        {
+          email: normalizeEmail(email),
+          inviterName: inviter?.fullName,
+          role: 'sponsor portal access',
+          target: space ? `${sponsor.name} at ${space.name}` : sponsor.name,
+          url: `${SPACE_APP}/sponsor`,
+          cta: 'Open the sponsor portal',
+        },
+        { dedupKey: `invite.sponsor:${member.id}`, kind: 'collaborator.invite', userId },
+      )
+      .catch(() => undefined);
+    return member;
   }
 
   async revokeSponsorUser(

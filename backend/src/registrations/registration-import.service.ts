@@ -22,13 +22,13 @@ import {
   type ImportTicketShape,
   type ParsedImportRow,
 } from './manual-import.util';
-import { PaymentStatus, RegistrationStatus, Prisma, Provider, FormFieldType } from '@prisma/client';
+import { PaymentStatus, RegistrationStatus, Prisma, FormFieldType } from '@prisma/client';
 import { GroupSeatsService } from './group-seats.service';
-import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { TermsService, dealColumns } from '../subscription/terms.service';
 import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
+import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
 import { assertSpaceLive } from '../spaces/space-access';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
@@ -171,79 +171,17 @@ export class RegistrationImportService {
   }
 
   /**
-   * Find an account by its email identity, or mint a claimable placeholder one.
-   *
-   * Accounts here are keyed by mobile, not email, so a fresh import row has no
-   * real account and no phone number. We reuse the exact pattern auth uses for
-   * email/OAuth sign-ups: create a User with a synthetic placeholder mobile plus
-   * an EMAIL identity carrying the real address. When that person later signs in
-   * with the same email, auth resolves them by email identity and links — the
-   * imported registration is already theirs, no merge tooling needed.
-   *
-   * The provided mobile is deliberately NOT used as the account's mobileNumber:
-   * it is unverified, may be a typo, and claiming a real number could block that
-   * person's genuine sign-up. It rides along on the registration/group data only.
+   * The shared invite helper (E1) with the import's one extra: an account with
+   * no name at all takes the name on the row. The provided mobile is never the
+   * account's: it is unverified, and claiming a real number could block that
+   * person's own sign-up. It rides along on the registration/group data only.
    */
-  private async findOrCreateUserByEmail(
-    email: string,
-    name: string,
-  ): Promise<string> {
-    const normalized = normalizeEmail(email);
-    const existing = await findIdentityByEmail<{ userId: string; user: { fullName: string | null } | null }>(
-      this.prisma,
-      normalized,
-      { select: { userId: true, user: { select: { fullName: true } } } },
-    );
-    if (existing) {
-      // Backfill a display name if the account never had one (e.g. a bare
-      // placeholder created by an earlier import).
-      if (!existing.user?.fullName && name) {
-        await this.prisma.user
-          .update({ where: { id: existing.userId }, data: { fullName: name } })
-          .catch(() => undefined);
-      }
-      return existing.userId;
-    }
-
-    // Collision-safe placeholder: random 9 digits (not Date.now, which repeats
-    // inside a tight import loop). Retried a few times on the tiny chance of a
-    // unique clash.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const placeholderMobile = `+0${crypto.randomInt(100000000, 999999999)}`;
-      try {
-        const user = await this.prisma.user.create({
-          data: {
-            mobileNumber: placeholderMobile,
-            mobileVerified: false,
-            fullName: name || null,
-            identities: {
-              create: {
-                provider: Provider.EMAIL,
-                providerUserId: normalized,
-                email: normalized,
-                emailVerified: false,
-                isPrimary: true,
-              },
-            },
-          },
-          select: { id: true },
-        });
-        return user.id;
-      } catch (err) {
-        // A concurrent create may have won the email identity race — re-resolve.
-        const raced = await findIdentityByEmail<{ userId: string }>(this.prisma, normalized, {
-          select: { userId: true },
-        });
-        if (raced) return raced.userId;
-        if (attempt === 4) throw err; // exhausted placeholder retries
-      }
-    }
-    // Unreachable, but satisfies the type checker.
-    throw new BadRequestException(`Could not resolve an account for ${email}`);
+  private findOrCreateUserByEmail(email: string, name: string): Promise<string> {
+    return findOrCreateUserByEmail(this.prisma, email, name, { fillMissingName: true });
   }
 
   /**
-   * Read-only counterpart to {@link findOrCreateUserByEmail}: resolve an existing
+   * Read-only counterpart to {@link RegistrationImportService.findOrCreateUserByEmail}: resolve an existing
    * account by its email identity, or `null` if none exists yet. Used by the
    * import preview (dry-run), which must never create the placeholder accounts the
    * real import would — a `null` here is what tells the reviewer "this row would

@@ -12,6 +12,8 @@ import { deleteWithoutMoney } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
+import { WEB } from '../email/layout';
+import { inviteeContact } from '../auth/collaborator-invite';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
@@ -957,6 +959,29 @@ export class SpacesService {
         role: true,
       },
     });
+
+    // E1: they hear about it. No consent step yet: the role is live already.
+    const [to, actor] = await Promise.all([
+      inviteeContact(this.prisma, userId),
+      this.prisma.user.findUnique({ where: { id: actingUserId }, select: { fullName: true } }),
+    ]);
+    if (to) {
+      const admin = roleCode === RoleCode.SPACE_ADMIN;
+      await this.emailService
+        .sendCollaboratorInvite(
+          {
+            email: to.email,
+            name: to.name,
+            inviterName: actor?.fullName,
+            role: admin ? 'the Space Admin role' : 'membership',
+            target: space.name,
+            url: admin ? SPACE_APP : `${WEB}/space/${encodeURIComponent(space.slug)}`,
+            cta: admin ? 'Open the Space app' : 'See the space',
+          },
+          { dedupKey: `invite.space:${userRole.id}`, kind: 'collaborator.invite', userId },
+        )
+        .catch(() => undefined);
+    }
 
     return { message: 'Member added', member: userRole };
   }

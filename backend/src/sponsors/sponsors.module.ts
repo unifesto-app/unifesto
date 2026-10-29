@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CacheModule } from '../cache/cache.module';
+import { EmailModule } from '../email/email.module';
 import { StorageModule } from '../storage/storage.module';
 import { SponsorsController } from './sponsors.controller';
 import { SponsorLeadsController } from './sponsor-leads.controller';
@@ -21,7 +22,7 @@ import { SponsorPortalService } from './sponsor-portal.service';
  * sponsor portal.
  */
 @Module({
-  imports: [AuthModule, CacheModule, StorageModule],
+  imports: [AuthModule, CacheModule, StorageModule, EmailModule],
   controllers: [
     SponsorsController,
     SponsorLeadsController,

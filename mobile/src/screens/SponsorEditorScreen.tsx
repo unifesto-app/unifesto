@@ -177,7 +177,7 @@ export default function SponsorEditorScreen() {
   const invite = async () => {
     const email = inviteEmail.trim();
     if (!EMAIL_RE.test(email)) {
-      AppAlert.alert('Check the email', 'Enter the email on their Unifesto account.');
+      AppAlert.alert('Check the email', 'Enter the email to send their invite to.');
       return;
     }
     setInviting(true);
@@ -362,7 +362,7 @@ export default function SponsorEditorScreen() {
               />
             </SettingsGroup>
             <Text style={[styles.note, { color: c.muted }]}>
-              They need a Unifesto account with this email. Tap a person to remove them.
+              We email them an invite. They sign in with this email, no account needed first. Tap a person to remove them.
             </Text>
             <View style={[styles.pad, { marginTop: spacing[4] }]}>
               <AuthButton

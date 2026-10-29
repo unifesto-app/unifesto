@@ -12,10 +12,8 @@ import {
   LeaderboardPanelistKind,
   LeaderboardRoundStatus,
   Prisma,
-  Provider,
   RoleCode,
 } from '@prisma/client';
-import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { CompetitionUpdateEvent } from '../notifications/notifications.events';
@@ -1395,64 +1393,5 @@ export class LeaderboardService {
       })),
       feedback: myFeedback,
     };
-  }
-
-  // ── Account resolution ────────────────────────────────────────────────────
-
-  /**
-   * Find an account by its email identity, or mint a claimable placeholder one —
-   * the same pattern manual attendee add uses. Accounts are keyed by mobile, so a
-   * fresh invite has no phone number; we create a User with a synthetic
-   * placeholder mobile plus an EMAIL identity carrying the real address. When
-   * that person later signs in with the same email, auth resolves + links them.
-   */
-  async findOrCreateUserByEmail(email: string, name: string): Promise<string> {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized) throw new BadRequestException('A valid email is required.');
-
-    const existing = await this.prisma.userIdentity.findFirst({
-      where: { email: normalized },
-      select: { userId: true, user: { select: { fullName: true } } },
-    });
-    if (existing) {
-      if (!existing.user?.fullName && name) {
-        await this.prisma.user
-          .update({ where: { id: existing.userId }, data: { fullName: name } })
-          .catch(() => undefined);
-      }
-      return existing.userId;
-    }
-
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const placeholderMobile = `+0${crypto.randomInt(100000000, 999999999)}`;
-      try {
-        const user = await this.prisma.user.create({
-          data: {
-            mobileNumber: placeholderMobile,
-            mobileVerified: false,
-            fullName: name || null,
-            identities: {
-              create: {
-                provider: Provider.EMAIL,
-                providerUserId: normalized,
-                email: normalized,
-                emailVerified: false,
-                isPrimary: true,
-              },
-            },
-          },
-          select: { id: true },
-        });
-        return user.id;
-      } catch (err) {
-        const raced = await this.prisma.userIdentity.findFirst({
-          where: { email: normalized },
-          select: { userId: true },
-        });
-        if (raced) return raced.userId;
-        if (attempt === 4) throw err;
-      }
-    }
-    throw new BadRequestException(`Could not resolve an account for ${email}`);
   }
 }

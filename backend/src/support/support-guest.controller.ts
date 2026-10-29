@@ -1,11 +1,12 @@
 import { Body, Controller, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Provider, SupportMessageSide, SupportTicketStatus } from '@prisma/client';
+import { SupportMessageSide, SupportTicketStatus } from '@prisma/client';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupportBot } from './support-bot';
+import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
 
 export class GuestStartDto {
   @IsEmail()
@@ -52,36 +53,12 @@ function tokenOk(ticketId: string, token: string): boolean {
 }
 
 /**
- * Find or create the account behind a guest's email, like a manual attendee
- * add (RegistrationImportService.findOrCreateUserByEmail): a placeholder mobile
- * plus an unverified EMAIL identity, so signing in later with that email links
- * up. Unlike the import, it never renames an existing account: a guest is not
- * verified.
+ * The account behind a guest's email: the shared invite helper (E1), so
+ * signing in later with that email links up. Never renames an existing
+ * account: a guest is not verified.
  */
-export async function findOrCreateGuest(prisma: PrismaService, email: string, name?: string): Promise<string> {
-  const normalized = email.trim().toLowerCase();
-  const existing = await prisma.userIdentity.findFirst({ where: { email: normalized }, select: { userId: true } });
-  if (existing) return existing.userId;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      const user = await prisma.user.create({
-        data: {
-          mobileNumber: `+0${crypto.randomInt(100000000, 999999999)}`,
-          mobileVerified: false,
-          fullName: name?.trim() || null,
-          identities: {
-            create: { provider: Provider.EMAIL, providerUserId: normalized, email: normalized, emailVerified: false, isPrimary: true },
-          },
-        },
-        select: { id: true },
-      });
-      return user.id;
-    } catch (err) {
-      const raced = await prisma.userIdentity.findFirst({ where: { email: normalized }, select: { userId: true } });
-      if (raced) return raced.userId;
-      if (attempt === 4) throw err;
-    }
-  }
+export function findOrCreateGuest(prisma: PrismaService, email: string, name?: string): Promise<string> {
+  return findOrCreateUserByEmail(prisma, email, name);
 }
 
 /**

@@ -561,6 +561,10 @@ export class EmailService {
   // SPACES
   // =====================================================
 
+  async sendCollaboratorInvite(data: T.CollaboratorInviteData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliver('resend', data.email, T.collaboratorInviteEmail(data), { delivery });
+  }
+
   async sendSpaceApproved(data: T.SpaceApprovedData, delivery?: DeliveryOpts): Promise<boolean> {
     return this.deliver('resend', data.email, T.spaceApprovedEmail(data), { delivery });
   }
