@@ -19,7 +19,10 @@ import { NextRequest, NextResponse } from "next/server";
 const TOKEN_COOKIE = "unifesto_token";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 40;
-const PROTECTED_PREFIXES = ["/dashboard", "/sponsor"];
+// Everything is under /console. Login and no-access handle signed-out visitors
+// themselves, and the projector screen signs in with its display link.
+const PUBLIC_PREFIXES = ["/console/login", "/console/no-access", "/console/present"];
+const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(p + "/");
 
 type RateLimitEntry = { count: number; resetAt: number };
 type RateLimitStore = Map<string, RateLimitEntry>;
@@ -28,7 +31,7 @@ const securityHeaders = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  // Camera + mic for this origin only: hosts go live from /dashboard/sessions
+  // Camera + mic for this origin only: hosts go live from /console/sessions
   // and the check-in scanner reads QR codes (B18). Still off for any embed.
   "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(), usb=()",
 };
@@ -130,7 +133,7 @@ export function proxy(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(nonce);
 
-  if (pathname === "/login") {
+  if (pathname === "/console/login") {
     const clientIp = getClientIp(request);
     if (isRateLimited(`${pathname}:${clientIp}`)) {
       return withSecurityHeaders(
@@ -149,18 +152,17 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get(TOKEN_COOKIE)?.value;
   const isAuthenticated = isTokenLive(token);
 
-  const isProtected = PROTECTED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  const isProtected =
+    under(pathname, "/console") && !PUBLIC_PREFIXES.some((p) => under(pathname, p));
 
   if (isProtected && !isAuthenticated) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/console/login", request.url);
     loginUrl.searchParams.set("next", `${pathname}${search}`);
     return withSecurityHeaders(NextResponse.redirect(loginUrl), csp);
   }
 
-  if (pathname === "/login" && isAuthenticated) {
-    return withSecurityHeaders(NextResponse.redirect(new URL("/", request.url)), csp);
+  if (pathname === "/console/login" && isAuthenticated) {
+    return withSecurityHeaders(NextResponse.redirect(new URL("/console", request.url)), csp);
   }
 
   const requestHeaders = new Headers(request.headers);

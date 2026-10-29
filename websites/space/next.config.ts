@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
   // not production. Re-enable if you want StrictMode's other checks back.
   reactStrictMode: false,
   // Note: eslint config moved to eslint.config.mjs (no longer supported in next.config)
+  // Track V: the console lives under /console. The old paths stay forever for
+  // backend emails, Apex links and shipped 4.0.5 builds; the query (mobile's
+  // ?space= switch) passes through. These run before proxy.ts.
+  async redirects() {
+    return [
+      { source: "/", destination: "/console", permanent: true },
+      { source: "/dashboard/:path*", destination: "/console/:path*", permanent: true },
+      { source: "/login", destination: "/console/login", permanent: true },
+      { source: "/no-access", destination: "/console/no-access", permanent: true },
+      { source: "/sponsor/:path*", destination: "/console/sponsor/:path*", permanent: true },
+      { source: "/present/:path*", destination: "/console/present/:path*", permanent: true },
+    ];
+  },
 };
 
 // Source maps upload when SENTRY_AUTH_TOKEN is set (a BuildKit secret in the

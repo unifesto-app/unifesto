@@ -276,7 +276,7 @@ export function AiDraftPanel({
             {applied.agenda > 0 && (
               <p className="text-xs text-muted-foreground">
                 Added {applied.agenda} to the agenda.{" "}
-                <Link href={`/dashboard/events/${eventId}/content`} className="text-primary hover:underline">
+                <Link href={`/console/events/${eventId}/content`} className="text-primary hover:underline">
                   Edit in Content
                 </Link>
               </p>
@@ -314,7 +314,7 @@ export function AiDraftPanel({
             {applied.faqs > 0 && (
               <p className="text-xs text-muted-foreground">
                 Added {applied.faqs} FAQs.{" "}
-                <Link href={`/dashboard/events/${eventId}/content`} className="text-primary hover:underline">
+                <Link href={`/console/events/${eventId}/content`} className="text-primary hover:underline">
                   Edit in Content
                 </Link>
               </p>

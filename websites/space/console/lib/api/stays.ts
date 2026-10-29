@@ -208,7 +208,7 @@ export interface StayQuestionInput {
 }
 
 /** Space-web route of an event's Stay section. */
-export const staysBase = (eventId: string) => `/dashboard/events/${eventId}/stays`;
+export const staysBase = (eventId: string) => `/console/events/${eventId}/stays`;
 
 const json = (method: string, body?: unknown): RequestInit => ({
   method,

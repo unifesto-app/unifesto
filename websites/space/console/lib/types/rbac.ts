@@ -162,7 +162,7 @@ export function isPlatformStaff(user?: CurrentUser | null): boolean {
 
 /**
  * Where the landing gate should send a signed-in user:
- *   - operator role in ≥1 space → stay here (`/dashboard`)
+ *   - operator role in ≥1 space → stay here (`/console`)
  *   - else platform staff       → Apex (they belong there)
  *   - else                      → no-access (signed in, nothing to operate)
  */

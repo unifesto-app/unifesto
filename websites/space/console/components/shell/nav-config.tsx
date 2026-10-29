@@ -52,10 +52,10 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-export const BASE_URL = "/dashboard";
+export const BASE_URL = "/console";
 
 // Workflow-based grouping. Every href is relative to the space base
-// (`/dashboard`) — the current space comes from SessionContext, not the URL.
+// (`/console`) — the current space comes from SessionContext, not the URL.
 // Items carry the capability they need; the nav filters through the same
 // matrix the backend enforces, so a Crew member never sees Finance.
 export const NAV_GROUPS: NavGroup[] = [

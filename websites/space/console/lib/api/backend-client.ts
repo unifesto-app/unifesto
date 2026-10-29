@@ -57,7 +57,7 @@ backendClient.interceptors.response.use(
       const isAuthCall = error.config?.url?.startsWith("/auth/") ?? false;
       if (status === 401 && !isAuthCall && typeof window !== "undefined") {
         clearAuthToken();
-        window.location.href = "/login";
+        window.location.href = "/console/login";
       }
 
       return Promise.reject({

@@ -51,7 +51,7 @@ export function SpaceSwitcher() {
           if (!next) return;
           setCurrentSpace(next);
           // An entity page (an event, a session…) belongs to the old space:
-          // go up to its section, e.g. /dashboard/events/<id>/x → /dashboard/events.
+          // go up to its section, e.g. /console/events/<id>/x → /console/events.
           const section = pathname.split("/").slice(0, 3).join("/");
           if (section !== pathname) router.push(section);
         }}
