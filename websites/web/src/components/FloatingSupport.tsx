@@ -14,6 +14,21 @@ export default function FloatingSupport({ hasHelp }: { hasHelp: boolean }) {
   const [open, setOpen] = useState(false);
   const onLight = useLightSurfaceAt(() => [window.innerWidth - 52, window.innerHeight - 52]);
 
+  // K11: on phones the bubble sits over body copy, so it tucks away while
+  // you scroll down and comes back when you scroll up.
+  const [tucked, setTucked] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 8) return;
+      setTucked(window.innerWidth < 640 && y > last && y > 120);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -30,7 +45,11 @@ export default function FloatingSupport({ hasHelp }: { hasHelp: boolean }) {
     <>
       {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />}
 
-      <div className={`fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6 ${onLight ? "on-light" : ""}`}>
+      <div
+        className={`fixed bottom-4 right-4 z-50 transition-transform duration-200 sm:bottom-6 sm:right-6 ${onLight ? "on-light" : ""} ${
+          tucked && !open ? "translate-y-24" : ""
+        }`}
+      >
         {open && (
           <div
             role="dialog"

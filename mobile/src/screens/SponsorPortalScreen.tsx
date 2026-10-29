@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { dismissBoothScan, syncBoothScans, useBoothScanQueue } from '../lib/offline/boothScanQueue';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
-import { getPortalLeads, type PortalLead } from '../lib/api/sponsorPortal';
+import { getPortalLeads, updatePortalLead, type PortalLead, type PortalLeadStatus } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
 import { shareCsv, slugPart } from '../lib/csvShare';
 import { relativeWhen } from '../utils/eventFormat';
@@ -25,6 +25,8 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 const ICON = 28;
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+const STATUS: Record<PortalLeadStatus, string> = { NEW: 'New', CONTACTED: 'Contacted', CONVERTED: 'Converted', ARCHIVED: 'Archived' };
 
 /**
  * What a sponsor's own people see: the events they sponsor, a booth scanner for
@@ -77,12 +79,34 @@ export default function SponsorPortalScreen() {
   );
   const shown = (leads ?? []).filter((l) => !eventFilter || l.eventId === eventFilter);
   const scans = (leads ?? []).filter((l) => l.source === 'BOOTH_SCAN').length;
+  const converted = (leads ?? []).filter((l) => l.status === 'CONVERTED').length;
+  /** Booth stats per event (E3): "12 leads · 9 scans · 2 converted". */
+  const boothLine = (eventSponsorId: string) => {
+    const mine = (leads ?? []).filter((l) => l.eventSponsorId === eventSponsorId);
+    const n = (k: (l: PortalLead) => boolean) => mine.filter(k).length;
+    return [`${mine.length} lead${mine.length === 1 ? '' : 's'}`, `${n((l) => l.source === 'BOOTH_SCAN')} scans`, `${n((l) => l.status === 'CONVERTED')} converted`].join(' · ');
+  };
+
+  const setStatus = async (l: PortalLead, status: PortalLeadStatus) => {
+    const res = await updatePortalLead(sponsorId!, l.id, { status });
+    if (res.ok) setLeads((ls) => ls?.map((x) => (x.id === l.id ? { ...x, status: res.data.status } : x)) ?? ls);
+    else AppAlert.alert("Couldn't update", res.message);
+  };
 
   const exportCsv = async () => {
     const ok = await shareCsv(
       `${slugPart(sponsor?.name ?? 'sponsor')}-leads`,
-      ['Name', 'Email', 'Phone', 'Source', 'Event', 'Captured'],
-      shown.map((l) => [l.name, l.email, l.phone, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, l.eventTitle, new Date(l.createdAt).toISOString()]),
+      ['Name', 'Email', 'Phone', 'Source', 'Status', 'Note', 'Event', 'Captured'],
+      shown.map((l) => [
+        l.name,
+        l.email,
+        l.phone,
+        SPONSOR_LEAD_SOURCE[l.source] ?? l.source,
+        STATUS[l.status] ?? l.status,
+        l.note,
+        l.eventTitle,
+        new Date(l.createdAt).toISOString(),
+      ]),
     );
     if (!ok) AppAlert.alert("Couldn't export", 'Sharing is not available on this device.');
   };
@@ -93,8 +117,12 @@ export default function SponsorPortalScreen() {
     if (l.phone) buttons.push({ text: 'Call', onPress: () => void Linking.openURL(`tel:${l.phone}`) });
     const copy = [l.name, l.email, l.phone].filter(Boolean).join('\n');
     if (copy) buttons.push({ text: 'Copy details', onPress: () => void Clipboard.setStringAsync(copy) });
+    // Follow-up (E3): one tap to the next step. Notes are edited on the web portal.
+    if (l.status !== 'CONTACTED' && l.status !== 'CONVERTED') buttons.push({ text: 'Mark contacted', onPress: () => void setStatus(l, 'CONTACTED') });
+    if (l.status !== 'CONVERTED') buttons.push({ text: 'Mark converted', onPress: () => void setStatus(l, 'CONVERTED') });
     buttons.push({ text: 'Close', style: 'cancel' });
-    AppAlert.alert(l.name || l.email || 'Lead', `${l.eventTitle} · ${SPONSOR_LEAD_SOURCE[l.source] ?? l.source} · ${shortDate(l.createdAt)}`, buttons);
+    const meta = `${l.eventTitle} · ${SPONSOR_LEAD_SOURCE[l.source] ?? l.source} · ${shortDate(l.createdAt)} · ${STATUS[l.status] ?? l.status}`;
+    AppAlert.alert(l.name || l.email || 'Lead', l.note ? `${meta}\n\n${l.note}` : meta, buttons);
   };
 
   if (!sponsor) {
@@ -133,7 +161,7 @@ export default function SponsorPortalScreen() {
           stats={[
             { label: 'Leads', value: leads?.length ?? 0 },
             { label: 'Booth scans', value: scans },
-            { label: 'Events', value: events.length },
+            { label: 'Converted', value: converted },
           ]}
         />
       </View>
@@ -146,7 +174,7 @@ export default function SponsorPortalScreen() {
               key={e.eventSponsorId}
               icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.primary : c.muted} weight="fill" />}
               label={e.title}
-              value={e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
+              value={leads ? boothLine(e.eventSponsorId) : e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
               onPress={
                 e.leadCaptureEnabled
                   ? () => router.push({ pathname: `/sponsoring/${sponsorId}/scan`, params: { eventSponsorId: e.eventSponsorId, title: e.title, sponsorName: sponsor.name } })
@@ -206,7 +234,9 @@ export default function SponsorPortalScreen() {
                 <View key={l.id}>
                   <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
                   <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)} numberOfLines={1}>
-                    {[SPONSOR_LEAD_SOURCE[l.source] ?? l.source, events.length > 1 && !eventFilter ? l.eventTitle : null, l.email].filter(Boolean).join(' · ')}
+                    {[STATUS[l.status] ?? l.status, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, events.length > 1 && !eventFilter ? l.eventTitle : null, l.email]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 </View>
               ))}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
@@ -118,6 +119,8 @@ export default async function BlogPage({
   const selected = category ?? "all";
 
   const allPosts = await getPosts();
+  // K11: an empty blog is a 404 (not indexed), and Navbar/Footer hide its link.
+  if (!allPosts.length) notFound();
   const categories = ["all", ...Array.from(new Set(allPosts.map((p) => p.category)))];
   const posts =
     selected === "all"

@@ -36,9 +36,11 @@ function toSummary(input: string | undefined, max = 180): string | undefined {
   const text = input
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // strip markdown images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // unwrap markdown links
+    .replace(/\s*[\u2013\u2014]\s*/g, ", ") // K11: no em/en dashes in snippets
     .replace(/[#*_>`~-]/g, " ") // drop markdown punctuation
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/^[^\p{L}\p{N}"'(]+/u, ""); // K11: no leading emoji or punctuation
   if (!text) return undefined;
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }

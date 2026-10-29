@@ -15,6 +15,8 @@ import {
   getMyPortal,
   getPortalLeads,
   boothScan,
+  updatePortalLead,
+  type PortalLeadStatus,
   type PortalSponsor,
   type PortalLead,
 } from "@/lib/api/sponsor-portal-api";
@@ -32,6 +34,13 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+
+const STATUS_LABEL: Record<PortalLeadStatus, string> = {
+  NEW: "New",
+  CONTACTED: "Contacted",
+  CONVERTED: "Converted",
+  ARCHIVED: "Archived",
+};
 
 const SOURCE_LABEL: Record<string, string> = {
   OPT_IN: "Opted in",
@@ -82,14 +91,37 @@ export default function SponsorPortalPage() {
     if (phase === "ready") loadLeads();
   }, [phase, loadLeads]);
 
+  /** Booth stats per event (E3), from the leads on screen so a status change shows at once. */
+  const boothStats = useMemo(() => {
+    const by = new Map<string, { leads: number; scans: number; optIns: number; contacted: number; converted: number }>();
+    for (const l of leads) {
+      const s = by.get(l.eventSponsorId) ?? { leads: 0, scans: 0, optIns: 0, contacted: 0, converted: 0 };
+      s.leads++;
+      if (l.source === "BOOTH_SCAN") s.scans++;
+      if (l.source === "OPT_IN") s.optIns++;
+      if (l.status === "CONTACTED") s.contacted++;
+      if (l.status === "CONVERTED") s.converted++;
+      by.set(l.eventSponsorId, s);
+    }
+    return by;
+  }, [leads]);
+
+  /** Save my follow-up on a lead; the row updates in place (E3). */
+  const follow = async (leadId: string, patch: { status?: PortalLeadStatus; note?: string | null }) => {
+    const { data } = await updatePortalLead(sponsorId, leadId, patch);
+    if (data) setLeads((ls) => ls.map((l) => (l.id === leadId ? { ...l, ...data } : l)));
+  };
+
   const exportCsv = () => {
     if (leads.length === 0) return;
-    const header = ["Name", "Email", "Phone", "Source", "Event", "Captured"];
+    const header = ["Name", "Email", "Phone", "Source", "Status", "Note", "Event", "Captured"];
     const rows = leads.map((l) => [
       l.name ?? "",
       l.email ?? "",
       l.phone ?? "",
       SOURCE_LABEL[l.source] ?? l.source,
+      STATUS_LABEL[l.status] ?? l.status,
+      l.note ?? "",
       l.eventTitle,
       new Date(l.createdAt).toISOString(),
     ]);
@@ -177,6 +209,42 @@ export default function SponsorPortalPage() {
       {/* Booth scan */}
       {sponsor && <BoothScanPanel sponsor={sponsor} onCaptured={loadLeads} />}
 
+      {/* Booth stats per event (E3) */}
+      {sponsor && sponsor.events.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Booth stats</h2>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Event</th>
+                  <th className="px-3 py-2 text-right font-medium">Leads</th>
+                  <th className="px-3 py-2 text-right font-medium">Booth scans</th>
+                  <th className="px-3 py-2 text-right font-medium">Opted in</th>
+                  <th className="px-3 py-2 text-right font-medium">Contacted</th>
+                  <th className="px-3 py-2 text-right font-medium">Converted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sponsor.events.map((e) => {
+                  const s = boothStats.get(e.eventSponsorId);
+                  return (
+                    <tr key={e.eventSponsorId} className="border-t border-border">
+                      <td className="px-3 py-2 font-medium text-foreground">{e.title}</td>
+                      <td className="px-3 py-2 text-right">{s?.leads ?? 0}</td>
+                      <td className="px-3 py-2 text-right">{s?.scans ?? 0}</td>
+                      <td className="px-3 py-2 text-right">{s?.optIns ?? 0}</td>
+                      <td className="px-3 py-2 text-right">{s?.contacted ?? 0}</td>
+                      <td className="px-3 py-2 text-right">{s?.converted ?? 0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* Leads */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -199,13 +267,15 @@ export default function SponsorPortalPage() {
           />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium">Email</th>
                   <th className="px-3 py-2 font-medium">Phone</th>
                   <th className="px-3 py-2 font-medium">Source</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Note</th>
                   <th className="px-3 py-2 font-medium">Event</th>
                   <th className="px-3 py-2 font-medium">Captured</th>
                 </tr>
@@ -218,6 +288,34 @@ export default function SponsorPortalPage() {
                     <td className="px-3 py-2">{l.phone ?? "—"}</td>
                     <td className="px-3 py-2">
                       <Badge variant="neutral">{SOURCE_LABEL[l.source] ?? l.source}</Badge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Select value={l.status} onValueChange={(v) => follow(l.id, { status: v as PortalLeadStatus })}>
+                        <SelectTrigger className="h-8 w-32" aria-label={`Status of ${l.name ?? "lead"}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(STATUS_LABEL) as PortalLeadStatus[]).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {STATUS_LABEL[s]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`${l.id}:${l.note ?? ""}`}
+                        defaultValue={l.note ?? ""}
+                        placeholder="Add a note"
+                        aria-label={`Note on ${l.name ?? "lead"}`}
+                        className="h-8 min-w-40"
+                        maxLength={2000}
+                        onBlur={(e) => {
+                          const note = e.target.value.trim();
+                          if (note !== (l.note ?? "")) follow(l.id, { note: note || null });
+                        }}
+                      />
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{l.eventTitle}</td>
                     <td className="px-3 py-2 text-muted-foreground">

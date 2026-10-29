@@ -26,8 +26,13 @@ ARG NEXT_PUBLIC_API_URL
 # Sentry: per-app DSN (no-op when empty) and the release SHA from deploy.sh.
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_RELEASE
+# K18: Google sign-in (Cognito hosted UI). Empty = the button stays hidden.
+ARG NEXT_PUBLIC_COGNITO_DOMAIN
+ARG NEXT_PUBLIC_COGNITO_CLIENT_ID
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_COGNITO_DOMAIN=$NEXT_PUBLIC_COGNITO_DOMAIN \
+    NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
     NEXT_TELEMETRY_DISABLED=1
 
 # Sentry source-map upload token: a BuildKit secret, so it is never in an image

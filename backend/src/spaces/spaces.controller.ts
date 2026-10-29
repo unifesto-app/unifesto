@@ -45,6 +45,7 @@ import {
 import { RoleCode, SpaceStatus, SpaceVisibility } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
+import { Audit } from '../audit/audit';
 
 @Controller('spaces')
 export class SpacesController {
@@ -133,6 +134,7 @@ export class SpacesController {
    * PATCH /spaces/requests/:id/approve
    */
   @Patch('requests/:id/approve')
+  @Audit('space.request.approve', (r, prisma) => prisma.spaceRequest.findUnique({ where: { id: r.params.id }, select: { userId: true } }).then((x) => x ?? {}))
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   async approveSpaceRequest(
@@ -240,6 +242,7 @@ export class SpacesController {
    * PATCH /spaces/status-requests/:id/review
    */
   @Patch('status-requests/:id/review')
+  @Audit('space.status.review', (r, prisma) => prisma.spaceStatusRequest.findUnique({ where: { id: r.params.id }, select: { spaceId: true } }).then((x) => x ?? {}))
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   async reviewSpaceStatusRequest(
@@ -301,6 +304,7 @@ export class SpacesController {
    * PATCH /spaces/ownership-requests/:id/review
    */
   @Patch('ownership-requests/:id/review')
+  @Audit('space.ownership.review', (r, prisma) => prisma.spaceOwnershipRequest.findUnique({ where: { id: r.params.id }, select: { spaceId: true } }).then((x) => x ?? {}))
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   async reviewSpaceOwnershipRequest(
@@ -467,6 +471,7 @@ export class SpacesController {
    * PATCH /spaces/:id/status
    */
   @Patch(':id/status')
+  @Audit('space.status', (r) => ({ spaceId: r.params.id }))
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   async updateSpaceStatus(
@@ -482,6 +487,7 @@ export class SpacesController {
    * PATCH /spaces/:id/verification { verified: boolean }
    */
   @Patch(':id/verification')
+  @Audit('space.verification', (r) => ({ spaceId: r.params.id }))
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   async setSpaceVerification(
@@ -594,6 +600,7 @@ export class SpacesController {
    * POST /spaces/:id/members
    */
   @Post(':id/members')
+  @Audit('space.member.add', (r) => ({ spaceId: r.params.id, userId: r.body?.userId as string }))
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_MANAGE_MEMBERS)
   async addSpaceMember(
@@ -609,6 +616,7 @@ export class SpacesController {
    * PATCH /spaces/:id/members/:userRoleId
    */
   @Patch(':id/members/:userRoleId')
+  @Audit('space.member.role', (r, prisma) => prisma.userRole.findUnique({ where: { id: r.params.userRoleId }, select: { userId: true, spaceId: true } }).then((x) => x ?? { spaceId: r.params.id }))
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_MANAGE_MEMBERS)
   async updateSpaceMemberRole(
@@ -630,6 +638,7 @@ export class SpacesController {
    * DELETE /spaces/:id/members/:userRoleId
    */
   @Delete(':id/members/:userRoleId')
+  @Audit('space.member.remove', (r, prisma) => prisma.userRole.findUnique({ where: { id: r.params.userRoleId }, select: { userId: true, spaceId: true } }).then((x) => x ?? { spaceId: r.params.id }))
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_MANAGE_MEMBERS)
   async removeSpaceMember(

@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTrail } from "@/components/shared/AuditTrail";
 import {
   useCallback,
   useEffect,
@@ -176,7 +177,10 @@ export default function SpaceDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <SpaceManagement space={space} onChange={reload} />
+        <>
+          <SpaceManagement space={space} onChange={reload} />
+          <AuditTrail filter={{ spaceId: space.id }} />
+        </>
       )}
     </div>
   );

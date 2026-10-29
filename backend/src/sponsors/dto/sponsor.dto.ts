@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEmail,
   IsHexColor,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -109,6 +110,20 @@ export class BoothScanDto {
   @ApiProperty()
   @Equals(true, { message: 'Ask the attendee first: they have to agree to share their contact details.' })
   attendeeConsent: boolean;
+}
+
+/** A sponsor's follow-up on one of its leads (E3). */
+export class UpdatePortalLeadDto {
+  @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED'] })
+  @IsOptional()
+  @IsIn(['NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED'])
+  status?: 'NEW' | 'CONTACTED' | 'CONVERTED' | 'ARCHIVED';
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string | null;
 }
 
 /** Patch an existing event-sponsor attachment (all fields optional). */

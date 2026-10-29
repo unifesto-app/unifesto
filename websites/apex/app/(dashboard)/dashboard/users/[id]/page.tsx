@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTrail } from "@/components/shared/AuditTrail";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -37,6 +38,7 @@ import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
 import { MessageTable } from "@/components/messages/MessageTable";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { EMPLOYEE_ROLE_CODE } from "@/lib/types/rbac";
+import { UserActivity } from "@/components/users/UserActivity";
 import { AccountAccessCard } from "@/components/users/AccountAccessCard";
 import {
   Card,
@@ -709,6 +711,8 @@ export default function UserDetailPage() {
             </CardContent>
           </Card>
 
+          <UserActivity userId={id} />
+
           {/* Identities */}
           <Card>
             <CardHeader className="pb-2">
@@ -752,6 +756,8 @@ export default function UserDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <AuditTrail filter={{ userId: id }} />
 
           {/* Messages (C6): everything sent to this account, by id or address */}
           <Card>

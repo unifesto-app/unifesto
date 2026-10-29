@@ -390,7 +390,7 @@ One support system for everything a person needs help with. Every item is an **A
 |---|---|---|
 | E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
 | E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
-| E3 | Sponsor portal: lead notes + status, per-event booth stats | planned |
+| E3 | Sponsor portal: lead notes + status, per-event booth stats | done (#423) |
 | E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | done (#412) |
 | E6 | Hackathon certificates from awards | done |
@@ -406,7 +406,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
-| F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
+| F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | done (#418) |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
 | F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | done (#405) |
@@ -521,7 +521,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
 | K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#349) |
-| K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
+| K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | done (#424) (#424) |
 
 ### L · Live engagement (new)
 
@@ -967,3 +967,7 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E5 hackathon submissions: curator Project links page per round (missing filter, CSV), links lock once a judge scores them, mobile stale draft fixed (#412)
 - **2026-10-29** · K7 last six legal pages (code of conduct, privacy notice, data rights, privacy requests, subprocessors, security) managed in Apex as I2 documents, text unchanged (#416)
 - **2026-10-29** · E11 hackathon controller split into teams, judging and results controllers (same 85 routes); curator team list pages with take/skip; judging kept, decision pending (user) (#419)
+- **2026-10-29** · F5 audit trail: @Audit records who changed roles, permissions, status, plans and reconciled payments (audit_logs), shown on Apex user, space, event detail and IAM (#418)
+- **2026-10-29** · K18 web: Continue with Google (Cognito code + PKCE) and sessions that survive via a host-only httpOnly refresh cookie; access token in memory only; custom domains keep the email code (#421)
+- **2026-10-29** · K11 public web polish: home band, 24px link targets, quicker hero, "1 member", no empty Space banner box, labelled request-space form, scrollable organisers nav on phones, bubble tucks on scroll, empty blog/careers hidden, clean event meta, uncropped portrait posters (#424)
+- **2026-10-29** · E3 sponsor portal: lead status + notes (web and app), per-event booth stats, CSV with status and note; migration 20261121120000_sponsor_lead_status (#423)

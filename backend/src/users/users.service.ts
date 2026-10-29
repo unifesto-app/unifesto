@@ -25,6 +25,7 @@ import {
   NotificationSettings,
   Provider,
   SupportMessageSide,
+  PaymentStatus,
 } from '@prisma/client';
 import {
   AdminDeleteUserCommand,
@@ -220,6 +221,65 @@ export class UsersService {
   /**
    * Get user by ID (ADMIN only)
    */
+  /**
+   * F6: a user's registrations (every status, free ones too) and money they
+   * paid anywhere on the platform (event tickets, extra group seats, sessions,
+   * stays), newest first, for Apex user detail.
+   * ponytail: last 100 of each; page it when a single account outgrows that.
+   */
+  async getUserActivityAdmin(userId: string) {
+    const take = 100;
+    const event = { select: { id: true, title: true, slug: true, startDateTime: true, space: { select: { id: true, name: true } } } };
+    const money = { totalAmount: true, refundedAmount: true, paymentStatus: true, paymentId: true, paidAt: true } as const;
+    const [registrations, seats, sessions, stays] = await Promise.all([
+      this.prisma.eventRegistration.findMany({
+        where: { userId },
+        orderBy: { registeredAt: 'desc' },
+        take,
+        select: {
+          id: true,
+          status: true,
+          isWaitlisted: true,
+          groupSize: true,
+          checkedInAt: true,
+          registeredAt: true,
+          ...money,
+          ticketType: { select: { name: true } },
+          event,
+        },
+      }),
+      this.prisma.groupSeatPurchase.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take,
+        select: { id: true, seats: true, createdAt: true, ...money, registration: { select: { event: { select: { id: true, title: true } } } } },
+      }),
+      this.prisma.sessionRegistration.findMany({
+        where: { userId, totalAmount: { gt: 0 } },
+        orderBy: { registeredAt: 'desc' },
+        take,
+        select: { id: true, registeredAt: true, ...money, session: { select: { id: true, title: true } } },
+      }),
+      this.prisma.stayBooking.findMany({
+        where: { userId, totalAmount: { gt: 0 } },
+        orderBy: { createdAt: 'desc' },
+        take,
+        select: { id: true, createdAt: true, ...money, stay: { select: { name: true, event: { select: { id: true, title: true } } } } },
+      }),
+    ]);
+
+    const payments = [
+      ...registrations
+        .filter((r) => Number(r.totalAmount) > 0)
+        .map((r) => ({ kind: 'TICKET' as const, id: r.id, title: r.event.title, eventId: r.event.id, at: r.paidAt ?? r.registeredAt, ...pickMoney(r) })),
+      ...seats.map((p) => ({ kind: 'SEATS' as const, id: p.id, title: `${p.registration.event.title} · ${p.seats} extra seat${p.seats === 1 ? '' : 's'}`, eventId: p.registration.event.id, at: p.paidAt ?? p.createdAt, ...pickMoney(p) })),
+      ...sessions.map((p) => ({ kind: 'SESSION' as const, id: p.id, title: p.session.title, eventId: null, at: p.paidAt ?? p.registeredAt, ...pickMoney(p) })),
+      ...stays.map((p) => ({ kind: 'STAY' as const, id: p.id, title: `${p.stay.name} · ${p.stay.event.title}`, eventId: p.stay.event.id, at: p.paidAt ?? p.createdAt, ...pickMoney(p) })),
+    ].sort((a, b) => b.at.getTime() - a.at.getTime());
+
+    return { registrations, payments };
+  }
+
   async getUserByIdAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -1478,4 +1538,19 @@ export function privateFileKeys(values: unknown[]): string[] {
   };
   values.forEach(walk);
   return [...keys];
+}
+
+/** The money columns every paid row shares, as numbers for the Apex table. */
+function pickMoney(r: {
+  totalAmount: Prisma.Decimal;
+  refundedAmount: Prisma.Decimal;
+  paymentStatus: PaymentStatus | null;
+  paymentId: string | null;
+}) {
+  return {
+    amount: Number(r.totalAmount),
+    refunded: Number(r.refundedAmount),
+    paymentStatus: r.paymentStatus,
+    paymentId: r.paymentId,
+  };
 }

@@ -470,16 +470,19 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
   /* Text link whose underline draws in from the left (scaleX on a
      pseudo-element, transform only). */
+  /* K11: 2px of padding takes text-sm links from 20px to the 24px target
+     size; the underline stays where it was. */
   .link-draw {
     position: relative;
     text-decoration: none;
+    padding-block: 2px;
   }
   .link-draw::after {
     content: "";
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -0.15em;
+    bottom: calc(2px - 0.15em);
     height: 1px;
     background: currentColor;
     transform: scaleX(0);
@@ -545,14 +548,15 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .waterline-load .line { display: block; overflow: hidden; padding-bottom: 0.22em; margin-bottom: -0.22em; }
 .waterline-load .line-inner {
   display: block;
-  animation: rise-line 1000ms var(--ease-out-expo) both;
-  animation-delay: calc(var(--l, 0) * 90ms + 80ms);
+  animation: rise-line 700ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--l, 0) * 70ms + 40ms);
 }
 @keyframes rise-line {
   from { transform: translateY(105%); opacity: 0; }
 }
+/* K11: entrances were long enough to hold back LCP; keep them brisk. */
 .enter {
-  animation: enter-blur 900ms var(--ease-out-expo) both;
+  animation: enter-blur 600ms var(--ease-out-expo) both;
   animation-delay: var(--d, 0ms);
 }
 @keyframes enter-blur {

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { LEGAL } from "@/lib/legal";
 import { SOCIAL } from "@/lib/site";
+import { IfNotEmpty } from "@/components/SiteContent";
 import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
 import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
 
@@ -134,11 +135,13 @@ export default function Footer() {
                 <h2 className="mb-4 text-sm font-semibold text-paper">{col.title}</h2>
                 <ul className="flex flex-col gap-3">
                   {col.links.map((l) => (
-                    <li key={l.href}>
-                      <a href={l.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
-                        {l.label}
-                      </a>
-                    </li>
+                    <IfNotEmpty key={l.href} href={l.href}>
+                      <li>
+                        <a href={l.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+                          {l.label}
+                        </a>
+                      </li>
+                    </IfNotEmpty>
                   ))}
                 </ul>
               </div>

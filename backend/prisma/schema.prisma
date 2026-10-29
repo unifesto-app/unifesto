@@ -4696,6 +4696,8 @@ model SponsorLead {
   phone String? @db.VarChar(50)
 
   source SponsorLeadSource @default(OPT_IN)
+  // The sponsor's own follow-up (E3): where this lead stands and their notes.
+  status LeadStatus        @default(NEW)
   note   String?           @db.Text
 
   // Who captured it (crew/sponsor user id) for booth/manual sources.
@@ -6236,6 +6238,30 @@ model OrbitApplication {
   @@index([status])
   @@index([userId])
   @@map("orbit_applications")
+}
+
+/// F5: an append-only record of admin changes to permissions, roles, status,
+/// plans and money reconciliation: who (`actorId`, null = system), what
+/// (`action` + the request's params and body in `data`) and on which user,
+/// space and/or event. No foreign keys, so rows outlive what they describe.
+/// Written by the `@Audit()` decorator (src/audit/audit.ts).
+model AuditLog {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  actorId String? @map("actor_id") @db.Uuid
+  action  String  @db.VarChar(64)
+  userId  String? @map("user_id") @db.Uuid
+  spaceId String? @map("space_id") @db.Uuid
+  eventId String? @map("event_id") @db.Uuid
+  data    Json?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt])
+  @@index([spaceId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
 }
 
 /// F4: a platform admin's per-user exception to the role matrix, applied in

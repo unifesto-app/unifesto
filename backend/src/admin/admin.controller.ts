@@ -42,6 +42,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { User } from '@prisma/client';
 import { RoleCode, SpaceStatus } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
+import { Audit } from '../audit/audit';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -172,6 +173,21 @@ export class AdminController {
   }
 
   /**
+   * F5 audit trail for one user, space or event (or `action` prefix, e.g.
+   * `iam.`), newest first. GET /admin/audit?userId=|spaceId=|eventId=|action=
+   */
+  @Get('audit')
+  @Roles(RoleCode.ADMIN)
+  async getAuditLog(
+    @Query('userId') userId?: string,
+    @Query('spaceId') spaceId?: string,
+    @Query('eventId') eventId?: string,
+    @Query('action') action?: string,
+  ) {
+    return this.adminService.getAuditLog({ userId, spaceId, eventId, action });
+  }
+
+  /**
    * List all users (ADMIN only)
    * GET /admin/users?page=1&limit=20&search=query
    */
@@ -199,11 +215,19 @@ export class AdminController {
     return this.usersService.getUserByIdAdmin(id);
   }
 
+  /** F6: the user's registrations and payments. GET /admin/users/:id/activity */
+  @Get('users/:id/activity')
+  @Roles(RoleCode.ADMIN)
+  async getUserActivity(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.getUserActivityAdmin(id);
+  }
+
   /**
    * Update a user's profile by ID (ADMIN only)
    * PATCH /admin/users/:id
    */
   @Patch('users/:id')
+  @Audit('user.profile', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async updateUserById(
     @Param('id') id: string,
@@ -217,6 +241,7 @@ export class AdminController {
    * PUT /admin/users/:id/employee  { enabled }
    */
   @Put('users/:id/employee')
+  @Audit('user.employee', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async setEmployee(
     @Param('id', ParseUUIDPipe) id: string,
@@ -228,6 +253,7 @@ export class AdminController {
 
   /** F4: suspend (with `until`) or ban (without). Ends every session. */
   @Put('users/:id/suspension')
+  @Audit('user.suspend', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async suspendUser(
     @Param('id', ParseUUIDPipe) id: string,
@@ -238,6 +264,7 @@ export class AdminController {
   }
 
   @Delete('users/:id/suspension')
+  @Audit('user.unsuspend', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async liftSuspension(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.liftSuspension(id);
@@ -245,6 +272,7 @@ export class AdminController {
 
   /** F4: sign the user out of every device (revokes all refresh tokens). */
   @Post('users/:id/logout')
+  @Audit('user.logout', (r) => ({ userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async forceLogout(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminService.forceLogout(id);
@@ -252,6 +280,7 @@ export class AdminController {
 
   /** F4: add or replace a per-user capability override. */
   @Put('users/:id/capability-overrides')
+  @Audit('user.override', (r) => ({ userId: r.params.id, spaceId: (r.body?.spaceId as string) ?? null }))
   @Roles(RoleCode.ADMIN)
   async setCapabilityOverride(
     @Param('id', ParseUUIDPipe) id: string,
@@ -262,6 +291,7 @@ export class AdminController {
   }
 
   @Delete('users/:id/capability-overrides/:overrideId')
+  @Audit('user.override.remove', (r, prisma) => prisma.userCapabilityOverride.findUnique({ where: { id: r.params.overrideId }, select: { userId: true, spaceId: true } }).then((x) => x ?? { userId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async removeCapabilityOverride(
     @Param('id', ParseUUIDPipe) id: string,
@@ -325,6 +355,7 @@ export class AdminController {
    * PATCH /admin/spaces/:id/approve
    */
   @Patch('spaces/:id/approve')
+  @Audit('space.approve', (r) => ({ spaceId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async approveSpace(@Param('id') id: string, @CurrentUser() user: User) {
     return this.adminService.approveSpace(id, user.id);
@@ -335,6 +366,7 @@ export class AdminController {
    * PATCH /admin/spaces/:id/reject
    */
   @Patch('spaces/:id/reject')
+  @Audit('space.reject', (r) => ({ spaceId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async rejectSpace(
     @Param('id') id: string,
@@ -349,6 +381,7 @@ export class AdminController {
    * PATCH /admin/spaces/:id/status  { status: SpaceStatus }
    */
   @Patch('spaces/:id/status')
+  @Audit('space.status', (r) => ({ spaceId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async updateSpaceStatus(
     @Param('id') id: string,
@@ -448,6 +481,7 @@ export class AdminController {
 
   /** Publish a draft event. POST /admin/events/:id/publish */
   @Post('events/:id/publish')
+  @Audit('event.publish', (r) => ({ eventId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async publishEventAdmin(@Param('id') id: string, @CurrentUser() user: User) {
     return this.eventsService.publishEvent(user.id, id);
@@ -455,6 +489,7 @@ export class AdminController {
 
   /** Cancel an event (notifies attendees). POST /admin/events/:id/cancel */
   @Post('events/:id/cancel')
+  @Audit('event.cancel', (r) => ({ eventId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async cancelEventAdmin(
     @Param('id') id: string,
@@ -466,6 +501,7 @@ export class AdminController {
 
   /** Hide a completed/cancelled event. POST /admin/events/:id/hide */
   @Post('events/:id/hide')
+  @Audit('event.hide', (r) => ({ eventId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async hideEventAdmin(@Param('id') id: string, @CurrentUser() user: User) {
     return this.eventsService.softDeleteEvent(user.id, id);
@@ -473,6 +509,7 @@ export class AdminController {
 
   /** Restore a hidden event. POST /admin/events/:id/restore */
   @Post('events/:id/restore')
+  @Audit('event.restore', (r) => ({ eventId: r.params.id }))
   @Roles(RoleCode.ADMIN)
   async restoreEventAdmin(@Param('id') id: string, @CurrentUser() user: User) {
     return this.eventsService.restoreEvent(user.id, id);
@@ -541,6 +578,7 @@ export class AdminController {
    * no payment. Idempotent. POST /admin/transactions/:id/reconcile
    */
   @Post('transactions/:id/reconcile')
+  @Audit('payment.reconcile', (r, prisma) => prisma.eventRegistration.findUnique({ where: { id: r.params.id }, select: { userId: true, eventId: true } }).then((x) => x ?? {}))
   @Roles(RoleCode.ADMIN)
   async reconcileTransaction(
     @Param('id') id: string,
@@ -565,6 +603,7 @@ export class AdminController {
    * registration must be refunded, not overridden. POST /admin/transactions/:id/resolve
    */
   @Post('transactions/:id/resolve')
+  @Audit('payment.resolve', (r, prisma) => prisma.eventRegistration.findUnique({ where: { id: r.params.id }, select: { userId: true, eventId: true } }).then((x) => x ?? {}))
   @Roles(RoleCode.ADMIN)
   async resolveTransaction(
     @Request() req,
@@ -579,6 +618,7 @@ export class AdminController {
    * count as `groupSize` seats. Safe to re-run (idempotent). POST /admin/reconcile-seat-counts
    */
   @Post('reconcile-seat-counts')
+  @Audit('seats.reconcile')
   @Roles(RoleCode.ADMIN)
   async reconcileSeatCounts() {
     return this.adminService.reconcileSeatCounts();

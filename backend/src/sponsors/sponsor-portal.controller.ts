@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -12,7 +13,7 @@ import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SponsorPortalService } from './sponsor-portal.service';
-import { BoothScanDto } from './dto/sponsor.dto';
+import { BoothScanDto, UpdatePortalLeadDto } from './dto/sponsor.dto';
 
 /**
  * The sponsor portal API (P5). Any authenticated user may call these; access to
@@ -37,6 +38,17 @@ export class SponsorPortalController {
   @ApiOperation({ summary: 'Leads captured for one of my sponsors' })
   leads(@CurrentUser() user: User, @Param('sponsorId', ParseUUIDPipe) sponsorId: string) {
     return this.portal.getSponsorLeads(user.id, sponsorId);
+  }
+
+  @Patch('sponsors/:sponsorId/leads/:leadId')
+  @ApiOperation({ summary: 'Set my status or note on one of my leads' })
+  updateLead(
+    @CurrentUser() user: User,
+    @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
+    @Param('leadId', ParseUUIDPipe) leadId: string,
+    @Body() dto: UpdatePortalLeadDto,
+  ) {
+    return this.portal.updateLead(user.id, sponsorId, leadId, dto);
   }
 
   @Post('sponsors/:sponsorId/scan')
