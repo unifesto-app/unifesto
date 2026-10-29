@@ -419,8 +419,8 @@ function CreatePayoutDialog({
         <div className="space-y-3">
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Event ID</label>
-              <Input value={eventId} onChange={(e) => setEventId(e.target.value)} placeholder="Paste the event ID" />
+              <label htmlFor="payout-event-id" className="text-xs font-medium text-muted-foreground">Event ID</label>
+              <Input id="payout-event-id" value={eventId} onChange={(e) => setEventId(e.target.value)} placeholder="Paste the event ID" />
             </div>
             <Button variant="outline" onClick={preview} disabled={previewing || !eventId.trim()}>
               {previewing ? "…" : "Preview"}

@@ -65,12 +65,12 @@ export default function ReconciliationPage() {
       {/* Date window — shared across every tab. */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">From</label>
-          <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+          <label htmlFor="range-from" className="text-xs font-medium text-muted-foreground">From</label>
+          <Input id="range-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="w-40" />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">To</label>
-          <Input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className="w-40" />
+          <label htmlFor="range-to" className="text-xs font-medium text-muted-foreground">To</label>
+          <Input id="range-to" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className="w-40" />
         </div>
         <Button onClick={() => setRange({ from, to })}>Apply</Button>
       </div>

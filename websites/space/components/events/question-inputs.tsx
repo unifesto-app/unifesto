@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Paperclip, X } from "@unifesto/unicon/react";
 import {
   uploadFormFieldFile,
@@ -43,6 +43,7 @@ export function QuestionInputs({
   values: Answers;
   onChange: (fieldId: string, value: unknown) => void;
 }) {
+  const uid = useId();
   if (fields.length === 0) return null;
   const visible = visibleFieldIds(fields, values);
   const shown = [...fields].sort((a, b) => a.order - b.order).filter((f) => visible.has(f.id));
@@ -58,7 +59,7 @@ export function QuestionInputs({
         ) : (
           <div key={f.id} className="space-y-1.5">
             {f.type !== "YES_NO" && (
-              <Label>
+              <Label id={`${uid}-${f.id}`}>
                 {f.label}
                 {f.isRequired && <span className="text-destructive"> *</span>}
               </Label>
@@ -69,6 +70,7 @@ export function QuestionInputs({
             <QuestionInput
               eventId={eventId}
               field={f}
+              labelId={`${uid}-${f.id}`}
               value={values[f.id]}
               onChange={(v) => onChange(f.id, v)}
             />
@@ -82,21 +84,27 @@ export function QuestionInputs({
 function QuestionInput({
   eventId,
   field: f,
+  labelId,
   value,
   onChange,
 }: {
   eventId: string;
   field: EventFormField;
+  /** id of the question's visible label: names single controls, or the group for composites. */
+  labelId: string;
   value: unknown;
   onChange: (v: unknown) => void;
 }) {
   const c = configOf(f);
+  const named = { "aria-labelledby": labelId };
+  const group = { role: "group", "aria-labelledby": labelId };
   const str = typeof value === "string" || typeof value === "number" ? String(value) : "";
 
   switch (f.type) {
     case "TEXTAREA":
       return (
         <Textarea
+          {...named}
           value={str}
           onChange={(e) => onChange(e.target.value)}
           maxLength={c.maxLength}
@@ -106,6 +114,7 @@ function QuestionInput({
     case "NUMBER":
       return (
         <Input
+          {...named}
           type="number"
           value={str}
           min={c.min}
@@ -114,12 +123,13 @@ function QuestionInput({
         />
       );
     case "EMAIL":
-      return <Input type="email" value={str} onChange={(e) => onChange(e.target.value)} />;
+      return <Input {...named} type="email" value={str} onChange={(e) => onChange(e.target.value)} />;
     case "PHONE":
-      return <Input type="tel" value={str} onChange={(e) => onChange(e.target.value)} />;
+      return <Input {...named} type="tel" value={str} onChange={(e) => onChange(e.target.value)} />;
     case "URL":
       return (
         <Input
+          {...named}
           type="url"
           value={str}
           placeholder="https://"
@@ -129,6 +139,7 @@ function QuestionInput({
     case "DATE":
       return (
         <Input
+          {...named}
           type="date"
           value={str}
           min={c.minDate}
@@ -140,7 +151,7 @@ function QuestionInput({
     case "STATE":
       return (
         <Select value={str} onValueChange={onChange}>
-          <SelectTrigger>
+          <SelectTrigger {...named}>
             <SelectValue placeholder="Choose…" />
           </SelectTrigger>
           <SelectContent>
@@ -154,7 +165,7 @@ function QuestionInput({
       );
     case "RADIO":
       return (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <div {...group} className="flex flex-wrap gap-x-4 gap-y-1">
           {f.options.map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
               <input type="radio" checked={value === o} onChange={() => onChange(o)} />
@@ -166,7 +177,7 @@ function QuestionInput({
     case "CHECKBOX": {
       const picks = Array.isArray(value) ? (value as string[]) : [];
       return (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <div {...group} className="flex flex-wrap gap-x-4 gap-y-1">
           {f.options.map((o) => (
             <label key={o} className="flex items-center gap-2 text-sm">
               <input
@@ -203,7 +214,7 @@ function QuestionInput({
     case "RATING": {
       const scale = c.scale === 10 ? 10 : 5;
       return (
-        <div className="flex flex-wrap gap-1">
+        <div {...group} className="flex flex-wrap gap-1">
           {Array.from({ length: scale }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
@@ -223,10 +234,14 @@ function QuestionInput({
       );
     }
     case "FILE":
-      return <FileInput eventId={eventId} field={f} value={value} onChange={onChange} />;
+      return (
+        <div {...group}>
+          <FileInput eventId={eventId} field={f} value={value} onChange={onChange} />
+        </div>
+      );
     default:
       return (
-        <Input value={str} maxLength={c.maxLength} onChange={(e) => onChange(e.target.value)} />
+        <Input {...named} value={str} maxLength={c.maxLength} onChange={(e) => onChange(e.target.value)} />
       );
   }
 }

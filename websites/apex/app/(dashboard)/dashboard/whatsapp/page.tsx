@@ -621,20 +621,22 @@ export default function WhatsAppInboxPage() {
             {newError && <ErrorNotice message={newError} />}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="wa-new-to" className="text-sm font-medium text-foreground">
                   Recipient number
                 </label>
                 <Input
+                  id="wa-new-to"
                   value={newTo}
                   onChange={(e) => setNewTo(e.target.value)}
                   placeholder="e.g. 919848945690 or +91 98489 45690"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="wa-new-template" className="text-sm font-medium text-foreground">
                   Template
                 </label>
                 <select
+                  id="wa-new-template"
                   value={selectedTemplate ? `${newTemplate}::${newLang}` : ""}
                   onChange={(e) => {
                     const t = templates.find(
@@ -704,23 +706,25 @@ export default function WhatsAppInboxPage() {
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem]">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="wa-new-params" className="text-sm font-medium text-foreground">
                   Body parameters{" "}
                   <span className="font-normal text-muted-foreground">
                     (optional, comma-separated — fills {"{{1}}"}, {"{{2}}"}…)
                   </span>
                 </label>
                 <Input
+                  id="wa-new-params"
                   value={newParams}
                   onChange={(e) => setNewParams(e.target.value)}
                   placeholder="e.g. Sameer, VIP Pass"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="wa-new-lang" className="text-sm font-medium text-foreground">
                   Language
                 </label>
                 <Input
+                  id="wa-new-lang"
                   value={newLang}
                   readOnly
                   className="bg-muted/50"

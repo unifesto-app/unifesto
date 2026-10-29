@@ -123,16 +123,18 @@ export default function EventRsvpsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Name</Label>
+              <Label htmlFor="rsvp-name" className="text-xs">Name</Label>
               <Input
+                id="rsvp-name"
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 placeholder="e.g. I'll attend"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description (optional)</Label>
+              <Label htmlFor="rsvp-description" className="text-xs">Description (optional)</Label>
               <Input
+                id="rsvp-description"
                 value={draft.description}
                 onChange={(e) =>
                   setDraft({ ...draft, description: e.target.value })
@@ -141,8 +143,9 @@ export default function EventRsvpsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Capacity (blank = unlimited)</Label>
+              <Label htmlFor="rsvp-capacity" className="text-xs">Capacity (blank = unlimited)</Label>
               <Input
+                id="rsvp-capacity"
                 type="number"
                 min={1}
                 value={draft.capacity}
