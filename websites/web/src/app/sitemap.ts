@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next'
-import { getListedEvents } from '@/lib/api/events'
-import { getSpaces } from '@/lib/api/spaces'
+import { getAllEvents } from '@/lib/api/events'
+import { getAllSpaces } from '@/lib/api/spaces'
 import { getPosts } from '@/lib/api/blog'
 import { getHelpArticles } from '@/lib/api/help'
+import { getOpenRoles } from '@/lib/api/careers'
 import { SITE } from '@/lib/site'
 
 const baseUrl = SITE.url
@@ -13,24 +14,26 @@ const baseUrl = SITE.url
 export const revalidate = 3600
 
 /**
- * Every public top-level event the /events page lists, upcoming and past, as
- * `/event/[slug]` entries. Past events stay indexed (their pages are real and
- * carry the space's history), just at a lower priority than upcoming ones.
+ * Every public top-level event, upcoming and past, as `/event/[slug]` entries.
+ * Past events stay indexed (their pages are real and carry the space's
+ * history), just at a lower priority than upcoming ones. A white-labelled
+ * event is left out: its canonical is the space's own domain, whose sitemap
+ * lists it (src/app/space/[spaceSlug]/sitemap.xml).
  */
 async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    const events = await getListedEvents()
+    const [upcoming, past] = await Promise.all([getAllEvents('upcoming'), getAllEvents('past')])
     const now = Date.now()
 
-    return events
-      .filter((e) => Boolean(e.slug))
+    return [...upcoming, ...past]
+      .filter((e) => Boolean(e.slug) && !e.custom_domain)
       .map((e) => {
-        const past = new Date(e.end_date || e.start_date).getTime() < now
+        const ended = new Date(e.end_date || e.start_date).getTime() < now
         return {
           url: `${baseUrl}/event/${e.slug}`,
           lastModified: e.updated_at ? new Date(e.updated_at) : new Date(),
-          changeFrequency: past ? ('monthly' as const) : ('daily' as const),
-          priority: past ? 0.5 : 0.9,
+          changeFrequency: ended ? ('monthly' as const) : ('daily' as const),
+          priority: ended ? 0.5 : 0.9,
         }
       })
   } catch {
@@ -41,15 +44,16 @@ async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
 }
 
 /**
- * Fetch the ACTIVE public spaces and turn each into a `/space/[slug]` sitemap
- * entry. Sub-spaces stay in: they have their own pages, just not a /spaces card.
+ * Every listed public space as a `/space/[slug]` entry, except white-labelled
+ * ones (their own domain's sitemap has them). Sub-spaces stay in: they have
+ * their own pages, just not a /spaces card.
  */
 async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    const { spaces } = await getSpaces(1, 200)
+    const spaces = await getAllSpaces()
 
     return spaces
-      .filter((s) => Boolean(s.slug))
+      .filter((s) => Boolean(s.slug) && !s.custom_domain)
       .map((s) => ({
         url: `${baseUrl}/space/${s.slug}`,
         lastModified: s.updated_at ? new Date(s.updated_at) : new Date(),
@@ -59,6 +63,17 @@ async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
   } catch {
     return []
   }
+}
+
+/** Every open role. getOpenRoles() already returns [] on failure. */
+async function getCareerRoutes(): Promise<MetadataRoute.Sitemap> {
+  const roles = await getOpenRoles()
+  return roles.map((r) => ({
+    url: `${baseUrl}/careers/${r.id}`,
+    lastModified: new Date(r.created_at),
+    changeFrequency: 'weekly' as const,
+    priority: 0.5,
+  }))
 }
 
 /** Every published blog post. getPosts() already returns [] on failure. */
@@ -129,15 +144,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/delete-account', 'yearly', 0.2),
   ]
 
-  const [eventRoutes, spaceRoutes, blogRoutes, helpRoutes] = await Promise.all([
+  const [eventRoutes, spaceRoutes, blogRoutes, helpRoutes, careerRoutes] = await Promise.all([
     getEventRoutes(),
     getSpaceRoutes(),
     getBlogRoutes(),
     getHelpRoutes(),
+    getCareerRoutes(),
   ])
 
   // K17: /help 404s until an article is published, so list it only then.
   const helpIndex = helpRoutes.length ? [page('/help', 'weekly', 0.6)] : []
 
-  return [...staticRoutes, ...helpIndex, ...eventRoutes, ...spaceRoutes, ...blogRoutes, ...helpRoutes]
+  return [...staticRoutes, ...helpIndex, ...eventRoutes, ...spaceRoutes, ...blogRoutes, ...helpRoutes, ...careerRoutes]
 }

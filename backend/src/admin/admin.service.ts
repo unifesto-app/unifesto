@@ -12,7 +12,8 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { NotifyService } from '../notifications/notify.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
+import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
+import { Action, ACTION_SCOPE } from '../auth/authorization';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
@@ -1703,5 +1704,86 @@ export class AdminService {
       ).map((u) => [u.id, u]),
     );
     return rows.map((r) => ({ ...r, actor: r.actorId ? actors.get(r.actorId) ?? null : null }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // F4 user IAM: suspend / ban, force logout, per-user capability overrides.
+  // Bumping tokenVersion kills every access and refresh token at once.
+  // ---------------------------------------------------------------------------
+
+  /** Suspend until `until`, or ban when it is empty. Ends every session. */
+  async suspendUser(userId: string, adminId: string, reason: string, until?: string | null) {
+    if (userId === adminId) throw new BadRequestException("You can't suspend your own account");
+    const end = until ? new Date(until) : null;
+    if (end && end <= new Date()) throw new BadRequestException('The suspension must end in the future');
+    await this.requireUser(userId);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        suspendedAt: new Date(),
+        suspendedUntil: end,
+        suspensionReason: reason.trim(),
+        suspendedBy: adminId,
+        tokenVersion: { increment: 1 },
+      },
+    });
+    return { userId, suspendedUntil: end, banned: !end };
+  }
+
+  /** Lift a suspension or ban. The user signs in again. */
+  async liftSuspension(userId: string) {
+    await this.requireUser(userId);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { suspendedAt: null, suspendedUntil: null, suspensionReason: null, suspendedBy: null },
+    });
+    return { userId, suspended: false };
+  }
+
+  /** Sign the user out everywhere. */
+  async forceLogout(userId: string) {
+    await this.requireUser(userId);
+    await this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+    return { userId, loggedOut: true };
+  }
+
+  /**
+   * Add or replace one override (same user, action and space). Grants are for
+   * space and event actions in one space only: platform power comes from roles,
+   * so an override can never mint a platform admin.
+   */
+  async setCapabilityOverride(
+    userId: string,
+    adminId: string,
+    dto: { action: Action; allow: boolean; spaceId?: string | null; reason?: string },
+  ) {
+    const spaceId = dto.spaceId ?? null;
+    if (dto.allow && ACTION_SCOPE[dto.action] === RoleScope.PLATFORM) {
+      throw new BadRequestException('Platform actions come from roles; an override can only take them away');
+    }
+    if (dto.allow && !spaceId) throw new BadRequestException('Pick the space this grant applies in');
+    await this.requireUser(userId);
+    if (spaceId && !(await this.prisma.space.findUnique({ where: { id: spaceId }, select: { id: true } }))) {
+      throw new NotFoundException('Space not found');
+    }
+    const data = { allow: dto.allow, reason: dto.reason?.trim() || null, createdBy: adminId };
+    const existing = await this.prisma.userCapabilityOverride.findFirst({
+      where: { userId, action: dto.action, spaceId },
+      select: { id: true },
+    });
+    return existing
+      ? this.prisma.userCapabilityOverride.update({ where: { id: existing.id }, data })
+      : this.prisma.userCapabilityOverride.create({ data: { ...data, userId, action: dto.action, spaceId } });
+  }
+
+  async removeCapabilityOverride(userId: string, overrideId: string) {
+    const { count } = await this.prisma.userCapabilityOverride.deleteMany({ where: { id: overrideId, userId } });
+    if (!count) throw new NotFoundException('Override not found');
+    return { success: true };
+  }
+
+  private async requireUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) throw new NotFoundException('User not found');
   }
 }

@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import { CopySimple, Eye, ShareNetwork } from '@unifesto/unicon/react-native';
 import { getPartnerStats, type PartnerStats } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -167,6 +168,18 @@ export default function PartnerStatsScreen() {
           <SettingsRow icon={icon(Eye)} label="View event" onPress={() => router.push(`/event/${e.slug || e.id}`)} />
         </SettingsGroup>
       </View>
+
+      {/* E4: the share kit's QR, for posters and stalls. Same tile as Tracking's short links. */}
+      <View style={{ marginTop: spacing[8] }}>
+        <SettingsGroup title="QR code">
+          <View style={styles.qr}>
+            <View style={styles.qrTile} accessibilityLabel={`QR code for your ${e.title} link`}>
+              <QRCode value={stats.trackingUrl} size={160} color="#000000" backgroundColor="#ffffff" />
+            </View>
+          </View>
+        </SettingsGroup>
+        <Text style={[styles.note, { color: c.muted }]}>Scans of this code count for {stats.name}, like the link.</Text>
+      </View>
     </CosmosScreen>
   );
 }
@@ -188,4 +201,6 @@ const styles = StyleSheet.create({
   axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[2] },
   axisLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  qr: { alignItems: 'center', padding: spacing[4] },
+  qrTile: { padding: spacing[3], borderRadius: cosmosRadius, backgroundColor: '#ffffff' },
 });

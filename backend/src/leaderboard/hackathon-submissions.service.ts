@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { LeaderboardService } from './leaderboard.service';
 import { HackathonTeamsService } from './hackathon-teams.service';
 import { HackathonRoundsService } from './hackathon-rounds.service';
 import {
@@ -19,25 +20,39 @@ import type { SaveSubmissionDto } from './dto/hackathon.dto';
  * its links (repo, demo, deck…) per round, and the judges or mentors who see
  * the team read them while evaluating. Any team member can edit them while the
  * round isn't closed and before its `submissionsCloseAt`, once the team has a
- * locked statement and takes part in the round.
+ * locked statement and takes part in the round, and until a judge submits
+ * marks for the team in that round (E5): what was scored stays what was seen.
+ * Curators read every team's links per round (listForRound).
  */
 @Injectable()
 export class HackathonSubmissionsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly leaderboard: LeaderboardService,
     private readonly teams: HackathonTeamsService,
     private readonly rounds: HackathonRoundsService,
   ) {}
 
+  /** Rounds in which a judge has submitted marks for the team. */
+  private async judgedRounds(entrantIds: string[], roundId?: string): Promise<Set<string>> {
+    const rows = await this.prisma.leaderboardJudgment.findMany({
+      where: { entrantId: { in: entrantIds }, submittedAt: { not: null }, ...(roundId ? { roundId } : {}) },
+      select: { entrantId: true, roundId: true },
+      distinct: ['entrantId', 'roundId'],
+    });
+    return new Set(rows.map((r) => `${r.entrantId}:${r.roundId}`));
+  }
+
   /** The team's links for every round, and whether it can still change each. */
   async getMine(userId: string, eventId: string) {
     const { board, team } = await this.myTeamOrThrow(userId, eventId);
-    const [ctx, rows] = await Promise.all([
+    const [ctx, rows, judged] = await Promise.all([
       this.rounds.context(board.id),
       this.prisma.hackathonSubmission.findMany({
         where: { entrantId: team.id },
         select: { roundId: true, links: true, notes: true, updatedAt: true, submittedBy: true },
       }),
+      this.judgedRounds([team.id]),
     ]);
     const editors = await this.prisma.user.findMany({
       where: { id: { in: [...new Set(rows.map((r) => r.submittedBy))] } },
@@ -63,7 +78,8 @@ export class HackathonSubmissionsService {
           kind: r.kind,
           status: r.status,
           closesAt: r.submissionsCloseAt,
-          canEdit: this.canEdit(ctx, team.id, stage, r, now),
+          locked: judged.has(`${team.id}:${r.id}`),
+          canEdit: !judged.has(`${team.id}:${r.id}`) && this.canEdit(ctx, team.id, stage, r, now),
           links: readLinks(row?.links),
           notes: row?.notes ?? null,
           updatedAt: row?.updatedAt ?? null,
@@ -91,6 +107,9 @@ export class HackathonSubmissionsService {
       }
       throw new ForbiddenException(`Your team isn't in ${round.name}.`);
     }
+    if ((await this.judgedRounds([team.id], roundId)).size) {
+      throw new BadRequestException(`Judges have scored your ${round.name} links, so they are locked.`);
+    }
     const cleaned = cleanLinks(dto.links);
     if ('error' in cleaned) throw new BadRequestException(cleaned.error);
     const notes = (dto.notes ?? '').replace(/\r\n/g, '\n').trim().slice(0, SUBMISSION_NOTES_MAX) || null;
@@ -101,6 +120,50 @@ export class HackathonSubmissionsService {
       update: { links, notes, submittedBy: userId },
     });
     return this.getMine(userId, eventId);
+  }
+
+  /**
+   * Curator: every team taking part in the round with its links, newest edit
+   * and whether a judge has scored it (then the links are locked). Teams with
+   * no links are `missing`.
+   */
+  async listForRound(userId: string, eventId: string, roundId: string) {
+    await this.leaderboard.assertCanManage(userId, eventId);
+    const board = await this.teams.getBoardOrThrow(eventId);
+    const round = await this.rounds.findRoundOrThrow(board.id, roundId);
+    const ctx = await this.rounds.context(board.id);
+    const teams = this.rounds.teamsInRound(ctx, roundId);
+    const ids = teams.map((t) => t.id);
+    const [rows, judged] = await Promise.all([
+      this.prisma.hackathonSubmission.findMany({
+        where: { roundId, entrantId: { in: ids } },
+        select: { entrantId: true, links: true, notes: true, updatedAt: true, submittedBy: true },
+      }),
+      this.judgedRounds(ids, roundId),
+    ]);
+    const editors = await this.prisma.user.findMany({
+      where: { id: { in: [...new Set(rows.map((r) => r.submittedBy))] } },
+      select: { id: true, fullName: true, username: true },
+    });
+    return {
+      round: { id: round.id, name: round.name, status: round.status, closesAt: round.submissionsCloseAt },
+      teams: teams.map((t) => {
+        const row = rows.find((r) => r.entrantId === t.id);
+        const links = readLinks(row?.links);
+        const editor = row ? editors.find((u) => u.id === row.submittedBy) : undefined;
+        return {
+          teamId: t.id,
+          teamCode: t.teamCode,
+          name: t.name,
+          links,
+          notes: row?.notes ?? null,
+          updatedAt: row?.updatedAt ?? null,
+          updatedBy: editor ? editor.fullName || editor.username : null,
+          missing: links.length === 0,
+          judged: judged.has(`${t.id}:${roundId}`),
+        };
+      }),
+    };
   }
 
   /** A team with a locked statement that takes part in the round, before the cut-off. */

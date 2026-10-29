@@ -3,6 +3,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -33,7 +34,7 @@ export class SponsorLeadsController {
   @Get('opt-ins')
   @ApiOperation({ summary: "The sponsors the caller has opted into at this event" })
   listMyOptIns(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: User,
   ) {
     return this.sponsors.listMyOptIns(user.id, eventId);
@@ -42,8 +43,8 @@ export class SponsorLeadsController {
   @Post(':eventSponsorId/opt-in')
   @ApiOperation({ summary: 'Share my details with this sponsor' })
   optIn(
-    @Param('eventId') eventId: string,
-    @Param('eventSponsorId') eventSponsorId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,
     @CurrentUser() user: User,
   ) {
     return this.sponsors.optIn(user.id, eventId, eventSponsorId);
@@ -52,8 +53,8 @@ export class SponsorLeadsController {
   @Delete(':eventSponsorId/opt-in')
   @ApiOperation({ summary: 'Withdraw my details from this sponsor' })
   withdrawOptIn(
-    @Param('eventId') eventId: string,
-    @Param('eventSponsorId') eventSponsorId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,
     @CurrentUser() user: User,
   ) {
     return this.sponsors.withdrawOptIn(user.id, eventId, eventSponsorId);

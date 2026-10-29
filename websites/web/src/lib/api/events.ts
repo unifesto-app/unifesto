@@ -72,6 +72,8 @@ export interface Event {
    * gates it (switched on + plan perk + not suspended).
    */
   branding?: Branding | null;
+  /** List payloads: the white-label domain this event's canonical points at (K2). */
+  custom_domain?: string | null;
   /** Spaces co-hosting alongside `space` ("by Host & Co-host"). */
   co_hosts?: { id: string; name: string; slug?: string; logo_url?: string; visibility?: string }[];
   /**
@@ -330,6 +332,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     created_at: (r.createdAt ?? r.created_at) as string,
     updated_at: (r.updatedAt ?? r.updated_at) as string,
     branding: (r.branding ?? null) as Event["branding"],
+    custom_domain: (r.customDomain ?? null) as string | null,
     co_hosts: ((r.coHosts ?? []) as Array<Record<string, unknown>>).map((h) => ({
       id: h.id as string,
       name: h.name as string,
@@ -428,6 +431,21 @@ export async function getEvents(
     console.error('[API] Error fetching events:', error);
     return { events: [], total: 0, page: 1, limit: 20 };
   }
+}
+
+/**
+ * Every listed event for `when`, page by page (the API caps a page at 100).
+ * For the sitemap, which must not stop at the first page.
+ */
+export async function getAllEvents(when: 'upcoming' | 'past'): Promise<Event[]> {
+  const all: Event[] = [];
+  // ponytail: 50 pages = 5,000 events; split into a sitemap index past that.
+  for (let page = 1; page <= 50; page++) {
+    const { events, total } = await getEvents(page, 100, { when });
+    all.push(...events);
+    if (!events.length || all.length >= total) break;
+  }
+  return all;
 }
 
 /**

@@ -34,6 +34,7 @@ import { UpdatePlatformConfigDto } from './dto/platform-config.dto';
 import { UpdateAppVersionDto } from './dto/app-version.dto';
 import { UpdateStatsRecipientsDto } from './dto/stats-recipients.dto';
 import { SetEmployeeDto } from './dto/employee.dto';
+import { SetCapabilityOverrideDto, SuspendUserDto } from './dto/user-iam.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -241,6 +242,50 @@ export class AdminController {
     @CurrentUser() admin: User,
   ) {
     return this.adminService.setEmployee(id, dto.enabled, admin.id);
+  }
+
+  /** F4: suspend (with `until`) or ban (without). Ends every session. */
+  @Put('users/:id/suspension')
+  @Roles(RoleCode.ADMIN)
+  async suspendUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SuspendUserDto,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminService.suspendUser(id, admin.id, dto.reason, dto.until);
+  }
+
+  @Delete('users/:id/suspension')
+  @Roles(RoleCode.ADMIN)
+  async liftSuspension(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.liftSuspension(id);
+  }
+
+  /** F4: sign the user out of every device (revokes all refresh tokens). */
+  @Post('users/:id/logout')
+  @Roles(RoleCode.ADMIN)
+  async forceLogout(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.forceLogout(id);
+  }
+
+  /** F4: add or replace a per-user capability override. */
+  @Put('users/:id/capability-overrides')
+  @Roles(RoleCode.ADMIN)
+  async setCapabilityOverride(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetCapabilityOverrideDto,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminService.setCapabilityOverride(id, admin.id, dto);
+  }
+
+  @Delete('users/:id/capability-overrides/:overrideId')
+  @Roles(RoleCode.ADMIN)
+  async removeCapabilityOverride(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('overrideId', ParseUUIDPipe) overrideId: string,
+  ) {
+    return this.adminService.removeCapabilityOverride(id, overrideId);
   }
 
   /**

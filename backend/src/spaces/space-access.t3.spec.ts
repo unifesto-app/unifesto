@@ -16,6 +16,7 @@ describe('space access (T3)', () => {
     overrides: Array<{ spaceId: string; code: RoleCode; action: string }> = [],
   ) => {
     const prisma = {
+      userCapabilityOverride: { findMany: jest.fn(async () => []) },
       userRole: {
         findMany: jest.fn().mockResolvedValue(
           roles.map((r) => ({ role: { code: r.code, scope: r.scope }, spaceId: r.spaceId ?? null, eventId: r.eventId ?? null })),

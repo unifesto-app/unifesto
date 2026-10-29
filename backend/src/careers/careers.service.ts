@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -145,8 +146,19 @@ export class CareersService {
     });
   }
 
+  /**
+   * K3: only a role nobody applied to can be deleted. Deleting cascades its
+   * applications and would orphan their private résumé files, so a role with
+   * applicants is closed instead.
+   */
   async remove(id: string) {
     await this.ensureExists(id);
+    const applications = await this.prisma.careerApplication.count({ where: { careerId: id } });
+    if (applications > 0) {
+      throw new ConflictException(
+        `This role has ${applications} application${applications === 1 ? '' : 's'}. Close it instead, so they are kept.`,
+      );
+    }
     await this.prisma.career.delete({ where: { id } });
     return { deleted: true };
   }
