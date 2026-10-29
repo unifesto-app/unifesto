@@ -1003,3 +1003,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Web My tickets: app tabs (upcoming, waiting list + pay, past, cancelled) and a ticket page (QR, calendar, WhatsApp, check-ins, cancel, refund request + timeline, delete, report) (#442)
 - **2026-10-29** · Track V: one sign-in for everyone on web's `/login`, and `/console` becomes every signed-in user's home (user decision). Added V8 (console on web's session) and V9 (`/tickets` and `/account` under `/console`); the track is now 9 PRs
 - **2026-10-29** · Web routes moved under a (public) route group with a [...missing] 404 catch-all; old opengraph-image URLs kept via rewrites (#443)
+- **2026-10-29** · Web: edit my registration details (team and own answers, file answers kept) and post-event feedback; certificates held for feedback link the form (#444)
