@@ -82,15 +82,59 @@ export interface BotIo {
 }
 
 export interface BotTurn {
-  /** null when the bot gave up (AI off, refused, error, too many steps). */
+  /** null when the bot gave up (AI off, refused, error, too many steps, reply held). */
   text: string | null;
   actions: BotAction[];
   handoff: string | null;
   tools: string[];
+  /** An answer `ungrounded` held back: why, and the draft for staff. */
+  held?: { why: string; draft: string };
 }
 
 /** Model calls per user message: lookups plus the answer. */
 const MAX_STEPS = 6;
+
+const AMOUNT = /(?:₹|\brs\.?|\binr)\s*(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s*(?:rupees|rupaye|rupay)\b/gi;
+const LINK = /\bhttps?:\/\/([^\s/?#)\]]+)|\bwww\.([^\s/?#)\]]+)/gi;
+const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const PHONE = /\+?\d[\d\s-]{8,}\d/g;
+const num = (s: string) => Number(s.replace(/,/g, ''));
+
+/**
+ * Output guardrail. A bot reply reaches the person with nobody reading it
+ * first (desk drafts get a human), so every amount, link, email and phone
+ * number in it must come from a tool result or an earlier Assist reply. The
+ * person's own messages don't count: echoing "my ₹5,000 refund" is how a
+ * wrong promise gets made. Returns why the reply can't go out, or null.
+ */
+export function ungrounded(reply: string, convo: Anthropic.MessageParam[]): string | null {
+  const seen = convo
+    .flatMap((m) =>
+      typeof m.content === 'string'
+        ? m.role === 'assistant' ? [m.content] : []
+        : m.content.flatMap((b) => (b.type === 'tool_result' && typeof b.content === 'string' ? [b.content] : [])),
+    )
+    .join('\n')
+    .toLowerCase();
+  // ponytail: any number a tool returned counts (₹2099 passes if a year 2099 came back); tighten to ₹-marked numbers if held drafts show misses.
+  const amounts = new Set((seen.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map(num));
+  for (const m of reply.matchAll(AMOUNT)) {
+    if (!amounts.has(num(m[1] ?? m[2]))) return `amount "${m[0].trim()}" is not in the facts`;
+  }
+  for (const m of reply.matchAll(LINK)) {
+    const host = (m[1] ?? m[2]).toLowerCase().replace(/[.,;:!]+$/, '').replace(/^www\./, '');
+    if (!/(^|\.)unifesto\.app$/.test(host) && !seen.includes(host)) return `link to ${host} is not from a tool`;
+  }
+  for (const m of reply.matchAll(EMAIL)) {
+    if (!seen.includes(m[0].toLowerCase())) return 'email address is not from a tool';
+  }
+  const seenDigits = seen.replace(/[\s-]/g, '');
+  for (const m of reply.matchAll(PHONE)) {
+    const digits = m[0].replace(/\D/g, '');
+    if (digits.length >= 10 && !seenDigits.includes(digits.slice(-10))) return 'phone number is not from a tool';
+  }
+  return null;
+}
 
 /**
  * One bot turn over a conversation that ends with the person's message.
@@ -108,7 +152,11 @@ export async function botTurn(messages: Anthropic.MessageParam[], guest: boolean
       outputConfig: { effort: 'medium' },
     });
     if (!res.ok) return { text: null, actions, handoff: null, tools: used };
-    if (!res.toolUse) return { text: res.text, actions, handoff: null, tools: used };
+    if (!res.toolUse) {
+      const why = ungrounded(res.text, convo);
+      if (why) return { text: null, actions, handoff: null, tools: used, held: { why, draft: res.text } };
+      return { text: res.text, actions, handoff: null, tools: used };
+    }
 
     const results: Anthropic.ToolResultBlockParam[] = [];
     let handoff: string | null = null;
@@ -284,11 +332,17 @@ export class SupportBot {
       ]);
       return;
     }
-    // Handoff asked for, or no answer: a person takes it (D7).
+    // Handoff asked for, reply held, or no answer: a person takes it (D7).
+    // The draft goes only to the staff-only handoff note, never the log: it may hold the very phone or email that tripped it.
+    if (turn.held) this.logger.warn(`Bot reply on case ${id} held: ${turn.held.why}`);
     await this.prisma.supportMessage.create({
       data: { ticketId: id, authorId: userId, side: SupportMessageSide.ASSISTANT, body: turn.handoff ? HANDOFF_LINE : BOT_FALLBACK },
     });
-    await this.support.handoff(id, userId, turn.handoff ?? 'Assist had no answer');
+    await this.support.handoff(
+      id,
+      userId,
+      turn.handoff ?? (turn.held ? `reply held, ${turn.held.why}. Draft: ${turn.held.draft}` : 'Assist had no answer'),
+    );
   }
 
   /** Read-only tools. Only the person's own bookings; no names, emails or phones go to the model. */

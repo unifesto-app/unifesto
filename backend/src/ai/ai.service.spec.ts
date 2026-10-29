@@ -181,6 +181,25 @@ describe('AiService', () => {
     });
   });
 
+  it('folds usage rows per feature: outcomes, cost, cache share, latency', async () => {
+    const { svc, prisma } = setup();
+    const row = (feature: string, outcome: AiRunOutcome, n: number, cost: string, input: number, read: number, ms: number) => ({
+      feature,
+      outcome,
+      _count: { _all: n },
+      _sum: { costUsd: cost, latencyMs: ms, inputTokens: input, cacheReadTokens: read, cacheWriteTokens: 0 },
+    });
+    (prisma.aiRun as Record<string, jest.Mock>).groupBy = jest.fn().mockResolvedValue([
+      row('bot', AiRunOutcome.OK, 3, '0.00123', 1000, 3000, 900),
+      row('bot', AiRunOutcome.ERROR, 1, '0', 0, 0, 100),
+      row('triage', AiRunOutcome.REFUSED, 2, '0.00005', 500, 0, 400),
+    ]);
+    await expect(svc.usage(30)).resolves.toEqual({
+      bot: { runs: 4, ok: 3, refused: 0, error: 1, costUsd: 0.0012, cacheShare: 0.75, avgLatencyMs: 250 },
+      triage: { runs: 2, ok: 0, refused: 2, error: 0, costUsd: 0.0001, cacheShare: 0, avgLatencyMs: 200 },
+    });
+  });
+
   it('prices Haiku 5.5, 5× above 100K prompt tokens', () => {
     // 1000×0.10 + 200×0.50 + 4000×0.01 = 240 per million.
     expect(aiCostUsd(usage)).toBeCloseTo(0.00024, 10);

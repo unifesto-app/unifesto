@@ -230,7 +230,7 @@ async function main() {
     }
     if (!misses.length) clean++;
     console.log(
-      `${misses.length ? '✗' : '✓'} ${c.id} [${turn.tools.join(' ')}]${turn.actions.length ? ` cards: ${turn.actions.map((a) => a.type).join(',')}` : ''}${turn.handoff ? ` handoff: ${turn.handoff}` : ''}${misses.length ? `\n  ✗ ${misses.join(', ')}` : ''}\n  ${text.replace(/\n/g, '\n  ')}\n`,
+      `${misses.length ? '✗' : '✓'} ${c.id} [${turn.tools.join(' ')}]${turn.actions.length ? ` cards: ${turn.actions.map((a) => a.type).join(',')}` : ''}${turn.handoff ? ` handoff: ${turn.handoff}` : ''}${turn.held ? ` held: ${turn.held.why}\n  draft: ${turn.held.draft}` : ''}${misses.length ? `\n  ✗ ${misses.join(', ')}` : ''}\n  ${text.replace(/\n/g, '\n  ')}\n`,
     );
   }
 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
-import { getPlatformConfig, updatePlatformConfig } from "@/lib/api/subscriptions-api";
+import { getAiUsage, getPlatformConfig, updatePlatformConfig, type AiUsage } from "@/lib/api/subscriptions-api";
 
 /** What each AI feature does, in the words an admin needs to decide. Unknown keys still list. */
 const ABOUT: Record<string, { name: string; body: string }> = {
@@ -18,10 +18,27 @@ const ABOUT: Record<string, { name: string; body: string }> = {
   blog_writer: { name: "Auto-blog writer", body: "Researches queued questions and publishes up to 3 posts a day." },
 };
 
-/** Platform kill switch for each AI feature (PlatformConfig.aiEnabledFeatures). */
+const usd = (n: number) => (n === 0 ? "$0" : n < 1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`);
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+/** One line of a feature's last 30 days, or null when it never ran. */
+function usageLine(u?: AiUsage): string | null {
+  if (!u?.runs) return null;
+  const failed = u.refused + u.error;
+  return [
+    `${u.runs.toLocaleString("en-IN")} calls`,
+    usd(u.costUsd),
+    failed ? `${failed} failed (${pct(failed / u.runs)})` : "none failed",
+    `${pct(u.cacheShare)} cached`,
+    `${(u.avgLatencyMs / 1000).toFixed(1)}s avg`,
+  ].join(" · ");
+}
+
+/** Platform kill switch for each AI feature (PlatformConfig.aiEnabledFeatures), with its last 30 days. */
 export function AiFeaturesCard() {
   const [all, setAll] = useState<string[] | null>(null);
   const [enabled, setEnabled] = useState<string[]>([]);
+  const [usage, setUsage] = useState<Record<string, AiUsage>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +50,10 @@ export function AiFeaturesCard() {
         setEnabled(data.aiEnabledFeatures ?? []);
       }
     });
+    // Numbers are extra: without them the switches still work.
+    getAiUsage().then(({ data }) => data && setUsage(data));
   }, []);
+  const totalUsd = Object.values(usage).reduce((s, u) => s + u.costUsd, 0);
 
   const toggle = async (feature: string) => {
     const on = enabled.includes(feature);
@@ -65,6 +85,7 @@ export function AiFeaturesCard() {
         <CardDescription>
           Each feature runs only while it is on here, even with the Anthropic key set. Turning one off
           stops it at once.
+          {Object.keys(usage).length > 0 && ` Last 30 days: ${usd(totalUsd)} in all.`}
         </CardDescription>
       </CardHeader>
       <CardContent className="divide-y divide-border">
@@ -83,6 +104,9 @@ export function AiFeaturesCard() {
                     </span>
                   </p>
                   {ABOUT[f] && <p className="text-xs text-muted-foreground">{ABOUT[f].body}</p>}
+                  {usageLine(usage[f]) && (
+                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">Last 30 days: {usageLine(usage[f])}</p>
+                  )}
                 </div>
                 <Button
                   size="sm"
