@@ -2,27 +2,30 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500&family=Hanken+Grotesk:wght@300;400;500&display=block" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0}
-body{width:1600px;background:#000;color:#ececee;font:18px "Hanken Grotesk";padding:72px}
+body{position:relative;width:1600px;height:1180px;overflow:hidden;background:#000;color:#ececee;font:18px "Hanken Grotesk";padding:72px}
+body:after{content:"";position:absolute;inset:0;opacity:.12;background:url(png/grain-180.png) 0 0/180px;pointer-events:none}
 .ey{font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:#8a8a90}
 .ey:before{content:"";display:block;width:56px;height:1px;background:#8a8a90;margin-bottom:20px}
 h1{font:500 40px 'DM Sans';letter-spacing:-1.6px;margin:18px 0 56px}
 .g{display:grid;gap:24px}.c{background:#0a0a0b;border:1px solid #ffffff14;border-radius:20px;padding:36px;display:grid;place-items:center;gap:18px}
 .l{background:#fff;color:#111113;border-color:#0000001a}.cap{font-size:14px;color:#8a8a90;justify-self:start}
-.sw{display:flex;gap:12px}.sw div{width:96px;height:80px;border-radius:12px;border:1px solid #ffffff22;padding:10px;font-size:12px;display:flex;align-items:end}
+.sw{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:100%}.sw div{height:62px;border-radius:10px;border:1px solid #ffffff22;padding:7px;font-size:11px;line-height:1.25;display:flex;align-items:end}
 </style>
-<p class="ey">Brand · October 2026</p><h1>Unifesto, monochrome cosmos</h1>
+<p class="ey">Brand · October 2026</p><h1>Unifesto Horizon</h1>
 <div class="g" style="grid-template-columns:1.6fr 1fr 1fr">
  <div class="c" style="grid-row:span 2"><img src="png/app-icon-dark-rounded-1024.png" width="420"><span class="cap">App icon · iOS &amp; Android</span></div>
  <div class="c"><img src="svg/wordmark-silver.svg" width="300"><span class="cap">Wordmark · on dark</span></div>
  <div class="c l"><img src="svg/wordmark-ink.svg" width="300"><span class="cap">Wordmark · on light</span></div>
- <div class="c"><div style="display:flex;gap:22px;align-items:end"><img src="svg/favicon.svg" width="16"><img src="svg/favicon.svg" width="32"><img src="svg/favicon.svg" width="64"><img src="svg/favicon.svg" width="120"></div><span class="cap">Favicon · 16 / 32 / 64 / 120</span></div>
+ <div class="c" style="padding:0;overflow:hidden;place-items:stretch;position:relative"><img src="png/horizon-sky-night-1920x1080.jpg" style="display:block;width:100%;height:100%;object-fit:cover"><span class="cap" style="position:absolute;left:28px;bottom:22px">Horizon sky · stars, orbits, horizon</span></div>
  <div class="c l"><img src="png/app-icon-light-rounded-1024.png" width="170"><span class="cap">Light icon · marketing &amp; light surfaces</span></div>
 </div>
 <div class="g" style="grid-template-columns:1fr 1fr 1fr 1.6fr;margin-top:24px">
  <div class="c"><img src="png/android-foreground-1024.png" width="170" style="border-radius:50%"><span class="cap">Android adaptive</span></div>
  <div class="c" style="background:#2b3a2f"><img src="svg/android-monochrome.svg" width="170" style="border-radius:50%;background:#1d2a20"><span class="cap" style="color:#cfe3d3">Android themed (monochrome)</span></div>
  <div class="c"><img src="svg/symbol-silver.svg" width="150"><span class="cap">Symbol · silver</span></div>
- <div class="c" style="place-items:start"><span class="cap">Palette (from the website tokens)</span>
-  <div class="sw"><div style="background:#000">Night #000</div><div style="background:#0a0a0b">Night 2 #0a0a0b</div><div style="background:#ececee;color:#000">Paper #ececee</div><div style="background:#8a8a90;color:#000">Muted #8a8a90</div><div style="background:#fff;color:#111">Light #fff</div></div>
-  <span class="cap" style="margin-top:8px">Type · DM Sans 500 (display), Hanken Grotesk (body). Wordmark is outlined artwork, not a font.</span></div>
+ <div class="c" style="place-items:start;gap:12px"><span class="cap">Chrome · night and day</span>
+  <div class="sw"><div style="background:#000">Night<br>#000000</div><div style="background:#0a0a0b">Night 2<br>#0A0A0B</div><div style="background:#e8e8ea;color:#000">Silver<br>#E8E8EA</div><div style="background:#f2f2f5;color:#111">Paper<br>#F2F2F5</div><div style="background:#111113">Ink<br>#111113</div></div>
+  <span class="cap" style="margin-top:6px">Inside cards · shade · signals</span>
+  <div class="sw"><div style="background:#90e4c1;color:#000">Mint<br>#90E4C1</div><div style="background:#90d5ff;color:#000">Sky<br>#90D5FF</div><div style="background:#f7f0e0;color:#000">Ivory<br>#F7F0E0</div><div style="background:#4d8dff;color:#000">Horizon<br>#4D8DFF</div><div style="background:#be123c">Crimson<br>#BE123C</div></div>
+  <span class="cap" style="margin-top:6px">Type · DM Sans 500 headlines, Hanken Grotesk text. Thin lines, grain, frosted glass.</span></div>
 </div>

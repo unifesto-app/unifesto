@@ -1,9 +1,9 @@
 #!/bin/sh
-# Assemble the press brand kit and publish it to the website. Run after build.py + render.py.
+# Assemble the press brand kit and publish it to the website. Run after build.py, render.py and `render.py docs`.
 set -e
 cd "$(dirname "$0")"
 K=dist/Unifesto-Brand-Kit
-rm -rf dist && mkdir -p "$K/Logo/SVG" "$K/Logo/PNG" "$K/Symbol/SVG" "$K/Symbol/PNG" "$K/App icon" "$K/Favicon" "$K/Social" "$K/Powered by/SVG" "$K/Powered by/PNG" "$K/Products/SVG" "$K/Products/PNG" "$K/Usage"
+rm -rf dist && mkdir -p "$K/Logo/SVG" "$K/Logo/PNG" "$K/Symbol/SVG" "$K/Symbol/PNG" "$K/App icon" "$K/Favicon" "$K/Social" "$K/Powered by/SVG" "$K/Powered by/PNG" "$K/Products/SVG" "$K/Products/PNG" "$K/Usage" "$K/Backgrounds"
 cp Unifesto-Brand-Guidelines.pdf "$K/"
 for c in silver ink white black; do
   cp "svg/wordmark-$c.svg" "$K/Logo/SVG/unifesto-wordmark-$c.svg"
@@ -26,8 +26,9 @@ for p in huddle sprint; do for l in header signoff light; do
 done; done
 for k in photo colour light stacked; do cp "png/poster-powered-by-$k.png" "$K/Usage/unifesto-powered-by-poster-$k.png"; done
 cp png/social-avatar-1080.png "$K/Social/unifesto-profile-picture.png"
+for t in night day; do cp "png/horizon-sky-$t-1920x1080.jpg" "$K/Backgrounds/unifesto-horizon-$t-1920x1080.jpg"; done
 cat > "$K/README.txt" <<'TXT'
-Unifesto brand kit · October 2026
+Unifesto brand kit · Unifesto Horizon · October 2026
 
 Logo/      The wordmark. Silver on dark backgrounds, ink on light. White/black for one-colour use.
 Symbol/    The "u" on its own, for avatars and small spaces.
@@ -38,8 +39,10 @@ Products/  Unifesto Stay, Unifesto Huddle, Unifesto Sprint and Unifesto Orbit lo
 Usage/     Sample posters: Huddle on session posters, Sprint on hackathon posters (masthead, sign-off, light),
            and organiser posters carrying the Powered by badge.
 Powered by/  Badges for events run on Unifesto: boxed dark/light, one-colour white/black, horizontal and stacked.
+Backgrounds/ The Horizon sky (stars, filled orbits, the horizon line), night and day, for slides and video.
 
-Read Unifesto-Brand-Guidelines.pdf before use. Please don't recolour, stretch or retype the logo.
+Read Unifesto-Brand-Guidelines.pdf before use. It covers the logo and the Unifesto Horizon theme:
+colour, type, lines and light, shade cards and frosted glass. Please don't recolour, stretch or retype the logo.
 Questions: support@unifesto.app · www.unifesto.app/press
 TXT
 (cd dist && zip -qr -X Unifesto-Brand-Kit.zip Unifesto-Brand-Kit)
