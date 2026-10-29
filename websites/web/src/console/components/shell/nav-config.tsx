@@ -65,7 +65,7 @@ export const BASE_URL = "/console";
 // matrix the backend enforces, so a Crew member never sees Finance.
 export const NAV_GROUPS: NavGroup[] = [
   {
-    items: [{ href: "/space", label: "Overview", icon: SquaresFour, exact: true, keywords: "space dashboard stats" }],
+    items: [{ href: "/space", label: "Dashboard", icon: SquaresFour, exact: true, keywords: "space dashboard overview stats" }],
   },
   {
     label: "Programming",
@@ -127,9 +127,9 @@ export const NAV_GROUPS: NavGroup[] = [
  * need a role. Account's own tabs carry the rest; the palette finds them too.
  */
 export const ME_GROUP: NavGroup = {
-  label: "Me",
+  label: "Account",
   items: [
-    { href: "", label: "Home", icon: House, exact: true, keywords: "home start" },
+    { href: "", label: "Dashboard", icon: House, exact: true, keywords: "home start dashboard" },
     { href: "/tickets", label: "My tickets", icon: Ticket, keywords: "tickets bookings registrations qr waiting list" },
     { href: "/account", label: "My account", icon: UserCircle, keywords: "profile account sign-in delete" },
     { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "notifications messages", paletteOnly: true },

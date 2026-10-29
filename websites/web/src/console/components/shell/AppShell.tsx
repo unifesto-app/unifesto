@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="wordmark h-7 w-auto"
           />
           <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
-            Space
+            Console
           </span>
           <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
           <Breadcrumbs />

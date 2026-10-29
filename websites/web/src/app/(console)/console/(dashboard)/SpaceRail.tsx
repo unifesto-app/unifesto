@@ -8,6 +8,7 @@ import { useMobileNav } from "@/console/lib/context/MobileNavContext";
 import { useDrawerBehavior } from "@/console/lib/hooks/useDrawerBehavior";
 import { useCollapsibleRail } from "@/console/lib/hooks/useCollapsibleRail";
 import { SpaceNav } from "@/console/components/shell/SpaceNav";
+import { ConsoleNav } from "@/console/components/shell/ConsoleNav";
 import { isPersonalPath } from "@/console/components/shell/nav-config";
 import { EventNav } from "@/console/components/shell/EventNav";
 import { EventAccessNav } from "@/console/components/shell/EventAccessNav";
@@ -79,6 +80,8 @@ export default function SpaceDashboardLayout({
   // Chooses the rail contents for the current context (shared by the desktop
   // rail and the mobile drawer).
   const renderNav = (opts: { collapsed?: boolean; onNavigate?: () => void }) => {
+    // The full rail and the drawer show the whole tree; the icon strip keeps the flat context nav.
+    if (!opts.collapsed) return <ConsoleNav onNavigate={opts.onNavigate} />;
     if (eventOnly) {
       return viewingOwnEvent ? (
         <EventNav
@@ -105,7 +108,7 @@ export default function SpaceDashboardLayout({
   if (loading || (hasAccess && !currentSpace)) {
     return (
       <>
-        <aside className="fixed left-0 top-16 bottom-0 z-10 hidden w-60 border-r border-border bg-sidebar p-4 lg:block">
+        <aside className="fixed left-0 top-16 bottom-0 z-10 hidden w-64 border-r border-border bg-sidebar p-4 lg:block">
           <div className="flex min-h-full flex-col space-y-4">
             <Skeleton className="h-12 w-full" />
             <div className="flex-1 space-y-2">
@@ -115,7 +118,7 @@ export default function SpaceDashboardLayout({
             </div>
           </div>
         </aside>
-        <main className="lg:ml-60">
+        <main className="lg:ml-64">
           <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 space-y-4">
             <Skeleton className="h-32 w-full" />
             <Skeleton className="h-64 w-full" />
@@ -131,7 +134,7 @@ export default function SpaceDashboardLayout({
       <aside
         className={cn(
           "fixed left-0 top-16 bottom-0 z-10 hidden flex-col border-r border-border bg-sidebar transition-[width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] lg:flex",
-          collapsed ? "w-16" : "w-60"
+          collapsed ? "w-16" : "w-64"
         )}
       >
         <div className="flex-1 overflow-y-auto">
@@ -204,7 +207,7 @@ export default function SpaceDashboardLayout({
       <main
         className={cn(
           "transition-[margin] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          collapsed ? "lg:ml-16" : "lg:ml-60"
+          collapsed ? "lg:ml-16" : "lg:ml-64"
         )}
       >
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
