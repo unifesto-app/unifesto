@@ -74,7 +74,7 @@ export default function HelpArticlesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Help articles"
-        subtitle="Published articles appear at unifesto.app/help and answer questions in Assist."
+        subtitle="Published articles appear at unifesto.app/help and answer questions in Assist. The page stays hidden until one is published."
         actions={
           <Button onClick={() => setEditing("new")}>
             <Plus className="h-4 w-4" /> New article
