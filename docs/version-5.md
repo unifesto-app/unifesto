@@ -511,7 +511,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 
 | # | Item | Status |
 |---|---|---|
-| K1 | **Discovery marketplace on web and mobile.** Discovery marketplace on web + mobile: browse by city/college/category, "trending near you" | planned |
+| K1 | **Discovery marketplace on web and mobile.** Discovery marketplace on web + mobile: browse by city/college/category, "trending near you" | done (#425) (#425) |
 | K2 | **Fix SEO gaps: crawlable cards, event JSON-LD, full sitemap.** SEO: sitemap (events, spaces, blog, careers), JSON-LD (Event, Article, JobPosting), RSS, canonicals (from W7) | planned |
 | K3 | **Harden the blog and careers editors: draft guard, scheduling, slugs.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
@@ -971,3 +971,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · K18 web: Continue with Google (Cognito code + PKCE) and sessions that survive via a host-only httpOnly refresh cookie; access token in memory only; custom domains keep the email code (#421)
 - **2026-10-29** · K11 public web polish: home band, 24px link targets, quicker hero, "1 member", no empty Space banner box, labelled request-space form, scrollable organisers nav on phones, bubble tucks on scroll, empty blog/careers hidden, clean event meta, uncropped portrait posters (#424)
 - **2026-10-29** · E3 sponsor portal: lead status + notes (web and app), per-event booth stats, CSV with status and note; migration 20261121120000_sponsor_lead_status (#423)
+- **2026-10-29** · K1 discovery: web /events browse by city, college and real categories with every upcoming event and a trending-near-you strip; /spaces opens on active spaces; GET /spaces honours city; category renames keep events; mobile city/college browse (#425)
