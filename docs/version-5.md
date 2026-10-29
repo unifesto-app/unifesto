@@ -390,7 +390,7 @@ One support system for everything a person needs help with. Every item is an **A
 |---|---|---|
 | E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
 | E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
-| E3 | Sponsor portal: lead notes + status, per-event booth stats | planned |
+| E3 | Sponsor portal: lead notes + status, per-event booth stats | done (#423) |
 | E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | done (#412) |
 | E6 | Hackathon certificates from awards | done |
@@ -970,3 +970,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · F5 audit trail: @Audit records who changed roles, permissions, status, plans and reconciled payments (audit_logs), shown on Apex user, space, event detail and IAM (#418)
 - **2026-10-29** · K18 web: Continue with Google (Cognito code + PKCE) and sessions that survive via a host-only httpOnly refresh cookie; access token in memory only; custom domains keep the email code (#421)
 - **2026-10-29** · K11 public web polish: home band, 24px link targets, quicker hero, "1 member", no empty Space banner box, labelled request-space form, scrollable organisers nav on phones, bubble tucks on scroll, empty blog/careers hidden, clean event meta, uncropped portrait posters (#424)
+- **2026-10-29** · E3 sponsor portal: lead status + notes (web and app), per-event booth stats, CSV with status and note; migration 20261121120000_sponsor_lead_status (#423)
