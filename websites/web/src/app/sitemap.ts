@@ -18,7 +18,7 @@ export const revalidate = 3600
  * Past events stay indexed (their pages are real and carry the space's
  * history), just at a lower priority than upcoming ones. A white-labelled
  * event is left out: its canonical is the space's own domain, whose sitemap
- * lists it (src/app/space/[spaceSlug]/sitemap.xml).
+ * lists it (src/app/(public)/space/[spaceSlug]/sitemap.xml).
  */
 async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
