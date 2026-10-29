@@ -14,7 +14,7 @@ describe('FeedbackService (F1)', () => {
           feedbackEnabled: enabled,
           deletedAt: null,
           startDateTime: new Date(Date.now() + (started ? -1 : 1) * 3_600_000),
-          endDateTime: new Date(),
+          endDateTime: new Date(Date.now() + 3_600_000),
         })),
       },
       eventRegistration: { count: jest.fn(async () => (attending ? 1 : 0)) },
@@ -26,7 +26,7 @@ describe('FeedbackService (F1)', () => {
       },
       eventFeedbackResponse: { upsert },
     };
-    return { svc: new FeedbackService(prisma), upsert };
+    return { svc: new FeedbackService(prisma, { notify: jest.fn() } as any, { emit: jest.fn() } as any), upsert };
   };
 
   it('stores one response per attendee, keyed by event and user', async () => {

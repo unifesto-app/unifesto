@@ -26,8 +26,11 @@ export interface FeedbackResponse {
 export interface FeedbackForm {
   event: { id: string; title: string };
   enabled: boolean;
-  /** I attend and the event has started. */
+  /** I attend, the event has started and feedback hasn't closed (7 days after the end). */
   open: boolean;
+  closesAt: string;
+  /** My certificate for this event waits for my feedback (F2). */
+  unlocksCertificate: boolean;
   questions: FeedbackQuestion[];
   response: FeedbackResponse | null;
 }

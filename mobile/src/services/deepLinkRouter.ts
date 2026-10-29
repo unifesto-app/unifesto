@@ -51,6 +51,7 @@ const ALLOWED_PREFIXES = new Set([
   'group', // Manage group (team changes: lead handover requests, seats added)
   'manage', // support case threads (Assist pushes); screens re-check access server-side
   'stay', // stay booking passes (booking-confirmed pushes: unifesto://stay/pass/:id)
+  'feedback', // event feedback form (F2 request/reminder pushes: unifesto://feedback/:eventId)
 ]);
 
 /**
@@ -71,6 +72,7 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'group',
   'manage',
   'stay',
+  'feedback',
 ]);
 
 /** First path segment, lowercased (e.g. "/ticket/123" -> "ticket"). */
