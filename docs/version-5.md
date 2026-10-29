@@ -1011,3 +1011,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · One sign-in for the console: web's /login and session (renew on 401, old space cookie read until it expires); /console/login 308s to /login; proxy tests run in npm test (#450)
 - **2026-10-29** · CI: website steps fail on lint, audit and test errors again (an && chain under bash -e was passing them); web's 8 link lint errors fixed (#449)
 - **2026-10-29** · /console is everyone's home: my next events and spaces, a Me section in the rail; my tickets, account and feedback moved under /console (old URLs 308); sign-in lands on /console (#451)
+- **2026-10-29** · Console header shows breadcrumbs (Home › space › section › …) instead of the space switcher; spaces switch from Home (#452)
