@@ -719,6 +719,21 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .lg-live > [data-glass] > div { background: transparent; box-shadow: none; }
 /* The glass canvas sits at z-index -1 inside its card: keep it in the card. */
 [data-glass] { isolation: isolate; }
+/* Inner cards turn to glass too: the panel's own tiles (rows, check-in
+   points, leaderboard places) once the panel is glass, and the cards on the
+   phone mockups' screens. A clear pane with a fine top highlight instead of
+   a solid slab. */
+.lg-live [data-glass] .bg-night-3, .phone-screen .bg-night-2 {
+  background: rgb(255 255 255 / 0.05);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.05);
+}
+:root[data-theme="light"] .lg-live [data-glass] .bg-night-3,
+:root[data-theme="light"] .phone-screen .bg-night-2 {
+  background: rgb(255 255 255 / 0.6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 0 0 1px rgb(17 17 19 / 0.06), 0 1px 2px rgb(17 17 19 / 0.05);
+}
 
 /* ─── Shade cards ────────────────────────────────────────────────────── */
 /* ShadeCard: soft colour shapes in one accent, fully blended into a deep
