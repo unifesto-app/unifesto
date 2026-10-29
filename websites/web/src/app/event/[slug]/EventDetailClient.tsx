@@ -216,7 +216,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
               </>
             )}
             {event.category && (
-              <span className="blur-bg absolute bottom-4 left-4 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
+              <span className="absolute bottom-4 left-4 text-[11px] font-semibold text-snow [text-shadow:0_1px_10px_rgb(0_0_0/0.8)]">
                 {event.category}
               </span>
             )}
@@ -396,9 +396,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
                   <p className="mt-3 line-clamp-2 text-sm font-semibold text-paper">{s.name}</p>
                   {s.title && <p className="mt-1 line-clamp-2 text-xs text-paper/55">{s.title}</p>}
                   {s.is_featured && (
-                    <span className="mt-3 inline-block rounded-full border border-paper/25 px-2.5 py-0.5 text-[11px] text-paper/75">
-                      Featured
-                    </span>
+                    <span className="mt-2 inline-block text-[11px] text-paper/55">Featured</span>
                   )}
                 </div>
               ))}

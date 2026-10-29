@@ -66,9 +66,9 @@ export function TicketsVisual() {
             </span>
           </div>
         ))}
-        <div className="flex items-center justify-between rounded-md bg-primary/[0.08] px-2.5 py-1.5 text-[10px]">
+        <div className="flex items-center justify-between rounded-md bg-sky/[0.08] px-2.5 py-1.5 text-[10px]">
           <span className="text-paper/75">Coupon FRESHERS20</span>
-          <span className="text-primary">−20%</span>
+          <span className="text-sky">−20%</span>
         </div>
       </div>
     </Panel>
@@ -89,7 +89,7 @@ export function DoorVisual() {
         <span className="text-[11px] text-paper/55">of 412 checked in</span>
       </div>
       <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
-        <div data-reveal="fill" className="h-full origin-left rounded-full bg-primary" style={{ transform: "scaleX(0.94)" }} />
+        <div data-reveal="fill" className="h-full origin-left rounded-full bg-mint" style={{ transform: "scaleX(0.94)" }} />
       </div>
       <div className="space-y-1.5">
         {points.map(([name, count, live]) => (
@@ -99,7 +99,7 @@ export function DoorVisual() {
               {name}
             </span>
             <span className="flex items-center gap-1.5">
-              {live && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />}
+              {live && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-mint" />}
               <span className="tabular text-[11px] text-paper">{count}</span>
             </span>
           </div>
@@ -130,8 +130,8 @@ export function MoneyVisual() {
           <span className="font-display tabular text-base text-paper">₹1,38,413</span>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1.5 rounded-md bg-primary/[0.08] px-2.5 py-1.5">
-        <Check weight="bold" className="h-3 w-3 text-primary" />
+      <div className="mt-3 flex items-center gap-1.5 rounded-md bg-ivory/[0.08] px-2.5 py-1.5">
+        <Check weight="bold" className="h-3 w-3 text-ivory" />
         <span className="text-[10px] text-paper/75">Paid to HDFC ····4821</span>
       </div>
     </Panel>
@@ -208,12 +208,12 @@ export function ScanVisual() {
       <div className="relative overflow-hidden rounded-lg bg-night">
         <svg viewBox="0 0 200 112" className="aspect-[16/9] h-auto w-full">
           <DownloadQr x="72" y="20" width="56" height="56" />
-          <rect className="scan-sweep fill-primary" x="70" y="20" width="60" height="2" />
+          <rect className="scan-sweep fill-mint" x="70" y="20" width="60" height="2" />
         </svg>
       </div>
       <div className="mt-2.5 flex items-center justify-between text-[11px]">
         <span className="text-paper">Ananya R. · Team of 4</span>
-        <span className="flex items-center gap-1 text-primary">
+        <span className="flex items-center gap-1 text-mint">
           <Check weight="bold" className="h-3 w-3" /> Checked in
         </span>
       </div>
