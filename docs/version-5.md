@@ -1015,3 +1015,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · Console sidebar is one tree (Account, Spaces › space › Events › event, each with its Dashboard; other spaces switch from it); header says Unifesto Console (#453)
 - **2026-10-29** · Web console: Inbox, My tickets, Support, Saved events and My certificates in the sidebar with unread counts; My account keeps its settings tabs; "My Spaces" (#454)
 - **2026-10-29** · Web console: My Spaces page lists my spaces; the sidebar shows only the space I'm in, under My Spaces (#455)
+- **2026-10-29** · Web console: one sidebar per context (Account, Space, Event) instead of the nested tree; space sidebar links back to My Spaces (#456)
