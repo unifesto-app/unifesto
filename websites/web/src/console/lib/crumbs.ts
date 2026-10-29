@@ -1,7 +1,6 @@
 /**
- * The console header's breadcrumb trail, from the URL: Home › space › section
- * › item › page. It replaces the space switcher: to move between spaces, go up
- * to Home. Pure, so it is tested without React (crumbs.test.ts).
+ * The console header's breadcrumb trail, from the URL: Dashboard › space › section
+ * › item › page. Pure, so it is tested without React (crumbs.test.ts).
  */
 export interface Crumb {
   href: string;
@@ -44,7 +43,7 @@ const looksLikeId = (s: string) => /\d/.test(s) && !(s in WORDS);
 const titled = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " ");
 
 export function trail(pathname: string, names: CrumbNames): Crumb[] {
-  const crumbs: Crumb[] = [{ href: BASE, label: "Home" }];
+  const crumbs: Crumb[] = [{ href: BASE, label: "Dashboard" }];
   if (pathname !== BASE && !pathname.startsWith(`${BASE}/`)) return crumbs;
   const segs = pathname.slice(BASE.length).split("/").filter(Boolean);
   if (!segs.length) return crumbs;

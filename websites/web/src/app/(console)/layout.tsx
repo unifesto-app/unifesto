@@ -33,7 +33,7 @@ const martian = Martian_Mono({
 const themeScript = `try{var r=document.documentElement,m=matchMedia("(prefers-color-scheme: light)");window.__applyTheme=function(){var p=localStorage.getItem("theme")||"system";r.dataset.pref=p;r.dataset.theme=p==="system"?(m.matches?"light":"dark"):p};__applyTheme();m.addEventListener("change",__applyTheme)}catch(e){}`;
 
 export const metadata: Metadata = {
-  title: "Space • Unifesto",
+  title: "Unifesto Console",
   description:
     "Run your space on Unifesto — plan, members, events and money, in one operator console.",
   robots: { index: false, follow: false },

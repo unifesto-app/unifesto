@@ -67,7 +67,7 @@ interface EventNavGroup {
 // the capability (role) and/or plan feature it needs — the nav filters through
 // the same checks the pages and backend enforce.
 export const EVENT_NAV_GROUPS: EventNavGroup[] = [
-  { items: [{ href: "", label: "Overview", icon: SquaresFour, exact: true }] },
+  { items: [{ href: "", label: "Dashboard", icon: SquaresFour, exact: true }] },
   {
     label: "Registrations",
     items: [
@@ -140,18 +140,12 @@ interface EventNavProps {
  * take over the whole rail rather than crowding into a second column. A "back
  * to events" control returns to the space-level nav.
  */
-export function EventNav({
-  eventId,
-  onNavigate,
-  collapsed = false,
-}: EventNavProps) {
-  const pathname = usePathname();
+/** This event's sections, filtered by what I may do there. Shared by the icon rail and the sidebar tree. */
+export function useEventNavGroups(eventId: string) {
   // This event's capabilities from the backend: event-only operators, per-space
   // overrides and Space Admin inheritance included.
   const { can, hasFeature } = useAccess(eventId);
-  const baseUrl = `/console/events/${eventId}`;
-
-  const navGroups = EVENT_NAV_GROUPS.map((group) => ({
+  return EVENT_NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
       (i) =>
@@ -160,6 +154,16 @@ export function EventNav({
         (!i.feature || hasFeature(i.feature))
     ),
   })).filter((group) => group.items.length > 0);
+}
+
+export function EventNav({
+  eventId,
+  onNavigate,
+  collapsed = false,
+}: EventNavProps) {
+  const pathname = usePathname();
+  const baseUrl = `/console/events/${eventId}`;
+  const navGroups = useEventNavGroups(eventId);
 
   const isActive = (item: EventNavItem) => {
     const fullPath = `${baseUrl}${item.href}`;

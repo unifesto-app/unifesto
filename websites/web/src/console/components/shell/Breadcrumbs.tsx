@@ -29,6 +29,9 @@ const publish = (next: Map<string, string>) => {
   listeners.forEach((l) => l());
 };
 
+/** Names pages have published (an event's title); the sidebar tree reads them too. */
+export const useCrumbNames = () => useSyncExternalStore(subscribe, () => names, () => names);
+
 /** Names the crumb for `href` while this page is open, e.g. the event layout with its event's title. */
 export function useCrumbName(href: string, name: string | undefined) {
   useEffect(() => {
@@ -43,14 +46,14 @@ export function useCrumbName(href: string, name: string | undefined) {
 }
 
 /**
- * Where I am, in the header: Home › space › section › … (it replaced the space
- * switcher; Home lists my spaces). Every crumb but the last is a link. On a
+ * Where I am, in the header: Dashboard › space › section › …. Every crumb but
+ * the last is a link (the sidebar lists my spaces to switch between). On a
  * phone only the last one shows.
  */
 export function Breadcrumbs() {
   const pathname = usePathname();
   const { currentSpace, hasAccess } = useSession();
-  const named = useSyncExternalStore(subscribe, () => names, () => names);
+  const named = useCrumbNames();
   const crumbs = trail(pathname, {
     space: hasAccess ? currentSpace?.name ?? null : null,
     section: (p) => SECTIONS.get(p),
@@ -64,7 +67,7 @@ export function Breadcrumbs() {
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;
           return (
-            // Names give way first; page labels (Home, Events, Attendees) stay whole.
+            // Names give way first; page labels (Dashboard, Events, Attendees) stay whole.
             <li key={c.href} className={cn("flex items-center gap-1.5", c.name ? "min-w-0" : last ? "min-w-0 md:shrink-0" : "shrink-0", !last && "hidden md:flex")}>
               {i > 0 && (
                 <CaretRight aria-hidden className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", last && "hidden md:block")} weight="bold" />
