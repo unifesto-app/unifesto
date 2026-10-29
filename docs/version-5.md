@@ -402,7 +402,7 @@ One support system for everything a person needs help with. Every item is an **A
 
 | # | Item | Status |
 |---|---|---|
-| F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | planned |
+| F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | done (#417) |
 | F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
 | F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | done (#411) |
@@ -973,3 +973,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · E3 sponsor portal: lead status + notes (web and app), per-event booth stats, CSV with status and note; migration 20261121120000_sponsor_lead_status (#423)
 - **2026-10-29** · K1 discovery: web /events browse by city, college and real categories with every upcoming event and a trending-near-you strip; /spaces opens on active spaces; GET /spaces honours city; category renames keep events; mobile city/college browse (#425)
 - **2026-10-29** · K19 web account pages: profile (username check, photo), email/marketing notification settings, self-serve account deletion with grace and cancel, saved events, my certificates; /delete-account leads with the web flow (#426)
+- **2026-10-29** · F1 per-event attendee feedback: 1-5 rating, NPS and curators' own questions (registration question types), one editable response per attendee; Space Feedback page + mobile Rate this event (#417)
