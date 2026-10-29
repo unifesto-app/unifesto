@@ -3,19 +3,18 @@
 import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { CaretRight } from "@unifesto/unicon/react";
 import { getEventById } from "@/console/lib/api/events-api";
 import type { Event } from "@/console/lib/api/events-api";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { Badge } from "@/console/components/ui/badge";
 import { EventLayoutContext } from "@/console/components/events/EventLayoutContext";
+import { useCrumbName } from "@/console/components/shell/Breadcrumbs";
 
 /**
  * Event-scoped chrome. The event's SECTION nav lives in the shared left rail
  * (the dashboard layout swaps in `EventNav` for these routes), so this layout
- * only owns the in-content header: a breadcrumb back to Events, the event
- * title, and its status. Content renders full width beneath.
+ * only owns the in-content header: the event title and its status (the
+ * header's breadcrumbs lead back). Content renders full width beneath.
  */
 export default function EventLayout({
   children,
@@ -29,6 +28,8 @@ export default function EventLayout({
 
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  // The header's breadcrumbs show this event by name.
+  useCrumbName(`/console/events/${eventId}`, event?.title);
 
   const loadEvent = useCallback(async () => {
     const { data, error } = await getEventById(eventId);
@@ -66,23 +67,8 @@ export default function EventLayout({
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb + event identity */}
+      {/* Event identity; the header's breadcrumbs carry the way back. */}
       <div className="space-y-2">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground"
-        >
-          <Link
-            href="/console/events"
-            className="transition-colors hover:text-foreground"
-          >
-            Events
-          </Link>
-          <CaretRight className="h-3.5 w-3.5" weight="bold" />
-          <span className="line-clamp-1 font-medium text-foreground">
-            {event.title}
-          </span>
-        </nav>
         <div className="flex flex-wrap items-center gap-3">
           {/* Not an h1: each page's own PageHeader is the page's one h1 (B12). */}
           <p className="text-xl font-semibold text-foreground">{event.title}</p>

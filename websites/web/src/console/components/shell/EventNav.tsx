@@ -66,7 +66,7 @@ interface EventNavGroup {
 // under "Advanced" at the bottom. Each item carries
 // the capability (role) and/or plan feature it needs — the nav filters through
 // the same checks the pages and backend enforce.
-const NAV_GROUPS: EventNavGroup[] = [
+export const EVENT_NAV_GROUPS: EventNavGroup[] = [
   { items: [{ href: "", label: "Overview", icon: SquaresFour, exact: true }] },
   {
     label: "Registrations",
@@ -151,7 +151,7 @@ export function EventNav({
   const { can, hasFeature } = useAccess(eventId);
   const baseUrl = `/console/events/${eventId}`;
 
-  const navGroups = NAV_GROUPS.map((group) => ({
+  const navGroups = EVENT_NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
       (i) =>

@@ -29,6 +29,15 @@ export type SpaceAppRole =
   | "crew"
   | "none";
 
+/** How a role reads in the console (Home's My spaces). */
+export const ROLE_LABEL: Record<SpaceAppRole, string> = {
+  space_admin: "Space Admin",
+  curator: "Curator",
+  co_curator: "Co-Curator",
+  crew: "Crew",
+  none: "",
+};
+
 /** Priority order used to pick the single governing role (high → low). */
 const ROLE_PRIORITY: SpaceAppRole[] = [
   "space_admin",
