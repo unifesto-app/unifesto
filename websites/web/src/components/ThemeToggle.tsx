@@ -11,7 +11,7 @@ declare global {
 }
 
 /* Cycles system → light → dark. The stored choice and the resolved theme
-   live on <html> (set before paint by the script in app/layout.tsx), so
+   live on <html> (set before paint by the script in app/(public)/layout.tsx), so
    this reads the DOM instead of holding state (no hydration mismatch). */
 export default function ThemeToggle({ className = "" }: { className?: string }) {
   const cycle = () => {

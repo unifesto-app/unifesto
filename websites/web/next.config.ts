@@ -57,6 +57,21 @@ const nextConfig: NextConfig = {
         source: '/public/:path*',
         destination: '/api/public/:path*',
       },
+      // Next names an opengraph-image inside a route group with a hash of its
+      // folder (src/app/(public)/event/[slug] → /event/x/opengraph-image-1vzko7).
+      // Keep the plain URL that shared cards and blog JSON-LD already point at.
+      // The hash changes if the folder moves; the build prints the new name.
+      ...Object.entries({
+        '/blog/:slug': '16v7k9',
+        '/event/:slug': '1vzko7',
+        '/help/:slug': '13qqj8',
+        '/session/:slug': 'y8p9w9',
+        '/space/:spaceSlug': 'eabv7x',
+        '/verify/:code': '1ir9a6',
+      }).map(([dir, hash]) => ({
+        source: `${dir}/opengraph-image`,
+        destination: `${dir}/opengraph-image-${hash}`,
+      })),
     ];
   },
   async headers() {

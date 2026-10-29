@@ -9,7 +9,7 @@ import {
 
 type Glyph = ComponentType<{ size?: number; color?: string; weight?: "regular" | "duotone" }>;
 
-/** Share-card copy for one static page, rendered by app/og/[...path]/route.tsx. */
+/** Share-card copy for one static page, rendered by app/(public)/og/[...path]/route.tsx. */
 export type OgPage = { kind: string; title: string; subtitle: string; cta?: string; icon: Glyph };
 
 /**

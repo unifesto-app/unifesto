@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 
 /**
  * Web sign-in session (K10, K18). The refresh token sits in our own server's
- * httpOnly, host-only cookie (src/app/auth/*); this module holds only the
+ * httpOnly, host-only cookie (src/app/(public)/auth/*); this module holds only the
  * access token, in memory. Each page load asks /auth/session for a fresh one,
  * so a session lasts as long as the backend's refresh window instead of the
  * old 24-hour localStorage token. No shared `.unifesto.app` cookie: that one
