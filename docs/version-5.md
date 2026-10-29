@@ -983,3 +983,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-29** · G15 DM Sans 500 replaces Michroma for headlines on web, Space, Apex, mobile and share cards; tracking max(calc(0.9px - 0.062em), -0.04em); ₹ now drawn by DM Sans (Hanken lacks it); web hero up to 64px; mobile legacy font helpers and Plus Jakarta removed. Rebuild web, space, apex; mobile JS-only. (#429)
 - **2026-10-29** · web backdrop is thin lines only; planet crescents and horizon bars removed from the hero and inner pages. Rebuild web. (#430)
 - **2026-10-29** · palette tokens across web, Space, Apex and mobile: mint success, crimson errors (#be123c day, #ec2f58 night), amber warnings, paper day page with white cards, no blue in nav, payments, widgets or share card. Rebuild web, space, apex; mobile JS-only. (#431)
+- **2026-10-29** · web: faint static film grain over every page (SVG noise overlay, 7% night / 5% day, click-through). Rebuild web. (#432)
