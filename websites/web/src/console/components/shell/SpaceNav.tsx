@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowLeft } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
-import { BASE_URL, accountGroup, currentItem, resolveNavGroups, type NavGroup } from "./nav-config";
+import { BASE_URL, currentItem, resolveNavGroups, type NavGroup, type NavItem } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
 import { useDeskUnread } from "./AssistInboxLink";
 
@@ -23,98 +24,126 @@ interface SpaceNavProps {
 }
 
 /**
- * The space sidebar contents — space identity header + capability-filtered
- * workflow nav. Rendered in three modes: the fixed desktop rail (expanded or
- * `collapsed`) and the mobile slide-in drawer, all reading from the shared
- * `nav-config` source.
+ * The space sidebar: back to My Spaces, the space I'm in, then its
+ * capability-filtered menu. My own pages have their own sidebar (AccountNav)
+ * and an event its own (EventNav).
  */
 export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const pathname = usePathname();
-  const { currentSpace, access, can, hasAccess } = useSession();
-  const unread = useDeskUnread(currentSpace?.id, can("event:manage-support"), pathname);
-
-
-  // Everyone gets the personal section; the space ones need a role there (V9).
-  const space = hasAccess ? currentSpace : null;
-  const navGroups: NavGroup[] = [accountGroup(hasAccess), ...(space ? resolveNavGroups(space, access) : [])];
-
-  const current = currentItem(navGroups.flatMap((g) => g.items.filter((i) => !i.paletteOnly)), pathname);
+  const { currentSpace: space, access, can } = useSession();
+  const unread = useDeskUnread(space?.id, can("event:manage-support"), pathname);
+  if (!space) return null;
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
+      <BackLink href={`${BASE_URL}/spaces`} label="My Spaces" collapsed={collapsed} onNavigate={onNavigate} />
       {/* Space identity — hidden on the icon rail */}
-      {!collapsed && space && (
+      {!collapsed && (
         <div className="space-y-1 px-3 pb-6">
-          <h2 className="text-base font-semibold text-foreground line-clamp-2">
-            {space.name}
-          </h2>
+          <h2 className="text-base font-semibold text-foreground line-clamp-2">{space.name}</h2>
           {(space.description || space.tagline) && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {space.description || space.tagline}
-            </p>
+            <p className="text-xs text-muted-foreground line-clamp-2">{space.description || space.tagline}</p>
           )}
         </div>
       )}
-
-      {/* Navigation — workflow groups */}
-      <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-6")}>
-        {navGroups.map((group, groupIdx) => (
-          <div key={group.label ?? `group-${groupIdx}`}>
-            {group.label &&
-              (collapsed ? (
-                // On the rail, a hairline stands in for the section header.
-                groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
-              ) : (
-                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </p>
-              ))}
-            <div className="space-y-0.5">
-              {group.items.filter((i) => !i.paletteOnly).map((item) => {
-                const active = item === current;
-                const Icon = item.icon;
-                const href = `${BASE_URL}${item.href}`;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      "flex items-center rounded-lg text-sm transition-colors duration-150",
-                      collapsed
-                        ? "justify-center p-2.5"
-                        : "gap-3 px-3 py-2",
-                      active
-                        ? "bg-primary-soft font-semibold text-primary"
-                        : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Icon
-                      className="h-[18px] w-[18px] flex-shrink-0"
-                      weight={active ? "fill" : "regular"}
-                    />
-                    {!collapsed && item.label}
-                    {item.unreadBadge && unread > 0 && (
-                      <span
-                        className={cn(
-                          "rounded-full bg-primary font-semibold leading-none tabular-nums text-primary-foreground",
-                          collapsed ? "sr-only" : "ml-auto px-1.5 py-0.5 text-[11px]"
-                        )}
-                        aria-label={`${unread} unread`}
-                      >
-                        {unread > 99 ? "99+" : unread}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
+      <NavGroups
+        groups={resolveNavGroups(space, access)}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+        badge={(item) => (item.unreadBadge ? unread : 0)}
+      />
     </div>
+  );
+}
+
+/** The way up from a dedicated sidebar: to My Spaces from a space, to all events from an event. */
+export function BackLink({ href, label, collapsed, onNavigate }: { href: string; label: string; collapsed: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      className={cn(
+        "mb-4 flex items-center rounded-lg text-sm font-semibold text-foreground transition-colors hover:bg-muted",
+        collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2"
+      )}
+    >
+      <ArrowLeft className="h-[18px] w-[18px] flex-shrink-0" />
+      {!collapsed && label}
+    </Link>
+  );
+}
+
+/** A sidebar's groups: a header each (a hairline on the icon rail), a link per item, this page's item lit. */
+export function NavGroups({
+  groups,
+  collapsed,
+  onNavigate,
+  badge,
+}: {
+  groups: NavGroup[];
+  collapsed: boolean;
+  onNavigate?: () => void;
+  /** An unread count to show on an item. */
+  badge?: (item: NavItem) => number;
+}) {
+  const pathname = usePathname();
+  const shown = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.paletteOnly) }));
+  const current = currentItem(shown.flatMap((g) => g.items), pathname);
+
+  return (
+    <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-6")}>
+      {shown.map((group, groupIdx) => (
+        <div key={group.label ?? `group-${groupIdx}`}>
+          {group.label &&
+            (collapsed ? (
+              // On the rail, a hairline stands in for the section header.
+              groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
+            ) : (
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </p>
+            ))}
+          <div className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = item === current;
+              const Icon = item.icon;
+              const count = badge?.(item) ?? 0;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={`${BASE_URL}${item.href}`}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  title={collapsed ? item.label : undefined}
+                  className={cn(
+                    "flex items-center rounded-lg text-sm transition-colors duration-150",
+                    collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2",
+                    active
+                      ? "bg-primary-soft font-semibold text-primary"
+                      : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px] flex-shrink-0" weight={active ? "fill" : "regular"} />
+                  {!collapsed && item.label}
+                  {count > 0 && (
+                    <span
+                      className={cn(
+                        "rounded-full bg-primary font-semibold leading-none tabular-nums text-primary-foreground",
+                        collapsed ? "sr-only" : "ml-auto px-1.5 py-0.5 text-[11px]"
+                      )}
+                      aria-label={`${count} unread`}
+                    >
+                      {count > 99 ? "99+" : count}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
   );
 }
