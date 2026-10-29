@@ -511,11 +511,13 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .surface-night { background: var(--night); color: var(--paper); --stage-ground: var(--night); }
 .surface-night-2 { background: var(--night-2); color: var(--paper); }
 .surface-paper { background: var(--paper-bg); color: var(--ink); box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.06); --stage-ground: var(--paper-bg); }
-/* The old blue CTA band becomes a horizon: black with light rising from
-   the bottom edge, the same glow as the hero floor. */
+/* The old blue CTA band becomes a horizon: black with light rising to the
+   bottom edge, the same glow as the hero floor. The footer below continues
+   it (.site-footer): same colour, the same glow mirrored, a fixed 360px
+   tall either side, so the two halves meet as one glow with no seam. */
 .surface-blue {
   background:
-    radial-gradient(60% 55% at 50% 100%, rgb(var(--glow) / 0.16), transparent 70%),
+    radial-gradient(60% 360px at 50% 100%, rgb(var(--glow) / 0.16), transparent 70%),
     linear-gradient(to bottom, var(--night) 40%, var(--night-2));
   color: var(--paper);
   box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.08);
@@ -792,21 +794,30 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 /* On the Horizon sky: a light Unifesto blue glow rising off the horizon like
    the hero's (wide, flat, no edge), tall enough to sit behind the glass
    card's lower half so the frost has colour; the card keeps a translucent
-   fill so its small text stays readable; the wordmark rises off the horizon
-   and fades into it. */
+   fill so its small text stays readable. */
 .footer-glow {
-  position: absolute; left: -15%; right: -15%; bottom: -35%; height: 85%; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(closest-side, rgb(77 141 255 / .28), rgb(77 141 255 / .12) 50%, transparent);
+  position: absolute; inset: 8% -10% -20%; pointer-events: none;
+  background:
+    radial-gradient(60% 48% at 50% 100%, rgb(77 141 255 / .34), transparent 72%),
+    radial-gradient(18% 26% at 64% 40%, rgb(143 180 255 / .22), transparent 72%);
 }
-:root[data-theme="light"] .footer-glow { background: radial-gradient(closest-side, rgb(143 180 255 / .45), rgb(143 180 255 / .2) 50%, transparent); }
-.footer-glass.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.4); }
-:root[data-theme="light"] .footer-glass.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.5); }
-.footer-wordmark {
-  aspect-ratio: 551 / 120;
-  background: linear-gradient(to bottom, rgb(var(--glow) / .5), rgb(var(--glow) / .04) 90%);
-  -webkit-mask: url(/press/wordmark-silver.svg) center bottom / contain no-repeat;
-  mask: url(/press/wordmark-silver.svg) center bottom / contain no-repeat;
+:root[data-theme="light"] .footer-glow {
+  background:
+    radial-gradient(60% 48% at 50% 100%, rgb(143 180 255 / .55), transparent 72%),
+    radial-gradient(18% 26% at 64% 40%, rgb(185 207 255 / .5), transparent 72%);
 }
+/* The orb sits wholly behind the card, so it's only ever seen through the
+   glass; one spilling past the card's edge showed a seam there. */
+.footer-glass.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.25); }
+:root[data-theme="light"] .footer-glass.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.4); }
+/* The footer picks up where the CTA band's horizon glow leaves off (see
+   .surface-blue), and its sky fades in from the top edge. */
+.site-footer {
+  background:
+    radial-gradient(60% 360px at 50% 0%, rgb(var(--glow) / 0.16), transparent 70%),
+    linear-gradient(to bottom, var(--night-2), var(--night) 480px);
+}
+footer > .cosmos { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 220px); mask-image: linear-gradient(to bottom, transparent, #000 220px); }
 
 /* ─── Door: two sides, one event ──────────────────────────────────────── */
 /* On wide screens the sky and mint cards close the gap as the section

@@ -104,14 +104,14 @@ const LEGAL_LINKS = [
 
 /* The page's anchor, on the Horizon sky: one frosted glass card holding the
    big line, the four ways onward, the stores and the legal row, over a soft
-   blue glow rising off the horizon, with the wordmark across the bottom.
+   blue glow rising off the horizon.
    No newsletter box: there is nothing behind it to subscribe to. */
 export default function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer aria-label="Site footer" className="surface-night relative isolate overflow-hidden">
+    <footer aria-label="Site footer" className="surface-night site-footer relative isolate overflow-hidden">
       <CosmicBackdrop variant="page" />
-      <LiquidGlassRoot className="footer-glass relative mx-auto max-w-7xl px-5 pt-20 sm:px-8 md:pt-28">
+      <LiquidGlassRoot className="footer-glass relative mx-auto max-w-7xl px-5 pb-16 pt-20 sm:px-8 md:pb-24 md:pt-28">
         {/* Inside the glass root so the card has colour to frost. */}
         <div aria-hidden="true" className="footer-glow" />
         <div data-glass className="relative z-10">
@@ -135,6 +135,17 @@ export default function Footer() {
                     </a>
                   ))}
                 </div>
+                <nav aria-label="Legal" className="mt-8">
+                  <ul className="flex max-w-md flex-wrap gap-x-5 gap-y-2">
+                    {LEGAL_LINKS.map((l) => (
+                      <li key={l.href}>
+                        <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
+                          {l.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
               </div>
 
               <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-4" data-stagger="rise">
@@ -157,7 +168,7 @@ export default function Footer() {
               </nav>
             </div>
 
-            <div className="mt-20 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="mt-16 flex flex-col gap-6 border-t border-paper/10 pt-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-1">
                 {socials.map((s) => (
                   <a
@@ -177,21 +188,8 @@ export default function Footer() {
               </div>
               <p className="text-xs text-paper/50">© {year} {LEGAL.company} · CIN {LEGAL.cin}</p>
             </div>
-
-            <nav aria-label="Legal" className="mt-8 border-t border-paper/10 pt-6">
-              <ul className="flex flex-wrap gap-x-5 gap-y-2">
-                {LEGAL_LINKS.map((l) => (
-                  <li key={l.href}>
-                    <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
-                      {l.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
           </div>
         </div>
-        <div aria-hidden="true" className="footer-wordmark mt-12 md:mt-16" />
       </LiquidGlassRoot>
     </footer>
   );
