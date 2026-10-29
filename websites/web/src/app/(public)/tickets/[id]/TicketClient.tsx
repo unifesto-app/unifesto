@@ -339,6 +339,13 @@ export default function TicketClient({ id }: { id: string }) {
           </section>
         )}
 
+        {/* A case about this ticket goes to the organiser's desk. A member's ticket is the lead's registration, so it goes as the event. */}
+        <Link
+          href={`/account/support/new?${member ? `eventId=${t.event.id}` : `registrationId=${t.id}`}`}
+          className="block text-sm text-paper/65 hover:text-paper hover:underline"
+        >
+          Get help with this ticket
+        </Link>
         <Report busy={busy === "report"} onSend={(r, d) => act("report", () => reportTicket(token, t.id, r, d), "Thanks. The Unifesto team will look into it.")} />
       </div>
     </TicketsFrame>
