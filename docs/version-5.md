@@ -1019,3 +1019,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-30** · space.unifesto.app 308s to www.unifesto.app/console (query kept); emails, Apex, web and mobile link to /console; payout-account email link fixed (#457)
 - **2026-10-30** · Space app removed: no space container, deploy.sh/CI/dependabot/launch.json entries gone, websites/space deleted; space.unifesto.app stays a 308 to /console (#458)
 - **2026-10-30** · Console no longer reads the old space-app unifesto_token cookie; the proxy gate uses web's session hint only (#459)
+- **2026-10-30** · README deploy section no longer names the removed space app (#463)
