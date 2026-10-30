@@ -7,14 +7,13 @@ name: unifesto
 #
 #   api.unifesto.app    -> backend:8080 (3 replicas)
 #   apex.unifesto.app   -> apex:3000
-#   space.unifesto.app  -> space:3000
-#   unifesto.app / www  -> web:3000
+#   unifesto.app / www  -> web:3000 (the console is www/console; space.unifesto.app 308s there)
 #
 # Runtime secrets come from each app's own env file (backend/.env,
-# websites/apex/.env, websites/space/.env, websites/web/.env.local).
+# websites/apex/.env, websites/web/.env.local).
 # Build-time NEXT_PUBLIC_* values are inlined into the client bundles, so
 # they're passed as build args interpolated from ./.env (NEXT_PUBLIC_BACKEND_URL,
-# NEXT_PUBLIC_API_URL, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, SENTRY_DSN_{WEB,SPACE,APEX}).
+# NEXT_PUBLIC_API_URL, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, SENTRY_DSN_{WEB,APEX}).
 #
 # Images: compose runs :latest. deploy.sh also tags every build :<git sha> and
 # the image it replaced :previous; `./deploy.sh rollback` puts :previous back
@@ -45,7 +44,6 @@ services:
     depends_on:
       - backend
       - apex
-      - space
       - web
 
   # One-shot: apply DB migrations exactly once before the API replicas start,
@@ -219,24 +217,6 @@ services:
         limits:
           memory: 384M
 
-  # Frozen on its last image (Track V2): the console's source moved into web
-  # (www.unifesto.app/console), so there is nothing left here to build. It keeps
-  # serving space.unifesto.app until V3 points that host at www; V4 removes it.
-  space:
-    image: unifesto-space:latest
-    restart: unless-stopped
-    logging: *logging
-    env_file: ./websites/space/.env
-    expose:
-      - "3000"
-    depends_on:
-      - backend
-    # Measured ~80 MB resident (2026-10-18).
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-
   web:
     build:
       context: ./websites/web
@@ -275,7 +255,7 @@ services:
         limits:
           memory: 768M
 
-# Build-only secret for the Sentry source-map upload (apex, space, web). Read from
+# Build-only secret for the Sentry source-map upload (apex, web). Read from
 # SENTRY_AUTH_TOKEN in ./.env; it never reaches a runtime container or image.
 secrets:
   sentry_auth_token:

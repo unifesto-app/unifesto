@@ -20,13 +20,6 @@
       "runtimeArgs": ["--prefix", "websites/apex", "run", "dev"],
       "port": 3000,
       "autoPort": true
-    },
-    {
-      "name": "unifesto-space",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "websites/space", "run", "dev"],
-      "port": 3001,
-      "autoPort": true
     }
   ]
 }

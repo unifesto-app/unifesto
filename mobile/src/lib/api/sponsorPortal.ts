@@ -5,7 +5,7 @@ import type { SponsorLeadSource } from './spaceSponsors';
  * Sponsor side (the "portal"), over `/sponsor-portal/*`. Any signed-in user may
  * call it; the backend scopes everything to the sponsors they were invited to
  * (SponsorUser), not the space role matrix. An empty `getMySponsorships()` list
- * means "not a sponsor". Mirrors websites/space/lib/api/sponsor-portal-api.ts.
+ * means "not a sponsor". Mirrors websites/web/src/console/lib/api/sponsor-portal-api.ts.
  */
 
 export interface PortalEvent {

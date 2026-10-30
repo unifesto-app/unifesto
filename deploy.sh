@@ -6,15 +6,15 @@ set -euo pipefail
 #
 # Deploy everything:
 #   ./deploy.sh
-# Deploy only some services (backend | apex | space | web), others keep running:
+# Deploy only some services (backend | apex | web), others keep running:
 #   ./deploy.sh web            # just the public site
 #   ./deploy.sh apex           # just the platform-admin dashboard
-#   ./deploy.sh backend space  # both of these, leave the rest alone
+#   ./deploy.sh backend web    # both of these, leave the rest alone
 # Check the gates below without touching the server (nothing synced or built):
 #   ./deploy.sh --check
 #   SERVER_MIGRATIONS=names.txt ./deploy.sh --check   # also the DROP guard, offline
 # Put back the image each service ran before its last deploy (J13):
-#   ./deploy.sh rollback                  # backend apex space web
+#   ./deploy.sh rollback                  # backend apex web
 #   ./deploy.sh rollback backend          # the API (+ cert-worker) only
 #   ROLLBACK_TO=<sha> ./deploy.sh rollback web   # a :<sha> image instead of :previous
 #   Rollback never runs migrations backwards: the database keeps its schema.
@@ -24,7 +24,7 @@ set -euo pipefail
 #     FORCE=1 deploys anyway with a loud warning (a dirty tree tags :<sha>-dirty).
 #   - env files (J14): deploy.sh never syncs .env files; the SERVER's copies are
 #     the only prod secrets. Before a deploy the server must have ./.env,
-#     backend/.env (every REQUIRED_BACKEND_ENV key), websites/{apex,space}/.env and
+#     backend/.env (every REQUIRED_BACKEND_ENV key), websites/apex/.env and
 #     websites/web/.env.local (same INTERNAL_API_KEY as backend/.env). Checked over
 #     ssh; keys only, values are never printed. No override. --check skips it.
 #   - backend deploys: no DROP TABLE/COLUMN, column type change or TRUNCATE in
@@ -71,7 +71,7 @@ esac
 # Any args are compose service names; no args = the whole stack. A rollback
 # with no args covers every image deploy.sh builds.
 SERVICES="$*"
-if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex space web}"; fi
+if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web}"; fi
 
 # Images deploy.sh builds and tags. backend-migrate and cert-worker run the
 # backend's image.
@@ -81,11 +81,11 @@ image_names() {
   for s in "$@"; do
     case "${s}" in
       backend|backend-migrate|cert-worker) echo unifesto-backend ;;
-      apex|space|web) echo "unifesto-${s}" ;;
+      apex|web) echo "unifesto-${s}" ;;
     esac
   done | sort -u | xargs
 }
-IMAGES="$(image_names ${SERVICES:-backend apex space web})"
+IMAGES="$(image_names ${SERVICES:-backend apex web})"
 
 # Does this deploy touch the backend? A full deploy (no args) always does; a
 # targeted one only if "backend" is named. When it does, DB migrations must be
@@ -173,7 +173,7 @@ set -uo pipefail
 cd "$1" || exit 1
 shift
 FAILED=0
-for f in .env backend/.env websites/apex/.env websites/space/.env websites/web/.env.local; do
+for f in .env backend/.env websites/apex/.env websites/web/.env.local; do
   if [ -f "${f}" ]; then ok "server has ${f}"; else fail "server is missing ${f}: deploy.sh no longer syncs env files, put it there by hand"; fi
 done
 missing=""
@@ -243,7 +243,7 @@ fi
 
 if [ "${MODE}" = rollback ]; then
   if [ -z "${IMAGES}" ]; then
-    echo "!! Nothing to roll back: name backend, apex, space or web." >&2
+    echo "!! Nothing to roll back: name backend, apex or web." >&2
     exit 1
   fi
   echo "==> Rolling back: ${SERVICES}"

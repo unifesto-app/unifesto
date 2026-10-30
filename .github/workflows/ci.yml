@@ -179,7 +179,6 @@ jobs:
         env:
           NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:4999
           NEXT_PUBLIC_API_URL: http://127.0.0.1:4999
-          NEXT_PUBLIC_SPACE_URL: http://127.0.0.1:3001
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |

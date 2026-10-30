@@ -8,8 +8,7 @@ unifesto/
 ├── mobile/         # Expo attendee app ("Unifesto"), the production app
 ├── websites/
 │   ├── apex/       # platform-admin dashboard
-│   ├── space/      # Space operator app (space.unifesto.app)
-│   └── web/        # public site: event & space pages, blog, careers
+│   └── web/        # public site (event & space pages, blog) + organiser console at /console
 ├── docs/           # feature plans
 └── Caddyfile · docker-compose.yml · deploy.sh
 ```
@@ -23,8 +22,8 @@ on purpose, so run Expo commands (`prebuild`, `run:ios`, ...) from `mobile/`.
 ```bash
 cd backend && npm run start:dev          # API
 cd mobile && npm start                   # Expo dev server (dev client)
-cd websites/space && npm run dev         # :3001
-cd websites/apex && npm run dev          # :3000 (same for web)
+cd websites/web && npm run dev           # :3000, console at /console
+cd websites/apex && npm run dev          # :3000 (next free port if web runs)
 ```
 
 Needs Node 20+. For mobile native builds, Xcode / Android Studio or EAS
