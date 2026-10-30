@@ -42,10 +42,10 @@ rewrite. Styling is `StyleSheet`-based:
 ## Deploy
 
 `docker-compose.yml` runs Caddy, the backend (plus a one-shot
-`backend-migrate`) and three websites (apex, space, web). `deploy.sh` syncs the repo to the
+`backend-migrate`) and two websites (apex, web). `deploy.sh` syncs the repo to the
 server over SSH and rebuilds:
 
 ```bash
 ./deploy.sh                 # whole stack
-./deploy.sh backend space   # just these services
+./deploy.sh backend web     # just these services
 ```
