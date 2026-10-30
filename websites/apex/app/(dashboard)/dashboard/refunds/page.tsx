@@ -388,7 +388,7 @@ function RefundReviewDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg bg-muted/50 p-3 text-sm">
+          <div className="text-sm">
             <p className="text-muted-foreground">Reason</p>
             <p className="mt-0.5">&ldquo;{request.reason}&rdquo;</p>
           </div>

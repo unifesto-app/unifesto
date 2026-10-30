@@ -173,7 +173,7 @@ export default function TicketClient({ id }: { id: string }) {
         </div>
 
         {cancelled && (
-          <div className="rounded-lg bg-muted p-4 text-sm text-foreground/80">
+          <div className="text-sm text-foreground/80">
             Cancelled{t.cancelledAt && <> on {day(t.cancelledAt)}</>}
             {byOrganiser && " by the organiser"}.
             {reason && !byOrganiser && !SYSTEM_REASONS.has(reason) && <p className="mt-1">Reason: {reason}</p>}
@@ -383,7 +383,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
           },
         ];
         return (
-          <div key={r.id} className="mt-3 rounded-lg bg-muted p-4">
+          <div key={r.id} className="mt-4">
             <p className={`text-sm font-semibold ${r.status === "APPROVED" ? "text-primary" : r.status === "REJECTED" ? "text-destructive" : "text-foreground"}`}>
               {r.status === "APPROVED" ? `Refund approved: ${rupees(r.approvedAmount ?? r.requestedAmount)}` : r.status === "REJECTED" ? "Refund declined" : "In review"}
             </p>

@@ -100,7 +100,7 @@ export function ConfirmDialogHost() {
         </DialogHeader>
 
         {req?.load ? (
-          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+          <div className="text-sm">
             {loaded?.error ? (
               <span className="text-destructive">{loaded.error}</span>
             ) : waiting ? (

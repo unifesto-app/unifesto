@@ -661,11 +661,11 @@ export default function UserDetailPage() {
                   that reports its device yet.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {user.pushDevices.map((d) => (
                     <div
                       key={d.id}
-                      className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
@@ -726,11 +726,11 @@ export default function UserDetailPage() {
                   No linked identities.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {user.identities.map((idn) => (
                     <div
                       key={idn.id}
-                      className="flex items-center justify-between rounded-md border border-border p-3"
+                      className="flex items-center justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium capitalize text-foreground">

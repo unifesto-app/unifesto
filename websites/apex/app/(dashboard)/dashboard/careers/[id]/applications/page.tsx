@@ -181,7 +181,7 @@ export default function CareerApplicationsPage() {
                 </div>
 
                 {a.coverLetter && (
-                  <p className="whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                     {a.coverLetter}
                   </p>
                 )}

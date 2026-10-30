@@ -423,7 +423,7 @@ function ChangePlan({ sub, onSaved }: { sub: SpaceSubscription; onSaved: (s: Spa
             </div>
           </div>
         )}
-        <label className="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-3">
+        <label className="flex items-center justify-between gap-4">
           <span>
             <span className="block text-sm font-medium text-foreground">Active</span>
             <span className="block text-xs text-muted-foreground">Inactive suspends this space&rsquo;s plan.</span>

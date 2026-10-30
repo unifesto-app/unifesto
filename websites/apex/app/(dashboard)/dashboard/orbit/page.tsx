@@ -275,7 +275,7 @@ function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; o
           const spaceId = pick[a.id] ?? a.space?.id ?? "";
           const email = a.user.identities[0]?.email;
           return (
-            <div key={a.id} className="space-y-4 rounded-lg border p-4">
+            <div key={a.id} className="space-y-4 border-t border-border pt-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <span className="font-medium">{a.user.fullName || email || "Applicant"}</span>

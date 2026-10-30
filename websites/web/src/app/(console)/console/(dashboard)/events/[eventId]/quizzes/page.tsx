@@ -233,7 +233,7 @@ function QuizBuilder({
         </label>
 
         {draft.questions.map((q, i) => (
-          <fieldset key={i} className="space-y-4 rounded-lg border border-border p-4">
+          <fieldset key={i} className="space-y-4 border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2">
               <legend className="text-sm font-medium text-foreground">Question {i + 1}</legend>
               {draft.questions.length > 1 && (
@@ -473,7 +473,7 @@ function LiveQuestion({ question: q, total, skew }: { question: ManagedQuiz["que
   const max = Math.max(1, ...q.results);
 
   return (
-    <div className="space-y-4 rounded-lg border border-border p-4">
+    <div className="space-y-4 border-t border-border pt-4">
       <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
         <span>
           Question {q.position + 1} of {total}
@@ -520,9 +520,9 @@ function Board({ board, final }: { board: Leaderboard; final: boolean }) {
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground">{final ? "Final leaderboard" : "Leaderboard"}</p>
-      <ol className="divide-y divide-border rounded-lg border border-border">
+      <ol className="divide-y divide-border">
         {board.top.map((r, i) => (
-          <li key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
+          <li key={i} className="flex items-center gap-3 py-2 text-sm">
             <span className="w-6 tabular-nums text-muted-foreground">{r.rank}</span>
             <span className="flex-1 text-foreground">{r.name}</span>
             <span className="tabular-nums font-medium text-foreground">{r.score.toLocaleString("en-IN")}</span>

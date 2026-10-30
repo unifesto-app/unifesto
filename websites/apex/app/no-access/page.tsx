@@ -116,7 +116,7 @@ export default function NoAccessPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {user && (
-            <div className="rounded-md border border-border bg-card px-3 py-2.5 text-sm">
+            <div className="text-sm">
               <p className="font-medium text-foreground">{user.name}</p>
               <p className="text-muted-foreground">{user.email}</p>
             </div>

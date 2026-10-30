@@ -159,7 +159,7 @@ export default function ContactClient() {
       )}
 
       {chat && !chat.withBot ? (
-        <div className="rounded-lg bg-night-3 p-4 text-sm text-paper/80">
+        <div className="text-sm text-paper/80">
           A person on our team has your request now. We&apos;ll reply to{" "}
           <span className="font-semibold text-paper">{chat.contactEmail ?? "your email"}</span>, usually within 24 hours.
         </div>

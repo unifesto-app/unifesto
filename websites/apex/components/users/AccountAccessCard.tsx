@@ -165,9 +165,9 @@ export function AccountAccessCard({ user, onChanged }: { user: UserDetail; onCha
             On top of their roles. A removal wins over everything; a grant applies in one space.
           </p>
           {user.capabilityOverrides.length > 0 && (
-            <ul className="divide-y divide-border rounded-md border border-border">
+            <ul className="divide-y divide-border">
               {user.capabilityOverrides.map((o) => (
-                <li key={o.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <li key={o.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <div className="min-w-0">
                     <Badge variant={o.allow ? "success" : "destructive"}>
                       {o.allow ? "Grant" : "Remove"}

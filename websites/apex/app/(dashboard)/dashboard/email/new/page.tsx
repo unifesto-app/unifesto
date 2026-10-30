@@ -255,7 +255,7 @@ export default function ComposeCampaignPage() {
           )}
 
           {target === "SEGMENT" && (
-            <div className="grid grid-cols-1 gap-4 rounded-md border border-border p-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="joinedAfter">Joined after</Label>
                 <Input

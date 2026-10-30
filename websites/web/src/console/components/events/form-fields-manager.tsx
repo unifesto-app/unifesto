@@ -274,12 +274,12 @@ export function FormFieldsManager({
       )}
 
       {sorted.length > 0 && (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border">
           {sorted.map((f) => {
             const cond = f.showIf ? byId.get(f.showIf.fieldId) : undefined;
             const limits = describeLimits(f);
             return (
-              <li key={f.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <li key={f.id} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p
                     className={

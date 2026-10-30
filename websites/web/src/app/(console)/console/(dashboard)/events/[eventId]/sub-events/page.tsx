@@ -265,9 +265,9 @@ export default function EventSubEventsPage() {
               their events. Approving nests it beneath their parent; this event
               keeps its own tickets, capacity and check-in.
             </p>
-            <ul className="divide-y divide-border rounded-md border border-border">
+            <ul className="divide-y divide-border">
               {requests.incoming.map((r) => (
-                <li key={r.id} className="space-y-2 px-3 py-3">
+                <li key={r.id} className="space-y-2 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
@@ -299,7 +299,7 @@ export default function EventSubEventsPage() {
                     </div>
                   </div>
                   {r.reason && (
-                    <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       “{r.reason}”
                     </p>
                   )}
@@ -338,7 +338,7 @@ export default function EventSubEventsPage() {
       {/* Derived-mode hint — helps the organiser see how attendees will be
               asked to register, so the "pass vs umbrella" choice is intentional. */}
           {isParent && (
-            <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+            <div className="text-sm">
               {parentHasTickets ? (
                 <p className="text-muted-foreground">
                   <span className="font-medium text-foreground">

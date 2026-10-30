@@ -428,7 +428,7 @@ function CreatePayoutDialog({
           </div>
 
           {summary && (
-            <div className="rounded-md border border-border p-3 text-sm">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Gross revenue</span><span className="font-medium">₹{summary.grossRevenue.toLocaleString("en-IN")}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Platform fee ({summary.defaultPlatformFeePercent}%)</span><span className="font-medium">₹{summary.estimatedPlatformFee.toLocaleString("en-IN")}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Event net</span><span className="font-medium">₹{summary.eventNet.toLocaleString("en-IN")}</span></div>
@@ -563,7 +563,7 @@ function MarkPaidDialog({
             UTR from your bank.
           </p>
           {payout.bankAccount ? (
-            <dl className="divide-y rounded-md border border-border text-sm">
+            <dl className="divide-y divide-border text-sm">
               <CopyRow label="Holder name" value={payout.bankAccount.accountHolderName} />
               {payout.bankAccount.methodType === "UPI" || payout.bankAccount.upiId ? (
                 <CopyRow label="UPI ID" value={payout.bankAccount.upiId} mono />
@@ -627,7 +627,7 @@ function CopyRow({ label, value, mono }: { label: string; value?: string | null;
   const [copied, setCopied] = useState(false);
   if (!value) return null;
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 py-2">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="flex min-w-0 items-center gap-2">
         <span className={`truncate font-medium ${mono ? "font-mono" : ""}`}>{value}</span>

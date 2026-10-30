@@ -249,7 +249,7 @@ export default function TransactionDetailPage() {
               className={
                 actionErr
                   ? "rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive"
-                  : "rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+                  : "text-sm text-muted-foreground"
               }
             >
               {actionErr || actionMsg}
@@ -470,7 +470,7 @@ export default function TransactionDetailPage() {
                 {txn.refundRequests.map((r) => (
                   <div
                     key={r.id}
-                    className="rounded-md border border-border p-3"
+                    className="space-y-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="neutral">

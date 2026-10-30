@@ -210,7 +210,7 @@ export function SessionForm({
 
             {platform === "UNIFESTO_LIVE" ? (
               <div className="space-y-4">
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="border-t border-border pt-4">
                   <p className="text-sm font-medium text-foreground">
                     Hosted in-app — no link to share
                   </p>

@@ -64,7 +64,7 @@ export default function OrbitPage() {
       />
 
       {data.tier === 0 && (
-        <div className="rounded-lg border bg-card p-4 text-sm">
+        <div className="rounded-2xl border bg-card p-4 text-sm">
           My first 30 days: onboard 2 clubs by <strong>{day(lead.probationEndsAt)}</strong>.
         </div>
       )}
@@ -99,7 +99,7 @@ export default function OrbitPage() {
           ))}
         </ListGroup>
       ) : (
-        <div className="rounded-lg border bg-card p-4 text-sm">Gold. The top of Orbit.</div>
+        <div className="rounded-2xl border bg-card p-4 text-sm">Gold. The top of Orbit.</div>
       )}
 
       <ListGroup title="Clubs on my campus" description="A club joins by requesting this campus as its parent space. Unifesto approves it.">

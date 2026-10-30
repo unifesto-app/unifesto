@@ -554,7 +554,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
               </button>
             </div>
             {couponMsg && <p className="text-xs text-paper/65">{couponMsg}</p>}
-            <dl className="space-y-1.5 rounded-lg border border-paper/10 px-4 py-3 text-sm">
+            <dl className="space-y-1.5 text-sm">
               <PriceLine label="Ticket" value={inr(basePaise)} />
               {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
               {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}

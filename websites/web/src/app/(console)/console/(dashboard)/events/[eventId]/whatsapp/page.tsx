@@ -193,7 +193,7 @@ export default function EventWhatsAppPage() {
       {error && <ErrorNotice message={error} />}
 
       {/* Why this is private — the whole point of the feature. */}
-      <div className="flex gap-3 rounded-lg border border-border bg-muted/40 p-4">
+      <div className="flex gap-3">
         <LockKey className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
         <div className="text-sm text-muted-foreground">
           <p className="font-medium text-foreground">Private to attendees</p>

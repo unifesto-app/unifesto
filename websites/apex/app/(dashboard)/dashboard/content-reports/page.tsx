@@ -266,7 +266,7 @@ function ReportRow({
         </div>
 
         {r.details && (
-          <p className="whitespace-pre-wrap rounded-lg border border-border bg-muted/40 p-3 text-sm text-foreground">
+          <p className="whitespace-pre-wrap text-sm text-foreground">
             {r.details}
           </p>
         )}

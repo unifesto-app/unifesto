@@ -557,7 +557,7 @@ function SingleAddForm({
 
       {/* Team-wide questions (asked once for the whole group). */}
       {isGroup && teamFields.length > 0 && (
-        <div role="group" aria-labelledby="add-team-details" className="space-y-4 rounded-md border p-3">
+        <div role="group" aria-labelledby="add-team-details" className="space-y-4 border-t border-border pt-4">
           <Label id="add-team-details" className="text-muted-foreground">Team details</Label>
           <QuestionInputs
             eventId={event.id}
@@ -603,7 +603,7 @@ function SingleAddForm({
           </Label>
           <div role="group" aria-labelledby="add-other-members-label" className="space-y-4">
             {Array.from({ length: extraSlots }).map((_, i) => (
-              <div key={i} className="space-y-4 rounded-md border p-3">
+              <div key={i} className="space-y-4 border-t border-border pt-4">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Input
                     placeholder={`Member ${i + 2} name`}
@@ -650,7 +650,7 @@ function SingleAddForm({
 
       {isPaid && (
         <div className="space-y-2">
-          <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+          <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
               className="mt-0.5"

@@ -254,7 +254,7 @@ function OrphanRow({
         </div>
 
         {/* Why it's here + what the button will do. */}
-        <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           {isOrphan ? (
             <>
               Its original registration (

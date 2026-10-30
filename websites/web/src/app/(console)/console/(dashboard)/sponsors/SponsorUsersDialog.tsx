@@ -112,7 +112,7 @@ export function SponsorUsersDialog({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             {loading ? (
               <Skeleton className="h-16 rounded-lg" />
             ) : users.length === 0 ? (
@@ -121,7 +121,7 @@ export function SponsorUsersDialog({
               users.map((u) => (
                 <div
                   key={u.id}
-                  className="flex items-center gap-3 rounded-lg border border-border p-2.5"
+                  className="flex items-center gap-3"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">

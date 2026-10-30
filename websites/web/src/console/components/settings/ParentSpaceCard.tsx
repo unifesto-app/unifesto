@@ -120,10 +120,10 @@ export function ParentSpaceCard({ space }: { space: SpaceWithHierarchy }) {
             </div>
 
             {choice === "JOIN" && (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Label htmlFor="parent-search">Parent space</Label>
                 {parent ? (
-                  <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between gap-3 text-sm">
                     <span className="truncate">{parent.name}</span>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setParent(null)}>
                       Change

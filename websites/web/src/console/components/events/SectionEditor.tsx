@@ -230,13 +230,13 @@ export function SectionEditor<T>({
         )}
 
         {list.length > 0 && (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-border">
             {list.map((item) => {
               const id = getId(item);
               return (
                 <li
                   key={id}
-                  className="flex items-start justify-between gap-3 px-3 py-2.5"
+                  className="flex items-start justify-between gap-3 py-2.5"
                 >
                   <div className="min-w-0 flex-1 text-sm">
                     {renderSummary(item)}
@@ -275,7 +275,7 @@ export function SectionEditor<T>({
         )}
 
         {isFormOpen && (
-          <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
+          <div className="space-y-4 border-t border-border pt-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">
                 {editingId === "new" ? `New ${addLabel.toLowerCase()}` : "Edit"}

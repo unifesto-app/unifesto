@@ -94,9 +94,9 @@ export function FeedbackResults({ eventId }: { eventId: string }) {
             {q.options ? (
               q.options.map((o) => <Bar key={o.option} label={o.option} count={o.count} total={q.answered} />)
             ) : q.texts ? (
-              <ul className="space-y-1.5 text-sm text-foreground">
+              <ul className="divide-y divide-border text-sm text-foreground">
                 {q.texts.map((t, i) => (
-                  <li key={i} className="rounded-md bg-muted px-3 py-2">
+                  <li key={i} className="py-2">
                     {t}
                   </li>
                 ))}

@@ -243,7 +243,7 @@ export default function EventCoHostingPage() {
               )}
             </p>
             {pending.reason && (
-              <p className="rounded-md border border-border bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 &ldquo;{pending.reason}&rdquo;
               </p>
             )}

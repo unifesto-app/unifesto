@@ -778,7 +778,7 @@ export default function AttendeeDetailPage() {
                 {/* Team-wide answers (same for everyone) shown once, so each
                     seat below only carries what's actually that member's. */}
                 {seatView.sharedFields.length > 0 && (
-                  <div className="rounded-lg border border-border bg-muted/40 px-3.5 py-3">
+                  <div className="border-t border-border pt-4">
                     <p className="mb-2 text-xs font-medium text-muted-foreground">
                       Team details
                     </p>

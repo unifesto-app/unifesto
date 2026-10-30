@@ -314,7 +314,7 @@ export function RequestPayoutDialog({
           <p className="text-sm text-muted-foreground">Loading balance…</p>
         ) : summary ? (
           <div className="space-y-4">
-            <div className="rounded-md border border-border p-3 text-sm">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{target.kind === "session" ? "Session net" : "Event net"}</span>
                 <span className="font-medium">{money(summary.eventNet)}</span>

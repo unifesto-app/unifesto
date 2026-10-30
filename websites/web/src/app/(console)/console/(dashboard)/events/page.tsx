@@ -204,9 +204,9 @@ function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: (
           here can then edit it. Publishing, the team and money stay with the host.
         </p>
         {error && <ErrorNotice message={error} />}
-        <ul className="divide-y divide-border rounded-md border border-border bg-background">
+        <ul className="divide-y divide-border">
           {invites.map((inv) => (
-            <li key={inv.id} className="flex flex-wrap items-center justify-between gap-4 px-3 py-2">
+            <li key={inv.id} className="flex flex-wrap items-center justify-between gap-4 py-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{inv.event.title}</p>
                 <p className="truncate text-xs text-muted-foreground">

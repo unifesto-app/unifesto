@@ -379,7 +379,7 @@ export default function EventOverviewPage() {
                 {event.ticketTypes.map((ticket) => (
                   <div
                     key={ticket.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between"
                   >
                     <div>
                       <p className="font-medium">{ticket.name}</p>

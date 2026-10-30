@@ -245,7 +245,7 @@ export function AiDraftPanel({
               )}
             </div>
             {agenda.map((r, i) => (
-              <div key={i} className="space-y-2 rounded-lg bg-muted p-3">
+              <div key={i} className="space-y-2 border-t border-border pt-4">
                 <div className="flex items-center gap-2">
                   <Input value={r.title} onChange={(e) => editAgenda(i, { title: e.target.value })} aria-label="Agenda title" />
                   <Button
@@ -295,7 +295,7 @@ export function AiDraftPanel({
               )}
             </div>
             {faqs.map((f, i) => (
-              <div key={i} className="space-y-2 rounded-lg bg-muted p-3">
+              <div key={i} className="space-y-2 border-t border-border pt-4">
                 <div className="flex items-center gap-2">
                   <Input value={f.question} onChange={(e) => editFaq(i, { question: e.target.value })} aria-label="Question" />
                   <Button

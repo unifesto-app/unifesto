@@ -423,7 +423,7 @@ export default function ManageSessionPage() {
       </div>
 
       {isHidden && (
-        <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           This session is hidden. It does not appear in listings or in
           attendees&apos; lists. Its registrations, payments and recording are
           all still here, and restoring puts everything back.
@@ -581,11 +581,11 @@ export default function ManageSessionPage() {
                 No co-hosts yet.
               </p>
             ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border">
+              <ul className="divide-y divide-border">
                 {coHosts.map((c) => (
                   <li
                     key={c.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3"
+                    className="flex items-center justify-between gap-3 py-3"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">

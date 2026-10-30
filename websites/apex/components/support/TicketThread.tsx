@@ -123,7 +123,7 @@ export function TicketThread({
       </ul>
 
       {disabled ? (
-        <p className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {disabledHint ?? "This conversation is closed."}
         </p>
       ) : (

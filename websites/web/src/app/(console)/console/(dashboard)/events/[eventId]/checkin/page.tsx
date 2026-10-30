@@ -244,9 +244,9 @@ function RecentCheckinsCard({
             className="py-8"
           />
         ) : (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-border">
             {items.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                     {initials(r.name)}
@@ -456,9 +456,9 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
             className="py-8"
           />
         ) : (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-border">
             {members.map((m) => (
-              <li key={m.userId} className="space-y-2 px-3 py-3">
+              <li key={m.userId} className="space-y-2 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <div className="grid h-8 w-8 place-items-center rounded-full bg-muted text-xs font-medium">
@@ -679,7 +679,7 @@ function ScanAndSearchCard({
         )}
 
         {group && (
-          <div className="space-y-2 rounded-md border border-border p-3">
+          <div className="space-y-2 border-t border-border pt-4">
             <p className="text-sm font-medium">
               {group.leadName ? `${group.leadName}'s group` : "Group"} · {group.ticketType}
             </p>
@@ -746,11 +746,11 @@ function ScanAndSearchCard({
               />
             </div>
             {results.length > 0 && (
-              <ul className="divide-y divide-border rounded-md border border-border">
+              <ul className="divide-y divide-border">
                 {results.map((r) => (
                   <li
                     key={`${r.registrationId}:${r.memberIndex ?? ""}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">

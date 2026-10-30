@@ -535,7 +535,7 @@ export function CertificateDesigner({
 
       {/* Inspector -------------------------------------------------------- */}
       <div className="space-y-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-t border-border pt-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">
             {selectedField ? "Field" : "Fields"}
           </h3>

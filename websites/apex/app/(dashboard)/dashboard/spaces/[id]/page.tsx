@@ -1924,7 +1924,7 @@ function HierarchyPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current relationship summary. */}
-        <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+        <div className="text-sm">
           <div className="flex items-center gap-2">
             <Badge variant={isSuper ? "brand" : "neutral"}>
               {isSuper ? "Super" : "Regular"}

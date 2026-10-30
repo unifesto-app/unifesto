@@ -153,7 +153,7 @@ export default function EventOccurrencesPage() {
         />
       ) : (
         <>
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Info className="h-4 w-4 flex-shrink-0" />
             <span>
               Editing a single occurrence detaches it, so a later change to the
