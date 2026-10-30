@@ -191,7 +191,6 @@ export default function SpaceComposeCampaignPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Email"
         title="Compose campaign"
         subtitle="Pick an audience, write the email, optionally A/B-test the subject, then send or schedule."
         actions={

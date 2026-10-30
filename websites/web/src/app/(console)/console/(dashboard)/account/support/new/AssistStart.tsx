@@ -7,7 +7,7 @@ import { startAssist } from "@/lib/api/support";
 import { useWebSession } from "@/lib/auth";
 
 const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
 
 /** The app's Assist start: one question; Assist answers in the case it opens. */
 export default function AssistStart({ registrationId, eventId }: { registrationId?: string; eventId?: string }) {
@@ -33,11 +33,11 @@ export default function AssistStart({ registrationId, eventId }: { registrationI
 
   return (
     <form onSubmit={send} className="space-y-4">
-      <Link href="/console/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
+      <Link href="/console/account/support" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
         ← My requests
       </Link>
-      <h2 className="font-display text-xl text-paper">How can we help?</h2>
-      {registrationId && <p className="text-sm text-paper/70">About one of my tickets.</p>}
+      <h2 className="font-display text-xl text-foreground">How can we help?</h2>
+      {registrationId && <p className="text-sm text-muted-foreground">About one of my tickets.</p>}
       <textarea
         required
         autoFocus
@@ -49,14 +49,14 @@ export default function AssistStart({ registrationId, eventId }: { registrationI
         aria-label="My question"
         className={`${FIELD} resize-y`}
       />
-      <p className="text-xs leading-relaxed text-paper/55">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         Assist is an AI helper and can get things wrong. To answer, it reads my bookings and refunds on Unifesto, and this chat is saved as a
         support request. A person can take over anytime.{" "}
         <Link href="/privacy-notice" className="underline">
           Privacy notice
         </Link>
       </p>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={busy || !message.trim()} className="btn btn-primary disabled:opacity-40">
         {busy ? "Asking Assist…" : "Ask"}
       </button>

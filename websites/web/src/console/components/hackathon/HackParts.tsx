@@ -199,7 +199,8 @@ export function Toggle({
       >
         <span
           className={cn(
-            "absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform",
+            // left-0: a button centres its content, so without it the knob starts mid-track and slides out of it.
+            "absolute left-0 top-0.5 h-5 w-5 rounded-full bg-background transition-transform",
             checked ? "translate-x-[22px]" : "translate-x-0.5"
           )}
         />

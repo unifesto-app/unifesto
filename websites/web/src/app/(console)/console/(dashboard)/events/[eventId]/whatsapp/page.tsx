@@ -186,7 +186,6 @@ export default function EventWhatsAppPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Registrations"
         title="WhatsApp group"
         subtitle="Route registered attendees into a private WhatsApp group. This link is only ever sent to people who register. It never shows on the public event page."
       />

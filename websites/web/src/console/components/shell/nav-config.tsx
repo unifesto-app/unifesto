@@ -18,6 +18,7 @@ import {
   Funnel,
   ChartLineUp,
   Tray,
+  ChatsCircle,
   Globe,
   House,
   Ticket,
@@ -25,6 +26,7 @@ import {
   Heart,
   Certificate,
   Buildings,
+  Bell,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import {
@@ -106,18 +108,20 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/settings/branding", label: "Branding", icon: PaintBrush, requires: "space:manage-settings", keywords: "white-label branding colour color accent logo font domain", paletteOnly: true },
     ],
   },
+  // Help, by who's asking whom: attendees ask this space (Attendee questions);
+  // this space asks Unifesto (Unifesto support). Assist is only the AI's name.
   {
-    label: "Support",
+    label: "Help",
     items: [
       {
-        href: "/assist",
-        label: "Assist inbox",
-        icon: Tray,
+        href: "/questions",
+        label: "Attendee questions",
+        icon: ChatsCircle,
         requires: "event:manage-support",
-        keywords: "assist desk cases attendee questions help inbox",
+        keywords: "attendee questions desk cases help assist replies",
         unreadBadge: true,
       },
-      { href: "/support", label: "Support", icon: Lifebuoy, keywords: "help ticket contact unifesto" },
+      { href: "/support", label: "Unifesto support", icon: Lifebuoy, keywords: "help request contact unifesto payout setup" },
     ],
   },
 ];
@@ -125,28 +129,42 @@ export const NAV_GROUPS: NavGroup[] = [
 /**
  * The personal section (Track V9): /console is everyone's home, attendees
  * included. Shown to every signed-in person, above the space sections, which
- * need a role. My account keeps the settings as its own tabs: profile,
- * circles, notifications, sign-in and delete.
+ * need a role. My account is just my profile; My Spaces, notifications and
+ * security are pages of their own.
  */
 export const ME_GROUP: NavGroup = {
   label: "Account",
   items: [
     { href: "", label: "Dashboard", icon: House, exact: true, keywords: "home start dashboard" },
-    { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "notifications messages" },
+    { href: "/account/inbox", label: "Inbox", icon: Tray, keywords: "updates notifications messages" },
     { href: "/tickets", label: "My tickets", icon: Ticket, keywords: "tickets bookings registrations qr waiting list" },
-    { href: "/account/support", label: "Support", icon: Lifebuoy, keywords: "my help requests assist" },
+    { href: "/account/support", label: "Support", icon: Lifebuoy, keywords: "my help requests ask unifesto assist refund booking" },
     { href: "/account/saved", label: "Saved events", icon: Heart, keywords: "saved bookmarks" },
     { href: "/account/certificates", label: "My certificates", icon: Certificate, keywords: "certificates" },
-    { href: "/account", label: "My account", icon: UserCircle, keywords: "profile circles notifications sign-in delete" },
+    // The spaces I run and the ones I joined; the sidebar opens the space I'm in under it.
+    { href: "/spaces", label: "My Spaces", icon: Buildings, keywords: "spaces switch space clubs joined leave requests" },
+    // The sidebar's foot (my avatar and name) opens it; ⌘K still finds it.
+    { href: "/account", label: "My account", icon: UserCircle, keywords: "profile photo name username bio links", paletteOnly: true },
   ],
 };
 
-/** The spaces I help run, listed on their own page; the sidebar opens the one I'm in under it. */
-export const MY_SPACES_ITEM: NavItem = { href: "/spaces", label: "My Spaces", icon: Buildings, keywords: "spaces switch space clubs" };
+/** Only for people an organiser gave a tracking link. */
+export const PARTNER_ITEM: NavItem = { href: "/account/partner", label: "Partner stats", icon: ChartLineUp, keywords: "partner tracking link registrations" };
 
-/** The Account menu: everyone's pages, then My Spaces once I hold a space role. */
-export const accountGroup = (hasAccess: boolean): NavGroup =>
-  hasAccess ? { ...ME_GROUP, items: [...ME_GROUP.items, MY_SPACES_ITEM] } : ME_GROUP;
+/** How I'm reached and how I sign in. */
+export const SETTINGS_GROUP: NavGroup = {
+  label: "Settings",
+  items: [
+    { href: "/account/notifications", label: "Notifications", icon: Bell, keywords: "email promotions unsubscribe" },
+    { href: "/account/sign-in", label: "Security", icon: ShieldCheck, keywords: "phone google apple email sign out everywhere delete account" },
+  ],
+};
+
+/** My own menus: everyone's pages (Partner stats when I have links), then Settings. */
+export const accountGroups = (partner = false): NavGroup[] => [
+  { ...ME_GROUP, items: [...ME_GROUP.items, ...(partner ? [PARTNER_ITEM] : [])] },
+  SETTINGS_GROUP,
+];
 
 /** The item this page belongs to: the longest href that matches, so Inbox (not My account) on /console/account/inbox. */
 export function currentItem(items: NavItem[], pathname: string): NavItem | undefined {

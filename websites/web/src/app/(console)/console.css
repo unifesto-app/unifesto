@@ -44,6 +44,9 @@
 
   --sidebar: 240 5% 4%;
   --sidebar-foreground: 240 5% 93%;
+  /* Horizon light, as on unifesto.app (rgb channels): white by night. The
+     sidebar's current-page dot glows with it. */
+  --bloom: 255 255 255;
 
   /* --- Feedback (state only) --- */
   --success: 155 61% 73%;            /* mint #90e4c1 */
@@ -99,6 +102,8 @@
 
   --sidebar: 240 5% 96%;
   --sidebar-foreground: 240 6% 7%;
+  /* By day light sources stay light: pale Horizon blue. */
+  --bloom: 143 180 255;
 
   --success: 164 69% 27%;           /* deep mint #15745a */
   --success-foreground: 0 0% 100%;
@@ -226,26 +231,22 @@
     box-shadow: var(--shadow-lg);
   }
 
-  /* Section / metric label. Small, tracked, muted — carries hierarchy without
-     relying on font weight. */
+  /* Section / metric label: small and muted, in normal case (no capitals or
+     tracking), the way the sidebar's group labels read. */
   .text-eyebrow {
-    font-size: 0.6875rem;      /* 11px */
+    font-size: 0.75rem;        /* 12px */
     line-height: 1rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
   }
 
-  /* Interactive surfaces (cards that link somewhere) lift a hair on hover. */
+  /* Blocks that link somewhere: their hairline brightens on hover (blocks
+     are flat, so nothing lifts or casts a shadow). */
   .card-interactive {
-    transition: border-color var(--duration-base) var(--ease-standard),
-      box-shadow var(--duration-base) var(--ease-standard),
-      transform var(--duration-base) var(--ease-standard);
+    transition: border-color var(--duration-base) var(--ease-standard);
   }
   .card-interactive:hover {
-    border-color: hsl(var(--border-strong));
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    border-color: hsl(var(--foreground) / 0.6);
   }
 
   /* Light coursing along the money-flow streamlines. The dash pattern length

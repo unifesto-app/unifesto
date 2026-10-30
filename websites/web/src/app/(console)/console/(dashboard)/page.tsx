@@ -6,12 +6,27 @@ import { useSession } from "@/console/lib/context/SessionContext";
 import { apexUrl, isPlatformStaff } from "@/console/lib/types/rbac";
 import { getMyPortal } from "@/console/lib/api/sponsor-portal-api";
 import { currentToken } from "@/console/lib/utils/auth";
+import { PageHeader } from "@/console/components/shared/PageHeader";
 import { Button } from "@/console/components/ui/button";
-import { Card, CardContent } from "@/console/components/ui/card";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { isOver, loadTickets, type Ticket } from "@/lib/api/tickets";
 import { SpaceList } from "./spaces/SpaceList";
-import { when, where } from "./tickets/TicketsClient";
+import { TicketRow } from "./tickets/TicketsClient";
+
+/** A block of the home page, no card: its title over a hairline, the way to the full list on the right. */
+function Block({ title, href, more, children }: { title: string; href: string; more: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-3">
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <Link href={href} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+          {more}
+        </Link>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 /**
  * /console, everyone's home (Track V9): my next tickets, and for anyone with a
@@ -43,57 +58,34 @@ export default function ConsoleHome() {
   const firstName = user?.name?.split(" ")[0];
 
   return (
-    <div className="space-y-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-        {firstName ? `Hi, ${firstName}` : "Home"}
-      </h1>
+    <div className="space-y-10">
+      <PageHeader title={firstName ? `Hi, ${firstName}` : "Home"} />
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-4">
-          <h2 className="text-sm font-semibold text-foreground">My next events</h2>
-          <Link href="/console/tickets" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-            All my tickets
-          </Link>
-        </div>
+      <Block title="My next events" href="/console/tickets" more="All my tickets">
         {!upcoming ? (
-          <Skeleton className="h-20 w-full" />
+          <Skeleton className="mt-3 h-16 w-full" />
         ) : !upcoming.length ? (
-          <Card>
-            <CardContent className="p-5 text-sm text-muted-foreground">
-              Nothing coming up.{" "}
-              <Link href="/events" className="font-medium text-primary hover:underline">
-                Find an event
-              </Link>
-            </CardContent>
-          </Card>
+          <p className="pt-4 text-sm text-muted-foreground">
+            Nothing coming up.{" "}
+            <Link href="/events" className="text-foreground underline underline-offset-4">
+              Find an event
+            </Link>
+          </p>
         ) : (
-          <Card>
-            <ul className="divide-y divide-border">
-              {upcoming.slice(0, 3).map((t) => (
-                <li key={t.id}>
-                  <Link href={`/console/tickets/${t.id}`} className="block px-5 py-4 hover:bg-muted">
-                    <span className="block truncate font-medium text-foreground">{t.event.title}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {when(t.event.startDateTime)} · {where(t.event)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <ul className="divide-y divide-border">
+            {upcoming.slice(0, 3).map((t) => (
+              <li key={t.id}>
+                <TicketRow ticket={t} />
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
+      </Block>
 
       {hasAccess && spaces.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-sm font-semibold text-foreground">My Spaces</h2>
-            <Link href="/console/spaces" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-              All my spaces
-            </Link>
-          </div>
+        <Block title="My Spaces" href="/console/spaces" more="All my spaces">
           <SpaceList limit={3} />
-        </section>
+        </Block>
       )}
 
       {(isPlatformStaff(user) || sponsor) && (

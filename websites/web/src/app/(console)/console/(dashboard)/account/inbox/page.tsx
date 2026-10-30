@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { getInbox, markRead, MY_READ_EVENT, webLink, type InboxItem } from "@/lib/api/support";
 import { useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
+import { Button } from "@/console/components/ui/button";
+import { cn } from "@/console/lib/utils/cn";
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: IST });
@@ -67,41 +69,61 @@ export default function InboxPage() {
     if (to) router.push(to);
   };
 
-  if (!items) return error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading my inbox…</p>;
-  if (!items.length) return <p className="text-paper/75">Nothing here yet. Updates about my tickets, events and requests show up here.</p>;
+  if (!items) return error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Loading my inbox…</p>;
+  if (!items.length)
+    return (
+      <p className="border-t border-border pt-6 text-sm text-muted-foreground">
+        Nothing here yet. Updates about my tickets, events and requests show up here.
+      </p>
+    );
 
+  const unread = items.filter((n) => !n.readAt).length;
   return (
-    <div className="space-y-4">
-      {items.some((n) => !n.readAt) && (
-        <button type="button" disabled={busy} onClick={readAll} className="text-sm text-paper/70 hover:text-paper hover:underline">
-          Mark all as read
-        </button>
-      )}
-      <ul className="divide-y divide-white/[0.06]">
+    <div>
+      <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border pb-3">
+        <p className="text-sm text-muted-foreground">{unread ? `${unread} unread` : "All read"}</p>
+        {unread > 0 && (
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={readAll}>
+            Mark all as read
+          </Button>
+        )}
+      </div>
+      <ul className="divide-y divide-border">
         {items.map((n) => {
           const to = webLink(n.deepLink);
           return (
             <li key={n.id}>
-              <button type="button" onClick={() => open(n)} className="group flex w-full items-start gap-3 py-4 text-left">
-                <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 rounded-full ${n.readAt ? "bg-transparent" : "bg-primary"}`} />
+              <button
+                type="button"
+                onClick={() => open(n)}
+                className="flex w-full items-start gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-150 hover:bg-muted"
+              >
+                {/* Unread: the sidebar's star, bright and glowing; read: nothing. */}
+                <span
+                  aria-hidden="true"
+                  className={cn("mt-2 h-1.5 w-1.5 shrink-0 rounded-full", n.readAt ? "bg-transparent" : "bg-foreground shadow-[0_0_6px_rgb(var(--bloom)/0.9)]")}
+                />
                 <span className="min-w-0 flex-1">
-                  <span className={`block ${n.readAt ? "text-paper/80" : "font-semibold text-paper"} ${to ? "group-hover:underline" : ""}`}>
+                  <span className={cn("block text-sm", n.readAt ? "text-foreground/80" : "font-semibold text-foreground", !to && "cursor-default")}>
                     {n.title}
                     {!n.readAt && <span className="sr-only"> (unread)</span>}
                   </span>
-                  {n.body && <span className="mt-0.5 block text-sm text-paper/65">{n.body}</span>}
-                  <span className="mt-1 block text-xs text-paper/50">{stamp(n.createdAt)}</span>
+                  {n.body && <span className="mt-0.5 block text-sm text-muted-foreground">{n.body}</span>}
+                  <span className="mt-1 block text-xs tabular-nums text-muted-foreground sm:hidden">{stamp(n.createdAt)}</span>
                 </span>
+                <span className="hidden shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground sm:block">{stamp(n.createdAt)}</span>
               </button>
             </li>
           );
         })}
       </ul>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="pt-4 text-sm text-destructive">{error}</p>}
       {next && (
-        <button type="button" disabled={busy} onClick={more} className="btn btn-sm btn-secondary">
-          {busy ? "Loading…" : "Show older"}
-        </button>
+        <div className="pt-4">
+          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={more}>
+            {busy ? "Loading…" : "Show older"}
+          </Button>
+        </div>
       )}
     </div>
   );

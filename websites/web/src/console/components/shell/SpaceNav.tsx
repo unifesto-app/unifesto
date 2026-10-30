@@ -6,7 +6,7 @@ import { ArrowLeft } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { BASE_URL, currentItem, resolveNavGroups, type NavGroup, type NavItem } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
-import { useDeskUnread } from "./AssistInboxLink";
+import { useDeskUnread } from "./QuestionsLink";
 
 interface SpaceNavProps {
   /**
@@ -56,6 +56,13 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   );
 }
 
+/**
+ * A sidebar item for the page I'm on: bright type and a small glowing star at
+ * its left, no filled pill. Every sidebar uses it; the item needs `relative`.
+ */
+export const NAV_ITEM_ACTIVE =
+  "font-semibold text-foreground before:absolute before:left-0 before:top-1/2 before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-foreground before:shadow-[0_0_6px_rgb(var(--bloom)/0.9)]";
+
 /** The way up from a dedicated sidebar: to My Spaces from a space, to all events from an event. */
 export function BackLink({ href, label, collapsed, onNavigate }: { href: string; label: string; collapsed: boolean; onNavigate?: () => void }) {
   return (
@@ -80,12 +87,15 @@ export function NavGroups({
   collapsed,
   onNavigate,
   badge,
+  trailing,
 }: {
   groups: NavGroup[];
   collapsed: boolean;
   onNavigate?: () => void;
   /** An unread count to show on an item. */
   badge?: (item: NavItem) => number;
+  /** A last item that isn't a page, e.g. Theme under Settings, closing the last group. */
+  trailing?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const shown = groups.map((g) => ({ ...g, items: g.items.filter((i) => !i.paletteOnly) }));
@@ -100,9 +110,7 @@ export function NavGroups({
               // On the rail, a hairline stands in for the section header.
               groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
             ) : (
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {group.label}
-              </p>
+              <p className="mb-1.5 px-3 text-xs font-medium text-muted-foreground">{group.label}</p>
             ))}
           <div className="space-y-0.5">
             {group.items.map((item) => {
@@ -118,10 +126,11 @@ export function NavGroups({
                   aria-current={active ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center rounded-lg text-sm transition-colors duration-150",
+                    "relative flex items-center rounded-lg text-sm transition-colors duration-150",
                     collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2",
+                    // This page: bright type, filled icon and a small star at the left, no filled pill.
                     active
-                      ? "bg-primary-soft font-semibold text-primary"
+                      ? NAV_ITEM_ACTIVE
                       : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
@@ -141,6 +150,7 @@ export function NavGroups({
                 </Link>
               );
             })}
+            {groupIdx === shown.length - 1 && trailing}
           </div>
         </div>
       ))}

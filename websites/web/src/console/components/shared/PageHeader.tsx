@@ -4,22 +4,20 @@ interface PageHeaderProps {
   title: string;
   /** One-line subtitle. Keep it a sentence, not a spec. */
   subtitle?: ReactNode;
-  /** Small kicker above the title — context or breadcrumb ("Events", "Money"). */
-  eyebrow?: ReactNode;
   /** Right-aligned actions — a primary Button, filters, etc. */
   actions?: ReactNode;
 }
 
 /**
- * The consistent page title block used across every dashboard surface.
- * Optional eyebrow kicker, title left, action cluster right, subtitle beneath.
+ * The consistent page title block used across every dashboard surface:
+ * title left, action cluster right, subtitle beneath. No kicker above the
+ * title; the breadcrumbs above the page already say where I am.
  * Nothing loud — hierarchy comes from size and colour, not weight.
  */
-export function PageHeader({ title, subtitle, eyebrow, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        {eyebrow && <p className="text-eyebrow mb-1">{eyebrow}</p>}
         <h1 className="font-display text-xl leading-snug text-foreground sm:text-2xl">
           {title}
         </h1>

@@ -399,7 +399,7 @@ function SingleAddForm({
             </div>
 
             <div className="py-2">
-              <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
                 {isGroup ? "Lead attendee" : "Attendee"}
               </p>
               <SummaryRow label="Name" value={name} />
@@ -413,7 +413,7 @@ function SingleAddForm({
 
             {isGroup && teamFields.length > 0 && (
               <div className="py-2">
-                <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">
                   Team details
                 </p>
                 {teamFields.map((f) => (
@@ -425,7 +425,7 @@ function SingleAddForm({
             {isGroup &&
               cleanedMembers.map((m, i) => (
                 <div key={i} className="py-2">
-                  <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
                     Member {i + 2}
                   </p>
                   <SummaryRow label="Name" value={m.name} />

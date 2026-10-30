@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import { WarningCircle } from "@unifesto/unicon/react";
 import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
+import { PageHeader } from "@/console/components/shared/PageHeader";
+
 import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
 import { myTickets, type MyTicket } from "@/lib/api/registration";
 import { useWebSession } from "@/lib/auth";
-import { signOut } from "@/console/lib/utils/auth";
 import { IST } from "@/lib/site";
 
 interface Account {
@@ -17,17 +19,19 @@ interface Account {
   spaces: MySpace[];
   setSpaces: (spaces: MySpace[]) => void;
   partnerLinks: PartnerLink[];
+  /** Events I'm going to and have been to, one per event, as the app counts them. */
+  counts: { going: number; been: number };
 }
 
 const AccountContext = createContext<Account | null>(null);
-/** What the shell loaded once for every account tab. Only inside the shell, once signed in. */
+/** What the shell loaded once for every page under /console/account. Only inside the shell, once signed in. */
 export const useAccount = () => useContext(AccountContext)!;
 
 /**
- * K19: the web account pages, signed in through K18. The app's Profile tab
- * on the same APIs: a header with my name and counts, then a tab per setting.
- * Inbox, Support, Saved events and My certificates open from the sidebar, so
- * they get just their title. Push settings and the share card stay in the app.
+ * K19: the web account pages, signed in through K18, on the app's APIs.
+ * /console/account itself is My account, just my profile (it draws its own
+ * header); every other page here opens from the sidebar and gets its title
+ * and one card. Push settings and the share card stay in the app.
  */
 export default function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/console/account";
@@ -42,7 +46,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!token) return;
     let live = true;
-    // Only the profile is required; the counts and tabs it feeds just stay empty.
+    // Only the profile is required; the counts and lists it feeds just stay empty.
     Promise.allSettled([
       getMe(token),
       myTickets(token),
@@ -61,73 +65,63 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     };
   }, [token]);
 
-  const tabs = [
-    { href: "/console/account", label: "Profile" },
-    { href: "/console/account/circles", label: "My circles" },
-    ...(partnerLinks.length ? [{ href: "/console/account/partner", label: "Partner stats" }] : []),
-    { href: "/console/account/notifications", label: "Notifications" },
-    { href: "/console/account/sign-in", label: "Sign-in" },
-    { href: "/console/account/delete", label: "Delete account" },
-  ];
-  const page = PAGES[pathname.split("/")[3]];
+  const segment = pathname.split("/")[3];
+  const page = PAGES[segment];
+  const loaded = !!(session && me);
 
   let body;
   if (!ready) body = null;
-  else if (!session)
-    body = (
-      <SignInPrompt />
-    );
-  else if (!me) body = error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading My account…</p>;
+  else if (!session) body = <SignInPrompt />;
+  else if (!me)
+    body = error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Loading…</p>;
   else
     body = (
-      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks }}>{children}</AccountContext.Provider>
+      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks, counts }}>{children}</AccountContext.Provider>
     );
 
   return (
-    <div className="mx-auto max-w-3xl">
-          {page ? (
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">{page}</h1>
-          ) : session && me ? (
-            <Header me={me} email={session.email} {...counts} circles={new Set(spaces.map((s) => s.id)).size} />
-          ) : (
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-paper">My account</h1>
-          )}
-          {session && me?.deletionScheduledFor && pathname !== "/console/account/delete" && (
-            <p className="mt-5 rounded-2xl bg-night-2 px-4 py-3 text-sm text-paper/80">
-              My account closes on{" "}
-              {new Date(me.deletionScheduledFor).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: IST })}.{" "}
-              <Link href="/console/account/delete" className="font-medium text-primary hover:underline">
-                Keep my account
-              </Link>
-            </p>
-          )}
-          {session && me && !page && (
-            <nav aria-label="Account" className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-              {tabs.map((t) => {
-                // A support case keeps its tab lit.
-                const active = pathname === t.href || (t.href !== "/console/account" && pathname.startsWith(`${t.href}/`));
-                return (
-                  <Link
-                    key={t.href}
-                    href={t.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm transition-colors duration-150 ${
-                      active ? "bg-primary text-ink" : "bg-night-2 text-paper/80 hover:bg-night-3 hover:text-paper"
-                    }`}
-                  >
-                    {t.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          )}
-          <div className="mt-6 rounded-xl border border-border bg-night-2 p-6 sm:p-8">{body}</div>
+    <div className="space-y-6">
+      {/* Not over Security or Delete account: their deletion section says it already. */}
+      {session && me?.deletionScheduledFor && pathname !== "/console/account/delete" && pathname !== "/console/account/sign-in" && (
+        <div role="status" className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
+          <WarningCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" weight="fill" aria-hidden="true" />
+          <p>
+            My account closes on{" "}
+            {new Date(me.deletionScheduledFor).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: IST })}.{" "}
+            <Link href="/console/account/sign-in#delete" className="font-medium underline underline-offset-4">
+              Keep my account
+            </Link>
+          </p>
+        </div>
+      )}
+      {page || !loaded ? (
+        <>
+          <PageHeader title={page ?? "My account"} subtitle={SUBTITLES[segment]} />
+          {body}
+        </>
+      ) : (
+        body
+      )}
     </div>
   );
 }
 
-/** Pages the sidebar opens on their own, by their segment under /console/account. */
-const PAGES: Record<string, string> = { inbox: "Inbox", support: "Support", saved: "Saved events", certificates: "My certificates" };
+/** Pages under /console/account that open from the sidebar, by their segment: titled here, full width, no card. */
+const PAGES: Record<string, string> = {
+  inbox: "Inbox",
+  support: "Support",
+  saved: "Saved events",
+  certificates: "My certificates",
+  partner: "Partner stats",
+  notifications: "Notifications",
+  "sign-in": "Security",
+  delete: "Delete account",
+};
+
+/** One line under a title where the name alone gets mixed up: Inbox (sent to me) vs Support (what I asked). */
+const SUBTITLES: Record<string, string> = {
+  inbox: "Updates Unifesto and organisers send me about my tickets, events and requests.",
+};
 
 /** One per event, split at now, as the app counts them. */
 function eventCounts(tickets: MyTicket[]) {
@@ -135,47 +129,4 @@ function eventCounts(tickets: MyTicket[]) {
   const starts = new Map(tickets.map((t) => [t.event.slug, new Date(t.event.startDateTime).getTime()]));
   const going = [...starts.values()].filter((at) => at >= now).length;
   return { going, been: starts.size - going };
-}
-
-/** The app's identity card: who I am and the same three counts. */
-function Header({ me, email, going, been, circles }: { me: Me; email: string; going: number; been: number; circles: number }) {
-  const stats = [
-    { label: "Going to", value: going, href: "/console/tickets" },
-    { label: "Been to", value: been, href: "/console/tickets" },
-    { label: "Circles", value: circles, href: "/console/account/circles" },
-  ];
-  const name = me.fullName || me.username || email;
-  const since = new Date(me.createdAt).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: IST });
-
-  return (
-    <header className="flex items-start gap-4 sm:gap-5">
-      {me.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={me.avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover sm:h-20 sm:w-20" />
-      ) : (
-        <div aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-night-3 text-xl font-semibold text-paper sm:h-20 sm:w-20">
-          {name.slice(0, 1).toUpperCase()}
-        </div>
-      )}
-      <div className="min-w-0">
-        <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-paper">{name}</h1>
-        <p className="mt-1 text-sm text-paper/60">
-          {me.username && <>@{me.username} · </>}Member since {since}
-        </p>
-        <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          {stats.map((s) => (
-            <Link key={s.label} href={s.href} className="text-paper/60 hover:text-paper">
-              <strong className="font-semibold text-paper">{s.value}</strong> {s.label}
-            </Link>
-          ))}
-        </p>
-        <p className="mt-2 text-xs text-paper/55">
-          Signed in as {email}.{" "}
-          <button type="button" onClick={() => void signOut().then(() => window.location.assign("/login"))} className="underline hover:text-paper">
-            Sign out
-          </button>
-        </p>
-      </div>
-    </header>
-  );
 }

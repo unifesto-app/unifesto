@@ -131,7 +131,6 @@ export default function SpaceSessionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Sessions"
         title="Sessions"
         subtitle={subtitle}
         actions={

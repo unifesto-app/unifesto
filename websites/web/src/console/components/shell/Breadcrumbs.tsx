@@ -46,7 +46,7 @@ export function useCrumbName(href: string, name: string | undefined) {
 }
 
 /**
- * Where I am, in the header: Dashboard › My Spaces › space › …. Every crumb but
+ * Where I am, a line above the page: Dashboard › My Spaces › space › …. Every crumb but
  * the last is a link (My Spaces lists my spaces to switch between). On a
  * phone only the last one shows.
  */

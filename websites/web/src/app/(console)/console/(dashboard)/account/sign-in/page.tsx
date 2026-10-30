@@ -6,10 +6,13 @@ import { AppleLogo, EnvelopeSimple, GoogleLogo, Phone } from "@unifesto/unicon/r
 import { getIdentities, makePrimary, removeIdentity, signOutEverywhere, type Identity } from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
 import { signOut } from "@/console/lib/utils/auth";
+import { Button } from "@/console/components/ui/button";
 import { useAccount } from "../AccountShell";
+import DeleteAccount from "../DeleteAccount";
+import Section from "../Section";
 
 const PROVIDER = {
-  EMAIL: { label: "Email code", Icon: EnvelopeSimple },
+  EMAIL: { label: "Email", Icon: EnvelopeSimple },
   GOOGLE: { label: "Google", Icon: GoogleLogo },
   APPLE: { label: "Apple", Icon: AppleLogo },
   PHONE: { label: "Phone", Icon: Phone },
@@ -33,7 +36,7 @@ function byEmail(ids: Identity[]) {
   return groups;
 }
 
-/** The app's Account settings: my phone, how I sign in, and signing out everywhere. */
+/** Security (the app's Account settings; the URL keeps its old name): my phone, how I sign in, signing out everywhere, and deleting my account. */
 export default function SignInPage() {
   const { session } = useWebSession();
   const token = session?.token ?? "";
@@ -78,25 +81,25 @@ export default function SignInPage() {
   const groups = ids ? byEmail(ids) : [];
 
   return (
-    <div className="space-y-10">
-      <section>
-        <h2 className="text-sm font-medium text-paper/75">Mobile number</h2>
-        <p className="mt-1.5 text-paper">{phone(me.mobileNumber)}</p>
-        <p className="mt-1 text-xs text-paper/55">
-          Organisers reach me here about my tickets. To change it,{" "}
-          <Link href="/help/contact" className="underline hover:text-paper">
-            contact support
-          </Link>
-          .
-        </p>
-      </section>
+    <div>
+      <Section title="Mobile number" description="Organisers reach me here about my tickets.">
+        <div>
+          <p className="text-sm font-medium tabular-nums text-foreground">{phone(me.mobileNumber)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            To change it,{" "}
+            <Link href="/help/contact" className="text-foreground underline underline-offset-4">
+              contact support
+            </Link>
+            .
+          </p>
+        </div>
+      </Section>
 
-      <section>
-        <h2 className="text-sm font-medium text-paper/75">Sign-in methods</h2>
+      <Section title="Sign-in methods" description="How I sign in, and which address gets my emails.">
         {!ids ? (
-          <p className="mt-3 text-paper/65">{error || "Loading…"}</p>
+          <p className={`text-sm ${error ? "text-destructive" : "text-muted-foreground"}`}>{error || "Loading…"}</p>
         ) : (
-          <ul className="mt-2 divide-y divide-white/[0.06]">
+          <ul className="-my-4 divide-y divide-border">
             {groups.map((g) => {
               const key = g.ids[0].id;
               const primary = g.ids.find((i) => i.isPrimary);
@@ -104,8 +107,8 @@ export default function SignInPage() {
               return (
                 <li key={key} className="flex flex-wrap items-center justify-between gap-3 py-4">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-paper">{g.email ?? PROVIDER[g.ids[0].provider].label}</p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-paper/60">
+                    <p className="truncate text-sm font-medium text-foreground">{g.email ?? PROVIDER[g.ids[0].provider].label}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {g.ids.map((i) => {
                         const { label, Icon } = PROVIDER[i.provider];
                         return (
@@ -115,31 +118,32 @@ export default function SignInPage() {
                           </span>
                         );
                       })}
-                      {primary && <span className="font-medium text-primary">Gets my emails</span>}
+                      {primary && <span className="font-medium text-foreground">Gets my emails</span>}
                     </p>
                   </div>
-                  <div className="flex gap-4 text-sm">
+                  <div className="flex gap-1">
                     {!primary && g.email && !relay && (
-                      <button type="button" disabled={busy} onClick={() => act(() => makePrimary(token, g.ids[0].id))} className="text-paper/75 hover:text-paper hover:underline">
+                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => act(() => makePrimary(token, g.ids[0].id))}>
                         Send my emails here
-                      </button>
+                      </Button>
                     )}
                     {groups.length > 1 &&
                       (sure === key ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="destructive"
+                          size="sm"
                           disabled={busy}
                           onClick={() => act(async () => {
                             for (const i of g.ids) await removeIdentity(token, i.id);
                           })}
-                          className="font-medium text-red-400 hover:underline"
                         >
                           {busy ? "Removing…" : "Yes, remove"}
-                        </button>
+                        </Button>
                       ) : (
-                        <button type="button" disabled={busy} onClick={() => setSure(key)} className="text-paper/75 hover:text-paper hover:underline">
+                        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => setSure(key)}>
                           Remove
-                        </button>
+                        </Button>
                       ))}
                   </div>
                 </li>
@@ -147,29 +151,30 @@ export default function SignInPage() {
             })}
           </ul>
         )}
-        {ids && groups.length === 1 && <p className="mt-1 text-xs text-paper/55">My only sign-in can&apos;t be removed.</p>}
-      </section>
+        {ids && groups.length === 1 && <p className="pt-4 text-xs text-muted-foreground">My only sign-in can&apos;t be removed.</p>}
+        {ids && error && <p className="pt-4 text-sm text-destructive">{error}</p>}
+      </Section>
 
-      <section>
-        <h2 className="text-sm font-medium text-paper/75">Signed in elsewhere?</h2>
-        <p className="mt-1.5 text-sm text-paper/65">Signs out the app and every browser, this one too.</p>
+      <Section title="Signed in elsewhere?" description="Signs out the app and every browser, this one too.">
         {sure === "everywhere" ? (
-          <div className="mt-3 flex gap-3">
-            <button type="button" disabled={busy} onClick={everywhere} className="btn btn-sm btn-primary">
+          <div className="flex gap-2">
+            <Button type="button" size="sm" disabled={busy} onClick={everywhere}>
               {busy ? "Signing out…" : "Yes, sign out everywhere"}
-            </button>
-            <button type="button" onClick={() => setSure(null)} className="btn btn-sm btn-secondary">
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSure(null)}>
               Cancel
-            </button>
+            </Button>
           </div>
         ) : (
-          <button type="button" onClick={() => setSure("everywhere")} className="btn btn-sm btn-secondary mt-3">
+          <Button type="button" variant="outline" size="sm" onClick={() => setSure("everywhere")}>
             Sign out everywhere
-          </button>
+          </Button>
         )}
-      </section>
+      </Section>
 
-      {ids && error && <p className="text-sm text-red-400">{error}</p>}
+      <Section id="delete" title="Delete account">
+        <DeleteAccount />
+      </Section>
     </div>
   );
 }

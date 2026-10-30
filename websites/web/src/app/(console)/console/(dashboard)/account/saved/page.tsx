@@ -6,6 +6,7 @@ import EventCard from "@/components/EventCard";
 import { getSavedEvents, unsaveEvent } from "@/lib/api/account";
 import type { Event } from "@/lib/api/events";
 import { useWebSession } from "@/lib/auth";
+import { Button } from "@/console/components/ui/button";
 
 /** K19: events I saved (in the app or here). */
 export default function SavedPage() {
@@ -28,27 +29,27 @@ export default function SavedPage() {
     }
   };
 
-  if (!events) return error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading saved events…</p>;
+  if (!events) return error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Loading saved events…</p>;
   if (!events.length)
     return (
-      <p className="text-paper/75">
+      <p className="border-t border-border pt-6 text-sm text-muted-foreground">
         Nothing saved yet. Save events in the Unifesto app and they show up here.{" "}
-        <Link href="/events" className="underline">
+        <Link href="/events" className="text-foreground underline underline-offset-4">
           Find an event
         </Link>
       </p>
     );
 
   return (
-    <div className="space-y-4">
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <ul className="grid gap-5 sm:grid-cols-2">
+    <div className="space-y-4 border-t border-border pt-6">
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <ul className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {events.map((e) => (
           <li key={e.id} className="space-y-2">
             <EventCard event={e} />
-            <button type="button" onClick={() => remove(e.id)} className="text-sm text-paper/65 underline hover:text-paper">
+            <Button type="button" variant="ghost" size="sm" className="-ml-3" onClick={() => remove(e.id)}>
               Remove from saved
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

@@ -35,17 +35,17 @@ export default function PartnerPage() {
       () => undefined,
     );
 
-  if (!partnerLinks.length) return <p className="text-paper/75">No partner links yet. Organisers add them from their event&apos;s Tracking page.</p>;
+  if (!partnerLinks.length) return <p className="text-muted-foreground">No partner links yet. Organisers add them from their event&apos;s Tracking page.</p>;
 
   return (
-    <ul className="divide-y divide-white/[0.06]">
+    <ul className="divide-y divide-border">
       {partnerLinks.map((l) => (
         <li key={l.id} className="space-y-2 py-4">
           <div>
-            <Link href={`/event/${l.event.slug}`} className="font-semibold text-paper hover:underline">
+            <Link href={`/event/${l.event.slug}`} className="font-semibold text-foreground hover:underline">
               {l.event.title}
             </Link>
-            <p className="mt-0.5 text-xs text-paper/60">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {[
                 l.name,
                 l.event.space?.name,
@@ -55,17 +55,17 @@ export default function PartnerPage() {
                 .join(" · ")}
             </p>
           </div>
-          <p className="text-sm text-paper/70">
-            <strong className="font-semibold text-paper">{l.registrations}</strong> registrations
+          <p className="text-sm text-muted-foreground">
+            <strong className="font-semibold text-foreground">{l.registrations}</strong> registrations
             {today[l.id] !== undefined && (
               <>
                 {" · "}
-                <strong className="font-semibold text-paper">{today[l.id]}</strong> today
+                <strong className="font-semibold text-foreground">{today[l.id]}</strong> today
               </>
             )}
           </p>
           <p className="flex items-center gap-3 text-sm">
-            <code className="min-w-0 truncate rounded-xl bg-canvas px-3 py-1.5 text-xs text-paper/80">{l.trackingUrl}</code>
+            <code className="min-w-0 truncate rounded-xl bg-muted px-3 py-1.5 text-xs text-foreground/80">{l.trackingUrl}</code>
             <button type="button" onClick={() => copy(l.id, l.trackingUrl)} className="shrink-0 font-medium text-primary hover:underline">
               {copied === l.id ? "Copied" : "Copy"}
             </button>

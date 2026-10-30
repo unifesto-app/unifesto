@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Handshake } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/console/components/ui/tabs";
@@ -24,12 +23,6 @@ export default function SponsorsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5">
-            <Handshake className="h-4 w-4" weight="fill" />
-            Community
-          </span>
-        }
         title="Sponsors"
         subtitle="Manage your sponsor roster, rank them in tiers, attach them to events and collect leads."
       />

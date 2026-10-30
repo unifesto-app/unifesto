@@ -217,7 +217,7 @@ export default function BillingPage() {
         <CardContent className="space-y-6 p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Your plan</p>
+              <p className="text-xs font-medium text-muted-foreground">Your plan</p>
               {loading ? (
                 <Skeleton className="mt-2 h-8 w-40" />
               ) : (
@@ -324,14 +324,14 @@ export default function BillingPage() {
               return (
                 <Card
                   key={plan.plan}
-                  className={cn("flex flex-col", isCurrent && "border-primary ring-1 ring-primary")}
+                  className={cn("flex flex-col", isCurrent && "border-t-2 border-foreground")}
                 >
                   <CardContent className="flex flex-1 flex-col gap-4 p-5">
                     <div>
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="font-semibold text-foreground">{PLAN_LABEL[plan.plan]}</h3>
                         {isCurrent && (
-                          <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                          <span className="text-xs font-medium text-foreground">
                             Current
                           </span>
                         )}
@@ -428,7 +428,7 @@ export default function BillingPage() {
                       <tr>
                         <th
                           colSpan={plans.length + 1}
-                          className="border-b border-border bg-muted/50 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                          className="border-b border-border bg-muted/50 px-4 py-2 text-left text-xs font-medium text-muted-foreground"
                         >
                           {g.group}
                         </th>

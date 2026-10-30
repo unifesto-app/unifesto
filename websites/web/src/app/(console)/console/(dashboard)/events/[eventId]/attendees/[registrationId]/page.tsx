@@ -779,7 +779,7 @@ export default function AttendeeDetailPage() {
                     seat below only carries what's actually that member's. */}
                 {seatView.sharedFields.length > 0 && (
                   <div className="rounded-lg border border-border bg-muted/40 px-3.5 py-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
                       Team details
                     </p>
                     <div className="flex flex-wrap gap-x-8 gap-y-2">

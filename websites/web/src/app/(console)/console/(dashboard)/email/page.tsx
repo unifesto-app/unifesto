@@ -137,7 +137,6 @@ export default function SpaceEmailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Email"
         title="Campaigns"
         subtitle="Broadcast to your members and event audiences, with open and click tracking."
         actions={

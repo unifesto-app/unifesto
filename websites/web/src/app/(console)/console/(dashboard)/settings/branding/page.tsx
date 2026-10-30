@@ -146,7 +146,6 @@ export default function BrandingStudioPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="White-label"
         title="Branding"
         subtitle="Make your public pages and attendee emails look like yours, not ours."
       />

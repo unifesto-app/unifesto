@@ -124,7 +124,6 @@ export default function SpaceEmailTemplatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Email"
         title="Templates"
         subtitle={
           loading

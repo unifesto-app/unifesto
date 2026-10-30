@@ -8,8 +8,11 @@ import {
   type NotificationSettings,
 } from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
+import { Toggle } from "@/console/components/hackathon/HackParts";
+import { Button } from "@/console/components/ui/button";
+import Section from "../Section";
 
-type Toggle = "emailEnabled" | "emailEventReminders" | "emailNewEvents" | "promotions" | "marketingEmail" | "marketingWhatsapp";
+type Setting = "emailEnabled" | "emailEventReminders" | "emailNewEvents" | "promotions" | "marketingEmail" | "marketingWhatsapp";
 
 /**
  * K19: email and marketing settings, on the same API and with the same labels
@@ -26,7 +29,7 @@ export default function NotificationsPage() {
   }, [token]);
 
   // Flip at once, put it back if the save fails.
-  const toggle = async (key: Toggle) => {
+  const toggle = async (key: Setting) => {
     if (!s) return;
     const before = s;
     const value = !s[key];
@@ -49,77 +52,66 @@ export default function NotificationsPage() {
     }
   };
 
-  if (!s) return error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>;
+  if (!s) return error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const emailOff = !s.emailEnabled;
-  const row = (label: string, key: Toggle, disabled = false) => (
-    <label className={`flex items-center justify-between gap-4 py-3 ${disabled ? "opacity-50" : ""}`}>
-      <span className="text-sm text-paper">{label}</span>
-      <input
-        type="checkbox"
-        role="switch"
-        checked={!!s[key] && !disabled}
-        disabled={disabled}
-        onChange={() => toggle(key)}
-        className="h-5 w-5 shrink-0 accent-[var(--primary)]"
-      />
-    </label>
+  const row = (label: string, key: Setting, disabled = false) => (
+    <div className="py-3">
+      <Toggle label={label} checked={!!s[key] && !disabled} disabled={disabled} onChange={() => toggle(key)} />
+    </div>
   );
   const fixed = (label: string, note: string) => (
     <div className="flex items-center justify-between gap-4 py-3">
-      <span className="text-sm text-paper">{label}</span>
-      <span className="text-xs text-paper/55">{note}</span>
+      <span className="text-sm text-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{note}</span>
     </div>
   );
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-base font-semibold text-paper">Email</h2>
-        <p className="mt-1 text-sm text-paper/60">Turns off all optional email. Tickets, receipts and sign-in codes still arrive.</p>
-        <div className="mt-2 divide-y divide-white/[0.06]">{row("Email", "emailEnabled")}</div>
-      </section>
+    <div>
+      <Section title="Email" description="Turns off all optional email. Tickets, receipts and sign-in codes still arrive.">
+        <div className="-my-3 divide-y divide-border">{row("Email", "emailEnabled")}</div>
+      </Section>
 
-      <section>
-        <h2 className="text-base font-semibold text-paper">What I get by email</h2>
-        <div className="mt-2 divide-y divide-white/[0.06]">
+      <Section title="What I get by email">
+        <div className="-my-3 divide-y divide-border">
           {fixed("Tickets and waitlist", "Always")}
           {row("Reminders", "emailEventReminders", emailOff)}
           {row("New events", "emailNewEvents", emailOff)}
           {fixed("My spaces", "Always")}
         </div>
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="text-base font-semibold text-paper">Promotions</h2>
-        <p className="mt-1 text-sm text-paper/60">
-          Offers from Unifesto need the first switch. Email and WhatsApp cover all marketing, from Unifesto and from spaces I
-          joined.
-        </p>
-        <div className="mt-2 divide-y divide-white/[0.06]">
+      <Section
+        title="Promotions"
+        description="Offers from Unifesto need the first switch. Email and WhatsApp cover all marketing, from Unifesto and from spaces I joined."
+      >
+        <div className="-my-3 divide-y divide-border">
           {row("Offers from Unifesto", "promotions")}
           {s.marketingEmail != null && row("Marketing email", "marketingEmail")}
           {s.marketingWhatsapp != null && row("Marketing on WhatsApp", "marketingWhatsapp")}
         </div>
         {s.spaceOptOuts.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium text-paper/75">Spaces I unsubscribed from</h3>
-            <ul className="mt-1 divide-y divide-white/[0.06]">
+          <div className="pt-6">
+            <h3 className="text-sm font-medium text-foreground">Spaces I unsubscribed from</h3>
+            <ul className="mt-1 divide-y divide-border">
               {s.spaceOptOuts.map((sp) => (
                 <li key={sp.spaceId} className="flex items-center justify-between gap-4 py-3">
-                  <span className="text-sm text-paper">{sp.spaceName}</span>
-                  <button type="button" onClick={() => resubscribe(sp.spaceId)} className="text-sm font-medium text-primary hover:underline">
+                  <span className="text-sm text-foreground">{sp.spaceName}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => resubscribe(sp.spaceId)}>
                     Re-subscribe
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </section>
+      </Section>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      <p className="text-xs text-paper/55">Push notifications and quiet hours are set in the Unifesto app.</p>
+      <div className="space-y-2 border-t border-border pt-6">
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">Push notifications and quiet hours are set in the Unifesto app.</p>
+      </div>
     </div>
   );
 }
