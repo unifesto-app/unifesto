@@ -10,7 +10,7 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from "axios";
-import { clearLegacyToken, currentToken, loginHref, renewToken } from "@/console/lib/utils/auth";
+import { currentToken, loginHref, renewToken } from "@/console/lib/utils/auth";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
@@ -66,7 +66,6 @@ backendClient.interceptors.response.use(
             return backendClient(config);
           }
         }
-        clearLegacyToken();
         window.location.href = loginHref();
       }
 

@@ -10,11 +10,5 @@ export async function POST(req: NextRequest) {
   if (token) await api("/auth/logout", { method: "POST", token, body: { refreshToken } }).catch(() => null);
   const res = new NextResponse(null, { status: 204 });
   clearRefresh(res);
-  // Track V8: also end the space console's old session, the JS-readable
-  // unifesto_token. It can live host-only or on .unifesto.app; these are two
-  // cookies with one name, so each needs its own Set-Cookie.
-  for (const scope of ["", "; Domain=.unifesto.app"]) {
-    res.headers.append("Set-Cookie", `unifesto_token=; Path=/; Max-Age=0; SameSite=Lax${scope}`);
-  }
   return res;
 }

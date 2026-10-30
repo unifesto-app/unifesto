@@ -60,31 +60,15 @@ function csp(nonce: string, isConsole: boolean): string {
 
 /* The console (/console/**, Track V). One sign-in (V8): web's /login and its
    session. The proxy can't see that session's refresh cookie (uf_rt is scoped
-   to /auth), so it lets through its `uf_in` hint, or a live `unifesto_token`
-   from the old space app until those expire. A light gate: the backend stays
-   the authority. The projector signs in with its display link. */
+   to /auth), so it lets through its `uf_in` hint. A light gate: the backend
+   stays the authority. The projector signs in with its display link. */
 const HINT_COOKIE = 'uf_in';
-const LEGACY_TOKEN_COOKIE = 'unifesto_token';
 const CONSOLE_PUBLIC = ['/console/present'];
 const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(`${p}/`);
 
-/** Well-formed, has a subject and isn't past `exp`. No signature check (Edge-safe). */
-function isTokenLive(token: string | undefined): boolean {
-  const parts = token?.split('.') ?? [];
-  if (parts.length !== 3) return false;
-  try {
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number; userId?: string; sub?: string };
-    if (!payload.userId && !payload.sub) return false;
-    return typeof payload.exp !== 'number' || payload.exp * 1000 > Date.now();
-  } catch {
-    return false;
-  }
-}
-
 function consoleGate(request: NextRequest, reqHeaders: Headers): NextResponse {
   const { pathname, search } = request.nextUrl;
-  const signedIn =
-    request.cookies.get(HINT_COOKIE)?.value === '1' || isTokenLive(request.cookies.get(LEGACY_TOKEN_COOKIE)?.value);
+  const signedIn = request.cookies.get(HINT_COOKIE)?.value === '1';
   if (!signedIn && !CONSOLE_PUBLIC.some((p) => under(pathname, p))) {
     const login = new URL('/login', request.url);
     login.searchParams.set('next', `${pathname}${search}`);
