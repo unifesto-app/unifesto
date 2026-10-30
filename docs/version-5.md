@@ -1021,3 +1021,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-30** · Console no longer reads the old space-app unifesto_token cookie; the proxy gate uses web's session hint only (#459)
 - **2026-10-30** · README deploy section no longer names the removed space app (#463)
 - **2026-10-30** · /cookies metadata and OG subtitle match Cookie Policy v2 (web sign-in cookies, no single space cookie) (#465)
+- **2026-10-30** · web footer orb removed, horizon glow kept (#464)
