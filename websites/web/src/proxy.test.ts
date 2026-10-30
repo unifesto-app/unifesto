@@ -38,7 +38,7 @@ test("a custom domain serves only its space (H7)", async () => {
 
 const jwt = (p: object) => `unifesto_token=e30.${Buffer.from(JSON.stringify(p)).toString("base64url")}.x`;
 
-test("the console gate: web's one sign-in, or an old space token until it expires (V8)", async () => {
+test("the console gate: web's one sign-in only (V8)", async () => {
   // Signed out: web's /login, coming back to the same page.
   assert.equal(
     (await run("https://www.unifesto.app/console/events?space=s1")).headers.get("location"),
@@ -48,10 +48,9 @@ test("the console gate: web's one sign-in, or an old space token until it expire
   assert.equal((await run("https://www.unifesto.app/console/present/ev1")).headers.get("x-middleware-next"), "1");
   // Web's session hint passes.
   assert.equal((await run("https://www.unifesto.app/console", "uf_in=1")).headers.get("x-middleware-next"), "1");
-  // An old space-app token passes while live; expired or malformed ones don't.
+  // The old space-app cookie no longer gets in, live or not (V4).
   const live = jwt({ userId: "u1", exp: Math.floor(Date.now() / 1000) + 3600 });
-  assert.equal((await run("https://www.unifesto.app/console", live)).headers.get("x-middleware-next"), "1");
-  assert.match((await run("https://www.unifesto.app/console", jwt({ userId: "u1", exp: 1 }))).headers.get("location") ?? "", /\/login\?next=/);
+  assert.match((await run("https://www.unifesto.app/console", live)).headers.get("location") ?? "", /\/login\?next=/);
   assert.match((await run("https://www.unifesto.app/console", "unifesto_token=garbage")).headers.get("location") ?? "", /\/login\?next=/);
 });
 
