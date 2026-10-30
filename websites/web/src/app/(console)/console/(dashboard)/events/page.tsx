@@ -191,7 +191,7 @@ function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: (
 
   if (invites.length === 0) return null;
   return (
-    <Card className="rounded-lg border border-primary/30 bg-primary-soft px-4">
+    <Card className="rounded-2xl border border-primary/30 bg-primary-soft px-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <ShareNetwork className="h-4 w-4 text-primary" weight="bold" />

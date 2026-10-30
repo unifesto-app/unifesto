@@ -199,7 +199,7 @@ export default function SupportClient({ hasHelp }: { hasHelp: boolean }) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search for help…"
               aria-label="Search FAQs"
-              className="w-full rounded-2xl bg-night-2 py-3.5 pl-12 pr-4 text-sm text-paper placeholder:text-paper/45 outline-none transition-colors duration-150 focus:bg-night-3"
+              className="w-full rounded-lg bg-night-2 py-3.5 pl-12 pr-4 text-sm text-paper placeholder:text-paper/45 outline-none transition-colors duration-150 focus:bg-night-3"
             />
           </div>
 

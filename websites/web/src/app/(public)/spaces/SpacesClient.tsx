@@ -26,7 +26,7 @@ function initials(name: string): string {
 
 function SpaceAvatar({ space, size = "md" }: { space: Space; size?: "sm" | "md" | "lg" }) {
   const dims = size === "lg" ? "h-16 w-16 text-xl" : size === "sm" ? "h-10 w-10 text-xs" : "h-12 w-12 text-base";
-  const radius = size === "lg" ? "rounded-2xl" : "rounded-xl";
+  const radius = "rounded-lg";
 
   if (space.logo_url) {
     return (
@@ -140,7 +140,7 @@ function SpacesSkeleton() {
         <div key={i} className="overflow-hidden rounded-3xl bg-night-2">
           <div className="relative aspect-[4/3] animate-pulse bg-paper/[0.04]">
             <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-6">
-              <div className="h-16 w-16 animate-pulse rounded-2xl bg-paper/[0.08]" />
+              <div className="h-16 w-16 animate-pulse rounded-lg bg-paper/[0.08]" />
               <div className="mb-1 h-4 w-2/3 animate-pulse rounded bg-paper/[0.08]" />
             </div>
           </div>

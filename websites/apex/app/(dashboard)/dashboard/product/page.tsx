@@ -171,7 +171,7 @@ export default function ProductPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}

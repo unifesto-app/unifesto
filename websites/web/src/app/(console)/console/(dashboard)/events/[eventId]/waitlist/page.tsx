@@ -186,7 +186,7 @@ export default function EventWaitlistPage() {
 
       {error && <ErrorNotice message={error} />}
       {notice && (
-        <div className="rounded-lg border border-primary/30 bg-primary/[0.04] px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-primary/30 bg-primary/[0.04] px-4 py-3 text-sm text-foreground">
           {notice}
         </div>
       )}

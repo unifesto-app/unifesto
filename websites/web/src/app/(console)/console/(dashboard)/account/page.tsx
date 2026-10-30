@@ -359,7 +359,7 @@ export default function ProfilePage() {
         <div
           inert={!showBar}
           className={cn(
-            "absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-popover px-4 py-3 shadow-md transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none",
+            "absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-popover px-4 py-3 shadow-md transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none",
             showBar ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
           )}
         >

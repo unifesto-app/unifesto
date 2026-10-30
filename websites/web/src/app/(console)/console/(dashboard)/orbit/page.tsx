@@ -69,7 +69,7 @@ export default function OrbitPage() {
         </div>
       )}
       {data.clock && (data.clock.status === "check-in" || data.clock.status === "reopen") && (
-        <div className="rounded-lg border border-destructive/40 bg-card p-4 text-sm">
+        <div className="rounded-2xl border border-destructive/40 bg-card p-4 text-sm">
           No new club or event for {data.clock.inactiveDays} days. Get one club live, or tell your Program
           Lead if you have exams so the clock pauses.
         </div>

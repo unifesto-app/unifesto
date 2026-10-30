@@ -63,7 +63,7 @@ export default async function PricingPage() {
             const featured = plan.id === "growth";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
             return (
-              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
+              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-2xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
                 <h2 className="font-display text-lg text-paper">{plan.name}</h2>
                 <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
 
@@ -168,7 +168,7 @@ function CompareSection({ plans, catalog }: { plans: Plan[]; catalog: Catalog })
       <h2 id="every-feature-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper">
         Every feature, every plan.
       </h2>
-      <div className="mt-8 overflow-x-auto rounded-xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
+      <div className="mt-8 overflow-x-auto rounded-2xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
         <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">What each Unifesto plan includes</caption>
           <thead>

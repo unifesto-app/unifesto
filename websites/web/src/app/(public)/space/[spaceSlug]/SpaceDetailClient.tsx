@@ -49,7 +49,7 @@ function SpaceDetailSkeleton() {
       <div aria-hidden className="mx-auto grid max-w-5xl gap-8 px-5 pt-28 sm:px-8 md:grid-cols-2 md:pt-32">
         <div className="aspect-[4/3] w-full animate-pulse rounded-3xl bg-night-2" />
         <div className="space-y-4">
-          <div className="h-16 w-16 animate-pulse rounded-2xl bg-paper/[0.06]" />
+          <div className="h-16 w-16 animate-pulse rounded-lg bg-paper/[0.06]" />
           <div className="h-8 w-2/3 animate-pulse rounded-lg bg-paper/[0.05]" />
           <div className="h-4 w-1/3 animate-pulse rounded bg-paper/[0.05]" />
           <div className="h-24 w-full animate-pulse rounded-3xl bg-paper/[0.05]" />

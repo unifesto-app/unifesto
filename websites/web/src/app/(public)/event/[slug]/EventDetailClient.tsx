@@ -267,7 +267,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
             <Card className="enter mt-6" >
               <details className="group [&_summary::-webkit-details-marker]:hidden">
                 <summary className="flex cursor-pointer list-none items-center gap-4 p-4 transition-colors hover:bg-paper/[0.04]">
-                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-paper/15 text-center">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg border border-paper/15 text-center">
                     <span>
                       <span className="block text-[11px] font-semibold text-paper/55">{chip.month}</span>
                       <span className="block font-display text-xl leading-6 text-paper">{chip.day}</span>

@@ -23,7 +23,7 @@ Card.displayName = "Card";
 
 /* Header, content and footer sit flush with the hairline: a block has no box
    to pad inside, so any sideways padding a page passes (p-5, p-6, from when it
-   did) is dropped. A tinted notice pads the Card itself (rounded-lg border px-4). */
+   did) is dropped. A tinted notice pads the Card itself (rounded-2xl border px-4). */
 const FLUSH = "px-0";
 
 const CardHeader = React.forwardRef<

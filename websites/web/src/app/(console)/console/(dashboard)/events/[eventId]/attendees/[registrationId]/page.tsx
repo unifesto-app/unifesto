@@ -1048,7 +1048,7 @@ export default function AttendeeDetailPage() {
 
               {(registration.paymentStatus === "REFUNDED" ||
                 registration.paymentStatus === "PARTIALLY_REFUNDED") && (
-                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2.5 text-sm text-warning">
+                <div className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning-soft px-3 py-2.5 text-sm text-warning">
                   <Warning className="mt-0.5 h-4 w-4 flex-shrink-0" weight="fill" />
                   <span>
                     This registration was already refunded. Restoring it gives

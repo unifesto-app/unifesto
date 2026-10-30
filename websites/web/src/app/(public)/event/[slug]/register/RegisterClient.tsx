@@ -394,7 +394,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     body = (
       <form onSubmit={sendPhone} className="space-y-4">
         <p className="text-paper/75">New to Unifesto? Add your WhatsApp number to create your account.</p>
-        <div className="flex items-center rounded-3xl bg-canvas">
+        <div className="flex items-center rounded-lg bg-canvas">
           <span className="pl-4 text-sm text-paper/65">+91</span>
           <input
             required
@@ -554,7 +554,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
               </button>
             </div>
             {couponMsg && <p className="text-xs text-paper/65">{couponMsg}</p>}
-            <dl className="space-y-1.5 rounded-2xl border border-paper/10 px-4 py-3 text-sm">
+            <dl className="space-y-1.5 rounded-lg border border-paper/10 px-4 py-3 text-sm">
               <PriceLine label="Ticket" value={inr(basePaise)} />
               {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
               {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}

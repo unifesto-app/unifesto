@@ -209,7 +209,7 @@ export default function BillingPage() {
       {error && <ErrorNotice message={error} />}
       {actionError && <ErrorNotice message={actionError} />}
       {notice && (
-        <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
+        <div className="rounded-2xl border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
       )}
 
       {/* Current plan ------------------------------------------------------ */}

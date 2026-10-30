@@ -6,7 +6,7 @@ import Link from "next/link";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 const FIELD =
-  "w-full rounded-3xl bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
+  "w-full rounded-lg bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
 const CTA = "btn btn-primary";
 
 /* K11: visible labels (placeholders were doing the labelling and vanished on type). */
@@ -550,7 +550,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
         />
       </Field>
       <Field label="Mobile number (WhatsApp)">
-        <div className="flex items-center rounded-3xl bg-night-2 focus-within:border-primary/50">
+        <div className="flex items-center rounded-lg bg-night-2 focus-within:border-primary/50">
           <span className="pl-4 text-sm text-paper/65">+91</span>
           <input
             required

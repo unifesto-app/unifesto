@@ -230,7 +230,7 @@ export default function CareersPage() {
               </div>
 
               {selectedCareer.salary_range && (
-                <div className="mt-6 flex items-center gap-3 rounded-2xl bg-night-3 p-5">
+                <div className="mt-6 flex items-center gap-3 rounded-lg bg-night-3 p-5">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
                     <CurrencyInr size={18} weight="bold" />
                   </span>

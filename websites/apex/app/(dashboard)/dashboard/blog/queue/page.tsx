@@ -111,7 +111,7 @@ export default function BlogQueuePage() {
       </p>
 
       {writerOn === false && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
           The auto-blog writer is off, so queued questions fail with &quot;research: disabled&quot;. Turn on
           Auto-blog writer under{" "}
           <Link href="/dashboard/app-version" className="font-medium text-primary hover:underline">
@@ -122,12 +122,12 @@ export default function BlogQueuePage() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
       {notice && (
-        <div className="rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm text-foreground">
           {notice}
         </div>
       )}

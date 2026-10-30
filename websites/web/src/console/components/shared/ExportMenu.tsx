@@ -80,7 +80,7 @@ export function ExportMenu({
         <CaretDown className="h-4 w-4" />
       </Button>
       {open && (
-        <div className="absolute right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+        <div className="absolute right-0 z-10 mt-1 w-64 overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-md">
           {locked ? (
             <div className="p-3">
               <p className="flex items-center gap-1.5 text-sm font-medium">

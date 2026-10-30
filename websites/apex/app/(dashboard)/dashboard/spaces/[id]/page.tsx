@@ -1034,7 +1034,7 @@ function AddMemberCard({
               onChange={(e) => setQuery(e.target.value)}
             />
             {query.trim().length >= 2 && (
-              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-2xl border border-border bg-popover shadow-md">
                 {searching ? (
                   <p className="px-3 py-2 text-sm text-muted-foreground">
                     Searching…

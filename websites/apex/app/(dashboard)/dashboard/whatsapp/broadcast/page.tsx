@@ -134,7 +134,7 @@ function UserMultiSelect({
           <CircleNotch className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
         {open && (
-          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-card shadow-md">
+          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-border bg-card shadow-md">
             {results.length === 0 ? (
               <p className="px-3 py-3 text-sm text-muted-foreground">
                 {loading ? "Searching…" : "No matches."}

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 const FIELD =
-  "w-full rounded-2xl bg-night-3 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full rounded-lg bg-night-3 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
 /** Remembers this tab's chat across a refresh; the token only opens a chat while it is with Assist. */
 const STORE = "unifesto-assist-chat";
 
@@ -159,7 +159,7 @@ export default function ContactClient() {
       )}
 
       {chat && !chat.withBot ? (
-        <div className="rounded-2xl bg-night-3 p-4 text-sm text-paper/80">
+        <div className="rounded-lg bg-night-3 p-4 text-sm text-paper/80">
           A person on our team has your request now. We&apos;ll reply to{" "}
           <span className="font-semibold text-paper">{chat.contactEmail ?? "your email"}</span>, usually within 24 hours.
         </div>

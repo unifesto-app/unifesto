@@ -202,7 +202,7 @@ export default function EventCoHostingPage() {
           accepts/declines; the proposing host can rescind; anyone else sees an
           informational note. */}
       {pending && (
-        <Card className="rounded-lg border border-primary/30 bg-primary-soft px-4">
+        <Card className="rounded-2xl border border-primary/30 bg-primary-soft px-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ArrowsLeftRight className="h-4 w-4 text-primary" weight="bold" />

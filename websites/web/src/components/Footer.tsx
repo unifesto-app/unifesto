@@ -115,7 +115,7 @@ export default function Footer() {
         {/* Inside the glass root so the card has colour to frost. */}
         <div aria-hidden="true" className="footer-glow" />
         <div data-glass className="relative z-10">
-          <div className="rounded-xl bg-night-2 p-6 sm:p-10 md:p-12">
+          <div className="rounded-2xl bg-night-2 p-6 sm:p-10 md:p-12">
             <div className="grid gap-14 lg:grid-cols-[1.1fr_1.4fr] lg:gap-20">
               <div>
                 <p

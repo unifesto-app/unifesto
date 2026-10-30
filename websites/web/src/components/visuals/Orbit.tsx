@@ -234,7 +234,7 @@ export function OrbitCertificate() {
   return (
     <div
       aria-hidden="true"
-      className="relative w-full max-w-xl rounded-xl bg-night-2 p-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1),0_30px_60px_-30px_rgba(0,0,0,0.9)]"
+      className="relative w-full max-w-xl rounded-2xl bg-night-2 p-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1),0_30px_60px_-30px_rgba(0,0,0,0.9)]"
     >
       <div className="relative overflow-hidden rounded-lg border border-paper/15 p-6 sm:p-9">
         <div className="pointer-events-none absolute inset-1.5 rounded-md border border-paper/10" />

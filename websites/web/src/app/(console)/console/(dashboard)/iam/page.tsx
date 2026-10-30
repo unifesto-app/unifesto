@@ -127,7 +127,7 @@ export default function SpaceIamPage() {
       {error && <ErrorNotice message={error} />}
 
       {/* Space Admin — locked, like Platform Admin on the platform console. */}
-      <Card className="rounded-lg border border-primary/30 bg-primary-soft/30 px-4">
+      <Card className="rounded-2xl border border-primary/30 bg-primary-soft/30 px-4">
         <CardContent className="flex items-start gap-3 py-4">
           <ShieldCheck
             className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary"

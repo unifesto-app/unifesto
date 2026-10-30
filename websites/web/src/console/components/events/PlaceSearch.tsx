@@ -143,7 +143,7 @@ export function PlaceSearch({ onPick, pinned, onClearPin }: PlaceSearchProps) {
           <ul
             id="place-search-results"
             role="listbox"
-            className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-lg"
+            className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-2xl border border-border bg-card py-1 shadow-lg"
           >
             {results.map((r, i) => (
               <li

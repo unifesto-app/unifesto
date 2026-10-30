@@ -6,7 +6,7 @@ import { sendEmailCode, verifyEmailCode } from "@/lib/api/registration";
 import { clearSession, startSession, type PendingSignIn } from "@/lib/auth";
 
 const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full rounded-lg bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
 
 /**
  * K18/K19: sign in to an existing account on the web: Google, or the email

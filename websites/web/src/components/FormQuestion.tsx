@@ -5,8 +5,8 @@ import { INDIAN_STATES, type FormField } from "@/lib/api/registration";
 /* Registration questions, shared by registering and by editing my answers afterwards. */
 
 export const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
-export const CHOICE = "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition-colors";
+  "w-full rounded-lg bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+export const CHOICE = "flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors";
 
 /** One registration question. Answers use the shapes the backend's checkAnswers accepts. */
 export function Question({ field: f, value, onChange }: { field: FormField; value: unknown; onChange: (v: unknown) => void }) {

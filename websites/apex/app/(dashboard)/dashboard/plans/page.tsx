@@ -136,7 +136,7 @@ export default function PlansPage() {
 
       {error && <ErrorNotice message={error} />}
       {notice && (
-        <p className="rounded-lg border border-success/25 bg-success-soft px-4 py-3 text-sm text-success">{notice}</p>
+        <p className="rounded-2xl border border-success/25 bg-success-soft px-4 py-3 text-sm text-success">{notice}</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

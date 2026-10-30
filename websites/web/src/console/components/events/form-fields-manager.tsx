@@ -339,7 +339,7 @@ export function FormFieldsManager({
       )}
 
       {draft ? (
-        <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/[0.03] p-4">
+        <div className="space-y-4 rounded-2xl border border-primary/30 bg-primary/[0.03] p-4">
           <p className="text-sm font-medium text-foreground">
             {draft.id ? "Edit question" : "New question"}
           </p>

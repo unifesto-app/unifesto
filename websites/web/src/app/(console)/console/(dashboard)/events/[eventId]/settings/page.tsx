@@ -244,7 +244,7 @@ export default function EventSettingsPage() {
           </div>
 
           {isCancelled && event.cancelledAt && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
               <div className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -425,7 +425,7 @@ export default function EventSettingsPage() {
             <DialogTitle>Cancel event</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
+            <div className="rounded-2xl border border-warning/20 bg-warning/5 p-4">
               <div className="flex items-start gap-3">
                 <Warning className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -500,7 +500,7 @@ export default function EventSettingsPage() {
             <DialogTitle>Delete event</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
               <div className="flex items-start gap-3">
                 <Trash className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
