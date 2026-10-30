@@ -432,7 +432,7 @@ export default function AssistInboxPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Assist"
+        title="Support desk"
         subtitle="Every support case on the platform: questions, refunds, requests and reports"
         actions={
           <Button variant="outline" size="sm" onClick={() => setCannedOpen(true)}>

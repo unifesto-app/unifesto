@@ -75,7 +75,7 @@ export function UserActivity({ userId }: { userId: string }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                       <th className={th}>Event</th>
                       <th className={th}>Ticket</th>
                       <th className={th}>Status</th>
@@ -127,7 +127,7 @@ export function UserActivity({ userId }: { userId: string }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                       <th className={th}>For</th>
                       <th className={th}>Amount</th>
                       <th className={th}>Status</th>

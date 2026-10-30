@@ -422,7 +422,7 @@ export default function AdminEventDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                         <th className="py-2 pr-4 font-medium">Name</th>
                         <th className="py-2 pr-4 font-medium">Kind</th>
                         <th className="py-2 pr-4 text-right font-medium">Price</th>
@@ -463,7 +463,7 @@ export default function AdminEventDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                         <th className="py-2 pr-4 font-medium">Title</th>
                         <th className="py-2 pr-4 font-medium">Status</th>
                         <th className="py-2 pr-4 text-right font-medium">Registered</th>
@@ -502,7 +502,7 @@ export default function AdminEventDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                         <th className="py-2 pr-4 font-medium">Attendee</th>
                         <th className="py-2 pr-4 font-medium">Ticket</th>
                         <th className="py-2 pr-4 text-right font-medium">Qty</th>

@@ -85,7 +85,6 @@ export default function OrbitPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Growth"
         title="Unifesto Orbit"
         subtitle="Campuses ranked by tier, then active clubs. A club is active once it has published an event."
       />

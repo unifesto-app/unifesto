@@ -78,7 +78,7 @@ export default function ProfilePage() {
 
           {spaces && spaces.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Space memberships
               </p>
               <div className="flex flex-wrap gap-2">
@@ -100,7 +100,7 @@ export default function ProfilePage() {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4">
-      <span className="w-40 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="w-40 shrink-0 text-xs font-medium text-muted-foreground">
         {label}
       </span>
       <span className="text-sm text-foreground">{value}</span>

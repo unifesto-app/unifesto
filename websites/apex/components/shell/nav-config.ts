@@ -128,7 +128,7 @@ export const adminNav: NavGroup[] = [
   {
     label: "Trust & support",
     items: [
-      { href: "/dashboard/assist", label: "Assist", icon: Lifebuoy, unreadBadge: true, keywords: "support tickets help cases inbox" },
+      { href: "/dashboard/support", label: "Support desk", icon: Lifebuoy, unreadBadge: true, keywords: "assist support requests help cases inbox" },
       { href: "/dashboard/content-reports", label: "Content reports", icon: Flag, keywords: "moderation abuse" },
       { href: "/dashboard/help", label: "Help articles", icon: BookOpen, keywords: "knowledge base faq assist" },
       { href: "/dashboard/legal", label: "Legal documents", icon: Gavel, keywords: "terms privacy policy refund agreement consent" },

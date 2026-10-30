@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, ArrowRight, SignOut } from "@unifesto/unicon/react";
+import { MagnifyingGlass, ArrowRight, SignOut, Desktop } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useCommandPalette } from "@/lib/context/CommandPaletteContext";
 import { clearAuthToken } from "@/lib/utils/auth";
 import { useSession } from "@/lib/context/SessionContext";
 import { navFor } from "./nav-config";
 import { cn } from "@/lib/utils/cn";
+import { cycleTheme } from "./ThemeToggle";
 
 interface Command {
   id: string;
@@ -59,6 +60,14 @@ export function CommandPalette() {
         run: () => router.push(item.href),
       }))
     );
+    list.push({
+      id: "action:theme",
+      label: "Change theme",
+      group: "Account",
+      icon: Desktop,
+      keywords: "theme dark light system mode appearance night day",
+      run: cycleTheme,
+    });
     list.push({
       id: "action:signout",
       label: "Sign out",

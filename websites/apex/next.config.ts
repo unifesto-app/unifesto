@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
   // reconciliation errors (e.g. on leave). This only affects dev behaviour,
   // not production. Re-enable if you want StrictMode's other checks back.
   reactStrictMode: false,
-  // D8: the Assist inbox replaced the Support page.
+  // D8 moved the Support page to the Assist inbox; it's the Support desk again
+  // (Assist is only the AI's name), so old Assist links land there.
   async redirects() {
-    return [{ source: "/dashboard/support", destination: "/dashboard/assist", permanent: false }];
+    return [{ source: "/dashboard/assist", destination: "/dashboard/support", permanent: false }];
   },
   // Note: eslint config moved to eslint.config.mjs (no longer supported in next.config)
   

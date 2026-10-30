@@ -1,5 +1,5 @@
 import type { Icon } from "@unifesto/unicon/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
 
@@ -9,11 +9,15 @@ interface StatCardProps {
   hint?: string;
   icon: Icon;
   loading?: boolean;
-  /** Tint the icon chip — 'brand' (blue) or 'success' (green, organiser). */
+  /** Tints the icon: 'success' green; 'brand' and 'neutral' stay muted. */
   tone?: "neutral" | "brand" | "success";
 }
 
-/** Compact metric tile used across both admin and organiser overviews. */
+/**
+ * A metric on an overview: the label with its icon small beside it, the
+ * number below, then the hint. No tile or icon chip: a hairline on top,
+ * like every block (the console's StatCard, without its trend and link).
+ */
 export function StatCard({
   title,
   value,
@@ -23,27 +27,19 @@ export function StatCard({
   tone = "neutral",
 }: StatCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <span
-          className={cn(
-            "grid h-8 w-8 place-items-center rounded-md",
-            tone === "brand" && "bg-primary-soft text-primary",
-            tone === "success" && "bg-success-soft text-success",
-            tone === "neutral" && "bg-muted text-muted-foreground"
-          )}
-        >
-          <IconCmp className="h-4 w-4" weight="duotone" />
-        </span>
-      </CardHeader>
-      <CardContent>
+    <Card className="flex h-full flex-col gap-3 pb-1 pt-4">
+      <div className="flex items-center gap-1.5">
+        <IconCmp
+          aria-hidden="true"
+          className={cn("h-3.5 w-3.5 flex-shrink-0", tone === "success" ? "text-success" : "text-muted-foreground")}
+        />
+        <span className="text-eyebrow">{title}</span>
+      </div>
+      <div className="mt-auto">
         {loading ? (
           <Skeleton className="h-8 w-24" />
         ) : (
-          <div className="text-2xl font-semibold tracking-tight text-foreground">
+          <div className="font-display text-[1.75rem] leading-none tabular-nums tracking-tight text-foreground">
             {value}
           </div>
         )}
@@ -51,9 +47,9 @@ export function StatCard({
           (loading ? (
             <Skeleton className="mt-2 h-3 w-32" />
           ) : (
-            <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
           ))}
-      </CardContent>
+      </div>
     </Card>
   );
 }

@@ -158,7 +158,7 @@ export function AccountAccessCard({ user, onChanged }: { user: UserDetail; onCha
         )}
 
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Capability overrides
           </p>
           <p className="text-sm text-muted-foreground">

@@ -152,7 +152,7 @@ export default function TransactionDetailPage() {
       {loading ? (
         <DetailSkeleton />
       ) : error ? (
-        <Card className="border-destructive/30 bg-destructive-soft">
+        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-6 text-center">
             <p className="text-sm text-destructive">{error}</p>
             <Button
@@ -392,7 +392,7 @@ export default function TransactionDetailPage() {
                   </Badge>
                 </div>
                 <div className="border-t border-border pt-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Curator
                   </p>
                   <p className="mt-1 text-sm text-foreground">
@@ -421,7 +421,7 @@ export default function TransactionDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                         <th className="pb-2 pr-4 font-medium">Code</th>
                         <th className="pb-2 pr-4 font-medium">Attendee</th>
                         <th className="pb-2 pr-4 font-medium">Status</th>
@@ -767,7 +767,7 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <dt className="text-xs font-medium text-muted-foreground">
         {label}
       </dt>
       <dd

@@ -153,7 +153,7 @@ function AdminEvents() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                     <th className="py-3 pl-4 pr-4 font-medium">#</th>
                     <th className="py-3 pr-4 font-medium">Event</th>
                     <th className="py-3 pr-4 font-medium">Curator</th>

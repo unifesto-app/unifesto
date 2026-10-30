@@ -130,7 +130,6 @@ export default function PlansPage() {
   return (
     <div className={cn("space-y-6", dirty.length > 0 && "pb-24")}>
       <PageHeader
-        eyebrow="Money"
         title="Plans"
         subtitle="What each plan costs and includes. Edits apply to every space on the plan, for new sales only."
       />
