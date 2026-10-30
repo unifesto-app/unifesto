@@ -18,7 +18,7 @@ export function StaySetupVisual() {
   return (
     <Panel title="Stay · Nav Nirman 4.0">
       <div className={`aspect-[4/3] w-full rounded-md ${cover}`} />
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-[9px] text-paper/60">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[9px] text-paper/60">
         {[[WifiHigh, "Wi-Fi"], [Drop, "Hot water"], [ForkKnife, "Mess"], [Clock, "Check-in 12:00 PM"]].map(([I, t]) => {
           const Icon = I as typeof WifiHigh;
           return (

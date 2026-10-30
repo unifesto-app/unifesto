@@ -21,7 +21,7 @@ export default function SponsorsPage() {
   const [tab, setTab] = useState("roster");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sponsors"
         subtitle="Manage your sponsor roster, rank them in tiers, attach them to events and collect leads."

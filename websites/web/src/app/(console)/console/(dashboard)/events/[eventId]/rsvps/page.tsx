@@ -90,7 +90,7 @@ export default function EventRsvpsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-32 w-full rounded-lg" />
       </div>
@@ -98,7 +98,7 @@ export default function EventRsvpsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="RSVPs"
         subtitle="One-click, free registration options for this event"
@@ -186,7 +186,7 @@ export default function EventRsvpsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {rsvps.map((t: EventTicketType) => (
             <Card key={t.id}>
               <CardContent className="flex items-center justify-between gap-4 py-4">

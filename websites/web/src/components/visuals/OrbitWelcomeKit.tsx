@@ -274,7 +274,7 @@ export type KitEdition = "lead" | "crew";
 export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) {
   const lead = edition === "lead";
   return (
-    <div aria-hidden="true" className="relative w-full overflow-hidden rounded-[28px] shadow-[0_50px_100px_-50px_rgba(0,0,0,1)]">
+    <div aria-hidden="true" className="relative w-full overflow-hidden rounded-2xl shadow-[0_50px_100px_-50px_rgba(0,0,0,1)]">
       <svg viewBox="0 0 1600 900" className="block h-auto w-full">
         <defs>
           {/* Light and materials. */}

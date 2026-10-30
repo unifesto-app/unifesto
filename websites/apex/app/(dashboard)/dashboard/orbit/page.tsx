@@ -83,7 +83,7 @@ export default function OrbitPage() {
   const needsCheckIn = rows?.filter((r) => r.clock && r.clock.status !== "active" && r.clock.status !== "paused").length ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Unifesto Orbit"
         subtitle="Campuses ranked by tier, then active clubs. A club is active once it has published an event."
@@ -94,7 +94,7 @@ export default function OrbitPage() {
         <Skeleton className="h-64 w-full" />
       ) : rows ? (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard icon={Buildings} title="Campuses with a Lead" value={`${led} / ${rows.length}`} />
             <StatCard icon={Stack} title="Active clubs" value={rows.reduce((n, r) => n + r.activeClubs, 0)} />
             <StatCard icon={Users} title="Need a check-in" value={needsCheckIn} hint="60+ days inactive" />
@@ -104,7 +104,7 @@ export default function OrbitPage() {
           <ApplicationsPanel campuses={rows} onChanged={load} />
 
           <Card>
-            <CardContent className="flex flex-wrap items-end gap-3 p-4">
+            <CardContent className="flex flex-wrap items-end gap-4 p-4">
               <label className="grid gap-1 text-sm">
                 <span className="text-muted-foreground">Campus</span>
                 <select
@@ -275,7 +275,7 @@ function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; o
           const spaceId = pick[a.id] ?? a.space?.id ?? "";
           const email = a.user.identities[0]?.email;
           return (
-            <div key={a.id} className="space-y-3 rounded-lg border p-4">
+            <div key={a.id} className="space-y-4 border-t border-border pt-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <span className="font-medium">{a.user.fullName || email || "Applicant"}</span>
@@ -288,7 +288,7 @@ function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; o
                   {email} · {a.user.mobileNumber} · {day(a.createdAt)}
                 </span>
               </div>
-              <dl className="grid gap-3 text-sm md:grid-cols-3">
+              <dl className="grid gap-4 text-sm md:grid-cols-3">
                 {(
                   [
                     ["Their clubs", a.myClubs],

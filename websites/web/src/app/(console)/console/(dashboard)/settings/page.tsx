@@ -240,7 +240,7 @@ export default function SpaceSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-[600px] w-full" />
       </div>
@@ -249,7 +249,7 @@ export default function SpaceSettingsPage() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Settings" subtitle="Manage space settings" />
         <ErrorNotice message={error} />
       </div>
@@ -258,7 +258,7 @@ export default function SpaceSettingsPage() {
 
   if (!space) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Settings" subtitle="Manage space settings" />
         <ErrorNotice message="Space not found" />
       </div>
@@ -266,14 +266,14 @@ export default function SpaceSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Settings"
         subtitle="Manage your space profile and configuration"
       />
 
       {!canEdit && (
-        <Card className="rounded-lg border border-warning/30 bg-warning-soft px-4">
+        <Card className="rounded-2xl border border-warning/30 bg-warning-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-warning">
               You need Space Admin permissions to edit space settings.
@@ -282,7 +282,7 @@ export default function SpaceSettingsPage() {
         </Card>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -384,7 +384,7 @@ export default function SpaceSettingsPage() {
               Upload a logo and banner to personalise your space.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 md:grid-cols-2">
+          <CardContent className="grid gap-4 md:grid-cols-2">
             <ImageUploadCard
               title="Logo"
               description="Square image works best."
@@ -540,7 +540,7 @@ export default function SpaceSettingsPage() {
               Additional details about your space (read-only).
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">

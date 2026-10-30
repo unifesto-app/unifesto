@@ -194,7 +194,7 @@ export default function EventCouponsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -202,7 +202,7 @@ export default function EventCouponsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Discount codes"
         subtitle="Percentage or flat-amount codes buyers apply at checkout"
@@ -250,7 +250,7 @@ export default function EventCouponsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <SearchBox
             value={search}
             onChange={(v) => {
@@ -313,7 +313,7 @@ function CouponForm({
 
   return (
     <Card>
-      <CardContent className="space-y-5 py-6">
+      <CardContent className="space-y-4 py-6">
         <h3 className="text-sm font-semibold text-foreground">
           {draft.id ? "Edit code" : "New code"}
         </h3>
@@ -439,7 +439,7 @@ function CouponForm({
                     type="button"
                     onClick={() => toggleTicketType(t.id)}
                     className={
-                      "rounded-full border px-3 py-1 text-sm transition-colors " +
+                      "rounded-lg border px-3 py-1 text-sm transition-colors " +
                       (on
                         ? "border-primary bg-primary-soft font-medium text-primary"
                         : "border-border text-muted-foreground hover:bg-muted")

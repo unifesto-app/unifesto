@@ -13,7 +13,7 @@ export default function NewSessionPage() {
   const spaceId = useSpaceId();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="New session"
         subtitle="A quick online gathering — set it up in under a minute"

@@ -12,7 +12,7 @@ import { Badge } from "@/console/components/ui/badge";
  */
 export function EventAccessChooser({ events }: { events: EventAccessEntry[] }) {
   return (
-    <div className="mx-auto max-w-lg space-y-6 py-8">
+    <div className="mx-auto max-w-lg space-y-4 py-8">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Your events</h1>
         <p className="text-sm text-muted-foreground">

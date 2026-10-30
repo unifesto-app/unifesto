@@ -106,7 +106,7 @@ export default function IamPage() {
   const adminRole = matrix?.roles.find((r) => !r.editable) ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="IAM"
         subtitle="Manage which roles can perform which actions across the platform. Changes take effect immediately."
@@ -132,7 +132,7 @@ export default function IamPage() {
         </TabsList>
 
         {/* ---------------------- Roles & Capabilities ---------------------- */}
-        <TabsContent value="capabilities" className="space-y-6">
+        <TabsContent value="capabilities" className="space-y-4">
           {loading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />
@@ -142,7 +142,7 @@ export default function IamPage() {
             <>
               {/* Platform Admin — locked superuser. */}
               {adminRole && (
-                <Card className="rounded-lg border border-primary/30 bg-primary-soft/30 px-4">
+                <Card className="rounded-2xl border border-primary/30 bg-primary-soft/30 px-4">
                   <CardContent className="flex items-start gap-3 py-4">
                     <ShieldCheck
                       className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary"

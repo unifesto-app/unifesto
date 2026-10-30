@@ -178,7 +178,7 @@ function OptionForm({ eventId, stayId, option, onDone }: { eventId: string; stay
 
   return (
     <div className="space-y-4 bg-muted/40 p-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
           <Input value={d.name} placeholder="Dorm bed (boys)" onChange={(e) => set({ name: e.target.value })} />
         </Field>
@@ -416,8 +416,8 @@ export default function StayEditorPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
           {stay && (
             <ImageUploadCard
               title="Cover photo"
@@ -494,7 +494,7 @@ export default function StayEditorPage() {
           </FormCard>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <FormCard title="When">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="First check-in">

@@ -170,8 +170,8 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="eventsponsorstab-event">Event</Label>
           <Select value={eventId} onValueChange={setEventId}>
@@ -195,7 +195,7 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
       {error && <ErrorNotice message={error} />}
 
       {/* Attached sponsors */}
-      <section className="space-y-3">
+      <section className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Attached sponsors</h3>
         {loading ? (
           <Skeleton className="h-24 rounded-xl" />
@@ -209,7 +209,7 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
           <div className="space-y-2">
             {attached.map((es) => (
               <Card key={es.id}>
-                <CardContent className="flex flex-wrap items-center gap-3 p-3">
+                <CardContent className="flex flex-wrap items-center gap-4 p-3">
                   {es.sponsor.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -275,7 +275,7 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
       </section>
 
       {/* Lead inbox */}
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">
             Leads {leads.length > 0 && <span className="text-muted-foreground">({leads.length})</span>}

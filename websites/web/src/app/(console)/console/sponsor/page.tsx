@@ -169,9 +169,9 @@ export default function SponsorPortalPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Sponsor header / switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {sponsor?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -211,7 +211,7 @@ export default function SponsorPortalPage() {
 
       {/* Booth stats per event (E3) */}
       {sponsor && sponsor.events.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground">Booth stats</h2>
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full min-w-[560px] text-sm">
@@ -246,7 +246,7 @@ export default function SponsorPortalPage() {
       )}
 
       {/* Leads */}
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Users className="h-4 w-4" /> Leads
@@ -378,7 +378,7 @@ function BoothScanPanel({
 
   return (
     <Card>
-      <CardContent className="space-y-3 p-4">
+      <CardContent className="space-y-4 p-4">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <QrCode className="h-4 w-4" /> Booth scan
         </h2>

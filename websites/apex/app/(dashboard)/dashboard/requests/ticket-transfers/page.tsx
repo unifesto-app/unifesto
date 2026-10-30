@@ -104,7 +104,7 @@ export default function TicketTransfersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Ticket transfers"
         subtitle="Review curators' requests to move a registration to another account"
@@ -112,7 +112,7 @@ export default function TicketTransfersPage() {
 
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base">Review queue</CardTitle>
               <CardDescription>
@@ -171,7 +171,7 @@ export default function TicketTransfersPage() {
           ) : (
             <ul className="divide-y divide-border">
               {requests.map((r) => (
-                <li key={r.id} className="space-y-3 px-6 py-4">
+                <li key={r.id} className="space-y-4 px-6 py-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium text-foreground">
                       {r.registration?.event?.title ?? "Event"}

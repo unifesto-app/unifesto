@@ -90,7 +90,7 @@ export default function DetailsClient({ id }: { id: string }) {
 
   return (
     <TicketsFrame title="My details">
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
           <Link href={`/console/tickets/${id}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             ← {t.event.title}
@@ -105,12 +105,12 @@ export default function DetailsClient({ id }: { id: string }) {
         {!sections.length ? (
           <p className="text-muted-foreground">This ticket has no questions I can change.</p>
         ) : (
-          <form onSubmit={save} className="space-y-8">
-            <fieldset disabled={!details.editable || busy} className="space-y-8 disabled:opacity-60">
+          <form onSubmit={save} className="space-y-4">
+            <fieldset disabled={!details.editable || busy} className="space-y-4 disabled:opacity-60">
               {sections.map((s) => {
                 const visible = visibleFieldIds(fields, s.answers);
                 return (
-                  <section key={s.key} className="space-y-5">
+                  <section key={s.key} className="space-y-4">
                     {sections.length > 1 && <h2 className="text-sm font-medium text-muted-foreground">{s.title}</h2>}
                     {s.fields
                       .filter((f) => visible.has(f.id))

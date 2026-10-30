@@ -70,7 +70,7 @@ export default function AdminSessionDetailPage() {
   const organiser = session.creator.fullName || session.creator.username || "Curator";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={session.title}
         subtitle={`${session.registeredCount} registered · ${session.sales.paidRegistrations} paid`}
@@ -84,7 +84,7 @@ export default function AdminSessionDetailPage() {
 
       {error && <ErrorNotice message={error} />}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <StatusBadge status={session.status} />
         <Badge variant="neutral">{price > 0 ? money(price) : "Free"}</Badge>
         <Badge variant="neutral">{session.visibility}</Badge>
@@ -107,7 +107,7 @@ export default function AdminSessionDetailPage() {
         <CardHeader>
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-4 text-sm">
           <Row icon={Clock} text={`${fmt(session.startDateTime)} · ${session.durationMinutes} min · ${session.timezone}`} />
           <Row icon={VideoCamera} text={platform} />
           {session.meetingUrl ? (

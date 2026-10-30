@@ -32,7 +32,7 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-border p-4">
+    <div className="space-y-4 border-t border-border pt-4">
       <p className="text-sm font-medium text-foreground">How did we do?</p>
       <div className="flex gap-1" role="radiogroup" aria-label="Rating">
         {[1, 2, 3, 4, 5].map((n) => (

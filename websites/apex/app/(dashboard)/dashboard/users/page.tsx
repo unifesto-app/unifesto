@@ -161,8 +161,8 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Users
@@ -191,7 +191,7 @@ export default function AdminUsersPage() {
       </div>
 
       {error && (
-        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
+        <Card className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-destructive">{error}</p>
           </CardContent>
@@ -321,7 +321,7 @@ export default function AdminUsersPage() {
 
 function TableSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-8 w-8 rounded-full" />
@@ -329,7 +329,7 @@ function TableSkeleton() {
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-56" />
           </div>
-          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-16 rounded-lg" />
         </div>
       ))}
     </div>

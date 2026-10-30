@@ -79,7 +79,7 @@ export default function SpaceCampaignDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-72" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -109,7 +109,7 @@ export default function SpaceCampaignDetailPage() {
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={c.subject}
         subtitle={
@@ -188,7 +188,7 @@ export default function SpaceCampaignDetailPage() {
                       <span className="flex items-center gap-1.5 font-medium text-foreground">
                         Variant {k.toUpperCase()}
                         {isWinner && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-1.5 py-0.5 text-xs font-medium text-success">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-success-soft px-1.5 py-0.5 text-xs font-medium text-success">
                             <Trophy className="h-3 w-3" weight="fill" />
                             Winner
                           </span>

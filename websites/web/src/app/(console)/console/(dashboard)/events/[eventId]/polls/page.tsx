@@ -94,7 +94,7 @@ export default function EventPollsPage() {
 
   if (!polls) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -102,7 +102,7 @@ export default function EventPollsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Live polls"
         subtitle="Ask the room a question during the event. Attendees vote from their ticket in the Unifesto app, once each, and the results update live."

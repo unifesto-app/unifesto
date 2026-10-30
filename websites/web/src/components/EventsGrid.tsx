@@ -78,7 +78,7 @@ export default function EventsGrid() {
         </div>
 
         {/* Quick search */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 max-w-xs">
             <MagnifyingGlass
               className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
@@ -90,14 +90,14 @@ export default function EventsGrid() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Quick search..."
-              className="w-full rounded-full border border-paper/12 bg-paper/[0.05] py-2.5 pl-10 pr-4 text-sm text-paper placeholder-paper/40 outline-none transition-colors duration-150 hover:border-paper/25 focus:border-primary"
+              className="w-full rounded-lg border border-paper/12 bg-paper/[0.05] py-2.5 pl-10 pr-4 text-sm text-paper placeholder-paper/40 outline-none transition-colors duration-150 hover:border-paper/25 focus:border-primary"
             />
           </div>
         </div>
 
         {/* Events grid: show max 6 */}
         {preview.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3" data-stagger="rise">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
             {preview.map((event, index) => (
               <EventCard key={event.id} event={event} index={index} />
             ))}

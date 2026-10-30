@@ -154,7 +154,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Leads"
         subtitle="People who registered interest or reached out — from event 'Notify me', space inquiries, or added by hand."
@@ -170,7 +170,7 @@ export default function LeadsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {STATUS_ORDER.map((s) => (
           <StatCard
             key={s}
@@ -182,7 +182,7 @@ export default function LeadsPage() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <SearchBox
           value={search}
           onChange={(v) => {
@@ -363,7 +363,7 @@ function AddLeadDialog({
             <Label htmlFor="leads-name">Name</Label>
             <Input id="leads-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="leads-email">Email</Label>
               <Input id="leads-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />

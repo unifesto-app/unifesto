@@ -444,7 +444,7 @@ export default function EditEventPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -453,7 +453,7 @@ export default function EditEventPage() {
 
   if (error && !form) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Edit event" />
         <ErrorNotice message={error} />
         <Button onClick={() => router.push(`/console/events/${eventId}`)}>
@@ -467,7 +467,7 @@ export default function EditEventPage() {
   if (!form || !event) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Edit event"
         subtitle={event.title}
@@ -494,13 +494,13 @@ export default function EditEventPage() {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Banner image */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Banner image</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 px-4 py-4">
+          <CardContent className="space-y-4 px-4 py-4">
             <div className="relative aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg border border-border bg-muted">
               {coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

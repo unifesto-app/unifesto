@@ -107,11 +107,11 @@ export function PayoutsPanel() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
         </div>
       ) : (
@@ -313,8 +313,8 @@ export function RequestPayoutDialog({
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading balance…</p>
         ) : summary ? (
-          <div className="space-y-3">
-            <div className="rounded-md border border-border p-3 text-sm">
+          <div className="space-y-4">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{target.kind === "session" ? "Session net" : "Event net"}</span>
                 <span className="font-medium">{money(summary.eventNet)}</span>
@@ -342,7 +342,7 @@ export function RequestPayoutDialog({
                 Nothing left to pay out for this {target.kind}.
               </p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Destination — own or another space admin's verified method. */}
                 {accounts.length > 0 && (
                   <div className="space-y-1">

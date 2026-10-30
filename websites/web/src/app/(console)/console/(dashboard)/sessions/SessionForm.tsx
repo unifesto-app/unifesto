@@ -137,10 +137,10 @@ export function SessionForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error && <ErrorNotice message={error} />}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>Basics</CardTitle>
@@ -210,7 +210,7 @@ export function SessionForm({
 
             {platform === "UNIFESTO_LIVE" ? (
               <div className="space-y-4">
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="border-t border-border pt-4">
                   <p className="text-sm font-medium text-foreground">
                     Hosted in-app — no link to share
                   </p>

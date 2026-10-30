@@ -477,7 +477,7 @@ function CreateEventInner() {
 
   if (!allowed) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Create event" />
         <EmptyState
           icon={Lock}
@@ -507,7 +507,7 @@ function CreateEventInner() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader
         title={isSubEvent ? "New sub-event" : "New event"}
         subtitle={`Step ${stepIndex + 1} of ${STEPS.length}`}
@@ -568,7 +568,7 @@ function CreateEventInner() {
       {error && <ErrorNotice message={error} />}
 
       {/* Step body */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">
             {stepTitle[step.id]}
@@ -580,7 +580,7 @@ function CreateEventInner() {
 
         {/* --- Basics --- */}
         {step.id === "basics" && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <Field label="Event name" htmlFor="title">
               <Input
                 id="title"
@@ -660,7 +660,7 @@ function CreateEventInner() {
 
         {/* --- Location --- */}
         {step.id === "location" && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <Field label="Format">
               <OptionTiles
                 value={form.type}
@@ -759,7 +759,7 @@ function CreateEventInner() {
 
         {/* --- Registration --- */}
         {step.id === "registration" && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <Field label="How do people register?">
               <OptionTiles
                 cols={2}
@@ -784,13 +784,13 @@ function CreateEventInner() {
         {/* --- Tickets --- */}
         {step.id === "tickets" && (
           <div className="space-y-4">
-            <div className="space-y-3">
+            <div className="space-y-4">
               {form.tickets.map((t, i) => (
                 <div
                   key={t.key}
-                  className="flex items-end gap-3 rounded-lg border border-border p-3"
+                  className="flex items-end gap-3 border-t border-border pt-4"
                 >
-                  <div className="grid flex-1 gap-3 sm:grid-cols-[1fr_7rem_7rem]">
+                  <div className="grid flex-1 gap-4 sm:grid-cols-[1fr_7rem_7rem]">
                     <Field
                       label={isPaid ? "Ticket name" : "Option name"}
                       htmlFor={`t-name-${t.key}`}
@@ -859,7 +859,7 @@ function CreateEventInner() {
         {/* --- Review --- */}
         {step.id === "review" && (
           <div className="space-y-4">
-            <dl className="divide-y divide-border rounded-lg border border-border">
+            <dl className="divide-y divide-border">
               <ReviewRow label="Name" value={form.title.trim() || "—"} />
               <ReviewRow
                 label="When"
@@ -1007,7 +1007,7 @@ function CreateEventInner() {
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-3">
+    <div className="flex items-start justify-between gap-4 py-3">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="text-right text-sm font-medium text-foreground">{value}</dd>
     </div>
@@ -1018,7 +1018,7 @@ export default function CreateEventPage() {
   return (
     <Suspense
       fallback={
-        <div className="space-y-6">
+        <div className="space-y-4">
           <PageHeader title="Create event" subtitle="Loading…" />
         </div>
       }

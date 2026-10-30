@@ -74,7 +74,7 @@ export default function HackathonCertificatesPage() {
       error={error}
       ready
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard>
           <Field
             label="Who gets them"

@@ -194,7 +194,7 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const linkClass = (active: boolean) =>
-    `relative z-10 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+    `relative z-10 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 ${
       active ? "text-paper" : "text-paper/70 hover:text-paper"
     }`;
 
@@ -213,7 +213,7 @@ export default function Navbar() {
               href={c.href}
               aria-current={isActive(pathname, c.href) ? "page" : undefined}
               onClick={() => setOpenMenu(null)}
-              className="group/c flex items-start justify-between gap-4 rounded-2xl px-4 py-3 transition-colors duration-150 hover:bg-paper/[0.07]"
+              className="group/c flex items-start justify-between gap-4 rounded-lg px-4 py-3 transition-colors duration-150 hover:bg-paper/[0.07]"
             >
               <span>
                 <span className="block text-sm font-semibold text-paper">{c.label}</span>
@@ -278,7 +278,7 @@ export default function Navbar() {
                     <motion.span
                       layoutId="nav-hover"
                       aria-hidden="true"
-                      className="absolute inset-0 -z-10 rounded-full bg-paper/[0.08]"
+                      className="absolute inset-0 -z-10 rounded-lg bg-paper/[0.08]"
                       transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
                     />
                   )}
@@ -409,7 +409,7 @@ export default function Navbar() {
                       <a
                         href={l.href}
                         aria-current={isActive(pathname, l.href) ? "page" : undefined}
-                        className="flex items-center justify-between rounded-2xl px-4 py-3 text-base font-medium text-paper/85 transition-colors duration-150 hover:bg-paper/[0.07] aria-[current=page]:text-paper"
+                        className="flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-paper/85 transition-colors duration-150 hover:bg-paper/[0.07] aria-[current=page]:text-paper"
                       >
                         {l.label}
                         {isActive(pathname, l.href) && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}

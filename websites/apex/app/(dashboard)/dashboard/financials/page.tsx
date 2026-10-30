@@ -151,7 +151,7 @@ export default function PlatformFinancialsPage() {
     );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PageHeader
         title="Financials"
         subtitle="Platform-wide money movement across every space — collected, refunded, settled, and still owed to organisers."
@@ -174,7 +174,7 @@ export default function PlatformFinancialsPage() {
       ) : totals ? (
         <>
           {/* Money in */}
-          <section className="space-y-3">
+          <section className="space-y-4">
             <h2 className="text-sm font-semibold text-muted-foreground">Money in</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
@@ -209,7 +209,7 @@ export default function PlatformFinancialsPage() {
           </section>
 
           {/* Deductions & entitlement */}
-          <section className="space-y-3">
+          <section className="space-y-4">
             <h2 className="text-sm font-semibold text-muted-foreground">
               Deductions &amp; net owed
             </h2>
@@ -239,7 +239,7 @@ export default function PlatformFinancialsPage() {
           </section>
 
           {/* Payouts */}
-          <section className="space-y-3">
+          <section className="space-y-4">
             <h2 className="text-sm font-semibold text-muted-foreground">Payouts</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard

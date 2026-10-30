@@ -43,7 +43,7 @@ export default function SavedPage() {
   return (
     <div className="space-y-4 border-t border-border pt-6">
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <ul className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <ul className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {events.map((e) => (
           <li key={e.id} className="space-y-2">
             <EventCard event={e} />

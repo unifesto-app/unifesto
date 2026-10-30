@@ -81,8 +81,8 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
   else if (!form.open && !form.response) body = <p className="text-muted-foreground">Feedback opens once the event starts, for people who attended, and closes a week after it ends.</p>;
   else
     body = (
-      <form onSubmit={send} className="space-y-8">
-        <fieldset disabled={!form.open || busy} className="space-y-8 disabled:opacity-70">
+      <form onSubmit={send} className="space-y-4">
+        <fieldset disabled={!form.open || busy} className="space-y-4 disabled:opacity-70">
           <Scale legend="How was it?" from={1} to={5} value={rating} onChange={setRating} />
           <Scale legend="How likely am I to recommend it to a friend?" from={0} to={10} value={nps} onChange={setNps} />
           <label className="block">
@@ -100,7 +100,7 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
         {form.unlocksCertificate && <p className="text-sm text-muted-foreground">My certificate for this event unlocks when I send this.</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {form.open ? (
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <button type="submit" disabled={busy} className="btn btn-primary">
               {busy ? "Sending…" : form.response ? "Update my feedback" : "Send feedback"}
             </button>

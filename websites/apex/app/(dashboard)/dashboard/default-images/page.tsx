@@ -56,21 +56,21 @@ export default function DefaultImagesPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PageHeader title="Default images" subtitle="Stand-in banners and logos for events and spaces without their own." />
       {error && <ErrorNotice message={error} />}
 
       {KINDS.map(({ kind, title, hint, aspect, tile }) => {
         const list = rows?.filter((r) => r.kind === kind) ?? [];
         return (
-          <section key={kind} className="space-y-3">
+          <section key={kind} className="space-y-4">
             <div>
               <h2 className="text-base font-semibold text-foreground">{title}</h2>
               <p className="text-xs text-muted-foreground">
                 {hint} {rows && (list.length === 0 ? "None yet, so the apps show a colour." : `${list.length} in rotation.`)}
               </p>
             </div>
-            <div className={cn("grid gap-3", kind === "LOGO" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-2 sm:grid-cols-4")}>
+            <div className={cn("grid gap-4", kind === "LOGO" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-2 sm:grid-cols-4")}>
               {!rows
                 ? Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className={tile} />)
                 : list.map((r) => (

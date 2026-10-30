@@ -105,10 +105,10 @@ export default function SignInPage() {
               const primary = g.ids.find((i) => i.isPrimary);
               const relay = !!g.email?.endsWith("privaterelay.appleid.com");
               return (
-                <li key={key} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                <li key={key} className="flex flex-wrap items-center justify-between gap-4 py-4">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{g.email ?? PROVIDER[g.ids[0].provider].label}</p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {g.ids.map((i) => {
                         const { label, Icon } = PROVIDER[i.provider];
                         return (

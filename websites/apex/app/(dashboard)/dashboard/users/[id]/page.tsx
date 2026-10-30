@@ -233,7 +233,7 @@ export default function UserDetailPage() {
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <Button
           variant="ghost"
@@ -249,7 +249,7 @@ export default function UserDetailPage() {
       {loading ? (
         <DetailSkeleton />
       ) : error ? (
-        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
+        <Card className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-6 text-center">
             <p className="text-sm text-destructive">{error}</p>
             <Button
@@ -469,7 +469,7 @@ export default function UserDetailPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Contact</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 <ContactRow
                   Icon={Envelope}
                   label="Email"
@@ -661,11 +661,11 @@ export default function UserDetailPage() {
                   that reports its device yet.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {user.pushDevices.map((d) => (
                     <div
                       key={d.id}
-                      className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
@@ -726,11 +726,11 @@ export default function UserDetailPage() {
                   No linked identities.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {user.identities.map((idn) => (
                     <div
                       key={idn.id}
-                      className="flex items-center justify-between rounded-md border border-border p-3"
+                      className="flex items-center justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium capitalize text-foreground">
@@ -819,7 +819,7 @@ function ContactRow({
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Skeleton className="h-16 w-16 rounded-full" />
         <div className="space-y-2">

@@ -42,7 +42,7 @@ function FinanceTabs() {
   };
 
   return (
-    <Tabs value={tab} onValueChange={onChange} className="space-y-6">
+    <Tabs value={tab} onValueChange={onChange} className="space-y-4">
       <TabsList className="h-auto flex-wrap justify-start">
         {TABS.map((t) => (
           <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
@@ -75,7 +75,7 @@ function FinanceTabs() {
  */
 export default function FinancePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Finance"
         subtitle="Your earnings at a glance — track revenue, request payouts, review refunds, and manage payout accounts."

@@ -178,7 +178,7 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -197,7 +197,7 @@ export default function AdminCategoriesPage() {
       </header>
 
       {error && (
-        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
+        <Card className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-destructive">{error}</p>
           </CardContent>
@@ -402,7 +402,7 @@ export default function AdminCategoriesPage() {
 
 function ListSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-8 w-8 rounded-md" />
@@ -419,7 +419,7 @@ function ListSkeleton() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+    <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
       <span className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
         <Tag className="h-6 w-6 text-secondary-foreground" />
       </span>

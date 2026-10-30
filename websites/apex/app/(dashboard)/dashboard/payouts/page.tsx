@@ -166,7 +166,7 @@ export default function PayoutsPage() {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Payouts"
         subtitle="Money released to organisations for their events"
@@ -207,7 +207,7 @@ export default function PayoutsPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <Input
             value={search}
@@ -263,7 +263,7 @@ export default function PayoutsPage() {
                 return (
                   <div
                     key={p.id}
-                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export default function PayoutsPage() {
                         {p.failureReason && ` · ${p.failureReason}`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+                    <div className="flex items-center gap-4 sm:flex-col sm:items-end">
                       <div className="text-right">
                         <p className="text-sm font-semibold">
                           {money(p.netAmount)}
@@ -416,7 +416,7 @@ function CreatePayoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
               <label htmlFor="payout-event-id" className="text-xs font-medium text-muted-foreground">Event ID</label>
@@ -428,7 +428,7 @@ function CreatePayoutDialog({
           </div>
 
           {summary && (
-            <div className="rounded-md border border-border p-3 text-sm">
+            <div className="space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Gross revenue</span><span className="font-medium">₹{summary.grossRevenue.toLocaleString("en-IN")}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Platform fee ({summary.defaultPlatformFeePercent}%)</span><span className="font-medium">₹{summary.estimatedPlatformFee.toLocaleString("en-IN")}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Event net</span><span className="font-medium">₹{summary.eventNet.toLocaleString("en-IN")}</span></div>
@@ -563,7 +563,7 @@ function MarkPaidDialog({
             UTR from your bank.
           </p>
           {payout.bankAccount ? (
-            <dl className="divide-y rounded-md border border-border text-sm">
+            <dl className="divide-y divide-border text-sm">
               <CopyRow label="Holder name" value={payout.bankAccount.accountHolderName} />
               {payout.bankAccount.methodType === "UPI" || payout.bankAccount.upiId ? (
                 <CopyRow label="UPI ID" value={payout.bankAccount.upiId} mono />
@@ -627,7 +627,7 @@ function CopyRow({ label, value, mono }: { label: string; value?: string | null;
   const [copied, setCopied] = useState(false);
   if (!value) return null;
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 py-2">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="flex min-w-0 items-center gap-2">
         <span className={`truncate font-medium ${mono ? "font-mono" : ""}`}>{value}</span>

@@ -221,7 +221,7 @@ export default function AppVersionPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="App Version"
         subtitle="Control the mobile app's in-app update prompt for each store."
@@ -241,25 +241,25 @@ export default function AppVersionPage() {
       />
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="flex items-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <Warning className="h-4 w-4 shrink-0" weight="fill" />
           {error}
         </div>
       )}
       {saved && !error && (
-        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-sm text-success">
+        <div className="flex items-center gap-2 rounded-2xl border border-success/30 bg-success-soft px-4 py-3 text-sm text-success">
           <CheckCircle className="h-4 w-4 shrink-0" weight="fill" />
           Version policy saved. New app launches will see it immediately.
         </div>
       )}
 
       {loading || !config ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <PlatformCard
             platform="ios"
             value={config.ios}

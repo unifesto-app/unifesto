@@ -277,7 +277,7 @@ export default function ManageSessionPage() {
     session.status === "DRAFT" || session.status === "CANCELLED";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={session.title}
         subtitle={`${session.registeredCount} registered${
@@ -296,14 +296,14 @@ export default function ManageSessionPage() {
 
       {error && <ErrorNotice message={error} />}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <StatusBadge status={session.status} />
         <span className="text-sm text-muted-foreground">
           {price > 0 ? inr(price) : "Free"}
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-4">
         {isLive && isRunning && (
           <Button
             onClick={() =>
@@ -423,7 +423,7 @@ export default function ManageSessionPage() {
       </div>
 
       {isHidden && (
-        <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           This session is hidden. It does not appear in listings or in
           attendees&apos; lists. Its registrations, payments and recording are
           all still here, and restoring puts everything back.
@@ -434,7 +434,7 @@ export default function ManageSessionPage() {
         <CardHeader>
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-4 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span>
@@ -486,7 +486,7 @@ export default function ManageSessionPage() {
           <CardHeader>
             <CardTitle>Recording</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {isLive ? (
               // In-app sessions record automatically (LiveKit Egress → storage);
               // the link is filled in for you — nothing to paste.
@@ -581,11 +581,11 @@ export default function ManageSessionPage() {
                 No co-hosts yet.
               </p>
             ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border">
+              <ul className="divide-y divide-border">
                 {coHosts.map((c) => (
                   <li
                     key={c.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3"
+                    className="flex items-center justify-between gap-3 py-3"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">

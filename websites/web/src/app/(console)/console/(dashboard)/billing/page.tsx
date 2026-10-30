@@ -178,7 +178,7 @@ export default function BillingPage() {
 
   if (!allowed) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Plan & billing" />
         <EmptyState
           icon={Lock}
@@ -200,7 +200,7 @@ export default function BillingPage() {
   const saving = annualSaving(plans);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PageHeader
         title="Plan & billing"
         subtitle={currentSpace ? `Billing for ${currentSpace.name}` : "Your space's plan"}
@@ -209,12 +209,12 @@ export default function BillingPage() {
       {error && <ErrorNotice message={error} />}
       {actionError && <ErrorNotice message={actionError} />}
       {notice && (
-        <div className="rounded-lg border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
+        <div className="rounded-2xl border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
       )}
 
       {/* Current plan ------------------------------------------------------ */}
       <Card>
-        <CardContent className="space-y-6 p-6">
+        <CardContent className="space-y-4 p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-medium text-muted-foreground">Your plan</p>
@@ -278,7 +278,7 @@ export default function BillingPage() {
 
       {/* Plans ------------------------------------------------------------- */}
       <section className="space-y-4" aria-labelledby="plans-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 id="plans-heading" className="text-lg font-semibold text-foreground">
             Plans
           </h2>
@@ -580,7 +580,7 @@ function StatusPill({ sub, comp }: { sub: Subscription | null; comp: boolean }) 
           : comp
             ? ["Comp", "bg-muted text-muted-foreground"]
             : ["Active", "bg-success-soft text-success"];
-  return <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
+  return <span className={cn("rounded-lg px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
 }
 
 function Meter({

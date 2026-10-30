@@ -135,7 +135,7 @@ export default function SpaceEmailPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Campaigns"
         subtitle="Broadcast to your members and event audiences, with open and click tracking."
@@ -202,7 +202,7 @@ export default function SpaceEmailPage() {
 
       {loading ? (
         <Card>
-          <CardContent className="space-y-3 p-4">
+          <CardContent className="space-y-4 p-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full rounded-lg" />
             ))}
@@ -248,7 +248,7 @@ export default function SpaceEmailPage() {
                 <li key={c.id}>
                   <Link
                     href={`/console/email/${c.id}`}
-                    className="flex flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-muted/50 md:flex-row md:items-center md:gap-4"
+                    className="flex flex-col gap-4 px-4 py-3.5 transition-colors hover:bg-muted/50 md:flex-row md:items-center"
                   >
                     {/* Subject + audience */}
                     <div className="min-w-0 flex-1">

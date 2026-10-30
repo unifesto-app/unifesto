@@ -118,7 +118,7 @@ export function EntitySearchSelect<T>({
       </div>
 
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-card shadow-md">
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-border bg-card shadow-md">
           {results.length === 0 ? (
             <p className="px-3 py-3 text-sm text-muted-foreground">
               {loading ? "Searching…" : "No matches."}

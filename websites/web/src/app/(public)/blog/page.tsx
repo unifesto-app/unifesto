@@ -59,7 +59,7 @@ function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.2),transparent_60%)]"
         />
       )}
-      <span className="blur-bg relative rounded-full px-3 py-1 text-xs font-semibold text-paper">
+      <span className="blur-bg relative rounded-lg px-3 py-1 text-xs font-semibold text-paper">
         {post.category}
       </span>
     </div>
@@ -97,7 +97,7 @@ function PostCard({ post }: { post: BlogPost }) {
       className="group flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
     >
       <CardImage post={post} />
-      <div className="flex flex-1 flex-col gap-3 p-6">
+      <div className="flex flex-1 flex-col gap-4 p-6">
         <h3 className="text-lg font-semibold leading-snug text-paper">
           {post.title}
         </h3>
@@ -140,7 +140,7 @@ export default async function BlogPage({
               key={cat}
               href={cat === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat)}`}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
                 active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
               }`}
             >
@@ -188,7 +188,7 @@ export default async function BlogPage({
               >
                 Latest posts
               </h2>
-              <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
+              <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
                 {regularPosts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}

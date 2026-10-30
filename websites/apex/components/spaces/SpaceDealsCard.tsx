@@ -121,7 +121,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
           Negotiated terms. An event deal beats a space deal; blank fields use the rate card.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         {current && (
           <p className="text-sm text-muted-foreground">
@@ -140,9 +140,9 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
         {deals.length === 0 ? (
           <p className="text-sm text-muted-foreground">No deals. This space pays the rate card.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-4">
             {deals.map((d) => (
-              <li key={d.id} className="rounded-md border p-2 text-sm">
+              <li key={d.id} className="text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{d.event ? d.event.title : "Whole space"}</span>
                   {isActive(d) ? <Badge variant="success">Active</Badge> : <Badge variant="neutral">Ended</Badge>}
@@ -174,7 +174,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
             New deal
           </Button>
         ) : (
-          <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-2 border-t border-border pt-4">
             <Field label="Event ID (blank = whole space)">
               <Input value={form.eventId} onChange={(e) => setForm({ ...form, eventId: e.target.value })} />
             </Field>

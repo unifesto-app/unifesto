@@ -152,7 +152,7 @@ export default function OwnershipRequestsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Ownership transfers"
         subtitle="Review creators handing a space to another member"
@@ -166,7 +166,7 @@ export default function OwnershipRequestsPage() {
 
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base">Review queue</CardTitle>
               <CardDescription>
@@ -226,7 +226,7 @@ export default function OwnershipRequestsPage() {
               {requests.map((r) => (
                 <li
                   key={r.id}
-                  className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

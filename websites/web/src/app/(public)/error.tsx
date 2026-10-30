@@ -29,7 +29,7 @@ export default function ErrorPage({
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-paper/65">Something went wrong</p>
           <h1 className="mt-4 font-display text-3xl font-bold text-paper">We couldn&apos;t load this page.</h1>
           <p className="mt-3 text-paper/65">It&apos;s on our side, not yours. Try again in a moment.</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
             <button type="button" onClick={reset} className="btn btn-primary">
               Try again
             </button>

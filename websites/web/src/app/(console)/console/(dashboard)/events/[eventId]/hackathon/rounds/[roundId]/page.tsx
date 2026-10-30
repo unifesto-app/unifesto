@@ -115,8 +115,8 @@ function CriterionForm({
   };
 
   return (
-    <div className="space-y-3 bg-muted/40 p-4">
-      <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+    <div className="space-y-4 bg-muted/40 p-4">
+      <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
         <Input value={label} placeholder="Innovation" onChange={(e) => setLabel(e.target.value)} aria-label="Name" />
         <Input inputMode="numeric" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} aria-label="Top mark" placeholder="Top mark" disabled={locked} />
         <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} aria-label="Weight" placeholder="Weight" disabled={locked} />
@@ -331,7 +331,7 @@ export default function HackathonRoundPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard title="Round">
           <Field label="Name">
             <Input value={draft.name} placeholder="Round 2" onChange={(e) => set({ name: e.target.value })} />

@@ -38,7 +38,7 @@ export default function EditSessionPage() {
     session?.status === "DRAFT" || session?.status === "PUBLISHED";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Edit session"
         subtitle={

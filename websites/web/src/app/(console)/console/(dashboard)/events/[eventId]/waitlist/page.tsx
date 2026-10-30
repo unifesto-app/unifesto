@@ -168,7 +168,7 @@ export default function EventWaitlistPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-24 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />
@@ -177,7 +177,7 @@ export default function EventWaitlistPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Waiting list"
         subtitle="People queued for a sold-out ticket. Letting someone in holds their seat until they pay, with no time limit. Revoke an offer to free the seat if they never do."
@@ -186,7 +186,7 @@ export default function EventWaitlistPage() {
 
       {error && <ErrorNotice message={error} />}
       {notice && (
-        <div className="rounded-lg border border-primary/30 bg-primary/[0.04] px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-primary/30 bg-primary/[0.04] px-4 py-3 text-sm text-foreground">
           {notice}
         </div>
       )}
@@ -212,7 +212,7 @@ export default function EventWaitlistPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative min-w-[220px] flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

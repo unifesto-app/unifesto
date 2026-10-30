@@ -181,7 +181,7 @@ export function TiersTab({ spaceId }: { spaceId: string }) {
                 placeholder="Platinum"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="tierstab-rank">Rank</Label>
                 <Input id="tierstab-rank"

@@ -134,7 +134,7 @@ function UserMultiSelect({
           <CircleNotch className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
         {open && (
-          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-card shadow-md">
+          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-border bg-card shadow-md">
             {results.length === 0 ? (
               <p className="px-3 py-3 text-sm text-muted-foreground">
                 {loading ? "Searching…" : "No matches."}
@@ -176,7 +176,7 @@ function UserMultiSelect({
           {selected.map((u) => (
             <span
               key={u.id}
-              className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm"
+              className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1 text-sm"
             >
               {u.name}
               <button
@@ -309,9 +309,9 @@ export default function WhatsAppBroadcastPage() {
   /* ------------------------------ Success view ---------------------------- */
   if (result) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="mx-auto max-w-2xl space-y-4">
         <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
             <CheckCircle className="h-12 w-12 text-success" weight="fill" />
             <h2 className="text-xl font-semibold text-foreground">Broadcast started</h2>
             <p className="text-sm text-muted-foreground">
@@ -341,7 +341,7 @@ export default function WhatsAppBroadcastPage() {
 
   /* ------------------------------- Composer ------------------------------- */
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp Blast"
         subtitle="Send a pre-approved template to everyone, a space's members, or specific users"
@@ -362,7 +362,7 @@ export default function WhatsAppBroadcastPage() {
           <CardTitle className="text-base">1 · Who receives it</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <AudienceCard
               active={audience === "SPACE"}
               icon={UsersThree}
@@ -493,7 +493,7 @@ export default function WhatsAppBroadcastPage() {
               </div>
 
               {params.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
                     Fill the template&apos;s variables. Use{" "}
                     <code className="rounded bg-muted px-1 py-0.5 text-xs">{NAME_TOKEN}</code>{" "}

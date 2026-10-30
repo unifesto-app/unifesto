@@ -119,7 +119,7 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
 
   if (loading) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
@@ -167,10 +167,10 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
           placeholder="Search sponsors"
         />
         {shown.length === 0 && <p className="text-sm text-muted-foreground">No sponsors match “{search}”.</p>}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pageItems.map((s) => (
             <Card key={s.id}>
-              <CardContent className="flex h-full flex-col gap-3 p-4">
+              <CardContent className="flex h-full flex-col gap-4 p-4">
                 <div className="flex items-start gap-3">
                   {s.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -270,7 +270,7 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
                 rows={2}
               />
             </Field>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Contact name">
                 <Input
                   value={form.contactName ?? ""}

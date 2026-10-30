@@ -58,7 +58,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   }, [open, onClose]);
 
   const groups = (
-    <nav className="space-y-6 p-4">
+    <nav className="space-y-4 p-4">
       {nav.map((group, i) => (
         <div key={group.label ?? i}>
           {group.label && <p className="text-eyebrow mb-1.5 px-3">{group.label}</p>}

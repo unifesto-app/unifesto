@@ -385,7 +385,7 @@ export function CertificateDesigner({
   const selectedField = selected !== null ? fields[selected] : null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       {/* Canvas ----------------------------------------------------------- */}
       <div className="space-y-4">
         <div className="space-y-2">
@@ -399,7 +399,7 @@ export function CertificateDesigner({
         </div>
 
         {!backgroundUrl ? (
-          <label className="flex aspect-[1.414/1] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 text-muted-foreground hover:bg-muted/50">
+          <label className="flex aspect-[1.414/1] w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border bg-muted/30 text-muted-foreground hover:bg-muted/50">
             <input
               type="file"
               accept="image/*"
@@ -535,7 +535,7 @@ export function CertificateDesigner({
 
       {/* Inspector -------------------------------------------------------- */}
       <div className="space-y-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-t border-border pt-4">
           <h3 className="mb-3 text-sm font-semibold text-foreground">
             {selectedField ? "Field" : "Fields"}
           </h3>
@@ -566,7 +566,7 @@ export function CertificateDesigner({
               </ul>
             )
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {selectedField.key === "verifyQr" ? (
                 <>
                   <p className="text-sm text-muted-foreground">
@@ -674,7 +674,7 @@ export function CertificateDesigner({
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="certificatedesigner-font-size">Font size</Label>
                       <Input id="certificatedesigner-font-size"

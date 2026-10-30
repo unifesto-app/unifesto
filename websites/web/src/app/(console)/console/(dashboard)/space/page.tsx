@@ -151,7 +151,7 @@ export default function SpaceDashboardPage() {
 
   if (busy) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Skeleton className="h-9 w-56" />
           <Skeleton className="h-10 w-36" />
@@ -170,9 +170,9 @@ export default function SpaceDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Greeting */}
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Welcome back, {firstName}
@@ -248,7 +248,7 @@ export default function SpaceDashboardPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           {/* Upcoming — main column */}
           <section className="lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
@@ -319,7 +319,7 @@ export default function SpaceDashboardPage() {
           </section>
 
           {/* Rail — needs attention + quick actions */}
-          <aside className="space-y-6">
+          <aside className="space-y-4">
             <section>
               <h2 className="mb-3 text-sm font-semibold text-foreground">
                 Needs attention

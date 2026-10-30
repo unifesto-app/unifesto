@@ -89,7 +89,7 @@ export default function EventCheckinPage() {
   const activeType = types.find((t) => t.id === activeTypeId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Check-in"
         subtitle={
@@ -113,7 +113,7 @@ export default function EventCheckinPage() {
               key={t.id}
               onClick={() => setActiveTypeId(t.id)}
               className={cn(
-                "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
+                "rounded-lg border px-3 py-1 text-sm font-medium transition-colors",
                 t.id === activeTypeId
                   ? "border-primary bg-primary-soft text-primary"
                   : "border-border text-muted-foreground hover:bg-muted"
@@ -232,7 +232,7 @@ function RecentCheckinsCard({
           Recent check-ins
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 px-4 py-4">
+      <CardContent className="space-y-4 px-4 py-4">
         {err && <ErrorNotice message={err} />}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -244,9 +244,9 @@ function RecentCheckinsCard({
             className="py-8"
           />
         ) : (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-border">
             {items.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
                     {initials(r.name)}
@@ -328,7 +328,7 @@ function CheckinPointsCard({
           Check-in points
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Add the points where you&apos;ll check people in (e.g. Entry, Lunch,
           Day 1, Session A). Attendees are checked in separately at each.
@@ -338,7 +338,7 @@ function CheckinPointsCard({
           {types.map((t) => (
             <span
               key={t.id}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm"
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm"
             >
               {t.name}
               <button
@@ -456,9 +456,9 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
             className="py-8"
           />
         ) : (
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="divide-y divide-border">
             {members.map((m) => (
-              <li key={m.userId} className="space-y-2 px-3 py-3">
+              <li key={m.userId} className="space-y-2 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <div className="grid h-8 w-8 place-items-center rounded-full bg-muted text-xs font-medium">
@@ -501,7 +501,7 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
                         onClick={() => toggleType(m, t.id)}
                         disabled={busyId === m.userId || m.allPoints}
                         className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60",
+                          "rounded-lg border px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60",
                           on
                             ? "border-success/30 bg-success-soft text-success"
                             : "border-border text-muted-foreground hover:bg-muted"
@@ -679,7 +679,7 @@ function ScanAndSearchCard({
         )}
 
         {group && (
-          <div className="space-y-2 rounded-md border border-border p-3">
+          <div className="space-y-2 border-t border-border pt-4">
             <p className="text-sm font-medium">
               {group.leadName ? `${group.leadName}'s group` : "Group"} · {group.ticketType}
             </p>
@@ -746,11 +746,11 @@ function ScanAndSearchCard({
               />
             </div>
             {results.length > 0 && (
-              <ul className="divide-y divide-border rounded-md border border-border">
+              <ul className="divide-y divide-border">
                 {results.map((r) => (
                   <li
                     key={`${r.registrationId}:${r.memberIndex ?? ""}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">

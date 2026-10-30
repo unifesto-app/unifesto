@@ -164,7 +164,7 @@ export default function HackathonHubPage() {
                 </ListGroup>
               )}
 
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-2">
                 <ListGroup title="Teams">
                   <ListRow
                     icon={icon(UsersThree)}
@@ -172,7 +172,7 @@ export default function HackathonHubPage() {
                     value={data.counts.teams ? `${data.counts.active} active` : "None yet"}
                     href={`${base}/teams`}
                   />
-                  <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-4 px-4 py-3">
                     <span className="text-foreground">{icon(DownloadSimple)}</span>
                     <span className="flex-1 text-sm text-foreground">
                       Import group registrations

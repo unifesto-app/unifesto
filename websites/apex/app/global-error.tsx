@@ -18,7 +18,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <main style={{ maxWidth: 480, textAlign: "center" }}>
           <h1 style={{ fontSize: 28, margin: 0 }}>Something went wrong.</h1>
           <p style={{ opacity: 0.7 }}>It&apos;s on our side, not yours. Try again in a moment.</p>
-          <button type="button" onClick={reset} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 999, border: 0, fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={reset} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: 0, fontWeight: 600, cursor: "pointer" }}>
             Try again
           </button>
         </main>

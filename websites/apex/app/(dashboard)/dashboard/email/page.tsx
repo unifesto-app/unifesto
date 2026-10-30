@@ -83,7 +83,7 @@ export default function EmailCampaignsPage() {
   const totalClicks = campaigns.reduce((s, c) => s + c.clickCount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Email campaigns"
         subtitle="Broadcast email to platform audiences, with open and click tracking."

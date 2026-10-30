@@ -89,7 +89,7 @@ export default function ConsoleHome() {
       )}
 
       {(isPlatformStaff(user) || sponsor) && (
-        <section className="flex flex-wrap gap-3">
+        <section className="flex flex-wrap gap-4">
           {isPlatformStaff(user) && (
             <Button asChild variant="outline">
               <a href={apexUrl()}>Open Apex</a>

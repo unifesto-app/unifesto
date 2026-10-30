@@ -394,7 +394,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     body = (
       <form onSubmit={sendPhone} className="space-y-4">
         <p className="text-paper/75">New to Unifesto? Add your WhatsApp number to create your account.</p>
-        <div className="flex items-center rounded-3xl bg-canvas">
+        <div className="flex items-center rounded-lg bg-canvas">
           <span className="pl-4 text-sm text-paper/65">+91</span>
           <input
             required
@@ -456,7 +456,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     );
   } else {
     body = (
-      <form onSubmit={submitForm} className="space-y-6">
+      <form onSubmit={submitForm} className="space-y-4">
         {/* K18: before the questions, so nothing typed is lost on the trip to Google. */}
         {ready && !session && <SocialSignIn next={`/event/${event.slug}/register`} />}
         {individual.length > 1 ? (
@@ -481,7 +481,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         {groupInApp && <p className="text-xs text-paper/55">Group tickets are in the Unifesto app.</p>}
 
         {ticketFields.some((f) => visible.has(f.id)) && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {ticketFields
               .filter((f) => visible.has(f.id))
               .map((f) => (
@@ -490,7 +490,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {session ? (
             <p className="text-sm text-paper/65">
               Registering as <strong className="text-paper">{session.email}</strong>.{" "}
@@ -528,7 +528,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         </div>
 
         {paid && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex gap-2">
               <input
                 maxLength={64}
@@ -554,7 +554,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
               </button>
             </div>
             {couponMsg && <p className="text-xs text-paper/65">{couponMsg}</p>}
-            <dl className="space-y-1.5 rounded-2xl border border-paper/10 px-4 py-3 text-sm">
+            <dl className="space-y-1.5 text-sm">
               <PriceLine label="Ticket" value={inr(basePaise)} />
               {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
               {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}

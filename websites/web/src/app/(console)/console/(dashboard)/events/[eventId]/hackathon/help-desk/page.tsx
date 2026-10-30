@@ -114,7 +114,7 @@ export default function HelpDeskPage() {
       error={error || (loaded && inbox === null ? "This event isn't running a hackathon." : "")}
       ready={!!inbox}
     >
-      <section className="space-y-3">
+      <section className="space-y-4">
         <h2 className="px-1 text-sm font-semibold text-foreground">Open · {active.length}</h2>
         {active.length ? (
           <div className="grid gap-4 md:grid-cols-2">{active.map(card)}</div>
@@ -123,7 +123,7 @@ export default function HelpDeskPage() {
         )}
       </section>
       {resolved.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <h2 className="px-1 text-sm font-semibold text-foreground">Resolved</h2>
           <div className="grid gap-4 md:grid-cols-2">{resolved.map(card)}</div>
         </section>

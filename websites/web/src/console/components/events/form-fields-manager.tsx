@@ -274,12 +274,12 @@ export function FormFieldsManager({
       )}
 
       {sorted.length > 0 && (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border">
           {sorted.map((f) => {
             const cond = f.showIf ? byId.get(f.showIf.fieldId) : undefined;
             const limits = describeLimits(f);
             return (
-              <li key={f.id} className="flex items-start justify-between gap-3 px-4 py-3">
+              <li key={f.id} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p
                     className={
@@ -339,7 +339,7 @@ export function FormFieldsManager({
       )}
 
       {draft ? (
-        <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/[0.03] p-4">
+        <div className="space-y-4 rounded-2xl border border-primary/30 bg-primary/[0.03] p-4">
           <p className="text-sm font-medium text-foreground">
             {draft.id ? "Edit question" : "New question"}
           </p>
@@ -440,7 +440,7 @@ export function FormFieldsManager({
           {draft.type === "FILE" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Allowed files">
-                <div className="flex flex-wrap gap-3 pt-1">
+                <div className="flex flex-wrap gap-4 pt-1">
                   {FILE_KINDS.map((k) => (
                     <label key={k.value} className="flex items-center gap-2 text-sm">
                       <input

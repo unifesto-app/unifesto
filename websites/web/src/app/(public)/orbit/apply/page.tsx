@@ -54,7 +54,7 @@ export default function OrbitApplyPage() {
             <div>
               <h2 className="font-display text-xl text-paper">What happens next</h2>
               {/* The route of a Lead's first weeks: stops on a dotted orbit path. */}
-              <ol className="relative mt-6 space-y-6 border-l border-dashed border-paper/20 pl-6">
+              <ol className="relative mt-6 space-y-4 border-l border-dashed border-paper/20 pl-6">
                 {NEXT.map((s, i) => (
                   <li key={s.title} className="relative">
                     <span

@@ -66,8 +66,8 @@ export default function LeadCaptureForm({
       <h3 className="text-lg font-bold text-white">{title}</h3>
       <p className="mt-1 text-sm text-paper/65">{description}</p>
 
-      <div className="mt-4 space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-4 space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <input
           type="text"
           value={name}

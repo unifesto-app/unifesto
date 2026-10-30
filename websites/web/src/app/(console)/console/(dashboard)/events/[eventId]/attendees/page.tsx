@@ -266,7 +266,7 @@ export default function EventRegistrationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Attendees"
         subtitle={
@@ -327,7 +327,7 @@ export default function EventRegistrationsPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -386,7 +386,7 @@ export default function EventRegistrationsPage() {
       {error && <ErrorNotice message={error} />}
 
       {!loading && checkable.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
@@ -448,7 +448,7 @@ export default function EventRegistrationsPage() {
                         `/console/events/${eventId}/attendees/${reg.id}`
                       )
                     }
-                    className="flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:bg-muted/50 focus-within:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:bg-muted/50 focus-within:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
                       {checkable.length > 0 && (

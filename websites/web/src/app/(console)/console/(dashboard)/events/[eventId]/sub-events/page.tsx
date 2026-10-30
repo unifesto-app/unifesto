@@ -231,7 +231,7 @@ export default function EventSubEventsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -239,7 +239,7 @@ export default function EventSubEventsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sub-events"
         subtitle="Turn this event into a “big event” by grouping other events under it. Each sub-event keeps its own tickets, capacity and check-in."
@@ -259,15 +259,15 @@ export default function EventSubEventsPage() {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               These spaces want to list this event as a sub-event under one of
               their events. Approving nests it beneath their parent; this event
               keeps its own tickets, capacity and check-in.
             </p>
-            <ul className="divide-y divide-border rounded-md border border-border">
+            <ul className="divide-y divide-border">
               {requests.incoming.map((r) => (
-                <li key={r.id} className="space-y-2 px-3 py-3">
+                <li key={r.id} className="space-y-2 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
@@ -299,7 +299,7 @@ export default function EventSubEventsPage() {
                     </div>
                   </div>
                   {r.reason && (
-                    <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       “{r.reason}”
                     </p>
                   )}
@@ -338,7 +338,7 @@ export default function EventSubEventsPage() {
       {/* Derived-mode hint — helps the organiser see how attendees will be
               asked to register, so the "pass vs umbrella" choice is intentional. */}
           {isParent && (
-            <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+            <div className="text-sm">
               {parentHasTickets ? (
                 <p className="text-muted-foreground">
                   <span className="font-medium text-foreground">
@@ -374,7 +374,7 @@ export default function EventSubEventsPage() {
                 </Button>
               </Link>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Pick another event to nest beneath this one. Your own events
                 attach instantly; an event you co-host but another space owns is

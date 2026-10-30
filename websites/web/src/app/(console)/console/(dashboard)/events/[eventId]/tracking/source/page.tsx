@@ -29,7 +29,7 @@ export default function SourceAttendeesPage() {
   }, [eventId, key]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={sourceLabel(tags)}
         subtitle={[tags.medium, tags.campaign].filter(Boolean).join(" · ") || undefined}

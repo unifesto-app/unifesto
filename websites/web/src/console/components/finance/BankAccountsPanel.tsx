@@ -125,7 +125,7 @@ export function BankAccountsPanel() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
           Bank accounts and UPI IDs where your event earnings are transferred. An admin
@@ -220,7 +220,7 @@ export function BankAccountsPanel() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
         </div>
       ) : accounts.length === 0 && !adding ? (
@@ -240,12 +240,12 @@ export function BankAccountsPanel() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {accounts.map((a) => {
             const s = STATUS[a.status];
             return (
               <Card key={a.id}>
-                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-semibold text-foreground">

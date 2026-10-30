@@ -94,7 +94,7 @@ export default function CareersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Careers"
         subtitle="Manage the job openings shown on the public careers page."
@@ -106,13 +106,13 @@ export default function CareersPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
@@ -139,7 +139,7 @@ export default function CareersPage() {
             return (
               <div
                 key={c.id}
-                className="flex flex-wrap items-center gap-3 p-4"
+                className="flex flex-wrap items-center gap-4 p-4"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -282,7 +282,7 @@ function CareerDialog({
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="careers-department">Department</Label>
               <Input id="careers-department"
@@ -347,7 +347,7 @@ function CareerDialog({
             </div>
           ))}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="careers-salary-range-optional">Salary range (optional)</Label>
               <Input id="careers-salary-range-optional"

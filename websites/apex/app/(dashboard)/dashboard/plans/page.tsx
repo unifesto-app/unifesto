@@ -128,7 +128,7 @@ export default function PlansPage() {
   };
 
   return (
-    <div className={cn("space-y-6", dirty.length > 0 && "pb-24")}>
+    <div className={cn("space-y-4", dirty.length > 0 && "pb-24")}>
       <PageHeader
         title="Plans"
         subtitle="What each plan costs and includes. Edits apply to every space on the plan, for new sales only."
@@ -136,7 +136,7 @@ export default function PlansPage() {
 
       {error && <ErrorNotice message={error} />}
       {notice && (
-        <p className="rounded-lg border border-success/25 bg-success-soft px-4 py-3 text-sm text-success">{notice}</p>
+        <p className="rounded-2xl border border-success/25 bg-success-soft px-4 py-3 text-sm text-success">{notice}</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -170,7 +170,7 @@ export default function PlansPage() {
                       >
                         <span className="block font-medium text-foreground">{PLAN_LABEL[p.plan]}</span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">{p.tagline}</span>
-                        <span className="mt-2 inline-block rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                        <span className="mt-2 inline-block rounded-lg bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
                           {counts[p.plan] ?? 0} {counts[p.plan] === 1 ? "space" : "spaces"}
                         </span>
                       </th>
@@ -239,7 +239,7 @@ export default function PlansPage() {
 
       {dirty.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
             <p className="text-sm text-foreground">
               Unsaved changes to {dirty.map((p) => PLAN_LABEL[p.plan]).join(", ")}
             </p>

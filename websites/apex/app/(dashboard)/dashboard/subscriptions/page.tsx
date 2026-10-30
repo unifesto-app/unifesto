@@ -119,7 +119,7 @@ export default function SubscriptionsPage() {
   const onPaid = stats ? stats.total - stats.notConfigured - (stats.byPlan.STARTER ?? 0) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Subscriptions" subtitle="Every space and the plan it's on." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -151,7 +151,7 @@ export default function SubscriptionsPage() {
 
       <Card>
         <CardHeader className="gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle className="text-base">Spaces</CardTitle>
             <div className="relative">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -262,7 +262,7 @@ function PlanFilter({
           aria-pressed={value === c.key}
           onClick={() => onChange(c.key)}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors",
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm transition-colors",
             value === c.key
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border text-muted-foreground hover:text-foreground"
@@ -291,7 +291,7 @@ function SpacePlan({
 }) {
   const st = standing(sub);
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Button variant="ghost" size="sm" className="-ml-2 w-fit" onClick={onBack}>
         <CaretLeft className="h-4 w-4" /> Subscriptions
       </Button>
@@ -303,7 +303,7 @@ function SpacePlan({
       />
 
       <Card>
-        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 sm:grid-cols-5">
+        <CardContent className="grid grid-cols-2 gap-x-4 gap-y-4 p-5 sm:grid-cols-5">
           <Fact label="Plan" value={sub.plan ? PLAN_LABEL[sub.plan] : "Not set"} />
           <Fact label="Price now" value={sub.plan === "STARTER" ? "Free" : planPriceLabel(sub.priceInForce, sub.billingCycle)} />
           <Fact label={sub.cancelledAt ? "Ends" : "Renews"} value={sub.plan === "STARTER" ? "—" : fmtDate(sub.expiresAt)} />
@@ -317,7 +317,7 @@ function SpacePlan({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <ChangePlan sub={sub} onSaved={onSaved} />
         <OfflinePayment sub={sub} onSaved={(data) => onSaved({ ...sub, ...data, space: sub.space, admin: sub.admin })} />
       </div>
@@ -376,7 +376,7 @@ function ChangePlan({ sub, onSaved }: { sub: SpaceSubscription; onSaved: (s: Spa
         <CardTitle className="text-base">Change plan</CardTitle>
         <p className="text-xs text-muted-foreground">Set by Unifesto, no payment. Currently {billingSummary(sub)}.</p>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="radiogroup" aria-label="Plan">
           {SELLABLE_PLANS.map((p) => (
@@ -423,7 +423,7 @@ function ChangePlan({ sub, onSaved }: { sub: SpaceSubscription; onSaved: (s: Spa
             </div>
           </div>
         )}
-        <label className="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-3">
+        <label className="flex items-center justify-between gap-4">
           <span>
             <span className="block text-sm font-medium text-foreground">Active</span>
             <span className="block text-xs text-muted-foreground">Inactive suspends this space&rsquo;s plan.</span>

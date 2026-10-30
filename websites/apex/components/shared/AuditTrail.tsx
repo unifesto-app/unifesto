@@ -94,7 +94,7 @@ export function AuditTrail({
           <ul className="divide-y divide-border">
             {rows.map((r) => (
               <li key={r.id} className="py-2.5 text-sm">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4">
                   <span className="font-medium text-foreground">
                     {ACTION_LABELS[r.action] ?? r.action}
                   </span>

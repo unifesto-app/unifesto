@@ -98,7 +98,7 @@ export default function LegalDocumentsPage() {
     setEditing((e) => (e ? { ...e, input: { ...e.input, ...patch } } : e));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Legal documents"
         subtitle="Draft and publish new versions. Drafts need a lawyer's review before they are published."
@@ -114,13 +114,13 @@ export default function LegalDocumentsPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))}
@@ -135,8 +135,8 @@ export default function LegalDocumentsPage() {
         <div className="space-y-4">
           {bySlug.map(([slug, rows]) => (
             <Card key={slug}>
-              <CardContent className="space-y-3 p-4">
-                <div className="flex flex-wrap items-center gap-3">
+              <CardContent className="space-y-4 p-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{rows[0].title}</p>
                     <a

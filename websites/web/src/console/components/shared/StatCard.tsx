@@ -48,7 +48,7 @@ export function StatCard({
   const body = (
     <Card
       className={cn(
-        "flex h-full flex-col gap-3 pb-1 pt-4",
+        "flex h-full flex-col gap-4 pb-1 pt-4",
         href && "card-interactive cursor-pointer"
       )}
     >

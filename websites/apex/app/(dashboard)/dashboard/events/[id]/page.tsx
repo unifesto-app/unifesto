@@ -189,7 +189,7 @@ export default function AdminEventDetailPage() {
   const hasActions = canPublish || canCancel || canHide || canRestore || canRefundAll;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Button
         variant="ghost"
         size="sm"
@@ -203,7 +203,7 @@ export default function AdminEventDetailPage() {
       {loading ? (
         <DetailSkeleton />
       ) : error ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <ErrorNotice message={error} />
           <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
         </div>
@@ -590,7 +590,7 @@ export default function AdminEventDetailPage() {
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex gap-4">
         <Skeleton className="h-24 w-40 rounded-lg" />
         <div className="flex-1 space-y-2">

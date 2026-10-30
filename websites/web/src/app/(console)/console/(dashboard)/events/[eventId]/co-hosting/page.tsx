@@ -182,7 +182,7 @@ export default function EventCoHostingPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -190,7 +190,7 @@ export default function EventCoHostingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Co-Hosting"
         subtitle="Invite other spaces to co-host this event. Each one accepts before it is listed or credited."
@@ -202,7 +202,7 @@ export default function EventCoHostingPage() {
           accepts/declines; the proposing host can rescind; anyone else sees an
           informational note. */}
       {pending && (
-        <Card className="rounded-lg border border-primary/30 bg-primary-soft px-4">
+        <Card className="rounded-2xl border border-primary/30 bg-primary-soft px-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ArrowsLeftRight className="h-4 w-4 text-primary" weight="bold" />
@@ -243,7 +243,7 @@ export default function EventCoHostingPage() {
               )}
             </p>
             {pending.reason && (
-              <p className="rounded-md border border-border bg-background/60 px-3 py-2 text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 &ldquo;{pending.reason}&rdquo;
               </p>
             )}
@@ -275,7 +275,7 @@ export default function EventCoHostingPage() {
           <CardHeader>
             <CardTitle className="text-base">Invite a co-host</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               The invited space&apos;s Space Admins accept or decline. Once accepted, the event
               is listed on their space, credited to them, and their Space Admins can edit it.

@@ -89,7 +89,7 @@ export default function CaseThread({ id }: { id: string }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link href="/console/account/support" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
         ← My requests
       </Link>
@@ -115,7 +115,7 @@ export default function CaseThread({ id }: { id: string }) {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {!closed && (
-        <form onSubmit={send} className="space-y-3">
+        <form onSubmit={send} className="space-y-4">
           <textarea
             required
             rows={3}
@@ -142,7 +142,7 @@ export default function CaseThread({ id }: { id: string }) {
           {busy === "person" ? "Passing it on…" : "Talk to a person"}
         </button>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {(closed || c.status === "RESOLVED") && <RateCase c={c} busy={busy} act={act} onRate={(r, note) => rateCase(token, id, r, note).then(load)} />}
           <button
             type="button"
@@ -188,7 +188,7 @@ function AssistActions({ actions, busy, act, reload, token }: { actions: AssistA
             {a.label}
           </Link>
         ) : sure === a.registrationId ? (
-          <div key={`${a.type}:${a.registrationId}`} className="flex flex-wrap items-center gap-3">
+          <div key={`${a.type}:${a.registrationId}`} className="flex flex-wrap items-center gap-4">
             <button
               type="button"
               disabled={!!busy}
@@ -229,7 +229,7 @@ function RateCase({ c, busy, act, onRate }: { c: SupportCase; busy: string; act:
         e.preventDefault();
         if (rating) act("rate", () => onRate(rating, note.trim() || undefined));
       }}
-      className="space-y-3"
+      className="space-y-4"
     >
       <fieldset>
         <legend className="mb-2 block text-sm font-semibold text-foreground">How did we do?</legend>

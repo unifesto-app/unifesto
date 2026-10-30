@@ -70,7 +70,7 @@ export default function StatsRecipientsPage() {
   };
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-xl space-y-4">
       <PageHeader title="Stats recipients" subtitle="Who gets the Unifesto Stats WhatsApp: daily snapshot, weekly digest and milestones." />
       {error && <ErrorNotice message={error} />}
       {notice && <p className="text-sm text-success">{notice}</p>}

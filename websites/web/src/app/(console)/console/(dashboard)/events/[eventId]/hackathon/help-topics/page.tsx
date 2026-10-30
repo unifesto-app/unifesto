@@ -57,7 +57,7 @@ export default function HelpTopicsPage() {
   return (
     <HackPage eventId={eventId} title="Help topics" subtitle="What teams can ask for help with, and who answers." error={error} ready={!!data}>
       {data && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <FormCard
             title={editing ? `Edit ${editing.name}` : "Add a topic"}
             description="Queries under this topic go to these people and to the volunteers in the team's room. With nobody picked, they go to the curators."

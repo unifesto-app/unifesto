@@ -155,7 +155,7 @@ export default function TicketClient({ id }: { id: string }) {
 
   return (
     <TicketsFrame title={t.event.title}>
-      <div className="space-y-8">
+      <div className="space-y-4">
         <div>
           <Link href="/console/tickets" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             ← My tickets
@@ -173,7 +173,7 @@ export default function TicketClient({ id }: { id: string }) {
         </div>
 
         {cancelled && (
-          <div className="rounded-2xl bg-muted p-4 text-sm text-foreground/80">
+          <div className="text-sm text-foreground/80">
             Cancelled{t.cancelledAt && <> on {day(t.cancelledAt)}</>}
             {byOrganiser && " by the organiser"}.
             {reason && !byOrganiser && !SYSTEM_REASONS.has(reason) && <p className="mt-1">Reason: {reason}</p>}
@@ -182,7 +182,7 @@ export default function TicketClient({ id }: { id: string }) {
 
         {!cancelled && (
           <div className="text-center">
-            <div className="mx-auto w-52 overflow-hidden rounded-xl bg-white p-2" aria-label="Ticket QR code" role="img">
+            <div className="mx-auto w-52 overflow-hidden rounded-lg bg-white p-2" aria-label="Ticket QR code" role="img">
               {/* The SVG comes from the qrcode encoder, never from the API. */}
               {svg && <div dangerouslySetInnerHTML={{ __html: svg }} />}
             </div>
@@ -266,7 +266,7 @@ export default function TicketClient({ id }: { id: string }) {
         )}
 
         {!cancelled && (details?.editable || (feedback?.enabled && (feedback.open || feedback.response))) && (
-          <section className="flex flex-wrap gap-3">
+          <section className="flex flex-wrap gap-4">
             {details?.editable && (
               <Link href={`/console/tickets/${t.id}/details`} className="btn btn-sm btn-secondary">
                 Edit my details
@@ -298,7 +298,7 @@ export default function TicketClient({ id }: { id: string }) {
           <section className="space-y-2">
             {canCancel &&
               (sure === "cancel" ? (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                   <button
                     type="button"
                     disabled={!!busy}
@@ -318,7 +318,7 @@ export default function TicketClient({ id }: { id: string }) {
               ))}
             {canDelete &&
               (sure === "delete" ? (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                   <button
                     type="button"
                     disabled={!!busy}
@@ -383,7 +383,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
           },
         ];
         return (
-          <div key={r.id} className="mt-3 rounded-2xl bg-muted p-4">
+          <div key={r.id} className="mt-4">
             <p className={`text-sm font-semibold ${r.status === "APPROVED" ? "text-primary" : r.status === "REJECTED" ? "text-destructive" : "text-foreground"}`}>
               {r.status === "APPROVED" ? `Refund approved: ${rupees(r.approvedAmount ?? r.requestedAmount)}` : r.status === "REJECTED" ? "Refund declined" : "In review"}
             </p>
@@ -404,7 +404,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
         );
       })}
       {canAsk && (
-        <form onSubmit={submit} className="mt-3 space-y-3">
+        <form onSubmit={submit} className="mt-3 space-y-4">
           <p className="text-sm text-muted-foreground">
             Only the ticket price is refunded; booking fees are not. Approved refunds go back to the original payment method in 5 to 7
             business days.
@@ -415,7 +415,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
                 key={q}
                 type="button"
                 onClick={() => setReason(q)}
-                className={`rounded-full px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"}`}
+                className={`rounded-lg px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"}`}
               >
                 {q}
               </button>
@@ -443,7 +443,7 @@ function Report({ busy, onSend }: { busy: boolean; onSend: (reason: string, deta
           e.preventDefault();
           onSend(reason, details.trim() || undefined);
         }}
-        className="mt-3 space-y-3"
+        className="mt-3 space-y-4"
       >
         <select value={reason} onChange={(e) => setReason(e.target.value)} aria-label="What's wrong" className={FIELD}>
           {REPORT_REASONS.map((r) => (

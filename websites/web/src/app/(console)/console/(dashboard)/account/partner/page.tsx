@@ -65,7 +65,7 @@ export default function PartnerPage() {
             )}
           </p>
           <p className="flex items-center gap-3 text-sm">
-            <code className="min-w-0 truncate rounded-xl bg-muted px-3 py-1.5 text-xs text-foreground/80">{l.trackingUrl}</code>
+            <code className="min-w-0 truncate rounded-lg bg-muted px-3 py-1.5 text-xs text-foreground/80">{l.trackingUrl}</code>
             <button type="button" onClick={() => copy(l.id, l.trackingUrl)} className="shrink-0 font-medium text-primary hover:underline">
               {copied === l.id ? "Copied" : "Copy"}
             </button>

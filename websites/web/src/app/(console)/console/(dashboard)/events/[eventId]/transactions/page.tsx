@@ -198,7 +198,7 @@ export default function EventTransactionsPage() {
     search.trim() !== "" || paymentFilter !== "all" || ticketFilter !== "all";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Transactions"
         subtitle="View payment transactions and refunds"
@@ -259,7 +259,7 @@ export default function EventTransactionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -344,7 +344,7 @@ export default function EventTransactionsPage() {
                         );
                       }
                     }}
-                    className="flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none sm:flex-row sm:items-center sm:justify-between"
+                    className="flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
@@ -370,7 +370,7 @@ export default function EventTransactionsPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-4 sm:justify-end">
                       <Badge variant={paymentBadgeVariant(t.paymentStatus)}>
                         {t.paymentStatus}
                       </Badge>

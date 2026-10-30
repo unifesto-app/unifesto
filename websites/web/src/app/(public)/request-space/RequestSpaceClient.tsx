@@ -6,7 +6,7 @@ import Link from "next/link";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 const FIELD =
-  "w-full rounded-3xl bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
+  "w-full rounded-lg bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
 const CTA = "btn btn-primary";
 
 /* K11: visible labels (placeholders were doing the labelling and vanished on type). */
@@ -391,7 +391,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               className={FIELD}
             />
           </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1 text-sm text-paper/65">
               <span>Starts</span>
               <input required type="datetime-local" value={form.start} onChange={(e) => set("start", e.target.value)} className={FIELD} />
@@ -401,7 +401,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               <input required type="datetime-local" min={form.start} value={form.end} onChange={(e) => set("end", e.target.value)} className={FIELD} />
             </label>
           </div>
-          <fieldset className="grid gap-3 sm:grid-cols-2">
+          <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="sr-only">Format</legend>
             {(
               [
@@ -465,7 +465,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               className={FIELD}
             />
           </Field>
-          <fieldset className="grid gap-3 sm:grid-cols-2">
+          <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="sr-only">Space type</legend>
             {TYPES.map((t) => (
               <label
@@ -550,7 +550,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
         />
       </Field>
       <Field label="Mobile number (WhatsApp)">
-        <div className="flex items-center rounded-3xl bg-night-2 focus-within:border-primary/50">
+        <div className="flex items-center rounded-lg bg-night-2 focus-within:border-primary/50">
           <span className="pl-4 text-sm text-paper/65">+91</span>
           <input
             required

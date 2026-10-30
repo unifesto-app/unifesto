@@ -44,7 +44,7 @@ export default function SpaceTrackingPage() {
   const slug = currentSpace?.slug;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PageHeader title="Tracking" subtitle="Traffic to your space and events, and which links bring registrations in." />
       {error && <ErrorNotice message={error} />}
       {!data && !error ? (
@@ -52,7 +52,7 @@ export default function SpaceTrackingPage() {
       ) : (
         <>
           {traffic && (
-            <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+            <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
               <TrafficSummary
                 stats={[
                   { label: "Page views", value: fmt(traffic.views) },

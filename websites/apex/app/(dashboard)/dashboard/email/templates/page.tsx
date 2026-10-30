@@ -96,7 +96,7 @@ export default function EmailTemplatesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Email templates"
         subtitle="The global library. Every space can start a campaign from these."

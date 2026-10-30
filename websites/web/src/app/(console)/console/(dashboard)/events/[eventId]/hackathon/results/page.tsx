@@ -147,7 +147,7 @@ export default function HackathonResultsPage() {
       <Chips options={[{ value: OVERALL, label: "Overall" }, ...data.rounds.map((r) => ({ value: r.id, label: r.name }))]} value={view} onChange={setView} />
 
       {!round ? (
-        <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
           <ListGroup
             title={
               data.scoringMode === "CUMULATIVE"
@@ -187,7 +187,7 @@ export default function HackathonResultsPage() {
           </FormCard>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
           <ListGroup title={round.kind === "MENTORING" ? `${round.name} · mentoring` : `${round.name} · out of ${formatScore(round.maxScore)}`}>
             {roundTeams.length === 0 && <ListRow label="No teams in this round" />}
             {roundTeams.map(({ t, p }) => (

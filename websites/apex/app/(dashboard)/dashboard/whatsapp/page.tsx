@@ -397,7 +397,7 @@ export default function WhatsAppInboxPage() {
   if (selected) {
     const canReply = selected.replyWindowOpen;
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Button
           variant="ghost"
           size="sm"
@@ -444,9 +444,9 @@ export default function WhatsAppInboxPage() {
           </CardHeader>
 
           {/* Thread */}
-          <CardContent className="flex-1 space-y-3 overflow-y-auto py-5">
+          <CardContent className="flex-1 space-y-4 overflow-y-auto py-5">
             {detailLoading || !selected.messages ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Skeleton className="h-14 w-2/3" />
                 <Skeleton className="ml-auto h-14 w-2/3" />
                 <Skeleton className="h-14 w-1/2" />
@@ -552,7 +552,7 @@ export default function WhatsAppInboxPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Warning className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   The 24-hour reply window is closed. WhatsApp only allows a
@@ -569,7 +569,7 @@ export default function WhatsAppInboxPage() {
 
   /* ------------------------------ List view ------------------------------ */
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp"
         subtitle="Messages received on the WhatsApp Business number — read and reply"
@@ -617,9 +617,9 @@ export default function WhatsAppInboxPage() {
               the template name (as approved in Meta), and its body parameters.
             </p>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {newError && <ErrorNotice message={newError} />}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label htmlFor="wa-new-to" className="text-sm font-medium text-foreground">
                   Recipient number
@@ -704,7 +704,7 @@ export default function WhatsAppInboxPage() {
                 </p>
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_10rem]">
               <div className="space-y-1.5">
                 <label htmlFor="wa-new-params" className="text-sm font-medium text-foreground">
                   Body parameters{" "}
@@ -757,7 +757,7 @@ export default function WhatsAppInboxPage() {
 
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle className="text-base">Conversations</CardTitle>
             <div className="relative">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

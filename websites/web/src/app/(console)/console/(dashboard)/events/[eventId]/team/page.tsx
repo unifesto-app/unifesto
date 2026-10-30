@@ -168,7 +168,7 @@ export default function EventTeamPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -178,7 +178,7 @@ export default function EventTeamPage() {
   const selectedRole = roleOptions.find((r) => r.code === role);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Team"
         subtitle="Assign Curators, Co-Curators and Crew to run this event"
@@ -193,8 +193,8 @@ export default function EventTeamPage() {
           <CardHeader>
             <CardTitle className="text-base">Add a team member</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row">
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <div className="relative flex-1">
                 <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

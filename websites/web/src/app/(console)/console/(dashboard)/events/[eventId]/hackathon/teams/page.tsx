@@ -60,7 +60,7 @@ export default function HackathonTeamsPage() {
       ) : (
         teams && (
           <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="relative sm:w-80">
                 <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-9" value={query} onChange={(e) => {

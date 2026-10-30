@@ -116,11 +116,11 @@ export function AccountAccessCard({ user, onChanged }: { user: UserDetail; onCha
           Sign out everywhere
         </Button>
       </CardHeader>
-      <CardContent className="space-y-5 pt-2">
+      <CardContent className="space-y-4 pt-2">
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         {active ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive-soft p-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive-soft p-3">
             <div className="min-w-0 text-sm">
               <Badge variant="destructive">
                 {user.suspendedUntil ? `Suspended until ${fmt(user.suspendedUntil)}` : "Banned"}
@@ -165,9 +165,9 @@ export function AccountAccessCard({ user, onChanged }: { user: UserDetail; onCha
             On top of their roles. A removal wins over everything; a grant applies in one space.
           </p>
           {user.capabilityOverrides.length > 0 && (
-            <ul className="divide-y divide-border rounded-md border border-border">
+            <ul className="divide-y divide-border">
               {user.capabilityOverrides.map((o) => (
-                <li key={o.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <li key={o.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <div className="min-w-0">
                     <Badge variant={o.allow ? "success" : "destructive"}>
                       {o.allow ? "Grant" : "Remove"}

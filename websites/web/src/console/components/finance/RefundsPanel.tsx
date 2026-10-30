@@ -109,8 +109,8 @@ export function RefundsPanel({ eventId }: { eventId?: string } = {}) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-4">
         {!eventId && reviewableSpaces.length > 1 && (
           <Select value={scope || currentSpaceId} onValueChange={setScope}>
             <SelectTrigger className="w-56" aria-label="Filter by space">
@@ -143,7 +143,7 @@ export function RefundsPanel({ eventId }: { eventId?: string } = {}) {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
         </div>
       ) : requests.length === 0 ? (
@@ -161,7 +161,7 @@ export function RefundsPanel({ eventId }: { eventId?: string } = {}) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {requests.map((r) => {
             const s = STATUS[r.status];
             const attendee = r.registration?.user?.fullName || r.registration?.user?.username || "Attendee";
@@ -169,7 +169,7 @@ export function RefundsPanel({ eventId }: { eventId?: string } = {}) {
             const requested = r.requestedAmount ? Number(r.requestedAmount) : base;
             return (
               <Card key={r.id}>
-                <CardContent className="space-y-3 p-4">
+                <CardContent className="space-y-4 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

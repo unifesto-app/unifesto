@@ -30,7 +30,7 @@ export default function SocialSignIn({ next }: { next: string }) {
 
   if (!googleSignInEnabled || !own) return null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <a href={signInHref("google", next)} className="btn btn-secondary w-full">
         <GoogleLogo weight="bold" className="h-4 w-4" aria-hidden="true" />
         Continue with Google

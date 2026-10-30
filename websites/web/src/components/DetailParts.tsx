@@ -86,7 +86,7 @@ export function ReadMore({ text }: { text: string }) {
   const long = text.length > 240;
   return (
     <div>
-      <div className={`space-y-3 whitespace-pre-line text-[15px] leading-relaxed text-paper/75 ${long && !open ? "line-clamp-6" : ""}`}>
+      <div className={`space-y-4 whitespace-pre-line text-[15px] leading-relaxed text-paper/75 ${long && !open ? "line-clamp-6" : ""}`}>
         {text}
       </div>
       {long && (

@@ -122,7 +122,7 @@ export default function SpaceEmailTemplatesPage() {
   const globalCount = templates.length - ownedCount;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Templates"
         subtitle={
@@ -174,7 +174,7 @@ export default function SpaceEmailTemplatesPage() {
             const isGlobal = t.scope === "GLOBAL";
             return (
               <Card key={t.id} className="card-interactive flex h-full flex-col">
-                <CardContent className="flex flex-1 flex-col gap-3 p-5">
+                <CardContent className="flex flex-1 flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-2">
                     <span
                       className={

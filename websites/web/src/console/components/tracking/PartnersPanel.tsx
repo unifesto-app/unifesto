@@ -69,7 +69,7 @@ export function PartnersPanel({ eventId }: { eventId: string }) {
   };
 
   const form = (
-    <div className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto]">
+    <div className="grid gap-4 p-4 sm:grid-cols-[1fr_1fr_auto]">
       <Input placeholder="Partner name, e.g. Robotics Club" value={name} onChange={(e) => setName(e.target.value)} />
       <Input type="email" placeholder="Contact's Unifesto email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <div className="flex gap-2">

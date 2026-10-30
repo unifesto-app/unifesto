@@ -154,7 +154,7 @@ export default function ProductPage() {
   const columns = showShelved ? [...FLOW, ...SHELVED] : FLOW;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Board"
         subtitle={`${overall.done} of ${overall.total} in-scope tasks done (${overall.pct}%). Claude moves cards here too.`}
@@ -171,7 +171,7 @@ export default function ProductPage() {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -210,7 +210,7 @@ export default function ProductPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative w-full sm:max-w-xs">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -240,7 +240,7 @@ export default function ProductPage() {
                   aria-pressed={labelFilter === l}
                   onClick={() => setLabelFilter(labelFilter === l ? null : l)}
                   className={cn(
-                    "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                    "rounded-lg border px-2.5 py-0.5 text-xs transition-colors",
                     labelFilter === l
                       ? "border-border-strong bg-primary-soft text-foreground"
                       : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground"
@@ -462,7 +462,7 @@ function TaskCard({
         </div>
       )}
       {(task.owner || task.dueDate) && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
           {task.owner && <span>{task.owner}</span>}
           {task.dueDate && (
             <span className={overdue ? "font-medium text-destructive" : undefined}>
@@ -551,7 +551,7 @@ function TaskDialog({
             </div>
             <DialogTitle className="leading-snug">{task.title}</DialogTitle>
           </DialogHeader>
-          <dl className="grid grid-cols-3 gap-3 text-sm">
+          <dl className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <dt className="text-xs text-muted-foreground">Status</dt>
               <dd className="mt-1 flex items-center gap-2">
@@ -573,7 +573,7 @@ function TaskDialog({
           {task.labels.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {task.labels.map((l) => (
-                <span key={l} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <span key={l} className="rounded-lg bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {l}
                 </span>
               ))}
@@ -600,8 +600,8 @@ function TaskDialog({
         <DialogHeader>
           <DialogTitle>{task ? `Edit ${task.key}` : "New task"}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="pm-key">Key</Label>
               <Input id="pm-key" value={form.key} onChange={set("key")} disabled={!!task} placeholder="P21" />
@@ -621,7 +621,7 @@ function TaskDialog({
             <Label htmlFor="pm-title">Title</Label>
             <Textarea id="pm-title" rows={3} value={form.title} onChange={set("title")} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="pm-status">Status</Label>
               <select id="pm-status" className={selectCls} value={form.status} onChange={set("status")}>
@@ -680,7 +680,7 @@ function TrackDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         <DialogHeader>
           <DialogTitle>New track</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="tr-key">Key</Label>
             <Input id="tr-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Q" />
@@ -712,7 +712,7 @@ function ActivityList() {
   return (
     <div className="divide-y divide-border rounded-xl border border-border">
       {items.map((a) => (
-        <div key={a.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-sm">
+        <div key={a.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 p-3 text-sm">
           <span className="w-28 shrink-0 text-xs text-muted-foreground">
             {new Date(a.createdAt).toLocaleString("en-IN", {
               day: "numeric",
@@ -768,7 +768,7 @@ function ConnectClaude() {
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-4">
       <p className="text-sm text-muted-foreground">
         Give Claude Code a token and it can read this board, mark tasks done and log what it shipped.
         Every change it makes shows as &ldquo;Claude (token name)&rdquo; in Activity. Tokens act as you

@@ -193,7 +193,7 @@ export default function AssistInboxPage() {
       .filter((s) => s.type === "StayBooking")
       .map((s) => s.data as unknown as StayCaseBooking);
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Button variant="ghost" size="sm" className="-ml-2 w-fit" onClick={() => setSelected(null)}>
           <CaretLeft className="h-4 w-4" /> Back to inbox
         </Button>
@@ -220,7 +220,7 @@ export default function AssistInboxPage() {
               )}
             </div>
             <CardTitle className="text-lg">{selected.subject}</CardTitle>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
                 {requesterName(selected)}
                 {email ? ` · ${email}` : ""} · opened {timeAgo(selected.createdAt)}
@@ -237,7 +237,7 @@ export default function AssistInboxPage() {
           </CardHeader>
           <CardContent className="pt-5">
             {detailLoading || !selected.messages ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Skeleton className="h-16 w-2/3" />
                 <Skeleton className="ml-auto h-16 w-2/3" />
               </div>
@@ -273,7 +273,7 @@ export default function AssistInboxPage() {
 
   /* ------------------------------ List view ------------------------------ */
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Attendee questions"
         subtitle="Questions attendees ask about this space and its events"
@@ -291,7 +291,7 @@ export default function AssistInboxPage() {
         onChange={loadCanned}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard title="Open" value={stats?.open ?? 0} hint="Needs a reply" icon={ChatCircleDots} loading={!stats} />
         <StatCard title="Awaiting reply" value={stats?.pending ?? 0} hint="With the attendee" icon={Clock} loading={!stats} />
         <StatCard title="Overdue" value={stats?.overdue ?? 0} hint="Past the reply or resolution time" icon={Hourglass} loading={!stats} />
@@ -299,7 +299,7 @@ export default function AssistInboxPage() {
         <StatCard title="Resolution" value={formatMins(stats?.resolutionMins)} hint="Median of 30 days" icon={Timer} loading={!stats} />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Filter questions">
           {FILTERS.map((f, i) => (
             <Button
@@ -368,7 +368,7 @@ export default function AssistInboxPage() {
                           {t.subject}
                         </p>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{requesterName(t)}</span>
                         <span>{CATEGORY_LABEL[t.category]}</span>
                         <span>Updated {timeAgo(t.lastMessageAt)}</span>

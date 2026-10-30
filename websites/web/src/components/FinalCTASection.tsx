@@ -16,7 +16,7 @@ export default function FinalCTASection() {
       <p data-reveal="blur" className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-ink/75 md:text-lg">
         Request a Space for your club, community or institution. Free events stay free, and the app is free for everyone going.
       </p>
-      <div data-reveal="rise" className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <div data-reveal="rise" className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
         <Link id="final-cta-create" href="/request-space" className="btn btn-lg btn-primary w-full sm:w-auto">
           Request a Space
           <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />

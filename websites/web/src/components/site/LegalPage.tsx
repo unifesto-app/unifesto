@@ -120,7 +120,7 @@ export default function LegalPage({
             </section>
           ))}
 
-          <aside aria-label="Company and grievance details" className="rounded-xl bg-night-2 p-6 text-sm leading-relaxed text-paper/70 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
+          <aside aria-label="Company and grievance details" className="rounded-2xl bg-night-2 p-6 text-sm leading-relaxed text-paper/70 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
             <p className="text-paper">{LEGAL.company}</p>
             <p className="mt-1">CIN {LEGAL.cin}</p>
             <p className="mt-1">{LEGAL.address}</p>

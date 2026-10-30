@@ -148,7 +148,7 @@ function WaitlistToggle({
   const onPlan = useSession().hasFeature("hasWaitlist") || draft.waitlistEnabled;
 
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="border-t border-border pt-4">
       <label className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -213,7 +213,7 @@ function SalesWindow({
     new Date(draft.saleEndsAt) <= new Date(draft.saleStartsAt);
 
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="border-t border-border pt-4">
       <p className="text-sm font-medium text-foreground">Sales window (optional)</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         Choose when this ticket goes on sale and when it closes. Leave a field

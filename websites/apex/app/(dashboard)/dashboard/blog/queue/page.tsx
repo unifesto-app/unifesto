@@ -84,7 +84,7 @@ export default function BlogQueuePage() {
   const count = (s: BlogQuestionStatus) => questions.filter((q) => q.status === s).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Blog queue"
         subtitle={`Questions the auto-blog writes up, 3 a day. ${count("QUEUED")} queued · ${count("PUBLISHED")} published · ${count("FAILED")} failed.`}
@@ -111,7 +111,7 @@ export default function BlogQueuePage() {
       </p>
 
       {writerOn === false && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground">
           The auto-blog writer is off, so queued questions fail with &quot;research: disabled&quot;. Turn on
           Auto-blog writer under{" "}
           <Link href="/dashboard/app-version" className="font-medium text-primary hover:underline">
@@ -122,18 +122,18 @@ export default function BlogQueuePage() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
       {notice && (
-        <div className="rounded-lg border border-success/30 bg-success/5 px-4 py-3 text-sm text-foreground">
+        <div className="rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm text-foreground">
           {notice}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-xl" />
           ))}
@@ -151,7 +151,7 @@ export default function BlogQueuePage() {
       ) : (
         <div className="divide-y divide-border rounded-xl border border-border">
           {questions.map((q) => (
-            <div key={q.id} className="flex flex-wrap items-start gap-3 p-4">
+            <div key={q.id} className="flex flex-wrap items-start gap-4 p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium text-foreground">{q.question}</p>

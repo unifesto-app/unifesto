@@ -16,12 +16,12 @@ export default function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="grid scroll-mt-8 gap-5 border-t border-border py-8 xl:grid-cols-[15rem_minmax(0,1fr)] xl:gap-12">
+    <section id={id} className="grid scroll-mt-8 gap-4 border-t border-border py-8 xl:grid-cols-[15rem_minmax(0,1fr)] xl:gap-12">
       <div>
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      <div className="min-w-0 space-y-5">{children}</div>
+      <div className="min-w-0 space-y-4">{children}</div>
     </section>
   );
 }

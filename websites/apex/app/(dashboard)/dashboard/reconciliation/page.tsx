@@ -56,14 +56,14 @@ export default function ReconciliationPage() {
   const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Reconciliation"
         subtitle="Platform ledger vs Razorpay — payments, refunds, and settlements to your bank. Fetched live from Razorpay for the selected window."
       />
 
       {/* Date window — shared across every tab. */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
           <label htmlFor="range-from" className="text-xs font-medium text-muted-foreground">From</label>
           <Input id="range-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="w-40" />
@@ -190,7 +190,7 @@ function BalanceCard() {
           ) : null}
         </div>
         {data && !loading && !error && (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:text-right">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:text-right">
             <span className="text-muted-foreground">Captured</span>
             <span className="font-medium text-foreground">{money(data.captured)}</span>
             <span className="text-muted-foreground">Fees + GST</span>
@@ -210,7 +210,7 @@ function OverviewTab({ range }: { range: { from: string; to: string } }) {
   // Balance (all-time sweep) loads independently of the windowed summary so the
   // slower call doesn't hold up the tiles.
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <BalanceCard />
       <SummarySection range={range} />
     </div>
@@ -231,8 +231,8 @@ function SummarySection({ range }: { range: { from: string; to: string } }) {
   const refundOff = Math.abs(data.diff.refunded) > 1;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Tile label="Razorpay captured" value={money(data.razorpay.captured)} hint={`${data.razorpay.capturedCount} payments`} />
         <Tile label="Platform captured" value={money(data.platform.captured)} hint={`${data.platform.paidCount} paid records`} />
         <Tile
@@ -309,7 +309,7 @@ function PaymentsTab({ range }: { range: { from: string; to: string } }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Tile label="Matched" value={String(data.counts.matched)} tone="ok" />
         <Tile label="Not in platform" value={String(data.counts.missingInPlatform)} tone={data.counts.missingInPlatform ? "danger" : undefined} hint="Money received, not recorded" />
         <Tile label="Not in Razorpay" value={String(data.counts.missingInRazorpay)} hint="Platform PAID, no capture" />
@@ -421,7 +421,7 @@ function SettlementsTab({ range }: { range: { from: string; to: string } }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Tile label="Total settled to bank" value={money(data.totalSettled)} tone="ok" />
         <Tile label="Settlements" value={String(data.count)} />
       </div>
@@ -478,7 +478,7 @@ function RefundsTab({ range }: { range: { from: string; to: string } }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Tile label="Razorpay refunds" value={String(data.counts.total)} />
         <Tile label="Matched" value={String(data.counts.matched)} tone="ok" />
         <Tile label="Not in platform" value={String(data.counts.missingInPlatform)} tone={data.counts.missingInPlatform ? "danger" : undefined} />
@@ -551,7 +551,7 @@ function PayoutsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Tile label="Paid out to organisers" value={money(totalPaid)} />
         <Tile label="Payouts" value={String(payouts.length)} />
         <Tile label="Pending" value={String(pending)} tone={pending ? "danger" : undefined} />

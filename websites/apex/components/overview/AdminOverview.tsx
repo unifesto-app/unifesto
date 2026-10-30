@@ -69,8 +69,8 @@ export function AdminOverview() {
       : 0;
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Platform overview
@@ -97,7 +97,7 @@ export function AdminOverview() {
       </header>
 
       {error && (
-        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
+        <Card className="rounded-2xl border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-destructive">{error}</p>
           </CardContent>

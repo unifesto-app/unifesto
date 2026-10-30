@@ -37,7 +37,7 @@ function SlotTimer({ until }: { until: string | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs tabular-nums",
+        "inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-0.5 text-xs tabular-nums",
         done ? "text-destructive" : left <= 60 ? "text-warning" : "text-foreground"
       )}
     >
@@ -137,7 +137,7 @@ export default function HackathonQueuesPage() {
       ready
     >
       {!active.length && <p className="text-sm text-muted-foreground">Nobody is in a queue right now.</p>}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {active.map((q) => (
           <ListGroup
             key={`${q.kind}:${q.id}`}

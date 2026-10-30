@@ -126,7 +126,7 @@ export default function AdminSessionsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sessions"
         subtitle={`${summaryTotal.toLocaleString("en-IN")} sessions across the platform`}
@@ -138,7 +138,7 @@ export default function AdminSessionsPage() {
         <StatCard title="Showing" value={sessions.length} hint={`Page ${page} of ${totalPages}`} icon={VideoCamera} loading={loading} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title or slug" className="pl-9" />
@@ -154,13 +154,13 @@ export default function AdminSessionsPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>
       ) : sessions.length === 0 ? (
         <EmptyState icon={VideoCamera} title="No sessions found" description="Try clearing the search or choosing a different status." />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {sessions.map((s) => {
             const st = STATUS[s.status];
             const organiser = s.creator.fullName || s.creator.username || "Curator";
@@ -169,7 +169,7 @@ export default function AdminSessionsPage() {
             return (
               <Link key={s.id} href={`/dashboard/sessions/${s.id}`}>
                 <Card className="transition-colors hover:border-border-strong">
-                  <CardContent className="space-y-3 p-4">
+                  <CardContent className="space-y-4 p-4">
                     {/* Title + status + sales */}
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">

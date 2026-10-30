@@ -103,7 +103,7 @@ function LoginForm() {
       </p>
 
       {error && (
-        <p role="alert" className="mt-6 rounded-lg border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="mt-6 rounded-2xl border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}

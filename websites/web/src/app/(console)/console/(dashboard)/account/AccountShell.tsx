@@ -80,10 +80,10 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Not over Security or Delete account: their deletion section says it already. */}
       {session && me?.deletionScheduledFor && pathname !== "/console/account/delete" && pathname !== "/console/account/sign-in" && (
-        <div role="status" className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
+        <div role="status" className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-foreground">
           <WarningCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" weight="fill" aria-hidden="true" />
           <p>
             My account closes on{" "}

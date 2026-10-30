@@ -60,7 +60,7 @@ export default function GrievanceForm({ officerEmail }: { officerEmail: string }
   }
 
   return (
-    <form onSubmit={codeSent ? submit : sendCode} className="not-prose space-y-3 rounded-3xl bg-night-2 p-6">
+    <form onSubmit={codeSent ? submit : sendCode} className="not-prose space-y-4 rounded-3xl bg-night-2 p-6">
       <label className="block text-sm text-paper/65" htmlFor="grievance-email">
         Email on your Unifesto account
       </label>
@@ -123,7 +123,7 @@ export default function GrievanceForm({ officerEmail }: { officerEmail: string }
           )}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={busy || !address} className={button}>
           {busy ? "Sending…" : codeSent ? "Send grievance" : "Email me a code"}
         </button>

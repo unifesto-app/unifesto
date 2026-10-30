@@ -102,7 +102,7 @@ export function NavGroups({
   const current = currentItem(shown.flatMap((g) => g.items), pathname);
 
   return (
-    <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-6")}>
+    <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-4")}>
       {shown.map((group, groupIdx) => (
         <div key={group.label ?? `group-${groupIdx}`}>
           {group.label &&

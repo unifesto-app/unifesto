@@ -58,12 +58,12 @@ export default async function PricingPage() {
       <Section pad="tight" id="plans">
         {/* Each card spans 7 rows of one shared grid (subgrid), so name, price,
             fee and button line up across cards however their text wraps. */}
-        <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
           {plans.map((plan) => {
             const featured = plan.id === "growth";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
             return (
-              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
+              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-2xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
                 <h2 className="font-display text-lg text-paper">{plan.name}</h2>
                 <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
 
@@ -135,7 +135,7 @@ export default async function PricingPage() {
         <p data-reveal="blur" className="mx-auto mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-paper/65">
           Start on General. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
         </p>
-        <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href="/request-space" className="btn btn-lg btn-primary">
             Request a Space
             <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
@@ -168,7 +168,7 @@ function CompareSection({ plans, catalog }: { plans: Plan[]; catalog: Catalog })
       <h2 id="every-feature-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper">
         Every feature, every plan.
       </h2>
-      <div className="mt-8 overflow-x-auto rounded-xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
+      <div className="mt-8 overflow-x-auto rounded-2xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]">
         <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">What each Unifesto plan includes</caption>
           <thead>
