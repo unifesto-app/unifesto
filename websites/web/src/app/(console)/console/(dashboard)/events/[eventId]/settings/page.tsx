@@ -518,7 +518,7 @@ export default function EventSettingsPage() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Event: {event.title}</p>
               <p className="text-sm text-muted-foreground">
-                Status: {event.status}
+                Status: {event.status.charAt(0) + event.status.slice(1).toLowerCase().replace(/_/g, " ")}
               </p>
             </div>
 

@@ -87,7 +87,7 @@ export default function HelpDeskPage() {
         )}
         {q.caseId ? (
           <Button size="sm" variant="ghost" asChild>
-            <Link href={`/console/assist?case=${q.caseId}`}>Escalated · Open case</Link>
+            <Link href={`/console/questions?case=${q.caseId}`}>Escalated · Open the question</Link>
           </Button>
         ) : (
           q.status !== "RESOLVED" && (

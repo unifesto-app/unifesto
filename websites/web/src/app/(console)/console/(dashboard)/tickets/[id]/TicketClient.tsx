@@ -37,7 +37,7 @@ import { IST } from "@/lib/site";
 import { TicketsFrame, when, where } from "../TicketsClient";
 
 const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: IST });
 const rupees = (v: string | number | null | undefined) => `₹${(Number(v) || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 /** The app's quick reasons; one tap fills the text, which stays editable. */
@@ -102,11 +102,11 @@ export default function TicketClient({ id }: { id: string }) {
       </TicketsFrame>
     );
   if (t === undefined)
-    return <TicketsFrame title="My ticket">{error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>}</TicketsFrame>;
+    return <TicketsFrame title="My ticket">{error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-muted-foreground">Loading…</p>}</TicketsFrame>;
   if (t === null)
     return (
       <TicketsFrame title="My ticket">
-        <p className="text-paper/75">
+        <p className="text-muted-foreground">
           This ticket isn&apos;t on my account.{" "}
           <Link href="/console/tickets" className="underline">
             My tickets
@@ -157,14 +157,14 @@ export default function TicketClient({ id }: { id: string }) {
     <TicketsFrame title={t.event.title}>
       <div className="space-y-8">
         <div>
-          <Link href="/console/tickets" className="text-sm text-paper/65 hover:text-paper hover:underline">
+          <Link href="/console/tickets" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             ← My tickets
           </Link>
-          <p className={`mt-3 text-sm font-semibold ${cancelled ? "text-red-400" : checkedIn ? "text-primary" : "text-paper/75"}`}>{status}</p>
-          <p className="mt-1 text-paper">
+          <p className={`mt-3 text-sm font-semibold ${cancelled ? "text-destructive" : checkedIn ? "text-primary" : "text-muted-foreground"}`}>{status}</p>
+          <p className="mt-1 text-foreground">
             {when(t.event.startDateTime)} · {where(t.event)}
           </p>
-          <p className="mt-1 text-sm text-paper/65">
+          <p className="mt-1 text-sm text-muted-foreground">
             {[t.ticketType?.name, free ? "Free" : rupees(price), member ? `Seat in ${t.leadName || "a group"}'s booking` : null].filter(Boolean).join(" · ")}
           </p>
           <Link href={`/event/${t.event.slug}`} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
@@ -173,7 +173,7 @@ export default function TicketClient({ id }: { id: string }) {
         </div>
 
         {cancelled && (
-          <div className="rounded-2xl bg-canvas p-4 text-sm text-paper/80">
+          <div className="rounded-2xl bg-muted p-4 text-sm text-foreground/80">
             Cancelled{t.cancelledAt && <> on {day(t.cancelledAt)}</>}
             {byOrganiser && " by the organiser"}.
             {reason && !byOrganiser && !SYSTEM_REASONS.has(reason) && <p className="mt-1">Reason: {reason}</p>}
@@ -186,25 +186,25 @@ export default function TicketClient({ id }: { id: string }) {
               {/* The SVG comes from the qrcode encoder, never from the API. */}
               {svg && <div dangerouslySetInnerHTML={{ __html: svg }} />}
             </div>
-            <p className="mt-2 font-mono text-xs text-paper/55">{code}</p>
+            <p className="mt-2 font-mono text-xs text-muted-foreground">{code}</p>
             {!member && !ended && (
               <button
                 type="button"
                 disabled={!!busy}
                 onClick={() => act("resend", () => resendTicket(t.id, token).then((r) => setMsg(r.email ? `Sent to ${r.email}.` : "Sent.")))}
-                className="mt-3 text-sm text-paper/75 underline hover:text-paper"
+                className="mt-3 text-sm text-muted-foreground underline hover:text-foreground"
               >
                 {busy === "resend" ? "Sending…" : "Email me this ticket"}
               </button>
             )}
           </div>
         )}
-        {msg && <p className="text-sm text-paper/85">{msg}</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {msg && <p className="text-sm text-foreground/80">{msg}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {!cancelled && !ended && (
           <section>
-            <h2 className="text-sm font-medium text-paper/75">Add to calendar</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">Add to calendar</h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {(() => {
                 const cal = { slug: t.event.slug, title: t.event.title, startIso: t.event.startDateTime, endIso: t.event.endDateTime ?? undefined, location: where(t.event) };
@@ -228,12 +228,12 @@ export default function TicketClient({ id }: { id: string }) {
 
         {wa?.inviteUrl && !cancelled && (
           <section>
-            <h2 className="text-sm font-medium text-paper/75">{wa.isCommunity ? "WhatsApp community" : "WhatsApp group"}</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">{wa.isCommunity ? "WhatsApp community" : "WhatsApp group"}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-4">
               <a href={wa.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
                 <WhatsappLogo className="h-4 w-4" aria-hidden /> Join
               </a>
-              <label className="flex items-center gap-2 text-sm text-paper/80">
+              <label className="flex items-center gap-2 text-sm text-foreground/80">
                 <input
                   type="checkbox"
                   checked={wa.joined}
@@ -252,13 +252,13 @@ export default function TicketClient({ id }: { id: string }) {
 
         {checkins.length > 0 && (
           <section>
-            <h2 className="text-sm font-medium text-paper/75">Check-ins</h2>
-            <ul className="mt-2 space-y-1 text-sm text-paper/80">
+            <h2 className="text-sm font-medium text-muted-foreground">Check-ins</h2>
+            <ul className="mt-2 space-y-1 text-sm text-foreground/80">
               {checkins.map((c) => (
                 <li key={c.id}>
                   {when(c.checkedInAt)}
                   {c.checkinType && <> · {c.checkinType}</>}
-                  {c.checkedBy && <span className="text-paper/55"> · by {c.checkedBy}</span>}
+                  {c.checkedBy && <span className="text-muted-foreground"> · by {c.checkedBy}</span>}
                 </li>
               ))}
             </ul>
@@ -307,12 +307,12 @@ export default function TicketClient({ id }: { id: string }) {
                   >
                     {busy === "cancel" ? "Cancelling…" : "Yes, cancel my ticket"}
                   </button>
-                  <button type="button" onClick={() => setSure("")} className="text-sm text-paper/70 hover:underline">
+                  <button type="button" onClick={() => setSure("")} className="text-sm text-muted-foreground hover:underline">
                     Keep it
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => setSure("cancel")} className="text-sm text-paper/75 hover:text-paper hover:underline">
+                <button type="button" onClick={() => setSure("cancel")} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
                   Cancel my ticket
                 </button>
               ))}
@@ -327,12 +327,12 @@ export default function TicketClient({ id }: { id: string }) {
                   >
                     {busy === "delete" ? "Deleting…" : "Yes, delete it from my list"}
                   </button>
-                  <button type="button" onClick={() => setSure("")} className="text-sm text-paper/70 hover:underline">
+                  <button type="button" onClick={() => setSure("")} className="text-sm text-muted-foreground hover:underline">
                     Keep it
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => setSure("delete")} className="text-sm text-paper/75 hover:text-paper hover:underline">
+                <button type="button" onClick={() => setSure("delete")} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
                   Delete from my tickets
                 </button>
               ))}
@@ -342,7 +342,7 @@ export default function TicketClient({ id }: { id: string }) {
         {/* A case about this ticket goes to the organiser's desk. A member's ticket is the lead's registration, so it goes as the event. */}
         <Link
           href={`/console/account/support/new?${member ? `eventId=${t.event.id}` : `registrationId=${t.id}`}`}
-          className="block text-sm text-paper/65 hover:text-paper hover:underline"
+          className="block text-sm text-muted-foreground hover:text-foreground hover:underline"
         >
           Get help with this ticket
         </Link>
@@ -362,7 +362,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
 
   return (
     <section>
-      <h2 className="text-sm font-medium text-paper/75">Refund</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">Refund</h2>
       {refunds.map((r) => {
         // A rejection lands at the organiser (no admin action yet) or at the final decision.
         const atOrganiser = r.status === "REJECTED" && !r.adminActionAt;
@@ -383,20 +383,20 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
           },
         ];
         return (
-          <div key={r.id} className="mt-3 rounded-2xl bg-canvas p-4">
-            <p className={`text-sm font-semibold ${r.status === "APPROVED" ? "text-primary" : r.status === "REJECTED" ? "text-red-400" : "text-paper"}`}>
+          <div key={r.id} className="mt-3 rounded-2xl bg-muted p-4">
+            <p className={`text-sm font-semibold ${r.status === "APPROVED" ? "text-primary" : r.status === "REJECTED" ? "text-destructive" : "text-foreground"}`}>
               {r.status === "APPROVED" ? `Refund approved: ${rupees(r.approvedAmount ?? r.requestedAmount)}` : r.status === "REJECTED" ? "Refund declined" : "In review"}
             </p>
-            <p className="mt-1 text-xs text-paper/60">&ldquo;{r.reason}&rdquo;</p>
+            <p className="mt-1 text-xs text-muted-foreground">&ldquo;{r.reason}&rdquo;</p>
             <ol className="mt-3 space-y-2 text-sm">
               {steps.map((s) => (
-                <li key={s.label} className={s.state === "later" || s.state === "skipped" ? "text-paper/45" : "text-paper/85"}>
-                  <span className={s.state === "declined" ? "text-red-400" : s.state === "now" ? "font-medium text-paper" : ""}>
+                <li key={s.label} className={s.state === "later" || s.state === "skipped" ? "text-muted-foreground" : "text-foreground/80"}>
+                  <span className={s.state === "declined" ? "text-destructive" : s.state === "now" ? "font-medium text-foreground" : ""}>
                     {s.state === "done" ? "✓ " : s.state === "declined" ? "✕ " : s.state === "now" ? "● " : "○ "}
                     {s.label}
                   </span>
-                  {s.at && <span className="text-xs text-paper/55"> · {day(s.at)}</span>}
-                  {s.note && <p className="ml-5 mt-0.5 text-xs text-paper/70">{s.note}</p>}
+                  {s.at && <span className="text-xs text-muted-foreground"> · {day(s.at)}</span>}
+                  {s.note && <p className="ml-5 mt-0.5 text-xs text-muted-foreground">{s.note}</p>}
                 </li>
               ))}
             </ol>
@@ -405,7 +405,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
       })}
       {canAsk && (
         <form onSubmit={submit} className="mt-3 space-y-3">
-          <p className="text-sm text-paper/70">
+          <p className="text-sm text-muted-foreground">
             Only the ticket price is refunded; booking fees are not. Approved refunds go back to the original payment method in 5 to 7
             business days.
           </p>
@@ -415,7 +415,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
                 key={q}
                 type="button"
                 onClick={() => setReason(q)}
-                className={`rounded-full px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-ink" : "bg-canvas text-paper/80 hover:text-paper"}`}
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"}`}
               >
                 {q}
               </button>
@@ -437,7 +437,7 @@ function Report({ busy, onSend }: { busy: boolean; onSend: (reason: string, deta
   const [details, setDetails] = useState("");
   return (
     <details className="group">
-      <summary className="cursor-pointer text-sm text-paper/65 hover:text-paper">Report a problem with this ticket</summary>
+      <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">Report a problem with this ticket</summary>
       <form
         onSubmit={(e) => {
           e.preventDefault();

@@ -27,8 +27,10 @@ test("space pages sit under Dashboard, My Spaces and the space", () => {
 
 test("personal pages sit under Dashboard only, and every crumb links to its own path", () => {
   assert.equal(labels("/console/tickets/reg-9/details"), "Dashboard › My tickets › Ticket › My details");
-  assert.equal(labels("/console/account/support/c1"), "Dashboard › My account › Support › Request");
-  assert.equal(labels("/console/account/sign-in"), "Dashboard › My account › Sign-in");
+  // My account is only the profile; the pages under its URL stand on their own.
+  assert.equal(labels("/console/account"), "Dashboard › My account");
+  assert.equal(labels("/console/account/support/c1"), "Dashboard › Support › Request");
+  assert.equal(labels("/console/account/sign-in"), "Dashboard › Security");
   assert.deepEqual(
     trail("/console/events/ev-1/attendees", names).map((c) => c.href),
     ["/console", "/console/spaces", "/console/space", "/console/events", "/console/events/ev-1", "/console/events/ev-1/attendees"],

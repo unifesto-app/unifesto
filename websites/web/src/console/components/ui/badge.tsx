@@ -14,29 +14,41 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variants: Record<BadgeVariant, string> = {
-  neutral: "bg-muted text-muted-foreground border-border",
-  brand: "bg-primary-soft text-primary border-primary/20",
-  success:
-    "bg-success-soft text-success border-success/25",
-  warning:
-    "bg-warning-soft text-warning border-warning/25",
-  destructive:
-    "bg-destructive-soft text-destructive border-destructive/25",
-  outline: "bg-card text-foreground border-border",
+  neutral: "text-muted-foreground",
+  brand: "text-foreground",
+  success: "text-success",
+  warning: "text-warning",
+  destructive: "text-destructive",
+  outline: "text-foreground",
 };
 
-/** Small status/label pill. Colour carries meaning; never blue-only for state. */
+/**
+ * An API enum shown as text (PUBLISHED, IN_REVIEW) reads as words (Published,
+ * In review), so pages can pass statuses straight through. Acronyms of three
+ * letters or fewer (VIP, QR) are left alone.
+ */
+const asWords = (child: React.ReactNode) =>
+  typeof child === "string" && /^[A-Z][A-Z_]{3,}$/.test(child)
+    ? child.charAt(0) + child.slice(1).toLowerCase().replace(/_/g, " ")
+    : child;
+
+/**
+ * A status or label as plain coloured text, not a pill (no fill, no border).
+ * Colour carries meaning, and the words always say it too.
+ */
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
-  ({ className, variant = "neutral", ...props }, ref) => (
+  ({ className, variant = "neutral", children, ...props }, ref) => (
     <span
       ref={ref}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 text-xs font-medium",
         variants[variant],
         className
       )}
       {...props}
-    />
+    >
+      {React.Children.map(children, asWords)}
+    </span>
   )
 );
 Badge.displayName = "Badge";

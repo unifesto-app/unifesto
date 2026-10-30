@@ -111,7 +111,6 @@ export default function SpaceCampaignDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Campaign"
         title={c.subject}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">

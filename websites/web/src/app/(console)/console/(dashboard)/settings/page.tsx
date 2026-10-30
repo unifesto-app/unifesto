@@ -273,7 +273,7 @@ export default function SpaceSettingsPage() {
       />
 
       {!canEdit && (
-        <Card className="border-warning/30 bg-warning-soft">
+        <Card className="rounded-lg border border-warning/30 bg-warning-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-warning">
               You need Space Admin permissions to edit space settings.

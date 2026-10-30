@@ -287,6 +287,8 @@ export interface SpaceWithHierarchy extends SpaceWithCounts {
   };
   logoUrl?: string | null;
   tagline?: string | null;
+  /** From `GET /users/me/spaces`. */
+  city?: string | null;
 }
 
 // --- Events ----------------------------------------------------------------

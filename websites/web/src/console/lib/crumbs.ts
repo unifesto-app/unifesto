@@ -30,10 +30,9 @@ const ACCOUNT: Record<string, string> = {
   support: "Support",
   saved: "Saved events",
   certificates: "My certificates",
-  circles: "My circles",
   partner: "Partner stats",
   notifications: "Notifications",
-  "sign-in": "Sign-in",
+  "sign-in": "Security",
   delete: "Delete account",
 };
 const WORDS: Record<string, string> = { new: "New", add: "Add", import: "Import", edit: "Edit", live: "Live", details: "My details" };
@@ -60,6 +59,8 @@ export function trail(pathname: string, names: CrumbNames): Crumb[] {
   let href = BASE;
   segs.forEach((seg, i) => {
     href += `/${seg}`;
+    // My account is only the profile: Inbox, Sign-in and the rest under its URL aren't in it.
+    if (i === 0 && seg === "account" && segs.length > 1) return;
     const parent = segs[i - 1];
     const named = names.named(href);
     const label =

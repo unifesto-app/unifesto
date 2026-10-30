@@ -77,7 +77,6 @@ export default function FinancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Money"
         title="Finance"
         subtitle="Your earnings at a glance — track revenue, request payouts, review refunds, and manage payout accounts."
       />

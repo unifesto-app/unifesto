@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Tray } from "@unifesto/unicon/react";
+import { ChatsCircle } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { isEventScopedSpace } from "@/console/lib/types/rbac";
 import { getSpaceDeskUnread, ASSIST_READ_EVENT } from "@/console/lib/api/support-api";
 import { cn } from "@/console/lib/utils/cn";
+import { NAV_ITEM_ACTIVE } from "./SpaceNav";
 
-/** Unread cases on this space's Assist desk: recounted on navigation, on read, and each minute. */
+/** Unread attendee questions on this space's desk: recounted on navigation, on read, and each minute. */
 export function useDeskUnread(spaceId: string | undefined, enabled: boolean, pathname: string) {
   const [unread, setUnread] = useState(0);
   useEffect(() => {
@@ -30,10 +31,10 @@ export function useDeskUnread(spaceId: string | undefined, enabled: boolean, pat
 }
 
 /**
- * Assist inbox entry for event-only operators, who never get `SpaceNav`.
- * Renders nothing unless one of their event roles answers cases.
+ * Attendee questions entry for event-only operators, who never get `SpaceNav`.
+ * Renders nothing unless one of their event roles answers questions.
  */
-export function AssistInboxLink({
+export function QuestionsLink({
   collapsed = false,
   onNavigate,
 }: {
@@ -47,7 +48,7 @@ export function AssistInboxLink({
 
   if (!enabled) return null;
 
-  const href = "/console/assist";
+  const href = "/console/questions";
   const active = pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -55,17 +56,18 @@ export function AssistInboxLink({
       href={href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      title={collapsed ? "Assist inbox" : undefined}
+      title={collapsed ? "Attendee questions" : undefined}
       className={cn(
-        "mb-4 flex items-center rounded-lg text-sm transition-colors duration-150",
+        "relative mb-4 flex items-center rounded-lg text-sm transition-colors duration-150",
         collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2",
+
         active
-          ? "bg-primary-soft font-semibold text-primary"
+          ? NAV_ITEM_ACTIVE
           : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >
-      <Tray className="h-[18px] w-[18px] flex-shrink-0" weight={active ? "fill" : "regular"} />
-      {!collapsed && "Assist inbox"}
+      <ChatsCircle className="h-[18px] w-[18px] flex-shrink-0" weight={active ? "fill" : "regular"} />
+      {!collapsed && "Attendee questions"}
       {unread > 0 && (
         <span
           className={cn(

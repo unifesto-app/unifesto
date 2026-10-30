@@ -128,7 +128,6 @@ export default function SubSpacesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Structure"
         title="Sub-spaces"
         subtitle={
           currentSpace

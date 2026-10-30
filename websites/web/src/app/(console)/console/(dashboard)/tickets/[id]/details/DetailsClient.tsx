@@ -57,7 +57,7 @@ export default function DetailsClient({ id }: { id: string }) {
       </TicketsFrame>
     );
   if (!details || !t)
-    return <TicketsFrame title="My details">{error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>}</TicketsFrame>;
+    return <TicketsFrame title="My details">{error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-muted-foreground">Loading…</p>}</TicketsFrame>;
 
   const editable = (f: FormField) => f.type !== "FILE";
   const teamFields = (details.isGroup ? fields.filter((f) => f.perGroup) : fields).filter(editable);
@@ -92,18 +92,18 @@ export default function DetailsClient({ id }: { id: string }) {
     <TicketsFrame title="My details">
       <div className="space-y-6">
         <div>
-          <Link href={`/console/tickets/${id}`} className="text-sm text-paper/65 hover:text-paper hover:underline">
+          <Link href={`/console/tickets/${id}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             ← {t.event.title}
           </Link>
           {details.editable ? (
-            details.editsUntil && <p className="mt-3 text-sm text-paper/70">I can change these until {when(details.editsUntil)}.</p>
+            details.editsUntil && <p className="mt-3 text-sm text-muted-foreground">I can change these until {when(details.editsUntil)}.</p>
           ) : (
-            <p className="mt-3 text-sm text-paper/80">{details.lockedReason || "The organiser isn't taking changes right now."}</p>
+            <p className="mt-3 text-sm text-foreground/80">{details.lockedReason || "The organiser isn't taking changes right now."}</p>
           )}
         </div>
 
         {!sections.length ? (
-          <p className="text-paper/75">This ticket has no questions I can change.</p>
+          <p className="text-muted-foreground">This ticket has no questions I can change.</p>
         ) : (
           <form onSubmit={save} className="space-y-8">
             <fieldset disabled={!details.editable || busy} className="space-y-8 disabled:opacity-60">
@@ -111,7 +111,7 @@ export default function DetailsClient({ id }: { id: string }) {
                 const visible = visibleFieldIds(fields, s.answers);
                 return (
                   <section key={s.key} className="space-y-5">
-                    {sections.length > 1 && <h2 className="text-sm font-medium text-paper/75">{s.title}</h2>}
+                    {sections.length > 1 && <h2 className="text-sm font-medium text-muted-foreground">{s.title}</h2>}
                     {s.fields
                       .filter((f) => visible.has(f.id))
                       .map((f) => (
@@ -121,11 +121,11 @@ export default function DetailsClient({ id }: { id: string }) {
                 );
               })}
             </fieldset>
-            <p className="text-xs text-paper/55">
+            <p className="text-xs text-muted-foreground">
               Name, email and phone stay as registered.{fields.some((f) => f.type === "FILE") && " Files I uploaded stay as they are."}
             </p>
-            {error && <p className="text-sm text-red-400">{error}</p>}
-            {msg && <p className="text-sm text-paper/85">{msg}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {msg && <p className="text-sm text-foreground/80">{msg}</p>}
             {details.editable && (
               <button type="submit" disabled={busy} className="btn btn-primary">
                 {busy ? "Saving…" : "Save changes"}

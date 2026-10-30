@@ -168,7 +168,7 @@ export function TicketThread({
             }}
             placeholder={asNote ? "Write a note for your team…" : "Write a reply…"}
             rows={3}
-            aria-label={asNote ? "Internal note" : "Reply to ticket"}
+            aria-label={asNote ? "Internal note" : "Reply"}
             className={asNote ? "border-dashed border-warning/60 bg-warning-soft" : undefined}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send();

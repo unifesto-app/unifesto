@@ -29,9 +29,9 @@ interface StatCardProps {
 const TREND_ICON = { up: TrendUp, down: TrendDown, flat: Minus } as const;
 
 /**
- * Compact metric tile used across every overview. The number is the hero
- * (size + tracking carry the hierarchy, since only one font weight ships);
- * the label rides above as a quiet eyebrow, the icon as a tinted chip.
+ * A metric on an overview: the label with its icon small beside it, the
+ * number below, then the trend and hint as plain text. No tile or icon chip:
+ * a hairline on top, like every block. `tone` tints the icon only.
  */
 export function StatCard({
   title,
@@ -48,29 +48,23 @@ export function StatCard({
   const body = (
     <Card
       className={cn(
-        "flex h-full flex-col gap-3 p-5",
+        "flex h-full flex-col gap-3 pb-1 pt-4",
         href && "card-interactive cursor-pointer"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center gap-1.5">
+        <IconCmp
+          aria-hidden="true"
+          className={cn("h-3.5 w-3.5 flex-shrink-0", tone === "success" ? "text-success" : "text-muted-foreground")}
+        />
         <span className="text-eyebrow">{title}</span>
-        <span
-          className={cn(
-            "grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg",
-            tone === "brand" && "bg-primary-soft text-primary",
-            tone === "success" && "bg-success-soft text-success",
-            tone === "neutral" && "bg-muted text-muted-foreground"
-          )}
-        >
-          <IconCmp className="h-[18px] w-[18px]" weight="duotone" />
-        </span>
       </div>
 
       <div className="mt-auto">
         {loading ? (
           <Skeleton className="h-9 w-24" />
         ) : (
-          <div className="text-[1.75rem] font-semibold leading-none tracking-tight text-foreground">
+          <div className="font-display text-[1.75rem] leading-none tabular-nums tracking-tight text-foreground">
             {value}
           </div>
         )}
@@ -79,10 +73,10 @@ export function StatCard({
           {trend && !loading && TrendIcon && (
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium",
-                trend.direction === "up" && "bg-success-soft text-success",
-                trend.direction === "down" && "bg-destructive-soft text-destructive",
-                trend.direction === "flat" && "bg-muted text-muted-foreground"
+                "inline-flex items-center gap-1 text-xs font-medium",
+                trend.direction === "up" && "text-success",
+                trend.direction === "down" && "text-destructive",
+                trend.direction === "flat" && "text-muted-foreground"
               )}
             >
               <TrendIcon className="h-3 w-3" weight="bold" />

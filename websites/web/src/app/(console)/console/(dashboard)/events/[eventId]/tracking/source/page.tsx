@@ -31,7 +31,6 @@ export default function SourceAttendeesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Tracking"
         title={sourceLabel(tags)}
         subtitle={[tags.medium, tags.campaign].filter(Boolean).join(" · ") || undefined}
       />

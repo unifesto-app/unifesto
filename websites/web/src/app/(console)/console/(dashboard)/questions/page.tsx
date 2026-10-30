@@ -125,7 +125,7 @@ export default function AssistInboxPage() {
       limit: PAGE_SIZE,
     });
     if (error) {
-      setError(error.message || "Could not load cases.");
+      setError(error.message || "Couldn't load questions.");
       setTickets([]);
     } else {
       setTickets(data?.tickets ?? []);
@@ -144,7 +144,7 @@ export default function AssistInboxPage() {
     setDetailLoading(true);
     setError("");
     const { data, error } = await getTicket(id);
-    if (error) setError(error.message || "Could not open this case.");
+    if (error) setError(error.message || "Couldn't open this question.");
     else {
       setSelected(data);
       window.dispatchEvent(new Event(ASSIST_READ_EVENT));
@@ -173,10 +173,10 @@ export default function AssistInboxPage() {
 
   const handleEscalate = async () => {
     if (!selected) return;
-    if (!window.confirm("Hand this case to Unifesto? You will still be able to read it, but not reply.")) return;
+    if (!window.confirm("Hand this question to Unifesto? You will still be able to read it, but not reply.")) return;
     setActing(true);
     const { error } = await escalateTicket(selected.id);
-    if (error) setError(error.message || "Could not escalate this case.");
+    if (error) setError(error.message || "Couldn't hand this question to Unifesto.");
     else await Promise.all([openTicket(selected.id), load()]);
     setActing(false);
   };
@@ -253,8 +253,8 @@ export default function AssistInboxPage() {
                 disabled={closed || withUnifesto}
                 disabledHint={
                   withUnifesto
-                    ? "This case is with Unifesto now. You can read it, but only Unifesto replies."
-                    : "This case is closed."
+                    ? "This question is with Unifesto now. You can read it, but only Unifesto replies."
+                    : "This question is closed."
                 }
               />
             )}
@@ -275,7 +275,7 @@ export default function AssistInboxPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Assist inbox"
+        title="Attendee questions"
         subtitle="Questions attendees ask about this space and its events"
         actions={
           <Button variant="outline" size="sm" onClick={() => setCannedOpen(true)}>
@@ -300,7 +300,7 @@ export default function AssistInboxPage() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter cases">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter questions">
           {FILTERS.map((f, i) => (
             <Button
               key={f.label}
@@ -343,7 +343,7 @@ export default function AssistInboxPage() {
             <EmptyState
               icon={Tray}
               tone="positive"
-              title={filter === 0 && !query ? "No cases yet" : "No cases match"}
+              title={filter === 0 && !query ? "No questions yet" : "No questions match"}
               description={
                 filter === 0 && !query
                   ? "When attendees ask about this space or its events, their questions land here."

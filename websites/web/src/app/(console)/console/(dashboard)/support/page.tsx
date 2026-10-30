@@ -62,7 +62,7 @@ export default function SpaceSupportPage() {
     setError("");
     const { data, error } = await listTickets({ spaceId, limit: 50 });
     if (error) {
-      setError(error.message || "Could not load tickets.");
+      setError(error.message || "Couldn't load requests.");
       setTickets([]);
     } else {
       setTickets(data?.tickets ?? []);
@@ -80,7 +80,7 @@ export default function SpaceSupportPage() {
     setDetailLoading(true);
     setError("");
     const { data, error } = await getTicket(id);
-    if (error) setError(error.message || "Could not open ticket.");
+    if (error) setError(error.message || "Couldn't open the request.");
     else setSelected(data);
     setDetailLoading(false);
   }, []);
@@ -101,7 +101,7 @@ export default function SpaceSupportPage() {
     const { error } = close
       ? await closeOwnTicket(selected.id)
       : await reopenOwnTicket(selected.id);
-    if (error) setError(error.message || "Could not update ticket.");
+    if (error) setError(error.message || "Couldn't update the request.");
     else await Promise.all([openTicket(selected.id), load()]);
     setActing(false);
   };
@@ -157,7 +157,7 @@ export default function SpaceSupportPage() {
                   disabled={acting}
                   onClick={() => handleOwnerStatus(true)}
                 >
-                  Close ticket
+                  Close request
                 </Button>
               )}
             </div>
@@ -174,7 +174,7 @@ export default function SpaceSupportPage() {
                 viewerIsStaff={false}
                 onReply={handleReply}
                 disabled={closed}
-                disabledHint="This ticket is closed. Reopen it to continue the conversation."
+                disabledHint="This request is closed. Reopen it to continue the conversation."
               />
             )}
             {(selected.status === "RESOLVED" || closed) && (
@@ -192,11 +192,11 @@ export default function SpaceSupportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Support"
+        title="Unifesto support"
         subtitle="Raise an issue for this space and track your conversations"
         actions={
           <Button onClick={() => setComposing((v) => !v)}>
-            <Plus className="h-4 w-4" /> New ticket
+            <Plus className="h-4 w-4" /> New request
           </Button>
         }
       />
@@ -215,7 +215,7 @@ export default function SpaceSupportPage() {
 
       <Card>
         <CardHeader className="pb-0">
-          <CardTitle className="text-base">My tickets</CardTitle>
+          <CardTitle className="text-base">Requests from this space</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {error && (
@@ -240,11 +240,11 @@ export default function SpaceSupportPage() {
             <EmptyState
               icon={Lifebuoy}
               tone="positive"
-              title="No tickets yet"
-              description="Raise a ticket and our team will help you get this space running smoothly."
+              title="No requests yet"
+              description="Ask Unifesto and our team will help you get this space running smoothly."
               action={
                 <Button onClick={() => setComposing(true)}>
-                  <Plus className="h-4 w-4" /> New ticket
+                  <Plus className="h-4 w-4" /> New request
                 </Button>
               }
             />

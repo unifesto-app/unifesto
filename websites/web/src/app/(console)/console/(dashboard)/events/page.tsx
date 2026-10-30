@@ -147,8 +147,8 @@ function EventCover({ event }: { event: Event }) {
           <Icon className="h-12 w-12 text-primary/40" weight="duotone" />
         </div>
       )}
-      {/* Status, legible on any cover via its own solid pill background. */}
-      <div className="absolute left-3 top-3">
+      {/* Status, legible on any cover: badges are plain text now, so it sits on a small dark scrim, in white. */}
+      <div className="absolute left-3 top-3 rounded-md bg-scrim/70 px-2 py-1 backdrop-blur-sm [&>span]:text-white">
         <StatusBadge status={event.status} />
       </div>
     </div>
@@ -191,7 +191,7 @@ function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: (
 
   if (invites.length === 0) return null;
   return (
-    <Card className="border-primary/30 bg-primary-soft">
+    <Card className="rounded-lg border border-primary/30 bg-primary-soft px-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <ShareNetwork className="h-4 w-4 text-primary" weight="bold" />
@@ -318,7 +318,6 @@ export default function SpaceEventsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Events"
         title="Events"
         subtitle={subtitle}
         actions={

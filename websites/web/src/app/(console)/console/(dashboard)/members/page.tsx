@@ -234,7 +234,6 @@ export default function SpaceMembersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="People"
         title="Members"
         subtitle="Manage who belongs to this space and what they can do."
         actions={

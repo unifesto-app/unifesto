@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/console/components/ui/card";
  */
 export function ErrorNotice({ message }: { message: string }) {
   return (
-    <Card className="border-destructive/30 bg-destructive-soft">
+    <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
       <CardContent className="py-4">
         <p className="text-sm text-destructive">{message}</p>
       </CardContent>

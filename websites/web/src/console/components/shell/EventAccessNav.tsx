@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { CalendarBlank } from "@unifesto/unicon/react";
 import type { EventAccessEntry } from "@/console/lib/types/rbac";
 import { cn } from "@/console/lib/utils/cn";
-import { AssistInboxLink } from "./AssistInboxLink";
-import { BackLink } from "./SpaceNav";
+import { QuestionsLink } from "./QuestionsLink";
+import { BackLink, NAV_ITEM_ACTIVE } from "./SpaceNav";
 
 interface EventAccessNavProps {
   events: EventAccessEntry[];
@@ -25,9 +25,9 @@ export function EventAccessNav({ events, onNavigate, collapsed = false }: EventA
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
       <BackLink href="/console/spaces" label="My Spaces" collapsed={collapsed} onNavigate={onNavigate} />
-      <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
+      <QuestionsLink collapsed={collapsed} onNavigate={onNavigate} />
       {!collapsed && (
-        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 px-3 text-xs font-medium text-muted-foreground">
           My events
         </p>
       )}
@@ -43,10 +43,10 @@ export function EventAccessNav({ events, onNavigate, collapsed = false }: EventA
               aria-current={active ? "page" : undefined}
               title={collapsed ? ev.title : undefined}
               className={cn(
-                "flex items-center rounded-lg text-sm transition-colors duration-150",
+                "relative flex items-center rounded-lg text-sm transition-colors duration-150",
                 collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2",
                 active
-                  ? "bg-primary-soft font-semibold text-primary"
+                  ? NAV_ITEM_ACTIVE
                   : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >

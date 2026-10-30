@@ -104,7 +104,6 @@ export default function EventPollsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Experience"
         title="Live polls"
         subtitle="Ask the room a question during the event. Attendees vote from their ticket in the Unifesto app, once each, and the results update live."
         actions={<ProjectorButton eventId={eventId} />}

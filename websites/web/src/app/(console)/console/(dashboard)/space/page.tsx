@@ -174,7 +174,6 @@ export default function SpaceDashboardPage() {
       {/* Greeting */}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-eyebrow mb-1">{currentSpace?.name}</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Welcome back, {firstName}
           </h1>

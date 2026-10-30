@@ -72,8 +72,8 @@ export default function EventLayout({
         <div className="flex flex-wrap items-center gap-3">
           {/* Not an h1: each page's own PageHeader is the page's one h1 (B12). */}
           <p className="text-xl font-semibold text-foreground">{event.title}</p>
-          <Badge variant={statusColor} className="text-xs">
-            {event.status}
+          <Badge variant={statusColor} className="text-xs capitalize">
+            {event.status.toLowerCase().replace(/_/g, " ")}
           </Badge>
         </div>
       </div>

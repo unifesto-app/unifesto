@@ -87,7 +87,6 @@ export default function EventQuestionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Experience"
         title="Live Q&A"
         subtitle="Attendees ask and upvote questions from their ticket in the Unifesto app while the event is on. The most-voted rise to the top."
       />

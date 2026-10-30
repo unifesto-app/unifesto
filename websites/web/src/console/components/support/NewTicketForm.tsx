@@ -59,7 +59,7 @@ export function NewTicketForm({
     });
     setSubmitting(false);
     if (error || !data) {
-      setError(error?.message || "Could not create the ticket.");
+      setError(error?.message || "Couldn't send the request.");
       return;
     }
     onCreated(data.id);
@@ -68,7 +68,7 @@ export function NewTicketForm({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">New support ticket</CardTitle>
+        <CardTitle className="text-base">New request to Unifesto</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
@@ -138,7 +138,7 @@ export function NewTicketForm({
             onClick={submit}
             disabled={!subject.trim() || !message.trim() || submitting}
           >
-            {submitting ? "Creating…" : "Create ticket"}
+            {submitting ? "Sending…" : "Send request"}
           </Button>
         </div>
       </CardContent>

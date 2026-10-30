@@ -45,7 +45,7 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
         <SignInPrompt />
       </TicketsFrame>
     );
-  if (!form) return <TicketsFrame title="Feedback">{error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading…</p>}</TicketsFrame>;
+  if (!form) return <TicketsFrame title="Feedback">{error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-muted-foreground">Loading…</p>}</TicketsFrame>;
 
   const questions: FormField[] = form.questions.map((q) => ({ ...q, ticketTypeId: null, perGroup: false })).sort((a, b) => a.order - b.order);
   const visible = visibleFieldIds(questions, answers);
@@ -66,10 +66,10 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
   };
 
   let body;
-  if (!form.enabled) body = <p className="text-paper/75">This event isn&apos;t collecting feedback.</p>;
+  if (!form.enabled) body = <p className="text-muted-foreground">This event isn&apos;t collecting feedback.</p>;
   else if (sent)
     body = (
-      <p className="text-paper/85">
+      <p className="text-foreground/80">
         Thanks, the organiser gets it.{" "}
         {form.unlocksCertificate && (
           <Link href="/console/account/certificates" className="font-medium text-primary hover:underline">
@@ -78,7 +78,7 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
         )}
       </p>
     );
-  else if (!form.open && !form.response) body = <p className="text-paper/75">Feedback opens once the event starts, for people who attended, and closes a week after it ends.</p>;
+  else if (!form.open && !form.response) body = <p className="text-muted-foreground">Feedback opens once the event starts, for people who attended, and closes a week after it ends.</p>;
   else
     body = (
       <form onSubmit={send} className="space-y-8">
@@ -86,8 +86,8 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
           <Scale legend="How was it?" from={1} to={5} value={rating} onChange={setRating} />
           <Scale legend="How likely am I to recommend it to a friend?" from={0} to={10} value={nps} onChange={setNps} />
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-paper">
-              Anything to add? <span className="font-normal text-paper/50">(optional)</span>
+            <span className="mb-2 block text-sm font-semibold text-foreground">
+              Anything to add? <span className="font-normal text-muted-foreground">(optional)</span>
             </span>
             <textarea rows={4} maxLength={2000} value={comment} onChange={(e) => setComment(e.target.value)} className={`${FIELD} resize-y`} />
           </label>
@@ -97,17 +97,17 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
               <Question key={q.id} field={q} value={answers[q.id]} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />
             ))}
         </fieldset>
-        {form.unlocksCertificate && <p className="text-sm text-paper/75">My certificate for this event unlocks when I send this.</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {form.unlocksCertificate && <p className="text-sm text-muted-foreground">My certificate for this event unlocks when I send this.</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         {form.open ? (
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" disabled={busy} className="btn btn-primary">
               {busy ? "Sending…" : form.response ? "Update my feedback" : "Send feedback"}
             </button>
-            <span className="text-xs text-paper/55">Open until {when(form.closesAt)}.</span>
+            <span className="text-xs text-muted-foreground">Open until {when(form.closesAt)}.</span>
           </div>
         ) : (
-          <p className="text-sm text-paper/65">Feedback has closed. This is what I sent.</p>
+          <p className="text-sm text-muted-foreground">Feedback has closed. This is what I sent.</p>
         )}
       </form>
     );
@@ -119,13 +119,13 @@ export default function FeedbackClient({ eventId }: { eventId: string }) {
 function Scale({ legend, from, to, value, onChange }: { legend: string; from: number; to: number; value: number | null; onChange: (v: number) => void }) {
   return (
     <fieldset>
-      <legend className="mb-2 block text-sm font-semibold text-paper">{legend}</legend>
+      <legend className="mb-2 block text-sm font-semibold text-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: to - from + 1 }, (_, i) => from + i).map((n) => (
           <label
             key={n}
             className={`grid h-10 min-w-10 cursor-pointer place-items-center rounded-full px-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/60 ${
-              value === n ? "bg-primary text-ink" : "bg-canvas text-paper/80 hover:text-paper"
+              value === n ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"
             }`}
           >
             <input type="radio" name={legend} value={n} checked={value === n} onChange={() => onChange(n)} className="sr-only" />

@@ -156,12 +156,6 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5">
-            <Funnel className="h-4 w-4" weight="fill" />
-            Community
-          </span>
-        }
         title="Leads"
         subtitle="People who registered interest or reached out — from event 'Notify me', space inquiries, or added by hand."
         actions={

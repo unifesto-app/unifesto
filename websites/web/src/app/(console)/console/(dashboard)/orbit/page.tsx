@@ -59,7 +59,6 @@ export default function OrbitPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Unifesto Orbit"
         title={data.name}
         subtitle={`Rank ${data.rank} of ${data.campusCount} campuses. A club is active once it has published an event.`}
       />

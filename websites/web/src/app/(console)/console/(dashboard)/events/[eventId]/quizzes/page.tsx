@@ -128,7 +128,6 @@ export default function EventQuizzesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Experience"
         title="Live quizzes"
         subtitle="Run a timed quiz during the event. Questions go out one at a time, attendees answer from their ticket in the Unifesto app, and the leaderboard updates after each question."
         actions={

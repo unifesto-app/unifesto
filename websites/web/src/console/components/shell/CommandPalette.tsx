@@ -6,14 +6,16 @@ import {
   MagnifyingGlass,
   ArrowRight,
   Buildings,
+  Desktop,
   SignOut,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { useCommandPalette } from "@/console/lib/context/CommandPaletteContext";
 import { signOut } from "@/console/lib/utils/auth";
-import { BASE_URL, accountGroup, resolveNavGroups } from "./nav-config";
+import { BASE_URL, accountGroups, resolveNavGroups } from "./nav-config";
 import { cn } from "@/console/lib/utils/cn";
+import { cycleTheme } from "./ThemeToggle";
 
 interface Command {
   id: string;
@@ -60,7 +62,7 @@ export function CommandPalette() {
     const space = hasAccess ? currentSpace : null;
 
     // Navigation destinations, in the same order/grouping as the sidebar.
-    for (const group of [accountGroup(hasAccess), ...(space ? resolveNavGroups(space, access) : [])]) {
+    for (const group of [...accountGroups(), ...(space ? resolveNavGroups(space, access) : [])]) {
       for (const item of group.items) {
         list.push({
           id: `nav:${item.href}`,
@@ -85,6 +87,16 @@ export function CommandPalette() {
         run: () => setCurrentSpace(other),
       });
     }
+
+    // Theme lives in the personal sidebar's Settings; this reaches it from a space or event too.
+    list.push({
+      id: "action:theme",
+      label: "Change theme",
+      group: "Settings",
+      icon: Desktop,
+      keywords: "theme dark light system mode appearance night day",
+      run: cycleTheme,
+    });
 
     list.push({
       id: "action:signout",
@@ -203,7 +215,7 @@ export function CommandPalette() {
           ) : (
             grouped.map((section) => (
               <div key={section.group} className="mb-2 last:mb-0">
-                <p className="px-3 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="px-3 pb-1.5 pt-3 text-xs font-medium text-muted-foreground">
                   {section.group}
                 </p>
                 {section.items.map(({ cmd, index }) => {

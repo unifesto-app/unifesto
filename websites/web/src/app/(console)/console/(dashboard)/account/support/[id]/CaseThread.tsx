@@ -22,7 +22,7 @@ import { useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
 
 const FIELD =
-  "w-full rounded-3xl bg-canvas px-4 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
 
 const stamp = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: IST });
@@ -63,7 +63,7 @@ export default function CaseThread({ id }: { id: string }) {
   };
 
   if (!c)
-    return error ? <p className="text-sm text-red-400">{error}</p> : <p className="text-paper/65">Loading the request…</p>;
+    return error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-muted-foreground">Loading the request…</p>;
 
   const closed = c.status === "CLOSED";
   const bot = c.status === "BOT";
@@ -90,12 +90,12 @@ export default function CaseThread({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/console/account/support" className="text-sm text-paper/65 hover:text-paper hover:underline">
+      <Link href="/console/account/support" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
         ← My requests
       </Link>
       <div>
-        <h2 className="font-display text-xl text-paper">{c.subject}</h2>
-        <p className="mt-1 text-xs text-paper/60">
+        <h2 className="font-display text-xl text-foreground">{c.subject}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
           {[`#${c.ticketNumber}`, KIND_LABEL[c.kind] ?? c.kind, STATUS_LABEL[c.status] ?? c.status, withUnifesto ? "With Unifesto" : `With ${spaceName}`].join(" · ")}
         </p>
       </div>
@@ -112,7 +112,7 @@ export default function CaseThread({ id }: { id: string }) {
       </ol>
 
       {done && <p className="text-sm text-primary">{done}</p>}
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {!closed && (
         <form onSubmit={send} className="space-y-3">
@@ -137,7 +137,7 @@ export default function CaseThread({ id }: { id: string }) {
           type="button"
           disabled={!!busy}
           onClick={() => act("person", async () => setCase(await assistStep(token, id)))}
-          className="text-sm text-paper/75 hover:text-paper hover:underline"
+          className="text-sm text-muted-foreground hover:text-foreground hover:underline"
         >
           {busy === "person" ? "Passing it on…" : "Talk to a person"}
         </button>
@@ -151,7 +151,7 @@ export default function CaseThread({ id }: { id: string }) {
               await (closed ? reopenCase(token, id) : closeCase(token, id));
               await load();
             })}
-            className="text-sm text-paper/75 hover:text-paper hover:underline"
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             {closed ? "Reopen request" : "Mark as solved"}
           </button>
@@ -162,14 +162,14 @@ export default function CaseThread({ id }: { id: string }) {
 }
 
 function Message({ m, name, actions }: { m: CaseMessage; name: string; actions: React.ReactNode }) {
-  if (sideOf(m) === "SYSTEM") return <li className="text-center text-xs text-paper/55">{m.body}</li>;
+  if (sideOf(m) === "SYSTEM") return <li className="text-center text-xs text-muted-foreground">{m.body}</li>;
   const mine = sideOf(m) === "REQUESTER";
   return (
     <li className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
-      <span className="text-xs text-paper/55">
+      <span className="text-xs text-muted-foreground">
         {name} · {stamp(m.createdAt)}
       </span>
-      <p className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm ${mine ? "bg-primary/15 text-paper" : "bg-canvas text-paper/90"}`}>{m.body}</p>
+      <p className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground/80"}`}>{m.body}</p>
       {actions}
     </li>
   );
@@ -203,7 +203,7 @@ function AssistActions({ actions, busy, act, reload, token }: { actions: AssistA
             >
               {busy === `cancel:${a.registrationId}` ? "Cancelling…" : `Yes, cancel my ${a.eventTitle} ticket`}
             </button>
-            <button type="button" onClick={() => setSure("")} className="text-sm text-paper/70 hover:underline">
+            <button type="button" onClick={() => setSure("")} className="text-sm text-muted-foreground hover:underline">
               Keep it
             </button>
           </div>
@@ -221,7 +221,7 @@ function AssistActions({ actions, busy, act, reload, token }: { actions: AssistA
 function RateCase({ c, busy, act, onRate }: { c: SupportCase; busy: string; act: Act; onRate: (rating: number, note?: string) => Promise<void> }) {
   const [rating, setRating] = useState<number | null>(null);
   const [note, setNote] = useState("");
-  if (c.rating) return <p className="text-sm text-paper/65">I rated this {c.rating} of 5. Thanks for telling us.</p>;
+  if (c.rating) return <p className="text-sm text-muted-foreground">I rated this {c.rating} of 5. Thanks for telling us.</p>;
 
   return (
     <form
@@ -232,13 +232,13 @@ function RateCase({ c, busy, act, onRate }: { c: SupportCase; busy: string; act:
       className="space-y-3"
     >
       <fieldset>
-        <legend className="mb-2 block text-sm font-semibold text-paper">How did we do?</legend>
+        <legend className="mb-2 block text-sm font-semibold text-foreground">How did we do?</legend>
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((n) => (
             <label
               key={n}
               className={`grid h-10 min-w-10 cursor-pointer place-items-center rounded-full px-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/60 ${
-                rating === n ? "bg-primary text-ink" : "bg-canvas text-paper/80 hover:text-paper"
+                rating === n ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"
               }`}
             >
               <input type="radio" name="rating" value={n} checked={rating === n} onChange={() => setRating(n)} className="sr-only" />

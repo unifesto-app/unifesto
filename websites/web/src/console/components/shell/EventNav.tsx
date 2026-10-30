@@ -33,8 +33,8 @@ import {
 import type { Icon } from "@unifesto/unicon/react";
 import { useAccess, type Capability, type SpaceFeature } from "@/console/lib/context/SessionContext";
 import { cn } from "@/console/lib/utils/cn";
-import { AssistInboxLink } from "./AssistInboxLink";
-import { BackLink } from "./SpaceNav";
+import { QuestionsLink } from "./QuestionsLink";
+import { BackLink, NAV_ITEM_ACTIVE } from "./SpaceNav";
 
 interface EventNavItem {
   href: string;
@@ -175,7 +175,7 @@ export function EventNav({
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
       <BackLink href="/console/events" label="All events" collapsed={collapsed} onNavigate={onNavigate} />
       {/* Event-only operators have no space rail; renders nothing for everyone else. */}
-      <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
+      <QuestionsLink collapsed={collapsed} onNavigate={onNavigate} />
 
       <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-5")}>
         {navGroups.map((group, groupIdx) => {
@@ -192,10 +192,10 @@ export function EventNav({
                     aria-current={active ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
                     className={cn(
-                      "flex items-center rounded-lg text-sm transition-colors duration-150",
+                      "relative flex items-center rounded-lg text-sm transition-colors duration-150",
                       collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2",
                       active
-                        ? "bg-primary-soft font-semibold text-primary"
+                        ? NAV_ITEM_ACTIVE
                         : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
@@ -215,7 +215,7 @@ export function EventNav({
           if (group.advanced && !collapsed) {
             return (
               <details key={group.label} open={group.items.some(isActive)} className="group">
-                <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded px-3 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
                   {group.label}
                   <CaretDown className="h-3 w-3 transition-transform group-open:rotate-180" />
                 </summary>
@@ -230,7 +230,7 @@ export function EventNav({
                 (collapsed ? (
                   groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
                 ) : (
-                  <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">
                     {group.label}
                   </p>
                 ))}
