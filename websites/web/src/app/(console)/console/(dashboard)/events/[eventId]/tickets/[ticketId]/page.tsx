@@ -425,7 +425,7 @@ export default function TicketDetailPage() {
                     type="button"
                     onClick={() => toggleBlocked(t.id)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      "inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm transition-colors",
                       on
                         ? "border-primary/20 bg-primary-soft text-primary"
                         : "border-border text-muted-foreground hover:bg-muted"

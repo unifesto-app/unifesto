@@ -454,7 +454,7 @@ function BrandPreview({
           <p className="text-lg font-semibold leading-tight">Your next event</p>
           <p className="text-xs opacity-70">Sat, 18 Oct · Hyderabad</p>
           <span
-            className="inline-block rounded-full px-4 py-2 text-xs font-semibold"
+            className="inline-block rounded-lg px-4 py-2 text-xs font-semibold"
             style={{ background: accent, color: "#fff" }}
           >
             Register

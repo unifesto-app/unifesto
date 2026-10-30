@@ -37,7 +37,7 @@ function SlotTimer({ until }: { until: string | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs tabular-nums",
+        "inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-0.5 text-xs tabular-nums",
         done ? "text-destructive" : left <= 60 ? "text-warning" : "text-foreground"
       )}
     >

@@ -222,7 +222,7 @@ export default function ReportsPage() {
                       onClick={() => toggleSection(s.key)}
                       title={s.hint}
                       className={cn(
-                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        "rounded-lg border px-3 py-1.5 text-sm transition-colors",
                         on
                           ? "border-primary bg-primary-soft font-medium text-primary"
                           : "border-border text-muted-foreground hover:bg-muted"

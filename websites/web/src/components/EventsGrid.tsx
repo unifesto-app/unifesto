@@ -90,7 +90,7 @@ export default function EventsGrid() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Quick search..."
-              className="w-full rounded-full border border-paper/12 bg-paper/[0.05] py-2.5 pl-10 pr-4 text-sm text-paper placeholder-paper/40 outline-none transition-colors duration-150 hover:border-paper/25 focus:border-primary"
+              className="w-full rounded-lg border border-paper/12 bg-paper/[0.05] py-2.5 pl-10 pr-4 text-sm text-paper placeholder-paper/40 outline-none transition-colors duration-150 hover:border-paper/25 focus:border-primary"
             />
           </div>
         </div>

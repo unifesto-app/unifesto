@@ -59,7 +59,7 @@ function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.2),transparent_60%)]"
         />
       )}
-      <span className="blur-bg relative rounded-full px-3 py-1 text-xs font-semibold text-paper">
+      <span className="blur-bg relative rounded-lg px-3 py-1 text-xs font-semibold text-paper">
         {post.category}
       </span>
     </div>
@@ -140,7 +140,7 @@ export default async function BlogPage({
               key={cat}
               href={cat === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat)}`}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
                 active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
               }`}
             >

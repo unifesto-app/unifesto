@@ -113,7 +113,7 @@ export default function EventCheckinPage() {
               key={t.id}
               onClick={() => setActiveTypeId(t.id)}
               className={cn(
-                "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
+                "rounded-lg border px-3 py-1 text-sm font-medium transition-colors",
                 t.id === activeTypeId
                   ? "border-primary bg-primary-soft text-primary"
                   : "border-border text-muted-foreground hover:bg-muted"
@@ -338,7 +338,7 @@ function CheckinPointsCard({
           {types.map((t) => (
             <span
               key={t.id}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm"
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm"
             >
               {t.name}
               <button
@@ -501,7 +501,7 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
                         onClick={() => toggleType(m, t.id)}
                         disabled={busyId === m.userId || m.allPoints}
                         className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60",
+                          "rounded-lg border px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60",
                           on
                             ? "border-success/30 bg-success-soft text-success"
                             : "border-border text-muted-foreground hover:bg-muted"

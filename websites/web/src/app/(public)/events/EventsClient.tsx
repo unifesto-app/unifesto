@@ -147,7 +147,7 @@ function FilterGroup({
               key={opt.key}
               onClick={() => onChange(opt.key)}
               aria-pressed={active}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
                 active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
               }`}
             >
@@ -180,7 +180,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-full bg-paper/[0.06] px-4 py-2 text-xs font-medium text-paper outline-none [&>option]:bg-night-2"
+        className="w-full rounded-lg bg-paper/[0.06] px-4 py-2 text-xs font-medium text-paper outline-none [&>option]:bg-night-2"
       >
         <option value="">{all}</option>
         {options.map((o) => (
@@ -347,7 +347,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search events, organizers…"
                 aria-label="Search events"
-                className="w-full rounded-full bg-paper/[0.07] py-2.5 pl-11 pr-4 text-sm text-paper placeholder:text-paper/50 outline-none transition-colors duration-150 focus:bg-paper/[0.11]"
+                className="w-full rounded-lg bg-paper/[0.07] py-2.5 pl-11 pr-4 text-sm text-paper placeholder:text-paper/50 outline-none transition-colors duration-150 focus:bg-paper/[0.11]"
               />
             </div>
 
@@ -355,7 +355,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
             <div
               role="tablist"
               aria-label="Event status"
-              className="flex items-center gap-1 overflow-x-auto rounded-full bg-paper/[0.06] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex items-center gap-1 overflow-x-auto rounded-lg bg-paper/[0.06] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {STATUS_TABS.map((tab) => {
                 const active = status === tab.key;
@@ -365,7 +365,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
                     role="tab"
                     aria-selected={active}
                     onClick={() => setStatus(tab.key)}
-                    className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                    className={`whitespace-nowrap rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
                       active ? "bg-primary text-ink" : "text-paper/65 hover:text-paper"
                     }`}
                   >
@@ -433,7 +433,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
                 <button
                   key={`${chip.label}-${i}`}
                   onClick={chip.onClear}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 py-1 pl-3 pr-2 text-xs font-medium text-paper transition-colors duration-150 hover:bg-primary/25"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 py-1 pl-3 pr-2 text-xs font-medium text-paper transition-colors duration-150 hover:bg-primary/25"
                 >
                   {chip.label}
                   <X className="h-3 w-3" aria-hidden="true" />

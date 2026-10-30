@@ -580,7 +580,7 @@ function StatusPill({ sub, comp }: { sub: Subscription | null; comp: boolean }) 
           : comp
             ? ["Comp", "bg-muted text-muted-foreground"]
             : ["Active", "bg-success-soft text-success"];
-  return <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
+  return <span className={cn("rounded-lg px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
 }
 
 function Meter({

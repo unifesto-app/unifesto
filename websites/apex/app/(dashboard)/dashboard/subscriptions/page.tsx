@@ -262,7 +262,7 @@ function PlanFilter({
           aria-pressed={value === c.key}
           onClick={() => onChange(c.key)}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors",
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm transition-colors",
             value === c.key
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border text-muted-foreground hover:text-foreground"

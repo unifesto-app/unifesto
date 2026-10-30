@@ -194,7 +194,7 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const linkClass = (active: boolean) =>
-    `relative z-10 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+    `relative z-10 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 ${
       active ? "text-paper" : "text-paper/70 hover:text-paper"
     }`;
 
@@ -278,7 +278,7 @@ export default function Navbar() {
                     <motion.span
                       layoutId="nav-hover"
                       aria-hidden="true"
-                      className="absolute inset-0 -z-10 rounded-full bg-paper/[0.08]"
+                      className="absolute inset-0 -z-10 rounded-lg bg-paper/[0.08]"
                       transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
                     />
                   )}

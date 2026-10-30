@@ -75,7 +75,7 @@ export default function OrganisersPage() {
             <li key={p.id} className="shrink-0">
               <a
                 href={`#${p.id}`}
-                className="inline-block whitespace-nowrap rounded-full bg-night-2 px-3.5 py-1.5 text-sm text-paper/80 transition-colors duration-150 hover:bg-night-3 hover:text-paper"
+                className="inline-block whitespace-nowrap rounded-lg bg-night-2 px-3.5 py-1.5 text-sm text-paper/80 transition-colors duration-150 hover:bg-night-3 hover:text-paper"
               >
                 {p.title}
               </a>

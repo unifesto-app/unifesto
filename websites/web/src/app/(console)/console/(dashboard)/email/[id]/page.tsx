@@ -188,7 +188,7 @@ export default function SpaceCampaignDetailPage() {
                       <span className="flex items-center gap-1.5 font-medium text-foreground">
                         Variant {k.toUpperCase()}
                         {isWinner && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-1.5 py-0.5 text-xs font-medium text-success">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-success-soft px-1.5 py-0.5 text-xs font-medium text-success">
                             <Trophy className="h-3 w-3" weight="fill" />
                             Winner
                           </span>

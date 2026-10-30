@@ -240,7 +240,7 @@ export default function ProductPage() {
                   aria-pressed={labelFilter === l}
                   onClick={() => setLabelFilter(labelFilter === l ? null : l)}
                   className={cn(
-                    "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                    "rounded-lg border px-2.5 py-0.5 text-xs transition-colors",
                     labelFilter === l
                       ? "border-border-strong bg-primary-soft text-foreground"
                       : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground"
@@ -573,7 +573,7 @@ function TaskDialog({
           {task.labels.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {task.labels.map((l) => (
-                <span key={l} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <span key={l} className="rounded-lg bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {l}
                 </span>
               ))}

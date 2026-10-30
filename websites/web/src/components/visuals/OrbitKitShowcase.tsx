@@ -25,7 +25,7 @@ export function OrbitKitShowcase() {
               role="tab"
               aria-selected={on}
               onClick={() => setEdition(e)}
-              className={`relative z-10 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+              className={`relative z-10 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 ${
                 on ? "text-paper" : "text-paper/70 hover:text-paper"
               }`}
             >
@@ -33,7 +33,7 @@ export function OrbitKitShowcase() {
                 <motion.span
                   layoutId="kit-edition"
                   aria-hidden="true"
-                  className="absolute inset-0 -z-10 rounded-full bg-paper/[0.08]"
+                  className="absolute inset-0 -z-10 rounded-lg bg-paper/[0.08]"
                   transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
                 />
               )}

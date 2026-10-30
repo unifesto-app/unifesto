@@ -211,7 +211,7 @@ export default function SupportClient({ hasHelp }: { hasHelp: boolean }) {
                   key={category}
                   onClick={() => setFaqCategory(category)}
                   aria-pressed={active}
-                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                  className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors duration-150 ${
                     active ? "bg-primary text-primary-foreground" : "bg-night-2 text-paper/75 hover:bg-night-3 hover:text-paper"
                   }`}
                 >

@@ -170,7 +170,7 @@ export default function PlansPage() {
                       >
                         <span className="block font-medium text-foreground">{PLAN_LABEL[p.plan]}</span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">{p.tagline}</span>
-                        <span className="mt-2 inline-block rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                        <span className="mt-2 inline-block rounded-lg bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
                           {counts[p.plan] ?? 0} {counts[p.plan] === 1 ? "space" : "spaces"}
                         </span>
                       </th>

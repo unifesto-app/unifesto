@@ -415,7 +415,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
                 key={q}
                 type="button"
                 onClick={() => setReason(q)}
-                className={`rounded-full px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"}`}
+                className={`rounded-lg px-3 py-1 text-xs transition-colors ${reason === q ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/80 hover:text-foreground"}`}
               >
                 {q}
               </button>

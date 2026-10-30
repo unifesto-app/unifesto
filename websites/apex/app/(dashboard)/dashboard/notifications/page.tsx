@@ -495,7 +495,7 @@ function ComposeDialog({
               {users.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {users.map((u) => (
-                    <span key={u.id} className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm">
+                    <span key={u.id} className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1 text-sm">
                       {u.name}
                       <button
                         type="button"

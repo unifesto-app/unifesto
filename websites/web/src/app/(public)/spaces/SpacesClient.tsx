@@ -262,7 +262,7 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search spaces…"
               aria-label="Search spaces"
-              className="w-full rounded-full bg-paper/[0.07] py-3 pl-11 pr-4 text-sm text-paper placeholder:text-paper/50 outline-none transition-colors duration-150 focus:bg-paper/[0.11]"
+              className="w-full rounded-lg bg-paper/[0.07] py-3 pl-11 pr-4 text-sm text-paper placeholder:text-paper/50 outline-none transition-colors duration-150 focus:bg-paper/[0.11]"
             />
           </div>
         }
@@ -305,14 +305,14 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
                   </>
                 )}
               </p>
-              <div role="group" aria-label="Sort spaces" className="flex gap-1 rounded-full bg-paper/[0.07] p-1">
+              <div role="group" aria-label="Sort spaces" className="flex gap-1 rounded-lg bg-paper/[0.07] p-1">
                 {([["active", "Most active"], ["name", "A–Z"], ["location", "Location"]] as const).map(([mode, label]) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setSort(mode)}
                     aria-pressed={sort === mode}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                    className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
                       sort === mode ? "bg-primary text-ink" : "text-paper/70 hover:text-paper"
                     }`}
                   >

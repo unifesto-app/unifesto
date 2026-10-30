@@ -23,7 +23,7 @@ export default function EmptyState({ onClear, onCategory, suggestions = SUGGESTI
           <button
             key={cat}
             onClick={() => onCategory(cat)}
-            className="rounded-full bg-paper/[0.06] px-4 py-1.5 text-xs font-semibold text-paper/75 transition-colors duration-150 hover:bg-paper/[0.1] hover:text-paper"
+            className="rounded-lg bg-paper/[0.06] px-4 py-1.5 text-xs font-semibold text-paper/75 transition-colors duration-150 hover:bg-paper/[0.1] hover:text-paper"
           >
             {cat}
           </button>

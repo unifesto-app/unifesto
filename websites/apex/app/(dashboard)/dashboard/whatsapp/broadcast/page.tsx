@@ -176,7 +176,7 @@ function UserMultiSelect({
           {selected.map((u) => (
             <span
               key={u.id}
-              className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm"
+              className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1 text-sm"
             >
               {u.name}
               <button
