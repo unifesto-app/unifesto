@@ -809,16 +809,12 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 .footer-glow {
   position: absolute; inset: 8% -10% -20%; pointer-events: none;
   background:
-    radial-gradient(60% 48% at 50% 100%, rgb(77 141 255 / .34), transparent 72%),
-    radial-gradient(18% 26% at 64% 40%, rgb(143 180 255 / .22), transparent 72%);
+    radial-gradient(60% 48% at 50% 100%, rgb(77 141 255 / .34), transparent 72%);
 }
 :root[data-theme="light"] .footer-glow {
   background:
-    radial-gradient(60% 48% at 50% 100%, rgb(143 180 255 / .55), transparent 72%),
-    radial-gradient(18% 26% at 64% 40%, rgb(185 207 255 / .5), transparent 72%);
+    radial-gradient(60% 48% at 50% 100%, rgb(143 180 255 / .55), transparent 72%);
 }
-/* The orb sits wholly behind the card, so it's only ever seen through the
-   glass; one spilling past the card's edge showed a seam there. */
 .footer-glass.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.25); }
 :root[data-theme="light"] .footer-glass.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.4); }
 /* The footer picks up where the CTA band's horizon glow leaves off (see
