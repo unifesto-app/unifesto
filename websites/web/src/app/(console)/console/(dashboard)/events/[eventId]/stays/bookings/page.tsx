@@ -112,7 +112,7 @@ export default function StayBookingsPage() {
         ) : undefined
       }
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative sm:w-80">
           <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, pass or room" />

@@ -111,7 +111,7 @@ export default function EventOccurrencesPage() {
   // Not a recurring series — explain how to make one.
   if (event && !event.isRecurring) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader
           title="Occurrences"
           subtitle="Only recurring series have occurrences."
@@ -132,7 +132,7 @@ export default function EventOccurrencesPage() {
   const now = Date.now();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Occurrences"
         subtitle={ruleSummary ?? "Every date in this recurring series."}

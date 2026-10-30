@@ -342,7 +342,7 @@ export default function EventCertificatesPage() {
   // Designer takes over the whole page while active.
   if (designing) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader
           title={designing.template ? "Edit template" : "New template"}
           subtitle="Upload a background and position the text that fills in per recipient."
@@ -387,7 +387,7 @@ export default function EventCertificatesPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Certificates"
         subtitle="Design certificate templates and issue them to attendees."
@@ -521,7 +521,7 @@ export default function EventCertificatesPage() {
                     className="absolute inset-0 h-full w-full object-contain"
                   />
                 </div>
-                <CardContent className="space-y-3 py-4">
+                <CardContent className="space-y-4 py-4">
                   <div>
                     <p className="truncate font-medium text-foreground">
                       {tpl.name}
@@ -702,7 +702,7 @@ export default function EventCertificatesPage() {
           {/* Issued / Revoked ------------------------------------------------ */}
           <Card>
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <CardTitle className="text-base">Certificates</CardTitle>
                 <div className="flex items-center gap-3">
                   {reissueMessage && (
@@ -813,7 +813,7 @@ export default function EventCertificatesPage() {
                     {certPageItems.map((cert) => (
                       <div
                         key={cert.id}
-                        className="flex flex-wrap items-center gap-3 py-3"
+                        className="flex flex-wrap items-center gap-4 py-3"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">

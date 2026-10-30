@@ -116,7 +116,7 @@ export default function OtaPage() {
   const states = groups ? labelGroups(groups) : new Map<string, State>();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="OTA updates" subtitle="What's published on each update channel, and the rollout controls." />
 
       {stale && <StaleCard s={stale} />}
@@ -146,7 +146,7 @@ export default function OtaPage() {
 
       {!groups ? (
         !error && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full" />
             ))}
@@ -155,7 +155,7 @@ export default function OtaPage() {
       ) : groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing published on {channel} yet.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {groups.map((g) => {
             const s = states.get(g.group) ?? "past";
             const b = BADGE[s];

@@ -136,7 +136,7 @@ export default function RefundsPage() {
   }, [requests, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Refunds"
         subtitle="Refund requests across every space"
@@ -168,7 +168,7 @@ export default function RefundsPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -224,7 +224,7 @@ export default function RefundsPage() {
                 return (
                   <div
                     key={r.id}
-                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function RefundsPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+                    <div className="flex items-center gap-4 sm:flex-col sm:items-end">
                       <div className="text-right">
                         {r.status === "APPROVED" ? (
                           <p className="text-sm font-semibold text-success">

@@ -206,7 +206,7 @@ export default function EventTicketsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -214,7 +214,7 @@ export default function EventTicketsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Tickets"
         subtitle="Paid or free tickets, for individuals or groups, each with its own form"
@@ -231,7 +231,7 @@ export default function EventTicketsPage() {
       {error && <ErrorNotice message={error} />}
 
       {tickets.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {/* Bookings, not people: a group of five is one (B14). Overview counts people. */}
           <Stat label="Bookings sold" value={totals.registrations.toLocaleString("en-IN")} />
           <Stat label="Bookings checked in" value={totals.checkedIn.toLocaleString("en-IN")} />
@@ -272,7 +272,7 @@ export default function EventTicketsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {tickets.map((t, i) => (
             <TicketRow
               key={t.id}

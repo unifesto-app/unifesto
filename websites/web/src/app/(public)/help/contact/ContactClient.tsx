@@ -102,11 +102,11 @@ export default function ContactClient() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {!chat ? (
         <>
           <h2 className="text-lg font-bold text-paper">Ask a question</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <input
               required
               type="email"
@@ -140,7 +140,7 @@ export default function ContactClient() {
       )}
 
       {chat && (
-        <ul className="space-y-3" aria-live="polite">
+        <ul className="space-y-4" aria-live="polite">
           {chat.messages.map((m) => (
             <li key={m.id} className={m.side === "REQUESTER" ? "flex justify-end" : "flex justify-start"}>
               <div
@@ -164,7 +164,7 @@ export default function ContactClient() {
           <span className="font-semibold text-paper">{chat.contactEmail ?? "your email"}</span>, usually within 24 hours.
         </div>
       ) : (
-        <form id="assist-form" onSubmit={send} className="space-y-3">
+        <form id="assist-form" onSubmit={send} className="space-y-4">
           <textarea
             required
             rows={chat ? 2 : 4}
@@ -183,7 +183,7 @@ export default function ContactClient() {
               {error}
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <button type="submit" disabled={busy || !text.trim()} className="btn btn-primary disabled:opacity-60">
               {busy ? "Sending…" : chat ? "Send" : "Ask Assist"}
             </button>

@@ -102,7 +102,7 @@ export default function AddAttendeePage() {
   const ticketTypes = managed ?? event?.ticketTypes ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -123,7 +123,7 @@ export default function AddAttendeePage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -495,7 +495,7 @@ function SingleAddForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="add-name">Name</Label>
           <Input id="add-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Asha Rao" />
@@ -557,7 +557,7 @@ function SingleAddForm({
 
       {/* Team-wide questions (asked once for the whole group). */}
       {isGroup && teamFields.length > 0 && (
-        <div role="group" aria-labelledby="add-team-details" className="space-y-3 rounded-md border p-3">
+        <div role="group" aria-labelledby="add-team-details" className="space-y-4 rounded-md border p-3">
           <Label id="add-team-details" className="text-muted-foreground">Team details</Label>
           <QuestionInputs
             eventId={event.id}
@@ -573,7 +573,7 @@ function SingleAddForm({
       {/* Lead's own per-member answers (individual: the attendee's answers). */}
       {perMemberFields.length > 0 && (
         <div
-          className="space-y-3"
+          className="space-y-4"
           role={isGroup ? "group" : undefined}
           aria-labelledby={isGroup ? "add-lead-details" : undefined}
         >
@@ -601,9 +601,9 @@ function SingleAddForm({
               all fields required for each member
             </span>
           </Label>
-          <div role="group" aria-labelledby="add-other-members-label" className="space-y-3">
+          <div role="group" aria-labelledby="add-other-members-label" className="space-y-4">
             {Array.from({ length: extraSlots }).map((_, i) => (
-              <div key={i} className="space-y-3 rounded-md border p-3">
+              <div key={i} className="space-y-4 rounded-md border p-3">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Input
                     placeholder={`Member ${i + 2} name`}
@@ -681,7 +681,7 @@ function SingleAddForm({
               ) : reqOpen ? (
                 <div className="space-y-2">
                   <Label id="add-how-many-seats-do-you-need-to-ad-label">How many seats do you need to add for free?</Label>
-                  <div role="group" aria-labelledby="add-how-many-seats-do-you-need-to-ad-label" className="flex flex-wrap items-center gap-3">
+                  <div role="group" aria-labelledby="add-how-many-seats-do-you-need-to-ad-label" className="flex flex-wrap items-center gap-4">
                     <Input
                       type="number"
                       min={1}

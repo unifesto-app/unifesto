@@ -221,7 +221,7 @@ export default function AppVersionPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="App Version"
         subtitle="Control the mobile app's in-app update prompt for each store."
@@ -254,12 +254,12 @@ export default function AppVersionPage() {
       )}
 
       {loading || !config ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <PlatformCard
             platform="ios"
             value={config.ios}

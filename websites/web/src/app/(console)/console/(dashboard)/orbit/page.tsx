@@ -57,7 +57,7 @@ export default function OrbitPage() {
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={data.name}
         subtitle={`Rank ${data.rank} of ${data.campusCount} campuses. A club is active once it has published an event.`}
@@ -75,7 +75,7 @@ export default function OrbitPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard icon={Globe} title="Tier" value={data.tierName} tone="brand" />
         <StatCard icon={Stack} title="Active clubs" value={`${data.activeClubs} / ${data.clubs}`} />
         <StatCard icon={CalendarBlank} title="Events published" value={data.publishedEvents} />

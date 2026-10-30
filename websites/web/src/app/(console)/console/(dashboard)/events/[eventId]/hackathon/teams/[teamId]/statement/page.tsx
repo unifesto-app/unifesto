@@ -126,7 +126,7 @@ export default function TeamStatementPage() {
   return (
     <HackPage eventId={eventId} back={back} title={team.teamCode ?? "Problem statement"} subtitle={team.name} error={error} ready>
       {cur ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p className="flex items-center gap-1.5 text-sm text-success">
             <LockSimple className="h-4 w-4" weight="fill" />
             {cur.setBy?.kind === "ORGANISER" ? "Assigned by organisers" : `Locked in${cur.setBy?.name ? ` by ${cur.setBy.name}` : ""}`}
@@ -153,7 +153,7 @@ export default function TeamStatementPage() {
             list.statements.length === 0 ? (
               <p className="text-sm text-muted-foreground">Your list is empty. Add statements from the Problem statements page, or write one.</p>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {list.statements.map((s) => {
                   const mine = s.id === cur?.statementId;
                   const full = s.placesLeft === 0 && !mine;
@@ -194,7 +194,7 @@ export default function TeamStatementPage() {
                 <Chips options={themes.map((t) => ({ value: t.id, label: t.name }))} value={themeId} onChange={edit(setThemeId)} />
               </Field>
             ))}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-4">
             <Button onClick={assign} disabled={saving || unlocking || (source === "LIST" && !picked)}>
               {saving ? "Saving…" : cur ? "Change and lock" : "Assign and lock"}
             </Button>

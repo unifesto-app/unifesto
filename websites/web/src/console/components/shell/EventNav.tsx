@@ -177,7 +177,7 @@ export function EventNav({
       {/* Event-only operators have no space rail; renders nothing for everyone else. */}
       <QuestionsLink collapsed={collapsed} onNavigate={onNavigate} />
 
-      <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-5")}>
+      <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-4")}>
         {navGroups.map((group, groupIdx) => {
           const links = (
             <div className="space-y-0.5">

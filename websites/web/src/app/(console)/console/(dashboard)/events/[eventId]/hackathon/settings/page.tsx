@@ -142,7 +142,7 @@ export default function HackathonSettingsPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard title="Team ID" description="Teams keep their ID for good, even if their registration is cancelled. Changing the format only affects teams imported after the change.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Prefix">

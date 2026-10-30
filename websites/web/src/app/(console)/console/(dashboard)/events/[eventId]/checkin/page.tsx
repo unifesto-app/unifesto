@@ -89,7 +89,7 @@ export default function EventCheckinPage() {
   const activeType = types.find((t) => t.id === activeTypeId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Check-in"
         subtitle={
@@ -232,7 +232,7 @@ function RecentCheckinsCard({
           Recent check-ins
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 px-4 py-4">
+      <CardContent className="space-y-4 px-4 py-4">
         {err && <ErrorNotice message={err} />}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -328,7 +328,7 @@ function CheckinPointsCard({
           Check-in points
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Add the points where you&apos;ll check people in (e.g. Entry, Lunch,
           Day 1, Session A). Attendees are checked in separately at each.

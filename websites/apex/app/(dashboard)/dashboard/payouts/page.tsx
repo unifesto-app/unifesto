@@ -166,7 +166,7 @@ export default function PayoutsPage() {
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Payouts"
         subtitle="Money released to organisations for their events"
@@ -207,7 +207,7 @@ export default function PayoutsPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <Input
             value={search}
@@ -263,7 +263,7 @@ export default function PayoutsPage() {
                 return (
                   <div
                     key={p.id}
-                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export default function PayoutsPage() {
                         {p.failureReason && ` · ${p.failureReason}`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+                    <div className="flex items-center gap-4 sm:flex-col sm:items-end">
                       <div className="text-right">
                         <p className="text-sm font-semibold">
                           {money(p.netAmount)}
@@ -416,7 +416,7 @@ function CreatePayoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1.5">
               <label htmlFor="payout-event-id" className="text-xs font-medium text-muted-foreground">Event ID</label>

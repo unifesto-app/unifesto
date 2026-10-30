@@ -176,7 +176,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
       </div>
 
       {/* Card body */}
-      <div className="flex flex-1 flex-col gap-3 p-6">
+      <div className="flex flex-1 flex-col gap-4 p-6">
         <div>
           <h3 className="text-base font-bold leading-snug text-paper line-clamp-2">
             <Link

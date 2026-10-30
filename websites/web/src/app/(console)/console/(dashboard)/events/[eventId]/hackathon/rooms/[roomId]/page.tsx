@@ -103,7 +103,7 @@ export default function RoomEditorPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard description="Teams see the name, location and notes on their hackathon screen.">
           <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
             <Field label="Name">
@@ -120,7 +120,7 @@ export default function RoomEditorPage() {
             <Textarea value={draft.notes} placeholder="Wi-Fi: HackNet · Power strips at every table" onChange={(e) => set({ notes: e.target.value })} />
           </Field>
         </FormCard>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <FormCard title="Volunteers here" description="Teams in this room see their volunteers, and every query they raise goes to them too.">
             {staff.length ? (
               <MultiChips

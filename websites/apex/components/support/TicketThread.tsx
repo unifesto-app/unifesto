@@ -83,7 +83,7 @@ export function TicketThread({
 
   return (
     <div className="flex flex-col gap-4">
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-4">
         {messages.map((m) => {
           // Actions (refund approved, request accepted…) read as a timeline line.
           if (m.side === "SYSTEM") {

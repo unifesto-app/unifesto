@@ -233,7 +233,7 @@ export default function UserDetailPage() {
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <Button
           variant="ghost"
@@ -469,7 +469,7 @@ export default function UserDetailPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Contact</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 <ContactRow
                   Icon={Envelope}
                   label="Email"
@@ -819,7 +819,7 @@ function ContactRow({
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Skeleton className="h-16 w-16 rounded-full" />
         <div className="space-y-2">

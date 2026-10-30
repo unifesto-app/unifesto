@@ -95,7 +95,7 @@ export function AiFeaturesCard() {
           all?.map((f) => {
             const on = enabled.includes(f);
             return (
-              <div key={f} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div key={f} className="flex flex-wrap items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
                     {ABOUT[f]?.name ?? f}{" "}

@@ -58,7 +58,7 @@ export default async function PricingPage() {
       <Section pad="tight" id="plans">
         {/* Each card spans 7 rows of one shared grid (subgrid), so name, price,
             fee and button line up across cards however their text wraps. */}
-        <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
           {plans.map((plan) => {
             const featured = plan.id === "growth";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
@@ -135,7 +135,7 @@ export default async function PricingPage() {
         <p data-reveal="blur" className="mx-auto mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-paper/65">
           Start on General. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
         </p>
-        <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href="/request-space" className="btn btn-lg btn-primary">
             Request a Space
             <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />

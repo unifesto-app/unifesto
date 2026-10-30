@@ -49,7 +49,7 @@ export function QuestionInputs({
   const shown = [...fields].sort((a, b) => a.order - b.order).filter((f) => visible.has(f.id));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {shown.map((f) =>
         f.type === "SECTION" ? (
           <div key={f.id} className="pt-2">

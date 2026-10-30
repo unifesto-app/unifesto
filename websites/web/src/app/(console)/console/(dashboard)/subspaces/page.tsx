@@ -107,7 +107,7 @@ export default function SubSpacesPage() {
 
   if (busy) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-64" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -126,7 +126,7 @@ export default function SubSpacesPage() {
   const maxMembers = Math.max(1, ...rows.map((r) => r.members));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sub-spaces"
         subtitle={
@@ -207,7 +207,7 @@ export default function SubSpacesPage() {
                 registrations={totals.registrations}
                 revenue={totals.revenue}
               />
-              <div className="ml-4 space-y-3 border-l-2 border-border pl-5 pt-3">
+              <div className="ml-4 space-y-4 border-l-2 border-border pl-5 pt-3">
                 {tree.roots.map((r) => (
                   <TreeNode
                     key={r.id}
@@ -348,7 +348,7 @@ function TreeNode({
       </div>
 
       {kids.length > 0 && (
-        <div className="ml-4 mt-3 space-y-3 border-l-2 border-border pl-5">
+        <div className="ml-4 mt-3 space-y-4 border-l-2 border-border pl-5">
           {kids.map((k) => (
             <TreeNode
               key={k.id}

@@ -137,7 +137,7 @@ export default function HackathonQueuesPage() {
       ready
     >
       {!active.length && <p className="text-sm text-muted-foreground">Nobody is in a queue right now.</p>}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {active.map((q) => (
           <ListGroup
             key={`${q.kind}:${q.id}`}

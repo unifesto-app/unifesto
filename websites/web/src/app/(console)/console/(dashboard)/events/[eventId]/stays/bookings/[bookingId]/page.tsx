@@ -159,7 +159,7 @@ export default function StayBookingPage() {
           {b.paymentDueAt ? ` until ${when(b.paymentDueAt)}` : ""}. The bed is held.
         </Banner>
       ) : b.status === "CONFIRMED" ? (
-        <Card className="flex flex-wrap items-center gap-3 p-4">
+        <Card className="flex flex-wrap items-center gap-4 p-4">
           {unpaidAtProperty && (
             <Button variant="outline" onClick={() => void run("paid", () => markStayPaid(eventId, b.id))} disabled={!!busy}>
               <CurrencyInr className="h-4 w-4" /> Mark {rupees(b.totalAmount)} collected
@@ -171,7 +171,7 @@ export default function StayBookingPage() {
           {unpaidAtProperty && <p className="text-xs text-muted-foreground">Collect the payment first.</p>}
         </Card>
       ) : b.status === "CHECKED_IN" ? (
-        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
           <span className="flex items-center gap-2 text-sm text-foreground">
             <CheckCircle className="h-5 w-5 text-success" weight="fill" /> Checked in {b.checkedInAt ? when(b.checkedInAt) : ""}
           </span>
@@ -183,8 +183,8 @@ export default function StayBookingPage() {
         <Banner icon={<Warning className="h-5 w-5 text-destructive" />}>{b.rejectionReason || b.cancellationReason || STATUS_LABELS[b.status]}</Banner>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
           {/* ── Room & notes ── */}
           {desk ? (
             <ListGroup title="Room">
@@ -250,7 +250,7 @@ export default function StayBookingPage() {
           </ListGroup>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {b.note && (
             <FormCard title="Their note">
               <p className="whitespace-pre-line text-sm text-muted-foreground">{b.note}</p>

@@ -102,7 +102,7 @@ export function CannedRepliesDialog({
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {replies.length === 0 ? (
               <p className="text-sm text-muted-foreground">No saved replies yet.</p>
             ) : (

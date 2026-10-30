@@ -161,8 +161,8 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Users
@@ -321,7 +321,7 @@ export default function AdminUsersPage() {
 
 function TableSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-8 w-8 rounded-full" />

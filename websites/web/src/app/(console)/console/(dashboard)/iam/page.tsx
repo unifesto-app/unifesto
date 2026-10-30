@@ -112,7 +112,7 @@ export default function SpaceIamPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="IAM"
         subtitle="Tune what your event roles can do in this space. Changes apply immediately and only within this space."

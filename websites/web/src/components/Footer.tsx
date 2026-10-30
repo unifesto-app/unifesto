@@ -136,7 +136,7 @@ export default function Footer() {
                   ))}
                 </div>
                 <nav aria-label="Legal" className="mt-8">
-                  <ul className="flex max-w-md flex-wrap gap-x-5 gap-y-2">
+                  <ul className="flex max-w-md flex-wrap gap-x-4 gap-y-2">
                     {LEGAL_LINKS.map((l) => (
                       <li key={l.href}>
                         <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
@@ -152,7 +152,7 @@ export default function Footer() {
                 {COLUMNS.map((col) => (
                   <div key={col.title}>
                     <h2 className="mb-4 text-sm font-semibold text-paper">{col.title}</h2>
-                    <ul className="flex flex-col gap-3">
+                    <ul className="flex flex-col gap-4">
                       {col.links.map((l) => (
                         <IfNotEmpty key={l.href} href={l.href}>
                           <li>
@@ -168,7 +168,7 @@ export default function Footer() {
               </nav>
             </div>
 
-            <div className="mt-16 flex flex-col gap-6 border-t border-paper/10 pt-6 md:flex-row md:items-center md:justify-between">
+            <div className="mt-16 flex flex-col gap-4 border-t border-paper/10 pt-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-1">
                 {socials.map((s) => (
                   <a

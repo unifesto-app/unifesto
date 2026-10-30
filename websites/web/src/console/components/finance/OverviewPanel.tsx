@@ -148,7 +148,7 @@ export function OverviewPanel({
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-72 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -159,7 +159,7 @@ export function OverviewPanel({
   if (!fin) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Money flow — the hero */}
       <Card>
         <CardHeader>
@@ -257,7 +257,7 @@ function MoneyFlow({
   const netPct = sales > 0 ? Math.round((net / sales) * 100) : 0;
 
   return (
-    <div className="flex flex-col items-stretch gap-3 lg:h-56 lg:flex-row lg:gap-0">
+    <div className="flex flex-col items-stretch gap-4 lg:h-56 lg:flex-row lg:gap-0">
       {/* Node 1 — Collected */}
       <FlowNode className="lg:flex-1">
         <NodeHead icon={Money} label="Collected" />

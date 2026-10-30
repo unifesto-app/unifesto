@@ -95,7 +95,7 @@ export default function CareerApplicationsPage() {
     new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium" });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link
         href="/dashboard/careers"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -117,7 +117,7 @@ export default function CareerApplicationsPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
@@ -133,14 +133,14 @@ export default function CareerApplicationsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {applications.map((a) => (
             <Card key={a.id}>
-              <CardContent className="space-y-3 py-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <CardContent className="space-y-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium text-foreground">{a.fullName}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <a
                         href={`mailto:${a.email}`}
                         className="inline-flex items-center gap-1 hover:text-foreground"

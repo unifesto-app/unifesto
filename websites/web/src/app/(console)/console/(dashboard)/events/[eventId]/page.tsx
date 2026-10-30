@@ -132,7 +132,7 @@ export default function EventOverviewPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-[600px] w-full" />
       </div>
@@ -141,7 +141,7 @@ export default function EventOverviewPage() {
 
   if (error || !event) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <ErrorNotice message={error || "Event not found"} />
       </div>
     );
@@ -153,7 +153,7 @@ export default function EventOverviewPage() {
   const peopleUnit = hasPeople ? "attendees" : "bookings";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with Actions */}
       <PageHeader
         title="Event Overview"
@@ -295,7 +295,7 @@ export default function EventOverviewPage() {
       )}
 
       {/* Event Details */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Event Details</CardTitle>
@@ -375,7 +375,7 @@ export default function EventOverviewPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-4 py-4">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {event.ticketTypes.map((ticket) => (
                   <div
                     key={ticket.id}

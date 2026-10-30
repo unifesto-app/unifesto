@@ -87,7 +87,7 @@ export default function EventContentPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -96,7 +96,7 @@ export default function EventContentPage() {
 
   if (error || !event) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Event content" />
         <ErrorNotice message={error || "Event not found"} />
       </div>
@@ -142,7 +142,7 @@ export default function EventContentPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Event content"
         subtitle="Agenda, speakers, prizes, contacts and FAQs shown on the public event page. Changes save immediately."

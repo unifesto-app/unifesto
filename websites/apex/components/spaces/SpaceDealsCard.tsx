@@ -121,7 +121,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
           Negotiated terms. An event deal beats a space deal; blank fields use the rate card.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         {current && (
           <p className="text-sm text-muted-foreground">

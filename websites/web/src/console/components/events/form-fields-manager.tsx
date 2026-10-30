@@ -440,7 +440,7 @@ export function FormFieldsManager({
           {draft.type === "FILE" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Allowed files">
-                <div className="flex flex-wrap gap-3 pt-1">
+                <div className="flex flex-wrap gap-4 pt-1">
                   {FILE_KINDS.map((k) => (
                     <label key={k.value} className="flex items-center gap-2 text-sm">
                       <input

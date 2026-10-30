@@ -232,7 +232,7 @@ export default function SpaceMembersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Members"
         subtitle="Manage who belongs to this space and what they can do."
@@ -315,7 +315,7 @@ export default function SpaceMembersPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Roster</CardTitle>
               <CardDescription>
@@ -357,7 +357,7 @@ export default function SpaceMembersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {actionError && <ErrorNotice message={actionError} />}
           {error ? (
             <ErrorNotice message={error} />
@@ -399,7 +399,7 @@ export default function SpaceMembersPage() {
                 return (
                   <li
                     key={m.id}
-                    className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground">
@@ -485,7 +485,7 @@ export default function SpaceMembersPage() {
           already in review. Rare and consequential, so it sits apart at the
           bottom rather than competing with day-to-day roster work. */}
       {isCreator && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground">Ownership</h2>
           <TransferOwnershipCard
             spaceId={spaceId}
@@ -716,10 +716,10 @@ function AddMemberCard({
           Search by name, username, or email, then choose a role.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         {selected ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
               <Label id="members-selected-user-label">Selected user</Label>
               <div role="group" aria-labelledby="members-selected-user-label" className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">

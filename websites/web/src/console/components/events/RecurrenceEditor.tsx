@@ -114,7 +114,7 @@ export function RecurrenceEditor({
           )}
         >
           {/* Frequency + interval */}
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="rec-interval">Repeat every</Label>
               <Input

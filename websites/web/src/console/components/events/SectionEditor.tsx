@@ -222,7 +222,7 @@ export function SectionEditor<T>({
           </Button>
         )}
       </CardHeader>
-      <CardContent className="space-y-3 px-4 py-4">
+      <CardContent className="space-y-4 px-4 py-4">
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         {list.length === 0 && !isFormOpen && (
@@ -275,7 +275,7 @@ export function SectionEditor<T>({
         )}
 
         {isFormOpen && (
-          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+          <div className="space-y-4 rounded-md border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">
                 {editingId === "new" ? `New ${addLabel.toLowerCase()}` : "Edit"}
@@ -290,7 +290,7 @@ export function SectionEditor<T>({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {fields.map(renderField)}
             </div>
             <div className="flex items-center justify-end gap-2">

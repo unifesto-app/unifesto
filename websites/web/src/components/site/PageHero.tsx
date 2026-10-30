@@ -62,7 +62,7 @@ export default function PageHero({
             </div>
           )}
           {actions && (
-            <div className="enter mt-9 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ ["--d" as string]: `${lines.length * 90 + 320}ms` }}>
+            <div className="enter mt-9 flex flex-col gap-4 sm:flex-row sm:items-center" style={{ ["--d" as string]: `${lines.length * 90 + 320}ms` }}>
               {actions}
             </div>
           )}

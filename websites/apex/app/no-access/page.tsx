@@ -68,7 +68,7 @@ export default function NoAccessPage() {
   if (status === "checking") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-3 text-center">
+        <div className="w-full max-w-md space-y-4 text-center">
           <Skeleton className="mx-auto h-8 w-32" />
           <Skeleton className="mx-auto h-4 w-56" />
         </div>
@@ -114,7 +114,7 @@ export default function NoAccessPage() {
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4">
           {user && (
             <div className="rounded-md border border-border bg-card px-3 py-2.5 text-sm">
               <p className="font-medium text-foreground">{user.name}</p>

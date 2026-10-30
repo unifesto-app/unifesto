@@ -24,7 +24,7 @@ export default function ErrorPage({
           <CardTitle>Something went wrong</CardTitle>
           <CardDescription>We couldn&apos;t load this page. Try again in a moment.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center gap-3">
+        <CardContent className="flex flex-col items-center gap-4">
           <Button onClick={reset}>Try again</Button>
           {error.digest && <p className="font-mono text-xs text-muted-foreground">Ref {error.digest}</p>}
         </CardContent>

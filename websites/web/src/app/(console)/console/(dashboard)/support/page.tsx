@@ -110,7 +110,7 @@ export default function SpaceSupportPage() {
   if (selected) {
     const closed = selected.status === "CLOSED";
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Button
           variant="ghost"
           size="sm"
@@ -164,7 +164,7 @@ export default function SpaceSupportPage() {
           </CardHeader>
           <CardContent className="pt-5">
             {detailLoading || !selected.messages ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Skeleton className="h-16 w-2/3" />
                 <Skeleton className="ml-auto h-16 w-2/3" />
               </div>
@@ -190,7 +190,7 @@ export default function SpaceSupportPage() {
 
   /* ------------------------------ List view ------------------------------ */
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Unifesto support"
         subtitle="Raise an issue for this space and track your conversations"
@@ -268,7 +268,7 @@ export default function SpaceSupportPage() {
                           {t.subject}
                         </p>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{CATEGORY_LABEL[t.category]}</span>
                         <span>Updated {timeAgo(t.lastMessageAt)}</span>
                         {typeof t._count?.messages === "number" && (

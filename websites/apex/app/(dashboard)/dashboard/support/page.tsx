@@ -270,14 +270,14 @@ export default function AssistInboxPage() {
     const closed = selected.status === "CLOSED";
     const email = requesterEmail(selected);
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Button variant="ghost" size="sm" className="-ml-2 w-fit" onClick={() => setSelected(null)}>
           <CaretLeft className="h-4 w-4" /> Back to inbox
         </Button>
 
         {error && <ErrorNotice message={error} />}
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader className="gap-2 border-b border-border">
               <div className="flex flex-wrap items-center gap-2">
@@ -297,7 +297,7 @@ export default function AssistInboxPage() {
             </CardHeader>
             <CardContent className="pt-5">
               {detailLoading || !selected.messages ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <Skeleton className="h-16 w-2/3" />
                   <Skeleton className="ml-auto h-16 w-2/3" />
                 </div>
@@ -316,7 +316,7 @@ export default function AssistInboxPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <AssistCopilot
               key={selected.id}
               ticketId={selected.id}
@@ -430,7 +430,7 @@ export default function AssistInboxPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Support desk"
         subtitle="Every support case on the platform: questions, refunds, requests and reports"
@@ -442,7 +442,7 @@ export default function AssistInboxPage() {
       />
       <CannedRepliesDialog open={cannedOpen} onOpenChange={setCannedOpen} replies={canned} onChange={loadCanned} />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((s) => (
           <StatCard key={s.title} {...s} loading={!stats} />
         ))}
@@ -467,7 +467,7 @@ export default function AssistInboxPage() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -551,7 +551,7 @@ export default function AssistInboxPage() {
                         )}
                         {t.sla?.overdue && <Badge variant="destructive">Overdue</Badge>}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{requesterName(t)}</span>
                         <span>{DESK_LABEL[t.desk]}</span>
                         <span>{CATEGORY_LABEL[t.category]}</span>

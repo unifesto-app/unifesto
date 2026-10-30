@@ -108,14 +108,14 @@ export default function OrphanedPaymentsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Orphaned Payments"
         subtitle="Captured Razorpay payments whose money never became a paid ticket — because the registration they were made against was deleted (orphaned) or its webhook was missed (unsettled). Attach each one to the right registration in a click."
       />
 
       {/* Date window. */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
           <label htmlFor="range-from" className="text-xs font-medium text-muted-foreground">From</label>
           <Input id="range-from" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="w-40" />
@@ -134,7 +134,7 @@ export default function OrphanedPaymentsPage() {
 
       {/* Counts. */}
       {data && !loading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Tile label="Needs attention" value={String(data.counts.total)} />
           <Tile label="Orphaned" value={String(data.counts.orphaned)} tone={data.counts.orphaned ? "danger" : undefined} />
           <Tile label="Unsettled" value={String(data.counts.unsettled)} tone={data.counts.unsettled ? "warn" : undefined} />
@@ -143,7 +143,7 @@ export default function OrphanedPaymentsPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 w-full" />
           ))}
@@ -158,7 +158,7 @@ export default function OrphanedPaymentsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <SearchBox
             value={search}
             onChange={(v) => {
@@ -235,7 +235,7 @@ function OrphanRow({
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant={isOrphan ? "destructive" : "warning"}>
@@ -307,7 +307,7 @@ function OrphanRow({
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <Button onClick={onAttach} disabled={state.busy}>
             {state.busy ? "Attaching…" : hasTarget ? "Attach & mark paid" : "Attach to entered id"}
           </Button>

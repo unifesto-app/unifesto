@@ -72,7 +72,7 @@ export default function BlogPage() {
     new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Blog"
         subtitle="Write and publish posts for the public blog."
@@ -90,7 +90,7 @@ export default function BlogPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
@@ -113,7 +113,7 @@ export default function BlogPage() {
       ) : (
         <div className="divide-y divide-border rounded-xl border border-border">
           {posts.map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center gap-3 p-4">
+            <div key={p.id} className="flex flex-wrap items-center gap-4 p-4">
               {p.coverImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -311,7 +311,7 @@ function PostDialog({
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="blog-category">Category</Label>
               <Input id="blog-category"

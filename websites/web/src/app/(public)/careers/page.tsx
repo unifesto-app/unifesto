@@ -79,7 +79,7 @@ export default function CareersPage() {
       {/* Filters + list */}
       <section className="px-5 pb-24 pt-14 sm:px-8 md:pt-20">
         <div className="mx-auto max-w-5xl">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <select
               value={filter.department}
               onChange={(e) => setFilter({ ...filter, department: e.target.value })}
@@ -131,7 +131,7 @@ export default function CareersPage() {
                 </p>
               </div>
             ) : (
-              <ul className="flex flex-col gap-3" data-stagger="rise">
+              <ul className="flex flex-col gap-4" data-stagger="rise">
                 {careers.map((career) => (
                   <li key={career.id}>
                     <button
@@ -140,7 +140,7 @@ export default function CareersPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <h3 className="text-lg font-semibold text-white">{career.title}</h3>
-                        <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-paper/75">
+                        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-paper/75">
                           <span className="inline-flex items-center gap-1.5">
                             <MapPin size={16} weight="bold" className="text-paper/65" />
                             {career.location}
@@ -201,7 +201,7 @@ export default function CareersPage() {
                   <h2 className="text-2xl font-bold tracking-[-0.02em] text-white sm:text-3xl">
                     {selectedCareer.title}
                   </h2>
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-paper/75">
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-paper/75">
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin size={16} weight="bold" className="text-paper/65" />
                       {selectedCareer.location}
@@ -241,7 +241,7 @@ export default function CareersPage() {
                 </div>
               )}
 
-              <div className="mt-6 space-y-7">
+              <div className="mt-6 space-y-4">
                 <div>
                   <h3 className="text-base font-semibold text-white">About the role</h3>
                   <p className="mt-2 leading-relaxed text-paper/75">{selectedCareer.description}</p>
@@ -258,7 +258,7 @@ export default function CareersPage() {
                 )}
               </div>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <button
                   onClick={() => setApplyFor(selectedCareer)}
                   className={`${CTA} flex-1`}

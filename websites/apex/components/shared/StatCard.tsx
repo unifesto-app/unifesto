@@ -27,7 +27,7 @@ export function StatCard({
   tone = "neutral",
 }: StatCardProps) {
   return (
-    <Card className="flex h-full flex-col gap-3 pb-1 pt-4">
+    <Card className="flex h-full flex-col gap-4 pb-1 pt-4">
       <div className="flex items-center gap-1.5">
         <IconCmp
           aria-hidden="true"

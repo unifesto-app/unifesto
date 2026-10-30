@@ -16,7 +16,7 @@ export default function Unavailable({ what }: { what: "space" | "event" }) {
           <p className="mt-4 max-w-xl text-paper/75">
             It isn&apos;t taking registrations at the moment. Tickets you already hold still work at the door.
           </p>
-          <div className="mt-10 flex flex-wrap gap-3">
+          <div className="mt-10 flex flex-wrap gap-4">
             <Link href="/events" className="btn btn-lg btn-primary">Browse events</Link>
             <Link href="/" className="btn btn-lg btn-secondary">Home</Link>
           </div>

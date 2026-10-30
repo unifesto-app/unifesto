@@ -47,8 +47,8 @@ export default function EventLayout({
 
   if (loading || !event) {
     return (
-      <div className="space-y-6">
-        <div className="space-y-3">
+      <div className="space-y-4">
+        <div className="space-y-4">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-7 w-72" />
         </div>
@@ -66,10 +66,10 @@ export default function EventLayout({
   }[event.status] as "neutral" | "success" | "destructive";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Event identity; the header's breadcrumbs carry the way back. */}
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           {/* Not an h1: each page's own PageHeader is the page's one h1 (B12). */}
           <p className="text-xl font-semibold text-foreground">{event.title}</p>
           <Badge variant={statusColor} className="text-xs capitalize">

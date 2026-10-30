@@ -182,7 +182,7 @@ export default function EventCoHostingPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -190,7 +190,7 @@ export default function EventCoHostingPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Co-Hosting"
         subtitle="Invite other spaces to co-host this event. Each one accepts before it is listed or credited."
@@ -275,7 +275,7 @@ export default function EventCoHostingPage() {
           <CardHeader>
             <CardTitle className="text-base">Invite a co-host</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               The invited space&apos;s Space Admins accept or decline. Once accepted, the event
               is listed on their space, credited to them, and their Space Admins can edit it.

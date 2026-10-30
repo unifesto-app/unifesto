@@ -159,7 +159,7 @@ export default function ComposeCampaignPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="Compose campaign"
         subtitle="Pick an audience, write the email, optionally A/B-test the subject, then send or schedule."
@@ -255,7 +255,7 @@ export default function ComposeCampaignPage() {
           )}
 
           {target === "SEGMENT" && (
-            <div className="grid grid-cols-1 gap-3 rounded-md border border-border p-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 rounded-md border border-border p-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="joinedAfter">Joined after</Label>
                 <Input

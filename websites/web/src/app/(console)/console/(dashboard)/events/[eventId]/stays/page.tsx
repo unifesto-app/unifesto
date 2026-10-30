@@ -80,8 +80,8 @@ export default function StaysPage() {
         />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="space-y-3 p-5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="space-y-4 p-5">
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <QrCode className="h-5 w-5" weight="fill" /> Property desk
           </p>

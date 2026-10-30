@@ -64,7 +64,7 @@ export function SendToOrganiser({
             : "Pass this question to the space desk of an event."}
         </p>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {!open ? (
           <Button variant="outline" size="sm" className="w-full" onClick={() => setOpen(true)}>
             Pick an event

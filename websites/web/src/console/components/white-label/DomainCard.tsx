@@ -114,7 +114,7 @@ export function DomainCard({
             your sender name.
           </p>
         ) : !domain ? (
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-4">
             {kind === "email" && (
               <>
                 <div className="w-32 space-y-1.5">

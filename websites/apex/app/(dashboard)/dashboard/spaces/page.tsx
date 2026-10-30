@@ -90,7 +90,7 @@ export default function SpacesPage() {
     : `${total.toLocaleString("en-IN")} space${total === 1 ? "" : "s"} across the platform`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Spaces" subtitle={subtitle} />
 
       <div className="relative max-w-sm">

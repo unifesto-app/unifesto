@@ -118,7 +118,7 @@ export default function EventQuizzesPage() {
 
   if (!quizzes) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -126,7 +126,7 @@ export default function EventQuizzesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Live quizzes"
         subtitle="Run a timed quiz during the event. Questions go out one at a time, attendees answer from their ticket in the Unifesto app, and the leaderboard updates after each question."
@@ -211,7 +211,7 @@ function QuizBuilder({
       <CardHeader>
         <CardTitle>{editing ? "Edit quiz" : "New quiz"}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="quiz-title">Title</Label>
           <Input
@@ -233,7 +233,7 @@ function QuizBuilder({
         </label>
 
         {draft.questions.map((q, i) => (
-          <fieldset key={i} className="space-y-3 rounded-lg border border-border p-4">
+          <fieldset key={i} className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-2">
               <legend className="text-sm font-medium text-foreground">Question {i + 1}</legend>
               {draft.questions.length > 1 && (
@@ -340,7 +340,7 @@ function QuizBuilder({
           </Button>
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <Button onClick={onSave} disabled={!!problem || saving}>
             {editing ? "Save changes" : "Save as draft"}
           </Button>
@@ -394,7 +394,7 @@ function QuizCard({
         </div>
         {badge}
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {current && <LiveQuestion question={current} total={z.questions.length} skew={skew} />}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -473,7 +473,7 @@ function LiveQuestion({ question: q, total, skew }: { question: ManagedQuiz["que
   const max = Math.max(1, ...q.results);
 
   return (
-    <div className="space-y-3 rounded-lg border border-border p-4">
+    <div className="space-y-4 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
         <span>
           Question {q.position + 1} of {total}

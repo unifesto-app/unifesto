@@ -391,7 +391,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               className={FIELD}
             />
           </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1 text-sm text-paper/65">
               <span>Starts</span>
               <input required type="datetime-local" value={form.start} onChange={(e) => set("start", e.target.value)} className={FIELD} />
@@ -401,7 +401,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               <input required type="datetime-local" min={form.start} value={form.end} onChange={(e) => set("end", e.target.value)} className={FIELD} />
             </label>
           </div>
-          <fieldset className="grid gap-3 sm:grid-cols-2">
+          <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="sr-only">Format</legend>
             {(
               [
@@ -465,7 +465,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               className={FIELD}
             />
           </Field>
-          <fieldset className="grid gap-3 sm:grid-cols-2">
+          <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="sr-only">Space type</legend>
             {TYPES.map((t) => (
               <label

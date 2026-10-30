@@ -133,7 +133,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Reports"
         subtitle="Generate a formatted PDF summary of this event: a full report, or a custom one with just the sections you need."
@@ -150,11 +150,11 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle className="text-base">Generate a report</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4">
           {/* Type toggle */}
           <div className="space-y-1.5">
             <Label id="reports-report-type-label">Report type</Label>
-            <div role="group" aria-labelledby="reports-report-type-label" className="grid gap-3 sm:grid-cols-2">
+            <div role="group" aria-labelledby="reports-report-type-label" className="grid gap-4 sm:grid-cols-2">
               {(
                 [
                   {
@@ -293,7 +293,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* History -------------------------------------------------------- */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h2 className="text-sm font-semibold text-muted-foreground">History</h2>
         {loading ? (
           <div className="flex justify-center py-16">
@@ -310,7 +310,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {reports.map((r) => (
               <ReportRow
                 key={r.id}
@@ -348,7 +348,7 @@ function ReportRow({
           </p>
         </div>
       )}
-      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <CardContent className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate font-medium text-foreground">

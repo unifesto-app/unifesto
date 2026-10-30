@@ -113,7 +113,7 @@ export function EventContentSections({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SectionEditor<EventAgenda>
         title="Agenda"
         description="Schedule of talks and sessions."

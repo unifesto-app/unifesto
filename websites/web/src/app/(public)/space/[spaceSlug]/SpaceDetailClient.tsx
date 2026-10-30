@@ -266,7 +266,7 @@ export default function SpaceDetailClient({ params, initialSpace = null, session
 
             {eventCount === 0 && (
               <Block title="Events">
-                <Card className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+                <Card className="flex flex-col items-center gap-4 px-6 py-12 text-center">
                   <CalendarBlank className="h-8 w-8 text-paper/45" aria-hidden />
                   <p className="text-sm text-paper/65">No events yet. Check back soon.</p>
                 </Card>

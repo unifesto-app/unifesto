@@ -77,7 +77,7 @@ export function TicketRow({ ticket: t }: { ticket: Ticket }) {
  */
 export function TicketsFrame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title={title} />
       <div className="border-t border-border pt-6">{children}</div>
     </div>
@@ -291,7 +291,7 @@ export default function TicketsClient({ nonce }: { nonce?: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="My tickets" />
       {body}
       {waitlist.some((w) => w.offer?.needsPayment) && <Script src={CHECKOUT_JS} strategy="afterInteractive" nonce={nonce} />}

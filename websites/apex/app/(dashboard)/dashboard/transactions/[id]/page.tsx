@@ -136,7 +136,7 @@ export default function TransactionDetailPage() {
     txn?.paymentStatus === "PARTIALLY_REFUNDED";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <Button
           variant="ghost"
@@ -266,7 +266,7 @@ export default function TransactionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-2">
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                   <Row label="Total amount" value={money(txn.totalAmount)} />
                   <Row
                     label="Paid to gateway"
@@ -317,7 +317,7 @@ export default function TransactionDetailPage() {
                   Attendee
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 <Link
                   href={`/dashboard/users/${txn.user.id}`}
                   className="text-sm font-medium text-foreground hover:underline"
@@ -344,7 +344,7 @@ export default function TransactionDetailPage() {
                   Event
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     {txn.event.title}
@@ -373,7 +373,7 @@ export default function TransactionDetailPage() {
                   Curator &amp; space
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 <div>
                   <Link
                     href={`/dashboard/spaces/${txn.space.id}`}
@@ -466,7 +466,7 @@ export default function TransactionDetailPage() {
                   Refund requests ({txn.refundRequests.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 pt-2">
+              <CardContent className="space-y-4 pt-2">
                 {txn.refundRequests.map((r) => (
                   <div
                     key={r.id}
@@ -800,7 +800,7 @@ function IconRow({
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-6 w-48" />

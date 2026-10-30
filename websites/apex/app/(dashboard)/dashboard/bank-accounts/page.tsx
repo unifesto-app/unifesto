@@ -99,13 +99,13 @@ export default function AdminBankAccountsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Bank accounts"
         subtitle="Verify organiser payout accounts. A verified primary account is required before payouts queue for an event."
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <Select value={status} onValueChange={(v) => setStatus(v as BankAccountStatus | "all")}>
           <SelectTrigger className="w-48" aria-label="Filter by status">
             <SelectValue />
@@ -122,12 +122,12 @@ export default function AdminBankAccountsPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
         </div>
       ) : accounts.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <span className="grid h-12 w-12 place-items-center rounded-full bg-secondary">
               <Bank className="h-6 w-6 text-secondary-foreground" />
             </span>
@@ -135,13 +135,13 @@ export default function AdminBankAccountsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {accounts.map((a) => {
             const s = STATUS[a.status];
             const organiser = a.user?.fullName || a.user?.username || "Organiser";
             return (
               <Card key={a.id}>
-                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-semibold text-foreground">

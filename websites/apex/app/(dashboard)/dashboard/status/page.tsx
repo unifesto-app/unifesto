@@ -137,7 +137,7 @@ export default function StatusPage() {
     summary?.incidents.filter((i) => i.status !== "RESOLVED").length ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Status"
         subtitle="Live service health & uptime for Unifesto"
@@ -221,7 +221,7 @@ export default function StatusPage() {
               Incidents
             </h2>
             {summary && summary.incidents.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {summary.incidents.map((inc) => (
                   <IncidentCard key={inc.id} incident={inc} onChanged={load} />
                 ))}
@@ -306,7 +306,7 @@ function OutsideView() {
               <p className="p-4 text-sm text-muted-foreground">No monitors set up.</p>
             ) : (
               ext.monitors.map((m) => (
-                <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div key={m.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -331,7 +331,7 @@ function OutsideView() {
       <div>
         <h2 className="mb-3 text-base font-semibold text-foreground">Maintenance</h2>
         <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Recount seats</p>
               <p className="text-xs text-muted-foreground">
@@ -438,7 +438,7 @@ function IncidentCard({
 
   return (
     <Card>
-      <CardContent className="space-y-3 p-5">
+      <CardContent className="space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={impactVariant(incident.impact)}>
             {INCIDENT_IMPACT_LABEL[incident.impact]}

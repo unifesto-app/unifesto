@@ -72,7 +72,7 @@ export default function MySpacesPage() {
   const shownRequests = sortedRequests.slice(0, requestCount);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="My Spaces"
         actions={
@@ -116,7 +116,7 @@ export default function MySpacesPage() {
           <Section title="Spaces I'm in" description="Clubs and communities I joined.">
             <ul className="-my-3 divide-y divide-border">
               {joined.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
                       {s.logo_url ? (

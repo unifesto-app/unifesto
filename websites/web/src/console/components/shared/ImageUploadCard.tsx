@@ -219,7 +219,7 @@ export function ImageUploadCard({
           <CardTitle className="text-base">{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
-        <CardContent className="space-y-3 px-4 py-4">
+        <CardContent className="space-y-4 px-4 py-4">
           <div
             className={`relative w-full overflow-hidden border border-border bg-muted ${aspectClassName} ${previewClassName} ${containerClassName}`}
           >

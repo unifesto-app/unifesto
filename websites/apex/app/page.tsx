@@ -50,7 +50,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-8">
-      <div className="w-full max-w-sm space-y-3 text-center">
+      <div className="w-full max-w-sm space-y-4 text-center">
         <Skeleton className="mx-auto h-8 w-32" />
         <Skeleton className="mx-auto h-4 w-48" />
         <p className="pt-2 text-sm text-muted-foreground">

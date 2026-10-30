@@ -9,7 +9,7 @@ interface TableSkeletonProps {
 /** Row-shaped loading placeholder — the calm alternative to a spinner. */
 export function TableSkeleton({ rows = 8, avatar = false }: TableSkeletonProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           {avatar && <Skeleton className="h-8 w-8 rounded-full" />}

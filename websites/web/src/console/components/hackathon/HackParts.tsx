@@ -66,7 +66,7 @@ export function HackPage({
 }) {
   const b = back === undefined ? { href: hackBase(eventId), label: "Hackathon" } : back;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {b && (
         <Link href={b.href} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> {b.label}
@@ -229,7 +229,7 @@ export function Field({ label, hint, children, htmlFor }: { label: ReactNode; hi
 /** A form card: titled section of fields. */
 export function FormCard({ title, description, children }: { title?: ReactNode; description?: ReactNode; children: ReactNode }) {
   return (
-    <Card className="space-y-5 p-5">
+    <Card className="space-y-4 p-5">
       {(title || description) && (
         <div>
           {title && <h2 className="text-sm font-semibold text-foreground">{title}</h2>}

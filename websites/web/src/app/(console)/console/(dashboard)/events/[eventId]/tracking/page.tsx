@@ -54,7 +54,7 @@ export default function EventTrackingPage() {
     })}`;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <PageHeader title="Tracking" subtitle="Where people find this event and what brings them in." />
       {error && <ErrorNotice message={error} />}
       {loading ? (

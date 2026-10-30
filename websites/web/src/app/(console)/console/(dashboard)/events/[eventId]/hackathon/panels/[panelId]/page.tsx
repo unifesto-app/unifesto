@@ -105,7 +105,7 @@ export default function PanelEditorPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard>
           <Field label="Name">
             <Input value={draft.name} placeholder="Panel A" onChange={(e) => set({ name: e.target.value })} />

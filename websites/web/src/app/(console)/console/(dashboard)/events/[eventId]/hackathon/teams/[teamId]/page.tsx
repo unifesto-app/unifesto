@@ -116,7 +116,7 @@ export default function HackathonTeamPage() {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard title="Team">
           <Field label="Team ID">
             <Input value={draft.teamCode} onChange={(e) => set({ teamCode: e.target.value })} autoCapitalize="characters" />
@@ -149,7 +149,7 @@ export default function HackathonTeamPage() {
           )}
         </FormCard>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {(!cancelled || team.statement) && (
             <ListGroup
               title="Problem statement"

@@ -90,7 +90,7 @@ export default function ResultTeamPage() {
           .filter(Boolean)
           .join(" · ");
         return (
-          <section key={r.id} className="space-y-3">
+          <section key={r.id} className="space-y-4">
             <h2 className="text-sm font-semibold text-foreground">{title}</h2>
             {p.links.length > 0 && (
               <ListGroup>
@@ -107,7 +107,7 @@ export default function ResultTeamPage() {
             )}
             <div className="grid gap-4 md:grid-cols-2">
               {p.evaluations.map((ev) => (
-                <Card key={ev.judgmentId} className="space-y-3 p-4">
+                <Card key={ev.judgmentId} className="space-y-4 p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">{ev.judgeName}</p>
                     {!mentoring && <p className="font-display text-lg text-foreground">{formatScore(ev.total)}</p>}

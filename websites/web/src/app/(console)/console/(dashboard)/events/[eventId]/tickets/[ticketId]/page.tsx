@@ -209,7 +209,7 @@ export default function TicketDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -218,7 +218,7 @@ export default function TicketDetailPage() {
 
   if (!ticket || !draft) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Ticket" />
         <ErrorNotice message={error || "Ticket not found"} />
         <Button variant="outline" onClick={() => router.push(ticketsHref)}>
@@ -236,7 +236,7 @@ export default function TicketDetailPage() {
   const { stats } = ticket;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <Button
           variant="ghost"
@@ -266,7 +266,7 @@ export default function TicketDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MiniStat
           label="Seats taken"
           value={

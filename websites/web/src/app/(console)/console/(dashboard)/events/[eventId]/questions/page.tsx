@@ -74,7 +74,7 @@ export default function EventQuestionsPage() {
 
   if (!board) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -85,7 +85,7 @@ export default function EventQuestionsPage() {
   const shown = board.questions.filter((q) => q.status === tab);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Live Q&A"
         subtitle="Attendees ask and upvote questions from their ticket in the Unifesto app while the event is on. The most-voted rise to the top."
@@ -137,7 +137,7 @@ export default function EventQuestionsPage() {
       {shown.length === 0 ? (
         <p className="text-sm text-muted-foreground">{TABS.find((t) => t.value === tab)!.empty}</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {shown.map((q) => (
             <QuestionRow key={q.id} q={q} busy={busy === q.id} eventId={eventId} run={run} />
           ))}
@@ -159,7 +159,7 @@ function QuestionRow({ q, busy, eventId, run }: { q: Question; busy: boolean; ev
             <CaretUp className="h-4 w-4" />
             <span className="text-sm font-medium tabular-nums text-foreground">{q.votes}</span>
           </div>
-          <div className="min-w-0 flex-1 space-y-3">
+          <div className="min-w-0 flex-1 space-y-4">
             <div className="space-y-1">
               <p className="whitespace-pre-wrap break-words text-sm text-foreground">{q.text}</p>
               <p className="text-xs text-muted-foreground">

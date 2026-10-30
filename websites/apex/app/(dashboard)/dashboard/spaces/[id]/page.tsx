@@ -145,7 +145,7 @@ export default function SpaceDetailPage() {
   }, [id]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link
         href="/dashboard/spaces"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -155,7 +155,7 @@ export default function SpaceDetailPage() {
       </Link>
 
       {loading ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Skeleton className="h-16 w-72 rounded-lg" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -218,7 +218,7 @@ function SpaceManagement({
   const [tab, setTab] = useState<"overview" | "members">("overview");
   const [editing, setEditing] = useState(false);
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={space.name}
         subtitle={
@@ -333,7 +333,7 @@ function SpaceManagement({
                   No description added yet.
                 </p>
               )}
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                 <DetailRow
                   icon={CalendarBlank}
                   label="Created"
@@ -436,7 +436,7 @@ function SpaceBrandingCard({ space }: { space: SpaceWithHierarchy }) {
           Update this space&apos;s logo and banner on the organiser&apos;s behalf.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-6 sm:grid-cols-2">
+      <CardContent className="grid gap-4 sm:grid-cols-2">
         <ImageUploadCard
           title="Logo"
           description="Square image works best."
@@ -499,7 +499,7 @@ function SuspendBrandingCard({ spaceId }: { spaceId: string }) {
           settings but can&rsquo;t make them render until you restore it.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         <div className="flex gap-2">
           <Button variant="destructive" onClick={() => run(true)} disabled={busy}>
@@ -558,7 +558,7 @@ function DeleteSpaceCard({
           undone. A space with sub-spaces must have them detached first.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         <div className="space-y-1.5">
           <Label htmlFor="confirm-delete">
@@ -749,7 +749,7 @@ function MembersPanel({
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Members</CardTitle>
               <CardDescription>
@@ -768,7 +768,7 @@ function MembersPanel({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {actionError && <ErrorNotice message={actionError} />}
           {error ? (
             <ErrorNotice message={error} />
@@ -800,7 +800,7 @@ function MembersPanel({
                 return (
                   <li
                     key={m.id}
-                    className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground">
@@ -974,10 +974,10 @@ function AddMemberCard({
           Search by name, username, or email, then choose a role.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         {selected ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-1">
               <Label id="id-selected-user-label">Selected user</Label>
               <div role="group" aria-labelledby="id-selected-user-label" className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
@@ -1242,7 +1242,7 @@ function EditSpacePanel({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="edit-space-city">City</Label>
               <Input
@@ -1384,7 +1384,7 @@ function AdminSpacePanel({
 
         {isPending ? (
           rejecting ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <Input
                 placeholder="Reason for rejection (optional)"
                 value={reason}
@@ -1447,7 +1447,7 @@ function AdminSpacePanel({
             </div>
           )
         ) : (
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-4">
             <div className="min-w-[12rem] space-y-1.5">
               <Label htmlFor="space-status">Lifecycle state</Label>
               <Select
@@ -1504,7 +1504,7 @@ function AdminSpacePanel({
         {/* Verified = the badge on public pages. Only grant it once you have
             confirmed the team runs, or has permission from, the organisation
             this space is named after (official email domain, letter, etc). */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
               {verified ? "Verified" : "Not verified"}
@@ -1959,7 +1959,7 @@ function HierarchyPanel({
             No hierarchy actions are available for this space right now.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="hierarchy-action">Action</Label>
               <Select

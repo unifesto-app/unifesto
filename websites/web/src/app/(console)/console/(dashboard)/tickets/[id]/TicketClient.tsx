@@ -155,7 +155,7 @@ export default function TicketClient({ id }: { id: string }) {
 
   return (
     <TicketsFrame title={t.event.title}>
-      <div className="space-y-8">
+      <div className="space-y-4">
         <div>
           <Link href="/console/tickets" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             ← My tickets
@@ -266,7 +266,7 @@ export default function TicketClient({ id }: { id: string }) {
         )}
 
         {!cancelled && (details?.editable || (feedback?.enabled && (feedback.open || feedback.response))) && (
-          <section className="flex flex-wrap gap-3">
+          <section className="flex flex-wrap gap-4">
             {details?.editable && (
               <Link href={`/console/tickets/${t.id}/details`} className="btn btn-sm btn-secondary">
                 Edit my details
@@ -298,7 +298,7 @@ export default function TicketClient({ id }: { id: string }) {
           <section className="space-y-2">
             {canCancel &&
               (sure === "cancel" ? (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                   <button
                     type="button"
                     disabled={!!busy}
@@ -318,7 +318,7 @@ export default function TicketClient({ id }: { id: string }) {
               ))}
             {canDelete &&
               (sure === "delete" ? (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                   <button
                     type="button"
                     disabled={!!busy}
@@ -404,7 +404,7 @@ function RefundSection({ refunds, canAsk, busy, onAsk }: { refunds: Refund[]; ca
         );
       })}
       {canAsk && (
-        <form onSubmit={submit} className="mt-3 space-y-3">
+        <form onSubmit={submit} className="mt-3 space-y-4">
           <p className="text-sm text-muted-foreground">
             Only the ticket price is refunded; booking fees are not. Approved refunds go back to the original payment method in 5 to 7
             business days.
@@ -443,7 +443,7 @@ function Report({ busy, onSend }: { busy: boolean; onSend: (reason: string, deta
           e.preventDefault();
           onSend(reason, details.trim() || undefined);
         }}
-        className="mt-3 space-y-3"
+        className="mt-3 space-y-4"
       >
         <select value={reason} onChange={(e) => setReason(e.target.value)} aria-label="What's wrong" className={FIELD}>
           {REPORT_REASONS.map((r) => (

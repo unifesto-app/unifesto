@@ -12,7 +12,7 @@ const SUGGESTIONS = ["Hackathon", "Workshop", "Cultural", "Entrepreneurship"];
 /* No results: say so plainly, offer a way back, and a few doors to try. */
 export default function EmptyState({ onClear, onCategory, suggestions = SUGGESTIONS }: EmptyStateProps) {
   return (
-    <div className="animate-pop-in col-span-full flex flex-col items-center justify-center gap-5 rounded-3xl bg-night-2 px-6 py-20 text-center">
+    <div className="animate-pop-in col-span-full flex flex-col items-center justify-center gap-4 rounded-3xl bg-night-2 px-6 py-20 text-center">
       <MagnifyingGlass className="h-10 w-10 text-primary" weight="bold" aria-hidden="true" />
       <div>
         <p className="text-lg font-bold text-paper">No events match that.</p>

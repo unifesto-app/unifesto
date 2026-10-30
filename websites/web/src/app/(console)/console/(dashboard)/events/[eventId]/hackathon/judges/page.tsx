@@ -47,7 +47,7 @@ export default function HackathonJudgesPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <ListGroup
           title={`Judges · ${onlyJudges.length}`}
           description="Add judges by phone number or email. They sign in to Unifesto as usual and find the judge console under Judging. They see team names, problem statements and project links, never contact details."

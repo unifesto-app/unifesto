@@ -333,7 +333,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
       {/* Sticky command bar: search + status + filter toggle stay in reach */}
       <div className="blur-bg sticky top-16 z-30 md:top-[4.5rem]">
         <div className="mx-auto max-w-7xl px-5 py-3 sm:px-8">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
             {/* Search */}
             <div className="relative flex-1 md:max-w-sm">
               <MagnifyingGlass
@@ -390,7 +390,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
 
           {/* Expandable filter panel */}
           {filtersOpen && (
-            <div className="animate-pop-in mt-3 grid origin-top gap-5 rounded-3xl bg-night-2 p-6 sm:grid-cols-3">
+            <div className="animate-pop-in mt-3 grid origin-top gap-4 rounded-3xl bg-night-2 p-6 sm:grid-cols-3">
               <FilterSelect
                 label="City"
                 all="Every city"
@@ -464,13 +464,13 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
         </p>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <EventCardSkeleton key={i} />
             ))}
           </div>
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
             {events.map((event, i) => (
               <EventCard key={event.id} event={event} index={startIndex + i} />
             ))}

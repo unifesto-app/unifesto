@@ -127,7 +127,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Messages"
         subtitle="Every push, email and WhatsApp message, and what happened to it"
@@ -173,9 +173,9 @@ export default function MessagesPage() {
 
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle className="text-base">Delivery log</CardTitle>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="relative">
                 <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -314,14 +314,14 @@ function SuppressionList({ onChange }: { onChange: () => void }) {
   return (
     <Card>
       <CardHeader className="gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <CardTitle className="text-base">Email suppression list</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               Hard bounces and spam complaints. Nothing but sign-in codes goes to these addresses.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative">
               <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

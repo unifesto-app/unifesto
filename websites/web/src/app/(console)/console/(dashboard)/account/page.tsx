@@ -166,7 +166,7 @@ export default function ProfilePage() {
   const showBar = dirty || saved;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex items-center gap-5">
         <label
           title="Change my photo"
@@ -211,7 +211,7 @@ export default function ProfilePage() {
           <p className="mt-0.5 truncate text-sm text-muted-foreground">
             {me.username && <>@{me.username} · </>}Member since {since}
           </p>
-          <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {stats.map((s) => (
               <Link key={s.label} href={s.href} className="text-muted-foreground transition-colors hover:text-foreground">
                 <strong className="font-semibold tabular-nums text-foreground">{s.value}</strong> {s.label}
@@ -227,7 +227,7 @@ export default function ProfilePage() {
       {/* The page already pads its foot, so the last section doesn't add its own. */}
       <form onSubmit={save} className="[&>section:last-of-type]:pb-0">
         <Section title="Profile" description="My name, username, gender and a line about me.">
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full name</Label>
                 <Input
@@ -328,7 +328,7 @@ export default function ProfilePage() {
         </Section>
 
         <Section title="Links" description="Where people can find me online.">
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {LINKS.map(({ key, label, placeholder, Icon }) => (
               <div key={key} className="space-y-2">
                 <Label htmlFor={key}>{label}</Label>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
         <div
           inert={!showBar}
           className={cn(
-            "absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-popover px-4 py-3 shadow-md transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none",
+            "absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-popover px-4 py-3 shadow-md transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none",
             showBar ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
           )}
         >

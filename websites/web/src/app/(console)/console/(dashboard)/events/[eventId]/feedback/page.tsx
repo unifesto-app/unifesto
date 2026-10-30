@@ -56,7 +56,7 @@ export default function EventFeedbackPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Feedback"
         subtitle="Attendees rate the event in the app once it starts"

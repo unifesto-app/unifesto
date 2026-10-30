@@ -8,7 +8,7 @@ import { RefundsPanel } from "@/console/components/finance/RefundsPanel";
 export default function EventRefundsPage() {
   const eventId = useParams().eventId as string;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Refunds"
         subtitle="Requests for this event. Forward the ones you've checked to Unifesto, who sends the money back."

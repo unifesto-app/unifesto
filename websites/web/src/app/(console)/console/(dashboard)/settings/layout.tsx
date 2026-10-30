@@ -18,7 +18,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const tabs = TABS.filter((t) => can(t.requires));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {tabs.length > 1 && (
         <nav className="inline-flex h-10 items-center rounded-md bg-muted p-1 text-muted-foreground">
           {tabs.map((t) => {

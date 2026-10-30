@@ -429,7 +429,7 @@ export default function AttendeeDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={backToList} className="-ml-2">
           <ArrowLeft className="h-4 w-4" />
@@ -782,7 +782,7 @@ export default function AttendeeDetailPage() {
                     <p className="mb-2 text-xs font-medium text-muted-foreground">
                       Team details
                     </p>
-                    <div className="flex flex-wrap gap-x-8 gap-y-2">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
                       {seatView.sharedFields.map((f, j) => (
                         <div key={j} className="flex flex-col">
                           <span className="text-[11px] text-muted-foreground">
@@ -845,7 +845,7 @@ export default function AttendeeDetailPage() {
                       }`}
                     >
                       {/* Phone: actions drop below the name so it isn't squeezed out. */}
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                             {seat.seatIndex}
@@ -944,7 +944,7 @@ export default function AttendeeDetailPage() {
                           answers (GitHub, etc.). Team-wide answers are hoisted to
                           the summary above, so this only shows what's theirs. */}
                       {hasDetails && (
-                        <div className="mt-2.5 grid grid-cols-1 gap-x-6 gap-y-2 pl-11 sm:grid-cols-2">
+                        <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-2 pl-11 sm:grid-cols-2">
                           {mobile && (
                             <div className="flex flex-col">
                               <span className="text-[11px] text-muted-foreground">
@@ -1147,7 +1147,7 @@ function TransferRequestCard({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Ask an admin to move this ticket to another Unifesto account. The same
           ticket, QR code, payment and group members stay attached — only the

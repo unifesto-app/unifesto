@@ -109,7 +109,7 @@ function AdminEvents() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Events"
         subtitle={`${summaryTotal.toLocaleString("en-IN")} events ${spaceId ? `hosted by ${events[0]?.space?.name ?? "this space"}` : "across the platform"}`}
@@ -128,7 +128,7 @@ function AdminEvents() {
         <StatCard title="Showing" value={events.length} hint={`Page ${page} of ${totalPages}`} icon={Ticket} loading={loading} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title or slug" className="pl-9" />
@@ -238,7 +238,7 @@ function AdminEvents() {
 
 function TableSkeleton() {
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-4 p-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-4 w-6" />

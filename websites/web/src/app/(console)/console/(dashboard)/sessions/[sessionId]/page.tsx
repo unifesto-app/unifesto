@@ -277,7 +277,7 @@ export default function ManageSessionPage() {
     session.status === "DRAFT" || session.status === "CANCELLED";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={session.title}
         subtitle={`${session.registeredCount} registered${
@@ -296,14 +296,14 @@ export default function ManageSessionPage() {
 
       {error && <ErrorNotice message={error} />}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <StatusBadge status={session.status} />
         <span className="text-sm text-muted-foreground">
           {price > 0 ? inr(price) : "Free"}
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-4">
         {isLive && isRunning && (
           <Button
             onClick={() =>
@@ -434,7 +434,7 @@ export default function ManageSessionPage() {
         <CardHeader>
           <CardTitle>Details</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-4 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span>
@@ -486,7 +486,7 @@ export default function ManageSessionPage() {
           <CardHeader>
             <CardTitle>Recording</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {isLive ? (
               // In-app sessions record automatically (LiveKit Egress → storage);
               // the link is filled in for you — nothing to paste.

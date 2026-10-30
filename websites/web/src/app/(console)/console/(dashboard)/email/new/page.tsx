@@ -189,7 +189,7 @@ export default function SpaceComposeCampaignPage() {
     (!targetDef.needs || Boolean(targetId));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Compose campaign"
         subtitle="Pick an audience, write the email, optionally A/B-test the subject, then send or schedule."
@@ -202,9 +202,9 @@ export default function SpaceComposeCampaignPage() {
 
       {error && <ErrorNotice message={error} />}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Editor column */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-4 lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -377,7 +377,7 @@ export default function SpaceComposeCampaignPage() {
               <CardTitle className="text-base">Review &amp; send</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <dl className="space-y-3 text-sm">
+              <dl className="space-y-4 text-sm">
                 <div className="flex items-start gap-2">
                   <Users className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                   <div className="min-w-0">

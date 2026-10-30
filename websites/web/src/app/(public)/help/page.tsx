@@ -42,7 +42,7 @@ export default async function HelpPage() {
       />
 
       <Section surface="night" pad="tight">
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {[...groups].map(([category, items]) => (
             <section key={category}>
               <h2 className="mb-2 px-1 text-sm font-medium text-paper/55">{category}</h2>

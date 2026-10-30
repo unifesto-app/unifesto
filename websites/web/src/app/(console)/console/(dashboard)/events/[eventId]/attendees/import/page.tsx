@@ -60,7 +60,7 @@ export default function ImportAttendeesPage() {
   const ticketTypes = event?.ticketTypes ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -81,7 +81,7 @@ export default function ImportAttendeesPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -317,7 +317,7 @@ function BulkUploadForm({
 /** The dry-run review: what committing this file would do, before it happens. */
 function ImportPreviewView({ preview }: { preview: ImportPreview }) {
   return (
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="space-y-4 rounded-md border p-3">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Info className="h-4 w-4 text-muted-foreground" />
         Review — nothing has been imported yet
@@ -397,7 +397,7 @@ function ImportPreviewView({ preview }: { preview: ImportPreview }) {
 function ImportReportView({ report }: { report: ImportReport }) {
   const problems = report.rows.filter((r) => r.status !== "created");
   return (
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="space-y-4 rounded-md border p-3">
       <div className="flex flex-wrap gap-2 text-sm">
         <Badge variant="success">{report.created} added</Badge>
         {report.skipped > 0 && (

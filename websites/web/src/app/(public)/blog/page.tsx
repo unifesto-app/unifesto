@@ -97,7 +97,7 @@ function PostCard({ post }: { post: BlogPost }) {
       className="group flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
     >
       <CardImage post={post} />
-      <div className="flex flex-1 flex-col gap-3 p-6">
+      <div className="flex flex-1 flex-col gap-4 p-6">
         <h3 className="text-lg font-semibold leading-snug text-paper">
           {post.title}
         </h3>
@@ -188,7 +188,7 @@ export default async function BlogPage({
               >
                 Latest posts
               </h2>
-              <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
+              <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
                 {regularPosts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}

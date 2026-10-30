@@ -234,7 +234,7 @@ export function ShortLinksPanel({ scope, canEdit, destination }: { scope: Traffi
         </div>
       )}
       {adding && (
-        <div className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid gap-4 p-4 sm:grid-cols-[1fr_1fr_auto]">
           <Input placeholder="Name, e.g. Campus posters" value={title} onChange={(e) => setTitle(e.target.value)} />
           <Input placeholder="Source tag, e.g. poster" value={source} onChange={(e) => setSource(e.target.value)} />
           <div className="flex gap-2">
@@ -322,11 +322,11 @@ export function TrackingLinks({ url, campaign }: { url: string; campaign: string
           onClick={() => void copy(withUtm(url, c.source, c.medium, campaign), c.source)}
         />
       ))}
-      <div className="space-y-3 p-4">
+      <div className="space-y-4 p-4">
         <p className="flex items-center gap-2 text-sm text-foreground">
           {icon(LinkSimple)} Build a tracking link
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input placeholder="Source, e.g. college, poster" value={source} onChange={(e) => setSource(e.target.value)} />
           <Input placeholder="Medium (optional), e.g. qr, print" value={medium} onChange={(e) => setMedium(e.target.value)} />
         </div>

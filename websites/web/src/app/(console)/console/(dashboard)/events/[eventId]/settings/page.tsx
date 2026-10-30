@@ -167,7 +167,7 @@ export default function EventSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -176,7 +176,7 @@ export default function EventSettingsPage() {
 
   if (error && !event) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <PageHeader title="Event settings" />
         <ErrorNotice message={error} />
       </div>
@@ -205,7 +205,7 @@ export default function EventSettingsPage() {
   const canDelete = isCancelled || isDraft;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Event settings"
         subtitle="Manage event status and danger zone actions"
@@ -320,7 +320,7 @@ export default function EventSettingsPage() {
               Danger zone
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 px-4 py-4">
+          <CardContent className="space-y-4 px-4 py-4">
             {/* Cancel Event — also while it's running (a called-off day two). */}
             {(isPublished || isOngoing) && (
               <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
@@ -567,7 +567,7 @@ export default function EventSettingsPage() {
           <DialogHeader>
             <DialogTitle>Hide this event?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="space-y-4 text-sm text-muted-foreground">
             <p>
               <strong className="text-foreground">{event.title}</strong> will
               disappear from listings, search and attendees&apos; ticket lists.
@@ -714,7 +714,7 @@ function Deadline({
 }) {
   const local = value ? toLocalDatetime(value) : "";
   return (
-    <div className="space-y-3 pl-4">
+    <div className="space-y-4 pl-4">
       <Toggle
         label={toggleLabel}
         checked={!!value}
@@ -810,7 +810,7 @@ function EventPayoutAccountCard({ eventId }: { eventId: string }) {
       <CardHeader>
         <CardTitle className="text-base">Payout account</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 px-4 py-4">
+      <CardContent className="space-y-4 px-4 py-4">
         <p className="text-sm text-muted-foreground">
           Where this event&apos;s earnings are paid out. Leave as the default to
           use the event creator&apos;s primary account, or route it to another

@@ -231,7 +231,7 @@ export default function EventSubEventsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-40 w-full rounded-lg" />
       </div>
@@ -239,7 +239,7 @@ export default function EventSubEventsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sub-events"
         subtitle="Turn this event into a “big event” by grouping other events under it. Each sub-event keeps its own tickets, capacity and check-in."
@@ -259,7 +259,7 @@ export default function EventSubEventsPage() {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               These spaces want to list this event as a sub-event under one of
               their events. Approving nests it beneath their parent; this event
@@ -374,7 +374,7 @@ export default function EventSubEventsPage() {
                 </Button>
               </Link>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Pick another event to nest beneath this one. Your own events
                 attach instantly; an event you co-host but another space owns is

@@ -102,7 +102,7 @@ export default function AwardEditorPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard>
           <Field label="Award">
             <Input value={draft.title} placeholder="Winner" onChange={(e) => set({ title: e.target.value })} />

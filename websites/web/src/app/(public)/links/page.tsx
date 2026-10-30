@@ -59,7 +59,7 @@ export default async function LinksPage() {
         </h1>
         <p className="mt-2 text-center text-[15px] text-paper/65">{SITE.tagline} Events for clubs, fests and hackathons in India.</p>
 
-        <ul className="mt-9 flex w-full flex-col gap-3">
+        <ul className="mt-9 flex w-full flex-col gap-4">
           {primary.map(({ href, label, sub, icon: Icon }) => (
             <li key={href}>
               <a

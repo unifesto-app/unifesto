@@ -49,7 +49,7 @@ export function FlagCard({
         </CardTitle>
         <CardDescription>{children}</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+      <CardContent className="flex flex-wrap items-center justify-between gap-4">
         {enabled === null && !error ? (
           <Skeleton className="h-9 w-40" />
         ) : (

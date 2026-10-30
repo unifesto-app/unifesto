@@ -142,7 +142,7 @@ export default function ContentReportsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Content Reports"
         subtitle="Events, spaces and tickets that users flagged from the app. Review the reported item, then resolve it (action taken) or dismiss it (nothing wrong). Each new report is also emailed to report-now@unifesto.app."
@@ -183,7 +183,7 @@ export default function ContentReportsPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 w-full" />
           ))}
@@ -197,7 +197,7 @@ export default function ContentReportsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {visible.map((r) => (
             <ReportRow
               key={r.id}
@@ -234,7 +234,7 @@ function ReportRow({
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={STATUS_BADGE[r.status]}>{r.status.charAt(0) + r.status.slice(1).toLowerCase()}</Badge>

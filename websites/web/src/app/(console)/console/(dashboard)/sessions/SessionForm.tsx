@@ -137,10 +137,10 @@ export function SessionForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error && <ErrorNotice message={error} />}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>Basics</CardTitle>

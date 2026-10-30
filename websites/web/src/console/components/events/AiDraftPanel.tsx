@@ -173,8 +173,8 @@ export function AiDraftPanel({
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-6 px-4 pb-4 text-sm">
-        <div className="space-y-3">
+      <CardContent className="space-y-4 px-4 pb-4 text-sm">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ai-notes">A few lines about the event</Label>
             <Textarea
@@ -197,7 +197,7 @@ export function AiDraftPanel({
               maxLength={2000}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <Button type="button" onClick={draft} disabled={drafting || (!notes.trim() && !url.trim())}>
               {drafting ? "Drafting…" : hasDraft ? "Draft again" : "Draft"}
             </Button>
@@ -235,7 +235,7 @@ export function AiDraftPanel({
         )}
 
         {(agenda.length > 0 || applied.agenda > 0) && (
-          <section className="space-y-3 border-t border-border pt-4">
+          <section className="space-y-4 border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">Agenda</p>
               {agenda.length > 0 && (
@@ -285,7 +285,7 @@ export function AiDraftPanel({
         )}
 
         {(faqs.length > 0 || applied.faqs > 0) && (
-          <section className="space-y-3 border-t border-border pt-4">
+          <section className="space-y-4 border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">FAQs</p>
               {faqs.length > 0 && (

@@ -155,7 +155,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Notifications"
         subtitle="Compose and monitor push broadcasts to app users"
@@ -182,7 +182,7 @@ export default function NotificationsPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
@@ -201,7 +201,7 @@ export default function NotificationsPage() {
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {campaigns.map((c) => (
             <Card key={c.id}>
               <CardContent className="space-y-2 py-4">
@@ -403,7 +403,7 @@ function ComposeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" aria-label="Title" />
           <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Message" rows={3} aria-label="Message" />
 

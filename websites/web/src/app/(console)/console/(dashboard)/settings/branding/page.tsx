@@ -144,7 +144,7 @@ export default function BrandingStudioPage() {
       : { label: "Off", variant: "neutral" as const };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Branding"
         subtitle="Make your public pages and attendee emails look like yours, not ours."
@@ -173,8 +173,8 @@ export default function BrandingStudioPage() {
             <ErrorNotice message="Unifesto has paused branding on this space, so attendees see the default look. Your settings are kept. Contact support to restore it." />
           )}
 
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="space-y-6">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -184,7 +184,7 @@ export default function BrandingStudioPage() {
                     Applies to your space page and every event page under it.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
+                <CardContent className="space-y-4">
                   <label className="flex items-center gap-3 text-sm font-medium text-foreground">
                     <input
                       type="checkbox"
@@ -195,7 +195,7 @@ export default function BrandingStudioPage() {
                     Use my branding on public pages
                   </label>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="brand-color">Accent colour</Label>
                       <div className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export default function BrandingStudioPage() {
                     browser tab icon. PNG, JPG, WebP or ICO, up to 1 MB.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-5 sm:grid-cols-2">
+                <CardContent className="grid gap-4 sm:grid-cols-2">
                   <AssetField
                     label="Header logo"
                     url={space.brandLogoUrl}
@@ -302,7 +302,7 @@ export default function BrandingStudioPage() {
                   <CardTitle className="text-base">Attendee emails</CardTitle>
                   <CardDescription>How your confirmation emails are signed.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-5 sm:grid-cols-2">
+                <CardContent className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="brand-from">Sender name</Label>
                     <Input
@@ -446,7 +446,7 @@ function BrandPreview({
           )}
           <span className="truncate text-sm font-semibold">{space.name}</span>
         </div>
-        <div className="space-y-3 p-4">
+        <div className="space-y-4 p-4">
           <div
             className="aspect-[4/3] w-full rounded-lg"
             style={{ background: `radial-gradient(120% 120% at 20% -10%, ${accent}55, transparent 60%), ${dark ? "#141416" : "#f4f4f5"}` }}
@@ -534,7 +534,7 @@ function EventColorRow({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 py-3">
+    <div className="flex flex-wrap items-center gap-4 py-3">
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{event.title}</span>
       {own ? <Badge variant="success">Own colour</Badge> : spaceColor ? <Badge variant="neutral">Space colour</Badge> : null}
       <input

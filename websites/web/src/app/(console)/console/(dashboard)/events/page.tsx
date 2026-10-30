@@ -198,7 +198,7 @@ function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: (
           Co-host invites
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Accepting lists the event on this space and credits it as a co-host. Space Admins
           here can then edit it. Publishing, the team and money stay with the host.
@@ -206,7 +206,7 @@ function CoHostInvites({ spaceId, onAccepted }: { spaceId: string; onAccepted: (
         {error && <ErrorNotice message={error} />}
         <ul className="divide-y divide-border rounded-md border border-border bg-background">
           {invites.map((inv) => (
-            <li key={inv.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+            <li key={inv.id} className="flex flex-wrap items-center justify-between gap-4 px-3 py-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{inv.event.title}</p>
                 <p className="truncate text-xs text-muted-foreground">
@@ -316,7 +316,7 @@ export default function SpaceEventsPage() {
   const filtersActive = Boolean(search) || status !== "all";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Events"
         subtitle={subtitle}
@@ -335,7 +335,7 @@ export default function SpaceEventsPage() {
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-full max-w-sm">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -363,7 +363,7 @@ export default function SpaceEventsPage() {
       {error && <ErrorNotice message={error} />}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="h-64 animate-pulse bg-muted" />
           ))}
@@ -397,13 +397,13 @@ export default function SpaceEventsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paginatedEvents.map((event) => (
               <Link key={event.id} href={`/console/events/${event.id}`} className="group">
                 <Card className="card-interactive h-full overflow-hidden">
                   <EventCover event={event} />
 
-                  <CardContent className="space-y-3 p-4">
+                  <CardContent className="space-y-4 p-4">
                     {/* Relationship badges */}
                     {(event.isCoHost ||
                       (event._count?.childEvents ?? 0) > 0 ||
@@ -491,7 +491,7 @@ export default function SpaceEventsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
                 {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of{" "}

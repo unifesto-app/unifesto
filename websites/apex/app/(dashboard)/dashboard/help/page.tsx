@@ -71,7 +71,7 @@ export default function HelpArticlesPage() {
   const categories = Array.from(new Set(articles.map((a) => a.category))).sort();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Help articles"
         subtitle="Published articles appear at unifesto.app/help and answer questions in Assist. The page stays hidden until one is published."
@@ -89,7 +89,7 @@ export default function HelpArticlesPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-xl" />
           ))}
@@ -112,7 +112,7 @@ export default function HelpArticlesPage() {
       ) : (
         <div className="divide-y divide-border rounded-xl border border-border">
           {articles.map((a) => (
-            <div key={a.id} className="flex flex-wrap items-center gap-3 p-4">
+            <div key={a.id} className="flex flex-wrap items-center gap-4 p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate font-medium text-foreground">{a.title}</p>
@@ -228,7 +228,7 @@ function ArticleDialog({
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="help-category">Category</Label>
               <Input id="help-category"

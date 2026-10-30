@@ -176,7 +176,7 @@ export default function LogsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="API logs"
         subtitle="Requests to api.unifesto.app. Errors and writes are all kept. Successful GETs are sampled, and counts are weighted to match."
@@ -195,9 +195,9 @@ export default function LogsPage() {
 
       <Card>
         <CardHeader className="gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle className="text-base">Requests</CardTitle>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="relative">
                 <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

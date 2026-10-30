@@ -173,7 +173,7 @@ export default function EventWhatsAppPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
@@ -184,7 +184,7 @@ export default function EventWhatsAppPage() {
   const usingParentFallback = !attendeeUrl.trim() && !!parentUrl;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp group"
         subtitle="Route registered attendees into a private WhatsApp group. This link is only ever sent to people who register. It never shows on the public event page."

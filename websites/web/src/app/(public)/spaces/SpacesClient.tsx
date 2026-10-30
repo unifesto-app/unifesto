@@ -103,7 +103,7 @@ function SpaceCard({ space, childCount }: { space: Space; childCount: number }) 
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col gap-3 p-6">
+      <div className="flex flex-1 flex-col gap-4 p-6">
         {space.description && (
           <p className="line-clamp-2 text-sm leading-relaxed text-paper/65">{space.description}</p>
         )}
@@ -135,7 +135,7 @@ function SpaceCard({ space, childCount }: { space: Space; childCount: number }) 
 
 function SpacesSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
       {Array.from({ length: 12 }).map((_, i) => (
         <div key={i} className="overflow-hidden rounded-3xl bg-night-2">
           <div className="relative aspect-[4/3] animate-pulse bg-paper/[0.04]">
@@ -144,7 +144,7 @@ function SpacesSkeleton() {
               <div className="mb-1 h-4 w-2/3 animate-pulse rounded bg-paper/[0.08]" />
             </div>
           </div>
-          <div className="space-y-3 p-5">
+          <div className="space-y-4 p-5">
             <div className="h-3 w-full animate-pulse rounded bg-paper/[0.05]" />
             <div className="h-3 w-4/5 animate-pulse rounded bg-paper/[0.05]" />
           </div>
@@ -292,7 +292,7 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <p className="text-sm text-paper/60">
                 {filtered.length} space{filtered.length !== 1 ? "s" : ""}
                 {totalPages > 1 && ` · page ${page} of ${totalPages}`}
@@ -323,7 +323,7 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
             </div>
 
             {/* Top-level spaces; sub-space count shown on each card */}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
               {paginated.map((space) => (
                 <div key={space.id}>
                   <SpaceCard space={space} childCount={childCounts.get(space.id) ?? 0} />

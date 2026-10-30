@@ -21,7 +21,7 @@ export default function SupportPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <p className="max-w-xl text-sm text-muted-foreground">
           Ask Unifesto about a booking, a refund, an event or a space I run. Assist, our AI helper, answers first and hands it to a
           person when it can&apos;t.

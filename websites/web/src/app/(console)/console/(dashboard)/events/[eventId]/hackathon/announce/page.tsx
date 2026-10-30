@@ -60,7 +60,7 @@ export default function HackathonAnnouncePage() {
   return (
     <HackPage eventId={eventId} title="Announcements" subtitle="Goes out as a push notification and stays in everyone's updates." error={error} ready>
       <Notice message={notice} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <FormCard title="New announcement">
           <Field label="Send to">
             <Chips
@@ -95,7 +95,7 @@ export default function HackathonAnnouncePage() {
           </Button>
         </FormCard>
 
-        <section className="space-y-3">
+        <section className="space-y-4">
           <h2 className="px-1 text-sm font-semibold text-foreground">Sent</h2>
           {data.announcements.length === 0 && <p className="px-1 text-sm text-muted-foreground">Nothing sent yet.</p>}
           {data.announcements.map((a) => (

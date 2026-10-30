@@ -35,7 +35,7 @@ export default function CertificatesPage() {
         <Section title="Waiting for my feedback" description="Give feedback on the event to unlock these.">
           <ul className="-my-4 divide-y divide-border">
             {locked.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
                 <Link href={`/event/${c.event.slug}`} className="text-sm font-medium text-foreground hover:underline">
                   {c.event.title}
                 </Link>
@@ -51,7 +51,7 @@ export default function CertificatesPage() {
         <Section title="Issued" description="Download one, or share its Verify link so anyone can check it.">
           <ul className="-my-4 divide-y divide-border">
             {issued.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
                 <div className="min-w-0">
                   <Link href={`/event/${c.event.slug}`} className="text-sm font-medium text-foreground hover:underline">
                     {c.event.title}

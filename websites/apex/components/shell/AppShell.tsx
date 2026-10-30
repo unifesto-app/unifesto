@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (error && !loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-center">
         <p className="text-sm text-foreground">Couldn&apos;t load your account.</p>
         <p className="text-xs text-muted-foreground">{error}</p>
         <Button onClick={() => void refresh()}>Try again</Button>
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <CommandPalette />
         <main className="min-h-screen lg:pl-60">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:p-8">
-            <div className="mb-6">
+            <div className="mb-4">
               <Breadcrumbs nav={nav} />
             </div>
             {isPathOpen(pathname, nav) ? (

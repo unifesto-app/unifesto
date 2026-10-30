@@ -103,7 +103,7 @@ export default function StatementEditorPage() {
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <FormCard
           description={`${isNew ? `Leave the code blank to use ${nextCode}. ` : ""}Teams see the code, title, problem and theme. With a limit, the statement shows as full once that many teams have it.`}
         >
@@ -145,7 +145,7 @@ export default function StatementEditorPage() {
           </Field>
         </FormCard>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {statement && (
             <ListGroup title={`Teams · ${statement.taken}${statement.maxTeams != null ? ` of ${statement.maxTeams}` : ""}`}>
               {statement.teams.length === 0 && <ListRow label="No team has it yet" />}
