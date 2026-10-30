@@ -4,7 +4,7 @@ import { call } from './manageEvent';
  * The organiser's own lead funnel, over `/spaces/:spaceId/leads/*`
  * (space:manage-sponsors). Different from sponsor leads: these are people who
  * tapped "Notify me" on an event, sent an inquiry from the space page, or were
- * added by hand. Mirrors websites/space/lib/api/leads-api.ts.
+ * added by hand. Mirrors websites/web/src/console/lib/api/leads-api.ts.
  */
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'CONVERTED' | 'ARCHIVED';

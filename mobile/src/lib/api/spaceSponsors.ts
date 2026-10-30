@@ -7,7 +7,7 @@ import { uploadImage } from './upload';
  * is EVENT-scoped and can't satisfy this SPACE-scoped action. Reads work on any
  * plan; every write is refused (403) unless the space's plan includes sponsors.
  *
- * Mirrors websites/space/lib/api/sponsors-api.ts.
+ * Mirrors websites/web/src/console/lib/api/sponsors-api.ts.
  */
 
 export interface SponsorTier {
