@@ -128,7 +128,7 @@ export default function OrganisersPage() {
         </ol>
         <p className="mt-12 text-sm text-paper/60">
           Already approved? Open the console at{" "}
-          <a href={SITE.spaceApp} className="link-draw text-paper">space.unifesto.app</a> or manage events from the Unifesto app.
+          <Link href="/console" className="link-draw text-paper">unifesto.app/console</Link> or manage events from the Unifesto app.
         </p>
       </Section>
 

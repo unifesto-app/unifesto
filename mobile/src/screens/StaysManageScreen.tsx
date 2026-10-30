@@ -60,7 +60,7 @@ export default function StaysManageScreen() {
     { beds: 0, guests: 0, checkedIn: 0 },
   );
   // Setting up a stay is desk work on Unifesto Space (D3); bookings and the door stay here.
-  const openStay = (stayId?: string) => openSpaceWeb(`/dashboard/events/${eventId}/stays${stayId ? `/${stayId}` : ''}`, spaceId);
+  const openStay = (stayId?: string) => openSpaceWeb(`/events/${eventId}/stays${stayId ? `/${stayId}` : ''}`, spaceId);
 
   return (
     <CosmosScreen

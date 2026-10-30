@@ -23,7 +23,7 @@ export const Action = {
   PRODUCT_VIEW: 'product:view',
   PRODUCT_EDIT: 'product:edit',
 
-  // ---- Space scope (space.unifesto.app) ----
+  // ---- Space scope (the console, /console) ----
   SPACE_VIEW: 'space:view',
   SPACE_MANAGE_BILLING: 'space:manage-billing', // plan changes / payments
   SPACE_MANAGE_MEMBERS: 'space:manage-members', // invite / remove / re-role members

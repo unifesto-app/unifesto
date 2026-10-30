@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SPACE_APP } from '../email/layout';
 import { CacheService } from '../cache/cache.service';
 import { RedisService } from '../redis/redis.service';
 import { OrgPlan, Prisma } from '@prisma/client';
@@ -241,7 +242,7 @@ export class SubscriptionSchedulerService {
             userName: name,
             plan: sub.plan,
             expiresAt: this.formatDate(sub.expiresAt),
-            renewUrl: 'https://space.unifesto.app/dashboard/billing',
+            renewUrl: `${SPACE_APP}/billing`,
           })
           .catch((err) =>
             this.logger.error('Subscription expiring email failed', err),

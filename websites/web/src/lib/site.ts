@@ -19,7 +19,6 @@ export const SITE = {
   logo: "https://www.unifesto.app/logos/unifesto-icon.png",
   appStore: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
   playStore: "https://play.google.com/store/apps/details?id=com.unifesto.app",
-  spaceApp: "https://space.unifesto.app",
 } as const;
 
 /* Official profiles. The footer links and the Organization JSON-LD
@@ -683,7 +682,7 @@ export const FAQ_ORGANISERS: Faq[] = [
   },
   {
     q: "Can I run events from my phone?",
-    a: "Yes. The Unifesto app includes event management: attendees, tickets, coupons, check-in scanning, WhatsApp links, sponsors, stays and payouts. The full console is also available at space.unifesto.app.",
+    a: "Yes. The Unifesto app includes event management: attendees, tickets, coupons, check-in scanning, WhatsApp links, sponsors, stays and payouts. The full console is also available at unifesto.app/console.",
   },
   {
     q: "What happens when someone asks for a refund?",

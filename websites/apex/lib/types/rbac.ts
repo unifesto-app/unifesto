@@ -112,15 +112,15 @@ export function resolveAppRole(user?: CurrentUser | null): AppRole {
 }
 
 /**
- * Absolute URL of the space operator app (space.unifesto.app).
+ * Absolute URL of the organiser console (www.unifesto.app/console, Track V).
  *
  * Apex is platform-staff only now (P1.4): the operator surface moved to the
- * space app. A signed-in organiser who lands on Apex is sent here instead of
- * shown an organiser dashboard. The SSO `unifesto_token` cookie is shared
- * across `*.unifesto.app`, so the hop keeps them signed in.
+ * console. A signed-in organiser who lands on Apex is sent here instead of
+ * shown an organiser dashboard; the console asks them to sign in on web if
+ * they aren't already.
  */
 export function spaceUrl(): string {
-  return process.env.NEXT_PUBLIC_SPACE_URL || "https://space.unifesto.app";
+  return process.env.NEXT_PUBLIC_SPACE_URL || "https://www.unifesto.app/console";
 }
 
 // ---------------------------------------------------------------------------

@@ -76,7 +76,7 @@ export default function SpaceScreen() {
 
   // Creating an event is desk work, so it opens on Unifesto Space (D3); with several spaces, ask which one.
   const newEvent = () => {
-    const open = (id: string) => openSpaceWeb('/dashboard/events/new', id);
+    const open = (id: string) => openSpaceWeb('/events/new', id);
     if (creatable.length === 1) return open(creatable[0].id);
     AppAlert.alert('New event in…', undefined, [
       ...creatable.map((s) => ({ text: s.name, onPress: () => open(s.id) })),

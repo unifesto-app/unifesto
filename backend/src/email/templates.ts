@@ -630,7 +630,7 @@ export function bankAccountRejectedEmail(d: BankAccountRejectedData): Email {
       ${p(`Your account ending ${strong(d.accountNumber)} at ${strong(d.bankName)} didn't pass verification.`)}
       ${note(`Reason: ${esc(d.rejectionReason)}`, 'danger')}
       ${p('Update the details and submit it again to start receiving payouts.')}
-      ${button('Update payout account', `${SPACE_APP}/dashboard/bank-account`)}`,
+      ${button('Update payout account', `${SPACE_APP}/financials?tab=accounts`)}`,
     ),
   };
 }
@@ -782,7 +782,7 @@ export function spaceInquiryEmail(d: SpaceInquiryData): Email {
         ['Phone', d.fromPhone && esc(d.fromPhone)],
       ])}
       ${d.message ? note(esc(d.message)) : ''}
-      ${button('Open leads', `${SPACE_APP}/dashboard/leads`)}`,
+      ${button('Open leads', `${SPACE_APP}/leads`)}`,
       `From ${d.fromName || d.fromEmail}`,
     ),
   };
@@ -841,7 +841,7 @@ export function newSpaceSubmittedEmail(d: NewSpaceSubmittedData): Email {
 // SUBSCRIPTIONS
 // =====================================================
 
-const BILLING = `${SPACE_APP}/dashboard/billing`;
+const BILLING = `${SPACE_APP}/billing`;
 
 export interface SubscriptionActivatedData {
   email: string;

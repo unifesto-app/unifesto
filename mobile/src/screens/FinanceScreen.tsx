@@ -184,7 +184,7 @@ export default function FinanceScreen() {
             label="My payout accounts"
             value={accounts ? String(accounts.length) : undefined}
             external
-            onPress={() => openSpaceWeb('/dashboard/financials', spaceId)}
+            onPress={() => openSpaceWeb('/financials', spaceId)}
           />
         </SettingsGroup>
       </Section>

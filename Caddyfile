@@ -86,12 +86,21 @@ apex.unifesto.app {
 	}
 }
 
-# Operator console for space admins, curators and crew.
+# The old operator console host (Track V3). The console lives at
+# www.unifesto.app/console now; shipped 4.0.5 builds and old emails still link
+# here, so this 308s forever with the query kept (mobile's ?space= switch).
+# Keep the `space` DNS record. Web's own redirects finish /login, /no-access.
 space.unifesto.app {
 	import cf_origin
-	reverse_proxy space:3000 {
-		# The proxy rate limiter keys on this (J17); one trusted value, not the client's chain.
-		header_up X-Forwarded-For {client_ip}
+	handle /console* {
+		redir https://www.unifesto.app{uri} 308
+	}
+	# Strips /dashboard, so {uri} is the rest: /dashboard/x?q -> /console/x?q.
+	handle_path /dashboard* {
+		redir https://www.unifesto.app/console{uri} 308
+	}
+	handle {
+		redir https://www.unifesto.app/console{uri} 308
 	}
 }
 

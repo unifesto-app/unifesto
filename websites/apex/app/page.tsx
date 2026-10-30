@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * signed-in user to the right place:
  *   - Not signed in            → /login
  *   - Admin / Employee (staff) → /dashboard
- *   - Organiser                → the space app (space.unifesto.app), where the
+ *   - Organiser                → the console (www.unifesto.app/console), where the
  *                                operator surface now lives
  *   - Member / attendee only   → /no-access (signed in, but no Apex surface)
  */

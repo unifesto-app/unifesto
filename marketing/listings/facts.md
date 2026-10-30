@@ -15,7 +15,7 @@ Rules: no em dashes, organiser-first, only features that are live in production,
 | Headquarters | Hyderabad, Telangana, India |
 | First campus | Malla Reddy University, Hyderabad |
 | Market | India (prices and payments in INR) |
-| Platforms | Web (www.unifesto.app, space.unifesto.app), iOS, Android |
+| Platforms | Web (www.unifesto.app, www.unifesto.app/console), iOS, Android |
 | Support email | support@unifesto.app |
 | Support / WhatsApp | +91 93460 95136 |
 | General phone | +91 97030 45690 |
@@ -26,7 +26,7 @@ Rules: no em dashes, organiser-first, only features that are live in production,
 | Where | URL |
 |---|---|
 | Website | https://www.unifesto.app |
-| Organiser console | https://space.unifesto.app |
+| Organiser console | https://www.unifesto.app/console |
 | Pricing | https://www.unifesto.app/pricing |
 | Request a Space (signup) | https://www.unifesto.app/request-space |
 | Press and brand kit | https://www.unifesto.app/press |

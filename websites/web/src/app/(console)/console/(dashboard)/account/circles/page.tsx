@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getMySpaceRequests, leaveSpace, type MySpace, type SpaceRequest } from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
-import { IST, SITE } from "@/lib/site";
+import { IST } from "@/lib/site";
 import { useAccount } from "../AccountShell";
 
 const REQUEST_STATUS = {
@@ -91,7 +91,7 @@ export default function CirclesPage() {
             {run.map((s) =>
               row(
                 s,
-                <a href={`${SITE.spaceApp}/dashboard?space=${s.id}`} className="font-medium text-primary hover:underline">
+                <a href={`/console?space=${s.id}`} className="font-medium text-primary hover:underline">
                   Open console
                 </a>,
               ),

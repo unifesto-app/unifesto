@@ -150,7 +150,7 @@ export default function ManageSpaceScreen() {
                   <AuthButton
                     label="New event"
                     icon={<Plus size={16} color={c.primaryFg} weight="bold" />}
-                    onPress={web('/dashboard/events/new')}
+                    onPress={web('/events/new')}
                     style={styles.action}
                   />
                 ) : null}
@@ -244,8 +244,8 @@ export default function ManageSpaceScreen() {
           <Section title="Space setup">
             <SettingsGroup style={styles.group}>
               <SettingsRow icon={<IdentificationCard {...glyph} />} label="Profile" onPress={go('settings')} />
-              <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" external onPress={web('/dashboard/white-label')} />
-              <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" external onPress={web('/dashboard/billing')} />
+              <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" external onPress={web('/white-label')} />
+              <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" external onPress={web('/billing')} />
               {/* Only parent (SUPER) spaces have sub-spaces to roll up. */}
               {m.space?.type === 'SUPER' ? (
                 <SettingsRow icon={<TreeStructure {...glyph} />} label="Sub-spaces" onPress={go('subspaces')} />
@@ -278,7 +278,7 @@ export default function ManageSpaceScreen() {
                 onPress={go(isSpaceAdmin ? 'support?admin=1' : 'support')}
               />
             ) : null}
-            <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={web('/dashboard')} />
+            <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={web('')} />
           </SettingsGroup>
         </Section>
       </ScrollView>

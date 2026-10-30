@@ -6,7 +6,7 @@
  * four PRIVATE events (a finished paid fest with check-ins, an upcoming paid
  * hackathon with team tickets, a free RSVP workshop, a draft) and ~110
  * attendees. PRIVATE keeps it out of every public listing, sitemap and search.
- * `--owner` gets Space Admin so they can log in to space.unifesto.app and record.
+ * `--owner` gets Space Admin so they can open the console (unifesto.app/console) and record.
  *
  *   npx ts-node -T scripts/demo-space.ts --owner=you@unifesto.app   # create (re-run = rebuild)
  *   npx ts-node -T scripts/demo-space.ts --remove                   # delete space + demo users
