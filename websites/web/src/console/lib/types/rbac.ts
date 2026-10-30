@@ -1,5 +1,5 @@
 /**
- * RBAC — space.unifesto.app
+ * RBAC — the organiser console (/console)
  *
  * This app serves ONE audience: the people who run a space and its events.
  * Platform staff live in Apex (apex.unifesto.app); they do not belong here.
@@ -147,7 +147,7 @@ export function roleInSpace(
 }
 
 /**
- * Does this user belong in space.unifesto.app at all?
+ * Does this user belong in the organiser console at all?
  *
  * True when they hold an operator role in at least one space. A platform-only
  * admin (no space role) is NOT admitted here — they use Apex. This is the gate

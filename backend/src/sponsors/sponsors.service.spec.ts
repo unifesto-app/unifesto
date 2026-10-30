@@ -179,7 +179,7 @@ describe('sponsor portal invite (E1)', () => {
     await expect(sponsors(prisma).inviteSponsorUser('sp-1', 's-1', 'Rep@Acme.com', 'cur-1')).resolves.toMatchObject({ id: 'su-1' });
     expect(prisma.sponsorUser.create.mock.calls[0][0].data).toMatchObject({ userId: 'new-user', status: 'INVITED', invitedEmail: 'rep@acme.com' });
     expect(email.sendCollaboratorInvite).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'rep@acme.com', target: 'Acme at Robotics Club', url: 'https://space.unifesto.app/sponsor' }),
+      expect.objectContaining({ email: 'rep@acme.com', target: 'Acme at Robotics Club', url: 'https://unifesto.app/console/sponsor' }),
       expect.objectContaining({ dedupKey: 'invite.sponsor:su-1' }),
     );
   });

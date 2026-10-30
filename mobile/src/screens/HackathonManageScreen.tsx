@@ -45,7 +45,7 @@ export default function HackathonManageScreen() {
   const [switching, setSwitching] = useState(false);
 
   // Hackathon setup is desk work, so it opens on Unifesto Space (D3).
-  const web = (path: string) => () => openSpaceWeb(`/dashboard/events/${eventId}/hackathon${path}`, spaceId);
+  const web = (path: string) => () => openSpaceWeb(`/events/${eventId}/hackathon${path}`, spaceId);
 
   const load = useCallback(async () => {
     if (!eventId) return;

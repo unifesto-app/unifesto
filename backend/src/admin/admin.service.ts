@@ -10,6 +10,7 @@ import { LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
+import { SPACE_APP } from '../email/layout';
 import { NotifyService } from '../notifications/notify.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
@@ -320,7 +321,7 @@ export class AdminService {
             userName: person?.fullName || person?.username || 'there',
             plan: sub.plan,
             expiresAt: this.formatDate(sub.expiresAt),
-            renewUrl: 'https://space.unifesto.app/dashboard/billing',
+            renewUrl: `${SPACE_APP}/billing`,
           })
           .catch((err) =>
             this.logger.error('Failed to send expiring subscription email', err),

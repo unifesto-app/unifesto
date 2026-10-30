@@ -137,7 +137,7 @@ export class PayoutsService {
         ['Pay to', esc(accountLabel(payout.bankAccount))],
         ['UTR', step === 'paid' && payout.utr ? esc(payout.utr) : null],
       ]);
-      const cta = button('View payouts', `${SPACE_APP}/dashboard/financials?tab=payouts`);
+      const cta = button('View payouts', `${SPACE_APP}/financials?tab=payouts`);
       const copy = {
         requested: {
           subject: `Payout requested for ${title}`,
@@ -247,7 +247,7 @@ export class PayoutsService {
       greet(name) +
       p(`We took back verification of ${strong(accountLabel(account))}. Payouts will not go to it until it is verified again.`) +
       callout(esc(note.trim())) +
-      button('View payout methods', `${SPACE_APP}/dashboard/financials?tab=accounts`),
+      button('View payout methods', `${SPACE_APP}/financials?tab=accounts`),
     );
     return this.prisma.payoutBankAccount.findUnique({ where: { id: accountId } });
   }
@@ -379,7 +379,7 @@ export class PayoutsService {
             h1('Payout account verified') +
               greet(userName) +
               p(`Your ${isUpi ? 'UPI ID' : 'bank account'} ${strong(refLabel)}${isUpi ? '' : ` at ${strong(methodLabel)}`} is verified. Payouts for your events can now reach you.`) +
-              button('View payouts', `${SPACE_APP}/dashboard/financials?tab=accounts`),
+              button('View payouts', `${SPACE_APP}/financials?tab=accounts`),
           )
           .catch((err) =>
             this.logger.error('Failed to send bank account verified email', err),

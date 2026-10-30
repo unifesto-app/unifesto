@@ -4,7 +4,7 @@ import { isAllowedOrigin } from './cors';
 describe('isAllowedOrigin', () => {
   it.each([
     'https://unifesto.app',
-    'https://space.unifesto.app',
+    'https://apex.unifesto.app',
     'https://a.b.unifesto.app',
     'http://localhost',
     'http://localhost:3001',
@@ -12,7 +12,7 @@ describe('isAllowedOrigin', () => {
   ])('allows %s', (o) => expect(isAllowedOrigin(o)).toBe(true));
 
   it.each([
-    'http://space.unifesto.app',
+    'http://apex.unifesto.app',
     'http://unifesto.app',
     'http://localhost.evil.com',
     'http://localhost:3000.evil.com',

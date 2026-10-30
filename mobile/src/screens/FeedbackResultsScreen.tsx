@@ -86,7 +86,7 @@ export default function FeedbackResultsScreen() {
           icon={<DownloadSimple size={24} color={c.text} />}
           label="Answers and CSV on the web"
           external
-          onPress={() => openSpaceWeb(`/dashboard/events/${eventId}/feedback`, spaceId)}
+          onPress={() => openSpaceWeb(`/events/${eventId}/feedback`, spaceId)}
         />
       </SettingsGroup>
     </CosmosScreen>

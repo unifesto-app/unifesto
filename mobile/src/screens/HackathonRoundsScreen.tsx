@@ -105,7 +105,7 @@ export default function HackathonRoundsScreen() {
         size="lg"
         fullWidth
         icon={<Plus size={18} color={c.text} weight="bold" />}
-        onPress={() => openSpaceWeb(`/dashboard/events/${eventId}/hackathon/rounds`, spaceId)}
+        onPress={() => openSpaceWeb(`/events/${eventId}/hackathon/rounds`, spaceId)}
         style={{ marginTop: spacing[6] }}
       />
     </CosmosScreen>

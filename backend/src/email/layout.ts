@@ -12,7 +12,8 @@
 // through esc() before it reaches them.
 
 export const WEB = 'https://unifesto.app';
-export const SPACE_APP = 'https://space.unifesto.app';
+// The organiser console (Track V). space.unifesto.app 308s here for old links.
+export const SPACE_APP = `${WEB}/console`;
 export const APEX = 'https://apex.unifesto.app';
 export const SUPPORT = 'support@unifesto.app';
 // Registered office, as on the web legal pages (websites/web/src/lib/legal.ts).

@@ -61,7 +61,7 @@ export default function HackathonWinnersScreen() {
 
   const unpublished = data.awards.filter((a) => !a.published);
   // Writing awards is desk work on Unifesto Space (D3); publishing them stays here.
-  const openAwards = () => openSpaceWeb(`/dashboard/events/${eventId}/hackathon/winners`, spaceId);
+  const openAwards = () => openSpaceWeb(`/events/${eventId}/hackathon/winners`, spaceId);
 
   const publish = () =>
     AppAlert.alert(

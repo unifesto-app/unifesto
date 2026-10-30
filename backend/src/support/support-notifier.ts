@@ -104,7 +104,7 @@ export class SupportNotifier {
             subject: t.subject,
             headline,
             message: e.message,
-            cta: operatorCase ? { label: 'Open in Space', url: `${SPACE_APP}/dashboard/support` } : null,
+            cta: operatorCase ? { label: 'Open in Space', url: `${SPACE_APP}/support` } : null,
           });
         }
         return;

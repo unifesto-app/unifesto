@@ -113,7 +113,7 @@ export default function ManageEventScreen() {
   const dayStart = new Date(e.startDateTime);
   dayStart.setHours(0, 0, 0, 0);
   const eventDay = e.status !== 'DRAFT' && e.status !== 'CANCELLED' && now >= dayStart && now <= new Date(e.endDateTime);
-  const web = (path = '') => () => openSpaceWeb(`/dashboard/events/${e.id}${path}`, e.spaceId);
+  const web = (path = '') => () => openSpaceWeb(`/events/${e.id}${path}`, e.spaceId);
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
   const ticketCount = ticketTypes.length - rsvpCount;

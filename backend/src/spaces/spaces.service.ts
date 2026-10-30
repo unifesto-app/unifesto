@@ -1797,7 +1797,7 @@ export class SpacesService {
             greet(req.user.fullName || req.user.username) +
             p(`Your request to change ${strong(req.space.name)} to ${strong(req.requestedStatus)} was ${approved ? 'approved' : 'not approved'}.`) +
             (dto.reviewNote ? note(`${approved ? 'Note from Unifesto' : 'Reason'}: ${esc(dto.reviewNote)}`, approved ? 'neutral' : 'danger') : '') +
-            button('Open my space', `${SPACE_APP}/dashboard`),
+            button('Open my space', SPACE_APP),
         )
         .catch(() => {});
     }
@@ -2115,7 +2115,7 @@ export class SpacesService {
     const send = (email: string | null | undefined, subject: string, body: string) => {
       if (!email) return;
       this.emailService
-        .sendRawEmail(email, subject, body + reason + button('Open my space', `${SPACE_APP}/dashboard`))
+        .sendRawEmail(email, subject, body + reason + button('Open my space', SPACE_APP))
         .catch(() => {});
     };
 

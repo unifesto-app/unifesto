@@ -178,7 +178,7 @@ export default function HackathonRoundScreen() {
           icon={icon(PencilSimple)}
           label="Edit round and criteria"
           external
-          onPress={() => openSpaceWeb(`/dashboard/events/${eventId}/hackathon/rounds`, spaceId)}
+          onPress={() => openSpaceWeb(`/events/${eventId}/hackathon/rounds`, spaceId)}
         />
       </SettingsGroup>
 
