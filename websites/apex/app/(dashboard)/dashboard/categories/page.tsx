@@ -197,7 +197,7 @@ export default function AdminCategoriesPage() {
       </header>
 
       {error && (
-        <Card className="border-destructive/30 bg-destructive-soft">
+        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-4">
             <p className="text-sm text-destructive">{error}</p>
           </CardContent>
@@ -289,7 +289,7 @@ export default function AdminCategoriesPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Order</th>
                     <th className="pb-2 pr-4 font-medium">Category</th>
                     <th className="pb-2 pr-4 font-medium">Slug</th>

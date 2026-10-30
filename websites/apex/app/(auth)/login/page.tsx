@@ -10,13 +10,6 @@ import { setAuthToken } from "@/lib/utils/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 function LoginForm() {
   const router = useRouter();
@@ -97,86 +90,109 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-md">
-        <CardHeader className="pb-6">
-          <Image
-            src="/UnifestoAppWordmark.png"
-            alt="Unifesto"
-            width={70}
-            height={28}
-            priority
-            className="wordmark -ml-1 h-10 w-30"
-          />
-          <div className="space-y-1">
-            <CardTitle className="text-xl">Sign in to Apex</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
+    <Frame>
+      <h1 className="font-display text-2xl leading-snug text-foreground">Sign in to Apex</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {step === "email" ? (
+          "Unifesto staff only. We'll email you a code."
+        ) : (
+          <>
+            Enter the code we sent to <span className="font-medium text-foreground">{email}</span>.
+          </>
+        )}
+      </p>
 
-          {step === "email" ? (
-            <form onSubmit={handleSendOtp} className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@organisation.com"
-                  autoComplete="email"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending code…" : "Send verification code"}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                We sent a code to{" "}
-                <span className="font-medium text-foreground">{email}</span>.
-              </p>
-              <div className="space-y-1.5">
-                <Label htmlFor="otp">Verification code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  inputMode="numeric"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="6-digit code"
-                  autoComplete="one-time-code"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Verifying…" : "Verify & sign in"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setStep("email");
-                  setOtp("");
-                  setError("");
-                }}
-                disabled={loading}
-              >
-                Use a different email
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+      {error && (
+        <p role="alert" className="mt-6 rounded-lg border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      {step === "email" ? (
+        <form onSubmit={handleSendOtp} className="mt-8 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@unifesto.app"
+              autoComplete="email"
+              autoFocus
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Sending code…" : "Email me a code"}
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyOtp} className="mt-8 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="otp">Code</Label>
+            <Input
+              id="otp"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+              autoComplete="one-time-code"
+              autoFocus
+              className="h-12 text-center font-mono text-lg tabular-nums tracking-[0.5em]"
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Verifying…" : "Verify and sign in"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setStep("email");
+              setOtp("");
+              setError("");
+            }}
+            disabled={loading}
+          >
+            Use a different email
+          </Button>
+        </form>
+      )}
+
+      <p className="mt-10 border-t border-border pt-4 text-xs text-muted-foreground">
+        Running a space?{" "}
+        <a href={spaceUrl()} className="text-foreground underline underline-offset-4">
+          Sign in to the console
+        </a>
+      </p>
+    </Frame>
+  );
+}
+
+/**
+ * The sign-in page around its column: the wordmark and "Apex" at the top
+ * left (as in the sidebar), the form in a narrow column at the centre, no
+ * card around it, and Horizon's line of light along the foot.
+ */
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+      <header className="flex items-center gap-2 p-6">
+        <Image src="/UnifestoAppWordmark.png" alt="Unifesto" width={64} height={26} priority className="wordmark h-7 w-auto" />
+        <span className="text-sm font-medium text-muted-foreground">Apex</span>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-6 pb-24">
+        <div className="w-full max-w-sm">{children}</div>
+      </main>
+      {/* The website's horizon: a 1px line of bloom fading at both ends, and a soft glow over it. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-[radial-gradient(50%_100%_at_50%_100%,rgb(var(--bloom)/0.1),transparent_70%)]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--bloom)/0.18)_25%,rgb(var(--bloom)/0.6)_50%,rgb(var(--bloom)/0.18)_75%,transparent)]"
+      />
     </div>
   );
 }
@@ -185,14 +201,10 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-md shadow-md">
-            <CardHeader className="space-y-1 pb-6">
-              <CardTitle className="text-xl">Apex</CardTitle>
-              <CardDescription>Loading…</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
+        <Frame>
+          <h1 className="font-display text-2xl leading-snug text-foreground">Sign in to Apex</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Loading…</p>
+        </Frame>
       }
     >
       <LoginForm />

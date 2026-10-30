@@ -249,7 +249,7 @@ export default function UserDetailPage() {
       {loading ? (
         <DetailSkeleton />
       ) : error ? (
-        <Card className="border-destructive/30 bg-destructive-soft">
+        <Card className="rounded-lg border border-destructive/30 bg-destructive-soft px-4">
           <CardContent className="py-6 text-center">
             <p className="text-sm text-destructive">{error}</p>
             <Button
@@ -492,7 +492,7 @@ export default function UserDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4 pt-2">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Bio
                   </p>
                   <p className="mt-1 text-sm text-foreground">
@@ -504,7 +504,7 @@ export default function UserDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Links
                   </p>
                   {activeSocials.length > 0 ? (
@@ -529,7 +529,7 @@ export default function UserDetailPage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Last seen
                   </p>
                   <p
@@ -540,7 +540,7 @@ export default function UserDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     App version
                   </p>
                   {user.appVersion ? (
@@ -599,7 +599,7 @@ export default function UserDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                         <th className="pb-2 pr-4 font-medium">Role</th>
                         <th className="pb-2 pr-4 font-medium">Scope</th>
                         <th className="pb-2 pr-4 font-medium">Assigned by</th>
@@ -791,7 +791,7 @@ function ContactRow({
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           {label}
         </p>
         {value ? (

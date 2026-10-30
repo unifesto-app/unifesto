@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock } from "@unifesto/unicon/react";
+import { List, Lock } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { spaceUrl } from "@/lib/types/rbac";
 import { CommandPaletteProvider } from "@/lib/context/CommandPaletteContext";
-import { Navbar } from "./Navbar";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -65,11 +66,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen bg-background">
-        <Navbar onMenu={() => setNavOpen((o) => !o)} />
+        {/* No header bar on desktop: the sidebar carries it. Phones keep this slim bar to open the drawer. */}
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-card px-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setNavOpen((o) => !o)}
+            aria-label="Open navigation"
+            className="-ml-1 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <List className="h-5 w-5" />
+          </button>
+          <Image src="/UnifestoAppWordmark.png" alt="Unifesto" width={64} height={26} priority className="wordmark h-7 w-auto" />
+          <span className="text-sm font-medium text-muted-foreground">Apex</span>
+        </header>
         <Sidebar open={navOpen} onClose={closeNav} />
         <CommandPalette />
-        <main className="min-h-screen pt-16 lg:pl-60">
+        <main className="min-h-screen lg:pl-60">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:p-8">
+            <div className="mb-6">
+              <Breadcrumbs nav={nav} />
+            </div>
             {isPathOpen(pathname, nav) ? (
               children
             ) : (
@@ -89,11 +105,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function ShellSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed left-0 right-0 top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-        <Skeleton className="h-8 w-28" />
-        <Skeleton className="h-8 w-8 rounded-full" />
-      </div>
-      <main className="min-h-screen pt-16">
+      <aside className="fixed inset-y-0 left-0 hidden w-60 space-y-4 border-r border-border bg-sidebar p-4 lg:block">
+        <Skeleton className="h-7 w-28" />
+        <Skeleton className="h-9 w-full" />
+      </aside>
+      <main className="min-h-screen lg:pl-60">
         <div className="mx-auto max-w-6xl space-y-4 p-8">
           <Skeleton className="h-8 w-64" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

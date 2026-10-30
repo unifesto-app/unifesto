@@ -137,7 +137,7 @@ export default function EmailCampaignsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                     <th className="px-4 py-3 font-medium">Subject</th>
                     <th className="px-4 py-3 font-medium">Audience</th>
                     <th className="px-4 py-3 font-medium">Status</th>

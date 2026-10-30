@@ -425,7 +425,7 @@ export default function WhatsAppInboxPage() {
                 </Badge>
                 {selected.caseId ? (
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/dashboard/assist?case=${selected.caseId}`}>Open case</Link>
+                    <Link href={`/dashboard/support?case=${selected.caseId}`}>Open case</Link>
                   </Button>
                 ) : (
                   <Button size="sm" variant="outline" disabled={!picked.size || converting} onClick={handleConvert}>

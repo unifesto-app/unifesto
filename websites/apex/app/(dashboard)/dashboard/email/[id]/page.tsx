@@ -155,7 +155,7 @@ export default function CampaignDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                   <th className="px-4 py-2 font-medium">Recipient</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium">Variant</th>

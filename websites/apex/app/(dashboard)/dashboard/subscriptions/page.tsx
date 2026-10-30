@@ -120,7 +120,7 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Money" title="Subscriptions" subtitle="Every space and the plan it's on." />
+      <PageHeader title="Subscriptions" subtitle="Every space and the plan it's on." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -297,7 +297,6 @@ function SpacePlan({
       </Button>
 
       <PageHeader
-        eyebrow="Subscription"
         title={spaceSubName(sub)}
         subtitle={[spaceAdminName(sub), spaceAdminEmail(sub)].filter(Boolean).join(" · ") || undefined}
         actions={<Badge variant={st.variant}>{st.label}</Badge>}

@@ -125,7 +125,7 @@ export default function SpacesPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">Space</th>
                     <th className="pb-2 pr-4 font-medium">Type</th>
                     <th className="pb-2 pr-4 font-medium">Parent Space</th>

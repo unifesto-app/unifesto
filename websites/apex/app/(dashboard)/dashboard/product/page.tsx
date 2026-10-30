@@ -156,7 +156,6 @@ export default function ProductPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Product"
         title="Board"
         subtitle={`${overall.done} of ${overall.total} in-scope tasks done (${overall.pct}%). Claude moves cards here too.`}
         actions={
