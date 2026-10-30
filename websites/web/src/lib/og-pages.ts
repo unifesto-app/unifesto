@@ -60,7 +60,7 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/privacy-notice": { kind: "Legal", title: "Privacy Notice", subtitle: "What we ask for, why, and how to withdraw consent.", icon: Info },
   "/privacy-requests": { kind: "Privacy", title: "Privacy Request Center", subtitle: "Get a copy of your data, correct it, erase it or withdraw consent.", icon: Tray },
   "/data-rights": { kind: "Legal", title: "Your data rights", subtitle: "Your rights under India's DPDP Act, 2023, and how we answer each request.", icon: IdentificationCard },
-  "/cookies": { kind: "Legal", title: "Cookie Policy", subtitle: "No advertising or analytics cookies. One essential sign-in cookie.", icon: Database },
+  "/cookies": { kind: "Legal", title: "Cookie Policy", subtitle: "No advertising or analytics cookies. Only sign-in cookies.", icon: Database },
   "/refund": { kind: "Legal", title: "Refunds and cancellations", subtitle: "How refunds are requested, reviewed and paid, and what happens when an event is cancelled.", icon: Receipt },
   "/grievance": { kind: "Legal", title: "Grievance Redressal", subtitle: "How to raise a complaint, when you'll hear back and where to escalate.", icon: Flag },
   "/security": { kind: "Security", title: "Responsible Disclosure", subtitle: "Found a vulnerability? How to report it and what's in scope.", icon: ShieldCheck },
