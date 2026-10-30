@@ -1024,3 +1024,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-30** · web footer orb removed, horizon glow kept (#464)
 - **2026-10-30** · Console: navbar into the sidebar, account pages split out, My circles into My Spaces, Help renamed, one flat look on every page (#466)
 - **2026-10-31** · Apex: navbar into the sidebar, flat look on every page, Support desk renamed back, new sign-in (#467)
+- **2026-10-31** · Web, console and Apex: one radius family (16px outside, 8px inside), 16px between blocks, space instead of boxes inside blocks (#468)
