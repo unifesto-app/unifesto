@@ -1022,3 +1022,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-30** · README deploy section no longer names the removed space app (#463)
 - **2026-10-30** · /cookies metadata and OG subtitle match Cookie Policy v2 (web sign-in cookies, no single space cookie) (#465)
 - **2026-10-30** · web footer orb removed, horizon glow kept (#464)
+- **2026-10-30** · Console: navbar into the sidebar, account pages split out, My circles into My Spaces, Help renamed, one flat look on every page (#466)
