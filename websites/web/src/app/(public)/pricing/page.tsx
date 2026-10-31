@@ -44,6 +44,8 @@ const productLd = (plans: Plan[]) => ({
 
 export default async function PricingPage() {
   const { plans, buyerFee, buyerFeeCap, feeFrom, catalog } = await getRateCard();
+  const free = plans.find((p) => p.price === 0);
+  const paid = plans.filter((p) => p !== free);
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd data={[productLd(plans), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
@@ -57,58 +59,23 @@ export default async function PricingPage() {
       />
 
       <Section pad="tight" id="plans">
-        {/* Each card spans 7 rows of one shared grid (subgrid, through every
-            layer of the card), so name, price, fee and button line up across
-            cards however their text wraps. Plans sit as glass on their shade;
-            the featured one stays solid blue. */}
-        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
-          {plans.map((plan, i) => {
+        {/* Each paid card spans 7 rows of one shared grid (subgrid, through
+            every layer of the card), so name, price, fee and button line up
+            across cards however their text wraps. Plans sit as glass on their
+            shade; the featured one stays solid. The free plan lies across the
+            width below them: where every Space starts, not one of the tiers. */}
+        <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 xl:grid-cols-4" data-stagger="rise">
+          {paid.map((plan, i) => {
             const featured = plan.id === "growth";
-            const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
             const rows = "row-span-7 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid";
             const card = (
               <article className={`${rows} gap-y-0 rounded-xl p-6 ${featured ? "" : "bg-night-2"}`}>
                 <h2 className="font-display text-lg text-paper">{plan.name}</h2>
                 <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
-
-                <div className="mt-5 flex flex-wrap items-baseline gap-x-2">
-                  {plan.price === null ? (
-                    <span className="font-display text-3xl text-paper">Custom</span>
-                  ) : (
-                    <>
-                      <span className="tabular font-display text-3xl text-paper">{inr(plan.price)}</span>
-                      <span className="text-sm text-paper/60">/ month</span>
-                    </>
-                  )}
-                </div>
-                <p className="mt-1.5 text-xs text-paper/55">
-                  {off > 0 && (
-                    <>
-                      <s className="tabular">{inr(plan.standardPrice!)}</s> {off}% off at launch ·{" "}
-                    </>
-                  )}
-                  {plan.annualMonthly ? `${inr(plan.annualMonthly)}/mo billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
-                </p>
-
-                <p className="mt-5 border-y border-border py-2.5 text-sm text-paper">
-                  <span className="tabular font-display">{planFee(plan)}</span>{" "}
-                  <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
-                  <span className="block text-xs text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
-                </p>
-
-                <Link href={plan.cta.href} className={`btn mt-6 w-full self-start ${featured ? "btn-ink" : "btn-secondary"}`}>
-                  {plan.cta.label}
-                  <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
-                </Link>
-
-                <ul className="mt-6 divide-y divide-border border-t border-border">
-                  {plan.includes.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 py-2.5 text-sm text-paper/85">
-                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-paper/60" weight="bold" aria-hidden="true" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <PlanPrice plan={plan} />
+                <PlanFee plan={plan} feeFrom={feeFrom} className="mt-5" />
+                <PlanCta plan={plan} featured={featured} />
+                <PlanIncludes items={plan.includes} />
               </article>
             );
             return featured ? (
@@ -122,6 +89,22 @@ export default async function PricingPage() {
             );
           })}
         </div>
+        {free && (
+          <ShadeCard shade="mint" glass className="p-3" glassClassName="w-full">
+            <article className="grid gap-6 rounded-xl bg-night-2 p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
+              <div>
+                <h2 className="font-display text-lg text-paper">{free.name}</h2>
+                <p className="mt-1.5 text-sm text-paper/70">{free.forWho}</p>
+                <PlanPrice plan={free} />
+              </div>
+              <div>
+                <PlanFee plan={free} feeFrom={feeFrom} />
+                <PlanCta plan={free} featured={false} />
+              </div>
+              <PlanIncludes items={free.includes} across />
+            </article>
+          </ShadeCard>
+        )}
         <p className="mt-8 text-center text-sm text-paper/55">
           {/* TODO(A6): GST wording waits for GST registration and the CA. */}
           Prices exclude GST. Buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay&apos;s charges come out of that fee. Free RSVP events carry no fees on any plan.
@@ -161,7 +144,70 @@ export default async function PricingPage() {
   );
 }
 
-const limitText = (n: number | null | undefined) => (n === null || n === undefined ? "Unlimited" : n.toLocaleString("en-IN"));
+/* A plan card's parts, shared by the paid columns and the free plan laid
+   across. The price is two rows (amount, then the note under it) so the
+   paid cards' subgrid lines them up. */
+function PlanPrice({ plan }: { plan: Plan }) {
+  const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
+  return (
+    <>
+      <div className="mt-5 flex flex-wrap items-baseline gap-x-2">
+        {plan.price === null ? (
+          <span className="font-display text-3xl text-paper">Custom</span>
+        ) : (
+          <>
+            <span className="tabular font-display text-3xl text-paper">{inr(plan.price)}</span>
+            <span className="text-sm text-paper/60">/ month</span>
+          </>
+        )}
+      </div>
+      <p className="mt-1.5 text-xs text-paper/55">
+        {off > 0 && (
+          <>
+            <s className="tabular">{inr(plan.standardPrice!)}</s> {off}% off at launch ·{" "}
+          </>
+        )}
+        {plan.annualMonthly ? `${inr(plan.annualMonthly)}/mo billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
+      </p>
+    </>
+  );
+}
+
+function PlanFee({ plan, feeFrom, className = "" }: { plan: Plan; feeFrom: string | null; className?: string }) {
+  return (
+    <p className={`border-y border-border py-2.5 text-sm text-paper ${className}`}>
+      <span className="tabular font-display">{planFee(plan)}</span>{" "}
+      <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
+      <span className="block text-xs text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
+    </p>
+  );
+}
+
+function PlanCta({ plan, featured }: { plan: Plan; featured: boolean }) {
+  return (
+    <Link href={plan.cta.href} className={`btn mt-6 w-full self-start ${featured ? "btn-ink" : "btn-secondary"}`}>
+      {plan.cta.label}
+      <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
+    </Link>
+  );
+}
+
+/* A column of ruled rows, or (`across`, the free plan) two columns where
+   every item carries its own top rule so both columns line up. */
+function PlanIncludes({ items, across = false }: { items: Plan["includes"]; across?: boolean }) {
+  return (
+    <ul className={across ? "grid gap-x-6 self-start sm:grid-cols-2" : "mt-6 divide-y divide-border border-t border-border"}>
+      {items.map((item) => (
+        <li key={item} className={`flex items-start gap-2.5 py-2.5 text-sm text-paper/85 ${across ? "border-t border-border" : ""}`}>
+          <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-paper/60" weight="bold" aria-hidden="true" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const limitText =(n: number | null | undefined) => (n === null || n === undefined ? "Unlimited" : n.toLocaleString("en-IN"));
 
 /** One comparison cell: the plan's limit, or a tick or dash for a feature. */
 function cell(r: CatalogRow, p: Plan) {
