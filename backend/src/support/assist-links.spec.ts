@@ -72,7 +72,9 @@ describe('Assist links (D26, D27)', () => {
         subject: 'WhatsApp: My ticket QR is not loading',
       });
       expect(tickets[0].messages.create).toMatchObject({ side: 'REQUESTER', authorId: 'user-1' });
-      expect(tickets[0].messages.create.body).toContain('My ticket QR is not loading\n\n[image]\nhttps://s3/x.jpg');
+      // J15: media stays private, so the case points at the conversation instead of a URL.
+      expect(tickets[0].messages.create.body).toContain('My ticket QR is not loading\n\n[image]\n(media in the WhatsApp conversation)');
+      expect(tickets[0].messages.create.body).not.toContain('s3/x.jpg');
       expect(prisma.user.findFirst.mock.calls[0][0].where).toEqual({ mobileNumber: { in: ['+919876543210', '919876543210'] } });
       expect(conv).toMatchObject({ caseId: 'case-1', userId: 'user-1' });
     });

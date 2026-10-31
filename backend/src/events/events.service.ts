@@ -2776,6 +2776,11 @@ export class EventsService {
       (tx) => tx.event.delete({ where: { id: eventId } }),
     );
 
+    // Its report PDFs (reportKeyPrefix in reports.service) go with the rows.
+    await this.storageService
+      .deletePrefix(`private/reports/${eventId}/`)
+      .catch((err) => this.logger.error(`Deleting reports of event ${eventId} failed: ${err.message}`));
+
     // Clear any cached copy of the (previously published/cancelled) event.
     await this.cache.invalidateEventCache(event.slug);
 

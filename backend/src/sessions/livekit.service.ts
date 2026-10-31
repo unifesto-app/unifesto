@@ -14,6 +14,14 @@ import {
   type WebhookEvent,
 } from 'livekit-server-sdk';
 import { LIVEKIT_CLIENT_OPTIONS } from '../common/http/outbound-timeouts';
+import { StorageService } from '../storage/storage.service';
+
+/**
+ * Recordings are private objects (J15): only paid registrants, hosts and
+ * admins get a signed link. Long enough to watch a long session in one go.
+ */
+export const RECORDING_KEY_PREFIX = 'private/sessions/';
+export const RECORDING_LINK_SECONDS = 6 * 60 * 60;
 
 /**
  * LiveKit integration for UNIFESTO_LIVE sessions.
@@ -31,6 +39,8 @@ import { LIVEKIT_CLIENT_OPTIONS } from '../common/http/outbound-timeouts';
 @Injectable()
 export class LivekitService {
   private readonly logger = new Logger(LivekitService.name);
+
+  constructor(private readonly storage: StorageService) {}
 
   private get apiKey(): string {
     return process.env.LIVEKIT_API_KEY!;
@@ -153,7 +163,7 @@ export class LivekitService {
     // it first (no-op if it already exists).
     await this.ensureRoom(room);
 
-    const filepath = `sessions/${sessionId}/${Date.now()}.mp4`;
+    const filepath = `${RECORDING_KEY_PREFIX}${sessionId}/${Date.now()}.mp4`;
     const output = new EncodedFileOutput({
       fileType: EncodedFileType.MP4,
       filepath,
@@ -234,6 +244,11 @@ export class LivekitService {
   /** Public URL for an S3 object key in our bucket. */
   s3Url(key: string): string {
     return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  }
+
+  /** A signed link for a recording we wrote; a host-pasted link passes through. */
+  recordingLink(url: string | null): Promise<string | null> {
+    return this.storage.linkFor(url, RECORDING_KEY_PREFIX, RECORDING_LINK_SECONDS);
   }
 
   /** Validate and parse a LiveKit webhook. Throws if the signature is invalid. */

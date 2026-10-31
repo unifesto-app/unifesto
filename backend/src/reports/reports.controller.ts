@@ -19,8 +19,8 @@ import { CreateReportDto, ListReportsQueryDto } from './dto';
  * Event-scoped report generation — all organiser-only. Organiser membership and
  * the `hasAnalytics` plan gate are enforced in the service on every route.
  *
- * A generated report's PDF lives in S3; the row carries its public `fileUrl`,
- * so clients download straight from that URL (same pattern as certificates).
+ * A generated report's PDF is a private S3 object; `list` returns a short-lived
+ * signed `fileUrl` the browser downloads straight from (J15).
  */
 @Controller('events/:eventId/reports')
 export class ReportsController {
@@ -63,7 +63,7 @@ export class ReportsController {
     return this.reports.regenerate(user.id, eventId, reportId);
   }
 
-  /** Delete a report from the history (removes the row; the S3 file is left). */
+  /** Delete a report from the history (removes the row and its PDF). */
   @Delete(':reportId')
   @UseGuards(JwtAuthGuard)
   remove(@CurrentUser() user: User, @Param('reportId') reportId: string) {

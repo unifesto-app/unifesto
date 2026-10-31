@@ -772,10 +772,13 @@ export class SessionsService {
     deleted: DeletedFilter = 'active',
   ) {
     await this.assertCanManageSpace(userId, spaceId);
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: { ...deletedWhere(deleted), spaceId },
       orderBy: { startDateTime: 'desc' },
     });
+    return Promise.all(
+      sessions.map(async (s) => ({ ...s, recordingUrl: await this.livekit.recordingLink(s.recordingUrl) })),
+    );
   }
 
   async listAttendees(userId: string, sessionId: string) {
@@ -934,7 +937,9 @@ export class SessionsService {
       },
       select: { session: { select: { recordingUrl: true } } },
     });
-    return reg ? { ...publicSession, recordingUrl: reg.session.recordingUrl } : publicSession;
+    return reg
+      ? { ...publicSession, recordingUrl: await this.livekit.recordingLink(reg.session.recordingUrl) }
+      : publicSession;
   }
 
   // ---------------------------------------------------------------------------
@@ -1260,7 +1265,7 @@ export class SessionsService {
 
   /** The caller's own session registrations, upcoming first. No links. */
   async listMyRegistrations(userId: string) {
-    return this.prisma.sessionRegistration.findMany({
+    const regs = await this.prisma.sessionRegistration.findMany({
       // Hiding a session takes it off the attendee's list too — the row and
       // its payment survive, so restoring brings the ticket straight back.
       where: {
@@ -1277,6 +1282,17 @@ export class SessionsService {
         session: { select: { ...this.publicSelect, recordingUrl: true } },
       },
     });
+    // The recording is for paid registrants only (J15), as in getPublicSession.
+    return Promise.all(
+      regs.map(async (r) => ({
+        ...r,
+        session: {
+          ...r.session,
+          recordingUrl:
+            r.paymentStatus === PaymentStatus.PAID ? await this.livekit.recordingLink(r.session.recordingUrl) : null,
+        },
+      })),
+    );
   }
 
   /**
@@ -1463,7 +1479,8 @@ export class SessionsService {
       await this.prisma.session.update({
         where: { id: session.id },
         data: {
-          recordingUrl: key ? this.livekit.s3Url(key) : undefined,
+          // Private key since J15; an egress started before then wrote a public object.
+          recordingUrl: key ? (key.startsWith('private/') ? key : this.livekit.s3Url(key)) : undefined,
           recordingEgressId: null,
         },
       });

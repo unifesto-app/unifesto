@@ -30,6 +30,14 @@ import { eventHasEnded, reportSummaryFacts, reportSummaryRequest } from './repor
 /** A PENDING report older than this was cut off mid-render. */
 export const REPORT_STALE_MS = 15 * 60 * 1000;
 
+/**
+ * Report PDFs (full roster, emails, revenue) are private objects (J15), keyed
+ * by event so deleting the event clears them in one go. `list` hands out a
+ * link this long; reopening the reports page fetches a fresh one.
+ */
+export const reportKeyPrefix = (eventId: string) => `private/reports/${eventId}/`;
+const REPORT_LINK_SECONDS = 60 * 60;
+
 const REPORT_EVENT_SELECT = {
   id: true,
   spaceId: true,
@@ -330,11 +338,8 @@ export class ReportsService {
       });
 
       const fileName = `${slugify(title, { lower: true, strict: true }).slice(0, 60) || 'event-report'}.pdf`;
-      const fileUrl = await this.storage.uploadBuffer(
-        pdf,
-        `reports/${report.id}.pdf`,
-        'application/pdf',
-      );
+      const fileUrl = `${reportKeyPrefix(eventId)}${report.id}.pdf`;
+      await this.storage.uploadPrivate(pdf, fileUrl, 'application/pdf');
 
       await this.prisma.eventReport.update({
         where: { id: report.id },
@@ -418,7 +423,7 @@ export class ReportsService {
       },
       data: { status: ReportStatus.FAILED, error: 'Generation was interrupted. Please try again.' },
     });
-    return this.prisma.eventReport.findMany({
+    const reports = await this.prisma.eventReport.findMany({
       where: { eventId, ...(type ? { type } : {}) },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -437,17 +442,29 @@ export class ReportsService {
         createdAt: true,
       },
     });
+    return Promise.all(
+      reports.map(async (r) => ({
+        ...r,
+        fileUrl: await this.storage.linkFor(r.fileUrl, 'private/reports/', REPORT_LINK_SECONDS, r.fileName),
+      })),
+    );
   }
 
   async remove(userId: string, reportId: string) {
     const report = await this.prisma.eventReport.findUnique({
       where: { id: reportId },
-      select: { eventId: true },
+      select: { eventId: true, fileUrl: true },
     });
     if (!report) throw new NotFoundException('Report not found');
     await this.assertCanManage(report.eventId, userId);
 
     await this.prisma.eventReport.delete({ where: { id: reportId } });
+    // The PDF goes with the row. Pre-J15 rows point at reports/<id>.pdf.
+    if (report.fileUrl) {
+      await this.storage.deleteObject(
+        report.fileUrl.startsWith('private/') ? report.fileUrl : `reports/${reportId}.pdf`,
+      );
+    }
     return { deleted: true };
   }
 }

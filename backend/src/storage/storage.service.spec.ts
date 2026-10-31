@@ -1,8 +1,8 @@
 /// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { ConflictException, Logger } from '@nestjs/common';
-import { StorageService } from './storage.service';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { StorageService, sniffImage } from './storage.service';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Mock the AWS SDK
@@ -16,6 +16,26 @@ jest.mock('@aws-sdk/client-s3', () => {
     S3Client: mockS3Client,
     PutObjectCommand: jest.fn(),
   };
+});
+
+// Real file signatures: uploadFile types an upload by its bytes (J15).
+const JPEG = (body = 'test file content') => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(body)]);
+const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('png body')]);
+const WEBP = Buffer.from('RIFF\0\0\0\0WEBPVP8 body', 'latin1');
+
+describe('sniffImage (J15)', () => {
+  it('tells JPG, PNG, WebP and ICO apart by their first bytes', () => {
+    expect(sniffImage(JPEG())?.mime).toBe('image/jpeg');
+    expect(sniffImage(PNG)?.mime).toBe('image/png');
+    expect(sniffImage(WEBP)?.mime).toBe('image/webp');
+    expect(sniffImage(Buffer.from([0, 0, 1, 0, 1, 0, 16, 16, 0, 0, 1, 0]))?.mime).toBe('image/x-icon');
+  });
+
+  it('rejects HTML, SVG, PDF and short buffers', () => {
+    for (const body of ['<html><script>alert(1)</script>', '<svg xmlns="http://www.w3.org/2000/svg"/>', '%PDF-1.7 ...', 'GIF']) {
+      expect(sniffImage(Buffer.from(body))).toBeNull();
+    }
+  });
 });
 
 describe('StorageService', () => {
@@ -110,7 +130,7 @@ describe('StorageService', () => {
       encoding: '7bit',
       mimetype: 'image/jpeg',
       size: 1024,
-      buffer: Buffer.from('test file content'),
+      buffer: JPEG(),
       stream: null as any,
       destination: '',
       filename: '',
@@ -180,6 +200,7 @@ describe('StorageService', () => {
         ...mockFile,
         originalname: 'test-image.png',
         mimetype: 'image/png',
+        buffer: PNG,
       };
 
       await service.uploadFile(pngFile, prefix, identifier);
@@ -198,6 +219,7 @@ describe('StorageService', () => {
         ...mockFile,
         originalname: 'test-image.webp',
         mimetype: 'image/webp',
+        buffer: WEBP,
       };
 
       await service.uploadFile(webpFile, 'space-logos/', 'space-456');
@@ -302,7 +324,7 @@ describe('StorageService', () => {
 
       const fileWithBuffer = {
         ...mockFile,
-        buffer: Buffer.from('specific test content'),
+        buffer: JPEG('specific test content'),
       };
 
       await service.uploadFile(fileWithBuffer, prefix, identifier);
@@ -314,13 +336,31 @@ describe('StorageService', () => {
       );
     });
 
+    it('types and names the file by its bytes, not the client (J15)', async () => {
+      s3Client.send.mockResolvedValue({});
+
+      // PNG bytes sent as "photo.jpg" / image/jpeg are stored as a PNG.
+      await service.uploadFile({ ...mockFile, buffer: PNG }, prefix, identifier);
+
+      expect(PutObjectCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ Key: 'avatars/user-123-1234567890.png', ContentType: 'image/png' }),
+      );
+    });
+
+    it('refuses anything that is not an image before touching S3 (J15)', async () => {
+      const html = { ...mockFile, originalname: 'x.png', mimetype: 'image/png', buffer: Buffer.from('<html><script>alert(1)</script></html>') };
+
+      await expect(service.uploadFile(html, prefix, identifier)).rejects.toThrow(BadRequestException);
+      expect(s3Client.send).not.toHaveBeenCalled();
+    });
+
     it('should handle large files', async () => {
       s3Client.send.mockResolvedValue({});
 
       const largeFile = {
         ...mockFile,
         size: 10485760, // 10MB
-        buffer: Buffer.alloc(10485760),
+        buffer: Buffer.concat([JPEG(), Buffer.alloc(10485760)]),
       };
 
       const result = await service.uploadFile(largeFile, prefix, identifier);
@@ -340,7 +380,7 @@ describe('StorageService', () => {
         encoding: '7bit',
         mimetype: 'image/jpeg',
         size: 1024,
-        buffer: Buffer.from('test'),
+        buffer: JPEG('test image'),
         stream: null as any,
         destination: '',
         filename: '',
