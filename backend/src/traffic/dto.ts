@@ -5,7 +5,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
   Max,
   MaxLength,
@@ -78,33 +77,4 @@ export class TrafficRangeQuery {
   @Min(1)
   @Max(365)
   days?: number;
-}
-
-export class CreateShortLinkDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  title?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  source?: string;
-}
-
-export class CreateSpaceShortLinkDto extends CreateShortLinkDto {
-  @IsOptional()
-  @IsUUID()
-  eventId?: string;
-}
-
-export class CreateAdminShortLinkDto extends CreateSpaceShortLinkDto {
-  @IsOptional()
-  @IsUUID()
-  spaceId?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  url?: string;
 }

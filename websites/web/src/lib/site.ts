@@ -149,7 +149,7 @@ export const PILLARS: Pillar[] = [
     points: [
       "WhatsApp confirmations and group or community invite links per ticket",
       "Email campaigns with templates, scheduling, segments and A/B tests",
-      "Tracked short links, UTM sources and partner links with attribution",
+      "UTM tracking links that show which channel brought each booking",
       "Your Space colour, favicon and email sender with white-label",
     ],
   },

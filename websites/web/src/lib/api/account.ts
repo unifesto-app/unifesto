@@ -135,15 +135,3 @@ export interface SpaceRequest {
   createdAt: string;
 }
 export const getMySpaceRequests = (token: string) => call<SpaceRequest[]>("GET", "/spaces/my-requests", undefined, token);
-
-/** Links an organiser made for me to share. Only partners have any. */
-export interface PartnerLink {
-  id: string;
-  name: string;
-  event: { slug: string; title: string; startDateTime: string; space: { name: string } | null };
-  registrations: number;
-  trackingUrl: string;
-}
-export const getMyPartnerLinks = (token: string) => call<PartnerLink[]>("GET", "/partner-links/mine", undefined, token);
-export const getPartnerToday = (token: string, id: string) =>
-  call<{ today: number }>("GET", `/partner-links/${id}/stats`, undefined, token).then((r) => r.today);

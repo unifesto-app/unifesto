@@ -2,9 +2,7 @@ import { call } from './manageEvent';
 
 /*
  * Tracking: where an event's attendees came from (utm tags on the
- * link that brought them in) and partner tracking links. Curator endpoints are
- * gated server-side by event:view / event:edit; partner endpoints only ever
- * return the calling user's own partner links, as counts (no attendee data).
+ * link that brought them in). Gated server-side by event:view / space:view.
  */
 
 // ── Curator ──────────────────────────────────────────────────────────────────
@@ -27,62 +25,6 @@ export interface RegistrationSources {
 /** GET /events/:id/registration-sources */
 export const getRegistrationSources = (eventId: string) =>
   call<RegistrationSources>(`/events/${eventId}/registration-sources`);
-
-export interface PartnerLink {
-  id: string;
-  name: string;
-  source: string;
-  contact: { id: string; fullName: string | null; username: string | null; avatarUrl: string | null };
-  registrations: number;
-  trackingUrl: string;
-  createdAt: string;
-}
-
-/** GET /events/:id/partner-links */
-export const getPartnerLinks = (eventId: string) => call<PartnerLink[]>(`/events/${eventId}/partner-links`);
-
-/** POST /events/:id/partner-links — `email` is the partner contact's Unifesto account. */
-export const createPartnerLink = (eventId: string, name: string, email: string) =>
-  call<PartnerLink>(`/events/${eventId}/partner-links`, {
-    method: 'POST',
-    body: JSON.stringify({ name, email }),
-  });
-
-/** DELETE /events/:id/partner-links/:linkId — hides the stats from the partner. */
-export const revokePartnerLink = (eventId: string, linkId: string) =>
-  call<{ success: boolean }>(`/events/${eventId}/partner-links/${linkId}`, { method: 'DELETE' });
-
-// ── Partner ──────────────────────────────────────────────────────────────────
-
-export interface PartnerEvent {
-  id: string;
-  slug: string;
-  title: string;
-  coverImageUrl: string | null;
-  startDateTime: string;
-  space: { name: string } | null;
-}
-
-export interface MyPartnerLink {
-  id: string;
-  name: string;
-  event: PartnerEvent;
-  registrations: number;
-  trackingUrl: string;
-}
-
-/** GET /partner-links/mine — every event this user is a partner on. */
-export const getMyPartnerLinks = () => call<MyPartnerLink[]>('/partner-links/mine');
-
-export interface PartnerStats extends MyPartnerLink {
-  /** Registrations credited today (IST). */
-  today: number;
-  /** Confirmed registrations per IST day, oldest first; days with none are omitted. */
-  daily: { date: string; count: number }[];
-}
-
-/** GET /partner-links/:id/stats */
-export const getPartnerStats = (linkId: string) => call<PartnerStats>(`/partner-links/${linkId}/stats`);
 
 // ── Drill-downs ──────────────────────────────────────────────────────────────
 
@@ -125,10 +67,9 @@ export const getSpaceRegistrationSources = (spaceId: string) =>
     `/spaces/${spaceId}/registration-sources`,
   );
 
-/** "Instagram", "Oqens (partner)", "Direct", "Shared from the app". */
+/** "Instagram", "Direct", "Shared from the app". */
 export function sourceLabel(s: { source: string | null; medium: string | null }): string {
   if (!s.source) return 'Direct';
   if (s.source === 'unifesto_app') return 'Shared from the app';
-  const name = s.source.charAt(0).toUpperCase() + s.source.slice(1);
-  return s.medium === 'partner' ? `${name} (partner)` : name;
+  return s.source.charAt(0).toUpperCase() + s.source.slice(1);
 }

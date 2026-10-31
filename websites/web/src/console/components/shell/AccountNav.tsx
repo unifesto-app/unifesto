@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getInboxUnread, getMyUnreadCases, MY_READ_EVENT } from "@/lib/api/support";
-import { getMyPartnerLinks } from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
 import { cn } from "@/console/lib/utils/cn";
 import { accountGroups } from "./nav-config";
@@ -11,19 +10,18 @@ import { ThemeMenuItem } from "./ThemeToggle";
 
 /**
  * The sidebar on my own pages: Dashboard, Inbox, My tickets, Support, Saved
- * events, My certificates, My Spaces, Partner stats when I have links, then
- * Settings (Notifications, Security, Theme).
+ * events, My certificates, My Spaces, then Settings (Notifications,
+ * Security, Theme).
  * My account opens from the sidebar's foot. A space and an event each get
  * their own sidebar (SpaceNav, EventNav).
  */
 export function AccountNav({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const mine = useMyUnread();
-  const partner = useHasPartnerLinks();
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
       <NavGroups
-        groups={accountGroups(partner)}
+        groups={accountGroups()}
         trailing={<ThemeMenuItem collapsed={collapsed} />}
         collapsed={collapsed}
         onNavigate={onNavigate}
@@ -31,17 +29,6 @@ export function AccountNav({ onNavigate, collapsed = false }: { onNavigate?: () 
       />
     </div>
   );
-}
-
-/** Whether an organiser gave me a tracking link, so Partner stats has something to show. */
-function useHasPartnerLinks() {
-  const { session } = useWebSession();
-  const token = session?.token ?? "";
-  const [has, setHas] = useState(false);
-  useEffect(() => {
-    if (token) getMyPartnerLinks(token).then((l) => setHas(l.length > 0), () => setHas(false));
-  }, [token]);
-  return has;
 }
 
 /** My unread inbox items and support replies: counted on load, after I read some, and each minute. */

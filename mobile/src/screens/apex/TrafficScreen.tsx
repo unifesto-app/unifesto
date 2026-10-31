@@ -4,9 +4,7 @@ import CosmosScreen from '../../components/ui/CosmosScreen';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
-import { useRouter } from 'expo-router';
-import { Scissors } from '@unifesto/unicon/react-native';
-import { conversion, getTraffic, scopeParams, type PlatformTrafficStats } from '../../lib/api/traffic';
+import { conversion, getTraffic, type PlatformTrafficStats } from '../../lib/api/traffic';
 import { sourceLabel } from '../../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../../components/traffic/TrafficSummary';
@@ -14,12 +12,10 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const ICON = 28;
 const PLATFORM_LABEL: Record<string, string> = { ios: 'iOS', android: 'Android', web: 'Web' };
 
-/** Apex › Traffic: page views across the platform, what's most viewed, and platform short links. */
+/** Apex › Traffic: page views across the platform and what's most viewed. */
 export default function TrafficScreen() {
-  const router = useRouter();
   const c = useCosmos();
   const [data, setData] = useState<PlatformTrafficStats | null>(null);
   const [error, setError] = useState('');
@@ -103,14 +99,6 @@ export default function TrafficScreen() {
           </Section>
         </>
       ) : null}
-
-      <SettingsGroup title="Links">
-        <SettingsRow
-          icon={<Scissors size={ICON} color={c.text} weight="bold" />}
-          label="Short links"
-          onPress={() => router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'admin' }), title: '' } })}
-        />
-      </SettingsGroup>
     </CosmosScreen>
   );
 }

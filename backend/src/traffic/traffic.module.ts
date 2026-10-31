@@ -4,7 +4,7 @@ import { TrafficController } from './traffic.controller';
 import { TrafficService } from './traffic.service';
 
 /**
- * Page views + tracked short links (`/l/<code>`). PrismaModule is @Global;
+ * Page views of event, space and website pages. PrismaModule is @Global;
  * AuthModule provides JwtAuthGuard / CanGuard.
  */
 @Module({

@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, WhatsappLogo } from '@unifesto/unicon/react-native';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
-import { conversion, getTraffic, scopeParams, type TrafficStats } from '../lib/api/traffic';
+import { conversion, getTraffic, type TrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -29,7 +29,7 @@ const CHANNELS = [
 /**
  * Tracking for one event (curators): where confirmed attendees came from, by
  * the utm tags of the link that brought them in, plus tracking links per
- * channel. Partners live on their own screen (EventPartnersScreen).
+ * channel.
  */
 export default function EventTrackingScreen() {
   const { eventId, slug, title } = useLocalSearchParams<{ eventId: string; slug: string; title?: string }>();
@@ -140,16 +140,6 @@ export default function EventTrackingScreen() {
 
       <View style={{ marginTop: spacing[8] }}>
         <SettingsGroup title="Tracking links">
-          <SettingsRow
-            icon={icon(Scissors)}
-            label="Short links"
-            onPress={() =>
-              router.push({
-                pathname: '/short-links',
-                params: { ...scopeParams({ kind: 'event', id: eventId! }), title: title ?? '' },
-              })
-            }
-          />
           {CHANNELS.map((c) => (
             <SettingsRow
               key={c.source}

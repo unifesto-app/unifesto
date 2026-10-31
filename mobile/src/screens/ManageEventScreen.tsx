@@ -13,7 +13,6 @@ import {
   Gavel,
   GearSix,
   Globe,
-  Handshake,
   Lightning,
   ListBullets,
   ListChecks,
@@ -272,13 +271,6 @@ export default function ManageEventScreen() {
               onPress={() =>
                 router.push({ pathname: `/manage/event/${e.id}/tracking`, params: { title: e.title, slug: e.slug } })
               }
-            />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(Handshake)}
-              label="Partners"
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/partners`, params: { title: e.title } })}
             />
           ) : null}
           {h.access.hosts ? (
