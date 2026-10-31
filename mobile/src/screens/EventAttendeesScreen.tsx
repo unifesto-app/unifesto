@@ -4,6 +4,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretLeft, CaretRight } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { useEventAttendees } from '../hooks/useEventAttendees';
@@ -57,7 +58,8 @@ export default function EventAttendeesScreen() {
   const empty = a.loading ? (
     <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
   ) : (
-    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+    <View style={styles.empty}>
+      <CardBackdrop shape={styles.empty} />
       <Text style={[styles.emptyText, { color: c.soft }]}>
         {a.denied
           ? 'The attendee list is only open to Space admins right now.'

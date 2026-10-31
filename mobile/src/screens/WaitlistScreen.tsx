@@ -17,6 +17,7 @@ import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profi
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -138,21 +139,27 @@ export default function WaitlistScreen() {
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       {enabled.length === 0 ? (
-        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+        <View style={styles.emptyCard}>
+          <CardBackdrop shape={styles.emptyCard} />
           <Text style={[styles.empty, { color: c.soft }]}>
             No ticket has a waiting list. Turn it on for a ticket with a capacity under Tickets.
           </Text>
         </View>
       ) : (
+        // One card for the tickets, a hairline between each.
         <View style={styles.cards}>
-          {enabled.map((row) => (
-            <View key={row.ticketTypeId} style={[styles.card, { backgroundColor: c.raised }]}>
+          <CardBackdrop shape={styles.cards} />
+          {enabled.map((row, i) => (
+            <View
+              key={row.ticketTypeId}
+              style={[styles.card, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
+            >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>
                   {row.name}
                 </Text>
                 <Text style={[styles.cardSub, { color: c.muted }]}>
-                  {row.waiting} waiting · {row.offered} offered
+                  <Text style={[styles.figure, { color: c.sky }]}>{row.waiting} waiting</Text> · {row.offered} offered
                   {row.seatsAvailable != null ? ` · ${row.seatsAvailable} free` : ''}
                 </Text>
               </View>
@@ -242,11 +249,11 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
       {busy ? (
         <ActivityIndicator size="small" color={c.text} />
       ) : waiting ? (
-        <Pressable onPress={() => onAllow(e)} hitSlop={8}>
+        <Pressable onPress={() => onAllow(e)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Let ${nameOf(e)} in`}>
           <Text style={[styles.link, { color: c.primary }]}>Let in</Text>
         </Pressable>
       ) : offered ? (
-        <Pressable onPress={() => onRevoke(e)} hitSlop={8}>
+        <Pressable onPress={() => onRevoke(e)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Revoke the offer for ${nameOf(e)}`}>
           <Text style={[styles.link, { color: c.danger }]}>Revoke</Text>
         </Pressable>
       ) : null}
@@ -259,10 +266,11 @@ const styles = StyleSheet.create({
   note: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  cards: { gap: spacing[3] },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], borderRadius: cosmosCardRadius, padding: spacing[4] },
+  cards: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
   cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  figure: { ...cosmosFont.figure },
   entry: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
   pos: { width: 28, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

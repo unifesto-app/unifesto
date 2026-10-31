@@ -8,7 +8,7 @@ import { relativeWhen } from '../../utils/eventFormat';
 import type { CheckinPhase } from '../../utils/checkinFormat';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const COVER_W = 96;
 const COVER_H = 72; // 4:3
@@ -46,11 +46,11 @@ export default function CheckinEventCard({
       <View style={styles.body}>
         {phase === 'live' ? (
           <View style={styles.liveRow}>
-            <View style={[styles.liveDot, { backgroundColor: c.success }]} />
-            <Text style={[styles.live, { color: c.success }]}>Live now</Text>
+            <View style={[styles.liveDot, { backgroundColor: c.mint }]} />
+            <Text style={[styles.live, { color: c.mint }]}>Live now</Text>
           </View>
         ) : (
-          <Text style={[styles.when, { color: phase === 'ended' ? c.muted : c.primary }]} numberOfLines={1}>
+          <Text style={[styles.when, { color: phase === 'ended' ? c.muted : c.sky }]} numberOfLines={1}>
             {phase === 'ended' ? 'Ended' : relativeWhen(event.startDateTime)}
           </Text>
         )}
@@ -72,13 +72,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[4],
     padding: spacing[3],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
   },
   cover: { width: COVER_W, height: COVER_H, borderRadius: borderRadius.md },
   coverEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 3 },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot: { width: 7, height: 7, borderRadius: 3.5 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
   live: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   when: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, lineHeight: 21, ...cosmosFont.strong },

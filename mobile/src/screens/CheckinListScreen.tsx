@@ -7,6 +7,7 @@ import CheckinEventCard from '../components/checkin/CheckinEventCard';
 import Skeleton from '../components/Skeleton';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER, Section } from '../components/home/Section';
 import { checkinPhase, type CheckinPhase } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
@@ -85,18 +86,20 @@ export default function CheckinListScreen() {
         </View>
       ) : error && !events ? (
         <View style={styles.pad}>
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
-            <Text style={[styles.emptyTitle, { color: c.text }]}>Couldn't load events</Text>
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">Couldn't load events</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
         </View>
       ) : empty ? (
         <View style={styles.pad}>
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <QrCode size={40} color={c.muted} />
-            <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing to check in yet</Text>
-            <Text style={[styles.emptyText, { color: c.soft }]}>
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">Nothing to check in yet</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>
               Events you run, or where a curator gives you door access, show up here.
             </Text>
           </View>
@@ -121,6 +124,6 @@ const styles = StyleSheet.create({
   firstSection: { marginTop: spacing[2] },
   list: { gap: spacing[3] },
   empty: { alignItems: 'center', gap: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  emptyTitle: { fontSize: typography.fontSize.base, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.display },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 290, ...cosmosFont.body },
 });

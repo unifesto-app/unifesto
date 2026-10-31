@@ -42,11 +42,11 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
           <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
             {name}
           </Text>
-          {tags.map((t) => (
-            <View key={t} style={[styles.tag, { backgroundColor: c.tint }]}>
-              <Text style={[styles.tagText, { color: c.text }]}>{t}</Text>
-            </View>
-          ))}
+          {tags.length ? (
+            <Text style={[styles.tagText, { color: c.muted }]} numberOfLines={1}>
+              {tags.join(' · ')}
+            </Text>
+          ) : null}
         </View>
         {sub ? (
           <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 2 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  tagText: { fontSize: 11, ...cosmosFont.strong },
+  // Tags are plain muted text, never pills.
+  tagText: { flexShrink: 0, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   trailing: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

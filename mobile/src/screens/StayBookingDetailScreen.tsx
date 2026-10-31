@@ -18,6 +18,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getFormUploadUrl, FIELD_TYPE_MAP, type CustomField } from '../lib/api/tickets';
 import {
@@ -88,7 +89,8 @@ export default function StayBookingDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -179,11 +181,14 @@ export default function StayBookingDetailScreen() {
 
   return (
     <CosmosScreen keyboard bottom={80 + insets.bottom} contentContainerStyle={styles.content}>
-      <Text style={[styles.status, { color: tone, backgroundColor: `${tone}26` }]}>{STATUS_LABELS[b.status]}</Text>
-      <Text style={[styles.title, { color: c.text }]}>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
         {booker?.name || b.user.fullName || 'Guest'}
         {b.guestCount > 1 ? ` +${b.guestCount - 1}` : ''}
       </Text>
+      <View style={styles.statusRow}>
+        <View style={[styles.dot, { backgroundColor: tone }]} />
+        <Text style={[styles.status, { color: tone }]}>{STATUS_LABELS[b.status]}</Text>
+      </View>
       <Text style={[styles.sub, { color: c.soft }]}>
         {b.stay.name} · {b.option.name}
       </Text>
@@ -193,7 +198,8 @@ export default function StayBookingDetailScreen() {
 
       {/* ── Next step ── */}
       {b.status === 'PENDING' && desk ? (
-        <View style={[styles.banner, { backgroundColor: c.raised }]}>
+        <View style={styles.banner}>
+          <CardBackdrop shape={styles.banner} />
           <Warning size={20} color={c.warn} />
           <Text style={[styles.bannerText, { color: c.text }]}>Not approved yet. Ask an organiser to approve it first.</Text>
         </View>
@@ -207,7 +213,8 @@ export default function StayBookingDetailScreen() {
           </Text>
         </View>
       ) : b.status === 'AWAITING_PAYMENT' ? (
-        <View style={[styles.banner, { backgroundColor: c.raised }]}>
+        <View style={styles.banner}>
+          <CardBackdrop shape={styles.banner} />
           <CurrencyInr size={20} color={c.warn} />
           <Text style={[styles.bannerText, { color: c.text }]}>
             Waiting for {rupees(b.totalAmount)}
@@ -261,7 +268,8 @@ export default function StayBookingDetailScreen() {
         </View>
       ) : b.status === 'CHECKED_IN' ? (
         <View style={styles.actions}>
-          <View style={[styles.banner, { backgroundColor: c.raised }]}>
+          <View style={styles.banner}>
+            <CardBackdrop shape={styles.banner} />
             <CheckCircle size={20} color={c.success} weight="fill" />
             <Text style={[styles.bannerText, { color: c.text }]}>Checked in {b.checkedInAt ? when(b.checkedInAt) : ''}</Text>
           </View>
@@ -277,7 +285,8 @@ export default function StayBookingDetailScreen() {
           />
         </View>
       ) : (
-        <View style={[styles.banner, { backgroundColor: c.raised }]}>
+        <View style={styles.banner}>
+          <CardBackdrop shape={styles.banner} />
           <Warning size={20} color={c.danger} />
           <Text style={[styles.bannerText, { color: c.text }]}>
             {b.rejectionReason || b.cancellationReason || STATUS_LABELS[b.status]}
@@ -415,8 +424,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  status: { alignSelf: 'flex-start', paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999, overflow: 'hidden', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  title: { marginTop: spacing[3], fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, ...cosmosFont.display },
+  // A guest's name: Hanken, never display.
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.25, ...cosmosFont.strong },
+  // The status is plain text with a dot, never a pill.
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], marginBottom: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { marginTop: spacing[5], gap: spacing[3] },
   banner: { marginTop: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },

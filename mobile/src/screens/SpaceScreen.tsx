@@ -18,9 +18,9 @@ import { activeEvents, adminSpaces, hostedSpaces, hostingRoleLabel } from '../li
 import type { CheckinEvent } from '../lib/api/checkin';
 import type { OperatorSpace } from '../lib/api/spaceAccess';
 import { relativeWhen } from '../utils/eventFormat';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import { openSpaceWeb } from '../lib/openOnWeb';
 
@@ -110,7 +110,7 @@ export default function SpaceScreen() {
         }
       >
         <View style={{ paddingTop: topInset + spacing[4], paddingHorizontal: GUTTER }}>
-          <Text style={[styles.title, { color: c.text }]}>My space</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">My space</Text>
           {summary ? <Text style={[styles.summary, { color: c.soft }]}>{summary}</Text> : null}
         </View>
 
@@ -150,12 +150,9 @@ export default function SpaceScreen() {
                     onPress={openWeb}
                     accessibilityRole="link"
                     accessibilityLabel="Manage on the web"
-                    style={({ pressed }) => [
-                      styles.tile,
-                      styles.web,
-                      { borderColor: c.outline, transform: [{ scale: pressed ? 0.97 : 1 }] },
-                    ]}
+                    style={({ pressed }) => [styles.tile, styles.web, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
                   >
+                    <CardBackdrop shape={styles.tile} />
                     <Text style={[styles.tileName, { color: c.text, marginTop: 0 }]}>Manage on the web</Text>
                     <Text style={[styles.tileMeta, { color: c.muted }]}>Billing, payouts and branding</Text>
                     <ArrowUpRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
@@ -274,19 +271,14 @@ function SpaceTile({ space, onPress }: { space: OperatorSpace; onPress: () => vo
       style={({ pressed }) => [styles.tile, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
     >
       <CardBackdrop shape={styles.tile} />
-      <View style={styles.tileTop}>
-        {space.logo_url ? (
-          <Image source={{ uri: space.logo_url }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />
-        ) : (
-          <Monogram name={space.name} size={TILE_LOGO} radius={14} />
-        )}
-        {role ? (
-          <View style={[styles.role, { backgroundColor: c.tint }]}>
-            <Text style={[styles.roleText, { color: c.text }]}>{role}</Text>
-          </View>
-        ) : null}
-      </View>
+      {space.logo_url ? (
+        <Image source={{ uri: space.logo_url }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />
+      ) : (
+        <Monogram name={space.name} size={TILE_LOGO} radius={borderRadius.md} />
+      )}
       <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
+      {/* My role is a plain muted line, never a pill. */}
+      {role ? <Text style={[styles.tileRole, { color: c.soft }]} numberOfLines={1}>{role}</Text> : null}
       {/* Space Admins run the whole space; curators only the events they were given. */}
       <Text style={[styles.tileMeta, { color: c.muted }]} numberOfLines={1}>
         {space.userRole?.code === 'SPACE_ADMIN' ? 'All events' : `${events} event${events === 1 ? '' : 's'}`}
@@ -299,17 +291,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 140 },
   pad: { paddingHorizontal: GUTTER },
-  title: { fontSize: 26, lineHeight: 34, ...cosmosFont.display },
+  title: { fontSize: 26, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   summary: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   first: { marginTop: spacing[8] },
   cardInner: { borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[4] },
   empty: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   tile: { width: TILE_W, minHeight: 168, borderRadius: cosmosCardRadius, padding: spacing[4] },
-  // The role pill wraps under the logo rather than truncating ("Space ad…").
-  tileTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
-  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: 14, overflow: 'hidden' },
-  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  roleText: { fontSize: 11, ...cosmosFont.strong },
+  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
+  tileRole: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   tileName: {
     marginTop: spacing[4],
     fontSize: typography.fontSize.base,
@@ -317,5 +306,5 @@ const styles = StyleSheet.create({
     ...cosmosFont.strong,
   },
   tileMeta: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  web: { borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center' },
+  web: { justifyContent: 'center' },
 });

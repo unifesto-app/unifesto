@@ -35,12 +35,13 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
   const status = statusLine(event, now);
   const people = event.attendees?.total ?? 0;
   const capacity = event.capacity ? ` / ${event.capacity.toLocaleString('en-IN')}` : '';
-  const statusColor = status.tone === 'live' ? c.success : status.tone === 'danger' ? c.danger : c.muted;
+  const statusColor = status.tone === 'live' ? c.mint : status.tone === 'danger' ? c.danger : c.muted;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={`${event.title}, ${status.text}`}
       style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
       <CardBackdrop shape={styles.row} />
@@ -55,10 +56,13 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
         <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
           {event.title}
         </Text>
-        <Text style={[styles.meta, { color: statusColor }]} numberOfLines={1}>
-          {status.text}
-          {event.isCoHost ? '  ·  Co-hosting' : ''}
-        </Text>
+        <View style={styles.statusRow}>
+          {status.tone === 'live' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
+          <Text style={[styles.meta, styles.status, { color: statusColor }]} numberOfLines={1}>
+            {status.text}
+            {event.isCoHost ? <Text style={{ color: c.muted }}>{'  ·  Co-hosting'}</Text> : null}
+          </Text>
+        </View>
         {event.status !== 'DRAFT' ? (
           <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
             {people.toLocaleString('en-IN')}
@@ -96,4 +100,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 2 },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  status: { flexShrink: 1, ...cosmosFont.strong },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 });

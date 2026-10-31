@@ -1,8 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
-import { User } from '@unifesto/unicon/react-native';
+import { Check } from '@unifesto/unicon/react-native';
 import type { AttendeeRow as Row } from '../../lib/api/manageEvent';
+import { Avatar } from '../checkin/PersonRow';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { type Cosmos, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -31,15 +31,10 @@ export default function AttendeeRow({ row, onPress }: { row: Row; onPress: () =>
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={[name, sub, badge.text].filter(Boolean).join(', ')}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
     >
-      {row.user.avatarUrl ? (
-        <Image source={{ uri: row.user.avatarUrl }} style={styles.avatar} />
-      ) : (
-        <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: c.tint }]}>
-          <User size={20} color={c.muted} />
-        </View>
-      )}
+      <Avatar name={name} url={row.user.avatarUrl} size={AVATAR} />
       <View style={styles.body}>
         <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
           {name}
@@ -50,16 +45,18 @@ export default function AttendeeRow({ row, onPress }: { row: Row; onPress: () =>
           </Text>
         ) : null}
       </View>
-      <Text style={[styles.badge, { color: badge.color }]}>{badge.text}</Text>
+      <View style={styles.status}>
+        {badge.color === c.success ? <Check size={12} color={badge.color} weight="bold" /> : null}
+        <Text style={[styles.badge, { color: badge.color }]}>{badge.text}</Text>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
-  avatarEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sub: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   badge: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },

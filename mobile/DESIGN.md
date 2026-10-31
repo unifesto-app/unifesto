@@ -128,7 +128,7 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
 
 ## 7. Spacing and radius
 
-- Screen gutter `spacing[5]`. `spacing[4]` between cards, `spacing[8]` before a new section.
+- Screen gutter `GUTTER` (`spacing[6]`, from components/home/Section). `spacing[4]` between cards, `spacing[8]` before a new section.
 - Inside a card: padding `spacing[4]`–`spacing[5]`, `spacing[3]` between lines of a group.
 - Radius: cards 20, controls 14, inner images 12, circles stay round. Never square corners.
 

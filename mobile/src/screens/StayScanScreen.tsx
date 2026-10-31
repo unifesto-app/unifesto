@@ -13,15 +13,17 @@ import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { Button } from '../components/ui';
 import { lookupStayPass } from '../lib/api/stays';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const RESCAN_COOLDOWN = 2500;
+// The camera stays dark in both themes, so the overlay takes the night tokens.
+const NIGHT = cosmosFor('dark');
 const CAMERA_TINT = 'rgba(0, 0, 0, 0.3)';
 const GLASS = LIQUID_GLASS ? 'transparent' : 'rgba(0, 0, 0, 0.5)';
-const CameraGlass = () => <GlassFill variant="clear" tint={CAMERA_TINT} />;
-const WHITE = '#ffffff';
+const CameraGlass = () => <GlassFill variant="clear" tint={CAMERA_TINT} radius={cosmosRadius} />;
+const WHITE = NIGHT.text;
 const WHITE_DIM = 'rgba(255, 255, 255, 0.7)';
 const PASS_RE = /^STAY-[2-9A-HJ-NP-Z]{6}$/;
 
@@ -139,10 +141,9 @@ export default function StayScanScreen() {
       <View style={styles.scrim} pointerEvents="none" />
 
       <View style={[styles.top, { top: topSpacing }]}>
-        <View style={styles.pill}>
-          <CameraGlass />
-          <Bed size={14} color={WHITE} weight="fill" />
-          <Text style={styles.pillText}>Scan a Stay Pass</Text>
+        <View style={styles.label}>
+          <Bed size={15} color={WHITE} weight="fill" />
+          <Text style={styles.labelText}>Scan a Stay Pass</Text>
         </View>
       </View>
 
@@ -166,7 +167,7 @@ export default function StayScanScreen() {
             style={({ pressed }) => [styles.tool, { backgroundColor: torch ? WHITE : GLASS, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
           >
             {!torch ? <CameraGlass /> : null}
-            <Flashlight size={22} color={torch ? '#000000' : WHITE} weight={torch ? 'fill' : 'regular'} />
+            <Flashlight size={22} color={torch ? NIGHT.primaryFg : WHITE} weight={torch ? 'fill' : 'regular'} />
           </Pressable>
           <View style={[styles.tool, styles.toolWide]}>
             <CameraGlass />
@@ -183,28 +184,20 @@ export default function StayScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000000' },
+  root: { flex: 1, backgroundColor: NIGHT.bg },
   shell: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], gap: spacing[3] },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.25)' },
   top: { position: 'absolute', left: spacing[5], right: spacing[5], zIndex: 2 },
-  pill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 36,
-    paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
-    backgroundColor: GLASS,
-  },
-  pillText: { color: WHITE, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // A label, not a pill: a glyph and plain text over the scrim.
+  label: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  labelText: { flexShrink: 1, color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
   hint: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
   tools: { flexDirection: 'row', gap: spacing[3] },
-  tool: { height: 52, width: 52, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
+  tool: { height: 52, width: 52, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   toolWide: { flex: 1, width: undefined, paddingHorizontal: spacing[4], backgroundColor: GLASS },
   toolText: { color: WHITE_DIM, fontSize: typography.fontSize.xs, textAlign: 'center', ...cosmosFont.body },
-  msgTitle: { fontSize: typography.fontSize.lg, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  msgTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   msgBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

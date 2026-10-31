@@ -7,6 +7,7 @@ import { getRefundQueue, type RefundRequest, type RefundStatus } from '../lib/ap
 import { RefundRow } from '../components/manage/FinanceRows';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -113,7 +114,8 @@ export default function RefundsScreen() {
           loading ? (
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>{error || EMPTY[status]}</Text>
             </View>
           )
