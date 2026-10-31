@@ -435,15 +435,19 @@ if [ "${DEPLOY_BACKEND}" = true ]; then
   fi
 fi
 
-# Detect Caddyfile changes BEFORE we sync. The Caddyfile is a read-only
-# bind-mount, and `docker compose up -d` does NOT reload caddy when only the
-# mounted file changed — so a new/edited site block would sync but never take
-# effect (unrouted host → empty 200 / white page). We compare the local file
-# to what's currently on the server; if they differ, we restart caddy after
-# the deploy so it re-reads the config. (shasum on macOS and sha1sum on Linux
-# produce the same SHA1 digest.)
+# Detect Caddyfile changes. The Caddyfile is a read-only bind-mount, and
+# `docker compose up -d` does NOT reload caddy when only the mounted file
+# changed — so a new/edited site block would sync but never take effect
+# (unrouted host → empty 200 / white page). We compare the local file to the
+# one the running caddy loaded; if they differ, we restart caddy after the
+# deploy so it re-reads the config. "Loaded" is CADDY_LOADED on the server,
+# written only when a deploy finishes, not the server's Caddyfile: a run that
+# synced a new Caddyfile and then failed would hide the change from the next
+# run (2026-10-31). No CADDY_LOADED yet: the server's Caddyfile, read before
+# the sync. (shasum on macOS and sha1sum on Linux produce the same SHA1 digest.)
 CADDY_LOCAL="$(shasum "${HERE}/Caddyfile" | cut -d' ' -f1)"
-CADDY_REMOTE="$(ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "sha1sum ${REMOTE_DIR}/Caddyfile 2>/dev/null | cut -d' ' -f1" || true)"
+CADDY_LOADED="$(ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
+  "cd ${REMOTE_DIR} && cat CADDY_LOADED 2>/dev/null || sha1sum Caddyfile 2>/dev/null | cut -d' ' -f1" || true)"
 
 echo "==> Syncing source to ${SERVER}:${REMOTE_DIR}"
 # J14: no .env file is ever synced (the laptop's hold dev values). Excluded paths
@@ -469,6 +473,7 @@ rsync -az --delete \
   --exclude '/backend/prisma/manual' \
   --exclude '/DEPLOYED_SHA' \
   --exclude '/DEPLOY_LOG' \
+  --exclude '/CADDY_LOADED' \
   "${HERE}/" "${SERVER}:${REMOTE_DIR}/"
 
 echo "==> Building images on the server (release ${SHA})"
@@ -482,12 +487,27 @@ set -euo pipefail
 cd "$1"; sha="$2"; services="$3"; shift 3
 # Hold on to what :latest is now; the build moves :latest off it.
 for img; do docker tag "${img}:latest" "${img}:pre-build" 2>/dev/null || true; done
+# A build that dies part-way (ENOSPC, 2026-10-31) has already moved :latest
+# onto images that never shipped. The next run would make those :pre-build,
+# then :previous (breaking rollback), and the DROP guard would count their
+# migrations as already checked. So until the build succeeds, any exit puts
+# each :latest back on its :pre-build and drops :pre-build.
+restore_latest() {
+  local img
+  for img; do
+    docker image inspect "${img}:pre-build" >/dev/null 2>&1 || continue
+    docker tag "${img}:pre-build" "${img}:latest" && docker rmi "${img}:pre-build" >/dev/null || true
+  done
+  echo "!! Build did not finish: :latest is back on the images it was on before. Re-run when fixed." >&2
+}
+trap "restore_latest $*" EXIT
 # The 29G root fills up otherwise (~2.5G of build cache per deploy; ENOSPC
 # killed parallel Next builds on 2026-10-19 and 2026-10-21). Costs the
 # backend's cached npm ci layers; the websites rebuild those anyway.
 docker builder prune -af >/dev/null
 docker image prune -f >/dev/null
 SENTRY_RELEASE="${sha}" docker compose build ${services}
+trap - EXIT
 for img; do
   docker tag "${img}:latest" "${img}:${sha}"
   if docker image inspect "${img}:pre-build" >/dev/null 2>&1; then
@@ -520,7 +540,7 @@ fi
 start_others
 
 # Reload the proxy only when the Caddyfile actually changed (see note above).
-if [ "${CADDY_LOCAL}" != "${CADDY_REMOTE}" ]; then
+if [ "${CADDY_LOCAL}" != "${CADDY_LOADED}" ]; then
   echo "==> Caddyfile changed — validating, then restarting caddy to load it"
   # A throwaway container (fresh bind mount, no published ports) validates the
   # synced file first, so a bad Caddyfile fails the deploy instead of taking
@@ -534,7 +554,8 @@ fi
 
 purge_www
 
-ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && echo '${SHA}' > DEPLOYED_SHA && echo \"\$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy [${SERVICES:-all}] ${SHA}\" >> DEPLOY_LOG"
+# Caddy now runs CADDY_LOCAL either way (restarted above, or already had it).
+ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && echo '${SHA}' > DEPLOYED_SHA && echo '${CADDY_LOCAL}' > CADDY_LOADED && echo \"\$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy [${SERVICES:-all}] ${SHA}\" >> DEPLOY_LOG"
 
 echo "==> Deployed ${SHA}. If it misbehaves: ./deploy.sh rollback ${SERVICES}"
 echo "==> Done. Tail logs with:"
