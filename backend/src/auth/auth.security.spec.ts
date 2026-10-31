@@ -1,5 +1,11 @@
 /// <reference types="jest" />
-import { ConflictException, HttpException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  GoneException,
+  HttpException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { AuthService, PUSH_INSTALLS_SIGNED_OUT } from './auth.service';
 import { OtpService } from './otp.service';
@@ -614,6 +620,50 @@ describe('Linked devices: one session per sign-in', () => {
     expect(prisma.authSession.rows.size).toBe(0);
     expect(prisma.userPushDevice.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
     expect(events.emit).toHaveBeenCalledWith(PUSH_INSTALLS_SIGNED_OUT, ['x', 'y']);
+  });
+});
+
+describe('QR sign-in: a browser shows a code, my phone approves it', () => {
+  const CHROME =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+  it('pending until approved, then one session for that browser, handed out once', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user({ fullName: 'Asha' }));
+    const { code, secret } = await service.startQrLink(CHROME);
+
+    await expect(service.pollQrLink(code, secret)).resolves.toEqual({ status: 'pending' });
+    await expect(service.previewQrLink(code)).resolves.toEqual({ name: 'Chrome on macOS' });
+    await service.approveQrLink('user-1', code);
+
+    const done: any = await service.pollQrLink(code, secret);
+    expect(done).toMatchObject({ status: 'approved', fullName: 'Asha' });
+    expect(jwt.decode(done.accessToken)).toMatchObject({ userId: 'user-1', type: 'access', sid: expect.any(String) });
+    expect(prisma.authSession.create).toHaveBeenCalledWith({
+      data: { userId: 'user-1', userAgent: CHROME },
+      select: { id: true },
+    });
+    await expect(service.pollQrLink(code, secret)).rejects.toBeInstanceOf(GoneException);
+  });
+
+  it("a photo of the QR can't collect the session: it needs the page's secret", async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const { code } = await service.startQrLink(CHROME);
+    await service.approveQrLink('user-1', code);
+
+    await expect(service.pollQrLink(code, 'guessed')).rejects.toBeInstanceOf(GoneException);
+    await expect(service.pollQrLink(code, undefined)).rejects.toBeInstanceOf(GoneException);
+    expect(prisma.authSession.create).not.toHaveBeenCalled();
+  });
+
+  it('the first approval wins; unknown codes are gone', async () => {
+    const { service } = setup();
+    const { code } = await service.startQrLink(CHROME);
+    await service.approveQrLink('user-1', code);
+    await expect(service.approveQrLink('someone-else', code)).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.approveQrLink('user-1', 'no-such-code-0000')).rejects.toBeInstanceOf(GoneException);
+    await expect(service.previewQrLink('../../etc')).rejects.toBeInstanceOf(GoneException);
   });
 });
 

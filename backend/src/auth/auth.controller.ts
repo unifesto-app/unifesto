@@ -193,4 +193,47 @@ export class AuthController {
   revokeSession(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
     return this.authService.revokeSession(req.user.id, id);
   }
+
+  /**
+   * QR sign-in, the browser: a code to show, valid for two minutes.
+   * POST /auth/qr
+   */
+  @Post('qr')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  startQrLink(@Headers('user-agent') ua?: string) {
+    return this.authService.startQrLink(ua);
+  }
+
+  /**
+   * The browser checks every 2 seconds until a phone approves (410 once expired).
+   * POST /auth/qr/poll
+   */
+  @Post('qr/poll')
+  @Throttle({ default: { limit: 90, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  pollQrLink(@Body() body?: { code?: string; secret?: string }) {
+    return this.authService.pollQrLink(body?.code, body?.secret);
+  }
+
+  /**
+   * The phone, before I approve: which browser is asking.
+   * GET /auth/qr/:code
+   */
+  @Get('qr/:code')
+  @UseGuards(JwtAuthGuard)
+  previewQrLink(@Param('code') code: string) {
+    return this.authService.previewQrLink(code);
+  }
+
+  /**
+   * The phone approves: that browser is signed in as me.
+   * POST /auth/qr/:code/approve
+   */
+  @Post('qr/:code/approve')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  approveQrLink(@Request() req, @Param('code') code: string) {
+    return this.authService.approveQrLink(req.user.id, code);
+  }
 }
