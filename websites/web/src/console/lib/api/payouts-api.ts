@@ -15,9 +15,7 @@ export type PayoutStatus =
 
 export interface Payout {
   id: string;
-  /** Exactly one of eventId / sessionId is set (T6). */
-  eventId: string | null;
-  sessionId?: string | null;
+  eventId: string;
   userId: string;
   grossRevenue: string;
   platformFeePercent: string;
@@ -33,7 +31,6 @@ export interface Payout {
   notes: string | null;
   createdAt: string;
   event?: { id: string; title: string; slug: string; startDateTime?: string } | null;
-  session?: { id: string; title: string; slug: string; startDateTime?: string } | null;
   user?: { id: string; fullName: string | null; username: string | null };
   bankAccount?: {
     methodType?: PayoutMethodType;
@@ -132,16 +129,15 @@ export async function deleteBankAccount(
 
 // ── Payout creation / request ──────────────────────────────────────────────
 
-/** What a payout draws from (T6): an event or a Huddle session. */
+/** What a payout draws from: an event. */
 export interface PayoutTarget {
-  kind: "event" | "session";
+  kind: "event";
   id: string;
   title: string;
 }
 
 export interface EventPayoutSummary {
   eventId?: string;
-  sessionId?: string;
   registrationCount: number;
   grossRevenue: number;
   defaultPlatformFeePercent: number;
@@ -206,7 +202,7 @@ export async function requestPayout(
 ): Promise<{ data: Payout | null; error: ApiError | null }> {
   return apiCall<Payout>(
     backendClient.post("/payouts/request", {
-      [target.kind === "session" ? "sessionId" : "eventId"]: target.id,
+      eventId: target.id,
       ...(amount != null ? { amount } : {}),
       ...(bankAccountId ? { bankAccountId } : {}),
     })

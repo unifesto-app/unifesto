@@ -63,7 +63,6 @@ describe('ReconciliationService.getOrphanedPayments', () => {
         return [];
       }),
     },
-    sessionRegistration: { findMany: jest.fn(async () => []) },
     stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
   };

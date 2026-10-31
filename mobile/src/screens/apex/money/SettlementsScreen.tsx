@@ -148,7 +148,7 @@ export default function SettlementsScreen() {
           <View style={cardSegment(c.raised, index, data.length)}>
             {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
             <ApexRow
-            title={p.event?.title ?? p.session?.title ?? 'Event'}
+            title={p.event?.title ?? 'Event'}
             meta={[organiserName(p), shortDate(p.completedAt ?? p.createdAt), p.utr ? `UTR ${p.utr}` : to, p.status === 'COMPLETED' ? null : s.text]
               .filter(Boolean)
               .join('  ·  ')}

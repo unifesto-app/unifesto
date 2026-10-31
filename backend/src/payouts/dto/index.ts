@@ -76,15 +76,9 @@ export class SetEventPayoutAccountDto {
  * balance; when present it must be a finite positive number (S29: "abc" used to
  * become NaN and slip past every `<=`/`>` guard).
  */
-/** Exactly one of eventId / sessionId (T6: Huddle sessions pay out too). */
 export class CreateEventPayoutDto {
-  @IsOptional()
   @IsUUID()
-  eventId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  sessionId?: string;
+  eventId: string;
 
   @IsOptional()
   @IsNumber({ allowNaN: false, allowInfinity: false })

@@ -491,7 +491,7 @@ export class AdminService {
         FROM payouts
         WHERE status::text = 'COMPLETED'
           AND COALESCE(completed_at, created_at) >= ${windowStart}
-          AND (session_id IS NOT NULL OR ${notDemoEventSql('event_id')})
+          AND ${notDemoEventSql('event_id')}
         GROUP BY 1
       `),
     ]);

@@ -2,7 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
-import { PayoutsService, payoutSource } from './payouts.service';
+import { PayoutsService } from './payouts.service';
 import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, RevokeBankAccountDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -46,12 +46,6 @@ export class PayoutsController {
     return this.payoutsService.getPayoutSummary({ eventId }, req.user.id);
   }
 
-  /** A Huddle session's payout balance (T6). */
-  @Get('session/:sessionId/summary')
-  async getSessionPayoutSummary(@Request() req, @Param('sessionId') sessionId: string) {
-    return this.payoutsService.getPayoutSummary({ sessionId }, req.user.id);
-  }
-
   /** Transactions page tiles for an event (optionally one ticket type). */
   @Get('event/:eventId/transactions')
   async getEventTransactions(
@@ -80,11 +74,6 @@ export class PayoutsController {
     return this.payoutsService.getEligibleAccounts({ eventId }, req.user.id);
   }
 
-  @Get('session/:sessionId/eligible-accounts')
-  async getSessionEligibleAccounts(@Request() req, @Param('sessionId') sessionId: string) {
-    return this.payoutsService.getEligibleAccounts({ sessionId }, req.user.id);
-  }
-
   /** Set (or clear, with bankAccountId: null) the event's default payout account. */
   @Patch('event/:eventId/payout-account')
   async setEventPayoutAccount(
@@ -106,7 +95,7 @@ export class PayoutsController {
   ) {
     return this.payoutsService.requestPayout(
       req.user.id,
-      payoutSource(body),
+      { eventId: body.eventId },
       body.amount,
       body.bankAccountId ?? null,
     );
@@ -178,7 +167,7 @@ export class PayoutsController {
     @Request() req,
     @Body() body: CreateEventPayoutDto,
   ) {
-    return this.payoutsService.createPayoutFor(payoutSource(body), req.user.id, body.amount);
+    return this.payoutsService.createPayoutFor({ eventId: body.eventId }, req.user.id, body.amount);
   }
 
   @Post('admin/:id/process')

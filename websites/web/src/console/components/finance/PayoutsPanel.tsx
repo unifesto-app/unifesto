@@ -83,7 +83,7 @@ export function PayoutsPanel() {
   // space, not just the caller's own), so no client-side filtering is needed.
   const spacePayouts = payouts;
   const shown = spacePayouts.filter((p) =>
-    matches(search, p.event?.title ?? p.session?.title, p.utr, STATUS[p.status].label)
+    matches(search, p.event?.title, p.utr, STATUS[p.status].label)
   );
   const { page, setPage, totalPages, pageItems } = usePaged(shown);
   const now = Date.now();
@@ -172,7 +172,7 @@ export function PayoutsPanel() {
                       <div key={p.id} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium text-foreground">{p.event?.title ?? p.session?.title ?? "Event"}</p>
+                            <p className="truncate text-sm font-medium text-foreground">{p.event?.title ?? "Event"}</p>
                             <Badge variant={s.variant}>{s.label}</Badge>
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -297,7 +297,7 @@ export function RequestPayoutDialog({
           <div className="space-y-4">
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{target.kind === "session" ? "Session net" : "Event net"}</span>
+                <span className="text-muted-foreground">Event net</span>
                 <span className="font-medium">{money(summary.eventNet)}</span>
               </div>
               {summary.committed > 0 && (

@@ -2595,7 +2595,7 @@ export class EventsService {
     // exist (S14, A29). Hide it instead.
     const deleted = await deleteWithoutMoney(
       this.prisma,
-      { event: { id: eventId } },
+      { id: eventId },
       'This event has payment, refund or payout records and cannot be deleted. Hide it instead.',
       (tx) => tx.event.delete({ where: { id: eventId } }),
     );

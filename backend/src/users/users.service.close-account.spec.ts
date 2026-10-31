@@ -126,7 +126,6 @@ function makePrisma() {
       args: { sql: strings.join('?'), values },
     })),
     eventCheckinAccess: { deleteMany: op('d') },
-    sessionCoHost: { deleteMany: op('d') },
     // Phone-only leads whose last 10 digits match, as the SQL narrows them.
     $queryRaw: jest.fn(async () => [
       { id: 'lead-p1', phone: '+91 98 76 54 32 10' },

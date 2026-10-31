@@ -8,9 +8,9 @@ function r2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-/** A platform payment row, flattened across event + session registrations. */
+/** A platform payment row, flattened across registrations, stays and extra seats. */
 interface PlatformPayment {
-  source: 'EVENT' | 'SESSION' | 'STAY' | 'SEATS';
+  source: 'EVENT' | 'STAY' | 'SEATS';
   registrationId: string;
   title: string;
   paymentStatus: PaymentStatus;
@@ -65,11 +65,11 @@ export class ReconciliationService {
     };
   }
 
-  /** Every platform payment (event + session + stay) captured via Razorpay in a window. */
+  /** Every platform payment (event + stay + extra seats) captured via Razorpay in a window. */
   private async platformPayments(fromMs: number, toMs: number): Promise<PlatformPayment[]> {
     const window = { paidAt: { gte: new Date(fromMs), lte: new Date(toMs) } };
 
-    const [events, sessions, stays, seats] = await Promise.all([
+    const [events, stays, seats] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { paymentId: { not: null }, ...window },
         select: {
@@ -81,19 +81,6 @@ export class ReconciliationService {
           refundedAmount: true,
           paidAt: true,
           event: { select: { title: true } },
-        },
-      }),
-      this.prisma.sessionRegistration.findMany({
-        where: { paymentId: { not: null }, ...window },
-        select: {
-          id: true,
-          paymentId: true,
-          paymentStatus: true,
-          razorpayAmount: true,
-          processingFee: true,
-          refundedAmount: true,
-          paidAt: true,
-          session: { select: { title: true } },
         },
       }),
       // Unifesto Stay bookings paid online (pay-at-property has no paymentId).
@@ -139,17 +126,6 @@ export class ReconciliationService {
         processingFee: Number(e.processingFee),
         refundedAmount: Number(e.refundedAmount),
         paidAt: e.paidAt,
-      })),
-      ...sessions.map((s) => ({
-        source: 'SESSION' as const,
-        registrationId: s.id,
-        paymentId: s.paymentId as string,
-        title: s.session?.title ?? 'Session',
-        paymentStatus: s.paymentStatus,
-        razorpayAmount: Number(s.razorpayAmount),
-        processingFee: Number(s.processingFee),
-        refundedAmount: Number(s.refundedAmount),
-        paidAt: s.paidAt,
       })),
       ...stays.map((s) => ({
         source: 'STAY' as const,
@@ -441,8 +417,8 @@ export class ReconciliationService {
         },
         status: 'MISSING_IN_RAZORPAY' as const,
         amountMismatch: false,
-        // Already a platform EVENT row → link to view it; sessions aren't
-        // handled by the transactions detail page.
+        // Already a platform EVENT row → link to view it; stays and seats
+        // aren't handled by the transactions detail page.
         reconcileRegistrationId: p.source === 'EVENT' ? p.registrationId : null,
       }));
 
@@ -471,8 +447,8 @@ export class ReconciliationService {
    *   - UNSETTLED — the notes registration still exists but is PENDING (a missed
    *     webhook). A plain reconcile with the payment id settles it in place.
    * Only fully-captured, non-refunded payments are listed (a refunded payment is
-   * not money we should be attaching to a ticket). Session payments are excluded
-   * — this view covers event registrations only.
+   * not money we should be attaching to a ticket). This view covers event
+   * registrations only.
    */
   async getOrphanedPayments(from?: string, to?: string) {
     const { fromSec, toSec } = this.resolveWindow(from, to);
@@ -485,17 +461,11 @@ export class ReconciliationService {
     );
     const capturedIds = captured.map((p) => p.id);
 
-    // Payments already attributed to a registration (event, session or stay)
+    // Payments already attributed to a registration (event or stay)
     // are, by definition, not orphaned — skip them regardless of the notes.
-    const [attachedEvents, attachedSessions, attachedStays, seatOrders] = await Promise.all([
+    const [attachedEvents, attachedStays, seatOrders] = await Promise.all([
       capturedIds.length
         ? this.prisma.eventRegistration.findMany({
-            where: { paymentId: { in: capturedIds } },
-            select: { paymentId: true },
-          })
-        : Promise.resolve([]),
-      capturedIds.length
-        ? this.prisma.sessionRegistration.findMany({
             where: { paymentId: { in: capturedIds } },
             select: { paymentId: true },
           })
@@ -520,7 +490,6 @@ export class ReconciliationService {
     const seatOrderIds = new Set(seatOrders.map((r) => r.orderId));
     const attributed = new Set<string>([
       ...attachedEvents.map((r) => r.paymentId as string),
-      ...attachedSessions.map((r) => r.paymentId as string),
       ...attachedStays.map((r) => r.paymentId as string),
       ...captured.filter((p) => p.orderId && seatOrderIds.has(p.orderId)).map((p) => p.id),
     ]);

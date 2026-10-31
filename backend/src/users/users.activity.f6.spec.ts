@@ -22,9 +22,6 @@ describe('UsersService.getUserActivityAdmin (F6)', () => {
     groupSeatPurchase: {
       findMany: jest.fn(async () => [{ id: 'g-1', seats: 2, createdAt: new Date(), registration: { event }, ...money(300, '2026-10-03') }]),
     },
-    sessionRegistration: {
-      findMany: jest.fn(async () => [{ id: 's-1', registeredAt: new Date(), session: { title: 'Huddle' }, ...money(99, '2026-10-04') }]),
-    },
     stayBooking: { findMany: jest.fn(async () => []) },
   };
 
@@ -33,7 +30,6 @@ describe('UsersService.getUserActivityAdmin (F6)', () => {
     const { registrations, payments } = await svc.getUserActivityAdmin('u-1');
     expect(registrations).toHaveLength(2);
     expect(payments.map((p) => [p.kind, p.id, p.amount])).toEqual([
-      ['SESSION', 's-1', 99],
       ['SEATS', 'g-1', 300],
       ['TICKET', 'r-paid', 500],
     ]);

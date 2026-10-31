@@ -527,9 +527,6 @@ model User {
   hiddenTickets                HiddenTicket[]
   registrationsCheckedIn       EventRegistration[]           @relation("RegistrationCheckedInBy")
   favorites                    FavoriteEvent[]
-  createdSessions              Session[]                     @relation("SessionCreator")
-  sessionRegistrations         SessionRegistration[]
-  sessionCoHosts               SessionCoHost[]
   certificatesReceived         Certificate[]                 @relation("CertificateRecipient")
   // Sponsor portal: the sponsor entities this account may act on behalf of.
   sponsorMemberships           SponsorUser[]                 @relation("SponsorUserAccount")
@@ -1184,7 +1181,6 @@ model Space {
   eventTransfersTo         EventOwnershipTransfer[] @relation("EventTransferToSpace")
   subEventAttachRequesting SubEventAttachRequest[]  @relation("SubEventAttachRequestingSpace")
   subEventAttachOwning     SubEventAttachRequest[]  @relation("SubEventAttachOwnerSpace")
-  sessions                 Session[]
   // Per-space billing (P0.2). One plan per Space.
   subscription             OrgSubscription?
   // Per-space capability overrides (IAM for Spaces).
@@ -1339,8 +1335,6 @@ model PlanConfig {
   hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
   hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
   hasPrioritySupport Boolean @default(false) @map("has_priority_support")
-  // Retired with Huddle sessions (Nov 2026); kept, the code no longer reads it.
-  hasSessions        Boolean @default(false) @map("has_sessions")
   // Gates the competitive dashboard (hack.unifesto.app): whether an event may
   // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
   hasLeaderboard     Boolean @default(false) @map("has_leaderboard")
@@ -2944,12 +2938,8 @@ model PayoutBankAccount {
 model Payout {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  /// What the payout draws from: exactly one of an event or a Huddle session
-  /// (T6; CHECK payouts_one_source).
-  eventId   String?  @map("event_id") @db.Uuid
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  sessionId String?  @map("session_id") @db.Uuid
-  session   Session? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation("PayoutUser", fields: [userId], references: [id])
@@ -2984,7 +2974,6 @@ model Payout {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([eventId])
-  @@index([sessionId])
   @@index([userId])
   @@index([status])
   @@index([scheduledAt])
@@ -3281,181 +3270,6 @@ model SupportAttachment {
 
   @@index([messageId])
   @@map("support_attachments")
-}
-
-// =====================================================
-// SESSIONS
-// Lightweight, online-only gatherings owned by a Space (Meet/Zoom/Teams).
-// Deliberately separate from Event: no tickets, QR, forms, or groups — just a
-// title, a time, a meeting link, and (optionally) a single price. Offline
-// gatherings stay under Event.
-// Retired (Nov 2026): the feature is gone, the tables stay because their
-// payments are money records (payouts, reconciliation, account deletion).
-// =====================================================
-
-enum SessionPlatform {
-  GOOGLE_MEET
-  ZOOM
-  MS_TEAMS
-  OTHER
-  UNIFESTO_LIVE // hosted in-app via 100ms; join is a per-user token, not a URL
-
-  @@map("session_platform")
-}
-
-enum SessionStatus {
-  DRAFT // not yet visible to attendees
-  PUBLISHED // open for registration
-  CANCELLED // organiser cancelled; paid attendees auto-refunded
-  COMPLETED // ended
-
-  @@map("session_status")
-}
-
-enum SessionVisibility {
-  PUBLIC // surfaced in discovery
-  UNLISTED // reachable only via direct link
-
-  @@map("session_visibility")
-}
-
-model Session {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  spaceId String @map("space_id") @db.Uuid
-  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-
-  title         String  @db.VarChar(500)
-  slug          String  @unique @db.VarChar(200)
-  description   String? @db.Text
-  coverImageUrl String? @map("cover_image_url") @db.Text
-
-  // Where it happens. For external platforms the meeting link is gated: never
-  // returned to non-registered users (enforced in the service layer, not here).
-  // For UNIFESTO_LIVE there is no shareable URL at all — meetingUrl is null and
-  // the room is joined with a per-user LiveKit token minted at join() time (the
-  // room name is derived from the session id, so nothing is stored here).
-  platform      SessionPlatform @default(GOOGLE_MEET)
-  meetingUrl    String?         @map("meeting_url") @db.Text
-  platformOther String?         @map("platform_other") @db.VarChar(100)
-
-  // When it happens. Stored as start + duration rather than start + end so the
-  // "join window" (link goes hot shortly before start) is a pure function of
-  // startDateTime.
-  startDateTime   DateTime @map("start_date_time") @db.Timestamptz(6)
-  durationMinutes Int      @default(60) @map("duration_minutes")
-  timezone        String   @default("Asia/Kolkata") @db.VarChar(100)
-
-  // Registration. null capacity = unlimited. price 0 (the default) = free, in
-  // which case registration completes without a Razorpay round-trip.
-  capacity        Int?
-  registeredCount Int     @default(0) @map("registered_count")
-  price           Decimal @default(0) @db.Decimal(10, 2)
-  currency        String  @default("INR") @db.VarChar(3)
-
-  status     SessionStatus     @default(DRAFT)
-  visibility SessionVisibility @default(PUBLIC)
-
-  // For UNIFESTO_LIVE: true = interactive (attendees may publish mic/cam),
-  // false = broadcast/webinar (only the host publishes). Ignored for external.
-  interactive Boolean @default(true)
-
-  // Populated after the session ends (optional). recordingEgressId tracks an
-  // in-flight LiveKit Egress so it can be stopped and correlated on completion.
-  recordingUrl      String? @map("recording_url") @db.Text
-  recordingEgressId String? @map("recording_egress_id") @db.Text
-
-  // Cancellation (organiser-initiated). See cancellation-policy in the service.
-  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
-  cancellationReason String?   @map("cancellation_reason") @db.Text
-
-  // Soft delete — see the matching fields on Event. Hides the session without
-  // touching its registrations, payments or recording.
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
-  deletedBy String?   @map("deleted_by") @db.Uuid
-
-  createdBy String @map("created_by") @db.Uuid
-  creator   User   @relation("SessionCreator", fields: [createdBy], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  registrations SessionRegistration[]
-  coHosts       SessionCoHost[]
-  payouts       Payout[]
-
-  @@index([spaceId])
-  @@index([status])
-  @@index([startDateTime])
-  @@index([createdBy])
-  @@index([deletedAt])
-  @@map("sessions")
-}
-
-/// Per-session co-hosts: users the organiser invites to host a single session
-/// (e.g. a guest speaker) without making them a space-level co-organiser. They
-/// receive a host token when they join, and cannot register as attendees.
-model SessionCoHost {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  sessionId String  @map("session_id") @db.Uuid
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@unique([sessionId, userId])
-  @@index([sessionId])
-  @@index([userId])
-  @@map("session_co_hosts")
-}
-
-model SessionRegistration {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  sessionId String  @map("session_id") @db.Uuid
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-
-  userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
-
-  // Payment. Mirrors the money columns on EventRegistration —
-  // sessions are Razorpay-only in v1. razorpayAmount == totalAmount for now.
-  totalAmount        Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
-  razorpayAmount     Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
-  processingFee      Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
-  refundedAmount     Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
-  /// Deal whose terms priced this sale (T5); null = rate card.
-  dealId             String?       @map("deal_id") @db.Uuid
-  /// Organiser fee % frozen when paid (T6, as A21 on tickets): the deal's own
-  /// fee, else stamped by the session_registrations trigger.
-  platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
-  paymentStatus      PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId          String?       @unique @map("payment_id") @db.VarChar(255)
-  orderId            String?       @map("order_id") @db.VarChar(255)
-  paidAt             DateTime?     @map("paid_at") @db.Timestamptz(6)
-  /// Set when this payment must go back (session cancelled, or it filled up
-  /// while being paid). Claimed before Razorpay is called; a retry job clears it.
-  refundDueAt        DateTime?     @map("refund_due_at") @db.Timestamptz(6)
-
-  status RegistrationStatus @default(REGISTERED)
-
-  // Attendance: stamped the first time the attendee follows the join redirect.
-  // The online analogue of a QR check-in (measures intent-to-join, not presence).
-  joinedAt DateTime? @map("joined_at") @db.Timestamptz(6)
-
-  registeredAt DateTime  @default(now()) @map("registered_at") @db.Timestamptz(6)
-  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
-
-  @@unique([sessionId, userId])
-  @@index([sessionId])
-  @@index([userId])
-  @@index([paymentStatus])
-  @@index([orderId])
-  @@index([refundDueAt]) // J2: refund-retry cron
-  @@map("session_registrations")
 }
 
 // =====================================================
