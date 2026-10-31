@@ -27,7 +27,6 @@ import { FormUploadsController } from './form-uploads.controller';
 import { AttendeeDetailsService } from './attendee-details.service';
 import { AttendeeDetailsController } from './attendee-details.controller';
 import { StaysModule } from '../stays/stays.module';
-import { SessionsModule } from '../sessions/sessions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TeamChangesService } from './team-changes.service';
 import { BadgesService } from './badges.service';
@@ -46,7 +45,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     StorageModule,
     // The Razorpay webhook also settles Unifesto Stay payments.
     StaysModule,
-    SessionsModule,
     NotificationsModule,
     // A paid cancel is a refund request (D6).
     RefundsModule,

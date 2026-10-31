@@ -23,7 +23,6 @@ import { AdminModule } from './admin/admin.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { EventsModule } from './events/events.module';
 import { RegistrationsModule } from './registrations/registrations.module';
-import { SessionsModule } from './sessions/sessions.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { CheckinModule } from './checkin/checkin.module';
 import { PayoutsModule } from './payouts/payouts.module';
@@ -181,7 +180,6 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     SubscriptionModule,
     EventsModule,
     RegistrationsModule,
-    SessionsModule,
     FavoritesModule,
     CheckinModule,
     PayoutsModule,

@@ -1,7 +1,6 @@
 import {
   SquaresFour,
   CalendarBlank,
-  VideoCamera,
   Users,
   Lifebuoy,
   Gear,
@@ -74,7 +73,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Programming",
     items: [
       { href: "/events", label: "Events", icon: CalendarBlank, keywords: "event" },
-      { href: "/sessions", label: "Sessions", icon: VideoCamera, requires: "space:create-event", feature: "hasSessions", keywords: "online live" },
     ],
   },
   {

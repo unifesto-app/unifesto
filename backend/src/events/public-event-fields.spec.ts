@@ -1,8 +1,6 @@
 import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { FavoritesService } from '../favorites/favorites.service';
-import { SessionsService } from '../sessions/sessions.service';
-import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * J9: anonymous event lists, favourites, the public event detail, the public
@@ -112,40 +110,5 @@ describe('public event fields (J9)', () => {
     const ics = await svc.getEventIcs('fest');
     expect(prisma.event.findUnique.mock.calls[0][0].select.onlineUrl).toBeUndefined();
     expect(ics).not.toContain('meet.example');
-  });
-});
-
-describe('public session fields (J9)', () => {
-  const session = { id: 's-1', slug: 'talk', status: 'PUBLISHED', deletedAt: null };
-  function sessions(registered: boolean) {
-    const prisma: any = {
-      session: { findUnique: jest.fn(async () => ({ ...session })) },
-      sessionRegistration: {
-        findFirst: jest.fn(async () => (registered ? { session: { recordingUrl: 'https://rec/1' } } : null)),
-      },
-    };
-    const livekit = { recordingLink: async (url: string | null) => url };
-    const svc = new SessionsService(prisma, {} as any, {} as any, livekit as any, {} as any, {} as any, rateCardTerms());
-    return { svc, prisma };
-  }
-
-  it('publicSelect has no recordingUrl', () => {
-    expect((sessions(false).svc as any).publicSelect.recordingUrl).toBeUndefined();
-  });
-
-  it('the recording is added only for a registrant', async () => {
-    expect(await sessions(false).svc.getPublicSession('talk', 'u-1')).not.toHaveProperty('recordingUrl');
-    expect(await sessions(true).svc.getPublicSession('talk')).not.toHaveProperty('recordingUrl');
-    expect(await sessions(true).svc.getPublicSession('talk', 'u-1')).toHaveProperty('recordingUrl', 'https://rec/1');
-  });
-
-  it('my sessions carry the recording only once paid, as a signed link (J15)', async () => {
-    const reg = (paymentStatus: string) => ({ id: paymentStatus, paymentStatus, session: { recordingUrl: 'private/sessions/s-1/1.mp4' } });
-    const prisma: any = { sessionRegistration: { findMany: jest.fn(async () => [reg('PAID'), reg('PENDING')]) } };
-    const livekit = { recordingLink: async (url: string | null) => `signed:${url}` };
-    const svc = new SessionsService(prisma, {} as any, {} as any, livekit as any, {} as any, {} as any, rateCardTerms());
-    const [paid, pending] = await svc.listMyRegistrations('u-1');
-    expect(paid.session.recordingUrl).toBe('signed:private/sessions/s-1/1.mp4');
-    expect(pending.session.recordingUrl).toBeNull();
   });
 });

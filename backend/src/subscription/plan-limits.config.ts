@@ -12,8 +12,6 @@ export interface PlanLimits {
   hasWhatsappBlast: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
-  /** Gates the Sessions feature entirely. */
-  hasSessions: boolean;
   /** Gates the competitive dashboard (leaderboards) entirely. */
   hasLeaderboard: boolean;
   /** Gates the certificate system: designing templates and issuing certificates. */
@@ -33,7 +31,6 @@ export const PLAN_FEATURE_FLAGS = [
   'hasAnalytics',
   'hasCertificates',
   'hasWhatsappBlast',
-  'hasSessions',
   'hasSponsors',
   'hasLeaderboard',
   'hasRemoveBranding',
@@ -48,7 +45,6 @@ export const FEATURE_LABELS: Record<PlanFeatureFlag, string> = {
   hasAnalytics: 'Analytics and event reports',
   hasCertificates: 'Certificates',
   hasWhatsappBlast: 'WhatsApp blasts',
-  hasSessions: 'Huddle sessions',
   hasSponsors: 'Sponsors and lead capture',
   hasLeaderboard: 'Hackathon leaderboards',
   hasRemoveBranding: 'White-label branding',
@@ -124,7 +120,6 @@ export const PLAN_CATALOG: { group: string; rows: PlanCatalogRow[] }[] = [
     group: 'Programmes',
     rows: [
       { label: 'Certificates: design, issue and verify', flag: 'hasCertificates' },
-      { label: 'Huddle live sessions, paid and recorded', flag: 'hasSessions' },
       { label: 'Sponsors, booth lead scans and leads', flag: 'hasSponsors' },
       { label: 'Hackathons: teams, judging and leaderboards', flag: 'hasLeaderboard' },
     ],
@@ -191,7 +186,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasWhatsappBlast: false,
     hasRemoveBranding: false,
     hasPrioritySupport: false,
-    hasSessions: false,
     hasLeaderboard: false,
     hasCertificates: false,
     hasSponsors: false,
@@ -211,7 +205,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasWhatsappBlast: false,
     hasRemoveBranding: false,
     hasPrioritySupport: false,
-    hasSessions: false,
     hasLeaderboard: false,
     hasCertificates: true,
     hasSponsors: false,
@@ -231,7 +224,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasWhatsappBlast: true,
     hasRemoveBranding: false,
     hasPrioritySupport: true,
-    hasSessions: true,
     hasLeaderboard: true,
     hasCertificates: true,
     hasSponsors: true,
@@ -251,7 +243,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasWhatsappBlast: true,
     hasRemoveBranding: true,
     hasPrioritySupport: true,
-    hasSessions: true,
     hasLeaderboard: true,
     hasCertificates: true,
     hasSponsors: true,
@@ -271,7 +262,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasWhatsappBlast: true,
     hasRemoveBranding: true,
     hasPrioritySupport: true,
-    hasSessions: true,
     hasLeaderboard: true,
     hasCertificates: true,
     hasSponsors: true,

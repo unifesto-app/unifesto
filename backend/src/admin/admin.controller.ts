@@ -515,38 +515,6 @@ export class AdminController {
     return this.eventsService.restoreEvent(user.id, id);
   }
 
-  /**
-   * List all sessions incl. drafts for moderation (ADMIN only)
-   * GET /admin/sessions?page=1&limit=20&status=PUBLISHED&search=pm
-   */
-  @Get('sessions')
-  @Roles(RoleCode.ADMIN)
-  async getAllSessions(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('status') status?: string,
-    @Query('search') search?: string,
-    @Query('deleted') deleted?: string,
-  ) {
-    return this.adminService.getAllSessions({
-      page: toPage(page),
-      limit: toLimit(limit, 20),
-      status,
-      search,
-      // Anything but the two explicit opt-ins means the normal list, so a
-      // malformed value can never accidentally surface hidden rows.
-      deleted:
-        deleted === 'deleted' || deleted === 'all' ? deleted : 'active',
-    });
-  }
-
-  /** One session in full incl. attendees (ADMIN only) */
-  @Get('sessions/:id')
-  @Roles(RoleCode.ADMIN)
-  async getSessionDetail(@Param('id') id: string) {
-    return this.adminService.getSessionDetail(id);
-  }
-
   @Get('transactions')
   @Roles(RoleCode.ADMIN)
   async getTransactions(

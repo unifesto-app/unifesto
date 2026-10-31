@@ -89,10 +89,7 @@ module.exports = () => {
         "android.permission.INTERNET",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.BLUETOOTH_CONNECT"
+        "android.permission.CAMERA"
       ],
       // Never used, and sensitive for Play review; stripped even if a library's
       // manifest merges them back in.
@@ -124,16 +121,6 @@ module.exports = () => {
             {
               scheme: "https",
               host: "unifesto.app",
-              pathPrefix: "/session"
-            },
-            {
-              scheme: "https",
-              host: "unifesto.app",
-              pathPrefix: "/huddle"
-            },
-            {
-              scheme: "https",
-              host: "unifesto.app",
               pathPrefix: "/claim"
             },
             {
@@ -150,16 +137,6 @@ module.exports = () => {
               scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/signup"
-            },
-            {
-              scheme: "https",
-              host: "www.unifesto.app",
-              pathPrefix: "/session"
-            },
-            {
-              scheme: "https",
-              host: "www.unifesto.app",
-              pathPrefix: "/huddle"
             },
             {
               scheme: "https",
@@ -236,11 +213,12 @@ module.exports = () => {
       [
         "expo-camera",
         {
-          cameraPermission: "Unifesto uses the camera to scan ticket QR codes at event check-in and sponsor booths, take profile and event photos, and show your video in live sessions.",
-          microphonePermission: "Unifesto uses the microphone so you can speak in live sessions."
+          cameraPermission: "Unifesto uses the camera to scan ticket QR codes at event check-in and sponsor booths, and to take profile and event photos.",
+          // The camera module links audio capture for video, so the key stays (Apple
+          // rejects a linked API without one); the app never records audio.
+          microphonePermission: "Unifesto does not use the microphone. The camera module asks for it only when recording video, which the app does not do."
         }
       ],
-      "@livekit/react-native-expo-plugin",
       // Crash + JS error reporting (src/lib/sentry.ts). The plugin also adds the
       // source-map / dSYM upload build steps, authed by the SENTRY_AUTH_TOKEN
       // EAS env var.

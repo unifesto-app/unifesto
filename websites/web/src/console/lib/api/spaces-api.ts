@@ -96,7 +96,6 @@ export interface PlanFeatures {
   hasWhatsappBlast: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
-  hasSessions: boolean;
   hasLeaderboard: boolean;
   hasCertificates: boolean;
   hasSponsors: boolean;

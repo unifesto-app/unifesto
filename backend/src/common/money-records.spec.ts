@@ -1,7 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { EventStatus, Prisma, SessionStatus } from '@prisma/client';
+import { EventStatus, Prisma } from '@prisma/client';
 import { EventsService } from '../events/events.service';
-import { SessionsService } from '../sessions/sessions.service';
 import { SpacesService } from '../spaces/spaces.service';
 
 /**
@@ -75,15 +74,6 @@ describe('delete is refused while money rows exist (S14)', () => {
     const prisma = db();
     await events(prisma).permanentDeleteEvent('u', 'ev-1');
     expect(prisma.event.delete).toHaveBeenCalled();
-  });
-
-  it('a cancelled session with a paid registration is not deleted', async () => {
-    const prisma = db({ session: 1 });
-    const s = Object.create(SessionsService.prototype);
-    Object.assign(s, { prisma });
-    s.loadManagedSession = jest.fn(async () => ({ id: 'se-1', status: SessionStatus.CANCELLED }));
-    await expect(s.permanentDeleteSession('u', 'se-1')).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.session.delete).not.toHaveBeenCalled();
   });
 
   it('a space with money rows under it is not deleted', async () => {

@@ -31,7 +31,6 @@ export const CACHED_PAGES = [
   '/grievance',
   '/help',
   '/help/[slug]',
-  '/huddle',
   '/links',
   '/orbit',
   '/orbit/terms',

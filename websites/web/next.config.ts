@@ -44,6 +44,9 @@ const nextConfig: NextConfig = {
       { source: '/events/:space', destination: '/space/:space', permanent: true },
       // Hackathons were renamed Unifesto Sprint.
       { source: '/hackathons', destination: '/sprint', permanent: true },
+      // Unifesto Huddle (online sessions) was retired; keep its old links alive.
+      { source: '/huddle', destination: '/organisers', permanent: true },
+      { source: '/session/:slug*', destination: '/events', permanent: true },
       // There is no public API yet; the old /docs page described one.
       { source: '/docs', destination: '/help', permanent: true },
       // One sign-in for everyone (Track V8): the console's own login is gone.
@@ -77,7 +80,6 @@ const nextConfig: NextConfig = {
         '/blog/:slug': '16v7k9',
         '/event/:slug': '1vzko7',
         '/help/:slug': '13qqj8',
-        '/session/:slug': 'y8p9w9',
         '/space/:spaceSlug': 'eabv7x',
         '/verify/:code': '1ir9a6',
       }).map(([dir, hash]) => ({
@@ -102,14 +104,14 @@ const nextConfig: NextConfig = {
         headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
       },
       {
-        // The console (Track V): the check-in scanner reads QR codes and hosts go
-        // live from sessions, so camera and mic for this origin. Billing,
+        // The console (Track V): the check-in scanner reads QR codes, so camera
+        // for this origin. Billing,
         // attendees/add and My tickets (waiting-list spots) take Razorpay
         // payments, reached by client-side navigation, so the popup-friendly
         // COOP covers all of it.
         source: '/console/:path*',
         headers: [
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self)' },
+          { key: 'Permissions-Policy', value: 'camera=(self), geolocation=(self)' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
         ],
       },

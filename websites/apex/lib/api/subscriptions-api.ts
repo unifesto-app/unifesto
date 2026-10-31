@@ -105,7 +105,6 @@ export interface PlanInfo {
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
   /** Gates the whole Sessions feature for organisers on this plan. */
-  hasSessions: boolean;
   /** Gates the competitive dashboard / leaderboard for organisers on this plan. */
   hasLeaderboard: boolean;
   /** Gates the certificate system for organisers on this plan. */

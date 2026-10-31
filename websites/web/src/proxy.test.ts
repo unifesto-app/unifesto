@@ -54,9 +54,9 @@ test("the console gate: web's one sign-in only (V8)", async () => {
   assert.match((await run("https://www.unifesto.app/console", "unifesto_token=garbage")).headers.get("location") ?? "", /\/login\?next=/);
 });
 
-test("only the console's CSP lets in LiveKit, the API socket and Maps", async () => {
-  assert.match((await run("https://www.unifesto.app/console", "uf_in=1")).headers.get("content-security-policy") ?? "", /wss:\/\/\*\.livekit\.cloud/);
-  assert.doesNotMatch((await run("https://www.unifesto.app/events")).headers.get("content-security-policy") ?? "", /livekit/);
+test("only the console's CSP lets in Maps", async () => {
+  assert.match((await run("https://www.unifesto.app/console", "uf_in=1")).headers.get("content-security-policy") ?? "", /https:\/\/\*\.googleapis\.com/);
+  assert.doesNotMatch((await run("https://www.unifesto.app/events")).headers.get("content-security-policy") ?? "", /https:\/\/\*\.googleapis\.com/);
 });
 
 test("prerendered pages get a CSP without a nonce; everything else keeps K14's", async () => {

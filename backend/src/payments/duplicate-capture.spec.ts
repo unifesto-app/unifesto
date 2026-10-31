@@ -2,7 +2,6 @@ import { PaymentStatus, RegistrationStatus, StayBookingStatus } from '@prisma/cl
 import { PaymentsService } from './payments.service';
 import { buildRegistrationsService } from '../registrations/registrations.testing';
 import { StayBookingsService } from '../stays/stay-bookings.service';
-import { SessionsService } from '../sessions/sessions.service';
 import { TeamChangesService } from '../registrations/team-changes.service';
 import { rateCardTerms } from '../subscription/terms.testing';
 
@@ -192,41 +191,6 @@ describe('stays refund a duplicate capture (A22)', () => {
     const hook = build(paid);
     hook.payments.refundIfDuplicate.mockRejectedValue(new Error('timeout'));
     await expect((hook.svc as any).settle('b-1', 'pay_2', 'order_2')).rejects.toThrow('timeout');
-  });
-});
-
-describe('sessions refund a duplicate capture (A22)', () => {
-  const paid = { id: 'sr-1', sessionId: 's-1', userId: 'u-1', orderId: 'order_2', paymentId: 'pay_1', paymentStatus: PaymentStatus.PAID, status: RegistrationStatus.REGISTERED };
-  const build = () => {
-    const prisma: any = {
-      sessionRegistration: {
-        findFirst: jest.fn(async () => paid),
-        findUnique: jest.fn(async () => paid),
-        updateMany: jest.fn(async () => ({ count: 0 })),
-      },
-    };
-    prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
-    const payments = { verifyPaymentSignature: jest.fn(() => true), refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
-    return { svc, payments };
-  };
-
-  it('the webhook refunds a second payment on a paid session seat', async () => {
-    const { svc, payments } = build();
-    await expect(svc.completeFromWebhook('order_2', 'pay_2', { amount: 0, currency: 'INR' })).resolves.toBe(true);
-    expect(payments.refundIfDuplicate).toHaveBeenCalledWith('pay_1', 'pay_2', 'session registration sr-1');
-  });
-
-  it('verify does too, and the same payment replayed passes through as a no-op', async () => {
-    const { svc, payments } = build();
-    const verify = (id: string) =>
-      svc.verifyPayment('u-1', { registrationId: 'sr-1', razorpayOrderId: 'order_2', razorpayPaymentId: id, razorpaySignature: 's' } as any);
-    await verify('pay_2');
-    await verify('pay_1');
-    expect(payments.refundIfDuplicate.mock.calls).toEqual([
-      ['pay_1', 'pay_2', 'session registration sr-1'],
-      ['pay_1', 'pay_1', 'session registration sr-1'],
-    ]);
   });
 });
 

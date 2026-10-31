@@ -29,7 +29,6 @@ export function buildRegistrationsService(
   stayBookings: any,
   teamChanges: any,
   authz: any,
-  sessions: any = { completeFromWebhook: async () => false },
   refunds: any = { requestCancellation: jest.fn(async () => ({ id: 'rr-cancel' })) },
 ): RegistrationsService {
   const confirmations = new RegistrationConfirmationsService(
@@ -84,7 +83,6 @@ export function buildRegistrationsService(
     stayBookings,
     teamChanges,
     confirmations,
-    sessions,
     { notify: jest.fn(async () => ({})) } as any,
   );
   const checkout = new RegistrationCheckoutService(

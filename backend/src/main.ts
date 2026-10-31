@@ -31,19 +31,14 @@ process.on('unhandledRejection', (reason) => {
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // Preserve the raw request body so webhook signatures (e.g. WhatsApp/Meta,
-    // LiveKit) can be verified against the exact bytes that were signed.
+    // Preserve the raw request body so webhook signatures (e.g. WhatsApp/Meta)
+    // can be verified against the exact bytes that were signed.
     rawBody: true,
     // With LOG_FORMAT=json, hold boot logs until the pino logger takes over.
     bufferLogs: jsonLogsEnabled(),
   });
   if (jsonLogsEnabled()) app.useLogger(app.get(PinoLogger));
 
-  // LiveKit posts webhooks as `application/webhook+json`; teach the JSON parser
-  // to accept that content type so the raw body is captured for signing checks.
-  app.useBodyParser('json', {
-    type: ['application/json', 'application/webhook+json'],
-  });
   // AWS SNS (SES delivery notifications, POST /webhooks/ses) posts its JSON
   // as text/plain; parse it as a string so the controller can read it.
   app.useBodyParser('text', { type: 'text/plain' });

@@ -36,7 +36,6 @@ import {
   Terminal,
   Tray,
   Users,
-  VideoCamera,
   Wallet,
   WhatsappLogo,
   type Icon,
@@ -133,7 +132,6 @@ const SECTIONS: { title: string; tools: Tool[] }[] = [
       { label: 'Users', icon: Users, to: '/apex/users', keywords: 'people accounts' },
       { label: 'Spaces', icon: Buildings, to: '/apex/spaces', keywords: 'organisations orgs' },
       { label: 'Events', icon: CalendarBlank, to: '/apex/events' },
-      { label: 'Sessions', icon: VideoCamera, to: '/apex/sessions', keywords: 'huddle online live' },
     ],
   },
   {

@@ -4,7 +4,7 @@ import {
   DeviceMobile, DownloadSimple, FileText, Flag, Gavel, HandArrowUp, Handshake, Heart,
   IdentificationCard, Info, Lifebuoy, Link, ListChecks, LockKey, Medal, Megaphone, PlusCircle,
   Prohibit, Question, Receipt, RocketLaunch, ShieldCheck, SquaresFour, Trash, Tray, TreeStructure,
-  Trophy, UsersThree, VideoCamera,
+  Trophy, UsersThree,
 } from "@unifesto/unicon/react";
 
 type Glyph = ComponentType<{ size?: number; color?: string; weight?: "regular" | "duotone" }>;
@@ -23,7 +23,6 @@ export const OG_PAGES: Record<string, OgPage> = {
   // Product
   "/organisers": { kind: "For organisers", title: "Run every event from one Space", subtitle: "Tickets, QR check-in, payouts, certificates and sponsors, with your whole team on board.", cta: "Request a Space", icon: SquaresFour },
   "/pricing": { kind: "Pricing", title: "Free RSVP events on every plan", subtitle: "See what students pay and what you keep on every paid ticket.", cta: "See pricing", icon: CurrencyInr },
-  "/huddle": { kind: "Unifesto Huddle", title: "Online sessions for your community", subtitle: "Registration, payment, an in-app room and recordings, run from your Space.", cta: "Host a session", icon: VideoCamera },
   "/sprint": { kind: "Unifesto Sprint", title: "Hackathons, judged properly", subtitle: "Teams, rubrics, judge panels, a help desk and a live leaderboard, in one Space.", cta: "Run a hackathon", icon: Trophy },
   "/stay": { kind: "Unifesto Stay", title: "Rooms for your event's guests", subtitle: "Requests, approvals, payment and a Stay Pass at arrival.", cta: "Add Stay", icon: Bed },
   "/app": { kind: "The app", title: "Your pass, in your pocket", subtitle: "Discover events, register in a few taps and walk in with a QR pass. Free on iOS and Android.", cta: "Get the app", icon: DeviceMobile },
