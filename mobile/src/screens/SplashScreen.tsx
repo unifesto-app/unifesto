@@ -38,7 +38,7 @@ const ease = Easing.out(Easing.cubic);
 
 /**
  * Launch splash in the 2026 brand (same night sky as the login): stars fade
- * in and the horizon rises into place, the silver wordmark lifts in with a
+ * in and the blue glow rises into place, the silver wordmark lifts in with a
  * light sweeping across it, and a thin silver line runs while auth loads.
  * Leaves with a short fade, not a zoom.
  */
@@ -94,7 +94,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
 
   // ── Styles ───────────────────────────────────────────────────────────────
   const rootStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
-  // The whole sky drifts up 48pt as it fades in, so the horizon "rises".
+  // The whole sky drifts up 48pt as it fades in, so the blue glow "rises".
   const skyStyle = useAnimatedStyle(() => ({
     opacity: sky.value,
     transform: [{ translateY: (1 - sky.value) * 48 }],

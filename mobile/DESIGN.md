@@ -39,8 +39,9 @@ owner's approval first.
 
 1. **Night first.** Black ground, silver type. By day the same roles sit on paper `#f2f2f5` with
    white cards, and light turns pale blue. Day is translated, not inverted.
-2. **Thin lines only.** The sky is starlight, two white orbit hairlines, the horizon line and a soft
-   Horizon-blue glow. Never planets, bars, glows on buttons or coloured lines.
+2. **A quiet sky.** Starlight by night and a soft Horizon-blue glow on hero screens. The app draws
+   no lines in its sky: the owner removed the orbits and the horizon line on 31 Oct 2026. Never
+   planets, bars, glows on buttons or coloured lines.
 3. **Colour lives in cards.** Mint, sky and ivory sit inside cards, on the work they describe:
    text, figures, progress fills, dots and glyphs. Navigation, links, buttons, borders and the
    page stay monochrome.
@@ -54,8 +55,9 @@ owner's approval first.
 
 - Every screen sits on `CosmosScreen` / `CosmosList` or draws `<CosmosBackdrop horizon={false} />`
   itself. Never a custom page background, gradient or image behind a whole screen.
-- `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback. Scrolling
-  screens use `horizon={false}`: stars, orbits and grain only. Banner-lit pages pass `hue`.
+- `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback, with the blue
+  glow from the bottom-right corner. Scrolling screens use `horizon={false}`: stars and grain
+  only. Banner-lit pages pass `hue`.
 
 ## 3. Colour
 

@@ -41,8 +41,6 @@ const dark = {
   ivory: '#f7f0e0',
   /** Horizon blue: the sky's glow. Decorative light only, never text. */
   horizon: '#4d8dff',
-  /** Light sources (the horizon line and its bloom): white by night, pale blue by day. */
-  bloom: '255, 255, 255',
   scheme: 'dark' as 'dark' | 'light',
 };
 
@@ -73,7 +71,6 @@ const light: typeof dark = {
   sky: '#0369a1',
   ivory: '#7a5a1e',
   horizon: '#8fb4ff',
-  bloom: '143, 180, 255',
   scheme: 'light',
 };
 
