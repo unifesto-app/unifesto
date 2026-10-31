@@ -6,12 +6,13 @@ import {
   ConflictException,
   HttpException,
   BadGatewayException,
+  GoneException,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import * as jwt from 'jsonwebtoken';
@@ -130,6 +131,16 @@ const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
  * getting this user's pushes now instead of when the app next opens.
  */
 export const PUSH_INSTALLS_SIGNED_OUT = 'auth.push-installs.signed-out';
+
+/** QR sign-in: how long a browser's code can be scanned, approved and collected. */
+const QR_TTL_SEC = 120;
+const QR_EXPIRED = 'This code has expired. Show a new one on the computer.';
+const qrKey = (code: string) => `auth:qr:${code}`;
+/** What Redis holds for a code: a hash of the browser's secret, and the browser. */
+interface QrLink {
+  secret: string;
+  userAgent: string | null;
+}
 
 /**
  * AuthService handles multi-provider authentication for Unifesto.
@@ -921,6 +932,73 @@ export class AuthService {
     }
     await this.endSessions(userId, [sid]);
     return { revoked: true };
+  }
+
+  // =====================================================
+  // QR SIGN-IN: a browser shows a code, my signed-in phone approves it
+  // =====================================================
+
+  /**
+   * The browser's half: `code` goes in the QR, `secret` stays in the page and
+   * is what collects the session, so a photo of the screen can't.
+   */
+  async startQrLink(userAgent?: string): Promise<{ code: string; secret: string; expiresIn: number }> {
+    const code = randomBytes(18).toString('base64url');
+    const secret = randomBytes(18).toString('base64url');
+    const link: QrLink = {
+      secret: createHash('sha256').update(secret).digest('hex'),
+      userAgent: userAgent?.slice(0, 400) || null,
+    };
+    await this.redis.set(qrKey(code), JSON.stringify(link), QR_TTL_SEC);
+    return { code, secret, expiresIn: QR_TTL_SEC };
+  }
+
+  private async qrLink(code: unknown): Promise<QrLink> {
+    const raw =
+      typeof code === 'string' && /^[\w-]{16,64}$/.test(code)
+        ? await this.redis.get(qrKey(code)).catch(() => null)
+        : null;
+    if (!raw) throw new GoneException(QR_EXPIRED);
+    return JSON.parse(raw) as QrLink;
+  }
+
+  /** What my phone shows before I approve: which browser is asking. */
+  async previewQrLink(code: string): Promise<{ name: string }> {
+    return { name: describeDevice((await this.qrLink(code)).userAgent).name };
+  }
+
+  /** My phone approves: the browser's next poll is signed in as me. The first approval wins. */
+  async approveQrLink(userId: string, code: string): Promise<{ approved: true }> {
+    await this.qrLink(code);
+    if (!(await this.redis.setNx(`${qrKey(code)}:by`, userId, QR_TTL_SEC))) {
+      throw new ConflictException('This code was already used. Show a new one on the computer.');
+    }
+    return { approved: true };
+  }
+
+  /** The browser polls: pending until a phone approves, then its own session, handed out once. */
+  async pollQrLink(
+    code: unknown,
+    secret: unknown,
+  ): Promise<
+    | { status: 'pending' }
+    | { status: 'approved'; accessToken: string; refreshToken: string; fullName: string | null }
+  > {
+    const link = await this.qrLink(code);
+    const key = qrKey(code as string);
+    if (typeof secret !== 'string' || createHash('sha256').update(secret).digest('hex') !== link.secret) {
+      throw new GoneException(QR_EXPIRED);
+    }
+    const userId = await this.redis.get(`${key}:by`);
+    if (!userId) return { status: 'pending' };
+    // Two polls in flight: only one gets the session.
+    if (!(await this.redis.setNx(`${key}:claimed`, '1', QR_TTL_SEC))) return { status: 'pending' };
+    await this.redis.del(key);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) throw new GoneException(QR_EXPIRED);
+    // The browser's own user agent, from when it asked for the code.
+    const tokens = await this.startSession(user, link.userAgent ?? undefined);
+    return { status: 'approved', ...tokens, fullName: user.fullName };
   }
 
   /**

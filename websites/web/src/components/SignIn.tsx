@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { QrCode } from "@unifesto/unicon/react";
+import QrSignIn from "@/components/QrSignIn";
 import SocialSignIn from "@/components/SocialSignIn";
 import { sendEmailCode, verifyEmailCode } from "@/lib/api/registration";
 import { clearSession, startSession, type PendingSignIn } from "@/lib/auth";
@@ -29,6 +31,7 @@ export default function SignIn({
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const [qr, setQr] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,6 +70,8 @@ export default function SignIn({
     );
   }
 
+  if (qr) return <QrSignIn onCancel={() => setQr(false)} />;
+
   return codeSent ? (
     <form onSubmit={verify} className="space-y-4">
       <p className="text-paper/75">
@@ -94,6 +99,11 @@ export default function SignIn({
   ) : (
     <form onSubmit={sendCode} className="space-y-4">
       <SocialSignIn next={next} />
+      {/* Scanning needs a second screen: on a phone this would be the same one. */}
+      <button type="button" onClick={() => setQr(true)} className="btn btn-secondary w-full max-md:hidden">
+        <QrCode className="h-4 w-4" aria-hidden="true" />
+        Sign in with the app
+      </button>
       <p className="text-paper/75">{intro}</p>
       <input
         required
