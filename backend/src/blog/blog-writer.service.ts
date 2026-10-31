@@ -24,8 +24,10 @@ import {
   cleanSuggestions,
   fit,
   gate,
+  normUrl,
   researchSources,
   slugify,
+  sourcesList,
   splitSources,
   stripEmDashes,
   topBlogPages,
@@ -198,8 +200,8 @@ export class BlogWriterService {
     const draft = draftRun.json as Draft;
 
     // d. Humanize: a separate editor prompt that only rewrites prose. The
-    //    Sources list skips it and goes back on unchanged.
-    const [body, sourcesList] = splitSources(draft.markdown);
+    //    Sources list is then built from the cited URLs, never by a model.
+    const [body] = splitSources(draft.markdown);
     const edit = await this.ai.run('blog_writer', {
       system: HUMANIZE_SYSTEM,
       messages: [{ role: 'user', content: body }],
@@ -207,7 +209,7 @@ export class BlogWriterService {
       subject,
     });
     if (!edit.ok) throw new Error(`humanize: ${why(edit)}`);
-    draft.markdown = stripEmDashes(`${edit.text.trimEnd()}\n\n${sourcesList}`.trim());
+    draft.markdown = stripEmDashes(`${edit.text.trimEnd()}\n\n${sourcesList(draft.sources, sources)}`.trim());
     draft.title = stripEmDashes(draft.title);
     draft.metaTitle = fit(draft.metaTitle, META_TITLE_MAX);
     draft.metaDescription = fit(draft.metaDescription, META_DESCRIPTION_MAX);
@@ -215,7 +217,7 @@ export class BlogWriterService {
     // e is in the writer prompt; f. the gate checks it, then the numbers.
     const failed = gate({
       draft,
-      sourceUrls: new Set(sources.map((s) => s.url)),
+      sourceUrls: new Set(sources.map((s) => normUrl(s.url))),
       posts,
     });
     if (failed) throw new Error(`gate: ${failed}`);

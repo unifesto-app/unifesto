@@ -55,11 +55,11 @@ Steps: decide the intent (explain, compare or how-to), outline for that intent, 
 The post:
 - Opens with a paragraph that directly answers the question. No preamble.
 - Then details, real examples and specifics from the research. Use tables where they help.
-- Uses ONLY facts from the <research> notes. Every number must come from the research or be simple arithmetic on it. Cite with [n] markers that match the Sources list.
+- Uses ONLY facts from the <research> notes. Every number must come from the research or be simple arithmetic on it; the one exception is a worked example framed as hypothetical ("say 300 people buy a Rs 300 ticket"). Cite with [n] markers, where [n] is the nth URL in the sources you return.
 - Contains exactly one honest opinion, clearly marked as ours ("Our view:"), and one honest limitation (of the advice, the data or Unifesto) in its own short section.
 - Has a "## FAQ" section with 3 to 5 questions as "### " headings, each answered in 1 to 3 sentences.
-- Ends with "## Sources": a numbered list, "Title: URL", using only URLs from <sources>.
-- Is at least 1,000 words before the Sources section.
+- Has no Sources section; it is added from the sources you return.
+- Is at least 1,000 words.
 - Has 3 to 5 internal links in Markdown, using only paths from <internal_links>, placed where a reader would want them. Link /blog/ posts first.
 - Links the Unifesto app page given in <app_link> at most once, only where it truly helps the reader. If <app_link> is "none", do not link or pitch Unifesto at all.
 - Describes Unifesto only with facts from <product_facts>.
@@ -67,7 +67,7 @@ The post:
 
 ${HOUSE_RULES}
 
-Also return: title (plain, under 70 characters), slug (kebab-case), metaTitle (at most 60 characters), metaDescription (at most 155 characters, states the answer), excerpt (one or two sentences), coverAlt (alt text for a branded card showing the title).
+Also return: title (plain, under 70 characters), slug (kebab-case), metaTitle (at most 60 characters), metaDescription (at most 155 characters, states the answer), excerpt (one or two sentences), coverAlt (alt text for a branded card showing the title), sources (the URLs you cited, copied exactly from <sources>, in [n] order, at least 2).
 
 <product_facts>
 ${PRODUCT_FACTS}
@@ -81,7 +81,11 @@ export const HUMANIZE_SYSTEM = `You are an editor. Rewrite the Markdown draft yo
 ${HOUSE_RULES}
 Never change facts, numbers, [n] citation markers, links or link targets, or the heading "## FAQ". Never add new facts. Keep the "Our view:" opinion and the limitation section. Keep at least as many words as you were given.`;
 
-export const FACTCHECK_SYSTEM = `You check a blog post against its research notes. List every number, statistic, date or named rule in the post that is NOT stated in the research notes and is not simple arithmetic on numbers that are. Ignore numbers inside URLs, FAQ question wording and the Sources list. Return an empty list if everything is supported.`;
+export const FACTCHECK_SYSTEM = `You check a blog post against its research notes and the product facts below. List every number, statistic, date or named rule in the post that is NOT stated in either and is not simple arithmetic on numbers that are. Ignore numbers inside URLs, FAQ question wording, the Sources list, and worked examples framed as hypothetical ("say 300 people buy a Rs 300 ticket"). Return an empty list if everything is supported.
+
+<product_facts>
+${PRODUCT_FACTS}
+</product_facts>`;
 
 export const QUESTIONS_SYSTEM = `You suggest reader questions for the unifesto.app blog: real questions that student organisers, club leads, hackathon organisers and attendees in India type into Google or ask ChatGPT, phrased the way they would ("how do I...", "X vs Y", "... reddit"). Each question must be answerable with web research and must not duplicate an existing question or post. For each give: question; topic (short kebab-case, shared by near-duplicate questions); intent (explain, compare or how-to); angle (which Unifesto feature honestly helps, from <product_facts>, or null if none); appLink (one of the allowed app pages, or null).
 
@@ -105,8 +109,9 @@ export const DRAFT_SCHEMA = {
     excerpt: { type: 'string' },
     coverAlt: { type: 'string' },
     markdown: { type: 'string' },
+    sources: { type: 'array', items: { type: 'string' } },
   },
-  required: ['intent', 'outline', 'title', 'slug', 'metaTitle', 'metaDescription', 'excerpt', 'coverAlt', 'markdown'],
+  required: ['intent', 'outline', 'title', 'slug', 'metaTitle', 'metaDescription', 'excerpt', 'coverAlt', 'markdown', 'sources'],
   additionalProperties: false,
 };
 
@@ -154,6 +159,8 @@ export interface Draft {
   excerpt: string;
   coverAlt: string;
   markdown: string;
+  /** Cited URLs in [n] order; the Sources list is built from these. */
+  sources: string[];
 }
 
 export interface QuestionSuggestion {
@@ -168,29 +175,47 @@ export interface QuestionSuggestion {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Every URL the research call actually read, from its server-tool result blocks. */
+/**
+ * Every URL the research call actually read, from its server-tool result blocks.
+ * Deduped by normUrl but kept as read: normUrl lower-cases, which breaks case-sensitive links.
+ */
 export function researchSources(content: Anthropic.ContentBlock[]): { title: string; url: string }[] {
-  const seen = new Map<string, string>();
+  const seen = new Map<string, { title: string; url: string }>();
   for (const b of content) {
     if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) {
-      for (const r of b.content) seen.set(normUrl(r.url), r.title);
+      for (const r of b.content) seen.set(normUrl(r.url), { title: r.title, url: r.url.trim() });
     }
     if (b.type === 'web_fetch_tool_result' && b.content.type === 'web_fetch_result') {
-      const url = normUrl(b.content.url);
-      if (!seen.has(url)) seen.set(url, b.content.content.title ?? url);
+      const url = b.content.url.trim();
+      if (!seen.has(normUrl(url))) seen.set(normUrl(url), { title: b.content.content.title ?? url, url });
     }
   }
-  return [...seen].map(([url, title]) => ({ url, title }));
+  return [...seen.values()];
 }
 
 export const normUrl = (u: string) => u.trim().replace(/#.*$/, '').replace(/\/+$/, '').toLowerCase();
+
+/**
+ * The "## Sources" list from the writer's cited URLs, with title and URL as
+ * the research read them. Code writes it: a model-written list kept getting
+ * lost or mangled, and parsing it back cut URLs at ")" (Wikipedia's "_(…)").
+ */
+export function sourcesList(cited: string[], read: { title: string; url: string }[]): string {
+  const byUrl = new Map(read.map((s) => [normUrl(s.url), s]));
+  const lines = cited.map((u, i) => {
+    const s = byUrl.get(normUrl(u)) ?? { title: u, url: u };
+    return `${i + 1}. ${s.title}: ${s.url}`;
+  });
+  return `## Sources\n\n${lines.join('\n')}`;
+}
 
 export const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 200);
 
 /**
  * The post split before its "## Sources" heading: [body, sources]. Only the body
- * goes through the humanize editor, which dropped the list ("fewer than 2 sources").
+ * goes through the humanize editor; a list the writer added anyway is dropped
+ * for sourcesList.
  */
 export function splitSources(markdown: string): [string, string] {
   const at = markdown.search(/^##\s+Sources\b/m);
@@ -245,10 +270,8 @@ export function gate({ draft, sourceUrls, posts }: GateInput): string | null {
   const faq = md.split(/^##\s+FAQ\b/m)[1]?.split(/^##\s/m)[0] ?? '';
   if ((faq.match(/^###\s+/gm) ?? []).length < 2) return 'FAQ has fewer than 2 questions';
 
-  const sources = md.split(/^##\s+Sources\b/m)[1] ?? '';
-  const cited = [...sources.matchAll(/https?:\/\/[^\s)>\]]+/g)].map((m) => normUrl(m[0]));
-  if (cited.length < 2) return 'fewer than 2 sources';
-  const invented = cited.find((u) => !sourceUrls.has(u));
+  if (new Set(draft.sources.map(normUrl)).size < 2) return 'fewer than 2 sources';
+  const invented = draft.sources.find((u) => !sourceUrls.has(normUrl(u)));
   if (invented) return `source not from research: ${invented}`;
 
   const slugs = new Set(posts.map((p) => p.slug));

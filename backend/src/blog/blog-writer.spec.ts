@@ -1,10 +1,24 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { Draft, cleanSuggestions, fit, gate, normUrl, splitSources, stripEmDashes, topBlogPages, wordCount } from './blog-writer';
+import type Anthropic from '@anthropic-ai/sdk';
+import {
+  Draft,
+  cleanSuggestions,
+  fit,
+  gate,
+  normUrl,
+  researchSources,
+  sourcesList,
+  splitSources,
+  stripEmDashes,
+  topBlogPages,
+  wordCount,
+} from './blog-writer';
 
 // The approved sample article: the gate must pass it, and each break must fail it.
 const SAMPLE = readFileSync(join(__dirname, '__fixtures__/sample-post.md'), 'utf8');
-const sourceUrls = new Set([...SAMPLE.matchAll(/https?:\/\/[^\s)>\]]+/g)].map((m) => normUrl(m[0])));
+const SAMPLE_URLS = [...splitSources(SAMPLE)[1].matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
+const sourceUrls = new Set(SAMPLE_URLS.map(normUrl));
 const posts = [
   { slug: 'how-to-organize-a-college-fest', title: 'How to Organize a College Fest' },
   { slug: 'unifesto-vs-google-forms', title: 'Unifesto vs Google Forms' },
@@ -19,6 +33,7 @@ const draft = (over: Partial<Draft> = {}): Draft => ({
   excerpt: 'A timeline, judge maths and SIH rules.',
   coverAlt: 'Unifesto blog card titled How to Organise a Hackathon in College',
   markdown: SAMPLE,
+  sources: SAMPLE_URLS,
   ...over,
 });
 const run = (over: Partial<Draft> = {}, p = posts) => gate({ draft: draft(over), sourceUrls, posts: p });
@@ -33,7 +48,8 @@ describe('auto-blog gate', () => {
     expect(run({ markdown: SAMPLE.slice(0, 2000) })).toMatch(/words/);
     expect(run({ markdown: SAMPLE + '\n[insert example here]' })).toMatch(/placeholder/);
     expect(run({ markdown: SAMPLE.replace('Most college', 'Let us delve into why most college') })).toMatch(/banned/);
-    expect(run({ markdown: SAMPLE + '\n10. Made up: https://example.com/fake' })).toMatch(/not from research/);
+    expect(run({ sources: [...SAMPLE_URLS, 'https://example.com/fake'] })).toMatch(/not from research/);
+    expect(run({ sources: [SAMPLE_URLS[0], `${SAMPLE_URLS[0]}/`] })).toMatch(/fewer than 2 sources/);
     expect(run({ markdown: SAMPLE.replace('/blog/unifesto-vs-google-forms', '/blog/no-such-post') })).toMatch(/missing post/);
     expect(run({ markdown: SAMPLE.replace('(/sprint)', '(/admin)') })).toMatch(/unknown page/);
     expect(run({ metaTitle: 'x'.repeat(61) })).toMatch(/meta title/);
@@ -55,6 +71,27 @@ describe('auto-blog gate', () => {
     // An editor reply without the list still passes once the list is put back.
     expect(run({ markdown: `${body.trimEnd()}\n\n${sources}`.trim() })).toBeNull();
     expect(splitSources('no list here')).toEqual(['no list here', '']);
+  });
+
+  it('builds the Sources list from research, keeping brackets and case', () => {
+    // A ")" in the URL once cut it to ".../sponsor_(commercial" and failed the post.
+    const wiki = 'https://en.wikipedia.org/wiki/Sponsor_(commercial)';
+    const blocks = [
+      { type: 'web_search_tool_result', content: [{ url: wiki, title: 'Sponsor (commercial)' }] },
+      { type: 'web_fetch_tool_result', content: { type: 'web_fetch_result', url: `${wiki}/`, content: { title: 'dup' } } },
+      { type: 'web_fetch_tool_result', content: { type: 'web_fetch_result', url: 'https://www.npci.org.in/UPI', content: {} } },
+    ] as unknown as Anthropic.ContentBlock[];
+    const read = researchSources(blocks);
+    expect(read).toEqual([
+      { title: 'Sponsor (commercial)', url: wiki },
+      { title: 'https://www.npci.org.in/UPI', url: 'https://www.npci.org.in/UPI' },
+    ]);
+    // The writer echoes a lower-cased copy; the list prints the URL as it was read.
+    expect(sourcesList([wiki.toLowerCase(), 'https://www.npci.org.in/UPI'], read)).toBe(
+      `## Sources\n\n1. Sponsor (commercial): ${wiki}\n2. https://www.npci.org.in/UPI: https://www.npci.org.in/UPI`,
+    );
+    const urls = new Set(read.map((s) => normUrl(s.url)));
+    expect(gate({ draft: draft({ sources: [wiki, 'https://www.npci.org.in/UPI'] }), sourceUrls: urls, posts })).toBeNull();
   });
 
   it('cuts an over-long meta field at the last whole word', () => {
