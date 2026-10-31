@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useEmptySections } from "@/components/SiteContent";
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, type Variants } from "motion/react";
 import { ArrowRight, CaretDown } from "@unifesto/unicon/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLightSurfaceAt } from "@/lib/surface";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useSignedIn } from "@/lib/auth";
-import { DUR, EASE_IN_OUT_CUBIC, EASE_OUT_QUART } from "@/lib/motion";
+import { DUR, EASE_IN_OUT_CUBIC } from "@/lib/motion";
 import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
 import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
 
@@ -56,18 +55,6 @@ const STORES = [
   { label: "Google Play", href: "https://play.google.com/store/apps/details?id=com.unifesto.app", image: GooglePlayBadge },
 ] as const;
 
-/* Menus pop from their trigger: ease-out-quart, 180ms in, faster out. */
-const panel: Variants = {
-  hidden: { opacity: 0, y: 8, scale: 0.96 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.swap * 0.75, ease: EASE_OUT_QUART } },
-  exit: { opacity: 0, y: 4, scale: 0.98, transition: { duration: 0.12, ease: EASE_OUT_QUART } },
-};
-const panelReduced: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.12 } },
-  exit: { opacity: 0, transition: { duration: 0.1 } },
-};
-
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -91,7 +78,6 @@ function Menu({
 }) {
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
@@ -133,29 +119,22 @@ function Menu({
           aria-hidden="true"
         />
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            id={id}
-            variants={reduce ? panelReduced : panel}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`blur-bg-strong absolute top-full z-50 mt-3 overflow-hidden rounded-3xl ${width} max-w-[92vw] ${
-              align === "right" ? "right-0 origin-top-right" : "left-1/2 -translate-x-1/2 origin-top"
-            }`}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Always mounted; .nav-menu animates it in and out (globals.css). */}
+      <div
+        id={id}
+        data-open={open || undefined}
+        className={`nav-menu blur-bg-strong absolute top-full z-50 mt-3 overflow-hidden rounded-3xl ${width} max-w-[92vw] ${
+          align === "right" ? "right-0 origin-top-right" : "left-1/2 -translate-x-1/2 origin-top"
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 export default function Navbar() {
   const pathname = usePathname() ?? "/";
-  const reduce = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // One dropdown open at a time. A menu's delayed close only clears itself,
@@ -171,8 +150,35 @@ export default function Navbar() {
   const onLight = useLightSurfaceAt(() => [window.innerWidth / 2, 40]);
   const account = useSignedIn() ? { label: "My dashboard", href: "/console" } : { label: "Sign in", href: "/login" };
 
-  const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // The hover pill is remounted inside each link, so it slides FLIP-style:
+  // note where it is now (mid-slide included), then animate the new one from
+  // there. Appears in place when nothing was hovered.
+  const pill = useRef<HTMLSpanElement>(null);
+  const pillFrom = useRef<DOMRect | undefined>(undefined);
+  const hover = (href: string) => {
+    pillFrom.current = pill.current?.getBoundingClientRect();
+    setHovered(href);
+  };
+  useLayoutEffect(() => {
+    const el = pill.current;
+    const from = pillFrom.current;
+    if (!el || !from || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const to = el.getBoundingClientRect();
+    el.animate(
+      [
+        { translate: `${from.left - to.left}px`, width: `${from.width}px` },
+        { translate: "0", width: `${to.width}px` },
+      ],
+      { duration: DUR.swap * 1000, easing: `cubic-bezier(${EASE_IN_OUT_CUBIC})` },
+    );
+  }, [hovered]);
 
   // Close the mobile sheet on navigation (adjust state during render when the
   // route changes, rather than in an effect).
@@ -230,10 +236,12 @@ export default function Navbar() {
     </Menu>
   );
 
-  // Mobile sheet groups: the flat links (plus the app page), then each menu.
-  const SHEET = [
-    { label: null, items: [...LINKS, { label: "The app", href: "/app" }] },
-    ...menus,
+  // Mobile sheet rows: the flat links (plus the app page), then each menu
+  // under its label.
+  const SHEET: (NavItem | string)[] = [
+    ...LINKS,
+    { label: "The app", href: "/app" },
+    ...menus.flatMap((m) => [m.label, ...m.items]),
   ];
 
   return (
@@ -271,16 +279,11 @@ export default function Navbar() {
                   key={l.href}
                   href={l.href}
                   aria-current={active ? "page" : undefined}
-                  onMouseEnter={() => setHovered(l.href)}
+                  onMouseEnter={() => hover(l.href)}
                   className={linkClass(active)}
                 >
                   {hovered === l.href && (
-                    <motion.span
-                      layoutId="nav-hover"
-                      aria-hidden="true"
-                      className="absolute inset-0 -z-10 rounded-lg bg-paper/[0.08]"
-                      transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
-                    />
+                    <span ref={pill} aria-hidden="true" className="absolute inset-0 -z-10 rounded-lg bg-paper/[0.08]" />
                   )}
                   {l.label}
                   {active && <span aria-hidden="true" className="h-1 w-1 rounded-full bg-primary" />}
@@ -370,73 +373,53 @@ export default function Navbar() {
           </button>
         </nav>
 
-        {/* Mobile sheet: drops from the capsule, items arrive as a list. */}
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              key="sheet"
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: DUR.swap, ease: EASE_OUT_QUART } }}
-              exit={{ opacity: 0, y: -4, transition: { duration: 0.14 } }}
-              className="blur-bg-strong mb-4 mt-1 max-h-[calc(100dvh-5rem)] origin-top overflow-y-auto overscroll-contain rounded-3xl lg:hidden"
-            >
-              <motion.ul
-                className="p-3"
-                initial="hidden"
-                animate="visible"
-                variants={{ visible: { transition: { staggerChildren: reduce ? 0 : 0.035 } } }}
-              >
-                {SHEET.flatMap((g) => [
-                  ...(g.label
-                    ? [
-                        <motion.li
-                          key={`h-${g.label}`}
-                          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-                          className="px-4 pb-1 pt-4 text-xs font-semibold text-paper/45"
-                        >
-                          {g.label}
-                        </motion.li>,
-                      ]
-                    : []),
-                  ...g.items.map((l) => (
-                    <motion.li
-                      key={l.href}
-                      variants={{
-                        hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 6 },
-                        visible: { opacity: 1, y: 0, transition: { duration: DUR.swap, ease: EASE_OUT_QUART } },
-                      }}
-                    >
-                      <a
-                        href={l.href}
-                        aria-current={isActive(pathname, l.href) ? "page" : undefined}
-                        className="flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-paper/85 transition-colors duration-150 hover:bg-paper/[0.07] aria-[current=page]:text-paper"
-                      >
-                        {l.label}
-                        {isActive(pathname, l.href) && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
-                      </a>
-                    </motion.li>
-                  )),
-                ])}
-              </motion.ul>
-              <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
-                <a href={account.href} className="btn btn-secondary w-full">
-                  {account.label}
+        {/* Mobile sheet: drops from the capsule, items arrive as a list
+            (35ms apart). Always mounted; .nav-sheet animates it (globals.css). */}
+        <div
+          data-open={menuOpen || undefined}
+          className="nav-sheet blur-bg-strong mb-4 mt-1 max-h-[calc(100dvh-5rem)] origin-top overflow-y-auto overscroll-contain rounded-3xl lg:hidden"
+        >
+          <ul className="p-3">
+            {SHEET.map((l, i) =>
+              typeof l === "string" ? (
+                <li
+                  key={`h-${l}`}
+                  className="nav-sheet-label px-4 pb-1 pt-4 text-xs font-semibold text-paper/45"
+                  style={{ animationDelay: `${i * 35}ms` }}
+                >
+                  {l}
+                </li>
+              ) : (
+                <li key={l.href} style={{ animationDelay: `${i * 35}ms` }}>
+                  <a
+                    href={l.href}
+                    aria-current={isActive(pathname, l.href) ? "page" : undefined}
+                    className="flex items-center justify-between rounded-lg px-4 py-3 text-base font-medium text-paper/85 transition-colors duration-150 hover:bg-paper/[0.07] aria-[current=page]:text-paper"
+                  >
+                    {l.label}
+                    {isActive(pathname, l.href) && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
+                  </a>
+                </li>
+              ),
+            )}
+          </ul>
+          <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
+            <a href={account.href} className="btn btn-secondary w-full">
+              {account.label}
+            </a>
+            <Link href="/request-space" className="btn btn-primary w-full">
+              Host an event
+              <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
+            </Link>
+            <div className="flex items-center justify-center gap-3">
+              {STORES.map((s) => (
+                <a key={s.label} href={s.href}>
+                  <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
                 </a>
-                <Link href="/request-space" className="btn btn-primary w-full">
-                  Host an event
-                  <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
-                </Link>
-                <div className="flex items-center justify-center gap-3">
-                  {STORES.map((s) => (
-                    <a key={s.label} href={s.href}>
-                      <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </header>
   );
