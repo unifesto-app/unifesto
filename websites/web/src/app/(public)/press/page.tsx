@@ -237,7 +237,7 @@ export default function PressPage() {
         </h2>
         <ol data-stagger="rise" className="mt-12">
           {RELEASES.map((r) => (
-            <li key={r.date + r.title} className="grid gap-3 py-8 shadow-[inset_0_1px_0_rgb(var(--glow)/0.12)] md:grid-cols-[12rem_1fr] md:gap-10">
+            <li key={r.date + r.title} className="grid gap-3 py-8 border-t border-border md:grid-cols-[12rem_1fr] md:gap-10">
               <time dateTime={r.date} className="text-sm text-paper/55">
                 {fmtDate(r.date)}
               </time>
@@ -259,7 +259,7 @@ export default function PressPage() {
             </h2>
             <dl data-stagger="rise" className="mt-10">
               {FACTS.map(([k, v]) => (
-                <div key={k} className="grid grid-cols-[10rem_1fr] gap-6 py-4 shadow-[inset_0_1px_0_rgb(var(--glow)/0.1)]">
+                <div key={k} className="grid grid-cols-[10rem_1fr] gap-6 py-4 border-t border-border">
                   <dt className="text-[15px] text-ink/55">{k}</dt>
                   <dd className="text-[15px] text-ink">{v}</dd>
                 </div>

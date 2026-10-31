@@ -10,6 +10,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import { HuddleSetupVisual, HuddleHostVisual, HuddleRoomScreen, HuddleJoinVisual } from "@/components/visuals/Huddle";
 import { FAQ_HUDDLE, HUDDLE_STEPS } from "@/lib/site";
 
@@ -42,6 +43,7 @@ export default function HuddlePage() {
           </>
         }
         aside={<HuddleRoomScreen />}
+        card={<HuddleHostVisual />}
       />
 
       <Section pad="tight">
@@ -56,7 +58,11 @@ export default function HuddlePage() {
             "Duplicate last week's session for the next one",
             "Draft first, publish when you're ready",
           ]}
-          visual={<HuddleSetupVisual />}
+          visual={
+            <ShadeFrame shade="sky">
+              <HuddleSetupVisual />
+            </ShadeFrame>
+          }
         />
         <FeatureRow
           as="h2"
@@ -68,7 +74,11 @@ export default function HuddlePage() {
             "Hosts run it from the web, attendees join in the app",
             "Reminders a day before and 15 minutes before",
           ]}
-          visual={<HuddleJoinVisual />}
+          visual={
+            <ShadeFrame shade="mint">
+              <HuddleJoinVisual />
+            </ShadeFrame>
+          }
           flip
         />
         <FeatureRow
@@ -77,7 +87,11 @@ export default function HuddlePage() {
           title="Run it with your team"
           lede="Add co-hosts by email, go live, record, and end the session when you're done. If plans change, cancel it and everyone who paid is refunded automatically."
           points={["Co-hosts join as hosts, not attendees", "Recordings saved to the session", "Registrations, payments and attendance in one view"]}
-          visual={<HuddleHostVisual />}
+          visual={
+            <ShadeFrame shade="ivory">
+              <HuddleHostVisual />
+            </ShadeFrame>
+          }
         />
       </Section>
 
@@ -87,7 +101,7 @@ export default function HuddlePage() {
         </h2>
         <ol data-stagger="rise" className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
           {HUDDLE_STEPS.map((s, i) => (
-            <li key={s.title} className="pt-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.14)]">
+            <li key={s.title} className="pt-5 border-t border-border">
               <span className="font-display tabular text-sm text-ink/45">{i + 1}</span>
               <h3 className="mt-3 text-base text-ink">{s.title}</h3>
               <p className="mt-2 text-sm font-light leading-relaxed text-ink/60">{s.body}</p>

@@ -1,5 +1,5 @@
 import { Microphone, VideoCamera, ChatCircle, PhoneDisconnect, Record, LockSimple, BellRinging } from "@unifesto/unicon/react";
-import { Panel } from "@/components/visuals/Product";
+import { Panel, panelRow, panelRows } from "@/components/visuals/Product";
 import { Phone } from "@/components/visuals/AppScreens";
 
 /* Unifesto Huddle fragments, drawn in HTML from the real model: a session
@@ -19,9 +19,9 @@ export function HuddleSetupVisual() {
   return (
     <Panel title="New session · I&E Cell, MRU">
       <p className="text-[12px] text-paper">Pitch clinic: 10 decks, 10 minutes each</p>
-      <div className="mt-3 space-y-1.5">
+      <div className={`mt-3 ${panelRows}`}>
         {rows.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between rounded-md bg-night-3 px-2.5 py-2 text-[10px]">
+          <div key={k} className={`${panelRow} py-2 text-[10px]`}>
             <span className="text-paper/50">{k}</span>
             <span className="text-paper">{v}</span>
           </div>
@@ -42,18 +42,18 @@ export function HuddleHostVisual() {
   ];
   return (
     <Panel title="Manage session · Published">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 gap-4">
         {[["Registered", "148"], ["Paid", "₹14.6k"], ["Joined", "121"]].map(([l, v]) => (
-          <div key={l} className="rounded-md bg-night-3 px-2 py-2">
+          <div key={l}>
             <span className="block font-display tabular text-sm text-paper">{v}</span>
             <span className="block text-[8px] text-paper/50">{l}</span>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[10px] text-paper/50">Co-hosts</p>
-      <div className="mt-1.5 flex gap-1.5">
+      <p className="mt-3 border-t border-border pt-3 text-[10px] text-paper/50">Co-hosts</p>
+      <div className="mt-1.5 flex gap-4">
         {cohosts.map(([i, n]) => (
-          <span key={n} className="flex items-center gap-1.5 rounded-full bg-night-3 py-1 pl-1 pr-2.5 text-[10px] text-paper">
+          <span key={n} className="flex items-center gap-1.5 text-[10px] text-paper">
             <span className="grid h-4 w-4 place-items-center rounded-full bg-white/10 text-[7px]">{i}</span>
             {n}
           </span>
@@ -103,7 +103,7 @@ export function HuddleRoomScreen() {
 export function HuddleJoinVisual() {
   return (
     <Panel title="Your session">
-      <div className="flex items-center justify-between rounded-md bg-night-3 px-3 py-3">
+      <div className="flex items-center justify-between pb-2">
         <span>
           <span className="block text-[12px] text-paper">Pitch clinic</span>
           <span className="block text-[9px] text-paper/50">Thu, 23 Oct · 7:00 PM · Paid</span>
@@ -112,9 +112,9 @@ export function HuddleJoinVisual() {
           <LockSimple className="h-3 w-3" /> Opens 6:45 PM
         </span>
       </div>
-      <div className="mt-2 space-y-1.5 text-[10px]">
+      <div className={`border-t border-border text-[10px] ${panelRows}`}>
         {[["A day before", "Sent"], ["15 minutes before", "Scheduled"]].map(([when, state]) => (
-          <div key={when} className="flex items-center justify-between rounded-md bg-night-3 px-2.5 py-2">
+          <div key={when} className={`${panelRow} py-2`}>
             <span className="flex items-center gap-1.5 text-paper/70">
               <BellRinging className="h-3 w-3" /> Reminder · {when}
             </span>

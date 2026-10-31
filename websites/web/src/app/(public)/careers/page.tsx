@@ -15,6 +15,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
+import ShadeCard, { SHADES } from "@/components/site/ShadeCard";
 import type { Career } from "@/lib/api/careers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
@@ -132,39 +133,41 @@ export default function CareersPage() {
               </div>
             ) : (
               <ul className="flex flex-col gap-4" data-stagger="rise">
-                {careers.map((career) => (
+                {careers.map((career, i) => (
                   <li key={career.id}>
-                    <button
-                      onClick={() => setSelectedCareer(career)}
-                      className="group flex w-full items-center gap-4 rounded-3xl bg-night-2 p-7 text-left transition-colors duration-150 hover:bg-night-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-lg font-semibold text-white">{career.title}</h3>
-                        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-paper/75">
-                          <span className="inline-flex items-center gap-1.5">
-                            <MapPin size={16} weight="bold" className="text-paper/65" />
-                            {career.location}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <Briefcase size={16} weight="bold" className="text-paper/65" />
-                            {career.department}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock size={16} weight="bold" className="text-paper/65" />
-                            {career.type}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <ChartBar size={16} weight="bold" className="text-paper/65" />
-                            {career.experience_level}
-                          </span>
+                    <ShadeCard shade={SHADES[i % SHADES.length]} glass className="p-3" glassClassName="w-full">
+                      <button
+                        onClick={() => setSelectedCareer(career)}
+                        className="group flex w-full items-center gap-4 rounded-xl bg-night-2 p-6 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-lg font-semibold text-paper">{career.title}</h3>
+                          <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-paper/75">
+                            <span className="inline-flex items-center gap-1.5">
+                              <MapPin size={16} weight="bold" className="text-paper/65" />
+                              {career.location}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Briefcase size={16} weight="bold" className="text-paper/65" />
+                              {career.department}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Clock size={16} weight="bold" className="text-paper/65" />
+                              {career.type}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <ChartBar size={16} weight="bold" className="text-paper/65" />
+                              {career.experience_level}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <CaretRight
-                        size={20}
-                        weight="bold"
-                        className="shrink-0 text-paper/55 transition-[transform,color] duration-150 group-hover:translate-x-1 group-hover:text-primary"
-                      />
-                    </button>
+                        <CaretRight
+                          size={20}
+                          weight="bold"
+                          className="shrink-0 text-paper/55 transition-[transform,color] duration-150 group-hover:translate-x-1 group-hover:text-primary"
+                        />
+                      </button>
+                    </ShadeCard>
                   </li>
                 ))}
               </ul>

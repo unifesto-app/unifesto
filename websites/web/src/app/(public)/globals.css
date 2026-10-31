@@ -413,12 +413,13 @@ body {
 }
 
 /* Solid silver panels (bg-primary) are the one light island: text tokens
-   resolve dark inside them, and chips cut out of them (bg-ink) go black
-   with silver type. */
+   and divider lines resolve dark inside them, and chips cut out of them
+   (bg-ink) go black with silver type. */
 .bg-primary, .surface-silver {
   --ink: var(--void);
   --paper: var(--void);
   --paper-bg: var(--primary);
+  --border: rgb(0 0 0 / 0.12);
   color: var(--void);
 }
 
@@ -730,10 +731,16 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 
 /* ─── Liquid glass ───────────────────────────────────────────────────── */
 /* LiquidGlassRoot: once the effect runs (`lg-live`), the card's own fill and
-   shadow give way to the frosted glass canvas drawn behind its content. */
-.lg-live > [data-glass] > div { background: transparent; box-shadow: none; }
+   shadow give way to the frosted glass canvas drawn behind its content. The
+   canvas is a child of the glass element too, and wider than it (room for
+   the edge light): never paint it, or a square tint shows past the corners. */
+.lg-live > [data-glass] > :not(canvas) { background: transparent; box-shadow: none; }
 /* The glass canvas sits at z-index -1 inside its card: keep it in the card. */
 [data-glass] { isolation: isolate; }
+/* A panel floating on a hero sits on the page, so it takes the outer 16px
+   (the same panel inside a shade card is inner, 8px). The glass reads the
+   panel's corner, so the frost follows. */
+.hero-card > :not(canvas) { border-radius: 1rem; }
 /* Inner cards turn to glass too: the panel's own tiles (rows, check-in
    points, leaderboard places) once the panel is glass, and the cards on the
    phone mockups' screens. A clear pane with a fine top highlight instead of
@@ -870,8 +877,13 @@ footer > .cosmos { -webkit-mask-image: linear-gradient(to bottom, transparent, #
 @keyframes door-form { from { opacity: 0; } }
 /* Frosted glass over a vivid shade keeps a translucent fill, so the panel's
    small text stays readable while the colour shows through. */
-.shade-card.lg-live > [data-glass] > div { background: rgb(10 10 11 / 0.5); }
-:root[data-theme="light"] .shade-card.lg-live > [data-glass] > div { background: rgb(255 255 255 / 0.55); }
+.shade-card.lg-live > [data-glass] > :not(canvas) { background: rgb(10 10 11 / 0.5); }
+:root[data-theme="light"] .shade-card.lg-live > [data-glass] > :not(canvas) { background: rgb(255 255 255 / 0.55); }
+/* A glass card that is itself a link or button (blog posts, career roles)
+   thins its fill on hover, so more of the shade glows through. */
+.shade-card.lg-live > [data-glass] > :is(a, button) { transition: background-color 150ms; }
+.shade-card.lg-live > [data-glass] > :is(a, button):hover { background: rgb(10 10 11 / 0.3); }
+:root[data-theme="light"] .shade-card.lg-live > [data-glass] > :is(a, button):hover { background: rgb(255 255 255 / 0.35); }
 .legal h3 { margin: 1.4rem 0 0.5rem; font-size: 15px; color: var(--paper); }
 .legal a:not([class]) { color: var(--paper); text-decoration: underline; text-decoration-color: rgb(var(--glow) / 0.35); }
 .legal table { width: 100%; font-size: 14px; border-collapse: collapse; }
@@ -881,10 +893,11 @@ footer > .cosmos { -webkit-mask-image: linear-gradient(to bottom, transparent, #
 
 /* ─── Borderless ─────────────────────────────────────────────────────── */
 /* No outline borders anywhere: surfaces separate by fill, shadow and space.
-   Kept: form fields (some have no fill, the border is the affordance) and
-   spinners (the ring is drawn with a border). Focus rings are box-shadows,
-   so they still show. */
-*:not(input, textarea, select, .animate-spin),
+   Kept: form fields (some have no fill, the border is the affordance),
+   spinners (the ring is drawn with a border) and the console's divider
+   lines (border-border rules and divide-border lists), the one hairline
+   inside cards. Focus rings are box-shadows, so they still show. */
+*:not(input, textarea, select, .animate-spin, .border-border, .divide-border > *),
 *::before,
 *::after {
   border-width: 0 !important;

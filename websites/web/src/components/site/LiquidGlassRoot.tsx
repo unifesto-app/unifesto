@@ -35,11 +35,20 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
       ]);
       const { LiquidGlass } = await import("@/vendor/liquidglass");
       if (id !== run) return;
+      // Hidden glass (the hero card on phones) gets no canvas; none shown, no WebGL.
+      const glass = [...root.querySelectorAll<HTMLElement>(":scope > [data-glass]")].filter((el) => el.getClientRects().length);
+      if (!glass.length) return;
+      // Each glass takes the corner of the panel it covers (8px cards, the
+      // 16px footer card), so the frost never pokes past the panel's edge.
+      for (const el of glass) {
+        const panel = el.querySelector<HTMLElement>(":scope > :not(canvas)");
+        if (panel) el.dataset.config = JSON.stringify({ cornerRadius: parseFloat(getComputedStyle(panel).borderTopLeftRadius) || 0 });
+      }
       const next = await LiquidGlass.init({
         root,
-        glassElements: root.querySelectorAll<HTMLElement>(":scope > [data-glass]"),
+        glassElements: glass,
         // Frosted glass: blur what's behind, no tint.
-        defaults: { blurAmount: 0.35, cornerRadius: 12, zRadius: 24, edgeHighlight: 0.12 },
+        defaults: { blurAmount: 0.35, cornerRadius: 8, zRadius: 24, edgeHighlight: 0.12 },
         backdrop: getComputedStyle(root).getPropertyValue("--stage-ground").trim() || "#000",
       });
       if (id !== run) return next.destroy();
@@ -47,24 +56,31 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
       root.classList.add("lg-live");
     };
 
-    const restart = () => {
+    const stop = () => {
       run += 1;
-      instance?.destroy();
+      instance?.destroy(); // frees its WebGL context
       instance = undefined;
       root.classList.remove("lg-live");
+    };
+
+    const restart = () => {
+      stop();
       start(run).catch(() => undefined); // no WebGL: the solid cards stay
     };
 
-    // Start when the card nears the screen, so glass below the fold costs
-    // nothing at load (and a hidden root, display: none, never starts).
+    // Run only while the card is within three quarters of a screen of the
+    // view: glass further down costs nothing at load (a hidden root, display:
+    // none, never starts), a page of glass cards never holds more WebGL
+    // contexts than the browser keeps alive (16 in Chrome), and the head start
+    // covers the ~1 s the photo takes, so scrolling back never shows the swap.
+    // Out of range the card falls back to its solid fill.
     const near = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((e) => e.isIntersecting)) return;
-        near.disconnect();
-        started = true;
-        restart();
+      ([entry]) => {
+        started = entry.isIntersecting;
+        if (started) restart();
+        else stop();
       },
-      { rootMargin: "300px" },
+      { rootMargin: "75% 0px" },
     );
     near.observe(root);
 
@@ -75,11 +91,9 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
     themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     return () => {
-      run += 1;
       near.disconnect();
       themeWatch.disconnect();
-      root.classList.remove("lg-live");
-      instance?.destroy();
+      stop();
     };
   }, []);
 

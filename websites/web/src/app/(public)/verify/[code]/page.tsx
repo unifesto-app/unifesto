@@ -118,7 +118,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
               )}
 
               {/* Details */}
-              <div className="enter rounded-3xl bg-night-2 px-2 py-2" style={{ ["--d" as string]: "200ms" }}>
+              <div className="enter divide-y divide-border rounded-3xl bg-night-2 px-2 py-2" style={{ ["--d" as string]: "200ms" }}>
                 <DetailRow label="Recipient" value={cert.recipientName} />
                 <DetailRow label="Event" value={cert.eventTitle} />
                 <DetailRow label="Issued by" value={cert.issuer} />
@@ -158,7 +158,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-4">
       <span className="text-sm text-paper/55 shrink-0">{label}</span>
-      <span className="text-sm text-white font-medium text-right">{value}</span>
+      <span className="text-sm text-paper font-medium text-right">{value}</span>
     </div>
   );
 }

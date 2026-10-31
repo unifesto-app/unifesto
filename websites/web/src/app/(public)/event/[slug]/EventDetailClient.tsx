@@ -359,7 +359,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
           <Block title="Schedule" subtitle={countLabel(agenda.length, "slot")}>
             <Card>
               {(agendaOpen ? agenda : agenda.slice(0, AGENDA_PREVIEW)).map((item) => (
-                <div key={item.id} className="flex gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                <div key={item.id} className="flex gap-4 border-t border-border p-4 first:border-t-0">
                   <div className="w-20 shrink-0">
                     <p className="text-sm font-semibold text-paper">{time(new Date(item.start_time), tz)}</p>
                     {item.end_time && <p className="text-xs text-paper/50">{time(new Date(item.end_time), tz)}</p>}
@@ -408,7 +408,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
           <Block title="Prizes" subtitle={countLabel(prizes.length, "prize")}>
             <Card>
               {prizes.map((p) => (
-                <div key={p.id} className="flex items-start gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                <div key={p.id} className="flex items-start gap-4 border-t border-border p-4 first:border-t-0">
                   <span className={`w-10 shrink-0 font-display text-sm ${p.position ? "text-paper" : "text-paper/45"}`}>
                     {p.position ? PLACE[p.position] || `${p.position}th` : "—"}
                   </span>
@@ -463,7 +463,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
                     </div>
                   </>
                 );
-                const cls = "flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0";
+                const cls = "flex items-center gap-4 border-t border-border p-4 first:border-t-0";
                 return sp.website_url ? (
                   <a key={sp.event_sponsor_id} href={sp.website_url} target="_blank" rel="noopener noreferrer" className={`${cls} transition-colors hover:bg-paper/[0.04]`}>
                     {inner}
@@ -480,7 +480,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
           <Block title="FAQs">
             <Card>
               {faqs.map((f) => (
-                <details key={f.id} className="group border-t border-paper/10 first:border-t-0 [&_summary::-webkit-details-marker]:hidden">
+                <details key={f.id} className="group border-t border-border first:border-t-0 [&_summary::-webkit-details-marker]:hidden">
                   <summary className="flex cursor-pointer list-none items-center gap-4 p-4">
                     <span className="flex-1 text-[15px] font-semibold text-paper">{f.question}</span>
                     <CaretDown className="h-4 w-4 shrink-0 text-paper/50 transition-transform group-open:rotate-180" aria-hidden />
@@ -498,7 +498,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
               {hostedBy.map((h) =>
                 // A PRIVATE space has no public page (it would 404), so no link.
                 h.visibility === "PRIVATE" ? (
-                  <div key={h.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                  <div key={h.id} className="flex items-center gap-4 border-t border-border p-4 first:border-t-0">
                     <Avatar src={h.logo_url} name={h.name} size={44} />
                     <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
                   </div>
@@ -506,7 +506,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
                   <Link
                     key={h.id}
                     href={`/space/${h.slug || h.id}`}
-                    className="flex items-center gap-4 border-t border-paper/10 p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
+                    className="flex items-center gap-4 border-t border-border p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
                   >
                     <Avatar src={h.logo_url} name={h.name} size={44} />
                     <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
@@ -515,7 +515,7 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
                 ),
               )}
               {contacts.map((ct) => (
-                <div key={ct.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                <div key={ct.id} className="flex items-center gap-4 border-t border-border p-4 first:border-t-0">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold text-paper">{ct.name}</p>
                     <p className="truncate text-xs text-paper/55">{ct.role || "Contact"}</p>

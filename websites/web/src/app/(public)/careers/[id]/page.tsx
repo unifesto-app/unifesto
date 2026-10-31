@@ -5,6 +5,7 @@ import { withSocial } from "@/lib/seo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { HeroSky } from "@/components/site/CosmicBackdrop";
 import { getRole, type Career } from "@/lib/api/careers";
 import { SITE } from "@/lib/site";
 
@@ -96,8 +97,9 @@ export default async function CareerPage({ params }: Props) {
       />
       <Navbar />
 
-      <header className="surface-night px-5 pb-12 pt-32 sm:px-8 md:pt-40">
-        <div className="mx-auto max-w-3xl">
+      <header id="page-hero" className="surface-night relative overflow-hidden px-5 pb-12 pt-32 sm:px-8 md:pt-40">
+        <HeroSky targetId="page-hero" />
+        <div className="relative mx-auto max-w-3xl">
           <Link href="/careers" className="link-draw text-sm font-medium text-paper/65 transition-colors duration-150 hover:text-paper">
             ← Careers
           </Link>

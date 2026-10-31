@@ -14,9 +14,9 @@ export default function FaqList({ faqs, title = "Questions, answered" }: { faqs:
         <h2 id="faq-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.2vw,2.4rem)] leading-[1.12] text-ink [text-wrap:balance]">
           {title}
         </h2>
-        <div data-stagger="rise" className="shadow-[inset_0_1px_0_rgb(var(--glow)/0.1)]">
+        <div data-stagger="rise" className="border-t border-border">
           {faqs.map((f) => (
-            <details key={f.q} className="group py-5 shadow-[inset_0_-1px_0_rgb(var(--glow)/0.08)] last:shadow-none">
+            <details key={f.q} className="group border-b border-border py-5 last:border-b-0">
               <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-base text-ink marker:hidden [&::-webkit-details-marker]:hidden">
                 <span>{f.q}</span>
                 <Plus aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-ink/60 transition-transform duration-200 group-open:rotate-45" />

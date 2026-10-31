@@ -1,6 +1,6 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
 import { Bed, Check, IdentificationCard, WifiHigh, Drop, ForkKnife, Clock } from "@unifesto/unicon/react";
-import { Panel } from "@/components/visuals/Product";
+import { Panel, panelRow, panelRows } from "@/components/visuals/Product";
 import { Phone } from "@/components/visuals/AppScreens";
 
 /* Unifesto Stay fragments, drawn in HTML from the real model: a stay with
@@ -28,9 +28,9 @@ export function StaySetupVisual() {
           );
         })}
       </div>
-      <div className="mt-3 space-y-1.5">
+      <div className={`mt-3 ${panelRows}`}>
         {options.map(([name, who, price, mode]) => (
-          <div key={name} className="flex items-center justify-between rounded-md bg-night-3 px-2.5 py-2">
+          <div key={name} className={`${panelRow} py-2`}>
             <span>
               <span className="block text-[11px] text-paper">{name}</span>
               <span className="block text-[9px] text-paper/50">{who} · {mode}</span>
@@ -51,9 +51,9 @@ export function StayRequestsVisual() {
   ];
   return (
     <Panel title="Stay requests · 3 pending review">
-      <div className="space-y-1.5">
+      <div className={panelRows}>
         {reqs.map(([who, what, state, done]) => (
-          <div key={who} className="rounded-md bg-night-3 px-2.5 py-2">
+          <div key={who} className="py-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-paper">{who}</span>
               <span className="flex items-center gap-1 text-[9px] text-paper/55">
@@ -104,7 +104,7 @@ export function StayPassScreen() {
 export function StayScanVisual() {
   return (
     <Panel title="Scan Stay Pass">
-      <div className="flex items-center justify-between rounded-md bg-night-3 px-3 py-3">
+      <div className="flex items-center justify-between pb-3">
         <span>
           <span className="block text-[12px] text-paper">Ananya R. + 1</span>
           <span className="block text-[9px] text-paper/50">ST-7K2Q · Girls hostel</span>
@@ -113,17 +113,17 @@ export function StayScanVisual() {
           <Check weight="bold" className="h-3 w-3" /> Checked in
         </span>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px]">
-        <div className="rounded-md bg-night-3 px-2.5 py-2">
+      <div className="grid grid-cols-2 gap-4 border-t border-border pt-2.5 text-[10px]">
+        <div>
           <span className="block text-paper/50">Room</span>
           <span className="block text-paper">Block A, 112</span>
         </div>
-        <div className="rounded-md bg-night-3 px-2.5 py-2">
+        <div>
           <span className="block text-paper/50">Payment</span>
           <span className="block text-paper">Free stay</span>
         </div>
       </div>
-      <div className="mt-3 flex items-baseline gap-2">
+      <div className="mt-3 flex items-baseline gap-2 border-t border-border pt-3">
         <span className="font-display tabular text-xl text-paper">64</span>
         <span className="text-[10px] text-paper/55">of 84 guests checked in</span>
       </div>

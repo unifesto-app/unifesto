@@ -108,7 +108,7 @@ function SpaceCard({ space, childCount }: { space: Space; childCount: number }) 
           <p className="line-clamp-2 text-sm leading-relaxed text-paper/65">{space.description}</p>
         )}
 
-        <div className="mt-auto flex items-center gap-4 pt-3 text-xs text-paper/75">
+        <div className="mt-auto flex items-center gap-4 border-t border-border pt-4 text-xs text-paper/75">
           {members > 0 && (
             <span className="inline-flex items-center gap-1.5">
               <UsersThree className="h-4 w-4 text-primary/80" aria-hidden />

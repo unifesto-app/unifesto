@@ -220,7 +220,7 @@ export default function SpaceDetailClient({ params, initialSpace = null, session
                 ))}
               </div>
               {websiteUrl && websiteLabel && (
-                <div className="border-t border-paper/10">
+                <div className="border-t border-border">
                   <FactRow
                     icon={<Globe className="h-6 w-6 text-paper" aria-hidden />}
                     title={websiteLabel}

@@ -50,7 +50,7 @@ const mdComponents = {
     <th className="border-b border-paper/25 px-3 py-2.5 font-semibold text-paper" {...p} />
   ),
   td: (p: React.ComponentProps<"td">) => (
-    <td className="border-b border-paper/10 px-3 py-2.5 align-top" {...p} />
+    <td className="border-b border-border px-3 py-2.5 align-top" {...p} />
   ),
 };
 
