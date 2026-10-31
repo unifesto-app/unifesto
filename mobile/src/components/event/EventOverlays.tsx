@@ -7,7 +7,7 @@ import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardS
 import type { RegisterMode } from '../../hooks/useEventDetail';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
@@ -45,8 +45,6 @@ export function RegisterBar({ price, mode, accent, onPress, backdropImage, backd
       info={done || unavailable ? null : price}
       label={CTA_LABEL[mode]}
       disabled={unavailable}
-      // Silver button, the cosmos primary, in every state (the event page has no blue).
-      tone="neutral"
       accent={accent}
       onPress={onPress}
       backdropImage={backdropImage}
@@ -55,11 +53,6 @@ export function RegisterBar({ price, mode, accent, onPress, backdropImage, backd
   );
 }
 
-/**
- * Bottom action bar anchored to the screen edge: an optional info column
- * (small label over a large value) and one primary button. Without info the
- * button takes the full row. Shared by the event and space pages.
- */
 /**
  * Bottom padding a scroll view needs so its last item clears the floating
  * ActionBar (which is absolutely positioned over the content), plus `gap`.
@@ -74,12 +67,19 @@ function useBarBottomPad() {
   return Math.max(insets.bottom, spacing[4]) + spacing[3];
 }
 
-export function ActionBar({ info, label, onPress, accent, tone = 'accent', disabled = false, loading = false, backdropImage, backdropColor }: {
+/**
+ * Bottom action bar anchored to the screen edge, on glass (floating chrome):
+ * an optional info column (small label over a large value) and the one primary
+ * button, silver by night and ink by day. Without info the button takes the
+ * full row. Shared by the event, space and session pages.
+ */
+export function ActionBar({ info, label, onPress, disabled = false, loading = false, backdropImage, backdropColor }: {
   info: { label: string; value: string } | null;
   label: string;
   onPress: () => void;
-  accent: string;
-  /** 'neutral' = white button, for "already done" states. */
+  /** Ignored: the button is always the primary (buttons never take an accent). Kept for callers. */
+  accent?: string;
+  /** Ignored, as `accent`. */
   tone?: 'accent' | 'neutral';
   disabled?: boolean;
   loading?: boolean;
@@ -89,8 +89,8 @@ export function ActionBar({ info, label, onPress, accent, tone = 'accent', disab
   backdropColor?: string | null;
 }) {
   const { tokens, isDark } = useTheme();
+  const c = useCosmos();
   const bottomPad = useBarBottomPad();
-  const neutral = tone === 'neutral';
   // iOS: glass (Liquid Glass on 26+, frosted below). Android can't live-blur what
   // scrolls under the bar, so it uses the frosted branch below.
   const glass = Platform.OS === 'ios';
@@ -99,7 +99,6 @@ export function ActionBar({ info, label, onPress, accent, tone = 'accent', disab
       style={[
         styles.bar,
         { paddingBottom: bottomPad },
-        glass && styles.barGlass,
       ]}
     >
       {Platform.OS === 'android' ? (
@@ -123,8 +122,8 @@ export function ActionBar({ info, label, onPress, accent, tone = 'accent', disab
       )}
       {info ? (
         <View style={styles.priceCol}>
-          <Text style={[styles.barLabel, { color: tokens.textMuted }]} numberOfLines={1}>{info.label}</Text>
-          <Text style={[styles.barValue, { color: tokens.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          <Text style={[styles.barLabel, { color: c.muted }]} numberOfLines={1}>{info.label}</Text>
+          <Text style={[styles.barValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {info.value}
           </Text>
         </View>
@@ -133,20 +132,21 @@ export function ActionBar({ info, label, onPress, accent, tone = 'accent', disab
         onPress={onPress}
         disabled={disabled || loading}
         accessibilityRole="button"
+        accessibilityLabel={label}
         accessibilityState={{ disabled: disabled || loading, busy: loading }}
         style={({ pressed }) => [
           styles.cta,
           info ? styles.ctaBeside : styles.ctaFull,
           {
-            backgroundColor: neutral ? tokens.text : accent,
+            backgroundColor: c.primary,
             opacity: disabled ? 0.6 : pressed ? 0.85 : 1,
           },
         ]}
       >
         {loading ? (
-          <ActivityIndicator color={neutral ? tokens.bg : '#ffffff'} />
+          <ActivityIndicator color={c.primaryFg} />
         ) : (
-          <Text style={[styles.ctaText, { color: neutral ? tokens.bg : '#ffffff' }]} numberOfLines={1}>
+          <Text style={[styles.ctaText, { color: c.primaryFg }]} numberOfLines={1}>
             {label}
           </Text>
         )}
@@ -168,11 +168,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     borderTopLeftRadius: borderRadius['2xl'],
     borderTopRightRadius: borderRadius['2xl'],
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -6 },
-    elevation: 20,
   },
   barShape: {
     borderRadius: 0,
@@ -182,12 +177,10 @@ const styles = StyleSheet.create({
   clip: { overflow: 'hidden' },
   // Hairline light along the top edge of the frosted Android bar.
   sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth },
-  // Glass draws its own depth; a heavy black shadow under it just muddies it.
-  barGlass: { shadowOpacity: 0, elevation: 0 },
   priceCol: { flex: 1, minWidth: 0 },
   barLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...cosmosFont.display },
-  cta: { height: 52, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
+  barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...cosmosFont.figure },
+  cta: { height: 52, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   // Sized by its label (never squeezed below a comfortable tap target).
   ctaBeside: { flexShrink: 0, minWidth: 148, paddingHorizontal: spacing[6] },
   ctaFull: { flex: 1 },

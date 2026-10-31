@@ -17,10 +17,11 @@ import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
 import { CircleRow } from '../components/home/SpaceCards';
+import ManageStats from '../components/manage/ManageStats';
 import { relativeWhen } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const AVATAR = 96;
@@ -46,7 +47,7 @@ const initials = (name: string) =>
 
 /**
  * "View profile": the signed-in user's own profile as others would see it.
- * Identity up top (avatar, name, handle, bio, links), a few bare numbers,
+ * Identity up top (avatar, name, handle, bio, links), the numbers on one card,
  * then what they're going to, where they've been and the circles they're in.
  */
 export default function UserProfileScreen() {
@@ -118,11 +119,6 @@ export default function UserProfileScreen() {
     : null;
   const links = profile ? LINKS.filter((l) => !!profile[l.key]) : [];
 
-  const stats = [
-    { label: 'Going to', value: upcoming.length, loading: loadingEvents },
-    { label: 'Been to', value: past.length, loading: loadingEvents },
-    { label: 'Circles', value: circles.length, loading: loadingCircles },
-  ];
 
   const poster = (e: Event) => (
     <PosterCard
@@ -176,7 +172,7 @@ export default function UserProfileScreen() {
                   )}
                 </View>
               </View>
-              <Text style={[styles.name, { color: c.text }]}>{name}</Text>
+              <Text style={[styles.name, { color: c.text }]} accessibilityRole="header">{name}</Text>
               <Text style={[styles.sub, { color: c.muted }]}>
                 {[profile?.username ? `@${profile.username}` : null, joined].filter(Boolean).join('  ·  ')}
               </Text>
@@ -203,18 +199,16 @@ export default function UserProfileScreen() {
           )}
         </View>
 
-        {/* Numbers: bare, divided by hairlines */}
-        <View style={[styles.stats, { borderColor: c.border }]}>
-          {stats.map((s) => (
-            <View key={s.label} style={styles.stat}>
-              {s.loading ? (
-                <Skeleton width={28} height={24} borderRadius={6} />
-              ) : (
-                <Text style={[styles.statValue, { color: c.text }]}>{s.value}</Text>
-              )}
-              <Text style={[styles.statLabel, { color: c.muted }]}>{s.label}</Text>
-            </View>
-          ))}
+        {/* Numbers: one card, divided by hairlines; events going to in sky. */}
+        <View style={styles.stats}>
+          <ManageStats
+            loading={loadingEvents || loadingCircles}
+            stats={[
+              { label: 'Going to', value: upcoming.length, tone: 'sky' },
+              { label: 'Been to', value: past.length },
+              { label: 'Circles', value: circles.length },
+            ]}
+          />
         </View>
 
         <View style={styles.pad}>
@@ -227,9 +221,8 @@ export default function UserProfileScreen() {
           </Section>
         ) : noEvents ? (
           <View style={[styles.prompt, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-            <Text style={[styles.promptTitle, { color: c.text }]}>No events yet</Text>
-            <Text style={[styles.promptBody, { color: c.soft }]}>
+            <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">No events yet</Text>
+            <Text style={[styles.promptBody, { color: c.muted }]}>
               Events you register for show up here, so people can see where you’ll be.
             </Text>
             <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={{ marginTop: spacing[6] }} />
@@ -284,8 +277,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 30, ...cosmosFont.display },
-  name: { marginTop: spacing[5], fontSize: 26, lineHeight: 32, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(26) },
+  initials: { fontSize: 30, ...cosmosFont.strong },
+  // A person's name: Hanken, never display.
+  name: { marginTop: spacing[5], fontSize: typography.fontSize['2xl'], lineHeight: 30, textAlign: 'center', ...cosmosFont.strong },
   sub: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bio: {
     marginTop: spacing[4],
@@ -302,23 +296,11 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 36,
     paddingHorizontal: spacing[3],
-    borderRadius: 999,
+    borderRadius: cosmosRadius,
   },
   linkText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  stats: {
-    flexDirection: 'row',
-    marginHorizontal: GUTTER,
-    marginTop: spacing[8],
-    marginBottom: spacing[6],
-    paddingVertical: spacing[4],
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
-  statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  stats: { marginHorizontal: GUTTER, marginTop: spacing[8], marginBottom: spacing[4] },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[12], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
   promptTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

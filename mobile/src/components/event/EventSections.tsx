@@ -14,7 +14,7 @@ import { GUTTER, Rail, Section } from '../home/Section';
 import type { AgendaItem, Contact, Faq, Prize, Speaker } from '../../lib/api/additional-info';
 import type { EventCurator, EventSponsor } from '../../lib/api/events';
 import { formatTime } from '../../utils/eventFormat';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
@@ -44,12 +44,12 @@ function Card({ children }: { children: React.ReactNode }) {
 function Avatar({ uri, name, size = 44, square = false }: { uri?: string | null; name: string; size?: number; square?: boolean }) {
   const c = useCosmos();
   // Space and sponsor logos are 1:1 rounded squares; people are circles.
-  const radius = square ? size * 0.24 : size / 2;
+  const radius = square ? borderRadius.md : size / 2;
   return uri ? (
     <Image source={{ uri }} style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.card }} />
   ) : (
     <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.36, color: c.muted, ...cosmosFont.display }}>{name.charAt(0).toUpperCase()}</Text>
+      <Text style={{ fontSize: size * 0.36, color: c.muted, ...cosmosFont.strong }}>{name.charAt(0).toUpperCase()}</Text>
     </View>
   );
 }
@@ -114,11 +114,7 @@ export function SpeakersSection({ items }: { items: Speaker[] }) {
               <Avatar uri={s.profile_image_url || s.avatarUrl} name={s.name} size={72} />
               <Text style={[styles.speakerName, { color: c.text }]} numberOfLines={2}>{s.name}</Text>
               {role ? <Text style={[styles.speakerRole, { color: c.muted }]} numberOfLines={2}>{role}</Text> : null}
-              {featured ? (
-                <View style={[styles.chip, { borderColor: c.outline }]}>
-                  <Text style={[styles.chipText, { color: c.soft }]}>Featured</Text>
-                </View>
-              ) : null}
+              {featured ? <Text style={[styles.featured, { color: c.muted }]}>Featured</Text> : null}
             </View>
           );
         })}
@@ -138,13 +134,13 @@ export function PrizesSection({ items }: { items: Prize[] }) {
           {items.map((p) => (
             <View key={p.id} style={styles.row}>
               <Text style={[styles.place, { color: p.position ? c.text : c.muted }]}>
-                {p.position ? PLACE[p.position] || `${p.position}th` : '—'}
+                {p.position ? PLACE[p.position] || `${p.position}th` : ''}
               </Text>
               <View style={styles.flexGap}>
                 <Text style={[styles.itemTitle, { color: c.text }]}>{p.name}</Text>
                 {p.description ? <Text style={[styles.itemBody, { color: c.soft }]}>{p.description}</Text> : null}
               </View>
-              {p.value ? <Text style={[styles.prizeValue, { color: c.text }]} numberOfLines={1}>{p.value}</Text> : null}
+              {p.value ? <Text style={[styles.prizeValue, { color: c.ivory }]} numberOfLines={1}>{p.value}</Text> : null}
             </View>
           ))}
         </Card>
@@ -178,7 +174,7 @@ export function SponsorsSection({ items, optedIn, pending, onToggle }: {
                   <Avatar uri={sp.logoUrl} name={sp.name} size={48} square />
                   <View style={styles.flexGap}>
                     <Text style={[styles.itemTitle, { color: c.text }]} numberOfLines={1}>{sp.name}</Text>
-                    {sp.tier ? <Text style={[styles.itemMeta, { color: sp.tier.color || c.muted }]}>{sp.tier.name}</Text> : null}
+                    {sp.tier ? <Text style={[styles.itemMeta, { color: c.muted }]}>{sp.tier.name}</Text> : null}
                     {sp.description ? (
                       <Text style={[styles.itemBody, { color: c.soft }]} numberOfLines={2}>{sp.description}</Text>
                     ) : null}
@@ -189,21 +185,24 @@ export function SponsorsSection({ items, optedIn, pending, onToggle }: {
                     onPress={() => onToggle(sp.eventSponsorId)}
                     disabled={busy}
                     accessibilityRole="button"
+                    accessibilityLabel={isIn ? `Details shared with ${sp.name}. Undo` : `I'm interested in ${sp.name}`}
+                    accessibilityState={{ selected: isIn, busy }}
+                    // Secondary, a hairline outline: the page's one primary is the register bar.
                     style={({ pressed }) => [
                       styles.optIn,
-                      isIn ? { borderWidth: 1, borderColor: c.outline } : { backgroundColor: c.primary },
+                      isIn ? null : { borderWidth: 1, borderColor: c.outline },
                       { opacity: pressed ? 0.85 : 1 },
                     ]}
                   >
                     {busy ? (
-                      <ActivityIndicator size="small" color={isIn ? c.muted : c.primaryFg} />
+                      <ActivityIndicator size="small" color={c.muted} />
                     ) : isIn ? (
                       <>
-                        <CheckCircle size={16} color={c.soft} weight="fill" />
-                        <Text style={[styles.optInText, { color: c.soft }]}>Details shared</Text>
+                        <CheckCircle size={16} color={c.success} weight="fill" />
+                        <Text style={[styles.optInText, { color: c.success }]}>Details shared</Text>
                       </>
                     ) : (
-                      <Text style={[styles.optInText, { color: c.primaryFg }]}>I'm interested</Text>
+                      <Text style={[styles.optInText, { color: c.text }]}>I'm interested</Text>
                     )}
                   </Pressable>
                 ) : null}
@@ -366,15 +365,14 @@ const styles = StyleSheet.create({
   moreText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   agendaRow: { flexDirection: 'row', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   agendaTimeCol: { width: 74 },
-  agendaTime: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
-  agendaEnd: { marginTop: 2, fontSize: typography.fontSize.xs, fontVariant: ['tabular-nums'], ...cosmosFont.body },
+  agendaTime: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  agendaEnd: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   speaker: { width: SPEAKER_WIDTH, borderRadius: cosmosCardRadius, padding: spacing[4], alignItems: 'center' },
   speakerName: { marginTop: spacing[3], textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 19, ...cosmosFont.strong },
   speakerRole: { marginTop: 3, textAlign: 'center', fontSize: typography.fontSize.xs, lineHeight: 16, ...cosmosFont.body },
-  chip: { marginTop: spacing[3], paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 11, ...cosmosFont.strong },
+  featured: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   place: { width: 44, fontSize: 15, lineHeight: 21, ...cosmosFont.figure },
-  prizeValue: { maxWidth: '35%', fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  prizeValue: { maxWidth: '35%', fontSize: typography.fontSize.base, ...cosmosFont.figure },
   sponsor: { gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   optIn: {
     flexDirection: 'row',

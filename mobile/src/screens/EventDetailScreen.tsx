@@ -31,7 +31,7 @@ import AttendingShareModal from '../components/AttendingShareModal';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
-import PosterCard, { CoverTag } from '../components/home/PosterCard';
+import PosterCard from '../components/home/PosterCard';
 import {
   AgendaSection,
   FaqSection,
@@ -51,7 +51,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -188,7 +188,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <XCircle size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>{d.spaceUnavailable ? 'This space is temporarily unavailable' : id ? 'Event not found' : 'No event selected'}</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{d.spaceUnavailable ? 'This space is temporarily unavailable' : id ? 'Event not found' : 'No event selected'}</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
@@ -219,6 +219,8 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const cover = coverOr(defaults, event.id, event.coverImageUrl);
   const hostLogo = event.space ? logoOr(defaults, event.spaceId, event.space.logoUrl) : null;
   const tag = event.categories?.[0] ?? event.category;
+  // The kind of event and where, as plain text over the title (never a tag on the cover).
+  const kind = [tag, isOnline ? 'Online' : event.city].filter(Boolean).join(' · ');
   const description = event.description?.trim();
   const groupUrl = event.whatsappGroupUrl;
   const communityUrl = event.whatsappCommunityUrl ?? event.parentEvent?.whatsappCommunityUrl ?? null;
@@ -262,7 +264,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             ) : (
               <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
-            {tag ? <CoverTag label={tag} style={styles.coverTag} /> : null}
           </View>
 
           {event.parentEvent ? (
@@ -278,7 +279,16 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             </Pressable>
           ) : null}
 
-          <Text style={[styles.title, { color: c.text }, !event.parentEvent && { marginTop: spacing[6] }, brandFont && { fontFamily: brandFont }]}>
+          {kind ? (
+            <Text style={[styles.kind, { color: c.muted }, !event.parentEvent && { marginTop: spacing[6] }]} numberOfLines={1}>
+              {kind}
+            </Text>
+          ) : null}
+
+          <Text
+            style={[styles.title, { color: c.text }, !event.parentEvent && !kind && { marginTop: spacing[6] }, brandFont && { fontFamily: brandFont }]}
+            accessibilityRole="header"
+          >
             {event.title}
           </Text>
 
@@ -321,9 +331,9 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               accessibilityLabel={`${when.title}, ${when.sub}. Add to calendar`}
               style={({ pressed }) => [styles.whenRow, pressed && { backgroundColor: c.tint }]}
             >
-              <View style={[styles.stub, { borderColor: c.border }]}>
+              <View style={styles.stub}>
                 <Text style={[styles.stubMonth, { color: c.muted }]}>{chip.month}</Text>
-                <Text style={[styles.stubDay, { color: c.text }]}>{chip.day}</Text>
+                <Text style={[styles.stubDay, { color: c.sky }]}>{chip.day}</Text>
               </View>
               <View style={styles.flex}>
                 <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.title}</Text>
@@ -348,7 +358,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             ) : d.isOver ? (
               <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This event has ended" />
             ) : (
-              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLine} />
+              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLine} color={c.sky} />
             )}
 
             {stay && !isCancelled ? (
@@ -380,7 +390,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                 <AuthButton
                   label={`Join ${groupUrl ? 'group' : 'community'}`}
                   variant="secondary"
-                  icon={<WhatsappLogo size={18} color="#25D366" weight="fill" />}
+                  icon={<WhatsappLogo size={18} color={c.text} weight="fill" />}
                   onPress={() => Linking.openURL(whatsappUrl)}
                   style={styles.flex}
                 />
@@ -416,7 +426,8 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                     imageUrl={sub.coverImageUrl}
                     when={relativeWhen(sub.startDateTime)}
                     where={sub.venueName || sub.city}
-                    price={sub.status === 'COMPLETED' ? 'Ended' : shortPrice(sub)}
+                    price={sub.status === 'COMPLETED' ? undefined : shortPrice(sub)}
+                    tag={sub.status === 'COMPLETED' ? 'Ended' : null}
                     onPress={() => router.push(`/event/${sub.slug}`)}
                   />
                 ))}
@@ -507,12 +518,13 @@ function Divider() {
   return <View style={[styles.divider, { backgroundColor: c.border }]} />;
 }
 
-/** One line of the facts card: bare icon, title, optional quieter line under it. */
-function Fact({ icon, title, sub, danger, onPress }: {
+/** One line of the facts card: bare icon, title (in the card's sky when it's the price), optional quieter line under it. */
+function Fact({ icon, title, sub, danger, color, onPress }: {
   icon: React.ReactNode;
   title: string;
   sub?: string | null;
   danger?: boolean;
+  color?: string;
   onPress?: () => void;
 }) {
   const c = useCosmos();
@@ -520,7 +532,7 @@ function Fact({ icon, title, sub, danger, onPress }: {
     <>
       <View style={styles.factIcon}>{icon}</View>
       <View style={styles.flex}>
-        <Text style={[styles.factTitle, { color: danger ? c.danger : c.text }]} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.factTitle, { color: danger ? c.danger : color ?? c.text }]} numberOfLines={1}>{title}</Text>
         {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={2}>{sub}</Text> : null}
       </View>
       {onPress ? <CaretRight size={15} color={c.muted} /> : null}
@@ -546,27 +558,21 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   headerIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   banner: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  coverTag: { position: 'absolute', left: spacing[4], bottom: spacing[4] },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[6] },
   partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  title: { marginTop: spacing[2], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
+  kind: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { marginTop: spacing[1], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
-  hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
+  hostLogo: { width: 26, height: 26, borderRadius: borderRadius.sm, overflow: 'hidden' },
   hostInitial: { fontSize: 11, ...cosmosFont.strong },
   hostText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   rating: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
-  stub: {
-    width: STUB,
-    height: STUB,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
+  // The date as a bare figure over its month: no box inside the card.
+  stub: { width: STUB, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 26, lineHeight: 30, ...cosmosFont.figure },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
@@ -576,5 +582,5 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
   link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], paddingHorizontal: GUTTER, fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
 });

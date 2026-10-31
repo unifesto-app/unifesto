@@ -17,7 +17,7 @@ const THUMB_H = 63;
 
 export const placeOf = (e: Event) => e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null);
 
-/** Compact cosmos event card: 4:3 thumb, title, host, when · where, price, heart. `past` fades it and drops the price. */
+/** Compact event card: 4:3 thumb, title, host, when · where, the price in sky, heart. `past` fades it and drops the price. */
 export default function EventListCard({ event, past = false, onPress }: { event: Event; past?: boolean; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
@@ -47,10 +47,10 @@ export default function EventListCard({ event, past = false, onPress }: { event:
             <Text style={[styles.host, { color: c.muted }]} numberOfLines={1}>{event.space.name}</Text>
           ) : null}
           <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
-          {past ? null : <Text style={[styles.price, { color: c.text }]}>{shortPrice(event)}</Text>}
+          {past ? null : <Text style={[styles.price, { color: c.sky }]}>{shortPrice(event)}</Text>}
         </View>
       </Pressable>
-      <FavoriteButton eventId={event.id} size={20} color={c.soft} style={styles.heart} />
+      <FavoriteButton eventId={event.id} size={20} color={c.muted} style={styles.heart} />
     </View>
   );
 }
@@ -64,6 +64,7 @@ export function EventListCardSkeleton() {
         <View style={[styles.info, { gap: 8 }]}>
           <Skeleton width="85%" height={14} borderRadius={6} />
           <Skeleton width="55%" height={12} borderRadius={6} />
+          <Skeleton width="30%" height={12} borderRadius={6} />
         </View>
       </View>
     </View>
@@ -79,5 +80,5 @@ const styles = StyleSheet.create({
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   host: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  price: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  price: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
 });

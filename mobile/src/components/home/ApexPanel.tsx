@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { CheckCircle } from '@unifesto/unicon/react-native';
+import { CaretRight, CheckCircle } from '@unifesto/unicon/react-native';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -31,15 +31,19 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
         loading={loading && !ov}
         stats={[
           { label: ov ? `Users · +${ov.users.newLast30Days.toLocaleString('en-IN')} in 30d` : 'Users', value: ov?.users.total ?? 0 },
-          { label: 'Registrations', value: ov?.registrations.total ?? 0 },
-          { label: 'Revenue', value: ov ? inrShort(ov.revenue.totalPaid) : 0 },
+          { label: 'Registrations', value: ov?.registrations.total ?? 0, tone: 'sky' },
+          { label: 'Revenue', value: ov ? inrShort(ov.revenue.totalPaid) : 0, tone: 'ivory' },
         ]}
       />
 
       {loading && needs.length === 0 ? (
-        <View style={styles.grid}>
+        <View style={styles.list}>
+          <CardBackdrop shape={styles.list} />
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width="31%" height={64} borderRadius={cosmosCardRadius} />
+            <View key={i} style={[styles.need, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
+              <Skeleton width="55%" height={14} />
+              <Skeleton width={28} height={18} />
+            </View>
           ))}
         </View>
       ) : needs.length === 0 ? (
@@ -49,20 +53,23 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
           <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
         </View>
       ) : (
-        <View style={styles.grid}>
-          {needs.map((n) => (
+        // Every queue waiting on me, one card, one row each: the count in amber.
+        <View style={styles.list}>
+          <CardBackdrop shape={styles.list} />
+          {needs.map((n, i) => (
             <PressableScale
+              feedback="inline"
               key={n.key}
               onPress={() => onOpenNeed(n)}
               accessibilityRole="button"
               accessibilityLabel={`${n.count} ${n.label}`}
-              style={styles.need}
+              style={[styles.need, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
             >
-              <CardBackdrop shape={styles.need} />
-              <Text style={[styles.needCount, { color: c.warn }]}>{n.count.toLocaleString('en-IN')}</Text>
-              <Text style={[styles.needLabel, { color: c.soft }]} numberOfLines={1}>
+              <Text style={[styles.needLabel, { color: c.text }]} numberOfLines={1}>
                 {n.label}
               </Text>
+              <Text style={[styles.needCount, { color: c.warn }]}>{n.count.toLocaleString('en-IN')}</Text>
+              <CaretRight size={14} color={c.muted} weight="bold" />
             </PressableScale>
           ))}
         </View>
@@ -73,18 +80,10 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: GUTTER, gap: spacing[3] },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
-  need: {
-    // Three per row inside the gutter.
-    width: '31%',
-    flexGrow: 1,
-    borderRadius: cosmosCardRadius,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    gap: 2,
-  },
-  needCount: { fontSize: typography.fontSize.xl, lineHeight: 30, ...cosmosFont.figure },
-  needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  list: { borderRadius: cosmosCardRadius, paddingHorizontal: spacing[4] },
+  need: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 52, paddingVertical: spacing[3] },
+  needLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  needCount: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   clear: {
     flexDirection: 'row',
     alignItems: 'center',

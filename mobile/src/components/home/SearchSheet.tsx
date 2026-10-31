@@ -129,7 +129,7 @@ export default function SearchSheet({
 
   const BlockTitle = ({ title, action }: { title: string; action?: React.ReactNode }) => (
     <View style={styles.blockHeader}>
-      <Text style={[styles.blockTitle, { color: c.soft }]}>{title}</Text>
+      <Text style={[styles.blockTitle, { color: c.muted }]} accessibilityRole="header">{title}</Text>
       {action}
     </View>
   );
@@ -297,7 +297,7 @@ export default function SearchSheet({
               <View style={styles.emptyIcon}>
                 <MagnifyingGlass size={36} color={c.muted} />
               </View>
-              <Text style={[styles.emptyTitle, { color: c.text }]}>No matches for “{s.query.trim()}”</Text>
+              <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">No matches for “{s.query.trim()}”</Text>
               <Text style={[styles.emptyText, { color: c.muted }]}>
                 {s.type === 'events' ? 'Try a different word, or browse a vibe.' : 'Try a different name or city.'}
               </Text>
@@ -371,11 +371,11 @@ const styles = StyleSheet.create({
   thumbBanner: { width: 72, height: 54, borderRadius: borderRadius.md, overflow: 'hidden' },
   thumbLogo: { width: 54, height: 54, borderRadius: borderRadius.md, overflow: 'hidden', marginHorizontal: 9 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  thumbText: { fontSize: 18, ...cosmosFont.display },
+  thumbText: { fontSize: 18, ...cosmosFont.strong },
   rowTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   rowSub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: spacing[4] },
   emptyIcon: { marginBottom: spacing[4] },
-  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
+  emptyTitle: { fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', marginTop: 6, ...cosmosFont.body },
 });

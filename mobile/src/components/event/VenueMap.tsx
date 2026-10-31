@@ -206,8 +206,8 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
         )}
       </View>
 
+      {/* The map carries the pin; the row is just the place and the way there. */}
       <View style={styles.row}>
-        <MapPin size={24} color={c.text} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{name}</Text>
           {address ? (

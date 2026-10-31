@@ -8,9 +8,9 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import { SheetBackdrop } from './ui/CardSurface';
 import { REPORT_REASONS, submitContentReport, type ReportTarget } from '../lib/api/contentReports';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const TITLES: Record<ReportTarget, string> = {
   EVENT: 'Report event',
@@ -107,19 +107,19 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
             <SheetBackdrop radius={28} />
             <View style={styles.head}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: c.text }]}>{TITLES[targetType]}</Text>
+                <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{TITLES[targetType]}</Text>
                 {subject ? (
                   <Text style={[styles.subject, { color: c.muted }]} numberOfLines={1}>{subject}</Text>
                 ) : null}
               </View>
               <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-                <X size={22} color={c.soft} weight="bold" />
+                <X size={22} color={c.muted} weight="bold" />
               </Pressable>
             </View>
 
             {!token ? (
               <View style={styles.center}>
-                <Flag size={48} color={c.soft} weight="duotone" />
+                <Flag size={48} color={c.muted} weight="duotone" />
                 <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
                   Sign in so we can follow up on your report.
                 </Text>
@@ -136,7 +136,7 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
             ) : done ? (
               <View style={styles.center}>
                 <CheckCircle size={56} color={c.success} weight="duotone" />
-                <Text style={[styles.doneTitle, { color: c.text }]}>
+                <Text style={[styles.doneTitle, { color: c.text }]} accessibilityRole="header">
                   {done.alreadyReported ? 'Report updated' : 'Thanks for telling us'}
                 </Text>
                 <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
@@ -158,13 +158,14 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
                         onPress={() => setReason(r.key)}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: on }}
+                        // An option card (a control): the picked one gains a hairline and a tick, monochrome.
                         style={({ pressed }) => [
                           styles.reason,
-                          { backgroundColor: on ? 'rgba(52,145,255,0.14)' : c.tint, opacity: pressed ? 0.85 : 1 },
+                          { backgroundColor: c.tint, borderColor: on ? c.outline : 'transparent', opacity: pressed ? 0.85 : 1 },
                         ]}
                       >
-                        <Text style={[styles.reasonText, { color: on ? c.primary : c.text }]}>{r.label}</Text>
-                        {on ? <CheckCircle size={22} color={c.primary} weight="fill" /> : null}
+                        <Text style={[styles.reasonText, { color: c.text }]}>{r.label}</Text>
+                        {on ? <CheckCircle size={22} color={c.text} weight="fill" /> : null}
                       </Pressable>
                     );
                   })}
@@ -191,7 +192,7 @@ export default function ReportSheet({ visible, onClose, targetType, targetId, su
                   size="lg"
                   onPress={send}
                   disabled={!canSend}
-                  style={[styles.button, !canSend && { opacity: 0.5 }]}
+                  style={styles.button}
                 />
               </ScrollView>
             )}
@@ -213,12 +214,13 @@ const styles = StyleSheet.create({
     paddingTop: spacing[6],
   },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  title: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   reason: {
     minHeight: 50,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
     paddingHorizontal: spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
   details: {
     marginTop: spacing[4],
     minHeight: 96,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
@@ -239,5 +241,5 @@ const styles = StyleSheet.create({
   button: { marginTop: spacing[5], alignSelf: 'stretch' },
   center: { alignItems: 'center', paddingVertical: spacing[4] },
   centerText: { textAlign: 'center', marginTop: spacing[3] },
-  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  doneTitle: { marginTop: spacing[4], fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
 });

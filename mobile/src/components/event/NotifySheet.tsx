@@ -21,11 +21,11 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
  */
 export default function NotifySheet({
   notify,
-  accent,
   eventTitle,
 }: {
   notify: EventDetail['notify'];
-  accent: string;
+  /** Ignored: the sheet's glyphs are monochrome. Kept for callers. */
+  accent?: string;
   eventTitle?: string | null;
 }) {
   const c = useCosmos();
@@ -77,7 +77,7 @@ export default function NotifySheet({
                 <Animated.View style={popStyle}>
                   <CheckCircle size={64} color={c.success} weight="duotone" />
                 </Animated.View>
-                <Text style={[styles.doneTitle, { color: c.text }]}>You're on the list</Text>
+                <Text style={[styles.doneTitle, { color: c.text }]} accessibilityRole="header">You're on the list</Text>
                 <Text style={[styles.body, styles.centerText, { color: c.soft }]}>
                   We'll email <Text style={{ color: c.text, ...cosmosFont.strong }}>{email}</Text> if
                   {eventTitle ? ` ${eventTitle}` : ' the event'} changes, and the day before it starts.
@@ -87,15 +87,15 @@ export default function NotifySheet({
             ) : (
               <>
                 <View style={styles.head}>
-                  <BellRinging size={30} color={accent} weight="duotone" />
+                  <BellRinging size={30} color={c.text} weight="duotone" />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.title, { color: c.text }]}>Get notified</Text>
+                    <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">Get notified</Text>
                     {eventTitle ? (
                       <Text style={[styles.subject, { color: c.muted }]} numberOfLines={1}>{eventTitle}</Text>
                     ) : null}
                   </View>
                   <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-                    <X size={22} color={c.soft} weight="bold" />
+                    <X size={22} color={c.muted} weight="bold" />
                   </Pressable>
                 </View>
 
@@ -106,7 +106,7 @@ export default function NotifySheet({
                 <CardSurfaceProvider kind="solid">
                 <SettingsGroup>
                   <FormRow
-                    icon={<User size={24} color={accent} weight="duotone" />}
+                    icon={<User size={24} color={c.text} weight="duotone" />}
                     value={notify.name}
                     onChangeText={notify.setName}
                     placeholder="Name (optional)"
@@ -115,7 +115,7 @@ export default function NotifySheet({
                     returnKeyType="next"
                   />
                   <FormRow
-                    icon={<EnvelopeSimple size={24} color={accent} weight="duotone" />}
+                    icon={<EnvelopeSimple size={24} color={c.text} weight="duotone" />}
                     value={notify.email}
                     onChangeText={notify.setEmail}
                     placeholder="Email address"
@@ -138,7 +138,7 @@ export default function NotifySheet({
                   onPress={notify.submit}
                   loading={notify.busy}
                   disabled={!canSubmit}
-                  style={[styles.button, !canSubmit && !notify.busy && { opacity: 0.5 }]}
+                  style={styles.button}
                 />
               </>
             )}
@@ -160,12 +160,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing[6],
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginBottom: spacing[3] },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  title: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   subject: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   button: { marginTop: spacing[5], alignSelf: 'stretch' },
   center: { alignItems: 'center', paddingTop: spacing[2] },
   centerText: { textAlign: 'center', marginTop: spacing[2], paddingHorizontal: spacing[2] },
-  doneTitle: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  doneTitle: { marginTop: spacing[4], fontSize: 22, lineHeight: 28, ...cosmosFont.display },
 });

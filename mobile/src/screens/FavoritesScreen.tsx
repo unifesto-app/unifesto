@@ -113,9 +113,9 @@ export default function FavoritesScreen() {
   const promptCard = (title: string, body: string, actions: React.ReactNode) =>
     page(
       <View style={[styles.prompt, { backgroundColor: c.raised }]}>
-        <Heart size={40} color={c.soft} weight="duotone" />
-        <Text style={[styles.promptTitle, { color: c.text }]}>{title}</Text>
-        <Text style={[styles.promptBody, { color: c.soft }]}>{body}</Text>
+        <Heart size={40} color={c.muted} weight="duotone" />
+        <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
+        <Text style={[styles.promptBody, { color: c.muted }]}>{body}</Text>
         {actions}
       </View>,
     );
@@ -156,7 +156,7 @@ export default function FavoritesScreen() {
         <Animated.View key={next.id} entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={styles.pad}>
           <View style={styles.eyebrowRow}>
             <Text style={[styles.eyebrow, { color: c.muted }]}>Up next</Text>
-            <FavoriteButton eventId={next.id} size={20} color={c.soft} />
+            <FavoriteButton eventId={next.id} size={20} color={c.muted} />
           </View>
           <PosterCard
             width={posterWidth}

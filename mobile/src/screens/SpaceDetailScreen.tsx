@@ -11,7 +11,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard from '../components/home/PosterCard';
-import { SpaceCard } from '../components/home/SpaceCards';
+import { SpaceCard, compact } from '../components/home/SpaceCards';
 import { PeopleBlock } from '../components/event/EventSections';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
@@ -22,7 +22,7 @@ import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import type { Event } from '../lib/api/events';
 import { relativeWhen, shortPrice, spaceBanner, spaceLogo } from '../utils/eventFormat';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -107,7 +107,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
       <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
         <CosmosBackdrop horizon={false} />
         <Skeleton width={bannerW} height={bannerH} borderRadius={cosmosCardRadius} />
-        <Skeleton width={LOGO} height={LOGO} borderRadius={18} style={{ marginTop: -LOGO / 2, marginLeft: spacing[4] }} />
+        <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.xl} style={{ marginTop: -LOGO / 2, marginLeft: spacing[4] }} />
         <Skeleton width="70%" height={26} borderRadius={8} style={{ marginTop: spacing[4] }} />
         <Skeleton width="45%" height={14} borderRadius={7} style={{ marginTop: spacing[3] }} />
         <Skeleton width="100%" height={92} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
@@ -120,7 +120,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <UsersThree size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>{s.unavailable ? 'This space is temporarily unavailable' : 'Space not found'}</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{s.unavailable ? 'This space is temporarily unavailable' : 'Space not found'}</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
@@ -134,10 +134,11 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const isDraft = (e: Event) => e.status === 'DRAFT';
   const upcomingCount = s.upcoming.filter((e) => !isDraft(e)).length;
   const eventCount = upcomingCount + s.past.filter((e) => !isDraft(e)).length;
+  // Upcoming is the events figure, so it takes the card's sky.
   const stats = [
-    { label: s.memberCount === 1 ? 'Member' : 'Members', value: s.memberCount },
-    { label: 'Upcoming', value: upcomingCount },
-    { label: eventCount === 1 ? 'Event hosted' : 'Events hosted', value: eventCount },
+    { label: s.memberCount === 1 ? 'Member' : 'Members', value: s.memberCount, color: c.text },
+    { label: 'Upcoming', value: upcomingCount, color: c.sky },
+    { label: eventCount === 1 ? 'Event hosted' : 'Events hosted', value: eventCount, color: c.text },
   ];
   const description = space.description?.trim();
   const websiteLabel = s.website?.replace(/^https?:\/\//i, '').replace(/\/$/, '') ?? null;
@@ -149,8 +150,9 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         imageUrl={e.coverImageUrl}
         when={relativeWhen(e.startDateTime)}
         where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
-        price={past ? 'Ended' : shortPrice(e)}
-        tag={isDraft(e) ? 'Draft' : null}
+        // Statuses ride the muted facts line; the sky price line is for what's on sale.
+        price={past ? undefined : shortPrice(e)}
+        tag={past ? 'Ended' : isDraft(e) ? 'Draft' : null}
         onPress={() => router.push(`/event/${e.slug || e.id}`)}
       />
     </View>
@@ -200,7 +202,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
             )}
           </View>
 
-          <Text style={[styles.name, { color: c.text }, brandFont && { fontFamily: brandFont }]}>
+          <Text style={[styles.name, { color: c.text }, brandFont && { fontFamily: brandFont }]} accessibilityRole="header">
             {space.name}
             {space.verifiedAt ? (
               <Text accessibilityLabel="Verified">
@@ -224,18 +226,18 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
             </Pressable>
           ) : null}
 
-          {/* ── Stats card: numbers, then membership and website ── */}
+          {/* ── Stats card: numbers divided by hairlines, then membership and website ── */}
           <View style={[styles.card, { backgroundColor: c.raised }]}>
             <View style={styles.stats}>
-              {stats.map((st) => (
-                <View key={st.label} style={styles.stat}>
-                  <Text style={[styles.statValue, { color: c.text }]}>{compact(st.value)}</Text>
+              {stats.map((st, i) => (
+                <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
+                  <Text style={[styles.statValue, { color: st.color }]}>{compact(st.value)}</Text>
                   <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={1}>{st.label}</Text>
                 </View>
               ))}
             </View>
             {s.isMember ? (
-              <Row icon={<CheckCircle size={ICON} color={c.text} />} title="You're a member" />
+              <Row icon={<CheckCircle size={ICON} color={c.success} weight="fill" />} title="You're a member" color={c.success} />
             ) : null}
             {websiteLabel ? (
               <Row
@@ -273,7 +275,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
           <Section title="Events">
             <View style={[styles.empty, { backgroundColor: c.raised, marginHorizontal: GUTTER }]}>
               <CalendarBlank size={32} color={c.muted} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>No events yet. Check back soon.</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>No events yet. Check back soon.</Text>
             </View>
           </Section>
         ) : null}
@@ -317,8 +319,6 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
           label={cta.buttonLabel}
           disabled={cta.disabled}
           loading={s.membershipBusy}
-          // Silver, the cosmos primary, like the event page's register button.
-          tone="neutral"
           accent={c.primary}
           onPress={s.isMember ? s.confirmLeave : s.join}
           backdropImage={banner}
@@ -336,10 +336,11 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   );
 }
 
-/** A line under the stats: bare icon, label, optional trailing mark. */
-function Row({ icon, title, trailing, onPress }: {
+/** A line under the stats: bare icon, label (coloured for a status), optional trailing mark. */
+function Row({ icon, title, color, trailing, onPress }: {
   icon: React.ReactNode;
   title: string;
+  color?: string;
   trailing?: React.ReactNode;
   onPress?: () => void;
 }) {
@@ -347,7 +348,7 @@ function Row({ icon, title, trailing, onPress }: {
   const content = (
     <>
       {icon}
-      <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={1}>{title}</Text>
+      <Text style={[styles.rowTitle, { color: color ?? c.text }]} numberOfLines={1}>{title}</Text>
       {trailing}
     </>
   );
@@ -365,13 +366,6 @@ function Row({ icon, title, trailing, onPress }: {
   );
 }
 
-/** 1.2k-style counts so three stats fit one row. */
-function compact(n: number): string {
-  if (n < 1000) return String(n);
-  const k = n / 1000;
-  return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
@@ -381,18 +375,18 @@ const styles = StyleSheet.create({
     marginLeft: spacing[4],
     alignSelf: 'flex-start',
     padding: 4,
-    borderRadius: 22,
+    borderRadius: borderRadius['2xl'],
   },
-  logo: { width: LOGO, height: LOGO, borderRadius: 18, overflow: 'hidden' },
-  logoText: { fontSize: 28, ...cosmosFont.display },
+  logo: { width: LOGO, height: LOGO, borderRadius: borderRadius.xl, overflow: 'hidden' },
+  logoText: { fontSize: 28, ...cosmosFont.strong },
   name: { marginTop: spacing[4], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   disclaimer: { marginTop: spacing[10], paddingHorizontal: GUTTER, fontSize: typography.fontSize.xs, lineHeight: 18, ...cosmosFont.body },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[3] },
   partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  stats: { flexDirection: 'row', paddingVertical: spacing[5], paddingHorizontal: spacing[2] },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  stats: { flexDirection: 'row', paddingVertical: spacing[4] },
+  stat: { flex: 1, paddingHorizontal: spacing[4], gap: 4 },
   statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   row: {
@@ -408,7 +402,7 @@ const styles = StyleSheet.create({
   link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[8], borderRadius: cosmosCardRadius },
   emptyText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], paddingHorizontal: GUTTER, fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
 });
 
 interface JoinCta {
@@ -440,7 +434,7 @@ function resolveJoinCta(params: {
   const memberLabel = memberCount === 1 ? '1 member' : `${memberCount} members`;
   return {
     hidden: false,
-    infoLabel: 'community',
+    infoLabel: 'Community',
     infoValue: memberLabel,
     buttonLabel: joiningLoading ? 'Joining...' : `Join ${spaceName}`,
     disabled: joiningLoading,

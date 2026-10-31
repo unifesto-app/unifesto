@@ -10,23 +10,20 @@ import { AppAlert } from './ui/AppAlert';
 interface FavoriteButtonProps {
   eventId: string;
   size?: number;
-  /** Show a translucent circular backdrop (for use over event banners). */
-  scrim?: boolean;
   /** Tint for the unfavourited (outline) state. Defaults to the theme text
-   *  colour, or white when `scrim` is set. Use to match a specific header. */
+   *  colour. Use to match a specific header. */
   color?: string;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * A heart toggle backed by FavoritesContext. Filled + primary when favourited,
- * outline otherwise. Optimistic — the context handles the server round-trip and
- * rolls back on failure, so the tap feels instant.
+ * A bare heart toggle backed by FavoritesContext: filled when favourited,
+ * outline otherwise, monochrome like every control. Optimistic: the context
+ * handles the server round-trip and rolls back on failure, so the tap feels instant.
  */
 export default function FavoriteButton({
   eventId,
   size = 22,
-  scrim = false,
   color,
   style,
 }: FavoriteButtonProps) {
@@ -55,20 +52,9 @@ export default function FavoriteButton({
       accessibilityRole="button"
       accessibilityLabel={favorited ? 'Remove from favourites' : 'Add to favourites'}
       accessibilityState={{ selected: favorited }}
-      style={[
-        scrim && {
-          padding: 8,
-          borderRadius: 999,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-        },
-        style,
-      ]}
+      style={style}
     >
-      <Heart
-        size={size}
-        weight={favorited ? 'fill' : 'regular'}
-        color={favorited ? c.danger : color ?? (scrim ? '#ffffff' : c.text)}
-      />
+      <Heart size={size} weight={favorited ? 'fill' : 'regular'} color={favorited ? c.text : color ?? c.text} />
     </TouchableOpacity>
   );
 }
