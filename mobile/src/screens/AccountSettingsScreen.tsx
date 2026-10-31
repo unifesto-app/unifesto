@@ -308,7 +308,7 @@ export default function AccountSettingsScreen() {
 
         {devices?.length ? (
           <Section title="Linked devices" subtitle="Phones and browsers signed in to my account">
-            <SettingsGroup style={styles.group}>
+            <SettingsGroup style={styles.group} action={{ label: 'Link a device', onPress: () => router.push('/link-device') }}>
               {devices.map((d) => (
                 <SettingsRow
                   key={d.id}

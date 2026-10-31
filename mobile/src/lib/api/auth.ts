@@ -111,6 +111,19 @@ export async function getLinkedDevices(): Promise<LinkedDevice[]> {
   return expectOk(await makeAuthenticatedRequest('/auth/sessions'), 'Failed to load linked devices');
 }
 
+/** QR sign-in: which browser showed this code ("Chrome on macOS"). */
+export async function previewDeviceLink(code: string): Promise<{ name: string }> {
+  return expectOk(await makeAuthenticatedRequest(`/auth/qr/${encodeURIComponent(code)}`), "Couldn't read that code");
+}
+
+/** QR sign-in: that browser is signed in as me. */
+export async function approveDeviceLink(code: string): Promise<{ approved: true }> {
+  return expectOk(
+    await makeAuthenticatedRequest(`/auth/qr/${encodeURIComponent(code)}/approve`, { method: 'POST' }),
+    "Couldn't sign that computer in",
+  );
+}
+
 /** Signs that device out right away; a phone also stops getting notifications. */
 export async function signOutDevice(id: string): Promise<{ revoked: true }> {
   return expectOk(
