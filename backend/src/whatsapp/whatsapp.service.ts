@@ -51,6 +51,13 @@ interface WhatsAppTemplateMessage {
   };
 }
 
+/**
+ * Inbox media, in and out, are private objects (J15): their keys hold phone
+ * numbers. Admins and Meta get short-lived signed links.
+ */
+export const WHATSAPP_MEDIA_PREFIX = 'private/whatsapp-';
+const MEDIA_LINK_SECONDS = 60 * 60;
+
 // Approved template IDs from Meta. Kept deliberately small: every template
 // send is billed per message, so reminders, cancellations, check-in, refund and
 // space-review updates go out as push + email instead (2026-10-01).
@@ -782,14 +789,12 @@ export class WhatsAppService {
         maxBodyLength: maxBytes,
       });
 
-      // 3. Persist to S3 under a stable, per-conversation key.
+      // 3. Persist to private S3 (J15: the key holds a phone number) under a
+      //    stable, per-conversation key; getConversation signs it for the inbox.
       const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin';
-      const key = `whatsapp-inbox/${waId}/${mediaId}.${ext}`;
-      return await this.storage.uploadBuffer(
-        Buffer.from(binary.data),
-        key,
-        mimeType,
-      );
+      const key = `${WHATSAPP_MEDIA_PREFIX}inbox/${waId}/${mediaId}.${ext}`;
+      await this.storage.uploadPrivate(Buffer.from(binary.data), key, mimeType);
+      return key;
     } catch (error: any) {
       this.logger.error(
         `Failed to copy WhatsApp media ${mediaId}: ${
@@ -1015,17 +1020,17 @@ export class WhatsAppService {
     // Only image/video/document carry a caption on WhatsApp; audio/sticker don't.
     const captionable = kind === 'image' || kind === 'video' || kind === 'document';
 
-    // 1. Host the bytes on S3 so Meta can fetch them by link and the thread can
-    //    render the sent attachment (Content-Type is set from the upload's MIME).
-    const mediaUrl = await this.storage.uploadFile(
-      file,
-      `whatsapp-outbound/${to}/`,
-      randomUUID(),
-    );
+    // 1. Host the bytes on private S3 (J15) so Meta can fetch them by a signed
+    //    link and the thread can render the sent attachment.
+    const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';
+    const mediaUrl = `${WHATSAPP_MEDIA_PREFIX}outbound/${to}/${randomUUID()}.${/^[a-z0-9]{1,8}$/.test(ext) ? ext : 'bin'}`;
+    await this.storage.uploadPrivate(file.buffer, mediaUrl, file.mimetype || 'application/octet-stream');
 
     // 2. Build the Cloud API media object. Documents also carry a filename so the
     //    recipient sees the original name rather than the opaque S3 key.
-    const mediaObject: Record<string, string> = { link: mediaUrl };
+    const mediaObject: Record<string, string> = {
+      link: await this.storage.signedGetUrl(mediaUrl, MEDIA_LINK_SECONDS),
+    };
     if (captionable && trimmedCaption) mediaObject.caption = trimmedCaption;
     if (kind === 'document') mediaObject.filename = file.originalname;
 
@@ -1669,6 +1674,12 @@ export class WhatsAppService {
 
     return {
       ...conversation,
+      messages: await Promise.all(
+        conversation.messages.map(async (m) => ({
+          ...m,
+          mediaUrl: await this.storage.linkFor(m.mediaUrl, WHATSAPP_MEDIA_PREFIX, MEDIA_LINK_SECONDS),
+        })),
+      ),
       unreadCount: 0,
       replyWindowOpen: this.isReplyWindowOpen(conversation.lastInboundAt),
     };
@@ -1700,7 +1711,8 @@ export class WhatsAppService {
         });
     const who = `${conv.profileName ? `${conv.profileName} ` : ''}(+${conv.waId})`;
     const text = picked
-      .map((m) => [m.body || m.mediaNote || `[${m.type}]`, m.mediaUrl].filter(Boolean).join('\n'))
+      // Media stays private (J15): the case points back at the conversation.
+      .map((m) => [m.body || m.mediaNote || `[${m.type}]`, m.mediaUrl && '(media in the WhatsApp conversation)'].filter(Boolean).join('\n'))
       .join('\n\n');
     const open: SubjectCaseOpen = {
       subjectType: 'WhatsappConversation',

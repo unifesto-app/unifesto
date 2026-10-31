@@ -1330,9 +1330,11 @@ export class UsersService {
       await this.storageService.deletePrefix(`avatars/${userId}-`);
     });
     await attempt('WhatsApp media', async () => {
+      // private/ since J15; the plain prefixes hold media from before the move.
       for (const { waId: id } of waConversations) {
-        await this.storageService.deletePrefix(`whatsapp-inbox/${id}/`);
-        await this.storageService.deletePrefix(`whatsapp-outbound/${id}/`);
+        for (const dir of ['whatsapp-inbox', 'whatsapp-outbound', 'private/whatsapp-inbox', 'private/whatsapp-outbound']) {
+          await this.storageService.deletePrefix(`${dir}/${id}/`);
+        }
       }
     });
     // Best-effort: deleteObject logs and swallows its own failures. Uploads

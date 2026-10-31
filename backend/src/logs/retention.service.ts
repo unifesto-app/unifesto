@@ -127,7 +127,12 @@ const SWEEPS: Sweep[] = [
     table: 'whatsapp_conversations',
     where: `last_message_at < $1`,
     returning: 'wa_id',
-    files: (r) => ({ prefixes: [`whatsapp-inbox/${r.wa_id}/`, `whatsapp-outbound/${r.wa_id}/`] }),
+    // private/ since J15; the plain prefixes hold media from before the move.
+    files: (r) => ({
+      prefixes: ['whatsapp-inbox', 'whatsapp-outbound', 'private/whatsapp-inbox', 'private/whatsapp-outbound'].map(
+        (dir) => `${dir}/${r.wa_id}/`,
+      ),
+    }),
   },
 ];
 

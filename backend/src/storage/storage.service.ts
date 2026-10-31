@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   Logger,
   OnModuleInit,
@@ -32,6 +33,23 @@ export const MAX_IMAGE_EDGE = 1600;
  * downscale would blur every issued certificate.
  */
 export const FULL_RES_PREFIXES = ['certificate-backgrounds/'];
+
+/**
+ * The image types {@link StorageService.uploadFile} accepts, told apart by their
+ * first bytes. The client's MIME type and file name are never trusted (J15).
+ */
+const IMAGE_SIGNATURES: { mime: string; ext: string; test: (b: Buffer) => boolean }[] = [
+  { mime: 'image/jpeg', ext: 'jpg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  { mime: 'image/png', ext: 'png', test: (b) => b.readUInt32BE(0) === 0x89504e47 && b.readUInt32BE(4) === 0x0d0a1a0a },
+  { mime: 'image/webp', ext: 'webp', test: (b) => b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP' },
+  { mime: 'image/x-icon', ext: 'ico', test: (b) => b.readUInt32BE(0) === 0x00000100 },
+];
+
+/** The upload's real image type, or null when it isn't one we accept. */
+export function sniffImage(buffer: Buffer): { mime: string; ext: string } | null {
+  if (!buffer || buffer.length < 12) return null;
+  return IMAGE_SIGNATURES.find((s) => s.test(buffer)) ?? null;
+}
 
 /**
  * Downscale and recompress a raster image in its own format (so the key's
@@ -95,6 +113,7 @@ export class StorageService implements OnModuleInit {
    * @param prefix - S3 key prefix (e.g., 'avatars/', 'space-logos/', 'space-banners/')
    * @param identifier - Unique identifier for the file (e.g., userId, spaceId)
    * @returns Public URL of uploaded file
+   * @throws BadRequestException if the bytes aren't a JPG, PNG, WebP or ICO image
    * @throws ConflictException if upload fails
    */
   async uploadFile(
@@ -102,14 +121,18 @@ export class StorageService implements OnModuleInit {
     prefix: string,
     identifier: string,
   ): Promise<string> {
+    // Public bucket: only real images go in, typed and named by their bytes.
+    const image = sniffImage(file?.buffer);
+    if (!image) {
+      throw new BadRequestException('Upload a JPG, PNG or WebP image.');
+    }
     try {
       // Generate timestamped filename: {identifier}-{timestamp}.{extension}
       const timestamp = Date.now();
-      const extension = file.originalname.split('.').pop();
-      const key = `${prefix}${identifier}-${timestamp}.${extension}`;
+      const key = `${prefix}${identifier}-${timestamp}.${image.ext}`;
 
       this.logger.log(
-        `Uploading file to S3: bucket=${this.bucketName}, key=${key}, size=${file.size}, mimeType=${file.mimetype}`,
+        `Uploading file to S3: bucket=${this.bucketName}, key=${key}, size=${file.size}, mimeType=${image.mime}`,
       );
 
       // Create PutObject command with appropriate headers
@@ -118,8 +141,8 @@ export class StorageService implements OnModuleInit {
         Key: key,
         Body: FULL_RES_PREFIXES.includes(prefix)
           ? file.buffer
-          : await optimizeImage(file.buffer, file.mimetype, this.logger),
-        ContentType: file.mimetype, // Set Content-Type header based on MIME type
+          : await optimizeImage(file.buffer, image.mime, this.logger),
+        ContentType: image.mime,
         CacheControl: IMMUTABLE_CACHE_CONTROL,
       });
 
@@ -242,6 +265,21 @@ export class StorageService implements OnModuleInit {
       );
       throw new ConflictException('Failed to upload file');
     }
+  }
+
+  /**
+   * A short-lived link when `value` is a private key under `prefix`; anything
+   * else (an external link, a legacy public URL, null) comes back unchanged.
+   */
+  async linkFor(
+    value: string | null,
+    prefix: string,
+    expiresInSeconds: number,
+    filename?: string | null,
+  ): Promise<string | null> {
+    return value?.startsWith(prefix)
+      ? this.signedGetUrl(value, expiresInSeconds, filename ?? undefined)
+      : value;
   }
 
   /** A short-lived link to download one object, saved as `filename`. */

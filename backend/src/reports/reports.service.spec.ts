@@ -26,11 +26,15 @@ describe('ReportsService background generation', () => {
     };
     const queue = { addReport: jest.fn().mockResolvedValue(false) };
     const render = { renderPdf: jest.fn().mockResolvedValue(Buffer.from('pdf')) };
-    const storage = { uploadBuffer: jest.fn().mockResolvedValue('https://s3/r1.pdf') };
+    const storage = {
+      uploadPrivate: jest.fn().mockResolvedValue(undefined),
+      linkFor: jest.fn(async (v: string | null) => v && `signed:${v}`),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+    };
     const ai = { run: jest.fn().mockResolvedValue({ ok: true, text: 'It went well.' }) };
     const svc = new ReportsService(prisma, {} as any, { gather } as any, render as any, storage as any, { can: async () => true } as any, queue as any, ai as any);
     jest.spyOn(svc as any, 'spaceHasAnalyticsPlan').mockResolvedValue(true);
-    return { svc, prisma, queue, render, ai };
+    return { svc, prisma, queue, render, ai, storage };
   };
 
   it('returns the PENDING row without waiting for the render', async () => {
@@ -55,6 +59,27 @@ describe('ReportsService background generation', () => {
     const arg = prisma.eventReport.updateMany.mock.calls[0][0];
     expect(arg.where.status).toBe(ReportStatus.PENDING);
     expect(arg.data.status).toBe(ReportStatus.FAILED);
+  });
+
+  it('stores the PDF privately under its event and signs it on list (J15)', async () => {
+    const { svc, prisma, storage } = build(jest.fn().mockResolvedValue({}));
+    await svc.create('u1', 'e1', { type: ReportType.DEFAULT } as any);
+    await new Promise((r) => setImmediate(r));
+    expect(storage.uploadPrivate).toHaveBeenCalledWith(expect.any(Buffer), 'private/reports/e1/r1.pdf', 'application/pdf');
+    expect(prisma.eventReport.update.mock.calls.at(-1)[0].data.fileUrl).toBe('private/reports/e1/r1.pdf');
+
+    prisma.eventReport.findMany.mockResolvedValue([{ id: 'r1', fileUrl: 'private/reports/e1/r1.pdf', fileName: 'x.pdf' }]);
+    const [row] = await svc.list('u1', 'e1');
+    expect(storage.linkFor).toHaveBeenCalledWith('private/reports/e1/r1.pdf', 'private/reports/', 3600, 'x.pdf');
+    expect(row.fileUrl).toBe('signed:private/reports/e1/r1.pdf');
+  });
+
+  it('deleting a report deletes its PDF too (J15)', async () => {
+    const { svc, prisma, storage } = build(jest.fn());
+    prisma.eventReport.findUnique = jest.fn().mockResolvedValue({ eventId: 'e1', fileUrl: 'private/reports/e1/r1.pdf' });
+    prisma.eventReport.delete = jest.fn().mockResolvedValue({});
+    await svc.remove('u1', 'r1');
+    expect(storage.deleteObject).toHaveBeenCalledWith('private/reports/e1/r1.pdf');
   });
 
   it('hands the render to the worker queue when there is one (B19)', async () => {

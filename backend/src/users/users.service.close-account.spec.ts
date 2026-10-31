@@ -310,6 +310,8 @@ describe('UsersService.closeAccount PII scrub', () => {
       'avatars/user-1-',
       'whatsapp-inbox/919876543210/',
       'whatsapp-outbound/919876543210/',
+      'private/whatsapp-inbox/919876543210/',
+      'private/whatsapp-outbound/919876543210/',
     ]);
   });
 

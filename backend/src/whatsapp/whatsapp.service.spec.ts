@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import axios from 'axios';
 import { WhatsAppService } from './whatsapp.service';
 
 /** C8: blast consent, STOP handling, number safety and `{name}` fill. */
@@ -129,5 +130,58 @@ describe('WhatsAppService marketing consent', () => {
       expect(prisma.whatsappMessage.create).toHaveBeenCalled();
       expect(prisma.marketingOptOut.create).not.toHaveBeenCalled();
     });
+  });
+});
+
+/** J15: inbox media keys hold phone numbers, so they live under private/ and go out signed. */
+describe('WhatsAppService private media', () => {
+  const config = {
+    get: (k: string) =>
+      ({ WHATSAPP_PHONE_NUMBER_ID: 'pn', WHATSAPP_ACCESS_TOKEN: 'tok' })[k as 'WHATSAPP_PHONE_NUMBER_ID'],
+  };
+  const storage = {
+    uploadPrivate: jest.fn().mockResolvedValue(undefined),
+    signedGetUrl: jest.fn(async (key: string) => `signed:${key}`),
+    linkFor: jest.fn(async (v: string | null, prefix: string) => (v?.startsWith(prefix) ? `signed:${v}` : v)),
+  };
+  const conv = { id: 'c1', waId: '919876543210', unreadCount: 0, lastInboundAt: new Date() };
+
+  it('the thread gets signed links for private media; legacy URLs pass through', async () => {
+    const prisma: any = {
+      whatsappConversation: {
+        findUnique: jest.fn(async () => ({
+          ...conv,
+          messages: [
+            { id: 'm1', mediaUrl: 'private/whatsapp-inbox/919876543210/abc.jpeg' },
+            { id: 'm2', mediaUrl: 'https://bucket.s3/old.jpg' },
+            { id: 'm3', mediaUrl: null },
+          ],
+        })),
+      },
+    };
+    const svc = new WhatsAppService(config as any, prisma, storage as any, { emit: jest.fn() } as any, {} as any);
+    const { messages } = await svc.getConversation('c1');
+    expect(messages.map((m) => m.mediaUrl)).toEqual([
+      'signed:private/whatsapp-inbox/919876543210/abc.jpeg',
+      'https://bucket.s3/old.jpg',
+      null,
+    ]);
+  });
+
+  it('a media reply is stored privately and Meta fetches it by a signed link', async () => {
+    const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: { messages: [{ id: 'wamid.1' }] } });
+    const prisma: any = {
+      whatsappConversation: { findUnique: jest.fn(async () => conv), update: jest.fn(async () => conv) },
+      whatsappMessage: { create: jest.fn(async ({ data }) => ({ id: 'm9', ...data })) },
+    };
+    const svc = new WhatsAppService(config as any, prisma, storage as any, { emit: jest.fn() } as any, {} as any);
+    const file = { originalname: 'ticket.pdf', mimetype: 'application/pdf', buffer: Buffer.from('%PDF') } as Express.Multer.File;
+    await svc.sendMediaReply('c1', 'admin-1', file);
+
+    const key = storage.uploadPrivate.mock.calls[0][1];
+    expect(key).toMatch(/^private\/whatsapp-outbound\/919876543210\/[0-9a-f-]{36}\.pdf$/);
+    expect(post.mock.calls[0][1]).toMatchObject({ type: 'document', document: { link: `signed:${key}` } });
+    expect(prisma.whatsappMessage.create.mock.calls[0][0].data.mediaUrl).toBe(key);
+    post.mockRestore();
   });
 });

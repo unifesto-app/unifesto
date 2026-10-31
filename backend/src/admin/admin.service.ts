@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
+import { RECORDING_KEY_PREFIX, RECORDING_LINK_SECONDS } from '../sessions/livekit.service';
 import { EmailService } from '../email/email.service';
 import { SPACE_APP } from '../email/layout';
 import { NotifyService } from '../notifications/notify.service';
@@ -1325,6 +1326,7 @@ export class AdminService {
 
     return {
       ...session,
+      recordingUrl: await this.storage.linkFor(session.recordingUrl, RECORDING_KEY_PREFIX, RECORDING_LINK_SECONDS),
       creator: { ...creator, email: identities?.[0]?.email ?? null },
       attendees: registrations.map(({ user, ...reg }) => {
         const { identities: uid, ...u } = user as typeof user & {
