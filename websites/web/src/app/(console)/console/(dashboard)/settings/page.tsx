@@ -406,9 +406,9 @@ export default function SpaceSettingsPage() {
             />
             <ImageUploadCard
               title="Banner"
-              description="Wide image shown at the top of your space."
+              description="Shown at the top of your space."
               imageUrl={bannerUrl}
-              aspectClassName="aspect-[16/9]"
+              aspectClassName="aspect-[4/3]"
               containerClassName="max-w-md"
               emptyLabel="No banner yet"
               maxSizeMb={5}

@@ -23,6 +23,8 @@ import {
 import { toLocalDatetime } from "@/console/lib/constants/event-form";
 import { Toggle } from "@/console/components/hackathon/HackParts";
 import { useAccess } from "@/console/lib/context/SessionContext";
+import { useLayoutEvent } from "@/console/components/events/EventLayoutContext";
+import { ShareDialog } from "../ShareDialog";
 import {
   getEventEligibleAccounts,
   setEventPayoutAccount,
@@ -50,6 +52,8 @@ export default function EventSettingsPage() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const { can } = useAccess(eventId);
+  const layout = useLayoutEvent();
+  const [shareOpen, setShareOpen] = useState(false);
   // Publish, cancel, hide, restore and delete belong to the event's owners (T1).
   const canPublish = can("event:publish");
   // Cancel, hide/restore and delete all need event:cancel on the backend.
@@ -212,6 +216,7 @@ export default function EventSettingsPage() {
       />
 
       {error && <ErrorNotice message={error} />}
+      <ShareDialog event={event} open={shareOpen} onOpenChange={setShareOpen} />
 
       {/* Event Status */}
       <Card>
@@ -280,12 +285,15 @@ export default function EventSettingsPage() {
                       setLoading(true);
                       setError("");
                       const { publishEvent } = await import("@/console/lib/api/events-api");
-                      const { error: publishError } = await publishEvent(eventId);
+                      const { data, error: publishError } = await publishEvent(eventId);
+                      setLoading(false);
                       if (publishError) {
                         setError(publishError.message);
-                        setLoading(false);
                       } else {
-                        window.location.reload();
+                        // Stay here and offer the share sheet (Q23) instead of reloading.
+                        setEvent((e) => (e ? { ...e, ...data, status: "PUBLISHED" } : e));
+                        void layout?.reload();
+                        setShareOpen(true);
                       }
                     }}
                     className="flex-shrink-0"

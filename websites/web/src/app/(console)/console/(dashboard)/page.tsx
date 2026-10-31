@@ -82,9 +82,21 @@ export default function ConsoleHome() {
         )}
       </Block>
 
-      {hasAccess && spaces.length > 0 && (
+      {hasAccess && spaces.length > 0 ? (
         <Block title="My Spaces" href="/console/spaces" more="All my spaces">
           <SpaceList limit={3} />
+        </Block>
+      ) : (
+        // Q20: no role anywhere (the old no-access page) gets the way in.
+        <Block title="My Spaces" href="/console/spaces" more="All my spaces">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Running a club, fest or community? Request a space to run its events here.
+            </p>
+            <Button asChild size="sm">
+              <Link href="/request-space">Request a space</Link>
+            </Button>
+          </div>
         </Block>
       )}
 

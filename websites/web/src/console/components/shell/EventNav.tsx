@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   CaretDown,
@@ -29,9 +30,11 @@ import {
   ChatsCircle,
   Timer,
   Star,
+  Lock,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useAccess, type Capability, type SpaceFeature } from "@/console/lib/context/SessionContext";
+import { getPlanCatalog, PLAN_LABEL, PLAN_ORDER, type PlanInfo } from "@/console/lib/api/subscriptions-api";
 import { cn } from "@/console/lib/utils/cn";
 import { QuestionsLink } from "./QuestionsLink";
 import { BackLink, NAV_ITEM_ACTIVE } from "./SpaceNav";
@@ -50,7 +53,7 @@ interface EventNavItem {
    * also carries the mandatory `event:view`, so that is the signal.
    */
   ownersOnly?: boolean;
-  /** Plan feature that must be enabled. Absent = not plan-gated. */
+  /** Plan feature it needs. Off this plan, it shows locked rather than hidden (Q25). */
   feature?: SpaceFeature;
 }
 
@@ -134,6 +137,25 @@ interface EventNavProps {
   collapsed?: boolean;
 }
 
+// Plans cheapest first, from the public catalog: fetched once per page load to
+// name where a locked section lives.
+let plansCheapestFirst: Promise<PlanInfo[]> | null = null;
+
+function usePlans() {
+  const [plans, setPlans] = useState<PlanInfo[]>([]);
+  useEffect(() => {
+    plansCheapestFirst ??= getPlanCatalog().then(({ data }) =>
+      (data?.plans ?? []).sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan))
+    );
+    let live = true;
+    void plansCheapestFirst.then((p) => live && setPlans(p));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return plans;
+}
+
 /**
  * The left rail's contents while drilled into an event. Replaces `SpaceNav` in
  * the single shared rail (desktop) / drawer (mobile), so the event's sections
@@ -145,14 +167,17 @@ function useEventNavGroups(eventId: string) {
   // This event's capabilities from the backend: event-only operators, per-space
   // overrides and Space Admin inheritance included.
   const { can, hasFeature } = useAccess(eventId);
+  const plans = usePlans();
   return EVENT_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter(
-      (i) =>
-        (!i.requires || can(i.requires)) &&
-        (!i.ownersOnly || can("event:view")) &&
-        (!i.feature || hasFeature(i.feature))
-    ),
+    items: group.items
+      .filter((i) => (!i.requires || can(i.requires)) && (!i.ownersOnly || can("event:view")))
+      .map((i) => {
+        const f = i.feature;
+        if (!f || hasFeature(f)) return { ...i, locked: null };
+        const plan = plans.find((p) => p[f]);
+        return { ...i, locked: plan ? `Available on ${PLAN_LABEL[plan.plan]}` : "Not on this plan" };
+      }),
   })).filter((group) => group.items.length > 0);
 }
 
@@ -182,28 +207,42 @@ export function EventNav({
           const links = (
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const active = isActive(item);
+                const active = !item.locked && isActive(item);
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
-                    href={`${baseUrl}${item.href}`}
+                    // A locked section opens the plans, where it can be unlocked.
+                    href={item.locked ? "/console/billing" : `${baseUrl}${item.href}`}
                     onClick={onNavigate}
                     aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed ? (item.locked ? `${item.label}: ${item.locked}` : item.label) : undefined}
                     className={cn(
                       "relative flex items-center rounded-lg text-sm transition-colors duration-150",
                       collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2",
                       active
                         ? NAV_ITEM_ACTIVE
-                        : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                        : item.locked
+                          ? "text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground"
+                          : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
                     <Icon
                       className="h-[18px] w-[18px] flex-shrink-0"
                       weight={active ? "fill" : "regular"}
                     />
-                    {!collapsed && item.label}
+                    {!collapsed &&
+                      (item.locked ? (
+                        <>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium">{item.label}</span>
+                            <span className="block text-xs">{item.locked}</span>
+                          </span>
+                          <Lock className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                        </>
+                      ) : (
+                        item.label
+                      ))}
                   </Link>
                 );
               })}
