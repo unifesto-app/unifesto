@@ -501,7 +501,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | IN_REVIEW (#310) |
 | J12 | **Make Redis and config caches replica-safe.** 1. The shared RedisService retryStrategy returns null after 3 tries (backend/src/redis/redis.service.ts:41-55), so the ioredis client ends for good, and a failed boot ping sets client=null (:106-108). | done (#316) |
 | J13 | **Deploy only CI-green main with a rollback image.** deploy.sh:87-110 rsyncs the local working tree with no check on git status, branch, origin/main or CI, and parallel sessions share this tree. | done (#292) |
-| J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | in progress (#317) |
+| J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | in progress (#470) |
 | J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | planned |
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | done (#367) |
@@ -1026,3 +1026,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Apex: navbar into the sidebar, flat look on every page, Support desk renamed back, new sign-in (#467)
 - **2026-10-31** · Web, console and Apex: one radius family (16px outside, 8px inside), 16px between blocks, space instead of boxes inside blocks (#468)
 - **2026-10-31** · Web: the home page look on every page (shade cards, liquid glass cards, home sky heroes, hairlines inside cards, 16/8 radius) (#469)
+- **2026-10-31** · J14 prod-DB guard reads NODE_ENV from the shell or container only, so a laptop .env saying production can't switch it off (#470)
