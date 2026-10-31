@@ -2,7 +2,7 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   CaretDown,
   CaretRight,
@@ -28,6 +28,8 @@ import { registrationState, type Event, type SubEventSummary } from "@/lib/api/e
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
 import { openAppOrStore, useAppHref, useMobilePlatform } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
+import { getSession, sessionReady, useSignedIn } from "@/lib/auth";
+import { myRegistrations } from "@/lib/api/registration";
 
 interface Props {
   /** Fetched (and checked public) by the server page, so it all renders in the initial HTML. */
@@ -103,6 +105,25 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
   const [now] = useState(() => Date.now());
   const appHref = useAppHref(`unifesto://event/${event.slug}`);
   const onPhone = useMobilePlatform() !== "unknown";
+
+  // A ticket holder gets View my ticket instead of Register. The page is cached
+  // for everyone, so this runs client-side, and only for browsers that have
+  // signed in here (the uf_in hint), never as a session call per visitor.
+  const signedIn = useSignedIn();
+  const [myTicketId, setMyTicketId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!signedIn) return;
+    let live = true;
+    sessionReady()
+      .then(() => {
+        const s = getSession();
+        return s ? myRegistrations(event.id, s.token) : [];
+      })
+      .then((regs) => live && setMyTicketId(regs[0]?.id ?? null), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [signedIn, event.id]);
 
   // ── Derived display bits (same rules as the mobile event screen) ──────────
   const isOnline = event.event_type?.toUpperCase() === "ONLINE";
@@ -554,7 +575,12 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
 
       {!isOver && (
         <ActionBar label={bar.label} value={bar.value}>
-          {isUmbrella ? (
+          {myTicketId ? (
+            <Link href={`/console/tickets/${myTicketId}`} className="btn btn-lg btn-primary shrink-0">
+              <Ticket weight="fill" className="h-5 w-5" aria-hidden />
+              View my ticket
+            </Link>
+          ) : isUmbrella ? (
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">
               View events
             </a>

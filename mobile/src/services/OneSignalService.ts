@@ -145,6 +145,17 @@ class OneSignalService {
     }
   }
 
+  /** False once the OS prompt has been answered (granted or denied). */
+  async canRequestPermission(): Promise<boolean> {
+    if (!this.checkAvailability()) return false;
+
+    try {
+      return await OneSignal.Notifications.canRequestPermission();
+    } catch (error) {
+      return false;
+    }
+  }
+
   /**
    * Check if user has granted notification permission
    * @returns Promise<boolean> - true if permission granted

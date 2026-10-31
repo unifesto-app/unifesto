@@ -25,6 +25,7 @@ import {
 } from '../lib/api/tickets';
 import { getUserIdentities, getCurrentUser, updateUserProfile, checkUsernameAvailability, type User } from '../lib/api/auth';
 import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfileValue } from '../utils/profile';
+import { markTicketsStale } from '../lib/ticketsRefresh';
 
 export type StepType = 'ticket' | 'details' | 'review' | 'payment';
 export const STEPS: { id: StepType; label: string }[] = [
@@ -138,8 +139,6 @@ export function useEventRegistration() {
   // flow doesn't reshuffle while someone is filling the form in.
   const [detailsSkipped, setDetailsSkipped] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  // Step 1 confirmation: the attendee ticks it before they can continue.
-  const [confirmed, setConfirmed] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   // Coupon: `couponInput` is raw text; `appliedCoupon` a server quote for the
@@ -321,8 +320,6 @@ export function useEventRegistration() {
   });
 
   const selectTicket = (ticket: Ticket) => {
-    // The tick confirms *this* ticket, so a different pick has to be re-confirmed.
-    if (ticket.id !== selectedTicket?.id) setConfirmed(false);
     setSelectedTicket(ticket);
     // Group: team size starts at the minimum. Everything else is one person.
     const teamSize = ticket.type === 'group' ? Math.max(1, ticket.group_size || ticket.min_purchase || 1) : 1;
@@ -330,6 +327,13 @@ export function useEventRegistration() {
     // Keep the prefilled "you" at index 0; only extra group slots are new.
     setAttendees((prev) => Array.from({ length: teamSize }, (_, i) => prev[i] || blankAttendee()));
   };
+
+  // Only one ticket on offer: it's already picked.
+  const onlyTicket = ticketStates.length === 1 && ticketStates[0].selectable ? ticketStates[0].ticket : null;
+  useEffect(() => {
+    if (onlyTicket && !selectedTicket) selectTicket(onlyTicket);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlyTicket?.id]);
 
   const isGroup = selectedTicket?.type === 'group';
   // Email invite only: in a group, every teammate (index 1+) gets their seat by
@@ -470,10 +474,13 @@ export function useEventRegistration() {
   };
 
   // ── Steps ──
-  const canContinue = step === 'ticket' ? !!selectedTicket && confirmed : step === 'details' ? attendeesValid : true;
+  const canContinue = step === 'ticket' ? !!selectedTicket : step === 'details' ? attendeesValid : true;
+  // Free, with nothing to fill in: the Ticket step confirms straight away, no
+  // Review or Confirm screens (the server still decides whether money is due).
+  const quickConfirm = step === 'ticket' && skipDetails && basePrice === 0;
 
   const next = () => {
-    if (step === 'ticket' && selectedTicket && confirmed) {
+    if (step === 'ticket' && selectedTicket) {
       setDetailsSkipped(skipDetails);
       setStep(skipDetails ? 'review' : 'details');
     } else if (step === 'details' && attendeesValid) {
@@ -664,9 +671,16 @@ export function useEventRegistration() {
       });
       // The overlay leaves with this screen when the route is replaced.
       goToSuccess(charged, openSeats);
-    } catch (error: any) {
-      setVerifying(false);
-      AppAlert.alert('Payment verification failed', error?.message || 'Please contact support');
+    } catch {
+      // Money is taken: the payment webhook settles the ticket even when this
+      // call fails, so never offer "pay again" (same copy as the web).
+      markTicketsStale();
+      AppAlert.alert(
+        'Payment received',
+        "We're confirming your payment. Your ticket appears in My tickets in a few minutes. Please don't pay again.",
+        [{ text: 'Go to My tickets', onPress: () => router.replace('/tickets') }],
+        { cancelable: false },
+      );
     }
   };
 
@@ -706,8 +720,7 @@ export function useEventRegistration() {
     // ticket
     selectedTicket,
     selectTicket,
-    confirmed,
-    setConfirmed,
+    quickConfirm,
     isGroup: !!isGroup,
     quantity,
     teamMin,

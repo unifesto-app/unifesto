@@ -163,10 +163,14 @@ export default function NewLoginScreen() {
     }
   };
 
+  // Signed in: back to the screen that asked for sign-in (a Save waits there),
+  // or the redirect. Once only: a second back() would pop that screen too.
+  const leftRef = useRef(false);
   useEffect(() => {
-    if (user && token && isAuthenticated && user.mobileVerified) {
-      router.replace(home);
-    }
+    if (leftRef.current || !(user && token && isAuthenticated && user.mobileVerified)) return;
+    leftRef.current = true;
+    if (home === '/(tabs)' && router.canGoBack()) router.back();
+    else router.replace(home);
   }, [user, token, isAuthenticated]);
 
   useEffect(() => {

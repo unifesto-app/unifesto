@@ -13,7 +13,6 @@ const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
   signIn: 'Sign in to register',
   registered: 'View my ticket',
-  addTicket: 'Add a ticket',
   choose: 'Choose ticket',
   free: 'Register free',
   paid: 'Register',

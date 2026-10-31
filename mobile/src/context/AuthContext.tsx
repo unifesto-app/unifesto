@@ -178,17 +178,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
     await setCrashlyticsUserId(getCrashlytics(), userData.id);
 
-    // Link this device to the user in OneSignal and prompt for push
-    // notifications immediately after login if not already granted.
+    // Link this device to the user in OneSignal. The permission prompt waits
+    // for the first booking, where there is a reason to give (RegistrationSuccessScreen).
     try {
       OneSignalService.login(userData.id);
-      if (!(await OneSignalService.hasPermission())) {
-        const granted = await OneSignalService.requestPermission();
-        if (granted) {
-          OneSignalService.optInToPush();
-          OneSignalService.setTags({ push_notifications: 'true' });
-        }
-      }
     } catch (error) {
       // Non-fatal: notifications are optional and shouldn't block login.
     }

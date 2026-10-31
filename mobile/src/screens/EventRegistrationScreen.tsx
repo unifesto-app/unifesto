@@ -14,8 +14,9 @@ import { spacing } from '../theme/spacing';
 import { cosmosCardRadius, useCosmos } from '../theme/cosmos';
 
 /**
- * Event registration (modal): ticket → details → review → pay, with a
- * 15-minute seat hold, on the cosmos night sky. All state and payment logic
+ * Event registration (modal): ticket → details → review → pay, on the cosmos
+ * night sky; a free ticket with nothing to fill in confirms from the ticket
+ * step. All state and payment logic
  * lives in useEventRegistration; this file only lays the steps out.
  */
 export default function EventRegistrationScreen() {
@@ -110,14 +111,14 @@ export default function EventRegistrationScreen() {
 
   const waitlist = !!r.selectedTicket && isWaitlistOnly(r.selectedTicket);
   const totalLabel = r.total === 0 ? 'Free' : money(r.symbol, r.total);
-  const cta =
-    r.step !== 'payment'
-      ? 'Continue'
-      : waitlist
-        ? 'Join waiting list'
-        : r.total === 0
-          ? 'Confirm registration'
-          : `Pay ${totalLabel}`;
+  const confirming = r.step === 'payment' || r.quickConfirm;
+  const cta = !confirming
+    ? 'Continue'
+    : waitlist
+      ? 'Join waiting list'
+      : r.total === 0
+        ? 'Confirm registration'
+        : `Pay ${totalLabel}`;
   const info = r.selectedTicket && r.step !== 'payment' ? { label: 'Total', value: totalLabel } : null;
 
   return (
@@ -151,7 +152,7 @@ export default function EventRegistrationScreen() {
           loading={r.submitting || r.verifying}
           tone="neutral"
           accent={c.primary}
-          onPress={r.step === 'payment' ? r.submit : r.next}
+          onPress={confirming ? r.submit : r.next}
         />
       </KeyboardAvoidingView>
       <VerifyingOverlay visible={r.verifying} />
