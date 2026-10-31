@@ -73,8 +73,7 @@ export default function SpacePanel(p: SpacePanelProps) {
       ))}
 
       {p.loadingUpcoming && p.upcoming.length === 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {[0, 1].map((i) => (
             <View key={i} style={styles.row}>
               <Skeleton width={64} height={48} borderRadius={borderRadius.md} />
@@ -84,17 +83,16 @@ export default function SpacePanel(p: SpacePanelProps) {
               </View>
             </View>
           ))}
-        </View>
+        </Rows>
       ) : p.upcoming.length > 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {p.upcoming.map((e) => (
             <EventRow key={e.id} event={e} onPress={() => p.onOpenEvent(e)} />
           ))}
           {p.canCreate ? (
             <LinkRow icon={<Plus size={22} color={c.text} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
           ) : null}
-        </View>
+        </Rows>
       ) : p.hosting ? (
         <PressableScale
           onPress={p.onCreateEvent}
@@ -115,8 +113,7 @@ export default function SpacePanel(p: SpacePanelProps) {
       ) : null}
 
       {p.judging.length > 0 || p.sponsorships.length > 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {p.judging.map((j) => (
             <LinkRow
               key={j.boardId}
@@ -137,8 +134,25 @@ export default function SpacePanel(p: SpacePanelProps) {
               onPress={() => p.onOpenSponsor(s)}
             />
           ))}
-        </View>
+        </Rows>
       ) : null}
+    </View>
+  );
+}
+
+/** A list in the console style: rows straight on the page, a hairline between them, no card. */
+function Rows({ children }: { children: React.ReactNode }) {
+  const c = useCosmos();
+  return (
+    <View>
+      {React.Children.toArray(children).map((row, i) => (
+        <View
+          key={React.isValidElement(row) && row.key != null ? row.key : i}
+          style={[styles.rowPad, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
+        >
+          {row}
+        </View>
+      ))}
     </View>
   );
 }
@@ -200,7 +214,7 @@ export function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode;
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: GUTTER, gap: spacing[3] },
   card: { borderRadius: cosmosCardRadius, padding: spacing[4] },
-  list: { gap: spacing[4] },
+  rowPad: { paddingVertical: spacing[3] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   icon: { width: 64, alignItems: 'center' },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },

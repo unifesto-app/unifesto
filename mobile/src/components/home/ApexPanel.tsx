@@ -37,8 +37,7 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
       />
 
       {loading && needs.length === 0 ? (
-        <View style={styles.list}>
-          <CardBackdrop shape={styles.list} />
+        <View>
           {[0, 1, 2].map((i) => (
             <View key={i} style={[styles.need, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
               <Skeleton width="55%" height={14} />
@@ -53,9 +52,9 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
           <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
         </View>
       ) : (
-        // Every queue waiting on me, one card, one row each: the count in amber.
-        <View style={styles.list}>
-          <CardBackdrop shape={styles.list} />
+        // Every queue waiting on me, console style: rows on the page with
+        // hairlines between them, the count in amber.
+        <View>
           {needs.map((n, i) => (
             <PressableScale
               feedback="inline"
@@ -80,7 +79,6 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: GUTTER, gap: spacing[3] },
-  list: { borderRadius: cosmosCardRadius, paddingHorizontal: spacing[4] },
   need: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 52, paddingVertical: spacing[3] },
   needLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   needCount: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
