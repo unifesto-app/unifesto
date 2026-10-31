@@ -40,6 +40,8 @@ import {
   ChartLineUp,
   Tray,
   Globe,
+  Certificate,
+  CalendarDots,
 } from "@unifesto/unicon/react";
 import type { AppRole } from "@/lib/types/rbac";
 
@@ -74,6 +76,13 @@ export const adminNav: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour, exact: true, keywords: "home overview analytics" },
       { href: "/dashboard/product", label: "Product", icon: RocketLaunch, keywords: "kanban board roadmap tasks plan pm", capability: "product:view" },
+    ],
+  },
+  {
+    label: "Company",
+    items: [
+      { href: "/dashboard/company", label: "Overview", icon: Certificate, exact: true, keywords: "company compliance deadlines", capability: "company:view" },
+      { href: "/dashboard/company/obligations", label: "Obligations", icon: CalendarDots, keywords: "compliance roc gst tax filings due", capability: "company:view" },
     ],
   },
   {
