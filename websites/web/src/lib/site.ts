@@ -603,7 +603,7 @@ export const FAQ_HOME: Faq[] = [
 export const FAQ_ORGANISERS: Faq[] = [
   {
     q: "How do I start hosting on Unifesto?",
-    a: "Request a Space with your club, community or institution name. Once it is approved you can add your team, create your first event and publish it.",
+    a: "Start a Space with your club, community or institution name. It is live at once, so you can add your team, create your first event and publish it the same day. It shows as Unverified until Unifesto confirms who runs it, and payouts need a verified bank account or UPI.",
   },
   {
     q: "Can my whole team work on one event?",

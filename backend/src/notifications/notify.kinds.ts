@@ -209,8 +209,8 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     criticality: 'critical',
     entity: (d) => `${d.spaceId}:${d.approvedAt.getTime()}`,
     push: (d) => ({
-      title: `${d.spaceName} is approved`,
-      body: 'Your space is live. Tap to open it and set up your first event.',
+      title: `${d.spaceName} is live`,
+      body: 'Tap to open it and set up your first event.',
       deepLink: `unifesto://manage/space/${d.spaceId}`,
       data: { type: 'space_approved', spaceId: d.spaceId },
     }),

@@ -32,8 +32,8 @@ function defaultStart() {
 const HOURS_2 = 2 * 3600_000;
 
 /**
- * Assist D7: host one event without a space. Platform reviews it as a case in
- * My help; approval sets up a space they run with the event in it as a draft.
+ * Assist D7: host one event without a space. Q29: it sets up a space they run
+ * (live, Unverified) with the event in it as a draft, at once.
  */
 export default function EventRequestScreen() {
   const c = useCosmos();
@@ -60,7 +60,7 @@ export default function EventRequestScreen() {
     if (!ready) return;
     setSubmitting(true);
     try {
-      await createEventRequest({
+      const { eventId } = await createEventRequest({
         title: title.trim(),
         description: description.trim() || undefined,
         type,
@@ -68,10 +68,10 @@ export default function EventRequestScreen() {
         endDateTime: end.toISOString(),
         city: city.trim() || undefined,
       });
-      AppAlert.alert('Request sent', 'We’ll review it and reply in My help.');
-      router.replace('/support');
+      router.replace(eventId ? `/manage/event/${eventId}` : '/');
+      AppAlert.alert('Your event is ready', 'It is a draft in your new space. Add tickets, then publish.');
     } catch (e: any) {
-      AppAlert.alert('Could not send', e.message || 'Please try again.');
+      AppAlert.alert('Could not create the event', e.message || 'Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -95,8 +95,7 @@ export default function EventRequestScreen() {
               Host an event, no space needed
             </Text>
             <Text style={[styles.lead, { color: c.soft }]}>
-              Tell us the basics. Once we approve it, we set up a space for you with the event inside as a draft, ready
-              for tickets.
+              Tell us the basics. We set up a space for you with the event inside as a draft, ready for tickets.
             </Text>
           </View>
 
@@ -153,10 +152,10 @@ export default function EventRequestScreen() {
 
       <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
         <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <AuthButton label="Send request" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
+        <AuthButton label="Create event" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
         {!ready ? (
           <Text style={[styles.hint, { color: c.muted }]}>
-            {title.trim() ? 'The event has to end after it starts' : 'Add a name to send'}
+            {title.trim() ? 'The event has to end after it starts' : 'Add a name to continue'}
           </Text>
         ) : null}
       </View>

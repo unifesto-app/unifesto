@@ -91,10 +91,10 @@ export default function ConsoleHome() {
         <Block title="My Spaces" href="/console/spaces" more="All my spaces">
           <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
             <p className="text-sm text-muted-foreground">
-              Running a club, fest or community? Request a space to run its events here.
+              Running a club, fest or community? Start a space and run its events here today.
             </p>
             <Button asChild size="sm">
-              <Link href="/request-space">Request a space</Link>
+              <Link href="/request-space">Start a space</Link>
             </Button>
           </div>
         </Block>

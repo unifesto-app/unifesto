@@ -50,14 +50,15 @@ async function call<T>(method: string, path: string, body: unknown, token?: stri
 }
 
 /**
- * Space requests belong to an account (approval makes the requester the Space
- * Admin), so we run the app's signup inline: email OTP, then WhatsApp OTP on
- * the phone (verify-mobile creates the account), then save their name and
- * submit with that token. An email that already has a verified account gets
- * its token straight from the email step, so the phone step is skipped.
+ * A space belongs to an account (the requester becomes its Space Admin), so we
+ * run the app's signup inline: email OTP, then WhatsApp OTP on the phone
+ * (verify-mobile creates the account), then save their name and create it with
+ * that token. An email that already has a verified account gets its token
+ * straight from the email step, so the phone step is skipped. Q29: the space
+ * is live at once, marked Unverified.
  *
- * `kind="event"` asks to host one event without a space instead (Assist D7):
- * same signup, event basics in place of the space, followed in My help.
+ * `kind="event"` hosts one event without a space instead (Assist D7): same
+ * signup, event basics in place of the space, made as a draft in a new space.
  *
  * `kind="orbit"` is the Unifesto Orbit Lead application (/orbit/apply): same
  * signup, then campus and clubs. Appointing needs an account, so this is it.
@@ -234,11 +235,24 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
   if (step === "done") {
     return (
       <div className="animate-pop-in text-center">
-        <h2 className="text-2xl font-bold">Request sent</h2>
+        <h2 className="text-2xl font-bold">{isEvent ? "Your event is ready" : "Your space is live"}</h2>
         <p className="mt-2 text-paper/65">
-          We will review <strong className="text-white">{isEvent ? form.eventTitle : form.spaceName}</strong>. Sign in to
-          the Unifesto app with {email} to {isEvent ? "follow it in My help" : "track your request"}.
+          {isEvent ? (
+            <>
+              <strong className="text-white">{form.eventTitle}</strong> is a draft in your new space. Add tickets, then
+              publish.
+            </>
+          ) : (
+            <>
+              <strong className="text-white">{form.spaceName}</strong> is live, marked Unverified until we confirm who runs
+              it. Create your first event now.
+            </>
+          )}{" "}
+          Sign in with {email} in the Unifesto app or here.
         </p>
+        <Link href="/console" className={`${CTA} mt-6`}>
+          Open the console
+        </Link>
       </div>
     );
   }
@@ -266,7 +280,13 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
         </Field>
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className={CTA}>
-          {busy ? "Verifying…" : isEmail ? "Verify email" : "Verify phone and send request"}
+          {busy
+            ? "Verifying…"
+            : isEmail
+              ? "Verify email"
+              : isOrbit
+                ? "Verify phone and send request"
+                : `Verify phone and create the ${isEvent ? "event" : "space"}`}
         </button>
         <div className="flex justify-between text-sm text-paper/65">
           <button type="button" onClick={() => goTo("details")} className="hover:text-white">
@@ -438,7 +458,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
           <p className="text-sm text-paper/65">
             Running a club or community?{" "}
             <Link href="/request-space" className="underline hover:text-white">
-              Request a Space
+              Start a Space
             </Link>{" "}
             instead.
           </p>

@@ -30,7 +30,7 @@ function NewHere() {
       </Link>
       , or{" "}
       <Link href="/request-space" className={LINK}>
-        request a space
+        start a space
       </Link>{" "}
       to run your own.
     </>

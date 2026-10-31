@@ -590,10 +590,6 @@ export class EmailService {
     return this.deliver('resend', data.email, T.spaceRejectedEmail(data), { delivery });
   }
 
-  async sendNewSpaceSubmittedToAdmin(data: T.NewSpaceSubmittedData): Promise<void> {
-    await this.deliver('resend', data.adminEmail, T.newSpaceSubmittedEmail(data));
-  }
-
   // =====================================================
   // SUBSCRIPTIONS
   // =====================================================

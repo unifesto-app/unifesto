@@ -25,7 +25,7 @@ export const metadata: Metadata = withSocial({
 }, { title: "Unifesto for organisers", description: "Run every event from one Space: tickets, check-in, money, reach and the debrief." });
 
 const STEPS = [
-  { title: "Request a Space", body: "Tell us your club, community or institution. Every Space is reviewed before it goes live." },
+  { title: "Start a Space", body: "Name your club, community or institution. It goes live at once, marked Unverified until we confirm who runs it." },
   { title: "Bring your team", body: "Add Curators to build events and Crew to scan passes. Everyone sees only what their role needs." },
   { title: "Publish and share", body: "Create the event, set tickets and questions, publish, and share a tracked link." },
 ];
@@ -60,7 +60,7 @@ export default function OrganisersPage() {
         actions={
           <>
             <Link href="/request-space" className="btn btn-lg btn-primary">
-              Request a Space
+              Start a Space
               <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
             </Link>
             <Link href="/pricing" className="btn btn-lg btn-secondary">

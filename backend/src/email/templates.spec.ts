@@ -37,7 +37,6 @@ export const samples: Record<string, T.Email> = {
   certificate: T.certificateIssuedEmail({ email: 'a@b.co', recipientName: evil, eventTitle: evil, issuerName: evil, certificateNumber: 'UF-2026-0001', verifyUrl: 'https://unifesto.app/verify/x', pdfUrl: 'https://x.co/c.pdf' }),
   spaceApproved: T.spaceApprovedEmail({ email: 'a@b.co', organizerName: evil, spaceName: evil, spaceSlug: 'gdg-hyd' }),
   spaceRejected: T.spaceRejectedEmail({ email: 'a@b.co', organizerName: evil, spaceName: evil, rejectionReason: evil }),
-  spaceSubmitted: T.newSpaceSubmittedEmail({ adminEmail: 'a@b.co', spaceName: evil, organizerName: evil, organizerMobile: '+91 90000 00000', submittedAt: '9 Oct 2026' }),
   subActivated: T.subscriptionActivatedEmail({ email: 'a@b.co', userName: evil, plan: 'PRO', billingCycle: 'Yearly', amount: 11999, expiresAt: '9 Oct 2027', features: [evil, 'Certificates'] }),
   subCancelled: T.subscriptionCancelledEmail({ email: 'a@b.co', userName: evil, plan: 'PRO', expiresAt: '9 Nov 2026' }),
   subExpiring: T.subscriptionExpiringEmail({ email: 'a@b.co', userName: evil, plan: 'PRO', expiresAt: '16 Oct 2026', renewUrl: 'https://x.co' }),

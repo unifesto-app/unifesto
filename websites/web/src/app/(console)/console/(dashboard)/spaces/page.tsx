@@ -25,8 +25,8 @@ const REQUEST_PAGE = 5;
 /**
  * My Spaces (once two pages, now one): the spaces I help
  * run, searchable, each opening its menu in the sidebar; the ones I joined,
- * with Leave; and the spaces I asked Unifesto to set up. Everyone signed in
- * has it, not only people with a space role.
+ * with Leave; and any space requests from before spaces went live at once
+ * (Q29). Everyone signed in has it, not only people with a space role.
  */
 export default function MySpacesPage() {
   const { session } = useWebSession();
@@ -48,7 +48,8 @@ export default function MySpacesPage() {
       const member = new Map(rows.filter((s) => s.userRole.code === "MEMBER" && !running.has(s.id)).map((s) => [s.id, s]));
       setJoined([...member.values()]);
     }, () => undefined);
-    getMySpaceRequests(token).then(setRequests, () => undefined);
+    // Approved requests are already spaces I run (and since Q29 every new one is), so only the rest show.
+    getMySpaceRequests(token).then((rows) => setRequests(rows.filter((r) => r.status !== "APPROVED")), () => undefined);
   }, [token]);
 
   const leave = async (id: string) => {
@@ -67,7 +68,6 @@ export default function MySpacesPage() {
 
   const running = hasAccess ? run : [];
   const nothing = !running.length && !joined.length && !requests.length;
-  // Approved requests are already spaces I run, so the ones still in review (then not approved) lead.
   const sortedRequests = [...requests].sort((a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3));
   const shownRequests = sortedRequests.slice(0, requestCount);
 
@@ -77,7 +77,7 @@ export default function MySpacesPage() {
         title="My Spaces"
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link href="/request-space">{running.length ? "Request another space" : "Request a space"}</Link>
+            <Link href="/request-space">{running.length ? "Start another space" : "Start a space"}</Link>
           </Button>
         }
       />
@@ -157,7 +157,7 @@ export default function MySpacesPage() {
         )}
 
         {requests.length > 0 && (
-          <Section title="My space requests" description="Spaces I asked Unifesto to set up.">
+          <Section title="My space requests" description="Spaces I asked Unifesto to set up before they went live at once.">
             <ul className="-mt-4 divide-y divide-border">
               {shownRequests.map((r) => (
                 <li key={r.id} className="py-4">
