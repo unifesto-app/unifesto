@@ -1,6 +1,8 @@
 -- Unifesto Huddle sessions were retired in #501. Their tables held test data
 -- only (checked on prod 1 Nov 2026: 3 test sales worth ₹1.05, no payouts, no
 -- pending refunds), so they go, with T6's payout link and the plan flag.
+-- contract-step: reviewed 1 Nov 2026. The code stopped using these in #501 and
+-- this PR; verified on a local Postgres against the new schema.
 
 -- Payouts draw from an event again, never a session (reverses T6).
 ALTER TABLE "payouts" DROP CONSTRAINT IF EXISTS "payouts_one_source";
