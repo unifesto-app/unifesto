@@ -19,6 +19,7 @@ export const metadata: Metadata = withSocial({
 }, { title: "Unifesto Refund and Cancellation Policy" });
 
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default function RefundPage() {
   return (

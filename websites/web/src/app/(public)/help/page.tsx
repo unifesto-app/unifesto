@@ -9,6 +9,8 @@ import Section from "@/components/site/Section";
 import ShadeCard, { SHADES } from "@/components/site/ShadeCard";
 import { getHelpArticles, type HelpArticleSummary } from "@/lib/api/help";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   alternates: { canonical: "/help" },
   title: "Help articles",

@@ -101,7 +101,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // K14: the proxy's per-request CSP nonce. Reading it renders every page per
-  // request, which a nonce needs (a prerendered page can't carry one).
+  // request, which a nonce needs (a prerendered page can't carry one). Pages
+  // in lib/cached-pages.ts are force-static: headers() is empty there and the
+  // proxy's CSP for them allows inline script instead.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   // Cached fetches (60s/300s): sections with no content hide their links (K17, K11).
   const [help, posts, roles] = await Promise.all([getHelpArticles(), getPosts(), getOpenRoles()]);

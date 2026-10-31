@@ -15,6 +15,8 @@ import { PILLAR_SHADES, PILLAR_VISUALS, ScanVisual } from "@/components/visuals/
 import { RubricVisual } from "@/components/visuals/Hackathon";
 import { FAQ_ORGANISERS, PILLARS, PLANS, SITE } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "For organisers: ticketing, check-in, payouts and more",
   description:

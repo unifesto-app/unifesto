@@ -14,6 +14,8 @@ import { ShadeFrame } from "@/components/site/ShadeCard";
 import { StaySetupVisual, StayRequestsVisual, StayPassScreen, StayScanVisual } from "@/components/visuals/Stay";
 import { FAQ_STAY, STAY_STEPS } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "Unifesto Stay: accommodation booking for events",
   description:

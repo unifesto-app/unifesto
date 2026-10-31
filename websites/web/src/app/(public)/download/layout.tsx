@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { withSocial } from "@/lib/seo";
 
+// On the layout: the page is a client component, which can't export it.
+export const dynamic = 'force-static'; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   alternates: { canonical: "/download" },
   title: 'Download the Unifesto app',

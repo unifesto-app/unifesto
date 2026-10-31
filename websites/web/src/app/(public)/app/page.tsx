@@ -14,6 +14,8 @@ import { RubricVisual } from "@/components/visuals/Hackathon";
 import { ScanVisual } from "@/components/visuals/Product";
 import { APP_FEATURES, FAQ_APP, SITE } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "The Unifesto app: discover events, register, check in",
   description:

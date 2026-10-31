@@ -11,6 +11,8 @@ import { getPost, postMeta } from "@/lib/api/blog";
 import { AUTHORS, SITE } from "@/lib/site";
 import { postFaqs } from "@/lib/blog-faq";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

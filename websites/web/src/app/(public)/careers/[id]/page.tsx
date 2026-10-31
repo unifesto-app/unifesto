@@ -9,6 +9,8 @@ import { HeroSky } from "@/components/site/CosmicBackdrop";
 import { getRole, type Career } from "@/lib/api/careers";
 import { SITE } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 interface Props {
   params: Promise<{ id: string }>;
 }

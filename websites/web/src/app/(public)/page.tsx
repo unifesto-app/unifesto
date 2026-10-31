@@ -18,6 +18,8 @@ import { LeaderboardVisual } from "@/components/visuals/Hackathon";
 import { FAQ_HOME, PILLARS, PROOF, SITE, SOCIAL } from "@/lib/site";
 import JsonLd from "@/components/site/JsonLd";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: { absolute: "Unifesto: Event ticketing, QR check-in and payouts for India" },
   description:

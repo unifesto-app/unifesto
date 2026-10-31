@@ -14,6 +14,8 @@ import { ShadeFrame } from "@/components/site/ShadeCard";
 import { HuddleSetupVisual, HuddleHostVisual, HuddleRoomScreen, HuddleJoinVisual } from "@/components/visuals/Huddle";
 import { FAQ_HUDDLE, HUDDLE_STEPS } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "Unifesto Huddle: online sessions for communities",
   description:

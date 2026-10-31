@@ -14,6 +14,8 @@ import { ShadeFrame } from "@/components/site/ShadeCard";
 import { LeaderboardVisual, RubricVisual, HelpDeskVisual } from "@/components/visuals/Hackathon";
 import { FAQ_HACKATHONS, HACKATHON_STAGES } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "Unifesto Sprint: hackathon management, judging and leaderboards",
   description:

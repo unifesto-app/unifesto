@@ -58,3 +58,19 @@ test("only the console's CSP lets in LiveKit, the API socket and Maps", async ()
   assert.match((await run("https://www.unifesto.app/console", "uf_in=1")).headers.get("content-security-policy") ?? "", /wss:\/\/\*\.livekit\.cloud/);
   assert.doesNotMatch((await run("https://www.unifesto.app/events")).headers.get("content-security-policy") ?? "", /livekit/);
 });
+
+test("prerendered pages get a CSP without a nonce; everything else keeps K14's", async () => {
+  const csp = async (url: string) => (await run(url)).headers.get("content-security-policy") ?? "";
+  for (const path of ["/", "/pricing", "/blog/a-post", "/help/a-guide"]) {
+    assert.match(await csp(`https://www.unifesto.app${path}`), /script-src 'self' 'unsafe-inline';/, path);
+  }
+  for (const path of ["/blog", "/help/contact", "/blog/a-post/opengraph-image", "/event/hack-26", "/login", "/console/present/ev1"]) {
+    assert.match(await csp(`https://www.unifesto.app${path}`), /'nonce-[^']+' 'strict-dynamic'/, path);
+  }
+  // A custom domain's / is its space page, never the cached home page.
+  assert.match(await csp("https://events.acme.edu/"), /'nonce-/);
+  // A visitor's own CSP header can't put a nonce into a prerendered page's re-render.
+  const res = await proxy(new NextRequest("https://www.unifesto.app/pricing", { headers: { "content-security-policy": "script-src 'nonce-x'", "x-nonce": "x" } }));
+  assert.equal(res.headers.get("x-middleware-request-content-security-policy"), null);
+  assert.equal(res.headers.get("x-middleware-request-x-nonce"), null);
+});
