@@ -4,7 +4,6 @@ import { EventPublishFanout } from './event-publish-fanout';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
 import { EventSchedulerService } from './event-scheduler.service';
-import { RecurrenceService } from './recurrence/recurrence.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
@@ -26,7 +25,7 @@ import { EventDraftService } from './event-draft';
     AiModule,
   ],
   controllers: [EventsController],
-  providers: [EventsService, EventSchedulerService, RecurrenceService, EventDraftService, EventPublishFanout],
-  exports: [EventsService, RecurrenceService],
+  providers: [EventsService, EventSchedulerService, EventDraftService, EventPublishFanout],
+  exports: [EventsService],
 })
 export class EventsModule {}

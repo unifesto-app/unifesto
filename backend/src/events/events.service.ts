@@ -24,8 +24,6 @@ import { BRANDING_SPACE_SELECT, CUSTOM_DOMAIN_SPACE_SELECT, liveCustomDomain, re
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { EventPublishFanout } from './event-publish-fanout';
 import { formatEventDate, formatEventTime } from './event-dates';
-import { RecurrenceService } from './recurrence/recurrence.service';
-import { parseRRule, serializeRRule } from './recurrence/rrule.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { NotificationEvents } from '../notifications/notifications.constants';
@@ -137,7 +135,6 @@ export class EventsService {
     private readonly planConfig: PlanConfigService,
     private readonly events: EventEmitter2,
     private readonly authz: AuthorizationService,
-    private readonly recurrence: RecurrenceService,
     private readonly publishFanout?: EventPublishFanout,
   ) {}
 
@@ -1635,7 +1632,6 @@ export class EventsService {
       );
     }
     if (dto.waitlistEnabled) await this.planConfig.assertFeature(dto.spaceId, 'hasWaitlist');
-    if (dto.recurrenceRule) await this.planConfig.assertFeature(dto.spaceId, 'hasRecurringEvents');
 
     // Plan limits are enforced against the SPACE's subscription now (P0.2),
     // with a transition-safe fallback to the creator's legacy row pre-P2.2.
@@ -1659,25 +1655,6 @@ export class EventsService {
     // the same space and can legally hold children before we commit anything.
     if (dto.parentEventId) {
       await this.assertValidParent(dto.parentEventId, dto.spaceId);
-    }
-
-    // Recurring series (P2). Validate the RRULE up front and enforce the v1
-    // rule that a series may not also be a festival sub-event. The canonical
-    // (re-serialized) form is what we store, so storage is normalized.
-    let canonicalRRule: string | null = null;
-    if (dto.recurrenceRule) {
-      if (dto.parentEventId) {
-        throw new BadRequestException(
-          'A recurring series cannot also be a sub-event of a big event.',
-        );
-      }
-      try {
-        canonicalRRule = serializeRRule(parseRRule(dto.recurrenceRule));
-      } catch (err) {
-        throw new BadRequestException(
-          `Invalid recurrence rule: ${err instanceof Error ? err.message : 'unparseable'}`,
-        );
-      }
     }
 
     assertEventSchedule(
@@ -1720,19 +1697,11 @@ export class EventsService {
         spaceId: dto.spaceId,
         parentEventId: dto.parentEventId ?? null,
         whatsappAttendeeGroupUrl: whatsappAttendeeGroupUrl ?? null,
-        // Series parent: a non-registerable template holding the RRULE. Its
-        // concrete occurrences are materialized just below.
-        isRecurring: canonicalRRule !== null,
-        recurringRule: canonicalRRule,
         createdBy: userId,
       },
     });
 
     this.logger.log(`Created event ${event.id} by user ${userId}`);
-
-    // Series occurrences are NOT materialized here — the event is created DRAFT
-    // and its ticket template is still being authored; they are materialized
-    // at publish time (see publishEvent), inheriting the tickets.
 
     return event;
   }
@@ -1772,9 +1741,6 @@ export class EventsService {
       visibility: 'PUBLIC',
       // Only from spaces anyone may see right now (J16).
       space: PUBLIC_LIVE_SPACE_WHERE,
-      // Series-parent templates are non-registerable; only their concrete
-      // occurrences (isRecurring=false, seriesParentId set) appear in listings.
-      isRecurring: false,
     };
 
     // Featured/trending are homepage carousels: only ever show events that
@@ -1932,7 +1898,6 @@ export class EventsService {
         city: true,
         visibility: true,
         status: true,
-        isRecurring: true,
         space: { select: { subscription: true, ...BRANDING_SPACE_SELECT, visibility: true, status: true } },
         creator: { select: { fullName: true } },
       },
@@ -1943,9 +1908,7 @@ export class EventsService {
       event.visibility !== 'PUBLIC' ||
       event.status !== EventStatus.PUBLISHED ||
       event.space.visibility !== 'PUBLIC' ||
-      !isSpaceLive(event.space.status) ||
-      // A series-parent template is not a real, attendable event — no .ics.
-      event.isRecurring
+      !isSpaceLive(event.space.status)
     ) {
       throw new NotFoundException('Event not found');
     }
@@ -1974,70 +1937,6 @@ export class EventsService {
         : null,
     };
     return buildEventIcs(input);
-  }
-
-  /**
-   * List a recurring series' materialized occurrences for the management UI.
-   * Guarded like any other event management action.
-   */
-  async getSeriesOccurrences(userId: string, parentId: string) {
-    const parent = await this.prisma.event.findUnique({
-      where: { id: parentId },
-      select: {
-        id: true,
-        spaceId: true,
-        isRecurring: true,
-        recurringRule: true,
-        seriesGeneratedUntil: true,
-      },
-    });
-    if (!parent) throw new NotFoundException('Event not found');
-    if (!parent.isRecurring) {
-      throw new BadRequestException('This event is not a recurring series.');
-    }
-    const canManage = await this.canManageEvent(userId, parent.spaceId, parent.id);
-    if (!canManage) throw new ForbiddenException('You cannot manage this event');
-
-    const occurrences = await this.prisma.event.findMany({
-      where: { seriesParentId: parentId },
-      orderBy: { startDateTime: 'asc' },
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        startDateTime: true,
-        endDateTime: true,
-        status: true,
-        registeredCount: true,
-        seriesDetached: true,
-      },
-    });
-    return {
-      seriesId: parent.id,
-      recurrenceRule: parent.recurringRule,
-      generatedUntil: parent.seriesGeneratedUntil,
-      occurrences,
-    };
-  }
-
-  /**
-   * Detach one occurrence from its series ("this occurrence" edit scope, D3):
-   * a subsequent whole-series propagation/regeneration will never touch it.
-   * The occurrence is then edited through the normal update path.
-   */
-  async detachOccurrenceFromSeries(userId: string, occurrenceId: string) {
-    const occ = await this.prisma.event.findUnique({
-      where: { id: occurrenceId },
-      select: { id: true, spaceId: true, seriesParentId: true },
-    });
-    if (!occ) throw new NotFoundException('Event not found');
-    if (!occ.seriesParentId) {
-      throw new BadRequestException('This event is not part of a series.');
-    }
-    const canManage = await this.canManageEvent(userId, occ.spaceId, occ.id);
-    if (!canManage) throw new ForbiddenException('You cannot manage this event');
-    await this.recurrence.detachOccurrence(occurrenceId);
-    return { id: occurrenceId, seriesDetached: true };
   }
 
   /**
@@ -2490,35 +2389,11 @@ export class EventsService {
       dto.whatsappAttendeeGroupUrl,
     );
 
-    // Recurrence edit (series parent only). Validate a changed RRULE up front so
-    // an invalid rule is a clean 400 before anything is written.
-    let canonicalRRule: string | undefined;
-    let ruleChanged = false;
-    if (dto.recurrenceRule !== undefined) {
-      if (!event.isRecurring) {
-        throw new BadRequestException(
-          'Recurrence can only be edited on a recurring series.',
-        );
-      }
-      try {
-        canonicalRRule = serializeRRule(parseRRule(dto.recurrenceRule));
-      } catch (err) {
-        throw new BadRequestException(
-          `Invalid recurrence rule: ${err instanceof Error ? err.message : 'unparseable'}`,
-        );
-      }
-      ruleChanged = canonicalRRule !== event.recurringRule;
-    }
-
     const updated = await this.prisma.event.update({
       where: { id: eventId },
       data: {
         title: dto.title,
         slug: nextSlug,
-        recurringRule: canonicalRRule,
-        // Editing a single occurrence individually detaches it, so a later
-        // whole-series propagation/regeneration never overwrites it (D3).
-        seriesDetached: event.seriesParentId ? true : undefined,
         description: dto.description,
         type: dto.type,
         registrationType: dto.registrationType,
@@ -2558,54 +2433,6 @@ export class EventsService {
     // Keep the old slug resolving, so shared links and QR codes survive (B16).
     if (nextSlug && nextSlug !== event.slug) {
       await rememberOldSlug(this.prisma, SlugKind.EVENT, event.slug, eventId);
-    }
-
-    // Recurring series parent edit: reconcile the occurrences (D3/D4). A schedule
-    // change (rule, start, or end) regenerates future unregistered occurrences
-    // from the updated parent; a content-only edit propagates the safe fields to
-    // them. Registered and individually-detached occurrences are always spared.
-    if (updated.isRecurring) {
-      const scheduleChanged =
-        ruleChanged ||
-        (dto.startDateTime != null &&
-          updated.startDateTime.getTime() !== event.startDateTime.getTime()) ||
-        (dto.endDateTime != null &&
-          updated.endDateTime.getTime() !== event.endDateTime.getTime());
-      try {
-        if (scheduleChanged) {
-          await this.recurrence.regenerateSeries(eventId);
-        } else {
-          await this.recurrence.propagateToFutureOccurrences(eventId, {
-            title: updated.title,
-            description: updated.description,
-            type: updated.type,
-            registrationType: updated.registrationType,
-            timezone: updated.timezone,
-            venueName: updated.venueName,
-            venueAddress: updated.venueAddress,
-            city: updated.city,
-            state: updated.state,
-            country: updated.country,
-            latitude: updated.latitude,
-            longitude: updated.longitude,
-            onlineUrl: updated.onlineUrl,
-            onlinePlatform: updated.onlinePlatform,
-            capacity: updated.capacity,
-            waitlistEnabled: updated.waitlistEnabled,
-            isFree: updated.isFree,
-            tags: updated.tags,
-            category: updated.category,
-            categories: updated.categories,
-            visibility: updated.visibility,
-          });
-        }
-      } catch (err) {
-        this.logger.error(
-          `Series reconcile after edit failed for ${eventId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      }
     }
 
     // Check if significant fields changed and notify registered attendees
@@ -2812,22 +2639,6 @@ export class EventsService {
 
     await this.subscriptionService.incrementEventUsageForSpace(event.spaceId);
 
-    // A recurring series materializes its occurrences now — the parent is
-    // PUBLISHED and its ticket template is final, so each occurrence inherits
-    // the finished tickets. Idempotent + non-blocking.
-    if (updated.isRecurring) {
-      try {
-        const created = await this.recurrence.generateOccurrences(eventId);
-        this.logger.log(`Series ${eventId}: materialized ${created} occurrence(s) on publish`);
-      } catch (err) {
-        this.logger.error(
-          `Failed to materialize series ${eventId} on publish: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      }
-    }
-
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);
     // A newly published sub-event should appear on its parent's hub at once.
@@ -2901,13 +2712,11 @@ export class EventsService {
     if (!event) throw new NotFoundException('Event not found');
     await this.assertEventAction(userId, event.id, Action.EVENT_PUBLISH, 'You cannot end this event');
 
-    // A series parent is only its first slot (A29): its occurrences end on their own.
     const { count } = await this.prisma.event.updateMany({
       where: {
         id: eventId,
         status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] },
         startDateTime: { lte: new Date() },
-        isRecurring: false,
       },
       data: { status: EventStatus.COMPLETED },
     });
@@ -3095,14 +2904,9 @@ export class EventsService {
       );
     }
 
-    // The space's own events plus any it co-hosts. Recurring-series OCCURRENCES
-    // are excluded (`seriesParentId: null`) so a weekly series collapses to its
-    // single parent row here instead of flooding the list with every date; the
-    // occurrences are managed from the parent's Occurrences page. The parent
-    // template itself (seriesParentId null, isRecurring true) stays, badged.
+    // The space's own events plus any it co-hosts.
     const where: Prisma.EventWhereInput = {
       ...deletedWhere(deleted),
-      seriesParentId: null,
       OR: [{ spaceId }, { coHosts: { some: { spaceId, ...ACCEPTED_CO_HOST } } }],
       AND: [visibilityWhere],
     };

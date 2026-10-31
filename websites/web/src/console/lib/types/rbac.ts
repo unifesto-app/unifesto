@@ -334,8 +334,6 @@ export interface EventWithDetails {
   category: string | null;
   visibility: "PUBLIC" | "PRIVATE" | "SPACE_ONLY";
   coverImageUrl: string | null;
-  isRecurring: boolean;
-  recurringRule: string | null;
   createdBy: string;
   publishedAt: string | null;
   cancelledAt: string | null;

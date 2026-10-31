@@ -160,7 +160,6 @@ export class UpdatePlanConfigDto {
   @IsOptional() @IsBoolean() hasBulkExport?: boolean;
   @IsOptional() @IsBoolean() hasAnalytics?: boolean;
   @IsOptional() @IsBoolean() hasWhatsappBlast?: boolean;
-  @IsOptional() @IsBoolean() hasRecurringEvents?: boolean;
   @IsOptional() @IsBoolean() hasRemoveBranding?: boolean;
   @IsOptional() @IsBoolean() hasPrioritySupport?: boolean;
   @IsOptional() @IsBoolean() hasSessions?: boolean;
@@ -231,7 +230,6 @@ export class SubscriptionUsageDto {
     hasBulkExport: boolean;
     hasAnalytics: boolean;
     hasWhatsappBlast: boolean;
-    hasRecurringEvents: boolean;
     hasRemoveBranding: boolean;
     hasPrioritySupport: boolean;
     hasSessions: boolean;

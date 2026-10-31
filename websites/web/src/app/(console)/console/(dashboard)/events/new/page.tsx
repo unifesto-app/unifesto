@@ -33,16 +33,8 @@ import {
   toLocalDatetime,
 } from "@/console/lib/constants/event-form";
 import { PageHeader } from "@/console/components/shared/PageHeader";
-import { RecurrenceEditor } from "@/console/components/events/RecurrenceEditor";
 import { PlaceSearch } from "@/console/components/events/PlaceSearch";
 import type { PickedPlace } from "@/console/lib/googlePlaces";
-import {
-  buildRRule,
-  defaultRecurrence,
-  describeRecurrence,
-  recurrenceError,
-  type RecurrenceState,
-} from "@/console/lib/recurrence";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { Button } from "@/console/components/ui/button";
@@ -89,7 +81,6 @@ interface WizardForm {
   registrationType: RegistrationType;
   visibility: EventVisibility;
   tickets: TicketDraft[];
-  recurrence: RecurrenceState;
 }
 
 function newTicketKey(): string {
@@ -136,9 +127,6 @@ function initialForm(): WizardForm {
     registrationType: "RSVP",
     visibility: "PUBLIC",
     tickets: defaultTickets("RSVP"),
-    // Seed the weekly weekday from the default start date so "Repeats weekly"
-    // pre-selects the right day.
-    recurrence: defaultRecurrence(new Date(start).getDay()),
   };
 }
 
@@ -230,7 +218,7 @@ function CreateEventInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const spaceId = useSpaceId();
-  const { can, hasFeature } = useSession();
+  const { can } = useSession();
   const allowed = can("space:create-event");
 
   const parentId = searchParams.get("parentId") || undefined;
@@ -335,7 +323,7 @@ function CreateEventInner() {
         if (!form.endDateTime) return "Pick an end date and time.";
         if (new Date(form.endDateTime) <= new Date(form.startDateTime))
           return "The end time must be after the start time.";
-        return recurrenceError(form.recurrence, form.startDateTime, isSubEvent);
+        return "";
       case "location":
         if (showOnline && form.onlineUrl.trim()) {
           try {
@@ -423,10 +411,6 @@ function CreateEventInner() {
         : {}),
       spaceId: spaceId as string,
       ...(parentId ? { parentEventId: parentId } : {}),
-      // A recurring series (never combined with a sub-event parent).
-      ...(!parentId && buildRRule(form.recurrence)
-        ? { recurrenceRule: buildRRule(form.recurrence) as string }
-        : {}),
     };
   }
 
@@ -639,25 +623,6 @@ function CreateEventInner() {
                 />
               </Field>
             </div>
-            {/* Recurrence — a series can't also be a festival sub-event, so hide
-                this when creating one under a parent. */}
-            {!isSubEvent && (
-              <Field label="Repeat">
-                {hasFeature("hasRecurringEvents") ? (
-                  <RecurrenceEditor
-                    value={form.recurrence}
-                    onChange={(next) => set("recurrence", next)}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Repeating series aren&apos;t on this space&apos;s plan.{" "}
-                    <Link href="/console/billing" className="underline">
-                      See plans
-                    </Link>
-                  </p>
-                )}
-              </Field>
-            )}
             <Field label="Description" htmlFor="description">
               <Textarea
                 id="description"
@@ -919,9 +884,6 @@ function CreateEventInner() {
                     : "—"
                 }
               />
-              {!isSubEvent && form.recurrence.enabled && (
-                <ReviewRow label="Repeats" value={describeRecurrence(form.recurrence)} />
-              )}
               <ReviewRow
                 label="Format"
                 value={

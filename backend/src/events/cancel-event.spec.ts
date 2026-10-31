@@ -48,7 +48,7 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
   };
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
   const events = { emit: jest.fn() };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, { can: jest.fn(async () => true) } as any, {} as any);
+  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, { can: jest.fn(async () => true) } as any);
   return { svc, prisma, email, events };
 }
 
@@ -126,7 +126,7 @@ describe('updateEvent notice (C2)', () => {
     const before = {
       id: 'ev-1', spaceId: 'sp-1', slug: 'fest', title: 'Fest', status: EventStatus.PUBLISHED, venueName: 'Hall A',
       startDateTime: new Date('2026-12-01T04:30:00Z'), endDateTime: new Date('2026-12-01T07:30:00Z'),
-      categories: [], isRecurring: false, parentEventId: null, seriesParentId: null,
+      categories: [], parentEventId: null,
     };
     const after = { ...before, venueName: 'Hall B', updatedAt: new Date(1_700_000_000_000) };
     const prisma: any = {
@@ -140,7 +140,7 @@ describe('updateEvent notice (C2)', () => {
     const email: any = { sendEventUpdated: jest.fn() };
     const events = { emit: jest.fn() };
     const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
-    const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, {} as any, {} as any);
+    const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, {} as any);
     jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
 
     await svc.updateEvent('u-1', 'ev-1', { venueName: 'Hall B' } as any);

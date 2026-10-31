@@ -22,7 +22,7 @@ describe('cached event payload gets live counts', () => {
       })),
     },
   };
-  const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 
   it('overlays sold, registered and waitlist counts, keeping everything else', async () => {
     const out = await (svc as any).withLiveCounts(cached);

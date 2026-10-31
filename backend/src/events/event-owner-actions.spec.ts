@@ -86,7 +86,7 @@ function build(opts: { event?: Record<string, unknown>; plan?: string } = {}) {
   const authz = new AuthorizationService(prisma, capabilities);
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
   const svc = new EventsService(
-    prisma, {} as any, {} as any, cache, {} as any, new PlanConfigService(prisma), { emit: jest.fn() } as any, authz, {} as any,
+    prisma, {} as any, {} as any, cache, {} as any, new PlanConfigService(prisma), { emit: jest.fn() } as any, authz,
   );
   const audit = jest.spyOn((svc as any).logger, 'log').mockImplementation(() => undefined);
   return { svc, prisma, audit };

@@ -10,7 +10,6 @@ export interface PlanLimits {
   hasBulkExport: boolean;
   hasAnalytics: boolean;
   hasWhatsappBlast: boolean;
-  hasRecurringEvents: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
   /** Gates the Sessions feature entirely. */
@@ -34,7 +33,6 @@ export const PLAN_FEATURE_FLAGS = [
   'hasAnalytics',
   'hasCertificates',
   'hasWhatsappBlast',
-  'hasRecurringEvents',
   'hasSessions',
   'hasSponsors',
   'hasLeaderboard',
@@ -50,7 +48,6 @@ export const FEATURE_LABELS: Record<PlanFeatureFlag, string> = {
   hasAnalytics: 'Analytics and event reports',
   hasCertificates: 'Certificates',
   hasWhatsappBlast: 'WhatsApp blasts',
-  hasRecurringEvents: 'Recurring events',
   hasSessions: 'Huddle sessions',
   hasSponsors: 'Sponsors and lead capture',
   hasLeaderboard: 'Hackathon leaderboards',
@@ -91,7 +88,6 @@ export const PLAN_CATALOG: { group: string; rows: PlanCatalogRow[] }[] = [
       { label: 'Co-hosting, sub-events and event transfer' },
       { label: 'AI event drafts' },
       { label: 'Waiting list with pay-to-claim offers', flag: 'hasWaitlist' },
-      { label: 'Recurring event series', flag: 'hasRecurringEvents' },
     ],
   },
   {
@@ -193,7 +189,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasBulkExport: false,
     hasAnalytics: false,
     hasWhatsappBlast: false,
-    hasRecurringEvents: false,
     hasRemoveBranding: false,
     hasPrioritySupport: false,
     hasSessions: false,
@@ -214,7 +209,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasBulkExport: true,
     hasAnalytics: true,
     hasWhatsappBlast: false,
-    hasRecurringEvents: true,
     hasRemoveBranding: false,
     hasPrioritySupport: false,
     hasSessions: false,
@@ -235,7 +229,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasBulkExport: true,
     hasAnalytics: true,
     hasWhatsappBlast: true,
-    hasRecurringEvents: true,
     hasRemoveBranding: false,
     hasPrioritySupport: true,
     hasSessions: true,
@@ -256,7 +249,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasBulkExport: true,
     hasAnalytics: true,
     hasWhatsappBlast: true,
-    hasRecurringEvents: true,
     hasRemoveBranding: true,
     hasPrioritySupport: true,
     hasSessions: true,
@@ -277,7 +269,6 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasBulkExport: true,
     hasAnalytics: true,
     hasWhatsappBlast: true,
-    hasRecurringEvents: true,
     hasRemoveBranding: true,
     hasPrioritySupport: true,
     hasSessions: true,

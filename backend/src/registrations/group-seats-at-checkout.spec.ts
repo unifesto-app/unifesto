@@ -35,7 +35,6 @@ function build() {
         id: EVENT,
         spaceId: 'space-1',
         status: 'PUBLISHED',
-        isRecurring: false,
         registrations: [],
         ticketTypes: [
           {

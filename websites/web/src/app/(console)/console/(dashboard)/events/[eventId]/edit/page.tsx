@@ -36,16 +36,9 @@ import {
 } from "@/console/lib/constants/event-form";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
-import { RecurrenceEditor } from "@/console/components/events/RecurrenceEditor";
 import { PlaceSearch } from "@/console/components/events/PlaceSearch";
 import { AiDraftPanel } from "@/console/components/events/AiDraftPanel";
 import type { PickedPlace } from "@/console/lib/googlePlaces";
-import {
-  buildRRule,
-  parseRRuleToState,
-  recurrenceError,
-  type RecurrenceState,
-} from "@/console/lib/recurrence";
 import { Input } from "@/console/components/ui/input";
 import { Label } from "@/console/components/ui/label";
 import { Badge } from "@/console/components/ui/badge";
@@ -91,8 +84,6 @@ interface FormState {
   onlineUrl: string;
   onlinePlatform: string;
   category: string;
-  /** Present only for a recurring series parent; edited via RecurrenceEditor. */
-  recurrence: RecurrenceState;
 }
 
 /**
@@ -237,10 +228,6 @@ export default function EditEventPage() {
         onlineUrl: evt.onlineUrl || "",
         onlinePlatform: evt.onlinePlatform || "",
         category: evt.category || "",
-        recurrence: parseRRuleToState(
-          evt.recurringRule,
-          new Date(evt.startDateTime).getDay()
-        ),
       });
 
       if (categoriesRes.data) {
@@ -305,8 +292,8 @@ export default function EditEventPage() {
       return "Add a venue name for in-person events.";
     if (showOnline && !form.onlineUrl.trim())
       return "Add a joining link for online events.";
-    return recurrenceError(form.recurrence, form.startDateTime, !event?.isRecurring);
-  }, [form, showVenue, showOnline, event?.isRecurring]);
+    return "";
+  }, [form, showVenue, showOnline]);
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -420,11 +407,6 @@ export default function EditEventPage() {
             onlineUrl: form.onlineUrl.trim() || null,
             onlinePlatform: form.onlinePlatform.trim() || null,
           }
-        : {}),
-      // A recurring series parent may change its RRULE; the backend regenerates
-      // future unregistered occurrences. Only send it for an actual series.
-      ...(event?.isRecurring && buildRRule(form.recurrence)
-        ? { recurrenceRule: buildRRule(form.recurrence) as string }
         : {}),
     };
 
@@ -713,24 +695,6 @@ export default function EditEventPage() {
                 />
               </div>
             </div>
-
-            {/* Recurrence — only a series parent can edit its schedule here.
-                Changing it regenerates future, unregistered, non-detached
-                occurrences; registered and individually-edited ones are kept. */}
-            {event?.isRecurring && (
-              <div role="group" aria-labelledby="edit-recurrence" className="space-y-2">
-                <Label id="edit-recurrence">Recurrence</Label>
-                <RecurrenceEditor
-                  hideToggle
-                  value={form.recurrence}
-                  onChange={(next) => set("recurrence", next)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Changing the schedule rebuilds upcoming occurrences that have no
-                  registrations and haven&apos;t been edited on their own.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 

@@ -52,7 +52,6 @@ describe('RegistrationsService payment replay guards', () => {
         findUnique: jest.fn(async () => ({
           id: EVENT,
           status: 'PUBLISHED',
-          isRecurring: false,
           ticketTypes: [],
           registrations: opts.eventRegs ?? [],
         })),

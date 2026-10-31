@@ -66,7 +66,7 @@ function events(space: { visibility: string; status: SpaceStatus }, event: Recor
     invalidateEventCache: jest.fn(async () => undefined),
   };
   const authz: any = { can: jest.fn(async () => true), canAny: jest.fn(async () => false) };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz, {} as any);
+  const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz);
   return { svc, prisma, authz };
 }
 

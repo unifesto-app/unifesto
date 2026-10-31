@@ -65,7 +65,6 @@ export interface PlanInfo {
   hasBulkExport: boolean;
   hasAnalytics: boolean;
   hasWhatsappBlast: boolean;
-  hasRecurringEvents: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
   hasSessions: boolean;
@@ -100,7 +99,6 @@ export interface SubscriptionUsage {
     hasBulkExport: boolean;
     hasAnalytics: boolean;
     hasWhatsappBlast: boolean;
-    hasRecurringEvents: boolean;
     hasRemoveBranding: boolean;
     hasPrioritySupport: boolean;
     hasSessions: boolean;

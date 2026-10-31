@@ -41,7 +41,7 @@ describe('absorbed buyer fee (A33)', () => {
         },
       };
       const authz: any = { can: jest.fn(async () => canMoney) };
-      const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, authz, {} as any);
+      const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, authz);
       jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
       return svc;
     };

@@ -161,16 +161,6 @@ export interface Event {
    * (public) event shape — it never rides on `GET /events/:slug`. Load and edit
    * it through `getEventWhatsappConfig` / the event WhatsApp page instead.
    */
-  /**
-   * Recurring series (event-calendar P2). `isRecurring` marks a non-registerable
-   * SERIES PARENT whose `recurringRule` (RFC-5545 RRULE) drives materialized
-   * occurrences. An OCCURRENCE instead carries `seriesParentId`; `seriesDetached`
-   * is true once it has been edited individually.
-   */
-  isRecurring?: boolean;
-  recurringRule?: string | null;
-  seriesParentId?: string | null;
-  seriesDetached?: boolean;
   space?: {
     id: string;
     name: string;
@@ -278,13 +268,6 @@ export interface CreateEventPayload {
    * string to clear it. Validated + normalised server-side.
    */
   whatsappAttendeeGroupUrl?: string;
-  /**
-   * Make this a recurring series (RFC-5545 RRULE, e.g. "FREQ=WEEKLY;BYDAY=SA;
-   * COUNT=10"). The created event becomes a non-registerable series parent;
-   * occurrences are materialized when it is published. Cannot be combined with
-   * `parentEventId`.
-   */
-  recurrenceRule?: string;
 }
 
 /** Optional text fields an edit can clear: null clears, undefined leaves as is. */
@@ -448,52 +431,6 @@ export async function announceToAttendees(
   input: { title: string; body: string }
 ): Promise<{ data: unknown; error: ApiError | null }> {
   return apiCall(backendClient.post(`/events/${eventId}/announcements`, input));
-}
-
-/** One materialized occurrence of a recurring series (management view). */
-export interface SeriesOccurrence {
-  id: string;
-  slug: string;
-  title: string;
-  startDateTime: string;
-  endDateTime: string;
-  status: EventStatus;
-  registeredCount: number;
-  /** True once the occurrence has been edited individually (frozen from series edits). */
-  seriesDetached: boolean;
-}
-
-export interface SeriesOccurrencesResponse {
-  seriesId: string;
-  recurrenceRule: string | null;
-  /** Far edge of the materialized rolling window, ISO. */
-  generatedUntil: string | null;
-  occurrences: SeriesOccurrence[];
-}
-
-/**
- * List a recurring series' materialized occurrences.
- * Backed by `GET /events/:id/occurrences`.
- */
-export async function getSeriesOccurrences(
-  id: string
-): Promise<{ data: SeriesOccurrencesResponse | null; error: ApiError | null }> {
-  return apiCall<SeriesOccurrencesResponse>(
-    backendClient.get(`/events/${id}/occurrences`)
-  );
-}
-
-/**
- * Detach one occurrence from its series so a later whole-series edit never
- * overwrites it ("this occurrence" edit scope).
- * Backed by `POST /events/:id/detach-from-series`.
- */
-export async function detachOccurrence(
-  id: string
-): Promise<{ data: { id: string; seriesDetached: boolean } | null; error: ApiError | null }> {
-  return apiCall<{ id: string; seriesDetached: boolean }>(
-    backendClient.post(`/events/${id}/detach-from-series`)
-  );
 }
 
 /**

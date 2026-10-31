@@ -6,7 +6,7 @@ describe('public event lists: upcoming vs past', () => {
     event: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
     space: { findUnique: jest.fn(async () => ({ id: 'sp-1', visibility: 'PUBLIC', status: 'ACTIVE' })) },
   };
-  const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   (svc as any).isSpaceInsider = async () => false;
   const lastQuery = () => prisma.event.findMany.mock.calls.at(-1)[0];
 
@@ -45,7 +45,7 @@ describe('public event lists: upcoming vs past', () => {
       { id: 'e2', ticketTypes: [], childEvents: [], space: space(false) },
     ]);
     const planConfig = { getEffectiveLimits: () => ({ hasRemoveBranding: true }) };
-    const branded = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any, {} as any);
+    const branded = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any);
     (branded as any).isSpaceInsider = async () => false;
     const { data } = await branded.getEvents({});
     expect(data.map((e: any) => e.customDomain)).toEqual(['fest.example.org', null]);
