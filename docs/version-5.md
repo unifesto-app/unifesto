@@ -1058,3 +1058,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · S60 partner tracking links and short links removed (backend, web console, mobile); UTM attribution unchanged; tables and the Caddy /l/* block go in a later contract migration (#499)
 - **2026-11-01** · S58 recurring event series removed across backend, web console, Apex, mobile and site copy; recurrenceRule still accepted for app 4.0.5; columns drop in a later contract migration (#500)
 - **2026-11-01** · Unifesto Huddle sessions removed (backend, web, Apex, mobile, LiveKit); tables and payouts read side kept (#501)
+- **2026-11-01** · Q29 instant spaces: space and event requests go live at once under the Unverified badge (payouts still need a verified bank account); PENDING spaces migrated to ACTIVE, waiting requests go live by a one-shot launch sweep that resolves their Assist cases; "Request a Space" is now "Start a Space" on web and mobile (#503)
