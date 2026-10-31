@@ -2,7 +2,6 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { Appearance, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import { colors as darkColors, lightColors } from '../theme/colors';
 import { darkTokens, lightTokens, type Tokens } from '../theme/tokens';
 
 /** What the user picked in Appearance. `system` follows the OS setting. */
@@ -16,8 +15,6 @@ interface ThemeContextType {
   activeTheme: ActiveTheme;
   isDark: boolean;
   setTheme: (theme: ThemePreference) => void;
-  /** Legacy palette — kept for screens not yet migrated to `tokens`. */
-  colors: typeof darkColors;
   /** Semantic tokens — use these in new/migrated code (src/components/ui). */
   tokens: Tokens;
 }
@@ -37,7 +34,6 @@ const ThemeContext = createContext<ThemeContextType>({
   activeTheme: 'dark',
   isDark: true,
   setTheme: () => {},
-  colors: darkColors,
   tokens: darkTokens,
 });
 
@@ -80,7 +76,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       activeTheme,
       isDark,
       setTheme,
-      colors: isDark ? darkColors : lightColors,
       tokens: isDark ? darkTokens : lightTokens,
     };
   }, [theme, activeTheme, setTheme]);

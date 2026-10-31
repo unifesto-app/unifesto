@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChatsCircle, Lifebuoy, Megaphone, QrCode } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import ShadeCard from '../components/ui/ShadeCard';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { FieldRow } from '../components/manage/FormFields';
@@ -16,7 +18,7 @@ import { formatTime } from '../utils/eventFormat';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -40,7 +42,8 @@ export default function EventDayScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {h.error ? (
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{h.error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
@@ -84,20 +87,26 @@ export default function EventDayScreen() {
       <Text style={[styles.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
         {e.title}
       </Text>
-      <Text style={[styles.meta, { color: live ? c.success : c.muted }]}>
-        {live ? 'Live now' : 'Today'} · {formatTime(new Date(e.startDateTime))} to {formatTime(new Date(e.endDateTime))}
-        {day.updatedAt ? <Text style={{ color: c.muted }}>{` · updated ${formatTime(day.updatedAt)}`}</Text> : null}
-      </Text>
+      <View style={styles.metaRow}>
+        {live ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
+        <Text style={[styles.meta, { color: live ? c.mint : c.muted }]}>
+          {live ? 'Live now' : 'Today'}
+          <Text style={{ color: c.muted }}>
+            {` · ${formatTime(new Date(e.startDateTime))} to ${formatTime(new Date(e.endDateTime))}`}
+            {day.updatedAt ? ` · updated ${formatTime(day.updatedAt)}` : ''}
+          </Text>
+        </Text>
+      </View>
 
-      {/* Check-in */}
-      <View style={[styles.card, { backgroundColor: c.raised, marginTop: spacing[6] }]}>
-        <Text style={[styles.cardTitle, { color: c.muted }]}>Checked in</Text>
-        <Text style={[styles.big, { color: c.text }]} accessibilityLabel={`${inNow} of ${total} checked in`}>
+      {/* Check-in: the screen's hero, on the door's mint shade. */}
+      <ShadeCard tone="mint" style={{ marginTop: spacing[6] }}>
+        <Text style={[styles.cardTitle, { color: c.soft }]}>Checked in</Text>
+        <Text style={[styles.big, { color: c.mint }]} accessibilityLabel={`${inNow} of ${total} checked in`}>
           {inNow.toLocaleString('en-IN')}
           <Text style={[styles.of, { color: c.muted }]}>{` of ${total.toLocaleString('en-IN')}`}</Text>
         </Text>
         <View style={[styles.track, { backgroundColor: c.tint }]}>
-          <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.primary }]} />
+          <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.mint }]} />
         </View>
         <Text style={[styles.small, { color: c.soft }]}>
           {Math.round(progress * 100)}% in · {(stats?.remaining ?? 0).toLocaleString('en-IN')} to go
@@ -130,18 +139,19 @@ export default function EventDayScreen() {
             ))}
           </View>
         ) : null}
-      </View>
+      </ShadeCard>
 
-      {/* Money today */}
+      {/* Money today: a plain card, the figure in ivory. */}
       {day.today ? (
         <Pressable
           onPress={() => router.push({ pathname: `/manage/event/${e.id}/transactions`, params: { slug: e.slug, spaceId: e.spaceId } })}
           accessibilityRole="button"
           accessibilityLabel={`Collected today ${inr(day.today.collected)}, ${day.today.payments} payments. Opens transactions`}
-          style={({ pressed }) => [styles.card, { backgroundColor: c.raised, marginTop: spacing[4], opacity: pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.card, { marginTop: spacing[4], transform: [{ scale: pressed ? 0.985 : 1 }] }]}
         >
+          <CardBackdrop shape={styles.card} />
           <Text style={[styles.cardTitle, { color: c.muted }]}>Collected today</Text>
-          <Text style={[styles.big, { color: c.text }]}>{inr(day.today.collected)}</Text>
+          <Text style={[styles.big, { color: c.ivory }]}>{inr(day.today.collected)}</Text>
           <Text style={[styles.small, { color: c.soft }]}>
             {day.today.payments} {day.today.payments === 1 ? 'payment' : 'payments'} since midnight
           </Text>
@@ -218,8 +228,10 @@ export default function EventDayScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  title: { fontSize: typography.fontSize.xl, lineHeight: 30, ...cosmosFont.display },
-  meta: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   cardTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   big: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },

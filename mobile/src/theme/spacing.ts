@@ -59,18 +59,4 @@ export const shadows = {
     shadowRadius: 8,
     elevation: 5,
   },
-  xl: {
-    shadowColor: '#3491ff',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  glow: {
-    shadowColor: '#3491ff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 10,
-  },
 };

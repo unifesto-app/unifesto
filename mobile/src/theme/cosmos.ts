@@ -1,7 +1,7 @@
-// Unifesto Horizon. Theme locked 29 Oct 2026; the spec is marketing/brand-2026/guidelines.html.
-// The 2026 web brand (websites/web/src/app/globals.css),
-// ported for the login, splash and Home. Black ground, light type, one silver accent; the
-// light set flips the same roles exactly like the web's [data-theme="light"].
+// Unifesto Horizon. Theme locked 29 Oct 2026; the spec is marketing/brand-2026/guidelines.html,
+// the mobile rules are mobile/DESIGN.md. Night first: black ground, silver type, monochrome
+// chrome. Day keeps the same roles on paper with white cards. Colour lives only inside
+// cards, one accent per kind of work (mint, sky, ivory).
 import React, { createContext, useContext, useMemo } from 'react';
 import type { TextStyle } from 'react-native';
 import { useTokens } from '../context/ThemeContext';
@@ -29,8 +29,20 @@ const dark = {
   tint: 'rgba(255, 255, 255, 0.06)',
   /** Cover placeholder when an image is missing: the web's night-3 field. */
   fallback: ['#1c1c20', '#0a0a0b'] as [string, string],
-  /** Green for done states (Checked in); the light value holds 4.5:1 on its own tinted chip. */
+  /** Done states (Checked in, Paid, Sent): mint. */
   success: '#90e4c1',
+  // Card accents, inside cards only (text, figures, progress, dots, glyphs);
+  // never on borders, nav, links or buttons.
+  /** Live and check-in. */
+  mint: '#90e4c1',
+  /** Tickets, events, seats. */
+  sky: '#90d5ff',
+  /** Money: collected, payouts, refunds, earnings. */
+  ivory: '#f7f0e0',
+  /** Horizon blue: the sky's glow. Decorative light only, never text. */
+  horizon: '#4d8dff',
+  /** Light sources (the horizon line and its bloom): white by night, pale blue by day. */
+  bloom: '255, 255, 255',
   scheme: 'dark' as 'dark' | 'light',
 };
 
@@ -56,7 +68,30 @@ const light: typeof dark = {
   fallback: ['#e4e4e7', '#f4f4f5'],
   /** Deep mint (the #90e4c1 family): 5.7:1 on cards. */
   success: '#15745a',
+  // The day text shades: the night accents are ~1.3:1 on white.
+  mint: '#15745a',
+  sky: '#0369a1',
+  ivory: '#7a5a1e',
+  horizon: '#8fb4ff',
+  bloom: '143, 180, 255',
   scheme: 'light',
+};
+
+/** Shade card colours (guidelines §08): s1 the accent, s2 its deep partner, s3 the base. */
+export type ShadeTone = 'sky' | 'mint' | 'ivory' | 'blue';
+export const SHADES: Record<'dark' | 'light', Record<ShadeTone, { s1: string; s2: string; s3: string }>> = {
+  dark: {
+    sky: { s1: '#90d5ff', s2: '#2f6bff', s3: '#070d1c' },
+    mint: { s1: '#90e4c1', s2: '#1f7a5c', s3: '#061410' },
+    ivory: { s1: '#f7f0e0', s2: '#9a7444', s3: '#140f08' },
+    blue: { s1: '#8fb4ff', s2: '#0062ff', s3: '#050a1f' },
+  },
+  light: {
+    sky: { s1: '#90d5ff', s2: '#8fb4ff', s3: '#e9f3ff' },
+    mint: { s1: '#90e4c1', s2: '#b7ead3', s3: '#eef9f3' },
+    ivory: { s1: '#f7f0e0', s2: '#e8d3ad', s3: '#fbf7ee' },
+    blue: { s1: '#b9cfff', s2: '#8fb4ff', s3: '#eef3ff' },
+  },
 };
 
 export type Cosmos = typeof dark;

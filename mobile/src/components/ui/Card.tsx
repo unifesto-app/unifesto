@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
-import { borderRadius, spacing } from '../../theme/spacing';
-import { useCosmos } from '../../theme/cosmos';
+import { spacing } from '../../theme/spacing';
+import { cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 
 export interface CardProps extends ViewProps {
   /** `surface` = default card; `elevated` = sits on top of another card. */
@@ -16,7 +16,7 @@ export function Card({ tone = 'surface', padded = true, onPress, style, children
   const base: ViewStyle = {
     // Borderless: the fill lifts the card off the ground.
     backgroundColor: tone === 'surface' ? c.raised : c.tint,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosCardRadius,
     padding: padded ? spacing[4] : 0,
     overflow: 'hidden',
   };

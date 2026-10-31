@@ -1,208 +1,144 @@
 ---
-name: Unifesto (Mobile)
-description: Student-native event app on a true-black canvas — discover, ticket, pay, and connect, with the Unifesto blue as the one glowing accent.
+name: Unifesto Horizon (Mobile)
+description: The Unifesto app in the Horizon theme. Night first, thin lines, monochrome chrome, and colour only inside cards, on the work it describes.
+theme: Unifesto Horizon, locked 29 Oct 2026. Spec marketing/brand-2026/guidelines.html; tokens src/theme/cosmos.ts.
 colors:
-  primary: "#3491ff"
-  primary-bright: "#0062ff"
-  background: "#000000"
-  background-secondary: "#0a0a0a"
-  card: "#0a0a0a"
-  text: "#ffffff"
-  text-secondary: "#64748b"
-  text-muted: "#94a3b8"
-  border: "#1a1a1a"
-  success: "#10b981"
-  warning: "#f59e0b"
-  error: "#ef4444"
-  brand-gradient-start: "#3491ff"
-  brand-gradient-end: "#0062ff"
+  night: "#000000"
+  card: "#141416"
+  type: "#ececee"
+  silver: "#e8e8ea"
+  soft: "#b4b4ba"
+  muted: "#8a8a90"
+  paper: "#f2f2f5"
+  white-card: "#ffffff"
+  ink: "#111113"
+  mint: "#90e4c1 night / #15745a day"
+  sky: "#90d5ff night / #0369a1 day"
+  ivory: "#f7f0e0 night / #7a5a1e day"
+  horizon-blue: "#4d8dff night / #8fb4ff day (light only, never text)"
+  crimson: "#ec2f58 night / #be123c day"
+  amber: "#f59e0b night / #92400e day"
 typography:
-  display:
-    fontFamily: "DMSans-Medium"
-    fontSize: "2rem"
-    fontWeight: 500
-    lineHeight: 1.2
-    letterSpacing: "-1.1px"
-  headline:
-    fontFamily: "DMSans-Medium"
-    fontSize: "1.5rem"
-    fontWeight: 500
-    lineHeight: 1.25
-    letterSpacing: "-0.6px"
-  title:
-    fontFamily: "DMSans-Medium"
-    fontSize: "1.25rem"
-    fontWeight: 500
-    lineHeight: 1.3
-    letterSpacing: "-0.3px"
-  body:
-    fontFamily: "HankenGrotesk"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "normal"
-  label:
-    fontFamily: "HankenGrotesk-SemiBold"
-    fontSize: "0.6875rem"
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: "normal"
-  figure:
-    fontFamily: "DMSans-SemiBold"
-    fontSize: "1rem"
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: "normal"
+  display: "DMSans-Medium 500, cosmosFont.display, displayTracking(size)"
+  text: "HankenGrotesk 400 / SemiBold 600, cosmosFont.body / cosmosFont.strong"
+  figure: "DMSans-SemiBold, cosmosFont.figure (Hanken has no ₹)"
 rounded:
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  xl: "20px"
-  "2xl": "24px"
-  full: "9999px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.background}"
-    rounded: "{rounded.full}"
-    padding: "12px 16px"
-  button-secondary:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.full}"
-    padding: "12px 16px"
-  card:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.lg}"
-    padding: "16px"
-  input:
-    backgroundColor: "{colors.background-secondary}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.md}"
-    padding: "12px 16px"
+  control: "14 (cosmosRadius): buttons, fields, segments"
+  card: "20 (cosmosCardRadius): cards, covers, shade cards"
+  inner: "12 (borderRadius.md): thumbnails, logos inside a card"
 ---
 
-# Design System: Unifesto (Mobile)
+# Unifesto Horizon, mobile
 
-## 1. Overview
+The app wears the same theme as unifesto.app, the console and Apex. This file is the rulebook for
+every screen and component in `mobile/`. The theme is locked: layout and content changes reuse the
+tokens and components named here. A new colour, shape, light effect, font or icon needs the
+owner's approval first.
 
-**Creative North Star: "Neon on Black"**
+## 1. The six rules
 
-The Unifesto app is a student's pocket to the whole fest circuit — discover events, hold tickets and QR codes, top up a wallet, refer friends, chat, and pay with Razorpay. It lives on a true-black `#000000` canvas that reads as premium and AI-native, letting the Unifesto blue gradient glow like neon against the dark. Where the dashboards work in daylight, the app performs at night: high-contrast white type, a single electric accent, and OLED-friendly black that saves battery and looks expensive.
+1. **Night first.** Black ground, silver type. By day the same roles sit on paper `#f2f2f5` with
+   white cards, and light turns pale blue. Day is translated, not inverted.
+2. **Thin lines only.** The sky is starlight, two white orbit hairlines, the horizon line and a soft
+   Horizon-blue glow. Never planets, bars, glows on buttons or coloured lines.
+3. **Colour lives in cards.** Mint, sky and ivory sit inside cards, on the work they describe:
+   text, figures, progress fills, dots and glyphs. Navigation, links, buttons, borders and the
+   page stay monochrome.
+4. **Colour blends.** Where a card carries its accent as a shape (a shade card), the shapes melt
+   into a deep base. No hard edges, no outlines.
+5. **Grain on everything.** The sky carries film grain (12% night, 9% day); shade cards carry more.
+6. **Statuses are plain text.** Never pills or tinted chips: "✓ Checked in", "Sold out",
+   "Hackathon · Hyderabad".
 
-This is a **native** app, not a website in a shell. Interactions are one-handed and fast — thumb-reachable actions, large touch targets, gestures that feel like iOS and Android rather than a ported web page. Content leads with imagery (event posters, banners) floating on the black; blue is spent carefully on the primary action, the live indicator, and the moments that matter. It is deliberately **not** a generic college app, **not** a cluttered Eventbrite-style feed, and **not** a corporate ticketing utility. The ticket is sacred: a student pulls it up at a gate, on a bad connection, in a hurry — so it must be legible, resilient, and instantly scannable.
+## 2. Ground
 
-**Key Characteristics:**
-- True-black `#000000` OLED canvas; high-contrast white type
-- Unifesto blue gradient as the one glowing accent
-- Mobile-first, one-handed, native gestures and large touch targets
-- Image-led content floating on black; blue spent sparingly
-- Resilient by design — the ticket/QR works even on poor connectivity
+- Every screen sits on `CosmosScreen` / `CosmosList` or draws `<CosmosBackdrop horizon={false} />`
+  itself. Never a custom page background, gradient or image behind a whole screen.
+- `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback. Scrolling
+  screens use `horizon={false}`: stars, orbits and grain only. Banner-lit pages pass `hue`.
 
-## 2. Colors
+## 3. Colour
 
-A dark, high-contrast palette: pure black as the stage, white as the voice, and the Unifesto blue gradient as the single point of light.
+Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
 
-### Primary
-- **Unifesto Blue** (`#3491ff`): The glowing accent. Primary CTAs, live/selected states, links, the gradient's bright end.
-- **Deep Blue** (`#0062ff`): The gradient's deep end (`#3491ff → #0062ff`, 135°) on primary buttons and hero moments.
+| Token | Use |
+|---|---|
+| `c.bg` | the page (the backdrop paints it) |
+| `c.raised` / `CardBackdrop` | borderless cards |
+| `c.text` | titles, values, primary glyphs |
+| `c.soft` | secondary lines inside cards |
+| `c.muted` | labels, meta, captions, chevrons, tags |
+| `c.primary` / `c.primaryFg` | the primary button (silver on night, ink on day) |
+| `c.border` | hairline dividers inside cards (`StyleSheet.hairlineWidth`) |
+| `c.tint` | pressed rows, progress tracks |
+| `c.mint` | **live and check-in**: checked-in counts, live dots, scan success, "Live now" |
+| `c.sky` | **tickets and events**: ticket tiers, seats left, registrations, pass details |
+| `c.ivory` | **money**: collected, revenue, payouts, refunds, earnings, wallet |
+| `c.success` | done states (Paid, Sent, Reviewed): mint |
+| `c.warn` | amber: needs attention, almost full, pending |
+| `c.danger` | crimson: errors, destructive actions, failed |
 
-### Neutral
-- **True Black** (`#000000`): The app canvas. Screen background everywhere.
-- **Elevated Black** (`#0a0a0a`): Cards, sheets, inputs — one step off the canvas to signal a surface.
-- **White** (`#ffffff`): Primary text, icons, the highest-priority content.
-- **Muted** (`#94a3b8`): Secondary text, captions, metadata.
-- **Subtle** (`#64748b`): Tertiary text, disabled labels, placeholder.
-- **Hairline** (`#1a1a1a`): Borders and dividers on black.
+- One accent per card, picked by the card's job. A ticket card is sky even when it shows a price.
+- Accents never colour a card's border, a button, a link, a tab, a header or a whole row.
+- `c.horizon` is light, not ink: only the sky and shade cards use it.
 
-### Status
-- **Success** (`#10b981`): Paid, confirmed, checked-in.
-- **Warning** (`#f59e0b`): Pending, low balance, expiring soon.
-- **Error** (`#ef4444`): Failed payment, invalid ticket, hard errors.
+## 4. Type
 
-### Named Rules
-**The One Point of Light Rule.** On a black screen the blue accent is precious. Spend it on the primary action, the live indicator, and selection — not on decoration. Its glow only works if it's rare.
+- `cosmosFont.display` (DM Sans 500) **only** for: the screen's own title when the screen draws one,
+  the Home headline, hero titles (event, space, session names at the top of their page), section
+  titles of 20pt and up, and empty-state headlines. Add `letterSpacing: displayTracking(size)` from
+  24pt up.
+- `cosmosFont.strong` (Hanken SemiBold) for names, card titles, row labels, statuses, buttons and
+  anything under 17pt. People's names and avatar initials are never display.
+- `cosmosFont.body` for reading text and meta. `cosmosFont.figure` for counts, prices, dates, codes.
+- Sentence case everywhere. No caps labels, no wide letter-spaced eyebrows. Only initials and AM/PM
+  stay in capitals.
+- Sizes come from `typography.fontSize`; hero figures may go to 32–40.
 
-**The Contrast-on-Black Rule.** Every text and icon meets WCAG AA against `#000000`. Muted grays are for secondary content only; nothing critical relies on low-contrast gray.
+## 5. Surfaces
 
-## 3. Typography
+- **Cards are borderless.** `CardBackdrop` (first child, no own background) or `c.raised`. Radius
+  `cosmosCardRadius` (20). No outline borders, no shadows.
+- **Space instead of boxes inside a card.** Rows, stats and notes inside a card sit on the card,
+  divided by a hairline (`c.border`) or 12–16pt of space. No tinted tiles, boxes or cards nested in
+  a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
+- **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
+  Hanken SemiBold, sentence case.
+- **Stats** are a figure over a muted label. `ManageStats` draws a row of them as one card divided
+  by hairlines.
+- **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,
+  in its job's tone: `sky` a ticket or pass, `mint` check-in and the door, `ivory` money, `blue`
+  hackathons and the Space. The key figure sits on it large, in the accent. Content sits straight
+  on the shade; no glass inside.
+- **Glass** only on floating chrome (header buttons, segmented tabs over content, sheets, alerts,
+  notices, bottom bars, camera overlays). Frosted and untinted. Never on content cards or fields.
 
-**Headline Font:** DM Sans Medium (500), set in code as `cosmosFont.display`
-**Text Font:** Hanken Grotesk, Regular (400) and SemiBold (600), as `cosmosFont.body` / `cosmosFont.strong`
-**Figures:** DM Sans SemiBold (600), as `cosmosFont.figure`, for prices, counts, dates and codes. Hanken has no ₹ glyph.
-**Logo:** the wordmark is artwork (components/UnifestoAppWordmark.tsx), not a font.
+## 6. Components
 
-**Character:** DM Sans is a friendly geometric grotesk at normal width: round O, single-storey g, a 0 that never reads as O. One weight (500) carries every headline; size and tracking do the rest. Hanken Grotesk carries everything people read or tap.
+- **Buttons:** `Button`. Primary (silver / ink fill) is the one main action on a screen; secondary is
+  a hairline outline; ghost is plain text. Radius 14. Never an accent colour.
+- **Statuses:** `Badge` writes a status as text (done states get a tick). Inline statuses follow
+  the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
+- **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
+  Glyphs take `c.text`, `c.muted` or the card's accent.
+- **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
+- **Alerts:** `AppAlert`, never `Alert.alert`.
+- **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.
+- **Empty states:** one display headline (20–24pt), one muted line, at most one button.
 
-### Hierarchy
-- **Display** (DM Sans 500, 32pt, 1.2, `displayTracking(32)`): Home headline.
-- **Headline** (DM Sans 500, 24–30pt, 1.2, `displayTracking(size)`): Event, space and session titles; registration step titles.
-- **Title** (DM Sans 500, 17–22pt, 1.25, -0.3): Section titles, sheet headers, names on profile cards.
-- **Body** (Hanken 400, 15pt, 1.5): Descriptions and reading content.
-- **Label** (Hanken 600, 11–13pt, 1.4): Tab labels, captions, avatar initials, anything under 14pt.
+## 7. Spacing and radius
 
-### Named Rules
-**The Tightening Rule.** Headline tracking tightens as size grows: `displayTracking(size)` in cosmos.ts, the same rule as the web's `max(calc(0.9px - 0.062em), -0.04em)`. About -1.1 at 32pt, -0.6 at 24pt, near zero at 14pt, never tighter than -4%.
+- Screen gutter `spacing[5]`. `spacing[4]` between cards, `spacing[8]` before a new section.
+- Inside a card: padding `spacing[4]`–`spacing[5]`, `spacing[3]` between lines of a group.
+- Radius: cards 20, controls 14, inner images 12, circles stay round. Never square corners.
 
-**The Small-Text Rule.** Nothing under 14pt uses the headline font. Small text is Hanken SemiBold.
+## 8. The ticket
 
-## 4. Elevation
+The pass is the app's most important surface: legible at a gate, offline, in a hurry. The QR sits on
+a plain white panel with its quiet zone, never under grain, tint or glass. Event name, holder, tier
+and gate details only.
 
-Depth on black is built by **tonal layering**, not big shadows — a surface steps up from `#000000` to `#0a0a0a` to read as "elevated." Cards, sheets, and inputs sit on this slightly-lighter black with hairline `#1a1a1a` borders. The one place light truly "lifts" is the brand gradient: a soft blue glow beneath primary buttons and the live indicator (`shadowColor: #3491ff`), so the accent feels energised rather than flat.
+## 9. Copy
 
-### Shadow Vocabulary
-- **Elevated Surface**: tonal shift to `#0a0a0a` + 1px `#1a1a1a` border. The default "this is a card/sheet" treatment.
-- **Blue Glow** (`shadowColor: #3491ff, offset 0 8, opacity 0.2, radius 16`): Under primary CTAs and live/selected elements only. Makes the accent glow.
-
-### Named Rules
-**The Tonal-Depth Rule.** On black, elevation is a lighter shade of black plus a hairline border — not a heavy drop shadow. The only real glow belongs to the blue accent.
-
-## 5. Components
-
-### Buttons
-- **Shape:** Pill / fully rounded (`rounded.full`).
-- **Primary:** Blue gradient (`#3491ff → #0062ff`, 135°), black text, ≥44px min height, `12px 16px` padding, soft blue glow beneath. The one hero action per screen.
-- **Secondary:** Elevated-black `#0a0a0a` fill, white text, hairline border — "Back", "Share", secondary flows.
-- **Pressed:** Subtle scale-down / opacity dip (native touch feedback), not a color flip.
-
-### Cards / Containers
-- **Corner Style:** 16px radius (`rounded.lg`); larger sheets use 20–24px.
-- **Background:** Elevated black `#0a0a0a` on the true-black canvas.
-- **Elevation:** Tonal step + 1px `#1a1a1a` border (see Elevation). Event cards lead with the poster image.
-- **Internal Padding:** 16px (`spacing.md`).
-
-### Inputs / Fields
-- **Style:** `#0a0a0a` background, hairline `#1a1a1a` border, 12px radius, white text, `#64748b` placeholder, ≥44px tall for thumbs.
-- **Focus:** Border shifts to blue `#3491ff`.
-- **Error:** Border and helper text shift to `#ef4444`.
-
-### Navigation
-- **Style:** Bottom tab bar on black — icon + 0.6875rem label. Active tab in blue `#3491ff`, inactive in muted `#94a3b8`. Large, thumb-reachable targets.
-
-### Ticket / QR (signature, sacred)
-- The ticket is the app's most important surface. High-contrast QR on a light-enough panel to scan reliably at a gate; event name in Display, essential details only. Must render and remain legible **offline / on poor connectivity** — cache it, never gate it behind a spinner. Treat it as the one screen that can never fail.
-
-## 6. Do's and Don'ts
-
-### Do:
-- **Do** keep the canvas true black `#000000` — it's premium, OLED-friendly, and the whole point.
-- **Do** spend the blue accent sparingly: primary action, live indicator, selection.
-- **Do** meet WCAG AA contrast against black for every text and icon; reserve grays for secondary content.
-- **Do** design one-handed: large touch targets, thumb-reachable actions, native gestures.
-- **Do** lead with imagery (posters, banners) floating on the black.
-- **Do** make the ticket/QR resilient — legible offline, cached, instantly scannable; treat it as sacred.
-
-### Don't:
-- **Don't** ship a generic college app or a cluttered Eventbrite-style feed.
-- **Don't** feel like a ported website — this is native; use native motion and gestures, not web patterns.
-- **Don't** overuse blue; if the whole screen glows, nothing does.
-- **Don't** rely on low-contrast gray for anything critical.
-- **Don't** add a third type family: DM Sans for headlines and figures, Hanken Grotesk for everything else.
-- **Don't** put the ticket/QR behind a required network call or a spinner it can get stuck on.
+Organiser-first and plain. First person for the user's own things ("My tickets"). No em dashes in
+UI copy. Errors say what happened and what to do.
