@@ -90,6 +90,14 @@ export class BlogController {
     return this.writer.start(id);
   }
 
+  /** ADMIN — stop a question being written; it is marked FAILED ("stopped") and nothing publishes. */
+  @Post('questions/:id/stop')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  stopQuestion(@Param('id') id: string) {
+    return this.writer.stop(id);
+  }
+
   /** ADMIN — weekly Search Console Pages CSV; queues 10 questions related to posts that get clicks. */
   @Post('questions/search-console')
   @UseGuards(JwtAuthGuard, RolesGuard)

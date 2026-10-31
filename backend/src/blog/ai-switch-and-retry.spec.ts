@@ -65,6 +65,27 @@ describe('Blog question start', () => {
   });
 });
 
+describe('Blog question stop', () => {
+  const build = (count: number) => {
+    const updateMany = jest.fn(async () => ({ count }));
+    const prisma: any = { blogQuestion: { updateMany, findUnique: jest.fn(async () => ({ id: 'q1' })) } };
+    return { updateMany, svc: new BlogWriterService(prisma, {} as any, {} as any) };
+  };
+
+  it('marks only a WRITING question failed as stopped', async () => {
+    const { svc, updateMany } = build(1);
+    await svc.stop('q1');
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'q1', status: BlogQuestionStatus.WRITING },
+      data: { status: BlogQuestionStatus.FAILED, failReason: 'stopped' },
+    });
+  });
+
+  it('404s when the question is not being written', async () => {
+    await expect(build(0).svc.stop('q1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('Blog writer fix rounds', () => {
   const SAMPLE = readFileSync(join(__dirname, '__fixtures__/sample-post.md'), 'utf8');
   const urls = [...splitSources(SAMPLE)[1].matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
@@ -106,13 +127,27 @@ describe('Blog writer fix rounds', () => {
           { slug: 'unifesto-vs-google-forms', title: 'Unifesto vs Google Forms', excerpt: '' },
         ]),
       },
-      blogQuestion: { update: jest.fn(async () => ({})) },
+      blogQuestion: {
+        update: jest.fn(async () => ({})),
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        count: jest.fn(async () => 1),
+      },
     };
     const blog: any = { create: jest.fn(async (d: any) => ({ id: 'p1', slug: d.slug })) };
     const svc = new BlogWriterService(prisma, { run } as any, blog);
     const q = { id: 'q1', question: 'How do I run a hackathon?', intent: 'how-to', angle: null, appLink: '/sprint' };
-    return { writerTurns, go: () => (svc as any).run(q) };
+    return { writerTurns, prisma, blog, go: () => (svc as any).run(q) };
   };
+
+  it('publishes nothing when stopped while writing', async () => {
+    const { go, prisma, blog, writerTurns } = build([draft(urls)]);
+    // Still claimed when the round starts, stopped by the time the post is ready.
+    prisma.blogQuestion.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    await expect(go()).resolves.toEqual({ status: 'skipped', reason: 'stopped' });
+    expect(writerTurns).toHaveLength(1);
+    expect(blog.create).not.toHaveBeenCalled();
+    expect(prisma.blogQuestion.updateMany).not.toHaveBeenCalled();
+  });
 
   it('retries a cut-off draft, sends a failed gate back to the writer and publishes the fix', async () => {
     const { go, writerTurns } = build([

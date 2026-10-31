@@ -46,6 +46,10 @@ const FIX_ROUNDS = 2;
 /** A failed step's reason for the queue, e.g. "error (stop_reason max_tokens)". */
 const why = (r: Extract<AiResult, { ok: false }>) => (r.detail ? `${r.reason} (${r.detail})` : r.reason);
 
+/** The row as this run claimed it: Stop, a re-Start or the stale reset all change updatedAt. */
+const claimOf = (q: BlogQuestion) => ({ id: q.id, status: BlogQuestionStatus.WRITING, updatedAt: q.updatedAt });
+class Stopped extends Error {}
+
 export type GenerateResult =
   | { status: 'published'; slug: string }
   | { status: 'failed'; question: string; reason: string }
@@ -98,7 +102,8 @@ export class BlogWriterService {
       data: { status: BlogQuestionStatus.WRITING },
     });
     if (!claimed.count) return { status: 'skipped', reason: 'another run took it' };
-    return this.run(q);
+    // Re-read for the claim's updatedAt, which run() uses to tell it was stopped.
+    return this.run(await this.prisma.blogQuestion.findUniqueOrThrow({ where: { id: q.id } }));
   }
 
   /**
@@ -120,19 +125,39 @@ export class BlogWriterService {
     return q;
   }
 
+  /**
+   * ADMIN "Stop": mark a WRITING question FAILED ("stopped"). The run finishes
+   * the AI call it is in, then sees it no longer holds the claim and publishes nothing.
+   */
+  async stop(id: string) {
+    const { count } = await this.prisma.blogQuestion.updateMany({
+      where: { id, status: BlogQuestionStatus.WRITING },
+      data: { status: BlogQuestionStatus.FAILED, failReason: 'stopped' },
+    });
+    if (!count) throw new NotFoundException('No question is being written with that id');
+    return this.prisma.blogQuestion.findUnique({ where: { id } });
+  }
+
   /** Write a claimed (WRITING) question; a failure marks it FAILED with the reason. */
   private async run(q: BlogQuestion): Promise<GenerateResult> {
     try {
       const slug = await this.write(q);
       return { status: 'published', slug };
     } catch (err) {
+      if (err instanceof Stopped) return { status: 'skipped', reason: 'stopped' };
       const reason = (err as Error).message.slice(0, 500);
-      await this.prisma.blogQuestion.update({
-        where: { id: q.id },
+      // Only while this run holds the claim: after a Stop and a new Start, the row is the new run's.
+      await this.prisma.blogQuestion.updateMany({
+        where: claimOf(q),
         data: { status: BlogQuestionStatus.FAILED, failReason: reason },
       });
       return { status: 'failed', question: q.question, reason };
     }
+  }
+
+  /** Throws Stopped once an admin stopped this run, or another run took the question. */
+  private async holdClaim(q: BlogQuestion) {
+    if (!(await this.prisma.blogQuestion.count({ where: claimOf(q) }))) throw new Stopped();
   }
 
   /** Oldest queued question off cooldown; null if all are on cooldown, undefined if none queued. */
@@ -199,6 +224,7 @@ export class BlogWriterService {
     let draft: Draft | undefined;
     let problem = '';
     for (let round = 0; round <= FIX_ROUNDS; round++) {
+      await this.holdClaim(q);
       // Low effort: the research is done, and medium-effort thinking ran past max_tokens.
       const draftRun = await this.ai.run('blog_writer', {
         system: WRITER_SYSTEM,
@@ -252,6 +278,7 @@ export class BlogWriterService {
       );
     }
     if (problem || !draft) throw new Error(problem);
+    await this.holdClaim(q);
 
     // g. Publish. The OG card at /blog/<slug>/opengraph-image is the featured image.
     const post = await this.blog.create(
