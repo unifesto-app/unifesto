@@ -1,10 +1,4 @@
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-  IntersectionType,
-  PartialType,
-  PickType,
-} from '@nestjs/swagger';
+import { IntersectionType, PartialType, PickType } from '@nestjs/mapped-types';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -41,21 +35,13 @@ export enum WhatsAppBroadcastAudience {
  * is replaced per-recipient with that user's name (see the service).
  */
 export class WhatsAppBroadcastDto {
-  @ApiProperty({ enum: WhatsAppBroadcastAudience })
   @IsEnum(WhatsAppBroadcastAudience)
   audience: WhatsAppBroadcastAudience;
 
-  @ApiPropertyOptional({
-    description: 'Required when audience=SPACE — the Space whose members receive the blast.',
-  })
   @ValidateIf((o) => o.audience === WhatsAppBroadcastAudience.SPACE)
   @IsUUID()
   spaceId?: string;
 
-  @ApiPropertyOptional({
-    type: [String],
-    description: 'Required when audience=USER — the users to message.',
-  })
   @ValidateIf((o) => o.audience === WhatsAppBroadcastAudience.USER)
   @IsArray()
   @ArrayNotEmpty()
@@ -63,21 +49,11 @@ export class WhatsAppBroadcastDto {
   @IsUUID('all', { each: true })
   userIds?: string[];
 
-  @ApiProperty({
-    example: 'unifesto_confirm_spot',
-    description: 'Name of the pre-approved Meta template to send.',
-  })
   @IsString()
   @MinLength(1)
   @MaxLength(512)
   templateName: string;
 
-  @ApiPropertyOptional({
-    type: [String],
-    example: ['{name}', 'Open Source Sprint'],
-    description:
-      'Ordered body ({{1}}, {{2}}…) parameters. "{name}" anywhere in a value is replaced per-recipient with the user\'s name.',
-  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -85,7 +61,6 @@ export class WhatsAppBroadcastDto {
   @MaxLength(1024, { each: true })
   bodyParams?: string[];
 
-  @ApiPropertyOptional({ example: 'en', description: "Template language (defaults to 'en')." })
   @IsOptional()
   @IsString()
   @MaxLength(10)

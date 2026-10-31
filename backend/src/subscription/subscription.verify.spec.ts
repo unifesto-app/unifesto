@@ -29,8 +29,7 @@ describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
       $queryRaw: jest.fn(async () => []),
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
-    const cache = { setSpacePlan: jest.fn(), invalidateSpacePlanCache: jest.fn() };
-    const svc = new SubscriptionService(prisma, cache as any, {} as any, new PlanConfigService({} as any), rateCardTerms());
+    const svc = new SubscriptionService(prisma, {} as any, new PlanConfigService({} as any), rateCardTerms());
     (svc as any).razorpay = { orders: { fetch: jest.fn(async () => order) } };
     (svc as any).resolveSpaceBillingRecipient = jest.fn(async () => ({}));
     return { svc, prisma };

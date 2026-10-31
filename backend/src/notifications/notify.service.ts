@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { PrismaService } from '../prisma/prisma.service';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { NotificationsService } from './notifications.service';
 import { KindDef, NOTIFY_KINDS, NotifyKind, NotifyKindData } from './notify.kinds';
 import { ChannelPlan, channelsFor } from './notify.policy';
@@ -14,7 +13,6 @@ export interface NotifyResult {
   userId: string;
   push: ChannelOutcome;
   email: ChannelOutcome;
-  whatsapp: ChannelOutcome;
   plan?: ChannelPlan;
 }
 
@@ -29,7 +27,7 @@ export interface NotifyOptions {
 /**
  * One call to tell a user something (C2): picks the channels from the kind's
  * criticality and the user's prefs (notify.policy.ts), renders each through
- * the existing push / EmailService / WhatsAppService code, and dedups every
+ * the existing push / EmailService code, and dedups every
  * channel so a retry or a race (webhook + verify) never double-sends.
  *
  * Never throws; returns what happened per channel.
@@ -42,7 +40,6 @@ export class NotifyService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly email: EmailService,
-    private readonly whatsapp: WhatsAppService,
   ) {}
 
   async notify<K extends NotifyKind>(
@@ -51,7 +48,7 @@ export class NotifyService {
     data: NotifyKindData[K],
     opts: NotifyOptions = {},
   ): Promise<NotifyResult> {
-    const result: NotifyResult = { kind, userId, push: 'skipped', email: 'skipped', whatsapp: 'skipped' };
+    const result: NotifyResult = { kind, userId, push: 'skipped', email: 'skipped' };
     try {
       const def = NOTIFY_KINDS[kind] as KindDef<NotifyKindData[K]>;
       const entity = def.entity(data);
@@ -60,7 +57,7 @@ export class NotifyService {
 
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { mobileNumber: true, identities: { select: { email: true, isPrimary: true } } },
+        select: { identities: { select: { email: true, isPrimary: true } } },
       });
       if (!user) return result;
       // Primary email, else any on file (as campaigns and certificates do).
@@ -79,7 +76,6 @@ export class NotifyService {
         hasPushDevice: devices > 0,
         emailOptedOut: optedOut.has(userId),
         hasEmail: !!to,
-        hasPhone: !!user.mobileNumber,
       });
       result.plan = plan;
 
@@ -90,7 +86,7 @@ export class NotifyService {
         ...def.push(data),
         kind,
         dedupKey: key('push'),
-        urgent: def.urgent || def.criticality === 'critical',
+        urgent: def.criticality === 'critical',
         inboxOnly: def.inboxOnly,
       });
       result.push = push.sent ? 'sent' : push.failed ? 'failed' : 'skipped';
@@ -99,12 +95,6 @@ export class NotifyService {
 
       if (to && def.email && (plan.email === 'always' || (plan.email === 'if-push-fails' && result.push !== 'sent'))) {
         result.email = (await this.channel(() => def.email!(this.email, to, data, delivery('email')))) ? 'sent' : 'failed';
-      }
-      if (plan.whatsapp && def.whatsapp && user.mobileNumber) {
-        const phone = user.mobileNumber;
-        result.whatsapp = (await this.channel(() => def.whatsapp!(this.whatsapp, phone, data, delivery('whatsapp'))))
-          ? 'sent'
-          : 'failed';
       }
     } catch (err) {
       this.logger.error(`notify(${kind}, ${userId}) failed: ${err instanceof Error ? err.message : String(err)}`);

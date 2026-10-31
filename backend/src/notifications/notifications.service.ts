@@ -72,7 +72,7 @@ const NO_COLUMN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminA
 
 // Never held back by quiet hours (C4): tickets and payments someone is waiting
 // on, hosts messaging live during an event, staff alerts, support replies.
-// Critical and time-sensitive notify() kinds pass `urgent`.
+// Critical notify() kinds pass `urgent`.
 const NEVER_DEFER: ReadonlySet<NotificationCategory> = new Set([
   'registrationUpdates',
   'organiserAnnouncements',

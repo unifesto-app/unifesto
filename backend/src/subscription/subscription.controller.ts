@@ -9,12 +9,6 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
 import { TermsService } from './terms.service';
 import {
@@ -35,8 +29,6 @@ import { RoleCode, OrgPlan } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
 import { Audit } from '../audit/audit';
 
-@ApiTags('Subscription')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, CanGuard)
 @Controller('subscription')
 export class SubscriptionController {
@@ -50,24 +42,18 @@ export class SubscriptionController {
 
   @Get('space/:spaceId')
   @Can(Action.SPACE_MANAGE_BILLING)
-  @ApiOperation({ summary: "Get a space's subscription details" })
-  @ApiResponse({ status: 200, type: SubscriptionResponseDto })
   async getSpaceSubscription(@Param('spaceId') spaceId: string) {
     return this.subscriptionService.getSpaceSubscription(spaceId);
   }
 
   @Get('space/:spaceId/usage')
   @Can(Action.SPACE_MANAGE_BILLING)
-  @ApiOperation({ summary: "Get a space's subscription usage stats" })
-  @ApiResponse({ status: 200, type: SubscriptionUsageDto })
   async getSpaceUsage(@Param('spaceId') spaceId: string) {
     return this.subscriptionService.getSpaceUsage(spaceId);
   }
 
   @Post('space/:spaceId/upgrade')
   @Can(Action.SPACE_MANAGE_BILLING)
-  @ApiOperation({ summary: "Create Razorpay order to upgrade a space's plan" })
-  @ApiResponse({ status: 201 })
   async createSpaceUpgradeOrder(
     @Param('spaceId') spaceId: string,
     @Body() dto: UpgradeSubscriptionDto,
@@ -77,8 +63,6 @@ export class SubscriptionController {
 
   @Post('space/:spaceId/upgrade/verify')
   @Can(Action.SPACE_MANAGE_BILLING)
-  @ApiOperation({ summary: "Verify payment and activate a space's plan" })
-  @ApiResponse({ status: 200 })
   async verifySpaceUpgrade(
     @Param('spaceId') spaceId: string,
     @Body() dto: VerifyUpgradeDto,
@@ -88,15 +72,11 @@ export class SubscriptionController {
 
   @Post('space/:spaceId/cancel')
   @Can(Action.SPACE_MANAGE_BILLING)
-  @ApiOperation({ summary: "Cancel a space's plan (downgrade to STARTER)" })
-  @ApiResponse({ status: 200 })
   async cancelSpaceSubscription(@Param('spaceId') spaceId: string) {
     return this.subscriptionService.cancelSubscriptionForSpace(spaceId);
   }
 
   @Get('plans')
-  @ApiOperation({ summary: 'Get all available plans with pricing' })
-  @ApiResponse({ status: 200 })
   async getAllPlans() {
     return this.subscriptionService.getAllPlans();
   }
@@ -105,8 +85,6 @@ export class SubscriptionController {
 
   @Get('admin/spaces')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Get every space with its plan (admin only)' })
-  @ApiResponse({ status: 200 })
   async getAllSpaceSubscriptions(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
@@ -124,8 +102,6 @@ export class SubscriptionController {
 
   @Get('admin/spaces/stats')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Space-driven billing overview counts (admin only)' })
-  @ApiResponse({ status: 200 })
   async getSpaceBillingStats() {
     return this.subscriptionService.getSpaceBillingStats();
   }
@@ -133,8 +109,6 @@ export class SubscriptionController {
   @Patch('admin/plans/:plan')
   @Audit('plan.definition')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: "Edit a plan's definition (admin only)" })
-  @ApiResponse({ status: 200 })
   async updatePlanConfig(
     @Param('plan') plan: OrgPlan,
     @Body() dto: UpdatePlanConfigDto,
@@ -145,8 +119,6 @@ export class SubscriptionController {
   @Patch('admin/space/:spaceId')
   @Audit('space.plan', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: "Manually update a space's subscription (admin only)" })
-  @ApiResponse({ status: 200 })
   async adminUpdateSpaceSubscription(
     @Param('spaceId') spaceId: string,
     @Body() dto: AdminUpdateSubscriptionDto,
@@ -157,8 +129,6 @@ export class SubscriptionController {
   @Post('admin/space/:spaceId/offline-payment')
   @Audit('space.plan.payment', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: "Record an offline payment for a space's plan (admin only)" })
-  @ApiResponse({ status: 201 })
   async recordOfflinePayment(
     @Param('spaceId') spaceId: string,
     @Body() dto: RecordOfflinePaymentDto,
@@ -168,7 +138,6 @@ export class SubscriptionController {
 
   @Get('admin/space/:spaceId/plan-prices')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'What each paid plan and cycle costs a space now, deal or rate card (admin only)' })
   async getPlanPrices(@Param('spaceId') spaceId: string) {
     return this.subscriptionService.getPlanPricesForSpace(spaceId);
   }
@@ -177,7 +146,6 @@ export class SubscriptionController {
 
   @Get('admin/space/:spaceId/deals')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: "A space's deals, newest first, plus the terms in force (admin only)" })
   async listDeals(@Param('spaceId') spaceId: string) {
     const [deals, current] = await Promise.all([
       this.terms.listDeals(spaceId),
@@ -189,7 +157,6 @@ export class SubscriptionController {
   @Post('admin/space/:spaceId/deals')
   @Audit('space.deal', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Create a deal for a space or one of its events (admin only)' })
   async createDeal(@Request() req, @Param('spaceId') spaceId: string, @Body() dto: CreateDealDto) {
     return this.terms.createDeal(spaceId, dto, req.user.id);
   }
@@ -197,7 +164,6 @@ export class SubscriptionController {
   @Post('admin/deals/:dealId/end')
   @Audit('space.deal.end', (r, prisma) => prisma.deal.findUnique({ where: { id: r.params.dealId }, select: { spaceId: true } }).then((x) => x ?? {}))
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'End a deal now (admin only); it is kept for the sales it priced' })
   async endDeal(@Param('dealId') dealId: string) {
     return this.terms.endDeal(dealId);
   }

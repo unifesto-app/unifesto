@@ -10,12 +10,6 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 import { CheckinService } from './checkin.service';
 import {
   BulkCheckinDto,
@@ -29,16 +23,12 @@ import {
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-@ApiTags('Check-in')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('checkin')
 export class CheckinController {
   constructor(private readonly checkinService: CheckinService) {}
 
   @Post('scan')
-  @ApiOperation({ summary: 'Scan QR code to check in attendee at a point' })
-  @ApiResponse({ status: 200 })
   async scanQRCode(@Request() req, @Body() dto: ScanQRCodeDto) {
     return this.checkinService.scanQRCode(
       req.user.id,
@@ -49,8 +39,6 @@ export class CheckinController {
   }
 
   @Post('group')
-  @ApiOperation({ summary: 'Check in selected members of a group registration' })
-  @ApiResponse({ status: 200 })
   async checkinGroupMembers(@Request() req, @Body() dto: GroupCheckinDto) {
     return this.checkinService.checkinGroupMembers(
       req.user.id,
@@ -61,7 +49,6 @@ export class CheckinController {
   }
 
   @Post('manual')
-  @ApiOperation({ summary: 'Manually check a registration in at a point' })
   async manualCheckin(@Request() req, @Body() dto: ManualCheckinDto) {
     return this.checkinService.manualCheckin(
       req.user.id,
@@ -72,7 +59,6 @@ export class CheckinController {
   }
 
   @Post('undo')
-  @ApiOperation({ summary: 'Undo a mistaken check-in at a point (audited)' })
   async undoCheckin(@Request() req, @Body() dto: UndoCheckinDto) {
     return this.checkinService.undoCheckin(
       req.user.id,
@@ -84,13 +70,11 @@ export class CheckinController {
   }
 
   @Get('my-events')
-  @ApiOperation({ summary: 'Events + points the current user can check in at' })
   async getMyCheckinEvents(@Request() req) {
     return this.checkinService.getMyCheckinEvents(req.user.id);
   }
 
   @Get('event/:id/search')
-  @ApiOperation({ summary: 'Search attendees for manual check-in' })
   async searchRegistrations(
     @Request() req,
     @Param('id') id: string,
@@ -109,7 +93,6 @@ export class CheckinController {
   }
 
   @Get('event/:id/recent')
-  @ApiOperation({ summary: 'Latest check-ins (people and group members), fresh from the DB' })
   async getRecentCheckins(
     @Request() req,
     @Param('id') id: string,
@@ -127,13 +110,11 @@ export class CheckinController {
   // --- Check-in points ---
 
   @Get('event/:id/types')
-  @ApiOperation({ summary: 'List check-in points for an event' })
   async listCheckinTypes(@Request() req, @Param('id') id: string) {
     return this.checkinService.listCheckinTypes(req.user.id, id);
   }
 
   @Post('event/:id/types')
-  @ApiOperation({ summary: 'Add a check-in point (organiser only)' })
   async createCheckinType(
     @Request() req,
     @Param('id') id: string,
@@ -143,7 +124,6 @@ export class CheckinController {
   }
 
   @Delete('event/:id/types/:typeId')
-  @ApiOperation({ summary: 'Delete a check-in point (organiser only)' })
   async deleteCheckinType(
     @Request() req,
     @Param('id') id: string,
@@ -155,13 +135,11 @@ export class CheckinController {
   // --- Access grants (per team member, per point) ---
 
   @Get('event/:id/access')
-  @ApiOperation({ summary: 'Team members + their check-in point grants (organiser only)' })
   async listCheckinAccess(@Request() req, @Param('id') id: string) {
     return this.checkinService.listCheckinAccess(req.user.id, id);
   }
 
   @Put('event/:id/access/:userId')
-  @ApiOperation({ summary: "Replace a team member's check-in grants (organiser only)" })
   async setCheckinAccess(
     @Request() req,
     @Param('id') id: string,
@@ -177,10 +155,6 @@ export class CheckinController {
   }
 
   @Get('event/:id')
-  @ApiOperation({
-    summary: 'Get all registrations for offline caching (organiser only)',
-  })
-  @ApiResponse({ status: 200 })
   async getEventRegistrationsForOffline(
     @Request() req,
     @Param('id') id: string,
@@ -192,13 +166,11 @@ export class CheckinController {
   }
 
   @Get('event/:id/roster')
-  @ApiOperation({ summary: 'Compact guest list for offline scanning' })
   async getOfflineRoster(@Request() req, @Param('id') id: string) {
     return this.checkinService.getOfflineRoster(req.user.id, id);
   }
 
   @Get('event/:id/roster/changes')
-  @ApiOperation({ summary: 'Guest-list changes since a roster cursor (offline scanners)' })
   async getRosterChanges(
     @Request() req,
     @Param('id') id: string,
@@ -208,8 +180,6 @@ export class CheckinController {
   }
 
   @Post('event/:id/sync')
-  @ApiOperation({ summary: 'Replay check-ins recorded while offline' })
-  @ApiResponse({ status: 201 })
   async syncOfflineCheckins(
     @Request() req,
     @Param('id') id: string,
@@ -219,8 +189,6 @@ export class CheckinController {
   }
 
   @Get('event/:id/stats')
-  @ApiOperation({ summary: 'Get live check-in stats, optionally per point' })
-  @ApiResponse({ status: 200 })
   async getCheckinStats(
     @Request() req,
     @Param('id') id: string,
@@ -230,8 +198,6 @@ export class CheckinController {
   }
 
   @Post('event/:id/bulk')
-  @ApiOperation({ summary: 'Bulk check-in by registration IDs' })
-  @ApiResponse({ status: 201 })
   async bulkCheckin(
     @Request() req,
     @Param('id') id: string,

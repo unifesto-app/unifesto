@@ -156,11 +156,6 @@ export async function getPlanCatalog(): Promise<Result<PlanCatalog>> {
   return apiCall<PlanCatalog>(backendClient.get("/config/plan-fees"));
 }
 
-/** `GET /subscription/plans` — plan catalogue with limits + pricing. */
-export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
-  return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));
-}
-
 /* ------------------------------- Display --------------------------------- */
 
 export const PLAN_LABEL: Record<OrgPlan, string> = {

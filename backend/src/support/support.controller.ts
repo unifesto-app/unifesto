@@ -18,7 +18,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { uploadLimit } from '../common/upload-limits';
 import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
 import { SupportCopilot } from './support-copilot';
@@ -46,10 +45,8 @@ import {
   SupportDesk,
 } from '@prisma/client';
 
-@ApiTags('Support')
 @Controller('support')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class SupportController {
   constructor(
     private readonly supportService: SupportService,
@@ -63,7 +60,6 @@ export class SupportController {
    */
   @Post('assist')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiOperation({ summary: 'Start an Assist bot chat' })
   async startAssist(@Body() dto: StartAssistDto, @Req() req: any) {
     const id = await this.bot.start(req.user.id, dto);
     return this.supportService.getTicket(id, req.user.id);
@@ -72,7 +68,6 @@ export class SupportController {
   /** D14: the next message in my bot chat. */
   @Post('tickets/:id/assist')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  @ApiOperation({ summary: 'Message the Assist bot' })
   async assistMessage(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssistMessageDto, @Req() req: any) {
     await this.bot.say(id, req.user.id, dto.body);
     return this.supportService.getTicket(id, req.user.id);
@@ -80,7 +75,6 @@ export class SupportController {
 
   /** D14: "Talk to a person": my bot chat becomes a case for the desk. */
   @Post('tickets/:id/handoff')
-  @ApiOperation({ summary: 'Hand my Assist chat to a person' })
   async handoffAssist(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     await this.bot.handoff(id, req.user.id);
     return this.supportService.getTicket(id, req.user.id);
@@ -91,7 +85,6 @@ export class SupportController {
    * organiser). Pass `spaceId` when raising it from an organiser space.
    */
   @Post('tickets')
-  @ApiOperation({ summary: 'Create a support ticket' })
   createTicket(@Body() dto: CreateTicketDto, @Req() req: any) {
     return this.supportService.createTicket(dto, req.user.id);
   }
@@ -101,7 +94,6 @@ export class SupportController {
    * Apex Assist inbox); everyone else sees only the tickets they raised.
    */
   @Get('tickets')
-  @ApiOperation({ summary: 'List support tickets (role-scoped)' })
   listTickets(
     @Req() req: any,
     @Query('status') status?: SupportTicketStatus,
@@ -139,7 +131,6 @@ export class SupportController {
    * read-only. 403 when the caller works no part of this desk.
    */
   @Get('spaces/:spaceId/desk')
-  @ApiOperation({ summary: "List a space desk's cases" })
   listSpaceDesk(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Req() req: any,
@@ -165,60 +156,51 @@ export class SupportController {
 
   /** D9: unread cases on a space desk for the caller (sidebar badge). */
   @Get('spaces/:spaceId/desk/unread')
-  @ApiOperation({ summary: 'Unread count for a space desk' })
   spaceDeskUnread(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Req() req: any) {
     return this.supportService.spaceDeskUnread(req.user.id, spaceId);
   }
 
   /** D19: a space desk's stats header: open, awaiting, overdue, and median reply and resolution times. */
   @Get('spaces/:spaceId/desk/stats')
-  @ApiOperation({ summary: 'Stats for a space desk' })
   spaceDeskStats(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Req() req: any) {
     return this.supportService.spaceDeskStats(req.user.id, spaceId);
   }
 
   /** D19: saved replies for a desk. `spaceId` for a space desk's; none for Unifesto's. */
   @Get('canned-replies')
-  @ApiOperation({ summary: "List a desk's saved replies" })
   listCannedReplies(@Req() req: any, @Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string) {
     return this.supportService.listCannedReplies(req.user.id, spaceId ?? null);
   }
 
   @Post('canned-replies')
-  @ApiOperation({ summary: 'Add a saved reply' })
   createCannedReply(@Body() dto: CannedReplyDto, @Req() req: any) {
     return this.supportService.createCannedReply(req.user.id, dto);
   }
 
   @Patch('canned-replies/:id')
-  @ApiOperation({ summary: 'Edit a saved reply' })
   updateCannedReply(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCannedReplyDto, @Req() req: any) {
     return this.supportService.updateCannedReply(req.user.id, id, dto);
   }
 
   @Delete('canned-replies/:id')
-  @ApiOperation({ summary: 'Delete a saved reply' })
   deleteCannedReply(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.deleteCannedReply(req.user.id, id);
   }
 
   /** Summary counts for the current viewer (global for admins, own otherwise). */
   @Get('tickets/stats')
-  @ApiOperation({ summary: 'Support ticket counts by status' })
   getStats(@Req() req: any) {
     return this.supportService.getStats(req.user.id);
   }
 
   /** Full ticket with its message thread (owner or admin). */
   @Get('tickets/:id')
-  @ApiOperation({ summary: 'Get a support ticket with its messages' })
   getTicket(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.getTicket(id, req.user.id);
   }
 
   /** Post a reply to a ticket (owner or the current desk), or with `internal` a desk-only note. */
   @Post('tickets/:id/messages')
-  @ApiOperation({ summary: 'Reply to a support ticket' })
   addMessage(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateMessageDto,
@@ -231,8 +213,6 @@ export class SupportController {
   @Post('tickets/:id/messages/:messageId/attachments')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseInterceptors(FileInterceptor('file', uploadLimit(ATTACHMENT_MAX_MB)))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Attach an image or PDF to a ticket message' })
   addAttachment(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('messageId', ParseUUIDPipe) messageId: string,
@@ -245,14 +225,12 @@ export class SupportController {
   /** A 5-minute signed link to an attachment (anyone who can see the case). */
   @Get('attachments/:attachmentId/url')
   @Throttle({ default: { limit: 60, ttl: 60000 } })
-  @ApiOperation({ summary: 'Signed link to a ticket attachment' })
   attachmentUrl(@Param('attachmentId', ParseUUIDPipe) attachmentId: string, @Req() req: any) {
     return this.supportService.attachmentUrl(attachmentId, req.user.id);
   }
 
   /** D15: booking policy facts computed by code (refund window, refundable amount). Desk only. */
   @Get('tickets/:id/facts')
-  @ApiOperation({ summary: 'Policy facts for a case (desk)' })
   caseFacts(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.copilot.getFacts(id, req.user.id);
   }
@@ -260,7 +238,6 @@ export class SupportController {
   /** D15: an AI reply draft for the desk to edit and send. Nothing is sent. */
   @Post('tickets/:id/draft')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  @ApiOperation({ summary: 'Draft a desk reply with Assist (desk)' })
   draftReply(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.copilot.draft(id, req.user.id);
   }
@@ -268,28 +245,24 @@ export class SupportController {
   /** D15: the staff thread summary, refreshed when a newer message arrived. */
   @Post('tickets/:id/summary')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  @ApiOperation({ summary: 'Summarise a case thread (desk)' })
   summarise(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.copilot.summary(id, req.user.id);
   }
 
   /** Hand a space-desk case to Unifesto (requester or the space desk). */
   @Post('tickets/:id/escalate')
-  @ApiOperation({ summary: 'Escalate a ticket to Unifesto' })
   escalate(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.escalate(id, req.user.id);
   }
 
   /** Platform hands a help question to an event's organiser (the space desk). */
   @Post('tickets/:id/send-to-space')
-  @ApiOperation({ summary: "Send a ticket to an event's organiser (Platform)" })
   sendToSpace(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SendToSpaceDto, @Req() req: any) {
     return this.supportService.sendToSpace(id, dto.eventId, req.user.id);
   }
 
   /** Requester closes their own ticket. */
   @Patch('tickets/:id/close')
-  @ApiOperation({ summary: 'Close your own ticket' })
   closeOwn(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.setStatusAsOwner(
       id,
@@ -300,14 +273,12 @@ export class SupportController {
 
   /** D20: the requester rates a resolved case 1-5 with an optional comment. */
   @Post('tickets/:id/rating')
-  @ApiOperation({ summary: 'Rate your resolved ticket' })
   rate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RateTicketDto, @Req() req: any) {
     return this.supportService.rate(id, req.user.id, dto);
   }
 
   /** Requester reopens their own ticket. */
   @Patch('tickets/:id/reopen')
-  @ApiOperation({ summary: 'Reopen your own ticket' })
   reopenOwn(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.setStatusAsOwner(
       id,
@@ -322,7 +293,6 @@ export class SupportController {
   @Patch('tickets/:id')
   @UseGuards(RolesGuard)
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Update a ticket (ADMIN)' })
   updateTicket(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTicketDto,

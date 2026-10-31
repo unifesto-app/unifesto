@@ -1,5 +1,4 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ReconciliationService } from './reconciliation.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -11,8 +10,6 @@ import { RoleCode } from '@prisma/client';
  * against Razorpay for a `from`/`to` window (ISO dates or timestamps; defaults
  * to the last 30 days). Data is fetched live from Razorpay — no cron, no mirror.
  */
-@ApiTags('Reconciliation')
-@ApiBearerAuth()
 @Controller('admin/reconciliation')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleCode.ADMIN)

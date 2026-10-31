@@ -1,13 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { PollsService } from './polls.service';
 import { CreatePollDto, UpdatePollDto, VotePollDto } from './polls.dto';
 
-@ApiTags('polls')
 @Controller('events/:eventId/polls')
 export class PollsController {
   constructor(private readonly polls: PollsService) {}

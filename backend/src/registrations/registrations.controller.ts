@@ -23,15 +23,8 @@ import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
 import type { Response } from 'express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 import { RegistrationsService } from './registrations.service';
 import {
-  RegisterForEventDto,
   VerifyRegistrationDto,
   CreateOrderDto,
   VerifyPaymentDto,
@@ -54,7 +47,6 @@ import { RoleCode } from '@prisma/client';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { toPage, toLimit } from '../common/pagination';
 
-@ApiTags('Registrations')
 @Controller()
 export class RegistrationsController {
   constructor(
@@ -64,10 +56,7 @@ export class RegistrationsController {
   ) {}
 
   @Post('events/:id/register/create-order')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Create Razorpay order for paid ticket registration' })
-  @ApiResponse({ status: 201 })
   async createPaymentOrder(
     @Request() req,
     @Param('id') eventId: string,
@@ -81,10 +70,7 @@ export class RegistrationsController {
   }
 
   @Post('events/:id/register/verify')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Verify Razorpay payment for registration' })
-  @ApiResponse({ status: 200 })
   async verifyPayment(
     @Request() req,
     @Param('id') eventId: string,
@@ -98,47 +84,32 @@ export class RegistrationsController {
   }
 
   @Get('events/:id/my-registration')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get my registration for an event' })
-  @ApiResponse({ status: 200 })
   async getMyRegistration(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getMyRegistration(req.user.id, id);
   }
 
   @Get('events/:id/my-registrations')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get all of my registrations for an event (one per ticket type)' })
-  @ApiResponse({ status: 200 })
   async getMyRegistrationsForEvent(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getMyRegistrationsForEvent(req.user.id, id);
   }
 
   @Get('registrations/:id/checkins')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get the check-in records for my registration (one per check-in point)' })
-  @ApiResponse({ status: 200 })
   async getMyRegistrationCheckins(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getMyRegistrationCheckins(req.user.id, id);
   }
 
   @Get('registrations/:id/group-members')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get my group registration roster (lead only)' })
-  @ApiResponse({ status: 200 })
   async getMyGroupMembers(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getMyGroupMembers(req.user.id, id);
   }
 
   @Patch('registrations/:id/group-members')
   @Throttle({ default: { limit: 20, ttl: 3_600_000 } }) // it emails new members their ticket (A28)
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Set / complete my group registration roster (lead only)' })
-  @ApiResponse({ status: 200 })
   async updateMyGroupMembers(
     @Request() req,
     @Param('id') id: string,
@@ -152,10 +123,7 @@ export class RegistrationsController {
   }
 
   @Get('registrations/:id/whatsapp-group')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "This ticket's WhatsApp group invite + my join state" })
-  @ApiResponse({ status: 200 })
   async getRegistrationWhatsappGroup(
     @Request() req,
     @Param('id') id: string,
@@ -167,10 +135,7 @@ export class RegistrationsController {
   }
 
   @Patch('registrations/:id/whatsapp-joined')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Mark (or clear) that I joined this event\'s WhatsApp group' })
-  @ApiResponse({ status: 200 })
   async setWhatsappJoined(
     @Request() req,
     @Param('id') id: string,
@@ -184,10 +149,7 @@ export class RegistrationsController {
   }
 
   @Delete('events/:id/register')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Cancel my registration (optionally for a specific ticket type)' })
-  @ApiResponse({ status: 200 })
   async cancelRegistration(
     @Request() req,
     @Param('id') id: string,
@@ -198,10 +160,7 @@ export class RegistrationsController {
   }
 
   @Get('events/:id/registrations')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get event registrations (organiser only)' })
-  @ApiResponse({ status: 200 })
   async getEventRegistrations(
     @Request() req,
     @Param('id') id: string,
@@ -227,25 +186,15 @@ export class RegistrationsController {
   }
 
   @Get('events/:id/registration-sources')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_VIEW)
-  @ApiOperation({
-    summary: 'Confirmed registrations grouped by utm source / medium / campaign',
-  })
-  @ApiResponse({ status: 200 })
   async getRegistrationSources(@Param('id') id: string) {
     return this.registrationsService.getRegistrationSources(id);
   }
 
   @Get('events/:id/registration-sources/attendees')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({
-    summary: 'Confirmed registrations from one utm source row (empty tag = untagged)',
-  })
-  @ApiResponse({ status: 200 })
   async getSourceAttendees(
     @Param('id') id: string,
     @Query('source') source?: string,
@@ -256,37 +205,22 @@ export class RegistrationsController {
   }
 
   @Get('spaces/:spaceId/registration-sources')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_VIEW)
-  @ApiOperation({
-    summary: 'Confirmed registrations across the space, by utm source, split per event',
-  })
-  @ApiResponse({ status: 200 })
   async getSpaceRegistrationSources(@Param('spaceId') spaceId: string) {
     return this.registrationsService.getSpaceRegistrationSources(spaceId);
   }
 
   @Get('events/:id/attendee-stats')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'How many people are attending, split into individual bookings and ' +
-      'groups (organiser only)',
-  })
-  @ApiResponse({ status: 200 })
   async getAttendeeStats(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getAttendeeStats(req.user.id, id);
   }
 
   @Post('events/:id/registrations/badges')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Badge / pass PDF for confirmed attendees: A4 sheet or label printer (N1)' })
-  @ApiResponse({ status: 201 })
   async printBadges(@Param('id') id: string, @Body() dto: PrintBadgesDto, @Res() res: Response) {
     const { stream, filename } = await this.badges.render(id, {
       layout: dto.layout,
@@ -303,13 +237,7 @@ export class RegistrationsController {
   }
 
   @Get('events/:id/registrations/export')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Export attendees, transactions, waiting list, check-ins or coupon redemptions as CSV, Excel or PDF (Club plan and up)',
-  })
-  @ApiResponse({ status: 200 })
   async exportRegistrations(
     @Request() req,
     @Param('id') id: string,
@@ -353,11 +281,8 @@ export class RegistrationsController {
    * `:registrationId` GET so the static path wins the route match.
    */
   @Get('events/:id/registrations/import-template')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Download the CSV attendee-import template for a ticket type' })
-  @ApiResponse({ status: 200 })
   async downloadImportTemplate(
     @Param('id') eventId: string,
     @Query('ticketTypeId') ticketTypeId: string,
@@ -376,12 +301,9 @@ export class RegistrationsController {
    * attendee is comped (no payment). Returns a per-row report.
    */
   @Post('events/:id/registrations/import')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
   @UseInterceptors(FileInterceptor('file', uploadLimit(5)))
-  @ApiOperation({ summary: 'Bulk-import attendees from a CSV (comped, no payment)' })
-  @ApiResponse({ status: 201 })
   async importAttendees(
     @Param('id') eventId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -408,12 +330,9 @@ export class RegistrationsController {
    * the "review before import" step. Same auth + upload handling as the import.
    */
   @Post('events/:id/registrations/import/preview')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
   @UseInterceptors(FileInterceptor('file', uploadLimit(5)))
-  @ApiOperation({ summary: 'Dry-run a CSV import and preview the per-row outcome' })
-  @ApiResponse({ status: 201 })
   async previewImportAttendees(
     @Param('id') eventId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -438,11 +357,8 @@ export class RegistrationsController {
    * payment link and the seat is held PENDING until paid.
    */
   @Post('events/:id/registrations/manual')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Manually add one attendee (comp or send a payment link)' })
-  @ApiResponse({ status: 201 })
   async manualAddAttendee(
     @Request() req,
     @Param('id') eventId: string,
@@ -457,20 +373,14 @@ export class RegistrationsController {
    * self-marked as joined. Gated by the same capability as managing attendees.
    */
   @Post('events/:id/whatsapp-group-invite')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Send the WhatsApp group invite to un-invited attendees' })
-  @ApiResponse({ status: 201 })
   async sendWhatsappGroupInvite(@Param('id') eventId: string) {
     return this.registrationsService.sendGroupInviteBlast(eventId);
   }
 
   @Get('events/:id/registrations/:registrationId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get a single registration detail (organiser only)' })
-  @ApiResponse({ status: 200 })
   async getRegistrationDetail(
     @Request() req,
     @Param('id') id: string,
@@ -485,11 +395,8 @@ export class RegistrationsController {
 
   /** Organiser restores a cancelled registration back to REGISTERED. */
   @Post('events/:id/registrations/:registrationId/restore')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Restore a cancelled registration (organiser)' })
-  @ApiResponse({ status: 200 })
   async restoreRegistration(
     @Request() req,
     @Param('id') id: string,
@@ -508,11 +415,8 @@ export class RegistrationsController {
    * Paid tickets are refused: they go through a refund request.
    */
   @Post('events/:id/registrations/:registrationId/cancel')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Cancel a free registration (organiser)' })
-  @ApiResponse({ status: 201 })
   async organiserCancelRegistration(
     @Request() req,
     @Param('id') id: string,
@@ -532,11 +436,8 @@ export class RegistrationsController {
    * RELEASED). Capacity stays held; nothing is resold or refunded.
    */
   @Post('events/:id/registrations/:registrationId/seats/:seatIndex/release')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Release an unfilled group seat (organiser)' })
-  @ApiResponse({ status: 201 })
   async releaseGroupSeat(
     @Param('id') id: string,
     @Param('registrationId') registrationId: string,
@@ -551,11 +452,8 @@ export class RegistrationsController {
 
   /** Curator brings a retired seat back into play (RELEASED → OPEN). */
   @Post('events/:id/registrations/:registrationId/seats/:seatIndex/reopen')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES)
-  @ApiOperation({ summary: 'Reopen a released group seat (organiser)' })
-  @ApiResponse({ status: 201 })
   async reopenGroupSeat(
     @Param('id') id: string,
     @Param('registrationId') registrationId: string,
@@ -570,13 +468,8 @@ export class RegistrationsController {
 
   /** Admin transfers a registration directly (no request needed). */
   @Post('events/:id/registrations/:registrationId/transfer')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({
-    summary: 'Transfer a registration to another account by email (admin)',
-  })
-  @ApiResponse({ status: 200 })
   async transferRegistration(
     @Param('id') id: string,
     @Param('registrationId') registrationId: string,
@@ -591,10 +484,7 @@ export class RegistrationsController {
 
   /** Organiser requests a transfer for an admin to review. */
   @Post('events/:id/registrations/:registrationId/transfer-request')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Request a registration transfer (organiser)' })
-  @ApiResponse({ status: 201 })
   async requestTransfer(
     @Request() req,
     @Param('id') id: string,
@@ -612,21 +502,15 @@ export class RegistrationsController {
 
   /** Organiser's own transfer requests. */
   @Get('registration-transfer-requests/my')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'My registration transfer requests (organiser)' })
-  @ApiResponse({ status: 200 })
   async myTransferRequests(@Request() req) {
     return this.registrationsService.getMyTransferRequests(req.user.id);
   }
 
   /** Admin inbox of transfer requests. */
   @Get('registration-transfer-requests')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'All registration transfer requests (admin)' })
-  @ApiResponse({ status: 200 })
   async allTransferRequests(
     @Query('status') status?: string,
     @Query('page') page?: string,
@@ -641,11 +525,8 @@ export class RegistrationsController {
 
   /** Admin approves (performs the transfer) or rejects a request. */
   @Patch('registration-transfer-requests/:requestId/review')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Review a registration transfer request (admin)' })
-  @ApiResponse({ status: 200 })
   async reviewTransferRequest(
     @Request() req,
     @Param('requestId') requestId: string,
@@ -661,10 +542,7 @@ export class RegistrationsController {
   }
 
   @Get('users/me/registrations')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get my event registration history' })
-  @ApiResponse({ status: 200 })
   async getMyRegistrations(
     @Request() req,
     @Query('page') page = 1,
@@ -681,10 +559,7 @@ export class RegistrationsController {
 
   /** Deletes a finished ticket from my own list (the registration stays). */
   @Delete('users/me/registrations/:id')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete a finished ticket from my ticket list' })
-  @ApiResponse({ status: 200 })
   async hideMyTicket(
     @Request() req,
     @Param('id', ParseUUIDPipe) registrationId: string,
@@ -693,10 +568,7 @@ export class RegistrationsController {
   }
 
   @Get('users/me/member-tickets')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Tickets where I am a group member (not the lead)' })
-  @ApiResponse({ status: 200 })
   async getMyMemberTickets(@Request() req) {
     return this.registrationsService.getMyMemberTickets(req.user.id);
   }
@@ -704,25 +576,13 @@ export class RegistrationsController {
   // --- Waiting list -------------------------------------------------------
 
   @Get('users/me/waitlist')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'My waiting list entries, with queue position and any open offer',
-  })
-  @ApiResponse({ status: 200 })
   async getMyWaitlist(@Request() req) {
     return this.waitlistService.myEntries(req.user.id);
   }
 
   @Post('registrations/:id/waitlist/pay')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Create the Razorpay order to claim an offered waiting list spot. ' +
-      'Verify it through the normal /events/:id/register/verify route.',
-  })
-  @ApiResponse({ status: 201 })
   async payForWaitlistOffer(@Request() req, @Param('id') registrationId: string) {
     return this.registrationsService.createWaitlistOfferOrder(
       req.user.id,
@@ -732,10 +592,7 @@ export class RegistrationsController {
 
   /** Attendee cancels their own free registration (paid → refund flow). */
   @Post('registrations/:id/cancel')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Cancel my free registration by id' })
-  @ApiResponse({ status: 200 })
   async cancelMyRegistration(
     @Request() req,
     @Param('id') registrationId: string,
@@ -749,19 +606,13 @@ export class RegistrationsController {
   }
 
   @Delete('registrations/:id/waitlist')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Leave the waiting list, or turn down an offered spot' })
-  @ApiResponse({ status: 200 })
   async leaveWaitlist(@Request() req, @Param('id') registrationId: string) {
     return this.waitlistService.decline(req.user.id, registrationId);
   }
 
   @Get('events/:id/waitlist')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'The event waiting list in join order (organiser only)' })
-  @ApiResponse({ status: 200 })
   async getEventWaitlist(
     @Request() req,
     @Param('id') eventId: string,
@@ -781,23 +632,13 @@ export class RegistrationsController {
   }
 
   @Get('events/:id/waitlist/summary')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Waiting list counts per ticket type (organiser only)' })
-  @ApiResponse({ status: 200 })
   async getWaitlistSummary(@Request() req, @Param('id') eventId: string) {
     return this.waitlistService.summaryForEvent(req.user.id, eventId);
   }
 
   @Post('events/:id/waitlist/:registrationId/allow')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Let one person off the waiting list. Holds a seat for them; a paid ' +
-      'ticket then needs payment before the deadline (organiser only)',
-  })
-  @ApiResponse({ status: 201 })
   async allowFromWaitlist(
     @Request() req,
     @Param('id') eventId: string,
@@ -807,15 +648,7 @@ export class RegistrationsController {
   }
 
   @Post('events/:id/waitlist/:registrationId/revoke')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Revoke an unpaid offer and release the held seat back to the pool. ' +
-      'Offers have no automatic expiry, so this is how a held seat is freed ' +
-      'when the buyer never pays (organiser only)',
-  })
-  @ApiResponse({ status: 201 })
   async revokeFromWaitlist(
     @Request() req,
     @Param('id') eventId: string,
@@ -825,14 +658,7 @@ export class RegistrationsController {
   }
 
   @Post('events/:id/waitlist/allow-next')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Let the next N people in for a ticket type, in join order. Stops when ' +
-      'the seats run out rather than failing (organiser only)',
-  })
-  @ApiResponse({ status: 201 })
   async allowNextFromWaitlist(
     @Request() req,
     @Param('id') eventId: string,
@@ -847,8 +673,6 @@ export class RegistrationsController {
   }
 
   @Post('registrations/razorpay-webhook')
-  @ApiOperation({ summary: 'Handle Razorpay webhooks' })
-  @ApiResponse({ status: 200 })
   async handleRazorpayWebhook(
     @Headers('x-razorpay-signature') signature: string,
     @Req() req: { rawBody?: Buffer },

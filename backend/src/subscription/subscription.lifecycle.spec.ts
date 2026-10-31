@@ -119,7 +119,6 @@ describe('SubscriptionService lifecycle', () => {
       $queryRaw: jest.fn(async () => []),
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
-    const cache = { setSpacePlan: jest.fn(), invalidateSpacePlanCache: jest.fn() };
     const email = {
       sendSubscriptionCancelled: jest.fn(async (_: any) => {}),
       sendSubscriptionUpgraded: jest.fn(async () => {}),
@@ -127,7 +126,6 @@ describe('SubscriptionService lifecycle', () => {
     };
     const svc = new SubscriptionService(
       prisma,
-      cache as any,
       email as any,
       pricedPlanConfig(),
       rateCardTerms(),
@@ -274,8 +272,7 @@ describe('SubscriptionSchedulerService expiry (T8)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const email = { sendSubscriptionExpired: jest.fn(async () => {}), sendSubscriptionDowngraded: jest.fn(async () => {}) };
-    const cache = { invalidateSpacePlanCache: jest.fn() };
-    const svc = new SubscriptionSchedulerService(prisma, email as any, cache as any, {} as any);
+    const svc = new SubscriptionSchedulerService(prisma, email as any, {} as any);
     return { svc, prisma, email };
   };
   const lapsed = {

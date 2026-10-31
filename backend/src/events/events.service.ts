@@ -2138,8 +2138,6 @@ export class EventsService {
     // Check cache first
     const cachedEvent = await this.cache.getCachedEvent(slug);
     if (cachedEvent) {
-      // Increment view count in background
-      await this.cache.incrementEventViews(cachedEvent.id);
       return this.withLiveCounts(cachedEvent);
     }
 
@@ -2378,7 +2376,6 @@ export class EventsService {
     // slug-based public reads stay cached and are invalidated on every edit —
     // so newly added/edited ticket form questions and options show up at once.
     await this.cache.setCachedEvent(event.slug, event);
-    await this.cache.incrementEventViews(event.id);
 
     return event;
   }
@@ -3307,7 +3304,6 @@ export class EventsService {
         isVisible: dto.isVisible,
         isActive: dto.isActive,
         waitlistEnabled: dto.waitlistEnabled ?? false,
-        waitlistOfferTtlHours: dto.waitlistOfferTtlHours ?? 24,
         whatsappGroupUrl: this.resolveTicketWhatsAppGroup(dto.whatsappGroupUrl),
       },
     });
@@ -3482,7 +3478,6 @@ export class EventsService {
         isVisible: dto.isVisible,
         isActive: dto.isActive,
         waitlistEnabled: dto.waitlistEnabled,
-        waitlistOfferTtlHours: dto.waitlistOfferTtlHours,
         // undefined = leave as-is; "" clears; a value is validated + normalised.
         whatsappGroupUrl:
           dto.whatsappGroupUrl === undefined

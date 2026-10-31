@@ -105,7 +105,7 @@ function build() {
     releaseByRegistration: jest.fn(async () => undefined),
     confirmByRegistration: jest.fn(async () => undefined),
   };
-  const cache = { redis: { getClient: () => null }, invalidateCheckinCache: jest.fn(), incrementEventScore: jest.fn() };
+  const cache = { redis: { getClient: () => null }, invalidateCheckinCache: jest.fn() };
   const groupSeats = new GroupSeatsService(prisma, {} as any, {} as any);
   const svc = buildRegistrationsService(
     prisma, {} as any, {} as any, cache as any, {} as any, {} as any,

@@ -224,7 +224,7 @@ export class PayoutsService {
       throw new BadRequestException('Only a verified account can be revoked');
     }
     const unpaid = await this.prisma.payout.count({
-      where: { bankAccountId: accountId, status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } },
+      where: { bankAccountId: accountId, status: PayoutStatus.PENDING },
     });
     if (unpaid > 0) {
       throw new ConflictException('An unpaid payout goes to this account. Pay or cancel it first.');
@@ -268,14 +268,14 @@ export class PayoutsService {
     // A payout row keeps a required FK to the account it was paid to
     // (`payouts_bank_account_id_fkey`, ON DELETE RESTRICT), so ANY payout —
     // not just in-flight ones — blocks a hard delete. The old guard only
-    // counted PENDING/PROCESSING, so an account with a COMPLETED payout slipped
+    // counted in-flight payouts, so an account with a COMPLETED payout slipped
     // through and the delete then failed with a raw 500. Count every payout and
     // return a clear message instead, distinguishing in-flight from historical.
     const [inFlight, total] = await Promise.all([
       this.prisma.payout.count({
         where: {
           bankAccountId: accountId,
-          status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
+          status: PayoutStatus.PENDING,
         },
       }),
       this.prisma.payout.count({ where: { bankAccountId: accountId } }),
@@ -443,7 +443,6 @@ export class PayoutsService {
   /** Payout statuses that hold (commit) part of an event's balance. */
   private readonly COMMITTING_STATUSES = [
     PayoutStatus.PENDING,
-    PayoutStatus.PROCESSING,
     PayoutStatus.COMPLETED,
   ];
 
@@ -814,7 +813,7 @@ export class PayoutsService {
       this.prisma.payout.aggregate({
         where: {
           ...eventFilter,
-          status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
+          status: PayoutStatus.PENDING,
         },
         _sum: { netAmount: true },
       }),
@@ -1192,10 +1191,7 @@ export class PayoutsService {
       const amt = Number(r._sum.netAmount ?? 0);
       if (r.status === PayoutStatus.COMPLETED) {
         settledByEvent.set(id, (settledByEvent.get(id) ?? 0) + amt);
-      } else if (
-        r.status === PayoutStatus.PENDING ||
-        r.status === PayoutStatus.PROCESSING
-      ) {
+      } else if (r.status === PayoutStatus.PENDING) {
         pendingByEvent.set(id, (pendingByEvent.get(id) ?? 0) + amt);
       }
     }

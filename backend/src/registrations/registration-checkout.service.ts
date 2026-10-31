@@ -28,7 +28,6 @@ import {
 import { canAccessSpaceOnlyEvent } from '../events/event-access';
 import { assertSpaceLive } from '../spaces/space-access';
 import {
-  RegisterForEventDto,
   CreateOrderDto,
   OrderResponseDto,
   GroupMemberDto,
@@ -291,9 +290,8 @@ export class RegistrationCheckoutService {
   async addToWaitlist(
     userId: string,
     eventId: string,
-    dto: Pick<
-      RegisterForEventDto,
-      'ticketTypeId' | 'quantity' | 'groupSize' | 'groupMembers' | 'formResponses'
+    dto: Partial<
+      Pick<CreateOrderDto, 'ticketTypeId' | 'quantity' | 'groupSize' | 'groupMembers' | 'formResponses'>
     >,
   ): Promise<WaitlistJoinResponseDto> {
     if (!dto.ticketTypeId) {
@@ -752,15 +750,6 @@ export class RegistrationCheckoutService {
     if (registration.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestException('This spot is already paid for');
     }
-    if (
-      registration.waitlistOfferExpiresAt &&
-      registration.waitlistOfferExpiresAt < new Date()
-    ) {
-      throw new BadRequestException(
-        'This offer has expired and the seat has been released',
-      );
-    }
-
     await assertSpaceLive(this.prisma, { events: { some: { id: registration.eventId } } });
 
     const razorpayAmount = Number(registration.razorpayAmount);

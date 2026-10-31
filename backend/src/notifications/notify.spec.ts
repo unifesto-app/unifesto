@@ -3,33 +3,25 @@ import { channelsFor } from './notify.policy';
 import { NotifyService } from './notify.service';
 import { TransactionalNotificationHandler } from './handlers/transactional-notification.handler';
 
-const ctx = { pushAllowed: true, hasPushDevice: true, emailOptedOut: false, hasEmail: true, hasPhone: true };
+const ctx = { pushAllowed: true, hasPushDevice: true, emailOptedOut: false, hasEmail: true };
 
 describe('channelsFor (notify policy)', () => {
   const critical = { criticality: 'critical' as const, email: () => null };
-  const criticalWa = { ...critical, whatsapp: () => null };
   const normal = { criticality: 'normal' as const, email: () => null };
   const low = { criticality: 'low' as const, email: () => null };
 
   it.each([
-    ['critical: email always, no WhatsApp unless allowed', critical, ctx, { email: 'always', whatsapp: false }],
-    ['critical: email ignores the opt-out', critical, { ...ctx, emailOptedOut: true }, { email: 'always', whatsapp: false }],
-    ['critical + WhatsApp-allowed kind', criticalWa, ctx, { email: 'always', whatsapp: true }],
-    ['critical + WhatsApp but no phone', criticalWa, { ...ctx, hasPhone: false }, { email: 'always', whatsapp: false }],
-    ['critical, no email on file', critical, { ...ctx, hasEmail: false }, { email: 'never', whatsapp: false }],
-    ['normal, push reachable: email only if push fails', normal, ctx, { email: 'if-push-fails', whatsapp: false }],
-    ['normal, no push device: email', normal, { ...ctx, hasPushDevice: false }, { email: 'always', whatsapp: false }],
-    ['normal, push off for category: email', normal, { ...ctx, pushAllowed: false }, { email: 'always', whatsapp: false }],
-    ['normal, email opted out', normal, { ...ctx, hasPushDevice: false, emailOptedOut: true }, { email: 'never', whatsapp: false }],
-    ['normal, kind has no email', { criticality: 'normal' as const }, { ...ctx, hasPushDevice: false }, { email: 'never', whatsapp: false }],
-    ['low: push only', low, { ...ctx, hasPushDevice: false }, { email: 'never', whatsapp: false }],
+    ['critical: email always', critical, ctx, { email: 'always' }],
+    ['critical: email ignores the opt-out', critical, { ...ctx, emailOptedOut: true }, { email: 'always' }],
+    ['critical, no email on file', critical, { ...ctx, hasEmail: false }, { email: 'never' }],
+    ['normal, push reachable: email only if push fails', normal, ctx, { email: 'if-push-fails' }],
+    ['normal, no push device: email', normal, { ...ctx, hasPushDevice: false }, { email: 'always' }],
+    ['normal, push off for category: email', normal, { ...ctx, pushAllowed: false }, { email: 'always' }],
+    ['normal, email opted out', normal, { ...ctx, hasPushDevice: false, emailOptedOut: true }, { email: 'never' }],
+    ['normal, kind has no email', { criticality: 'normal' as const }, { ...ctx, hasPushDevice: false }, { email: 'never' }],
+    ['low: push only', low, { ...ctx, hasPushDevice: false }, { email: 'never' }],
   ])('%s', (_name, kind, c, plan) => {
     expect(channelsFor(kind, c)).toEqual(plan);
-  });
-
-  it('only registration.confirmed may use WhatsApp (cost decision)', () => {
-    const wa = Object.entries(NOTIFY_KINDS).filter(([, d]) => 'whatsapp' in d).map(([k]) => k);
-    expect(wa).toEqual(['registration.confirmed']);
   });
 });
 
@@ -38,7 +30,6 @@ describe('NotifyService.notify', () => {
     const prisma: any = {
       user: {
         findUnique: jest.fn().mockResolvedValue({
-          mobileNumber: '+919999999999',
           identities: [{ email: 'old@x.co', isPrimary: false }, { email: 'me@x.co', isPrimary: true }],
         }),
       },
@@ -52,61 +43,55 @@ describe('NotifyService.notify', () => {
       send: jest.fn().mockResolvedValue({ sent: o.pushSent ?? 1, failed: o.pushSent === 0 ? 1 : 0, skipped: 0 }),
     };
     const email: any = {
-      sendEventReminder: jest.fn().mockResolvedValue(true),
-      sendRegistrationConfirmation: jest.fn().mockResolvedValue(true),
+      sendSpaceInquiry: jest.fn().mockResolvedValue(true),
+      sendEventCancelled: jest.fn().mockResolvedValue(true),
     };
-    const whatsapp: any = { sendRegistrationConfirmation: jest.fn().mockResolvedValue(true) };
-    return { svc: new NotifyService(prisma, notifications, email, whatsapp), prisma, notifications, email, whatsapp };
+    return { svc: new NotifyService(prisma, notifications, email), prisma, notifications, email };
   };
 
-  const reminder = {
-    eventId: 'e1', eventSlug: 'fest', userName: 'Asha', eventTitle: 'Fest', eventDate: '1 Nov',
-    eventTime: '10 AM', qrCode: 'q', isOnline: false,
-  };
-  const confirmed = { ...reminder, registrationId: 'r1' };
+  /** A normal kind. */
+  const inquiry = { spaceId: 's1', leadId: 'l1', spaceName: 'Club', fromEmail: 'a@x.co', fromName: 'Asha' };
+  /** A critical kind. */
+  const cancelled = { eventId: 'e1', userName: 'Asha', eventTitle: 'Fest', eventDate: '1 Nov' };
 
   it('normal kind: push lands, no email', async () => {
     const { svc, email, notifications } = build();
-    const res = await svc.notify('u1', 'event.reminder.24h', reminder);
-    expect(res).toMatchObject({ push: 'sent', email: 'skipped', whatsapp: 'skipped' });
-    expect(email.sendEventReminder).not.toHaveBeenCalled();
+    const res = await svc.notify('u1', 'space.inquiry', inquiry);
+    expect(res).toMatchObject({ push: 'sent', email: 'skipped' });
+    expect(email.sendSpaceInquiry).not.toHaveBeenCalled();
     expect(notifications.send).toHaveBeenCalledWith(['u1'], expect.objectContaining({
-      category: 'eventReminders', kind: 'event.reminder.24h', dedupKey: 'event.reminder.24h:e1:u1:push',
+      category: 'spaceUpdates', kind: 'space.inquiry', dedupKey: 'space.inquiry:l1:u1:push',
     }));
   });
 
   it('normal kind: falls back to email when the user has no linked push device', async () => {
     const { svc, email } = build({ devices: 0 });
-    const res = await svc.notify('u1', 'event.reminder.24h', reminder);
+    const res = await svc.notify('u1', 'space.inquiry', inquiry);
     expect(res.email).toBe('sent');
-    expect(email.sendEventReminder).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'me@x.co', eventTitle: 'Fest' }),
-      { kind: 'event.reminder.24h', userId: 'u1', dedupKey: 'event.reminder.24h:e1:u1:email' },
+    expect(email.sendSpaceInquiry).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'me@x.co', spaceName: 'Club' }),
+      { kind: 'space.inquiry', userId: 'u1', dedupKey: 'space.inquiry:l1:u1:email' },
     );
   });
 
   it('normal kind: falls back to email when the push did not land', async () => {
     const { svc, email } = build({ pushSent: 0 });
-    expect((await svc.notify('u1', 'event.reminder.24h', reminder)).email).toBe('sent');
-    expect(email.sendEventReminder).toHaveBeenCalled();
+    expect((await svc.notify('u1', 'space.inquiry', inquiry)).email).toBe('sent');
+    expect(email.sendSpaceInquiry).toHaveBeenCalled();
   });
 
   it('normal kind: respects the email opt-out', async () => {
     const { svc, email } = build({ devices: 0, optedOut: true });
-    expect((await svc.notify('u1', 'event.reminder.24h', reminder)).email).toBe('skipped');
-    expect(email.sendEventReminder).not.toHaveBeenCalled();
+    expect((await svc.notify('u1', 'space.inquiry', inquiry)).email).toBe('skipped');
+    expect(email.sendSpaceInquiry).not.toHaveBeenCalled();
   });
 
-  it('critical kind: push + email (despite opt-out) + WhatsApp, each with its own dedup key', async () => {
-    const { svc, email, whatsapp } = build({ optedOut: true });
-    const res = await svc.notify('u1', 'registration.confirmed', confirmed);
-    expect(res).toMatchObject({ push: 'sent', email: 'sent', whatsapp: 'sent' });
-    expect(email.sendRegistrationConfirmation.mock.calls[0][1].dedupKey).toBe('registration.confirmed:r1:u1:email');
-    expect(whatsapp.sendRegistrationConfirmation).toHaveBeenCalledWith(
-      '+919999999999',
-      expect.objectContaining({ eventTitle: 'Fest' }),
-      expect.objectContaining({ dedupKey: 'registration.confirmed:r1:u1:whatsapp' }),
-    );
+  it('critical kind: push + email (despite opt-out), each with its own dedup key', async () => {
+    const { svc, email, notifications } = build({ optedOut: true });
+    const res = await svc.notify('u1', 'event.cancelled', cancelled);
+    expect(res).toMatchObject({ push: 'sent', email: 'sent' });
+    expect(notifications.send.mock.calls[0][1].dedupKey).toBe('event.cancelled:e1:u1:push');
+    expect(email.sendEventCancelled.mock.calls[0][1].dedupKey).toBe('event.cancelled:e1:u1:email');
   });
 
   it('inboxOnly kind (payment.confirmed): inbox copy, no device push, receipt email always', async () => {
@@ -114,12 +99,12 @@ describe('NotifyService.notify', () => {
     email.sendPaymentConfirmation = jest.fn().mockResolvedValue(true);
     notifications.send.mockResolvedValue({ sent: 0, failed: 0, skipped: 1 });
     const res = await svc.notify('u1', 'payment.confirmed', {
-      ...reminder, amount: 100, processingFee: 5, razorpayPaymentId: 'pay_1',
-    });
+      ...cancelled, eventTime: '10 AM', isOnline: false, amount: 100, processingFee: 5, razorpayPaymentId: 'pay_1',
+    } as any);
     expect(notifications.send).toHaveBeenCalledWith(['u1'], expect.objectContaining({
       inboxOnly: true, title: 'Payment received', dedupKey: 'payment.confirmed:pay_1:u1:push',
     }));
-    expect(res).toMatchObject({ push: 'skipped', email: 'sent', whatsapp: 'skipped' });
+    expect(res).toMatchObject({ push: 'skipped', email: 'sent' });
     expect(email.sendPaymentConfirmation.mock.calls[0][1].dedupKey).toBe('payment.confirmed:pay_1:u1:email');
   });
 
@@ -137,29 +122,28 @@ describe('NotifyService.notify', () => {
     expect(b).not.toBe(a);
   });
 
-  it('quiet hours (C4): critical and time-sensitive kinds go out as urgent, others may wait', async () => {
+  it('quiet hours (C4): critical kinds go out as urgent, others may wait', async () => {
     const { svc, notifications } = build();
-    await svc.notify('u1', 'event.reminder.24h', reminder);
-    await svc.notify('u1', 'event.reminder.1h', { ...reminder, startsInMinutes: 60 });
-    await svc.notify('u1', 'registration.confirmed', confirmed);
-    expect(notifications.send.mock.calls.map((c: any[]) => !!c[1].urgent)).toEqual([false, true, true]);
+    await svc.notify('u1', 'space.inquiry', inquiry);
+    await svc.notify('u1', 'event.cancelled', cancelled);
+    expect(notifications.send.mock.calls.map((c: any[]) => !!c[1].urgent)).toEqual([false, true]);
   });
 
   it('caller dedupKey replaces the default base', async () => {
     const { svc, notifications } = build();
-    await svc.notify('u1', 'event.reminder.24h', reminder, { dedupKey: 'custom' });
+    await svc.notify('u1', 'space.inquiry', inquiry, { dedupKey: 'custom' });
     expect(notifications.send.mock.calls[0][1].dedupKey).toBe('custom:push');
   });
 
   it('never throws: a failing channel or lookup becomes a result', async () => {
     const a = build({ devices: 0 });
-    a.email.sendEventReminder.mockRejectedValue(new Error('boom'));
-    await expect(a.svc.notify('u1', 'event.reminder.24h', reminder)).resolves.toMatchObject({ email: 'failed' });
+    a.email.sendSpaceInquiry.mockRejectedValue(new Error('boom'));
+    await expect(a.svc.notify('u1', 'space.inquiry', inquiry)).resolves.toMatchObject({ email: 'failed' });
 
     const b = build();
     b.prisma.user.findUnique.mockRejectedValue(new Error('db down'));
-    await expect(b.svc.notify('u1', 'event.reminder.24h', reminder)).resolves.toMatchObject({
-      push: 'skipped', email: 'skipped', whatsapp: 'skipped',
+    await expect(b.svc.notify('u1', 'space.inquiry', inquiry)).resolves.toMatchObject({
+      push: 'skipped', email: 'skipped',
     });
   });
 });
@@ -210,10 +194,9 @@ describe('NotifyBatch bus handler', () => {
 describe('Q10: booking pushes open the pass', () => {
   const booking = { eventId: 'e1', eventSlug: 'demo-day', eventTitle: 'Demo Day' } as never;
 
-  it.each(['registration.confirmed', 'payment.confirmed', 'waitlist.promoted', 'event.reminder.24h', 'event.reminder.1h'] as const)(
-    '%s opens the ticket',
-    (kind) => expect(NOTIFY_KINDS[kind].push(booking).deepLink).toBe('unifesto://ticket/e1'),
-  );
+  it('payment.confirmed opens the ticket', () => {
+    expect(NOTIFY_KINDS['payment.confirmed'].push(booking).deepLink).toBe('unifesto://ticket/e1');
+  });
 
   it('a waitlist offer opens the Pay card on the Waitlist tab', () => {
     expect(NOTIFY_KINDS['waitlist.offer'].push(booking).deepLink).toBe('unifesto://tickets?tab=waitlist');

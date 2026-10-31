@@ -47,8 +47,6 @@ export interface Event {
   has_free_tickets?: boolean;
   status: string;
   visibility?: string;
-  is_featured: boolean;
-  is_trending: boolean;
   // Backend still sends the legacy "organization" wire keys; the frontend
   // treats the hosting entity as a Space. Both are kept for compatibility.
   space_id?: string;
@@ -331,8 +329,6 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     has_free_tickets: hasFreeTickets,
     status: r.status as string,
     visibility: (r.visibility ?? r.event_visibility) as string | undefined,
-    is_featured: (r.isFeatured ?? r.is_featured ?? false) as boolean,
-    is_trending: (r.isTrending ?? r.is_trending ?? false) as boolean,
     space_id: (r.spaceId ?? r.space_id) as string | undefined,
     space,
     organization_id: (r.spaceId ?? r.space_id) as string | undefined,
@@ -395,8 +391,6 @@ export async function getEvents(
     event_type?: string;
     city?: string;
     is_free?: boolean;
-    is_featured?: boolean;
-    is_trending?: boolean;
     organization_id?: string;
     /** upcoming (default): live + upcoming, soonest first. past: ended, newest first. */
     when?: 'upcoming' | 'past';
@@ -476,32 +470,6 @@ export async function getListedEvents(
 }
 
 /**
- * Get event by ID
- */
-export async function getEventById(id: string): Promise<Event | null> {
-  try {
-    // The backend `/events/:slug` route resolves both slugs and UUID ids.
-    const response = await fetchWithTimeout(`${API_URL}/events/${encodeURIComponent(id)}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }, 10000);
-
-    if (!response.ok) {
-      console.error('[API] Error fetching event:', response.status, response.statusText);
-      return null;
-    }
-
-    const data = await response.json();
-    return mapEvent(data?.id ? data : null);
-  } catch (error) {
-    console.error('[API] Error fetching event:', error);
-    return null;
-  }
-}
-
-/**
  * Get event by slug
  */
 /** The backend's 403 SPACE_UNAVAILABLE: the hosting space is taken down for now (J16). */
@@ -526,26 +494,6 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 
     const data = await response.json();
     return mapEvent(data?.id ? data : null);
-}
-
-/**
- * Get featured events
- */
-export async function getFeaturedEvents(limit: number = 10): Promise<Event[]> {
-  // The backend has no dedicated featured endpoint; fall back to the most
-  // recent published events.
-  const { events } = await getEvents(1, limit);
-  return events;
-}
-
-/**
- * Get trending events
- */
-export async function getTrendingEvents(limit: number = 10): Promise<Event[]> {
-  // The backend has no dedicated trending endpoint; fall back to the most
-  // recent published events.
-  const { events } = await getEvents(1, limit);
-  return events;
 }
 
 /**

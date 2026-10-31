@@ -189,8 +189,8 @@ interface QrLink {
  * for session management after initial authentication. This is NOT replaced by Cognito tokens.
  *
  * COGNITO INTEGRATION:
- * CognitoJwtService is optionally injected for future Cognito-based authentication flows.
- * It is NOT currently used in the existing Google/Apple/Email/Mobile authentication flows.
+ * CognitoJwtService verifies the Cognito ID token at /auth/cognito only; Cognito
+ * tokens are never accepted as a bearer token.
  *
  * MOBILE VERIFICATION WORKFLOW:
  * The temp token system for mobile verification remains unchanged:
@@ -215,7 +215,7 @@ export class AuthService {
     private readonly whatsappService: WhatsAppService,
     private readonly otpService: OtpService,
     private readonly redis: RedisService,
-    private readonly cognitoJwtService?: CognitoJwtService, // Optional injection for future Cognito flows
+    private readonly cognitoJwtService?: CognitoJwtService,
     @Optional() private readonly appleSignIn?: AppleSignInService,
     @Optional() private readonly events?: EventEmitter2,
   ) {
@@ -1296,26 +1296,6 @@ export class AuthService {
   /** Redis key for a logged-out access token (hashed: pre-S6 tokens have no jti). */
   private revokedAccessKey(token: string): string {
     return `auth:access:revoked:${createHash('sha256').update(token).digest('hex')}`;
-  }
-
-  /**
-   * Get user by ID (for Cognito JWT authentication flow)
-   * Used by JwtAuthGuard when verifying Cognito tokens
-   *
-   * @param userId - User ID from Cognito 'sub' claim
-   * @returns User object
-   * @throws UnauthorizedException if user not found
-   */
-  async getUserById(userId: string): Promise<User> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user || user.deletedAt || isSuspended(user)) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    return user;
   }
 
   /**

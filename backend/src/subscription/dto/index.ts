@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
@@ -17,52 +16,43 @@ import { BillingCycle, OrgPlan } from '@prisma/client';
 
 /** Platform admin: negotiated terms for a space or one of its events (T4). Null = rate card. */
 export class CreateDealDto {
-  @ApiPropertyOptional({ description: 'Limit the deal to one event of the space' })
   @IsOptional()
   @IsUUID()
   eventId?: string;
 
-  @ApiPropertyOptional({ enum: OrgPlan })
   @IsOptional()
   @IsEnum(OrgPlan)
   plan?: OrgPlan;
 
-  @ApiPropertyOptional({ example: 0, description: 'Plan price in paise; 0 = comp, omit = rate card' })
   @IsOptional()
   @IsInt()
   @Min(0)
   planPricePaise?: number;
 
-  @ApiPropertyOptional({ enum: BillingCycle })
   @IsOptional()
   @IsEnum(BillingCycle)
   billingCycle?: BillingCycle;
 
-  @ApiPropertyOptional({ example: 300, description: 'Buyer fee in basis points (500 = 5%)' })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10000)
   buyerFeeBps?: number;
 
-  @ApiPropertyOptional({ example: 100, description: 'Organiser platform fee in basis points (150 = 1.5%)' })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10000)
   organiserFeeBps?: number;
 
-  @ApiPropertyOptional({ description: 'ISO start; default now' })
   @IsOptional()
   @IsISO8601()
   validFrom?: string;
 
-  @ApiPropertyOptional({ description: 'ISO end; omit = open-ended' })
   @IsOptional()
   @IsISO8601()
   validUntil?: string;
 
-  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(1000)
@@ -70,55 +60,42 @@ export class CreateDealDto {
 }
 
 export class UpgradeSubscriptionDto {
-  @ApiProperty({ enum: OrgPlan, example: OrgPlan.PRO })
   @IsEnum(OrgPlan)
   plan: OrgPlan;
 
-  @ApiProperty({ enum: BillingCycle, example: BillingCycle.MONTHLY })
   @IsEnum(BillingCycle)
   billingCycle: BillingCycle;
 }
 
 export class VerifyUpgradeDto {
-  @ApiProperty({ example: 'order_abc123' })
   @IsString()
   orderId: string;
 
-  @ApiProperty({ example: 'pay_xyz789' })
   @IsString()
   paymentId: string;
 
-  @ApiProperty({ example: 'signature_hash' })
   @IsString()
   signature: string;
 }
 
 /** Platform admin: a plan payment made outside Razorpay. */
 export class RecordOfflinePaymentDto {
-  @ApiProperty({ enum: OrgPlan, example: OrgPlan.PRO })
   @IsEnum(OrgPlan)
   plan: OrgPlan;
 
-  @ApiProperty({ enum: BillingCycle, example: BillingCycle.ANNUAL })
   @IsEnum(BillingCycle)
   billingCycle: BillingCycle;
 
-  @ApiPropertyOptional({
-    example: 4499,
-    description: "Amount received (₹); defaults to the plan's price in force (deal or rate card)",
-  })
   @IsOptional()
   @IsNumber()
   @Min(1)
   amount?: number;
 
-  @ApiPropertyOptional({ example: 'UTR 4021XXXX', description: 'Bank / cheque reference; recorded once' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
   reference?: string;
 
-  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(250)
@@ -126,36 +103,27 @@ export class RecordOfflinePaymentDto {
 }
 
 export class AdminUpdateSubscriptionDto {
-  @ApiPropertyOptional({ enum: OrgPlan })
   @IsOptional()
   @IsEnum(OrgPlan)
   plan?: OrgPlan;
 
-  @ApiPropertyOptional({ enum: BillingCycle })
   @IsOptional()
   @IsEnum(BillingCycle)
   billingCycle?: BillingCycle;
 
-  @ApiPropertyOptional({
-    example: 499,
-    description: 'Recurring amount for a custom SUBSCRIPTION arrangement',
-  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   amount?: number;
 
-  @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ example: '2027-01-01T00:00:00.000Z' })
   @IsOptional()
   @IsISO8601()
   expiresAt?: string;
 
-  @ApiPropertyOptional({ example: 'Moved to revenue-share arrangement' })
   @IsOptional()
   @IsString()
   reason?: string;
@@ -163,48 +131,42 @@ export class AdminUpdateSubscriptionDto {
 
 /** Admin edit of a plan's definition. All fields optional; null = unlimited. */
 export class UpdatePlanConfigDto {
-  @ApiPropertyOptional({ description: 'Max spaces; null = unlimited' })
   @IsOptional()
   @IsInt()
   @Min(0)
   spaces?: number | null;
 
-  @ApiPropertyOptional({ description: 'Events per month; null = unlimited' })
   @IsOptional()
   @IsInt()
   @Min(0)
   eventsPerMonth?: number | null;
 
-  @ApiPropertyOptional({ description: 'Attendees per event; null = unlimited' })
   @IsOptional()
   @IsInt()
   @Min(0)
   attendeesPerEvent?: number | null;
 
-  @ApiPropertyOptional({ description: 'Ticket types; null = unlimited' })
   @IsOptional()
   @IsInt()
   @Min(0)
   ticketTypes?: number | null;
 
-  @ApiPropertyOptional({ description: 'Co-organisers; null = unlimited' })
   @IsOptional()
   @IsInt()
   @Min(0)
   coCurators?: number | null;
 
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasWaitlist?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasBulkExport?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasAnalytics?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasWhatsappBlast?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasRecurringEvents?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasRemoveBranding?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasPrioritySupport?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSessions?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasLeaderboard?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasCertificates?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSponsors?: boolean;
-  @ApiPropertyOptional({ example: 2.5, description: 'Organiser platform fee per paid ticket (%), new sales only' })
+  @IsOptional() @IsBoolean() hasWaitlist?: boolean;
+  @IsOptional() @IsBoolean() hasBulkExport?: boolean;
+  @IsOptional() @IsBoolean() hasAnalytics?: boolean;
+  @IsOptional() @IsBoolean() hasWhatsappBlast?: boolean;
+  @IsOptional() @IsBoolean() hasRecurringEvents?: boolean;
+  @IsOptional() @IsBoolean() hasRemoveBranding?: boolean;
+  @IsOptional() @IsBoolean() hasPrioritySupport?: boolean;
+  @IsOptional() @IsBoolean() hasSessions?: boolean;
+  @IsOptional() @IsBoolean() hasLeaderboard?: boolean;
+  @IsOptional() @IsBoolean() hasCertificates?: boolean;
+  @IsOptional() @IsBoolean() hasSponsors?: boolean;
   // Not @IsOptional: that lets null through, and the column is NOT NULL (500).
   @ValidateIf((_, v) => v !== undefined)
   @IsNumber()
@@ -212,13 +174,11 @@ export class UpdatePlanConfigDto {
   @Max(100)
   platformFeePercent?: number;
 
-  @ApiPropertyOptional({ description: 'Monthly price (₹); null = custom' })
   @IsOptional()
   @IsInt()
   @Min(0)
   monthlyPrice?: number | null;
 
-  @ApiPropertyOptional({ description: 'Annual price (₹); null = custom' })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -226,45 +186,32 @@ export class UpdatePlanConfigDto {
 }
 
 export class SubscriptionResponseDto {
-  @ApiProperty()
   id: string;
 
-  @ApiProperty({ enum: OrgPlan })
   plan: OrgPlan;
 
-  @ApiProperty({ enum: BillingCycle })
   billingCycle: BillingCycle;
 
-  @ApiProperty()
   isActive: boolean;
 
-  @ApiProperty()
   startedAt: Date;
 
-  @ApiPropertyOptional()
   expiresAt?: Date;
 
-  @ApiPropertyOptional()
   nextPaymentAt?: Date;
 
-  @ApiProperty()
   eventsThisMonth: number;
 
-  @ApiProperty()
   usageResetAt: Date;
 }
 
 export class SubscriptionUsageDto {
-  @ApiProperty()
   spacesCount: number;
 
-  @ApiProperty()
   eventsThisMonth: number;
 
-  @ApiProperty()
   plan: OrgPlan;
 
-  @ApiProperty()
   limits: {
     spaces: number | null;
     eventsPerMonth: number | null;
@@ -279,7 +226,6 @@ export class SubscriptionUsageDto {
    * disabled/upsell control can never disagree with the endpoint's own check
    * (a lapsed plan gets Starter's flags).
    */
-  @ApiProperty()
   features: {
     hasWaitlist: boolean;
     hasBulkExport: boolean;

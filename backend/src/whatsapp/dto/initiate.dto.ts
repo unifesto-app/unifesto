@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
@@ -14,30 +13,16 @@ import {
  * a template name and supplies its body parameters.
  */
 export class WhatsAppInitiateDto {
-  @ApiProperty({
-    example: '919848945690',
-    description:
-      "Recipient number. Accepts +country-code, a bare local mobile, or Meta's wa_id (digits only).",
-  })
   @IsString()
   @MinLength(6)
   @MaxLength(20)
   to: string;
 
-  @ApiProperty({
-    example: 'hello_world',
-    description: 'Name of the pre-approved Meta template to send.',
-  })
   @IsString()
   @MinLength(1)
   @MaxLength(512)
   templateName: string;
 
-  @ApiPropertyOptional({
-    type: [String],
-    example: ['Sameer'],
-    description: 'Ordered body ({{1}}, {{2}}…) parameters for the template.',
-  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -45,10 +30,6 @@ export class WhatsAppInitiateDto {
   @MaxLength(1024, { each: true })
   bodyParams?: string[];
 
-  @ApiPropertyOptional({
-    example: 'en',
-    description: "Template language code (defaults to 'en').",
-  })
   @IsOptional()
   @IsString()
   @MaxLength(10)

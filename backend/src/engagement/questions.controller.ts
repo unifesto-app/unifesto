@@ -1,6 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
@@ -9,7 +8,6 @@ import { AskQuestionDto, ModerateQuestionDto, QaSettingsDto } from './questions.
 
 const optionalUuid = new ParseUUIDPipe({ optional: true });
 
-@ApiTags('questions')
 @Controller('events/:eventId/questions')
 export class QuestionsController {
   constructor(private readonly questions: QuestionsService) {}

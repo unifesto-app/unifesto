@@ -1,6 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Ip, NotFoundException, Post, UnauthorizedException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportCaseKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from '../auth/otp.service';
@@ -14,7 +13,6 @@ import { CreateGrievanceDto } from './dto';
  * opens a GRIEVANCE case on the Platform desk for that account, held to the
  * 24 hour / 15 day SLA (support-sla.ts).
  */
-@ApiTags('Support')
 @Controller('support/grievances')
 export class GrievanceController {
   constructor(
@@ -26,7 +24,6 @@ export class GrievanceController {
   @Post()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Raise a grievance (public, email code)' })
   async create(@Body() dto: CreateGrievanceDto, @Ip() ip: string) {
     // /auth/email stores the code under the lowercased address (J17).
     const result = await this.otp.verifyOtp(normalizeEmail(dto.email), dto.otp, ip);

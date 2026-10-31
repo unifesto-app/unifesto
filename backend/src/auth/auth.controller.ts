@@ -13,7 +13,6 @@ import {
   HttpStatus,
   Ip,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -50,8 +49,6 @@ export class AuthController {
    * POST /auth/email
    */
   @Post('cognito')
-  @ApiOperation({ summary: 'Login with Cognito ID token (Google/Apple via Cognito)' })
-  @ApiResponse({ status: 200 })
   async loginWithCognito(
     @Body() body: CognitoLoginDto,
     @Headers('user-agent') ua?: string,

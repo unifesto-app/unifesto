@@ -6,54 +6,31 @@ import {
   NotFoundException,
   Post,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiProperty,
-  ApiPropertyOptional,
-  ApiTags,
-} from '@nestjs/swagger';
 import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { TermsService } from '../subscription/terms.service';
 import { quote } from './quote';
 
 export class QuoteDto {
-  @ApiPropertyOptional({
-    description: 'Event the sale is for (sets the space, deal and absorb rule)',
-  })
   @IsOptional()
   @IsUUID()
   eventId?: string;
 
-  @ApiPropertyOptional({
-    description: 'Session the sale is for, instead of an event',
-  })
   @IsOptional()
   @IsUUID()
   sessionId?: string;
 
-  @ApiProperty({
-    example: 50000,
-    description: 'Ticket price × units, in paise, before any coupon',
-  })
   @IsInt()
   @Min(0)
   @Max(100_000_000)
   basePaise: number;
 
-  @ApiPropertyOptional({
-    example: 1,
-    description: 'Priced units for the per-ticket fee cap',
-  })
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(1000)
   tickets?: number;
 
-  @ApiPropertyOptional({
-    description: 'Discount from the coupon quote endpoint, in paise',
-  })
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -65,7 +42,6 @@ export class QuoteDto {
  * so web and mobile stop estimating 5% themselves. Display only: checkout
  * re-prices on the server, so a stale or tampered quote charges nothing.
  */
-@ApiTags('Payments')
 @Controller('quote')
 export class QuoteController {
   constructor(
@@ -75,7 +51,6 @@ export class QuoteController {
 
   @Post()
   @HttpCode(200)
-  @ApiOperation({ summary: 'Price a sale: base, buyer fee and total in paise' })
   async quote(@Body() dto: QuoteDto) {
     if (!dto.eventId === !dto.sessionId) {
       throw new BadRequestException('Pass an eventId or a sessionId');

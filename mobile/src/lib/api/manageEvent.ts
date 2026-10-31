@@ -81,13 +81,12 @@ export interface AttendeePage {
 /** GET /events/:id/registrations — paged, searchable (name, username, phone, email, group members). */
 export function getAttendees(
   eventId: string,
-  opts: { page: number; search?: string; filter: AttendeeFilter; limit?: number; ticketTypeId?: string },
+  opts: { page: number; search?: string; filter: AttendeeFilter; limit?: number },
 ) {
   const q = new URLSearchParams({ page: String(opts.page), limit: String(opts.limit ?? 30) });
   if (opts.search?.trim()) q.set('search', opts.search.trim());
   if (opts.filter === 'attending') q.set('attendingOnly', 'true');
   if (opts.filter === 'cancelled') q.set('status', 'CANCELLED');
-  if (opts.ticketTypeId) q.set('ticketTypeId', opts.ticketTypeId);
   return call<AttendeePage>(`/events/${eventId}/registrations?${q.toString()}`);
 }
 

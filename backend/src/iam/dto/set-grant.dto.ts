@@ -1,4 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsString } from 'class-validator';
 import { RoleCode } from '@prisma/client';
 
@@ -8,15 +7,12 @@ import { RoleCode } from '@prisma/client';
  * here and scope-checked against the role in CapabilityConfigService.setGrant.
  */
 export class SetGrantDto {
-  @ApiProperty({ enum: RoleCode, description: 'Role whose grant is changing' })
   @IsEnum(RoleCode)
   code!: RoleCode;
 
-  @ApiProperty({ example: 'event:publish', description: 'Action key to toggle' })
   @IsString()
   action!: string;
 
-  @ApiProperty({ description: 'true to grant, false to revoke' })
   @IsBoolean()
   granted!: boolean;
 }

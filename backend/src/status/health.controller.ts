@@ -1,5 +1,4 @@
 import { Controller, Get, HttpCode, Res } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AdminService } from '../admin/admin.service';
@@ -14,7 +13,6 @@ import { AdminService } from '../admin/admin.service';
  * Deliberately not the Docker healthcheck: that must stay liveness-only, or a
  * DB blip would pull every replica out of rotation at once.
  */
-@ApiTags('Status')
 @SkipThrottle()
 @Controller('health')
 export class HealthController {
@@ -40,7 +38,6 @@ export class HealthController {
 
   @Get()
   @HttpCode(200)
-  @ApiOperation({ summary: 'Public readiness probe for external monitors' })
   async probe(@Res({ passthrough: true }) res: Response) {
     const h = await this.health();
     const database = h.services.database.status === 'connected';

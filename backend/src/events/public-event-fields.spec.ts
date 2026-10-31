@@ -54,7 +54,6 @@ function events(opts: { attending?: number } = {}) {
   const cache: any = {
     getCachedEvent: jest.fn(async () => null),
     setCachedEvent: jest.fn(async () => undefined),
-    incrementEventViews: jest.fn(async () => undefined),
   };
   const authz: any = { can: jest.fn(async () => false), canAny: jest.fn(async () => false) };
   const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz, {} as any);

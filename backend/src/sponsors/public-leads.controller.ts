@@ -1,6 +1,5 @@
 import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LeadsService } from './leads.service';
 import { CaptureLeadDto } from './dto/lead.dto';
 
@@ -11,14 +10,12 @@ import { CaptureLeadDto } from './dto/lead.dto';
  * throttler. The service only accepts what the public can see and never
  * rewrites an existing lead.
  */
-@ApiTags('Public Leads')
 @Controller()
 export class PublicLeadsController {
   constructor(private readonly leads: LeadsService) {}
 
   @Post('events/:eventId/interest')
   @Throttle({ default: { limit: 5, ttl: 600000 } })
-  @ApiOperation({ summary: 'Register interest in an event ("Notify me")' })
   eventInterest(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() dto: CaptureLeadDto,
@@ -28,7 +25,6 @@ export class PublicLeadsController {
 
   @Post('spaces/:spaceId/inquiry')
   @Throttle({ default: { limit: 5, ttl: 600000 } })
-  @ApiOperation({ summary: 'Submit an inquiry to a space' })
   spaceInquiry(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Body() dto: CaptureLeadDto,

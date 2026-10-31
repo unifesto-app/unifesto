@@ -63,7 +63,6 @@ function events(space: { visibility: string; status: SpaceStatus }, event: Recor
   };
   const cache: any = {
     getCachedEvent: jest.fn(async () => row),
-    incrementEventViews: jest.fn(async () => undefined),
     invalidateEventCache: jest.fn(async () => undefined),
   };
   const authz: any = { can: jest.fn(async () => true), canAny: jest.fn(async () => false) };

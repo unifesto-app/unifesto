@@ -1,6 +1,5 @@
 import { Body, Controller, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportMessageSide, SupportTicketStatus } from '@prisma/client';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import * as crypto from 'crypto';
@@ -68,7 +67,6 @@ export function findOrCreateGuest(prisma: PrismaService, email: string, name?: s
  * to the email. The token reads only the guest's and the bot's messages, so
  * someone who typed another person's email never reads the desk's replies.
  */
-@ApiTags('Support')
 @Controller('support/guest')
 export class SupportGuestController {
   constructor(
@@ -78,7 +76,6 @@ export class SupportGuestController {
 
   @Post('assist')
   @Throttle({ default: { limit: 5, ttl: 10 * 60_000 } })
-  @ApiOperation({ summary: 'Start an Assist chat as a guest (D11)' })
   async start(@Body() dto: GuestStartDto) {
     const userId = await findOrCreateGuest(this.prisma, dto.email, dto.name);
     const id = await this.bot.start(
@@ -91,7 +88,6 @@ export class SupportGuestController {
 
   @Post('assist/:id')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Message the Assist bot as a guest' })
   async say(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GuestMessageDto) {
     const userId = await this.guestCase(id, dto.token);
     await this.bot.say(id, userId, dto.body, { guest: true });
@@ -100,7 +96,6 @@ export class SupportGuestController {
 
   @Post('assist/:id/handoff')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Hand a guest Assist chat to a person' })
   async handoff(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GuestTokenDto) {
     const userId = await this.guestCase(id, dto.token);
     await this.bot.handoff(id, userId);
@@ -110,7 +105,6 @@ export class SupportGuestController {
   /** Reload the chat after a refresh: the guest's and the bot's messages only. */
   @Post('assist/:id/thread')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Read a guest Assist chat' })
   async read(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GuestTokenDto) {
     if (!tokenOk(id, dto.token)) throw new NotFoundException('Chat not found');
     return this.thread(id);

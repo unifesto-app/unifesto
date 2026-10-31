@@ -16,10 +16,8 @@ export default async function EventsPage() {
   const events = await getListedEvents();
 
   // The grid renders client-side (useSearchParams), so its first image isn't
-  // in the HTML. Preload the first one on screen: featured strip, else grid.
-  const first =
-    events.find((e) => e.is_featured || e.is_trending) ??
-    filterEvents(events, { query: "", category: "All", status: "all", price: "all", dateRange: "all" })[0];
+  // in the HTML. Preload the grid's first one.
+  const first = filterEvents(events, { query: "", category: "All", status: "all", price: "all", dateRange: "all" })[0];
   const image = first && (first.banner_url || first.thumbnail_url || first.image_url);
   if (image) preload(optimized(image, 750), { as: "image", fetchPriority: "high" });
 

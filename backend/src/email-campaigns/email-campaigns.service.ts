@@ -787,7 +787,7 @@ export class EmailCampaignsService {
   }
 
   /** Build the final per-recipient HTML: merge vars, click-tracked links, an
-   * open pixel, and (optionally) the branded shell. */
+   * open pixel, and the branded shell. */
   private buildTrackedHtml(
     campaign: EmailCampaign,
     recipient: Recipient,
@@ -796,9 +796,8 @@ export class EmailCampaignsService {
   ): string {
     let content = this.substituteVars(campaign.body, recipient);
     content = this.rewriteLinks(content, logId);
-    // `wrap` defaults on; only the explicit `false` sentinel skips branding.
-    // (Campaigns store body only, so we re-wrap here rather than at compose.)
-    // The footer's unsubscribe link is added here, after rewriteLinks, so it is
+    // Campaigns store body only, so every send wraps it in the branded shell
+    // here rather than at compose. The footer's unsubscribe link is added here, after rewriteLinks, so it is
     // never click-tracked.
     const wrapped = this.emailService.wrapCampaignHtml(content, unsubscribeUrl);
     return this.injectOpenPixel(wrapped, logId);

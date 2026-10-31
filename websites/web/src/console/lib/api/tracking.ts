@@ -71,9 +71,6 @@ export interface MyPartnerLink {
   trackingUrl: string;
 }
 
-/** GET /partner-links/mine — every event this user is a partner on. */
-export const getMyPartnerLinks = () => call<MyPartnerLink[]>('/partner-links/mine');
-
 export interface PartnerStats extends MyPartnerLink {
   /** Registrations credited today (IST). */
   today: number;

@@ -1,6 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
@@ -8,7 +7,6 @@ import { Action, Can, CanGuard } from '../auth/authorization';
 import { uploadLimit } from '../common/upload-limits';
 import { DefaultImagesService } from './default-images.service';
 
-@ApiTags('default-images')
 @Controller()
 export class DefaultImagesController {
   constructor(private readonly images: DefaultImagesService) {}

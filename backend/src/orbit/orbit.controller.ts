@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RoleCode } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { Equals, IsBoolean, IsEmail, IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
@@ -47,8 +46,6 @@ class DeclineApplicationDto {
 }
 
 // Guards are per route: /orbit/campuses is public (the apply form's picker).
-@ApiTags('orbit')
-@ApiBearerAuth()
 @Controller('orbit')
 export class OrbitController {
   constructor(private readonly orbit: OrbitService) {}

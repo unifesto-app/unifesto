@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import * as jwt from 'jsonwebtoken';
-import { CognitoJwtService } from './cognito-jwt.service';
 
 /**
  * Resolves a *verified* user id from a bearer token, for rate-limit bucketing.
@@ -10,16 +9,14 @@ import { CognitoJwtService } from './cognito-jwt.service';
  * The throttler must not trust an unverified token: if it keyed buckets off any
  * `Bearer <string>`, a client could rotate random tokens to mint unlimited
  * buckets and bypass the limit entirely. This service verifies the token's
- * signature/expiry (the same two token types JwtAuthGuard accepts) and returns
- * its user id, or `null` when the token is absent, malformed, forged, or
- * expired — so the caller falls back to IP-based limiting for anything it can't
- * trust.
+ * signature/expiry (the same token JwtAuthGuard accepts) and returns its user
+ * id, or `null` when the token is absent, malformed, forged, or expired — so the
+ * caller falls back to IP-based limiting for anything it can't trust.
  *
  * It deliberately does NOT load the user from the database (that is the auth
  * guard's job on protected routes). This runs on every request, so it stays
- * cheap: custom tokens are an HMAC verify, Cognito tokens use cached JWKS keys,
- * and verified results are memoised briefly to avoid re-verifying the same
- * token on back-to-back requests.
+ * cheap: an HMAC verify, memoised briefly to avoid re-verifying the same token
+ * on back-to-back requests.
  */
 @Injectable()
 export class ThrottleIdentityService {
@@ -35,10 +32,7 @@ export class ThrottleIdentityService {
   private static readonly CACHE_TTL_MS = 60_000;
   private static readonly MAX_CACHE_ENTRIES = 10_000;
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly cognito: CognitoJwtService,
-  ) {
+  constructor(private readonly config: ConfigService) {
     this.jwtSecret = this.config.get<string>('JWT_SECRET') ?? '';
   }
 
@@ -61,33 +55,7 @@ export class ThrottleIdentityService {
   }
 
   private async verify(token: string): Promise<string | null> {
-    // Decode (without verifying) to route to the right verifier — same
-    // detection JwtAuthGuard uses.
-    let payload: Record<string, unknown> | undefined;
-    try {
-      const decoded = jwt.decode(token, { complete: true });
-      if (!decoded || typeof decoded === 'string') return null;
-      payload = decoded.payload as Record<string, unknown>;
-    } catch {
-      return null;
-    }
-
-    const iss = payload?.iss;
-    const isCognito =
-      typeof iss === 'string' &&
-      iss.includes('cognito-idp') &&
-      payload?.token_use !== undefined;
-
-    if (isCognito) {
-      try {
-        const verified = await this.cognito.verifyCognitoToken(token);
-        return verified?.sub ?? null;
-      } catch {
-        return null; // forged/expired/unconfigured -> untrusted
-      }
-    }
-
-    // Custom JWT: HMAC verify against JWT_SECRET.
+    // HMAC verify against JWT_SECRET, the only bearer token JwtAuthGuard accepts.
     if (!this.jwtSecret) return null;
     try {
       const verified = jwt.verify(token, this.jwtSecret) as {
@@ -98,7 +66,7 @@ export class ThrottleIdentityService {
       if (verified?.type === 'refresh') return null;
       return verified?.userId ?? null;
     } catch {
-      return null;
+      return null; // malformed/forged/expired -> untrusted
     }
   }
 

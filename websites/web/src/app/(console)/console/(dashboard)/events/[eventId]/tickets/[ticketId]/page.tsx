@@ -184,7 +184,6 @@ export default function TicketDetailPage() {
       // Always sent on update: clearing the capacity has to switch the waiting
       // list off in the same request, or the API rejects the pair.
       waitlistEnabled: Boolean(capacity && draft.waitlistEnabled),
-      waitlistOfferTtlHours: Number(draft.waitlistOfferTtlHours) || 24,
       ...(draft.kind === "GROUP"
         ? {
             groupPricingMode: draft.groupPricingMode,

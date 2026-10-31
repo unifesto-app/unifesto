@@ -122,12 +122,7 @@ export default function EventTicketsPage() {
       perUserLimit: Number(draft.perUserLimit) || 1,
       // Only send the waiting list when there is a capacity for it to guard;
       // the API rejects the flag otherwise.
-      ...(capacity && draft.waitlistEnabled
-        ? {
-            waitlistEnabled: true,
-            waitlistOfferTtlHours: Number(draft.waitlistOfferTtlHours) || 24,
-          }
-        : {}),
+      ...(capacity && draft.waitlistEnabled ? { waitlistEnabled: true } : {}),
       ...(draft.kind === "GROUP"
         ? {
             groupPricingMode: draft.groupPricingMode,

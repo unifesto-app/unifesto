@@ -233,7 +233,6 @@ module.exports = () => {
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "expo-dev-client",
-      ["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.1013647520532-kv0g8vf89h92l0s63vgj7jdfilqp41qq" }],
       [
         "expo-camera",
         {

@@ -7,7 +7,6 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -24,15 +23,12 @@ import { SponsorsService } from './sponsors.service';
  * Public sponsor *display* is not here — it rides along in the cached event
  * detail (GET /events/:slug), so unauthenticated visitors see sponsors too.
  */
-@ApiTags('Sponsor Leads')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('events/:eventId/sponsors')
 export class SponsorLeadsController {
   constructor(private readonly sponsors: SponsorsService) {}
 
   @Get('opt-ins')
-  @ApiOperation({ summary: "The sponsors the caller has opted into at this event" })
   listMyOptIns(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: User,
@@ -41,7 +37,6 @@ export class SponsorLeadsController {
   }
 
   @Post(':eventSponsorId/opt-in')
-  @ApiOperation({ summary: 'Share my details with this sponsor' })
   optIn(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,
@@ -51,7 +46,6 @@ export class SponsorLeadsController {
   }
 
   @Delete(':eventSponsorId/opt-in')
-  @ApiOperation({ summary: 'Withdraw my details from this sponsor' })
   withdrawOptIn(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('eventSponsorId', ParseUUIDPipe) eventSponsorId: string,

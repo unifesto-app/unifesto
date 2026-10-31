@@ -283,8 +283,6 @@ export class RegistrationPaymentsService {
       // the verify/webhook race would otherwise send a duplicate.
       if (converted) await this.confirmations.sendRegistrationConfirmations(registration.id);
       else await this.refundIfDuplicateQuietly(registration.id, dto.razorpayPaymentId);
-      await this.cache.incrementEventScore(eventId);
-
 
       const tickets = await this.prisma.eventTicket.findMany({
         where: { registrationId: registration.id },
@@ -399,9 +397,6 @@ export class RegistrationPaymentsService {
 
     // Only the caller that won the PAID claim above gets here, so this sends once.
     await this.sendPaidConfirmations(registration.id, dto.razorpayPaymentId);
-
-    // Increment trending events score
-    await this.cache.incrementEventScore(eventId);
 
     this.logger.log(`Payment verified for registration ${registration.id}`);
 

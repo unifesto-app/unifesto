@@ -13,8 +13,6 @@ const ev = (id: string, over: Partial<Event> = {}): Event =>
     event_type: "IN_PERSON",
     is_free: true,
     status: "PUBLISHED",
-    is_featured: false,
-    is_trending: false,
     created_at: "",
     updated_at: "",
     ...over,

@@ -30,7 +30,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cognitoDiscovery, COGNITO_REDIRECT_URI, exchangeCognitoCode } from '../lib/api/cognito';
 import * as AuthSession from 'expo-auth-session';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import AuthButton from '../components/auth/AuthButton';
@@ -51,12 +50,6 @@ const GOOGLE_IOS_CLIENT_ID = Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_IOS
   process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 const GOOGLE_ANDROID_CLIENT_ID = Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
   process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  offlineAccess: false,
-});
 
 const formatCountdown = (s: number) => `0:${String(s).padStart(2, '0')}`;
 const formatMobile = (n: string) => (n.length === 10 ? `${n.slice(0, 5)} ${n.slice(5)}` : n);

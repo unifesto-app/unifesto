@@ -1,5 +1,4 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,7 +13,6 @@ import { AuthorizationService } from '../auth/authorization';
  * one call instead of four (spaces, check-in, judging, sponsor portal). Each
  * part degrades to empty on its own, like the four separate calls did.
  */
-@ApiTags('Users')
 @Controller('users')
 export class MeAccessController {
   constructor(
@@ -26,9 +24,7 @@ export class MeAccessController {
   ) {}
 
   @Get('me/access')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'My operator spaces, check-in events, judging events, sponsorships and platform capabilities' })
   async getMyAccess(@CurrentUser() user: User) {
     const [spaces, checkin, judging, sponsorships, platform] = await Promise.all([
       this.users.getUserSpaces(user.id, { includeEventRoles: true }).catch(() => []),

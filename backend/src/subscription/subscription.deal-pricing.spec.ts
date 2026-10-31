@@ -54,7 +54,6 @@ const build = (row: any, deals: any[] = [], lastPayment: any = null) => {
   prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
   const svc = new SubscriptionService(
     prisma,
-    { setSpacePlan: jest.fn(), invalidateSpacePlanCache: jest.fn() } as any,
     {} as any,
     planConfig,
     termsWith(deals),

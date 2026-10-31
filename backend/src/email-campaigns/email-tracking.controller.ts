@@ -6,7 +6,6 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiExcludeController } from '@nestjs/swagger';
 import { EmailCampaignsService } from './email-campaigns.service';
 
 // 1x1 fully-transparent GIF. Served for every open so a broken/absent pixel
@@ -22,7 +21,6 @@ const TRANSPARENT_GIF = Buffer.from(
  * guard — the log id is an opaque UUID and click targets are HMAC-signed, so
  * neither endpoint can be abused to attribute arbitrary data or open-redirect.
  */
-@ApiExcludeController()
 @Controller('email/track')
 export class EmailTrackingController {
   constructor(private readonly campaigns: EmailCampaignsService) {}

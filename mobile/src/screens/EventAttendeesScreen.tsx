@@ -25,12 +25,11 @@ const TABS: { key: AttendeeFilter; label: string }[] = [
 
 /** Searchable, paged attendee list for one event (operator view). */
 export default function EventAttendeesScreen() {
-  // `ticket` + `ticketName` deep-link from a ticket's page to just its holders.
-  const { eventId, ticket, ticketName } = useLocalSearchParams<{ eventId: string; ticket?: string; ticketName?: string }>();
+  const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
   const topSpacing = useTopSpacing();
-  const a = useEventAttendees(eventId, ticket);
+  const a = useEventAttendees(eventId);
   const list = useRef<FlatList<AttendeeRowData>>(null);
 
   // A new page starts at its top, not where the last one was scrolled to.
@@ -49,7 +48,6 @@ export default function EventAttendeesScreen() {
           {a.pageCount > 1
             ? `${a.from.toLocaleString('en-IN')}–${a.to.toLocaleString('en-IN')} of ${a.total.toLocaleString('en-IN')} bookings`
             : `${a.total.toLocaleString('en-IN')} ${a.total === 1 ? 'booking' : 'bookings'}`}
-          {ticket ? ` on ${ticketName || 'this ticket'}` : ''}
         </Text>
       ) : null}
     </View>

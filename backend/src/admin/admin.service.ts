@@ -10,8 +10,6 @@ import { LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { RECORDING_KEY_PREFIX, RECORDING_LINK_SECONDS } from '../sessions/livekit.service';
-import { EmailService } from '../email/email.service';
-import { SPACE_APP } from '../email/layout';
 import { NotifyService } from '../notifications/notify.service';
 import { AuthService } from '../auth/auth.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
@@ -57,7 +55,6 @@ export class AdminService {
     private readonly redis: RedisService,
     private readonly storage: StorageService,
     private readonly configService: ConfigService,
-    private readonly emailService: EmailService,
     private readonly notify: NotifyService,
     private readonly auth: AuthService,
   ) {
@@ -279,69 +276,6 @@ export class AdminService {
       uptime,
       memoryMB,
     };
-  }
-
-  /**
-   * Send expiring subscription reminder emails
-   * Should be called by a scheduled job 7 days before expiry
-   */
-  async sendExpiringSubscriptionEmails(): Promise<void> {
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-
-    const sixDaysFromNow = new Date();
-    sixDaysFromNow.setDate(sixDaysFromNow.getDate() + 6);
-
-    const expiring = await this.prisma.orgSubscription.findMany({
-      where: {
-        expiresAt: { gte: sixDaysFromNow, lte: sevenDaysFromNow },
-        isActive: true,
-        plan: { not: 'STARTER' },
-      },
-      include: {
-        // Billing emails for a space go to its accountable admin (its creator).
-        space: {
-          select: {
-            creator: {
-              select: {
-                fullName: true,
-                username: true,
-                identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    for (const sub of expiring) {
-      const person = sub.space?.creator ?? null;
-      const email = person?.identities[0]?.email;
-      if (email && sub.expiresAt) {
-        await this.emailService
-          .sendSubscriptionExpiring({
-            email,
-            userName: person?.fullName || person?.username || 'there',
-            plan: sub.plan,
-            expiresAt: this.formatDate(sub.expiresAt),
-            renewUrl: `${SPACE_APP}/billing`,
-          })
-          .catch((err) =>
-            this.logger.error('Failed to send expiring subscription email', err),
-          );
-      }
-    }
-
-    this.logger.log(`Sent expiring subscription emails to ${expiring.length} users`);
-  }
-
-  private formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Kolkata',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date);
   }
 
   /**

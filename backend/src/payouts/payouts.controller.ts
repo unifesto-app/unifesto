@@ -2,7 +2,6 @@ import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PayoutsService, payoutSource } from './payouts.service';
 import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, RevokeBankAccountDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,8 +10,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
 
-@ApiTags('Payouts')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('payouts')
 export class PayoutsController {

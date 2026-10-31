@@ -1,6 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiExcludeController } from '@nestjs/swagger';
 import { esc, h1, layout, p, small } from '../email/layout';
 import { EmailCampaignsService } from './email-campaigns.service';
 
@@ -26,7 +25,6 @@ const submit = (label: string, scope?: 'all') =>
  *                                  both land here; `scope=all` widens a space
  *                                  link to all marketing mail.
  */
-@ApiExcludeController()
 @Controller('email/unsubscribe')
 export class UnsubscribeController {
   constructor(private readonly campaigns: EmailCampaignsService) {}

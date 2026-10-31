@@ -61,7 +61,6 @@ export interface Draft {
   capacity: string;
   perUserLimit: string;
   waitlistEnabled: boolean;
-  waitlistOfferTtlHours: string;
   /** `datetime-local` values (browser local time); empty = no bound. */
   saleStartsAt: string;
   saleEndsAt: string;
@@ -78,7 +77,6 @@ export const EMPTY_DRAFT: Draft = {
   capacity: "",
   perUserLimit: "1",
   waitlistEnabled: false,
-  waitlistOfferTtlHours: "24",
   saleStartsAt: "",
   saleEndsAt: "",
 };
@@ -96,7 +94,6 @@ export function toDraft(t: EventTicketType): Draft {
     capacity: t.totalQuantity != null ? String(t.totalQuantity) : "",
     perUserLimit: String(t.perUserLimit ?? 1),
     waitlistEnabled: t.waitlistEnabled ?? false,
-    waitlistOfferTtlHours: String(t.waitlistOfferTtlHours ?? 24),
     saleStartsAt: isoToLocalInput(t.saleStartsAt),
     saleEndsAt: isoToLocalInput(t.saleEndsAt),
   };

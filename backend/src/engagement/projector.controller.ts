@@ -1,12 +1,10 @@
 import { Controller, Get, Headers, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { ProjectorService } from './projector.service';
 
-@ApiTags('projector')
 @Controller('events/:eventId/projector')
 export class ProjectorController {
   constructor(private readonly projector: ProjectorService) {}

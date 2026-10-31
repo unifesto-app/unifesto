@@ -9,7 +9,6 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StatusService } from './status.service';
 import { UptimeRobotService } from './uptime-robot.service';
 import { SentryIssuesService } from './sentry-issues.service';
@@ -20,8 +19,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Audit } from '../audit/audit';
 import { RoleCode } from '@prisma/client';
 
-@ApiTags('Status')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleCode.ADMIN)
 @Controller('admin/status')
@@ -33,19 +30,16 @@ export class StatusController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Uptime history + incidents (admin)' })
   getSummary() {
     return this.statusService.getSummary();
   }
 
   @Get('external')
-  @ApiOperation({ summary: 'External monitors from UptimeRobot (admin)' })
   getExternal() {
     return this.uptimeRobot.getStatus();
   }
 
   @Get('errors')
-  @ApiOperation({ summary: 'Unresolved Sentry issues from the last 24h (admin)' })
   getErrors() {
     return this.sentry.getIssues();
   }
@@ -53,25 +47,21 @@ export class StatusController {
   // Sentry credits the integration, not the person, so audit_logs keeps who clicked.
   @Post('errors/:id/resolve')
   @Audit('sentry.issue.resolve')
-  @ApiOperation({ summary: 'Mark a Sentry issue resolved (admin)' })
   resolveError(@Param('id') id: string) {
     return this.sentry.resolve(id);
   }
 
   @Get('incidents')
-  @ApiOperation({ summary: 'List incidents (admin)' })
   listIncidents() {
     return this.statusService.listIncidents();
   }
 
   @Post('incidents')
-  @ApiOperation({ summary: 'Report an incident (admin)' })
   createIncident(@Body() dto: CreateIncidentDto, @Req() req: any) {
     return this.statusService.createIncident(dto, req.user.id);
   }
 
   @Patch('incidents/:id')
-  @ApiOperation({ summary: 'Update / resolve an incident (admin)' })
   updateIncident(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateIncidentDto,

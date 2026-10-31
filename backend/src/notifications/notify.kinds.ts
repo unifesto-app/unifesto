@@ -1,14 +1,13 @@
 import type { EmailService } from '../email/email.service';
 import type * as T from '../email/templates';
-import type { WhatsAppService } from '../whatsapp/whatsapp.service';
 import type { DeliveryOpts } from './message-delivery';
 import type { NotificationCategory } from './notifications.constants';
 
 /**
  * The notify() kind registry (C2). Each kind says which push category it
  * belongs to, how critical it is (see channelsFor in notify.policy.ts), and how
- * it renders on each channel. Email and WhatsApp delegate to the existing
- * EmailService / WhatsAppService methods: no template lives here.
+ * it renders on each channel. Email delegates to the existing EmailService
+ * methods: no template lives here.
  *
  * Adding a kind: add its data shape to NotifyKindData, then an entry to
  * NOTIFY_KINDS. TypeScript makes the two agree.
@@ -36,14 +35,9 @@ export interface StayNotice {
 
 /** What each kind's caller passes to notify(). */
 export interface NotifyKindData {
-  'registration.confirmed': MailData<T.RegistrationConfirmationData> & { registrationId: string; eventId: string };
   'payment.confirmed': MailData<T.PaymentConfirmationData> & { eventId: string; eventSlug?: string };
   /** Seat held, payment needed to claim it. */
   'waitlist.offer': MailData<T.WaitlistPromotedData> & { entryId: string; eventId: string; eventSlug?: string };
-  /** Free ticket: off the waitlist and already confirmed. */
-  'waitlist.promoted': MailData<T.WaitlistPromotedData> & { entryId: string; eventId: string; eventSlug?: string };
-  'event.reminder.24h': MailData<T.EventReminderData> & { eventId: string; eventSlug?: string };
-  'event.reminder.1h': MailData<T.EventStartingSoonData> & { eventId: string; eventSlug?: string };
   'event.cancelled': MailData<T.EventCancelledData> & { eventId: string };
   /**
    * Critical: a time or venue change must reach everyone by email. Not deduped
@@ -96,20 +90,7 @@ export interface KindDef<D> {
    * notice already buzzes the phone for the same moment.
    */
   inboxOnly?: true;
-  /**
-   * Time-sensitive: the push is useless later ("starting in 60 minutes"), so
-   * quiet hours never hold it back. Critical kinds are urgent anyway.
-   */
-  urgent?: true;
   email?: (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
-  /**
-   * WhatsApp costs money per message. Standing decision: only OTP, ONE
-   * registration confirmation, group invites and stats use it, so only
-   * registration.confirmed sets this. Don't add it lightly.
-   * (registration.confirmed is not routed through notify() yet: C9's
-   * sendPaidConfirmations + Redis reg:confirmation guard own it for now.)
-   */
-  whatsapp?: (svc: WhatsAppService, phone: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
 }
 
 const eventLink = (d: { eventSlug?: string; eventId: string }) => `unifesto://event/${d.eventSlug || d.eventId}`;
@@ -158,37 +139,10 @@ function feedbackKind<D extends FeedbackNotice>(title: (d: D) => string, body: (
 }
 
 export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
-  'registration.confirmed': {
-    category: 'registrationUpdates',
-    criticality: 'critical',
-    entity: (d) => d.registrationId,
-    push: (d) => ({
-      title: "You're in!",
-      body: `Your spot for ${d.eventTitle} is confirmed.`,
-      deepLink: ticketLink(d.eventId),
-      data: { type: 'registration', eventId: d.eventId },
-    }),
-    email: (svc, to, d, delivery) => svc.sendRegistrationConfirmation({ ...d, email: to }, delivery),
-    whatsapp: (svc, phone, d, delivery) =>
-      svc.sendRegistrationConfirmation(
-        phone,
-        {
-          userName: d.userName,
-          eventTitle: d.eventTitle,
-          eventDate: d.eventDate,
-          eventTime: d.eventTime,
-          venueName: d.venueName,
-          city: d.city,
-          isOnline: d.isOnline,
-          onlineUrl: d.onlineUrl,
-        },
-        delivery,
-      ),
-  },
   'payment.confirmed': {
     category: 'registrationUpdates',
     criticality: 'critical',
-    // registration.confirmed's "You're in!" push already covers this moment:
+    // The RegistrationConfirmed "You're in!" push already covers this moment:
     // the receipt is email + inbox.
     inboxOnly: true,
     entity: (d) => d.razorpayPaymentId,
@@ -211,43 +165,6 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
       data: { type: 'waitlist_offer', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendWaitlistPromoted({ ...d, email: to }, delivery),
-  },
-  'waitlist.promoted': {
-    category: 'registrationUpdates',
-    criticality: 'critical',
-    entity: (d) => d.entryId,
-    push: (d) => ({
-      title: "You're off the waitlist!",
-      body: `Your spot for ${d.eventTitle} is confirmed.`,
-      deepLink: ticketLink(d.eventId),
-      data: { type: 'registration', eventId: d.eventId },
-    }),
-    email: (svc, to, d, delivery) => svc.sendWaitlistPromoted({ ...d, amountDue: 0, email: to }, delivery),
-  },
-  'event.reminder.24h': {
-    category: 'eventReminders',
-    criticality: 'normal',
-    entity: (d) => d.eventId,
-    push: (d) => ({
-      title: `Tomorrow: ${d.eventTitle}`,
-      body: `${d.eventTitle} starts in about 24 hours. See you there!`,
-      deepLink: ticketLink(d.eventId),
-      data: { type: 'event_reminder', eventId: d.eventId },
-    }),
-    email: (svc, to, d, delivery) => svc.sendEventReminder({ ...d, email: to }, delivery),
-  },
-  'event.reminder.1h': {
-    category: 'eventReminders',
-    criticality: 'normal',
-    urgent: true,
-    entity: (d) => d.eventId,
-    push: (d) => ({
-      title: `Starting soon: ${d.eventTitle}`,
-      body: `${d.eventTitle} starts in ${d.startsInMinutes} minutes. Your ticket is in the app.`,
-      deepLink: ticketLink(d.eventId),
-      data: { type: 'event_reminder', eventId: d.eventId },
-    }),
-    email: (svc, to, d, delivery) => svc.sendEventStartingSoon({ ...d, email: to }, delivery),
   },
   'event.cancelled': {
     category: 'registrationUpdates',

@@ -9,7 +9,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { Action } from '../auth/authorization/actions';
 import { Can } from '../auth/authorization/can.decorator';
@@ -34,8 +33,6 @@ import { toPage, toLimit } from '../common/pagination';
  * passes via the inheritance superuser rule). The service constrains recipient
  * resolution to the same space, so the guard and the data path agree.
  */
-@ApiTags('Space Email')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, CanGuard)
 @Controller('spaces/:spaceId/email')
 export class SpaceEmailController {
@@ -48,7 +45,6 @@ export class SpaceEmailController {
 
   @Post('campaigns')
   @Can(Action.SPACE_MANAGE_EMAIL)
-  @ApiOperation({ summary: 'Compose (and send/schedule) a space campaign' })
   createCampaign(
     @Param('spaceId') spaceId: string,
     @CurrentUser() user: User,
@@ -93,21 +89,18 @@ export class SpaceEmailController {
 
   @Post('audience')
   @Can(Action.SPACE_MANAGE_EMAIL)
-  @ApiOperation({ summary: 'How many people a campaign would reach now' })
   audience(@Param('spaceId') spaceId: string, @Body() dto: CampaignAudienceDto) {
     return this.campaigns.countAudience({ spaceId }, dto);
   }
 
   @Post('test')
   @Can(Action.SPACE_MANAGE_EMAIL)
-  @ApiOperation({ summary: 'Send the draft to my own email' })
   sendTest(@CurrentUser() user: User, @Body() dto: TestCampaignDto) {
     return this.campaigns.sendTest(user.id, dto);
   }
 
   @Post('preview')
   @Can(Action.SPACE_MANAGE_EMAIL)
-  @ApiOperation({ summary: 'Render a body with sample merge values' })
   preview(@Body() dto: PreviewCampaignDto) {
     return { html: this.campaigns.renderPreview(dto.body) };
   }
