@@ -7,7 +7,7 @@ import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import FaqList from "@/components/site/FaqList";
 import PassPaysYou from "@/components/site/PassPaysYou";
-import ShadeCard, { SHADES } from "@/components/site/ShadeCard";
+import ShadeCard, { SHADES, type Shade } from "@/components/site/ShadeCard";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -25,6 +25,9 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: "/pricing" },
   }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
+
+/* Each paid plan's shade; the free plan lies across in mint, Growth is solid. */
+const PLAN_SHADES: Record<string, Shade> = { club: "sky", pro: "blue", enterprise: "ivory" };
 
 const productLd = (plans: Plan[]) => ({
   "@context": "https://schema.org",
@@ -83,7 +86,7 @@ export default async function PricingPage() {
                 {card}
               </div>
             ) : (
-              <ShadeCard key={plan.id} shade={SHADES[i % SHADES.length]} glass className={`${rows} mb-5 p-3`} glassClassName={rows}>
+              <ShadeCard key={plan.id} shade={PLAN_SHADES[plan.id] ?? SHADES[i % SHADES.length]} glass className={`${rows} mb-5 p-3`} glassClassName={rows}>
                 {card}
               </ShadeCard>
             );
