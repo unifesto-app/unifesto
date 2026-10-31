@@ -61,7 +61,7 @@ Rules: no em dashes, organiser-first, only features that are live in production,
 >
 > A Space holds your whole team. Add Curators, Co-Curators and Crew, each with their own permissions. Sell free, paid and group tickets through Razorpay, ask custom registration questions, run waitlists and coupons, and scan passes at several check-in points from the app. Payouts, refunds and a financials view show what you collected, what you paid in fees and what you take home.
 >
-> Unifesto Sprint runs hackathons: teams, problem statements, rubric rounds, judge panels, a help desk and a live leaderboard. Unifesto Stay handles event accommodation and Unifesto Huddle runs paid online sessions.
+> Unifesto Sprint runs hackathons: teams, problem statements, rubric rounds, judge panels, a help desk and a live leaderboard. Unifesto Stay handles event accommodation.
 >
 > Built in Hyderabad, India. As of October 2026: 10,000+ people checked in, 25+ events, 70 live Spaces.
 
@@ -93,7 +93,7 @@ All prices exclude 18% GST. Razorpay payment gateway charges are separate from t
 What each plan includes (from `PLANS`):
 
 - **Starter:** unlimited free RSVP events with no platform fee; paid and group tickets with Razorpay; multi-point QR check-in from the app; coupons, custom questions, sub-events; payouts, refunds and financials; WhatsApp confirmations and push; Unifesto Stay (rooms, approvals, stay passes).
-- **Pro:** everything in Starter; waitlists and recurring event series; certificates with public verification; sponsors, sponsor portal and lead capture; Unifesto Sprint for hackathons; Unifesto Huddle online sessions; WhatsApp blasts, analytics and PDF reports; bulk attendee export.
+- **Pro:** everything in Starter; waitlists and recurring event series; certificates with public verification; sponsors, sponsor portal and lead capture; Unifesto Sprint for hackathons; WhatsApp blasts, analytics and PDF reports; bulk attendee export.
 - **Enterprise:** everything in Pro; white-label (colour, favicon, email sender); remove Unifesto branding; sub-spaces for every department; custom limits and priority support; onboarding for your team.
 
 ## Features (live in production, October 2026)
@@ -109,11 +109,10 @@ Use this list for "features" checkboxes and bullet fields. Do not add anything t
 7. Sponsors: roster, tiers, sponsor portal, booth lead capture by scan
 8. Unifesto Sprint: hackathon teams, problem statements, rounds with weighted rubrics, judge panels, rooms, help desk, submissions, live leaderboard, results
 9. Unifesto Stay: event accommodation, room approvals, stay passes
-10. Unifesto Huddle: paid online sessions
-11. WhatsApp confirmations, group invite links and push notifications; email campaigns
-12. Analytics, PDF event reports, CSV / Excel / PDF exports
-13. Attendee app (iOS, Android): discover events, register, carry passes, calendar reminders
-14. White-label colour, favicon and email sender (Enterprise)
+10. WhatsApp confirmations, group invite links and push notifications; email campaigns
+11. Analytics, PDF event reports, CSV / Excel / PDF exports
+12. Attendee app (iOS, Android): discover events, register, carry passes, calendar reminders
+13. White-label colour, favicon and email sender (Enterprise)
 
 ## Honest gaps (say these when asked, never hide them)
 

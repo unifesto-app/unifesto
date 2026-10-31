@@ -48,7 +48,7 @@ export interface TicketState {
   ticket: Ticket;
   owned: boolean;
   blocked: boolean;
-  /** Paid ticket to an online event on iOS: same rule as paid sessions (lib/iosPurchasePolicy). */
+  /** Paid ticket to an online event on iOS (lib/iosPurchasePolicy). */
   iosBlocked: boolean;
   waitlistOnly: boolean;
   available: boolean;

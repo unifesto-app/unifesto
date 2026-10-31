@@ -46,9 +46,9 @@ function csp(nonce: string | null, isConsole: boolean): string {
       'https://api.bigdatacloud.net', // events near me (EventsGrid)
       'https://lumberjack.razorpay.com',
       razorpay,
-      // Console only: socket.io to the API (projector, live updates), LiveKit
-      // Cloud for live sessions, and Google Maps + Places for venue search.
-      isConsole ? `${api.replace(/^http/, 'ws')} wss://*.livekit.cloud https://*.livekit.cloud` : '',
+      // Console only: socket.io to the API (projector, live updates) and
+      // Google Maps + Places for venue search.
+      isConsole ? api.replace(/^http/, 'ws') : '',
       isConsole ? 'https://*.googleapis.com https://*.gstatic.com https://*.google.com' : '',
       dev ? 'ws:' : '',
     ].filter(Boolean).join(' '),

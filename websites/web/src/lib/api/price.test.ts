@@ -1,14 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sessionPrice } from "@/lib/api/sessions";
 import { mapEvent } from "@/lib/api/events";
-
-test("sessionPrice: Indian grouping, Free at 0 or junk", () => {
-  assert.equal(sessionPrice({ price: "499" }), "₹499");
-  assert.equal(sessionPrice({ price: "125000" }), "₹1,25,000");
-  assert.equal(sessionPrice({ price: "0" }), "Free");
-  assert.equal(sessionPrice({ price: "abc" }), "Free");
-});
 
 const priced = (prices: string[], extra: Record<string, unknown> = {}) =>
   mapEvent({ id: "e", title: "E", slug: "e", ticketTypes: prices.map((price, i) => ({ id: `t${i}`, price, currency: "INR" })), ...extra })!;

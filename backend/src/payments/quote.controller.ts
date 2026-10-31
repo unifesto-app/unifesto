@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   HttpCode,
@@ -12,13 +11,8 @@ import { TermsService } from '../subscription/terms.service';
 import { quote } from './quote';
 
 export class QuoteDto {
-  @IsOptional()
   @IsUUID()
-  eventId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  sessionId?: string;
+  eventId: string;
 
   @IsInt()
   @Min(0)
@@ -52,28 +46,13 @@ export class QuoteController {
   @Post()
   @HttpCode(200)
   async quote(@Body() dto: QuoteDto) {
-    if (!dto.eventId === !dto.sessionId) {
-      throw new BadRequestException('Pass an eventId or a sessionId');
-    }
-    let spaceId: string;
-    let absorb = false;
-    if (dto.eventId) {
-      const event = await this.prisma.event.findUnique({
-        where: { id: dto.eventId },
-        select: { spaceId: true, absorbProcessingFee: true },
-      });
-      if (!event) throw new NotFoundException('Event not found');
-      spaceId = event.spaceId;
-      absorb = event.absorbProcessingFee;
-    } else {
-      const session = await this.prisma.session.findUnique({
-        where: { id: dto.sessionId },
-        select: { spaceId: true },
-      });
-      if (!session) throw new NotFoundException('Session not found');
-      spaceId = session.spaceId;
-    }
-    const terms = await this.terms.resolve(spaceId, dto.eventId);
+    const event = await this.prisma.event.findUnique({
+      where: { id: dto.eventId },
+      select: { spaceId: true, absorbProcessingFee: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    const absorb = event.absorbProcessingFee;
+    const terms = await this.terms.resolve(event.spaceId, dto.eventId);
     const q = quote(dto.basePaise, terms, {
       tickets: dto.tickets,
       absorb,

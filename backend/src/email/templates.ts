@@ -84,7 +84,7 @@ export function welcomeEmail(userName: string): Email {
       `${h1(`Welcome, ${esc(userName || 'there')}`)}
       ${p("You're in. Here's what you can do on Unifesto:")}
       ${list([
-        'Find events, hackathons and huddles near you',
+        'Find events and hackathons near you',
         'Register in a tap and keep every ticket in one place',
         'Start a space and host your own',
       ])}

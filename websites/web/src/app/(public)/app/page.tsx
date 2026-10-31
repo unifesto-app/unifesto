@@ -19,7 +19,7 @@ export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached
 export const metadata: Metadata = withSocial({
   title: "The Unifesto app: discover events, register, check in",
   description:
-    "Free on iOS and Android. Find events near you, register or buy tickets in a few taps, keep every QR pass in one place, book stays, join live sessions and collect your certificates.",
+    "Free on iOS and Android. Find events near you, register or buy tickets in a few taps, keep every QR pass in one place, book stays and collect your certificates.",
   alternates: { canonical: "/app" },
 }, { title: "The Unifesto app", description: "Discover events, register in a few taps and walk in with your pass. Free on iOS and Android." });
 
@@ -29,7 +29,7 @@ const appLd = {
   name: "Unifesto: Discover Events",
   operatingSystem: "iOS, Android",
   applicationCategory: "LifestyleApplication",
-  description: "Discover events, register, carry QR passes, book stays, join live sessions and collect certificates.",
+  description: "Discover events, register, carry QR passes, book stays and collect certificates.",
   offers: { "@type": "Offer", price: 0, priceCurrency: "INR" },
   installUrl: [SITE.appStore, SITE.playStore],
   publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },

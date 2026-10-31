@@ -56,7 +56,6 @@ const OFFLINE_ALLOWLIST: RegExp[] = [
   /^\/registrations\/invites\/mine$/,
   /^\/certificates\/mine$/,
   /^\/favorites(\/ids)?$/,
-  /^\/me\/sessions$/,
   // Ticket detail
   /^\/registrations\/[^/]+\/(checkins|group-members|whatsapp-group|seats)$/,
   // Browse
@@ -68,7 +67,6 @@ const OFFLINE_ALLOWLIST: RegExp[] = [
   /^\/spaces$/,
   /^\/spaces\/[^/]+(\/palette)?$/,
   /^\/spaces\/slug\/[^/]+$/,
-  /^\/sessions(\/[^/]+)?$/,
   // Staff at the door: which events they can check in for, and the Space tab
   /^\/checkin\/my-events$/,
   /^\/users\/me\/access$/,

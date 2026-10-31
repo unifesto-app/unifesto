@@ -66,7 +66,7 @@ Terminate it afterwards.
      retention sweeps).
    - Blank every outbound key: `RESEND_API_KEY`, `WHATSAPP_ACCESS_TOKEN`,
      `ONESIGNAL_REST_API_KEY` and `ONESIGNAL_APP_ID` (push),
-     `EXPO_TOKEN`, `ANTHROPIC_API_KEY`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`.
+     `EXPO_TOKEN` and `ANTHROPIC_API_KEY`.
    - Razorpay → **test** keys (`rzp_test_…`).
    - `SENTRY_DSN` empty, so staging errors don't page production.
    - Keep `INTERNAL_API_KEY` (the load test sends it, see section 3).

@@ -66,16 +66,6 @@ export class ConfigValidationService implements OnModuleInit {
     this.logger.log(`Redis TLS: ${process.env.REDIS_TLS}`);
     this.logger.log(`Razorpay configured: ${!!process.env.RAZORPAY_KEY_ID}`);
 
-    // LiveKit is optional — only UNIFESTO_LIVE sessions need it, and the service
-    // degrades gracefully (ServiceUnavailable) when absent. Log presence so a
-    // half-set config (e.g. key but no secret/url) is obvious at boot.
-    const livekitConfigured = Boolean(
-      process.env.LIVEKIT_API_KEY &&
-        process.env.LIVEKIT_API_SECRET &&
-        process.env.LIVEKIT_URL,
-    );
-    this.logger.log(`LiveKit (live sessions) configured: ${livekitConfigured}`);
-
     // OneSignal push is optional — the notifications platform degrades to
     // logging SKIPPED/FAILED and never throws when unset. Log presence so a
     // half-set config (app id but no REST key) is obvious at boot.

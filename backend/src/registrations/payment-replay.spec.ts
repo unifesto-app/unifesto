@@ -327,7 +327,7 @@ describe('paid registration confirmations (C9)', () => {
     const coupons = { confirmByRegistration: jest.fn(async () => undefined) };
     const svc = new RegistrationPaymentsService(
       prisma, email as any, {} as any, cache as any, {} as any, {} as any, groupSeats as any,
-      coupons as any, {} as any, {} as any, confirmations as any, {} as any, notify as any,
+      coupons as any, {} as any, {} as any, confirmations as any, notify as any,
     );
     jest.spyOn(svc as any, 'takeSeatsOrQueueRefund').mockResolvedValue(true);
     jest.spyOn(svc as any, 'refundIfDuplicate').mockResolvedValue(undefined);

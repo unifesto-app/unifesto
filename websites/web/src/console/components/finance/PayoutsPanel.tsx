@@ -17,7 +17,6 @@ import {
   type EligibleAccount,
 } from "@/console/lib/api/payouts-api";
 import { getSpaceEvents, type Event } from "@/console/lib/api/events-api";
-import { listSpaceSessions, type Session } from "@/console/lib/api/sessions-api";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { Button } from "@/console/components/ui/button";
@@ -58,7 +57,6 @@ export function PayoutsPanel() {
 
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestTarget, setRequestTarget] = useState<PayoutTarget | null>(null);
@@ -67,15 +65,13 @@ export function PayoutsPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [pRes, eRes, sRes] = await Promise.all([
+    const [pRes, eRes] = await Promise.all([
       getSpacePayouts(spaceId),
       getSpaceEvents(spaceId, { limit: 100 }),
-      listSpaceSessions(spaceId),
     ]);
     if (pRes.error) setError(pRes.error.message);
     else setPayouts(pRes.data ?? []);
     if (eRes.data) setEvents(eRes.data.events);
-    if (sRes.data) setSessions(sRes.data);
     setLoading(false);
   }, [spaceId]);
 
@@ -101,10 +97,6 @@ export function PayoutsPanel() {
   const requestable = events.filter(
     (e) => isPaidEvent(e) && e.status !== "DRAFT" && e.status !== "CANCELLED"
   );
-  // Paid Huddle sessions pay out the same way (T6).
-  const requestableSessions = sessions.filter(
-    (x) => Number(x.price) > 0 && x.status !== "DRAFT" && x.status !== "CANCELLED"
-  );
 
   return (
     <div className="space-y-4">
@@ -122,9 +114,9 @@ export function PayoutsPanel() {
               <CardTitle className="text-base">Request a payout</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
-              {requestable.length === 0 && requestableSessions.length === 0 ? (
+              {requestable.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No events or sessions are ready for a payout yet. One becomes eligible once it has earned revenue (paid tickets sold) — it doesn&apos;t have to have ended. Make sure your bank account is verified under <span className="font-medium">Accounts</span>.
+                  No events are ready for a payout yet. One becomes eligible once it has earned revenue (paid tickets sold) — it doesn&apos;t have to have ended. Make sure your bank account is verified under <span className="font-medium">Accounts</span>.
                 </p>
               ) : (
                 <div className="divide-y divide-border">
@@ -137,17 +129,6 @@ export function PayoutsPanel() {
                         </p>
                       </div>
                       <Button size="sm" onClick={() => setRequestTarget({ kind: "event", id: e.id, title: e.title })}>
-                        <ArrowRight className="mr-1 h-4 w-4" />Request payout
-                      </Button>
-                    </div>
-                  ))}
-                  {requestableSessions.map((x) => (
-                    <div key={x.id} className="flex items-center justify-between gap-3 py-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{x.title}</p>
-                        <p className="text-xs text-muted-foreground">Huddle session · {fmt(x.startDateTime)}</p>
-                      </div>
-                      <Button size="sm" onClick={() => setRequestTarget({ kind: "session", id: x.id, title: x.title })}>
                         <ArrowRight className="mr-1 h-4 w-4" />Request payout
                       </Button>
                     </div>

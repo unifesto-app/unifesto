@@ -7,9 +7,7 @@
         "paths": [
           "/event/*",
           "/space/*",
-          "/session/*",
           "/claim/*",
-          "/huddle",
           "/signup"
         ]
       }

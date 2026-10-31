@@ -4,7 +4,6 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
-import { SessionsService } from '../sessions/sessions.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
@@ -63,7 +62,6 @@ export class RegistrationPaymentsService {
     private readonly stayBookings: StayBookingsService,
     private readonly teamChanges: TeamChangesService,
     private readonly confirmations: RegistrationConfirmationsService,
-    private readonly sessions: SessionsService,
     private readonly notify: NotifyService,
     private readonly events?: EventEmitter2,
     // Plan orders ride the same account-wide webhook (T8).
@@ -537,10 +535,6 @@ export class RegistrationPaymentsService {
         }
         // Extra seats bought for a group carry `groupSeatPurchaseId`.
         if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData)) {
-          return { received: true };
-        }
-        // A paid Space session (A16).
-        if (await this.sessions.completeFromWebhook(orderId, paymentId, paymentData)) {
           return { received: true };
         }
         // A Space plan order (T8), in case order.paid isn't subscribed.

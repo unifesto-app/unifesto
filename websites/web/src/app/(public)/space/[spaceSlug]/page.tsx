@@ -10,7 +10,6 @@ import { UnavailableError } from "@/lib/api/events";
 import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
-import { getSpaceSessions } from "@/lib/api/sessions";
 import SpaceDetailClient from "./SpaceDetailClient";
 
 // One fetch per request, shared by generateMetadata and the page. A space taken
@@ -103,7 +102,7 @@ export default async function SpacePage({ params }: Props) {
   return (
     <>
       <JsonLd data={ld} />
-      <SpaceDetailClient params={params} initialSpace={space} sessions={await getSpaceSessions(space.id)} />
+      <SpaceDetailClient params={params} initialSpace={space} />
     </>
   );
 }

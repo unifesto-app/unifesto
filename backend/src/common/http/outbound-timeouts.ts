@@ -1,6 +1,6 @@
 /**
  * Timeouts for every outbound client (S32). Without them a hung WhatsApp,
- * Razorpay, S3, SES, Resend or LiveKit call held its request (and its DB
+ * Razorpay, S3, SES or Resend call held its request (and its DB
  * transaction, socket and memory) open until the OS gave up, minutes later.
  *
  * axios: `axios.defaults.timeout` is set in main.ts before any service is
@@ -13,9 +13,6 @@ export const OUTBOUND_TIMEOUT_MS = 15_000;
 export const AWS_HTTP_TIMEOUTS = {
   requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000 },
 };
-
-/** LiveKit server SDK clients take `requestTimeout` in seconds. */
-export const LIVEKIT_CLIENT_OPTIONS = { requestTimeout: 10 };
 
 /**
  * Reject when `promise` hasn't settled within `ms`. For calls with no timeout or

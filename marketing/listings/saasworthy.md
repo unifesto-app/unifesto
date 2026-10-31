@@ -44,7 +44,7 @@ Checked 2026-10-18 (Claude opened the free-listing form to read its fields, type
 > - Category: Event Registration & Ticketing Software (also Event Management Software).
 > - Platforms: Web, iOS, Android.
 > - Pricing (launch pricing for Spaces joining before 31 March 2027, excl. 18% GST, Razorpay charges separate): Starter ₹0/month with 2.5% per paid ticket; Pro ₹1,499/month (₹1,199 billed annually) with 1.5%; Enterprise custom with 1%. Free RSVP events have no fee on any plan.
-> - Key features: free, paid and group tickets; custom registration questions; multi-point QR check-in; payouts, refunds and financials; team roles; certificates with public verification; sponsors and lead capture; hackathon judging (Unifesto Sprint); event stays (Unifesto Stay); online sessions (Unifesto Huddle); WhatsApp confirmations.
+> - Key features: free, paid and group tickets; custom registration questions; multi-point QR check-in; payouts, refunds and financials; team roles; certificates with public verification; sponsors and lead capture; hackathon judging (Unifesto Sprint); event stays (Unifesto Stay); WhatsApp confirmations.
 > - Not yet: multi-currency (INR only), live polls and Q&A.
 > - Founded 2025, Hyderabad, India. Support: support@unifesto.app.
 >

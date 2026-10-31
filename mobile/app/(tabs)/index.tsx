@@ -9,7 +9,6 @@ import { useCosmos } from '../../src/theme/cosmos';
 import { useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
-import { type Session } from '../../src/lib/api/sessions';
 import HomeHeader from '../../src/components/home/HomeHeader';
 import { Rail, Section } from '../../src/components/home/Section';
 import HeroCarousel from '../../src/components/home/HeroCarousel';
@@ -57,7 +56,6 @@ export default function HomeTab() {
     (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`),
     [router],
   );
-  const openSession = (s: Session) => router.push(`/session/${s.slug}`);
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
 
@@ -74,22 +72,6 @@ export default function HomeTab() {
       onPress={() => openEvent(e)}
     />
   );
-
-  const sessionPoster = (s: Session) => {
-    const price = Number(s.price);
-    return (
-      <PosterCard
-        key={s.id}
-        title={s.title}
-        imageUrl={s.coverImageUrl}
-        when={relativeWhen(s.startDateTime)}
-        host={s.space?.name}
-        where="Online"
-        price={price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'}
-        onPress={() => openSession(s)}
-      />
-    );
-  };
 
   const posterSkeletons = [0, 1].map((i) => <PosterCardSkeleton key={i} />);
 
@@ -237,12 +219,6 @@ export default function HomeTab() {
             <VibeRail categories={data.categories} onPressCategory={openCategory} />
           ) : null}
         </Section>
-
-        {data.isLoadingSessions || data.sessions.length > 0 ? (
-          <Section title="Unifesto Huddle" subtitle="Live online sessions and workshops" onSeeAll={() => router.push('/sessions')}>
-            <Rail>{data.isLoadingSessions ? posterSkeletons : data.sessions.map(sessionPoster)}</Rail>
-          </Section>
-        ) : null}
 
         {data.isLoadingBeyond || data.beyondEvents.length > 0 ? (
           <Section title="Beyond by Unifesto" subtitle="Curated by the Unifesto team">

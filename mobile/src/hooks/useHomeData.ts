@@ -11,7 +11,6 @@ import {
   getFeaturedEvents,
   getTrendingEvents,
 } from '../lib/api/events';
-import { listSessions, type Session } from '../lib/api/sessions';
 import { getUserSpaces, Space, getAllSpaces, getSpaceEvents } from '../lib/api/spaces';
 import { getFavorites } from '../lib/api/favorites';
 import { fetchUpcomingTickets } from '../lib/upcomingTickets';
@@ -131,8 +130,6 @@ export function useHomeData() {
   // False once the OS stops showing the prompt: "Set location" then opens Settings.
   const [canAskLocation, setCanAskLocation] = useState(true);
 
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
@@ -230,17 +227,6 @@ export function useHomeData() {
       setEventsFailed(true);
     } finally {
       setIsLoadingEvents(false);
-    }
-  }, []);
-
-  const loadSessions = useCallback(async () => {
-    try {
-      setIsLoadingSessions(true);
-      setSessions(await listSessions());
-    } catch {
-      setSessions([]);
-    } finally {
-      setIsLoadingSessions(false);
     }
   }, []);
 
@@ -343,11 +329,10 @@ export function useHomeData() {
     loadAllSpaces();
     loadCategories();
     loadEvents();
-    loadSessions();
     loadBeyond();
     loadFavorites();
     loadLocation();
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadSessions, loadBeyond, loadFavorites, loadLocation]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadBeyond, loadFavorites, loadLocation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -358,7 +343,6 @@ export function useHomeData() {
         loadMySpaces(),
         loadAllSpaces(),
         loadEvents(),
-        loadSessions(),
         loadBeyond(),
         loadFavorites(),
         detectedCity ? loadNearby(detectedCity) : Promise.resolve(),
@@ -366,7 +350,7 @@ export function useHomeData() {
     } finally {
       setRefreshing(false);
     }
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadEvents, loadSessions, loadBeyond, loadFavorites, loadNearby, detectedCity]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
 
   // Back from Settings with location switched on: pick the city up without a restart.
   useEffect(() => {
@@ -423,9 +407,6 @@ export function useHomeData() {
 
     categories,
     isLoadingCategories,
-
-    sessions,
-    isLoadingSessions,
 
     beyondSpace,
     beyondEvents,

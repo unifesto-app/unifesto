@@ -1339,7 +1339,7 @@ model PlanConfig {
   hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
   hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
   hasPrioritySupport Boolean @default(false) @map("has_priority_support")
-  // Gates the whole Sessions feature: creating, listing and hosting them.
+  // Retired with Huddle sessions (Nov 2026); kept, the code no longer reads it.
   hasSessions        Boolean @default(false) @map("has_sessions")
   // Gates the competitive dashboard (hack.unifesto.app): whether an event may
   // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
@@ -3289,6 +3289,8 @@ model SupportAttachment {
 // Deliberately separate from Event: no tickets, QR, forms, or groups — just a
 // title, a time, a meeting link, and (optionally) a single price. Offline
 // gatherings stay under Event.
+// Retired (Nov 2026): the feature is gone, the tables stay because their
+// payments are money records (payouts, reconciliation, account deletion).
 // =====================================================
 
 enum SessionPlatform {

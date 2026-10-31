@@ -67,7 +67,6 @@ export interface PlanInfo {
   hasWhatsappBlast: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
-  hasSessions: boolean;
   hasLeaderboard: boolean;
   hasCertificates: boolean;
   hasSponsors: boolean;
@@ -101,7 +100,6 @@ export interface SubscriptionUsage {
     hasWhatsappBlast: boolean;
     hasRemoveBranding: boolean;
     hasPrioritySupport: boolean;
-    hasSessions: boolean;
     hasLeaderboard: boolean;
     hasCertificates: boolean;
   };

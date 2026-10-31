@@ -29,9 +29,6 @@
   },
   "dependencies": {
     "@expo/ui": "~57.0.23",
-    "@livekit/react-native": "^3.0.0",
-    "@livekit/react-native-expo-plugin": "^1.0.3",
-    "@livekit/react-native-webrtc": "^144.2.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native-firebase/app": "^26.4.0",
@@ -74,7 +71,6 @@
     "expo-updates": "~57.0.26",
     "expo-web-browser": "~57.0.3",
     "expo-widgets": "~57.0.22",
-    "livekit-client": "^2.22.4",
     "onesignal-expo-plugin": "^2.7.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -109,10 +105,5 @@
       }
     }
   },
-  "private": true,
-  "overrides": {
-    "@livekit/react-native-expo-plugin": {
-      "@livekit/react-native": "$@livekit/react-native"
-    }
-  }
+  "private": true
 }

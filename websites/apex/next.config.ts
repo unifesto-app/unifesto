@@ -8,11 +8,6 @@ const nextConfig: NextConfig = {
   // reload on its next navigation instead of crashing on stale chunks
   // (React #130). Baked into the standalone build, so stable at runtime.
   deploymentId: process.env.DEPLOYMENT_ID ?? String(Date.now()),
-  // Disabled because StrictMode's dev-only double-render makes LiveKit's
-  // <VideoConference> log benign "Element not part of the array" track-
-  // reconciliation errors (e.g. on leave). This only affects dev behaviour,
-  // not production. Re-enable if you want StrictMode's other checks back.
-  reactStrictMode: false,
   // D8 moved the Support page to the Assist inbox; it's the Support desk again
   // (Assist is only the AI's name), so old Assist links land there.
   async redirects() {
