@@ -2894,6 +2894,31 @@ export class EventsService {
     return [...out.values()];
   }
 
+  /**
+   * Q26: End event. Completes a live event that has started, now, instead of
+   * when the hourly job's grace runs out: check-in closes and the wrap-up
+   * (summary, feedback) follows from the event's end time as usual.
+   */
+  async endEvent(userId: string, eventId: string) {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true, slug: true } });
+    if (!event) throw new NotFoundException('Event not found');
+    await this.assertEventAction(userId, event.id, Action.EVENT_PUBLISH, 'You cannot end this event');
+
+    // A series parent is only its first slot (A29): its occurrences end on their own.
+    const { count } = await this.prisma.event.updateMany({
+      where: {
+        id: eventId,
+        status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] },
+        startDateTime: { lte: new Date() },
+        isRecurring: false,
+      },
+      data: { status: EventStatus.COMPLETED },
+    });
+    if (!count) throw new BadRequestException('Only a live event that has started can be ended');
+    await this.cache.invalidateEventCache(event.slug);
+    return this.prisma.event.findUniqueOrThrow({ where: { id: eventId } });
+  }
+
   async cancelEvent(userId: string, eventId: string, dto: CancelEventDto) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

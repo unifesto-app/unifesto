@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { assertEventCan } from '../events/event-access';
+import { END_GRACE_MS } from '../events/event-dates';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { memberSeatTicket } from '../registrations/registration.util';
@@ -103,7 +104,8 @@ export class CheckinService {
    * Why a registration can't be checked in, or null when it can. Pure, so the
    * offline roster computes the exact same verdict the live scan would.
    * `offlineScanAt` is when a synced offline scan happened: one made before the
-   * event's end still counts after the event flipped to COMPLETED.
+   * event's end (plus its check-in grace, Q26) still counts after the event
+   * flipped to COMPLETED.
    */
   private checkinBlockReason(
     registration: {
@@ -120,7 +122,9 @@ export class CheckinService {
     // through here, so a finished event can't take any more check-ins.
     const event = registration.event;
     const scannedInTime =
-      !!offlineScanAt && !!event?.endDateTime && offlineScanAt <= event.endDateTime;
+      !!offlineScanAt &&
+      !!event?.endDateTime &&
+      offlineScanAt.getTime() <= event.endDateTime.getTime() + END_GRACE_MS;
     if (
       event?.status === EventStatus.CANCELLED ||
       (event?.status === EventStatus.COMPLETED && !scannedInTime)
@@ -2040,11 +2044,11 @@ export class CheckinService {
         // Check-in closes once an event is over. Two conditions, because status
         // alone is unreliable: the markCompletedEvents cron lags by up to an
         // hour, and an ONGOING event whose end time has passed may never flip.
-        //   • status excludes COMPLETED / CANCELLED (and DRAFT).
-        //   • endDateTime excludes anything already finished by the clock,
-        //     regardless of status — this is the authoritative "has it ended".
+        //   • status excludes COMPLETED / CANCELLED (and DRAFT): End event.
+        //   • endDateTime excludes anything finished by the clock, regardless
+        //     of status, after the grace a late-running event gets (Q26).
         status: { in: ['PUBLISHED', 'ONGOING'] },
-        endDateTime: { gte: new Date() },
+        endDateTime: { gte: new Date(Date.now() - END_GRACE_MS) },
       },
       orderBy: { startDateTime: 'desc' },
       select: {
@@ -2100,7 +2104,9 @@ export class CheckinService {
       const { spaceId, checkinTypes, ...rest } = ev;
       void spaceId;
       void checkinTypes;
-      return { ...rest, checkinTypes: allowed };
+      // Q26: the app lists the event until here, not until endDateTime.
+      const checkinOpenUntil = new Date(ev.endDateTime.getTime() + END_GRACE_MS);
+      return { ...rest, checkinOpenUntil, checkinTypes: allowed };
     });
 
     // Drop events where a non-organiser ended up with no workable points.

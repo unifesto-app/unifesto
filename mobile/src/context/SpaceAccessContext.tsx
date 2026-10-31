@@ -7,6 +7,7 @@ import { getMyJudgingEvents } from '../lib/api/leaderboard';
 import { getMySponsorships } from '../lib/api/sponsorPortal';
 import { resolveSpaceSections, type SpaceAccessData, type SpaceSection } from '../lib/spaceSections';
 import { useCheckinBackgroundSync } from '../hooks/useOfflineCheckin';
+import { onNotificationArrived } from '../lib/notificationBus';
 
 interface SpaceAccessContextType extends SpaceAccessData {
   /** Sections the Space tab shows, in order. Empty ⇒ the tab is hidden. */
@@ -80,6 +81,15 @@ export function SpaceAccessProvider({ children }: { children: React.ReactNode })
     });
     return () => sub.remove();
   }, [refresh]);
+
+  // Q19: an approved space shows its Space tab as the push lands, not at the
+  // next foreground refresh.
+  useEffect(
+    () => onNotificationArrived((n) => {
+      if (n.type === 'space_approved') void refresh();
+    }),
+    [refresh],
+  );
 
   // Offline check-in: push queued scans and save today's guest lists.
   useCheckinBackgroundSync(data.checkinEvents);

@@ -17,6 +17,8 @@ import { inviteeContact } from '../auth/collaborator-invite';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
+import { NotificationEvents } from '../notifications/notifications.constants';
+import type { NotifyBatchEvent } from '../notifications/notifications.events';
 import { PlanConfigService, subscriptionStatus } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, CUSTOM_DOMAIN_SPACE_SELECT, liveCustomDomain, resolveSpaceBranding } from '../white-label/branding.util';
 import { SPACE_DOMAINS_ORPHANED } from '../white-label/white-label.service';
@@ -1374,7 +1376,31 @@ export class SpacesService {
       approved: true,
       what: `the space request. ${created.name} is live`,
     });
+    await this.tellRequester(req.userId, (organizerName) => ({
+      kind: 'space.approved',
+      items: [
+        {
+          userId: req.userId,
+          data: {
+            spaceId: created.id,
+            approvedAt: created.approvedAt ?? new Date(),
+            organizerName,
+            spaceName: created.name,
+            spaceSlug: created.slug,
+          },
+        },
+      ],
+    }));
     return created;
+  }
+
+  /** Q19: push + email to whoever asked for a space, once Platform decides. */
+  private async tellRequester(userId: string, batch: (organizerName: string) => NotifyBatchEvent) {
+    const who = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true, username: true },
+    });
+    this.events?.emit(NotificationEvents.NotifyBatch, batch(who?.fullName || who?.username || 'there'));
   }
 
   /**
@@ -1475,6 +1501,20 @@ export class SpacesService {
       what: 'the space request',
       note: reviewNote,
     });
+    await this.tellRequester(req.userId, (organizerName) => ({
+      kind: 'space.rejected',
+      items: [
+        {
+          userId: req.userId,
+          data: {
+            requestId,
+            organizerName,
+            spaceName: req.name,
+            rejectionReason: reviewNote?.trim() || 'Not given',
+          },
+        },
+      ],
+    }));
     return rejected;
   }
 

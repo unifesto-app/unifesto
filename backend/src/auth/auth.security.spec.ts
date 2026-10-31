@@ -321,6 +321,94 @@ describe('S48: verify-mobile never deletes a real account', () => {
     expect(prisma.user.delete).not.toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalled();
   });
+
+  it('Q4: the 409 names how the other account signs in, with its email masked', async () => {
+    const { prisma, call } = arrange(freshPlaceholder({ _count: { registrations: 2 } }));
+    prisma.userIdentity.findMany.mockResolvedValue([{ provider: 'GOOGLE', email: 'asha@gmail.com' }]);
+    const err: any = await call().catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    expect(err.getResponse()).toMatchObject({
+      code: 'PHONE_ON_OTHER_ACCOUNT',
+      method: 'GOOGLE',
+      email: 'as•••@gmail.com',
+      message: expect.stringContaining('signs in with Google (as•••@gmail.com)'),
+    });
+    expect(prisma.userIdentity.findMany).toHaveBeenCalledWith({
+      where: { userId: 'owner' },
+      select: { provider: true, email: true },
+    });
+  });
+
+  it('Q4: a wrong code never reaches the other account hint', async () => {
+    const { prisma, otp, call } = arrange(freshPlaceholder({ _count: { registrations: 2 } }));
+    otp.verifyOtp.mockResolvedValue('invalid');
+    await expect(call()).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.userIdentity.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('Q4: an expired sign-in says to start again', () => {
+  const expired = () => sign({ type: 'temp', provider: 'GOOGLE', providerUserId: 'g-1' }, -10);
+
+  it.each([
+    ['send-otp', (s: AuthService) => s.sendMobileOtp({ mobileNumber: '+919999999999', tempToken: expired() })],
+    ['verify-mobile', (s: AuthService) => s.verifyMobile({ mobileNumber: '+919999999999', otp: '123456', tempToken: expired() })],
+  ])('%s answers 401 SIGN_IN_TIMED_OUT', async (_n, run) => {
+    const { service, otp } = setup();
+    const err: any = await run(service).catch((e) => e);
+    expect(err.getStatus()).toBe(401);
+    expect(err.getResponse()).toMatchObject({ code: 'SIGN_IN_TIMED_OUT', message: 'Your sign-in timed out. Start again.' });
+    expect(otp.storeOtp).not.toHaveBeenCalled();
+  });
+});
+
+describe('Q2: a new app account accepts Terms and Privacy', () => {
+  const APP_UA = 'Unifesto/412 CFNetwork/1568.100.1 Darwin/24.0.0';
+  const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15';
+  const arrange = () => {
+    const ctx = setup();
+    ctx.prisma.user.findUnique.mockResolvedValue(null);
+    ctx.prisma.user.create.mockResolvedValue(user({ id: 'new' }));
+    ctx.prisma.legalDocument = {
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'terms-2', version: 2 },
+        { id: 'privacy-1', version: 1 },
+      ]),
+    };
+    ctx.prisma.legalAcceptance = { createMany: jest.fn().mockResolvedValue({ count: 2 }) };
+    const temp = sign({ type: 'temp', provider: 'EMAIL', providerUserId: 'a@x.com', email: 'a@x.com' }, '15m');
+    const call = (ua: string) =>
+      ctx.service.verifyMobile({ mobileNumber: '+919999999999', otp: '123456', tempToken: temp }, undefined, ua);
+    return { ...ctx, call };
+  };
+
+  it('records the latest published versions from the app', async () => {
+    const { prisma, call } = arrange();
+    const res = await call(APP_UA);
+    expect(res.isNewUser).toBe(true);
+    expect(prisma.legalDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: { in: ['terms', 'privacy'] }, publishedAt: { not: null } }, distinct: ['slug'] }),
+    );
+    expect(prisma.legalAcceptance.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: 'new', documentId: 'terms-2', version: 2, client: 'mobile' },
+        { userId: 'new', documentId: 'privacy-1', version: 1, client: 'mobile' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it('leaves web sign-up to its own tick box', async () => {
+    const { prisma, call } = arrange();
+    await call(BROWSER_UA);
+    expect(prisma.legalAcceptance.createMany).not.toHaveBeenCalled();
+  });
+
+  it('a failed write still signs the person in', async () => {
+    const { prisma, call } = arrange();
+    prisma.legalAcceptance.createMany.mockRejectedValue(new Error('db'));
+    await expect(call(APP_UA)).resolves.toMatchObject({ isNewUser: true });
+  });
 });
 
 describe('S5: email auto-link needs a verified email', () => {
