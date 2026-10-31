@@ -179,7 +179,7 @@ export default function RequestPayoutScreen() {
       ) : (
         <>
           <View style={{ marginTop: spacing[8] }}>
-            <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} />
+            <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} glass={false} />
           </View>
           {mode === 'custom' ? (
             <SettingsGroup plain>

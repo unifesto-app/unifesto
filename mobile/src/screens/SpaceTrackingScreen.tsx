@@ -7,11 +7,12 @@ import { conversion, getTraffic, scopeParams, type SpaceTrafficStats } from '../
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -79,7 +80,8 @@ export default function SpaceTrackingScreen() {
         </Text>
       ) : null}
       {error ? (
-        <View style={[styles.card, styles.padded, { backgroundColor: c.raised }]}>
+        <View style={[styles.card, styles.padded]}>
+          <CardBackdrop shape={styles.card} />
           <Text style={[styles.muted, { color: c.danger }]}>{error}</Text>
         </View>
       ) : null}
@@ -117,8 +119,9 @@ export default function SpaceTrackingScreen() {
 
       {data ? (
         <Section title="Where registrations come from" subtitle="Tap a source for its split by event, then an event to see who registered">
-          <View style={[styles.card, { padding: spacing[5], backgroundColor: c.raised }]}>
-            <Text style={[styles.big, { color: c.text }]}>{total ? Math.round((data.tagged / total) * 100) : 0}%</Text>
+          <View style={[styles.card, { padding: spacing[5] }]}>
+            <CardBackdrop shape={styles.card} />
+            <Text style={[styles.big, { color: c.sky }]}>{total ? Math.round((data.tagged / total) * 100) : 0}%</Text>
             <Text style={[styles.muted, { color: c.soft }]}>
               of {total.toLocaleString('en-IN')} confirmed registrations came through a tracking link
             </Text>
@@ -144,7 +147,8 @@ export default function SpaceTrackingScreen() {
                 return [
                   head,
                   ...s.events.map((ev) => (
-                    <View key={`${k}|${ev.id}`} style={{ backgroundColor: c.tint }}>
+                    // Indented under its source: hierarchy by space, not a tinted box.
+                    <View key={`${k}|${ev.id}`} style={styles.nested}>
                       <SettingsRow
                         label={ev.title}
                         value={ev.registrations.toLocaleString('en-IN')}
@@ -194,12 +198,19 @@ export default function SpaceTrackingScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  title: { paddingHorizontal: GUTTER, fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  title: {
+    paddingHorizontal: GUTTER,
+    fontSize: typography.fontSize['2xl'],
+    lineHeight: 30,
+    ...cosmosFont.display,
+    letterSpacing: displayTracking(24),
+  },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius },
   padded: { marginTop: spacing[4], padding: spacing[5] },
   // Section owns the top spacing and the title; the card just needs the gutter.
   group: { marginTop: 0, marginHorizontal: GUTTER },
   big: { fontSize: 36, lineHeight: 46, ...cosmosFont.figure },
+  nested: { paddingLeft: spacing[5] },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   note: {
     marginTop: spacing[3],

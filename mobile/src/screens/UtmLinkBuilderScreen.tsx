@@ -14,7 +14,7 @@ import { withUtm } from '../services/utm';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const SOURCES = ['instagram', 'whatsapp', 'linkedin', 'x', 'email', 'college', 'poster'];
 const MEDIUMS = ['social', 'email', 'ads', 'print', 'qr', 'referral'];
@@ -67,7 +67,11 @@ export default function UtmLinkBuilderScreen() {
 
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content}>
-      {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
 
       <SettingsGroup title="Where you'll post it" plain>
         <FieldRow label="Source" value={source} onChangeText={setSource} placeholder="e.g. instagram" autoCapitalize="none" autoCorrect={false} />
@@ -85,7 +89,7 @@ export default function UtmLinkBuilderScreen() {
 
       <View style={styles.preview}>
         <CardBackdrop shape={styles.preview} />
-        <Text style={[styles.previewLabel, { color: c.muted }]}>Your link</Text>
+        <Text style={[styles.previewLabel, { color: c.muted }]}>My link</Text>
         <Text style={[styles.previewUrl, { color: link ? c.text : c.muted }]} selectable>
           {link || 'Add a source to build the link.'}
         </Text>
@@ -109,10 +113,10 @@ export default function UtmLinkBuilderScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[2], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   chips: { marginTop: spacing[2], marginHorizontal: spacing[1] },
-  preview: { marginTop: spacing[8], padding: spacing[4], borderRadius: cosmosCardRadius },
-  previewLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  previewUrl: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  preview: { marginTop: spacing[8], padding: spacing[5], borderRadius: cosmosCardRadius },
+  previewLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  previewUrl: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

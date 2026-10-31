@@ -10,12 +10,13 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { shareLink } from '../lib/share';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 const DAYS = 14;
@@ -74,7 +75,8 @@ export default function PartnerStatsScreen() {
   if (!stats) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>
             {error || 'These stats are no longer available.'}
           </Text>
@@ -109,17 +111,19 @@ export default function PartnerStatsScreen() {
       <View style={styles.header}>
         {e.coverImageUrl ? <Image source={{ uri: e.coverImageUrl }} style={styles.cover} /> : null}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.event, { color: c.text }]} numberOfLines={3}>{e.title}</Text>
+          <Text style={[styles.event, { color: c.text }]} numberOfLines={3} accessibilityRole="header">
+            {e.title}
+          </Text>
           <Text style={[styles.muted, { color: c.muted }]} numberOfLines={1}>
             {e.space?.name ? `${e.space.name} · ` : ''}Partner as {stats.name}
           </Text>
         </View>
       </View>
 
-      <View style={styles.hero}>
-        <CardBackdrop shape={styles.hero} />
-        <Text style={[styles.big, { color: c.text }]}>{stats.registrations.toLocaleString('en-IN')}</Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
+      {/* The screen's hero: registrations through the link, on the sky shade. */}
+      <ShadeCard tone="sky" style={styles.hero}>
+        <Text style={[styles.big, { color: c.sky }]}>{stats.registrations.toLocaleString('en-IN')}</Text>
+        <Text style={[styles.muted, { color: c.soft }]}>
           {stats.registrations === 1 ? 'person registered' : 'people registered'} through your link
         </Text>
         <View style={styles.subStats}>
@@ -139,7 +143,7 @@ export default function PartnerStatsScreen() {
                   styles.bar,
                   {
                     height: b.count ? Math.max(4, (b.count / peak) * BAR_MAX_H) : 2,
-                    backgroundColor: b.count ? c.primary : c.tint,
+                    backgroundColor: b.count ? c.sky : c.tint,
                   },
                 ]}
               />
@@ -152,13 +156,13 @@ export default function PartnerStatsScreen() {
           </Text>
           <Text style={[styles.axisLabel, { color: c.muted }]}>Today</Text>
         </View>
-      </View>
+      </ShadeCard>
       <Text style={[styles.note, { color: c.muted }]}>
         Counts confirmed registrations only. A registration counts for you when the person opened your link within 7 days before registering.
       </Text>
 
       <View style={{ marginTop: spacing[8] }}>
-        <SettingsGroup title="Your link">
+        <SettingsGroup title="My link">
           <SettingsRow
             icon={icon(ShareNetwork)}
             label="Share link"
@@ -188,10 +192,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  cover: { width: 96, height: 72, borderRadius: cosmosRadius }, // 4:3
+  cover: { width: 96, height: 72, borderRadius: borderRadius.md }, // 4:3
   event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  hero: { marginTop: spacing[6], padding: spacing[5], borderRadius: cosmosCardRadius },
+  hero: { marginTop: spacing[6] },
   big: { fontSize: 48, lineHeight: 56, ...cosmosFont.figure },
   subStats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
@@ -202,5 +206,6 @@ const styles = StyleSheet.create({
   axisLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   qr: { alignItems: 'center', padding: spacing[4] },
-  qrTile: { padding: spacing[3], borderRadius: cosmosRadius, backgroundColor: '#ffffff' },
+  // The pass rule (DESIGN §8): a plain white panel with its quiet zone, whatever the theme.
+  qrTile: { padding: spacing[3], borderRadius: borderRadius.md, backgroundColor: '#ffffff' },
 });

@@ -9,6 +9,7 @@ import { SwitchRow } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -104,15 +105,19 @@ export default function QuestionsScreen() {
       <SegmentedTabs tabs={TABS.map((t) => ({ key: t.key, label: `${t.label} ${count(t.key)}` }))} value={tab} onChange={setTab} />
 
       {shown.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
         </View>
       ) : null}
       {shown.map((q) => (
-        <SettingsGroup key={q.id} title={`${q.votes} upvote${q.votes === 1 ? '' : 's'}${q.pinned ? ' · Pinned' : ''}`}>
+        <SettingsGroup key={q.id}>
           <View style={styles.question}>
             <Text style={[styles.text, { color: c.text }]}>{q.text}</Text>
-            <Text style={[styles.meta, { color: c.muted }]}>{[q.author, q.agendaTitle].filter(Boolean).join(' · ')}</Text>
+            <Text style={[styles.meta, { color: c.muted }]}>
+              <Text style={[styles.votes, { color: c.text }]}>{q.votes}</Text>
+              {` ${[`upvote${q.votes === 1 ? '' : 's'}`, q.pinned ? 'Pinned' : null, q.author, q.agendaTitle].filter(Boolean).join(' · ')}`}
+            </Text>
             <View style={styles.actions}>
               {q.status !== 'APPROVED' ? (
                 <Button
@@ -142,8 +147,9 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  question: { padding: spacing[4], gap: spacing[2] },
+  question: { padding: spacing[5], gap: spacing[2] },
   text: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  votes: { ...cosmosFont.figure },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },
 });

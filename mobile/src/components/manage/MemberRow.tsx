@@ -30,7 +30,7 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
       disabled={!onPress || busy}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={[name, ...tags, trailing].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       {user.avatarUrl ? (
         <Image source={{ uri: user.avatarUrl }} style={[styles.avatar, { backgroundColor: c.card }]} />
@@ -57,7 +57,7 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
       {busy ? (
         <ActivityIndicator size="small" color={c.text} />
       ) : trailing ? (
-        <Text style={[styles.trailing, { color: c.soft }]}>{trailing}</Text>
+        <Text style={[styles.trailing, { color: c.muted }]}>{trailing}</Text>
       ) : null}
     </Pressable>
   );

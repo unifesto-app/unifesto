@@ -19,6 +19,7 @@ import { BlockTitle } from '../components/manage/FormFields';
 import { GroupCell, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -117,7 +118,8 @@ export default function LeadsScreen() {
         <>
           <View style={styles.pad}>
             {error ? (
-              <View style={[styles.notice, { backgroundColor: c.raised }]}>
+              <View style={styles.notice}>
+                <CardBackdrop shape={styles.notice} />
                 <Text style={[styles.body, { color: c.danger }]}>{error}</Text>
               </View>
             ) : null}
@@ -197,7 +199,7 @@ const LeadRow = React.memo(function LeadRow({ l, showStatus, onOpen }: { l: Lead
       onPress={() => onOpen(l.id)}
       accessibilityRole="button"
       accessibilityLabel={`${leadName(l)}, ${meta}, ${shortDate(l.createdAt)}`}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       <View style={{ flex: 1 }}>
         <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
@@ -207,7 +209,7 @@ const LeadRow = React.memo(function LeadRow({ l, showStatus, onOpen }: { l: Lead
           {meta}
         </Text>
       </View>
-      <Text style={[styles.meta, { color: c.soft }]}>{shortDate(l.createdAt)}</Text>
+      <Text style={[styles.date, { color: c.muted }]}>{shortDate(l.createdAt)}</Text>
       <CaretRight size={15} color={c.muted} />
     </Pressable>
   );
@@ -224,6 +226,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 64 },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   meta: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  date: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   // minHeight, not height: a fixed height clips the label at large Dynamic Type sizes.
   action: { flex: 1, height: undefined, minHeight: 52, paddingHorizontal: spacing[3] },

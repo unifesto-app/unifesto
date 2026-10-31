@@ -3,12 +3,12 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { getMyPartnerLinks, type MyPartnerLink } from '../lib/api/tracking';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const THUMB_W = 88;
 const THUMB_H = 66; // 4:3
@@ -57,8 +57,12 @@ export default function PartnerLinksScreen() {
     >
       {error ? <Text style={[styles.muted, { color: c.danger }]}>{error}</Text> : null}
       {!error && links.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
-          <Text style={[styles.emptyText, { color: c.soft }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
+          <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
+            No partner links yet
+          </Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>
             When an event curator adds you as a partner, its registrations show up here.
           </Text>
         </View>
@@ -85,7 +89,7 @@ export default function PartnerLinksScreen() {
             </Text>
           </View>
           <View style={styles.count}>
-            <Text style={[styles.countNum, { color: c.text }]}>{l.registrations.toLocaleString('en-IN')}</Text>
+            <Text style={[styles.countNum, { color: c.sky }]}>{l.registrations.toLocaleString('en-IN')}</Text>
             <Text style={[styles.countLabel, { color: c.muted }]}>registered</Text>
           </View>
         </Pressable>
@@ -96,13 +100,14 @@ export default function PartnerLinksScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing[3] },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3], borderRadius: cosmosCardRadius },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: cosmosRadius },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[3], paddingRight: spacing[4], borderRadius: cosmosCardRadius },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  muted: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  emptyText: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   count: { alignItems: 'flex-end' },
-  countNum: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
+  countNum: { fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.figure },
   countLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });
