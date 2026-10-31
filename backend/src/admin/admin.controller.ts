@@ -129,6 +129,10 @@ export class AdminController {
     if (dto.aiEnabledFeatures !== undefined) {
       await this.platformConfig.setAiEnabledFeatures(dto.aiEnabledFeatures);
     }
+    const { upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb } = dto;
+    if (upiCheckoutIos !== undefined || upiCheckoutAndroid !== undefined || upiCheckoutWeb !== undefined) {
+      await this.platformConfig.setUpiCheckout({ upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb });
+    }
     return this.platformConfig.getConfig();
   }
 

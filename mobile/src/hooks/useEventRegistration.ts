@@ -1,7 +1,6 @@
 import { isEmail } from '../lib/constants';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import RazorpayCheckout from 'react-native-razorpay';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
 import { verifyPayment, createRegistration, isWaitlistJoin, validateCoupon, type CouponQuote } from '../lib/api/registrations';
@@ -26,6 +25,7 @@ import {
 import { getUserIdentities, getCurrentUser, updateUserProfile, checkUsernameAvailability, type User } from '../lib/api/auth';
 import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfileValue } from '../utils/profile';
 import { markTicketsStale } from '../lib/ticketsRefresh';
+import { checkoutMethods, isPaymentCancelled, pay, type PayMethod, type UpiApp } from '../lib/pay';
 
 export type StepType = 'ticket' | 'details' | 'review' | 'payment';
 export const STEPS: { id: StepType; label: string }[] = [
@@ -163,6 +163,13 @@ export function useEventRegistration() {
       })
       .catch(() => {});
   }, [token]);
+
+  // Q40: how to pay. The phone's UPI apps (none = Razorpay's sheet only) and the pick.
+  const [payOptions, setPayOptions] = useState<{ apps: UpiApp[]; selected: PayMethod }>({ apps: [], selected: 'more' });
+  useEffect(() => {
+    checkoutMethods(selectedTicket?.currency || 'INR').then(setPayOptions).catch(() => {});
+  }, [selectedTicket?.currency]);
+  const setPayMethod = (selected: PayMethod) => setPayOptions((o) => ({ ...o, selected }));
 
   const [pendingRegistrationId, setPendingRegistrationId] = useState('');
   // Order creation + Razorpay sheet in flight (the pay button spins).
@@ -624,11 +631,7 @@ export function useEventRegistration() {
 
       // White-label the sheet when the event carries (server-gated) branding.
       const branding = event.branding;
-      const options = {
-        key: order.razorpayKeyId,
-        order_id: order.razorpayOrderId,
-        amount: order.amount,
-        currency: order.currency || 'INR',
+      const details = {
         name: branding ? event.space?.name || 'Unifesto' : 'Unifesto',
         description: event.title,
         image: (branding && event.space?.logoUrl) || event.coverImageUrl || 'https://unifesto.app/logo.png',
@@ -637,15 +640,16 @@ export function useEventRegistration() {
           email: attendees[0]?.email || '',
           contact: attendees[0]?.mobile || user?.mobileNumber || '',
         },
-        theme: { color: branding?.color || '#111113' },
+        color: branding?.color ?? undefined,
       };
 
       let paymentData: any;
       try {
-        paymentData = await RazorpayCheckout.open(options as any);
+        // No UPI apps on offer: pay() opens the sheet (and asks nothing).
+        paymentData = await pay(order, details, payOptions.apps.length ? payOptions.selected : undefined);
       } catch (paymentError: any) {
         // Cancelled or failed: the registration stays PENDING for reuse.
-        if (paymentError?.code !== 0 && paymentError?.description !== 'Payment Cancelled') {
+        if (!isPaymentCancelled(paymentError)) {
           AppAlert.alert('Payment failed', paymentError?.description || 'Payment was not completed');
         }
         return;
@@ -748,6 +752,9 @@ export function useEventRegistration() {
     feeCapped,
     feeIncluded,
     total,
+    payApps: payOptions.apps,
+    payMethod: payOptions.selected,
+    setPayMethod,
     couponInput,
     setCouponInput,
     appliedCoupon,

@@ -1,8 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   Check,
   CheckCircle,
+  Circle,
+  CreditCard,
+  DeviceMobile,
   EnvelopeSimple,
   Minus,
   PaperPlaneTilt,
@@ -21,6 +24,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
+import type { PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -522,10 +526,60 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
         {r.couponError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{r.couponError}</Text> : null}
       </View>
 
+      {r.payApps.length ? <PayWith r={r} /> : null}
+
       <View style={styles.secure}>
         <ShieldCheck size={18} color={c.muted} weight="duotone" />
         <Text style={[styles.meta, { color: c.muted }]}>Payments are processed securely by Razorpay.</Text>
       </View>
+    </View>
+  );
+}
+
+/** Q40: the phone's UPI apps (last used first), then Razorpay's sheet for the rest. Pay uses the pick. */
+function PayWith({ r }: { r: EventRegistration }) {
+  const c = useCosmos();
+  const options: { key: string; label: string; method: PayMethod; icon: React.ReactNode }[] = [
+    ...r.payApps.map((app) => ({
+      key: app.id,
+      label: app.name,
+      method: app,
+      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : <DeviceMobile size={26} color={c.text} weight="duotone" />,
+    })),
+    { key: 'more', label: 'Cards, netbanking and more', method: 'more', icon: <CreditCard size={26} color={c.text} weight="duotone" /> },
+  ];
+  const picked = r.payMethod === 'more' ? 'more' : r.payMethod.id;
+  return (
+    <View style={styles.block}>
+      <Label>Pay with</Label>
+      <Card style={styles.payCard}>
+        <View accessibilityRole="radiogroup">
+          {options.map((o, i) => {
+            const on = o.key === picked;
+            return (
+              <Pressable
+                key={o.key}
+                onPress={() => {
+                  if (!on) selectionTick();
+                  r.setPayMethod(o.method);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={o.label}
+                style={({ pressed }) => [
+                  styles.payRow,
+                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+                  { opacity: pressed ? 0.6 : 1 },
+                ]}
+              >
+                {o.icon}
+                <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
+                {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
     </View>
   );
 }
@@ -719,6 +773,10 @@ const styles = StyleSheet.create({
   couponInput: { flex: 1, alignSelf: 'stretch', fontSize: 16, letterSpacing: 1, ...cosmosFont.strong },
   couponCode: { flex: 1, fontSize: 16, ...cosmosFont.strong },
   apply: { minWidth: 64, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  payCard: { paddingVertical: spacing[1] },
+  payRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56 },
+  payIcon: { width: 26, height: 26, borderRadius: 7 },
+  payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },
   // gate
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },

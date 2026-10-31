@@ -2668,6 +2668,13 @@ model PlatformConfig {
   // plan is upgraded (Free allows one domain, used by notify.unifesto.app).
   customSendingDomainsEnabled Boolean @default(false) @map("custom_sending_domains_enabled")
 
+  // Q40: our own UPI-first checkout (UPI apps on the order summary, a UPI QR
+  // on desktop web), per platform. Off = Razorpay Standard Checkout only: the
+  // kill switch, no release needed. The money path is the same either way.
+  upiCheckoutIos     Boolean @default(false) @map("upi_checkout_ios")
+  upiCheckoutAndroid Boolean @default(false) @map("upi_checkout_android")
+  upiCheckoutWeb     Boolean @default(false) @map("upi_checkout_web")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("platform_config")

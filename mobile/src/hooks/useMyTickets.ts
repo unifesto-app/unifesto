@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import RazorpayCheckout from 'react-native-razorpay';
 import { useAuth } from '../context/AuthContext';
 import { consumeTicketsStale } from '../lib/ticketsRefresh';
 import { onReconnect } from '../lib/offline/connectivity';
@@ -16,6 +15,7 @@ import {
   type MyWaitlistEntry,
 } from '../lib/api/registrations';
 import { AppAlert } from '../components/ui/AppAlert';
+import { isPaymentCancelled, pay } from '../lib/pay';
 
 export type TicketTab = 'upcoming' | 'past' | 'waitlist' | 'cancelled';
 
@@ -206,20 +206,10 @@ export function useMyTickets() {
     setPayingId(entry.registrationId);
     try {
       const order = await createWaitlistOfferOrder(entry.registrationId);
-      const paymentData: any = await RazorpayCheckout.open({
-        key: order.razorpayKeyId,
-        order_id: order.razorpayOrderId,
-        amount: order.amount,
-        currency: order.currency || 'INR',
-        name: 'Unifesto',
+      const paymentData = await pay(order, {
         description: entry.event.title,
         image: entry.event.coverImageUrl || 'https://unifesto.app/logo.png',
-        prefill: {
-          name: user?.fullName || '',
-          email: '',
-          contact: user?.mobileNumber || '',
-        },
-        theme: { color: '#111113' },
+        prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
       });
 
       await verifyPayment(entry.event.id, {
@@ -233,11 +223,9 @@ export function useMyTickets() {
       loadTickets('upcoming', 1, true);
       setTab('upcoming');
     } catch (err: any) {
-      // Razorpay reports a user-cancelled sheet as an error; that is not a
-      // failure worth alarming anyone about. The seat stays held, so they can
-      // simply try again.
-      const cancelled = err?.code === 0 || err?.description === 'Payment Cancelled';
-      if (!cancelled) {
+      // A cancelled payment isn't a failure worth alarming anyone about. The
+      // seat stays held, so they can simply try again.
+      if (!isPaymentCancelled(err)) {
         AppAlert.alert('Payment failed', err?.message || err?.description || 'Please try again');
       }
       await loadWaitlist();

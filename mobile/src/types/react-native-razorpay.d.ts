@@ -11,10 +11,13 @@ declare module 'react-native-razorpay' {
       email?: string;
       contact?: string;
       name?: string;
+      method?: 'upi' | 'card' | 'netbanking' | 'wallet';
     };
     theme?: {
       color?: string;
     };
+    /** Checkout display config: blocks, their order, defaults shown or not. */
+    config?: Record<string, unknown>;
   }
 
   interface RazorpaySuccessResponse {
