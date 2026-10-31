@@ -14,11 +14,13 @@ import { Button } from '../components/ui';
 import { approveDeviceLink, previewDeviceLink } from '../lib/api/auth';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
 
 /** What web's "Sign in with the app" QR holds. Not a link, so only this scanner reads it. */
 const PREFIX = 'unifesto-link:';
-const WHITE = '#ffffff';
+// The camera stays dark in both themes, so the overlay takes the night tokens.
+const NIGHT = cosmosFor('dark');
+const WHITE = NIGHT.text;
 
 /**
  * Link a device: scan the QR on unifesto.app/login to sign that computer in
@@ -153,11 +155,20 @@ export default function LinkDeviceScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000000' },
+  root: { flex: 1, backgroundColor: NIGHT.bg },
   shell: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], gap: spacing[3] },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.25)' },
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
-  hint: { color: WHITE, fontSize: typography.fontSize.base, textAlign: 'center', paddingHorizontal: spacing[6], ...cosmosFont.strong },
+  // A soft shadow keeps the hint readable over a bright camera feed.
+  hint: {
+    color: WHITE,
+    fontSize: typography.fontSize.base,
+    textAlign: 'center',
+    paddingHorizontal: spacing[6],
+    ...cosmosFont.strong,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowRadius: 6,
+  },
   bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
   msgTitle: { fontSize: typography.fontSize.lg, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   msgBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
