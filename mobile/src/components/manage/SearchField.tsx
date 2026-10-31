@@ -33,7 +33,7 @@ export default function SearchField({ value, onChangeText, busy, ...input }: Pro
       {busy ? (
         <ActivityIndicator size="small" color={c.muted} />
       ) : value.length > 0 ? (
-        <Pressable onPress={() => onChangeText('')} hitSlop={12} accessibilityLabel="Clear search">
+        <Pressable onPress={() => onChangeText('')} hitSlop={12} accessibilityRole="button" accessibilityLabel="Clear search">
           <X size={16} color={c.soft} />
         </Pressable>
       ) : null}

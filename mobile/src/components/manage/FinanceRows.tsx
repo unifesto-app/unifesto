@@ -122,6 +122,6 @@ const styles = StyleSheet.create({
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   reason: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   end: { alignItems: 'flex-end', gap: 2 },
-  amount: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  amount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

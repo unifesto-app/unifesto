@@ -4,9 +4,10 @@ import { CheckCircle, XCircle } from '@unifesto/unicon/react-native';
 import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { answerQuiz, getQuizFeed, type Leaderboard, type QuizFeed } from '../../lib/api/quizzes';
 import { AppAlert } from '../ui/AppAlert';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { CardBackdrop } from '../ui/CardSurface';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** Spread the whole room's refetch at reveal over this much time. */
 const REVEAL_JITTER_MS = 1500;
@@ -84,9 +85,11 @@ export default function LiveQuizPanel({ eventId }: { eventId: string }) {
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <View style={styles.head}>
-        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+        <View style={[styles.dot, { backgroundColor: c.mint }]} />
+        <Text accessibilityRole="header" style={[styles.title, { color: c.text }]} numberOfLines={1}>
           {quiz.title}
         </Text>
         {q ? (
@@ -98,14 +101,18 @@ export default function LiveQuizPanel({ eventId }: { eventId: string }) {
 
       {q ? (
         <View style={styles.question}>
-          <Text style={[styles.clock, { color: q.closed || left <= 5 ? c.text : c.soft }]} accessibilityLiveRegion="polite">
+          <Text
+            style={[styles.clock, { color: q.closed ? c.muted : opensIn <= 0 && left <= 5 ? c.warn : c.mint }]}
+            accessibilityLiveRegion="polite"
+          >
             {q.closed ? "Time's up" : opensIn > 0 ? `Get ready… ${opensIn}` : `${left}s`}
           </Text>
           <Text style={[styles.prompt, { color: c.text }]}>{q.prompt}</Text>
           {q.options.map((o, i) => {
             const mine = q.myAnswer?.optionIndex === i;
             const right = !!q.correctIndexes?.includes(i);
-            const border = q.closed && right ? c.success : mine ? (q.closed ? c.danger : c.primary) : c.border;
+            // The option is a control, so its outline stays monochrome; the result is the glyph and text.
+            const border = mine ? c.primary : c.border;
             return (
               <Pressable
                 key={i}
@@ -116,7 +123,7 @@ export default function LiveQuizPanel({ eventId }: { eventId: string }) {
                 accessibilityLabel={q.closed && right ? `${o}, right answer` : o}
                 style={[styles.option, { borderColor: border, opacity: opensIn > 0 ? 0.5 : 1 }]}
               >
-                <Text style={[styles.optionText, { color: c.text }]} numberOfLines={2}>
+                <Text style={[styles.optionText, { color: q.closed && right ? c.success : c.text }]} numberOfLines={2}>
                   {o}
                 </Text>
                 {q.closed && right ? <CheckCircle size={18} color={c.success} weight="fill" /> : null}
@@ -124,7 +131,7 @@ export default function LiveQuizPanel({ eventId }: { eventId: string }) {
               </Pressable>
             );
           })}
-          <Text style={[styles.meta, { color: c.muted }]}>
+          <Text style={[styles.meta, { color: q.closed && q.myAnswer?.correct ? c.success : c.muted }]}>
             {q.closed
               ? q.myAnswer
                 ? q.myAnswer.correct
@@ -160,12 +167,12 @@ function Board({ board, final }: { board: Leaderboard; final: boolean }) {
         </Text>
       ) : null}
       {[...board.top, ...(board.me && !meShown ? [board.me] : [])].map((r, i) => (
-        <View key={i} style={[styles.row, r.isMe && { backgroundColor: c.tint }]}>
+        <View key={i} style={styles.row}>
           <Text style={[styles.rank, { color: c.muted }]}>{r.rank}</Text>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+          <Text style={[styles.name, r.isMe && cosmosFont.strong, { color: c.text }]} numberOfLines={1}>
             {r.isMe ? `${r.name} (you)` : r.name}
           </Text>
-          <Text style={[styles.score, { color: c.text }]}>{r.score}</Text>
+          <Text style={[styles.score, { color: r.isMe ? c.mint : c.text }]}>{r.score}</Text>
         </View>
       ))}
     </View>
@@ -174,10 +181,11 @@ function Board({ board, final }: { board: Leaderboard; final: boolean }) {
 
 const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, padding: spacing[5], marginTop: spacing[6], gap: spacing[4] },
-  head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing[3] },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   title: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   question: { gap: spacing[2] },
-  clock: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  clock: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.figure },
   prompt: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.strong },
   option: {
     flexDirection: 'row',
@@ -186,14 +194,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: spacing[4],
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
   },
   optionText: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   board: { gap: spacing[1] },
   boardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 32, paddingHorizontal: spacing[2], borderRadius: borderRadius.md },
-  rank: { width: 24, fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.body },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 32 },
+  rank: { width: 24, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   name: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  score: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  score: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
 });

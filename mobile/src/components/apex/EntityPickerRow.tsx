@@ -5,7 +5,7 @@ import { CaretDown, Check, MagnifyingGlass, Plus } from '@unifesto/unicon/react-
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 
@@ -76,8 +76,8 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${value || placeholder}`}
       >
-        {add ? <Plus size={18} color={c.primary} weight="bold" /> : null}
-        <Text style={[styles.label, { color: add ? c.primary : c.text }]}>{label}</Text>
+        {add ? <Plus size={18} color={c.text} weight="bold" /> : null}
+        <Text style={[styles.label, { color: c.text }]}>{label}</Text>
         {!add ? (
           <>
             <Text style={[styles.value, { color: value ? c.text : c.muted }]} numberOfLines={1}>
@@ -100,7 +100,7 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
               onChangeText={setQuery}
               placeholder="Search"
               placeholderTextColor={c.muted}
-              selectionColor={c.primary}
+              selectionColor={c.text}
               autoCorrect={false}
               autoCapitalize="none"
               autoFocus
@@ -121,6 +121,9 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
                     onPick(item);
                     close();
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={[item.title, item.subtitle, on ? 'already added' : null].filter(Boolean).join(', ')}
+                  accessibilityState={{ disabled: on }}
                   style={({ pressed }) => [styles.option, pressed && { backgroundColor: c.tint }]}
                 >
                   <View style={{ flex: 1 }}>
@@ -133,7 +136,7 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
                       </Text>
                     ) : null}
                   </View>
-                  {on ? <Check size={18} color={c.primary} weight="bold" /> : null}
+                  {on ? <Check size={18} color={c.text} weight="bold" /> : null}
                 </Pressable>
               );
             }}
@@ -154,8 +157,8 @@ const styles = StyleSheet.create({
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
-  title: { paddingHorizontal: spacing[6], fontSize: typography.fontSize.lg, ...cosmosFont.display },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: borderRadius.xl },
+  title: { paddingHorizontal: spacing[6], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
   searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   option: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[6], minHeight: 56, paddingVertical: spacing[2] },
   optionText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

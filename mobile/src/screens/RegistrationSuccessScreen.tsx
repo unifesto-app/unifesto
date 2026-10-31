@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import ShadeCard from '../components/ui/ShadeCard';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -18,11 +19,11 @@ import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { markTicketsStale } from '../lib/ticketsRefresh';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
 
-/** Terminal step after registering: confirmation, the pass, next actions. */
+/** Terminal step after registering: confirmation, the pass on the sky shade, next actions. */
 export default function RegistrationSuccessScreen() {
   const c = useCosmos();
   const router = useRouter();
@@ -121,7 +122,7 @@ export default function RegistrationSuccessScreen() {
       <SheetTop fill>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: spacing[10], paddingBottom: barSpace }]} showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.center, popStyle]}>
-          <CheckCircle size={84} color={c.success} weight="duotone" />
+          <CheckCircle size={84} color={c.text} weight="duotone" />
         </Animated.View>
 
         <Animated.View style={riseStyle}>
@@ -130,9 +131,8 @@ export default function RegistrationSuccessScreen() {
             Your spot at {title} is confirmed.
           </Text>
 
-          {/* The pass */}
-          <View style={[styles.pass]}>
-            <CardBackdrop shape={styles.pass} />
+          {/* The pass: the screen's hero, on the ticket's sky shade. */}
+          <ShadeCard tone="sky" style={styles.pass}>
             <View style={styles.passTop}>
               <View style={[styles.cover, { backgroundColor: c.card }]}>
                 {event?.coverImageUrl ? (
@@ -159,23 +159,25 @@ export default function RegistrationSuccessScreen() {
               {ticketName ? (
                 <View style={styles.passRow}>
                   <Text style={[styles.meta, { color: c.muted }]}>Ticket</Text>
-                  <Text style={[styles.passValue, { color: c.text }]} numberOfLines={1}>{ticketLine}</Text>
+                  <Text style={[styles.passValue, { color: c.sky }]} numberOfLines={1}>{ticketLine}</Text>
                 </View>
               ) : null}
               <View style={styles.passRow}>
                 <Text style={[styles.meta, { color: c.muted }]}>{total === 0 ? 'Price' : 'Paid'}</Text>
-                <Text style={[styles.passValue, styles.figure, { color: c.text }]}>{total === 0 ? 'Free' : money(currency, total)}</Text>
+                <Text style={[styles.passValue, styles.figure, { color: c.sky }]}>{total === 0 ? 'Free' : money(currency, total)}</Text>
               </View>
             </View>
-          </View>
+          </ShadeCard>
 
           {openSeats > 0 && registration?.id ? (
             <Pressable
               onPress={() => router.push(`/group/${registration.id}`)}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.invite, { backgroundColor: c.raised, opacity: pressed ? 0.85 : 1 }]}
+              accessibilityLabel={`Invite your team, ${openSeats} open seat${openSeats === 1 ? '' : 's'}`}
+              style={({ pressed }) => [styles.invite, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
             >
-              <PaperPlaneTilt size={28} color={c.primary} weight="duotone" />
+              <CardBackdrop shape={styles.invite} />
+              <PaperPlaneTilt size={28} color={c.text} weight="duotone" />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.passValue, { color: c.text, textAlign: 'left' }]}>Invite your team</Text>
                 <Text style={[styles.meta, { color: c.soft }]}>
@@ -188,7 +190,7 @@ export default function RegistrationSuccessScreen() {
 
           {event ? (
             <SettingsGroup>
-              <SettingsRow icon={<CalendarPlus size={24} color={c.primary} weight="duotone" />} label="Add to calendar" onPress={addToCalendar} />
+              <SettingsRow icon={<CalendarPlus size={24} color={c.text} />} label="Add to calendar" onPress={addToCalendar} />
             </SettingsGroup>
           ) : null}
 
@@ -216,6 +218,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize['3xl'],
     lineHeight: 38,
     ...cosmosFont.display,
+    letterSpacing: displayTracking(28),
   },
   sub: {
     marginTop: spacing[2],
@@ -225,7 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     ...cosmosFont.body,
   },
-  pass: { marginTop: spacing[8], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  pass: { marginTop: spacing[8], padding: 0 },
   passTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[5] },
   cover: { width: 88, height: 66, borderRadius: borderRadius.md, overflow: 'hidden' },
   passTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, marginBottom: 4, ...cosmosFont.strong },
@@ -238,7 +241,7 @@ const styles = StyleSheet.create({
   passRows: { padding: spacing[5], paddingTop: spacing[3], gap: spacing[3] },
   passRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[4] },
   passValue: { flexShrink: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  figure: { ...cosmosFont.figure },
+  figure: { fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
   invite: {
     marginTop: spacing[4],
     flexDirection: 'row',

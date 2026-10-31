@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash } from '@unifesto/unicon/react-native';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -73,7 +74,8 @@ export default function HackathonRoomEditorScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title }} />
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -136,20 +138,22 @@ export default function HackathonRoomEditorScreen() {
       </SettingsGroup>
       <Text style={[styles.note, { color: c.muted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
 
-      <SettingsGroup title="Volunteers here" plain>
-        {staff.length ? (
-          <View style={styles.chips}>
-            <MultiChips
-              options={staff.map((u) => ({ value: u.id, label: staffName(u) }))}
-              value={draft.volunteerUserIds}
-              onChange={(v) => set({ volunteerUserIds: v })}
-            />
-          </View>
-        ) : (
+      {/* Chips are controls: they sit on the page, not inside a card. */}
+      {staff.length ? (
+        <>
+          <SettingsGroupHeader title="Volunteers here" />
+          <MultiChips
+            options={staff.map((u) => ({ value: u.id, label: staffName(u) }))}
+            value={draft.volunteerUserIds}
+            onChange={(v) => set({ volunteerUserIds: v })}
+          />
+        </>
+      ) : (
+        <SettingsGroup title="Volunteers here" plain>
           <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
-        )}
-      </SettingsGroup>
-      <Text style={[styles.note, { color: c.muted }]}>
+        </SettingsGroup>
+      )}
+      <Text style={[styles.note, { color: c.muted, marginTop: spacing[3] }]}>
         Teams in this room see their volunteers, and every query they raise goes to them too.
       </Text>
 
@@ -159,7 +163,7 @@ export default function HackathonRoomEditorScreen() {
           {room.teams.map((t) => (
             <SettingsRow
               key={t.id}
-              label={`${t.teamCode ?? '—'}  ${t.name}`}
+              label={`${t.teamCode ?? '–'}  ${t.name}`}
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/team/${t.id}`)}
             />
           ))}
@@ -185,7 +189,6 @@ export default function HackathonRoomEditorScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  chips: { paddingVertical: spacing[2] },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },

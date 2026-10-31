@@ -40,13 +40,14 @@ import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { relativeWhen } from '../utils/eventFormat';
 import { useEventCover } from '../lib/defaultImages';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 const COVER_W = 120;
@@ -93,7 +94,8 @@ export default function ManageEventScreen() {
   if (h.error || !h.event) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{h.error || 'Event not found'}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[4] }} />
         </View>
@@ -125,15 +127,18 @@ export default function ManageEventScreen() {
       <View style={styles.hero}>
         {cover ? <Image source={{ uri: cover }} style={styles.cover} /> : null}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={3} accessibilityRole="header">
             {e.title}
           </Text>
-          <Text
-            style={[styles.state, { color: state === 'Live now' ? c.success : state === 'Cancelled' ? c.danger : c.muted }]}
-            numberOfLines={1}
-          >
-            {state}
-          </Text>
+          <View style={styles.stateRow}>
+            {state === 'Live now' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
+            <Text
+              style={[styles.state, { color: state === 'Live now' ? c.mint : state === 'Cancelled' ? c.danger : c.muted }]}
+              numberOfLines={1}
+            >
+              {state}
+            </Text>
+          </View>
           {e.venueName || e.city ? (
             <Text style={[styles.muted, { color: c.muted }]} numberOfLines={1}>
               {e.venueName || e.city}
@@ -166,16 +171,17 @@ export default function ManageEventScreen() {
       <View style={{ marginTop: spacing[6] }}>
         <ManageStats
           stats={[
-            { label: 'Attending', value: attending ?? 0 },
-            { label: 'Checked in', value: checkedIn ?? 0 },
-            ...(e.capacity ? [{ label: 'Seats left', value: Math.max(0, e.capacity - (attending ?? 0)) }] : []),
+            { label: 'Attending', value: attending ?? 0, tone: 'sky' },
+            { label: 'Checked in', value: checkedIn ?? 0, tone: 'mint' },
+            ...(e.capacity ? [{ label: 'Seats left', value: Math.max(0, e.capacity - (attending ?? 0)), tone: 'sky' as const }] : []),
           ]}
         />
       </View>
 
+      {/* On the page, so the bar stays monochrome: the mint lives on the card above. */}
       {h.checkin && checkinTotal > 0 ? (
         <View style={styles.progressWrap}>
-          <View style={[styles.track, { backgroundColor: c.raised }]}>
+          <View style={[styles.track, { backgroundColor: c.tint }]}>
             <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.primary }]} />
           </View>
           <Text style={[styles.muted, { color: c.muted }]}>
@@ -361,7 +367,7 @@ export default function ManageEventScreen() {
             {h.attendeeStats.byTicketType.map((t) => (
               <SettingsRow
                 key={t.ticketTypeId ?? t.name}
-                icon={<Text style={[styles.count, { color: c.text }]}>{t.attendees}</Text>}
+                icon={<Text style={[styles.count, { color: c.sky }]}>{t.attendees}</Text>}
                 label={t.name}
                 value={t.kind === 'GROUP' ? `${t.bookings} groups` : undefined}
               />
@@ -390,13 +396,15 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', gap: spacing[4], alignItems: 'center' },
-  cover: { width: COVER_W, height: COVER_H, borderRadius: cosmosRadius },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
-  state: { marginTop: 6, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  cover: { width: COVER_W, height: COVER_H, borderRadius: cosmosCardRadius },
+  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.25, ...cosmosFont.display },
+  stateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  state: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   progressWrap: { marginTop: spacing[4], gap: spacing[2] },
-  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 4 },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
   note: { marginTop: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   count: { width: ICON, textAlign: 'center', fontSize: typography.fontSize.base, ...cosmosFont.figure },
 });

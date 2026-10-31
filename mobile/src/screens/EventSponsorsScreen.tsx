@@ -251,7 +251,7 @@ export default function EventSponsorsScreen() {
               label="New sponsor"
               variant="ghost"
               fullWidth
-              icon={<Plus size={18} color={c.primary} weight="bold" />}
+              icon={<Plus size={18} color={c.text} weight="bold" />}
               onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
               style={{ marginTop: spacing[3] }}
             />

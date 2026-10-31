@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, CircleDashed, PencilSimple, Pause, Play, Stop, XCircle } from '@unifesto/unicon/react-native';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -13,7 +15,7 @@ import { getRound, setRoundStatus, setTeamDecision, type RoundDetail, type Round
 import { evalStatusLabel, roundStatusLabel, standingLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -50,7 +52,8 @@ export default function HackathonRoundScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title }} />
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -119,26 +122,53 @@ export default function HackathonRoundScreen() {
     );
   };
 
-  const icon = (I: typeof Play, color = c.text) => <I size={ICON} color={color} />;
+  const icon = (I: typeof Play, color = c.text, size = ICON) => <I size={size} color={color} />;
 
   return (
     <CosmosScreen contentContainerStyle={styles.content} bottom={80}>
       <Stack.Screen options={{ title }} />
-      <SettingsGroup title={`Status · ${roundStatusLabel(round.status)}`}>
+      {/* The round on the day: the screen's hero, on the hackathon's blue shade. */}
+      <ShadeCard tone="blue">
+        <View style={styles.statusRow}>
+          {round.status === 'ACTIVE' ? <View style={[styles.dot, { backgroundColor: c.text }]} /> : null}
+          <Text style={[styles.status, { color: c.text }]} accessibilityRole="header">
+            {roundStatusLabel(round.status)}
+          </Text>
+        </View>
+        <Text style={[styles.heroBody, { color: c.soft }]}>
+          {round.kind === 'MENTORING'
+            ? `${round.judges} mentor${round.judges === 1 ? '' : 's'} mentor this round.`
+            : round.judgingMode === 'PANEL'
+              ? `${round.panels} panel${round.panels === 1 ? '' : 's'} can take this round.`
+              : `${round.judges} judge${round.judges === 1 ? '' : 's'} judge this round.`}
+        </Text>
+        <View style={styles.figures}>
+          <View>
+            <Text style={[styles.figure, { color: c.text }]}>{round.teams.length}</Text>
+            <Text style={[styles.figureLabel, { color: c.soft }]}>{round.teams.length === 1 ? 'Team' : 'Teams'}</Text>
+          </View>
+          <View>
+            <Text style={[styles.figure, { color: c.text }]}>{round.openRequests}</Text>
+            <Text style={[styles.figureLabel, { color: c.soft }]}>In queues now</Text>
+          </View>
+        </View>
         {round.status !== 'ACTIVE' ? (
-          <SettingsRow
-            icon={icon(Play, c.success)}
+          <Button
             label={round.status === 'CLOSED' ? 'Open again' : 'Open round'}
-            value={round.blockers.length ? 'Waiting on decisions' : undefined}
-            onPress={acting ? undefined : () => changeStatus('ACTIVE')}
+            size="lg"
+            fullWidth
+            loading={acting}
+            icon={icon(Play, c.primaryFg, 18)}
+            onPress={() => changeStatus('ACTIVE')}
+            style={{ marginTop: spacing[5] }}
           />
         ) : (
-          <>
-            <SettingsRow icon={icon(Pause, c.warn)} label="Pause" onPress={acting ? undefined : () => changeStatus('PENDING')} />
-            <SettingsRow icon={icon(Stop, c.danger)} label="Close round" danger onPress={acting ? undefined : () => changeStatus('CLOSED')} />
-          </>
+          <View style={styles.actions}>
+            <Button label="Pause" variant="secondary" disabled={acting} icon={icon(Pause, c.text, 18)} onPress={() => changeStatus('PENDING')} style={{ flex: 1 }} />
+            <Button label="Close round" variant="danger" disabled={acting} icon={icon(Stop, c.danger, 18)} onPress={() => changeStatus('CLOSED')} style={{ flex: 1 }} />
+          </View>
         )}
-      </SettingsGroup>
+      </ShadeCard>
       {round.blockers.map((b) => (
         <Text key={b.roundId} style={[styles.note, { color: c.warn }]}>
           Decide every team in {b.roundName} first: {b.teams.slice(0, 6).map((t) => t.teamCode ?? t.name).join(', ')}
@@ -148,14 +178,6 @@ export default function HackathonRoundScreen() {
       {round.kind === 'EVALUATION' && round.status !== 'ACTIVE' && !round.criteria.length ? (
         <Text style={[styles.note, { color: c.warn }]}>Add at least one criterion before opening.</Text>
       ) : null}
-      <Text style={[styles.note, { color: c.muted }]}>
-        {round.kind === 'MENTORING'
-          ? `${round.judges} mentor${round.judges === 1 ? '' : 's'} mentor this round.`
-          : round.judgingMode === 'PANEL'
-            ? `${round.panels} panel${round.panels === 1 ? '' : 's'} can take this round.`
-            : `${round.judges} judge${round.judges === 1 ? '' : 's'} judge this round.`}
-        {round.openRequests ? ` ${round.openRequests} in queues now.` : ''}
-      </Text>
 
       {round.kind === 'EVALUATION' ? (
         <>
@@ -196,7 +218,7 @@ export default function HackathonRoundScreen() {
                   <CircleDashed size={ICON} color={c.muted} />
                 )
               }
-              label={`${t.teamCode ?? '—'}  ${t.name}`}
+              label={`${t.teamCode ?? '–'}  ${t.name}`}
               value={
                 t.queueStatus
                   ? evalStatusLabel(t.queueStatus)
@@ -222,5 +244,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  status: { fontSize: 28, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
+  heroBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  figures: { flexDirection: 'row', gap: spacing[8], marginTop: spacing[5] },
+  figure: { fontSize: 32, lineHeight: 38, ...cosmosFont.figure },
+  figureLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

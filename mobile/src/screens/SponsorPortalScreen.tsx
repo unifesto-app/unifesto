@@ -7,6 +7,7 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useAuth } from '../context/AuthContext';
 import { dismissBoothScan, syncBoothScans, useBoothScanQueue } from '../lib/offline/boothScanQueue';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getPortalLeads, updatePortalLead, type PortalLead, type PortalLeadStatus } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
@@ -20,7 +21,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -128,7 +129,8 @@ export default function SponsorPortalScreen() {
   if (!sponsor) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>This sponsor isn't linked to your account any more.</Text>
         </View>
       </CosmosScreen>
@@ -160,7 +162,7 @@ export default function SponsorPortalScreen() {
           loading={!leads}
           stats={[
             { label: 'Leads', value: leads?.length ?? 0 },
-            { label: 'Booth scans', value: scans },
+            { label: 'Booth scans', value: scans, tone: 'mint' },
             { label: 'Converted', value: converted },
           ]}
         />
@@ -172,7 +174,7 @@ export default function SponsorPortalScreen() {
           {events.map((e) => (
             <SettingsRow
               key={e.eventSponsorId}
-              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.primary : c.muted} weight="fill" />}
+              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.text : c.muted} />}
               label={e.title}
               value={leads ? boothLine(e.eventSponsorId) : e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
               onPress={
@@ -234,9 +236,12 @@ export default function SponsorPortalScreen() {
                 <View key={l.id}>
                   <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
                   <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)} numberOfLines={1}>
-                    {[STATUS[l.status] ?? l.status, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, events.length > 1 && !eventFilter ? l.eventTitle : null, l.email]
+                    {/* The stage as plain text: converted reads as done, the rest muted. */}
+                    <Text style={[styles.subStrong, { color: l.status === 'CONVERTED' ? c.success : c.soft }]}>{STATUS[l.status] ?? l.status}</Text>
+                    {[SPONSOR_LEAD_SOURCE[l.source] ?? l.source, events.length > 1 && !eventFilter ? l.eventTitle : null, l.email]
                       .filter(Boolean)
-                      .join(' · ')}
+                      .map((part) => ` · ${part}`)
+                      .join('')}
                   </Text>
                 </View>
               ))}
@@ -261,11 +266,12 @@ export default function SponsorPortalScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  subStrong: { ...cosmosFont.strong },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  name: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.35, ...cosmosFont.display },
-  section: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  name: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  section: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'left', ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

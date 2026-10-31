@@ -5,7 +5,8 @@ import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
- * Single-series charts for the Apex dashboard, in the cosmos silver. One series
+ * Single-series charts for the Apex dashboard: silver by default, or the card's
+ * accent (`color`: sky for people and events, ivory for money). One series
  * each, so no legend: the card title names it. Recessive baseline, 2px line,
  * 4px rounded bar tops, an 8px marker on the latest point, first/last labels.
  * Press and drag across a chart to read any bucket: a guide line marks it and
@@ -19,6 +20,8 @@ interface SeriesProps {
   height?: number;
   /** Formats the scrubbed value; defaults to Indian digit grouping. */
   format?: (v: number) => string;
+  /** The card's accent for the series; defaults to the text silver. */
+  color?: string;
 }
 
 function useWidth() {
@@ -84,8 +87,9 @@ function EndLabels({ labels, active, values, format }: { labels: string[]; activ
 }
 
 /** Area under a line: change over time for one measure. */
-export function AreaChart({ values, labels, height = 72, format }: SeriesProps) {
+export function AreaChart({ values, labels, height = 72, format, color }: SeriesProps) {
   const c = useCosmos();
+  const ink = color ?? c.text;
   const { w, onLayout } = useWidth();
   const max = Math.max(...values, 1);
   const pad = 5; // room for the end marker
@@ -103,15 +107,15 @@ export function AreaChart({ values, labels, height = 72, format }: SeriesProps) 
         <Svg width={w} height={height}>
           <Defs>
             <LinearGradient id="area" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={`rgb(${c.glow})`} stopOpacity={0.22} />
-              <Stop offset="1" stopColor={`rgb(${c.glow})`} stopOpacity={0} />
+              <Stop offset="0" stopColor={color ?? `rgb(${c.glow})`} stopOpacity={0.22} />
+              <Stop offset="1" stopColor={color ?? `rgb(${c.glow})`} stopOpacity={0} />
             </LinearGradient>
           </Defs>
           <Line x1={0} x2={w} y1={height - 0.5} y2={height - 0.5} stroke={c.border} strokeWidth={1} />
           <Path d={`${line} L${x(last)},${height} L${x(0)},${height} Z`} fill="url(#area)" />
-          <Path d={line} stroke={c.text} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+          <Path d={line} stroke={ink} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" />
           {active !== null ? <Line x1={x(active)} x2={x(active)} y1={0} y2={height} stroke={c.outline} strokeWidth={1} /> : null}
-          <Circle cx={x(dot)} cy={y(values[dot])} r={4} fill={c.text} stroke={c.bg} strokeWidth={2} />
+          <Circle cx={x(dot)} cy={y(values[dot])} r={4} fill={ink} stroke={c.raised} strokeWidth={2} />
         </Svg>
         </View>
       ) : (
@@ -123,7 +127,7 @@ export function AreaChart({ values, labels, height = 72, format }: SeriesProps) 
 }
 
 /** Vertical bars: a count per bucket. The latest bar is full ink, the rest muted. */
-export function BarChart({ values, labels, height = 72, format }: SeriesProps) {
+export function BarChart({ values, labels, height = 72, format, color }: SeriesProps) {
   const c = useCosmos();
   const { w, onLayout } = useWidth();
   const max = Math.max(...values, 1);
@@ -145,7 +149,7 @@ export function BarChart({ values, labels, height = 72, format }: SeriesProps) {
             const top = height - h;
             // Rounded top, square foot on the baseline.
             const d = `M${bx},${height} L${bx},${top + r} Q${bx},${top} ${bx + r},${top} L${bx + bw - r},${top} Q${bx + bw},${top} ${bx + bw},${top + r} L${bx + bw},${height} Z`;
-            return h ? <Path key={i} d={d} fill={c.text} opacity={i === lit ? 1 : 0.35} /> : null;
+            return h ? <Path key={i} d={d} fill={color ?? c.text} opacity={i === lit ? 1 : 0.35} /> : null;
           })}
         </Svg>
         </View>
@@ -158,7 +162,7 @@ export function BarChart({ values, labels, height = 72, format }: SeriesProps) {
 }
 
 /** Part of a whole as a ring, the percentage in the middle. */
-export function Ring({ part, whole, size = 64 }: { part: number; whole: number; size?: number }) {
+export function Ring({ part, whole, size = 64, color }: { part: number; whole: number; size?: number; color?: string }) {
   const c = useCosmos();
   const stroke = Math.max(4, Math.round(size / 9));
   const r = (size - stroke) / 2;
@@ -172,7 +176,7 @@ export function Ring({ part, whole, size = 64 }: { part: number; whole: number; 
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke={c.text}
+          stroke={color ?? c.text}
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"
@@ -181,7 +185,7 @@ export function Ring({ part, whole, size = 64 }: { part: number; whole: number; 
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <Text style={[styles.ringText, { color: c.text }]}>{whole > 0 ? `${Math.round(frac * 100)}%` : '—'}</Text>
+      <Text style={[styles.ringText, { color: c.text }]}>{whole > 0 ? `${Math.round(frac * 100)}%` : '–'}</Text>
     </View>
   );
 }

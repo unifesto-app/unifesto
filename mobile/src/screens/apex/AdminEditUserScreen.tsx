@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { At, Camera, Trash } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
@@ -10,6 +9,7 @@ import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import SaveBar from '../../components/manage/SaveBar';
 import { GUTTER } from '../../components/home/Section';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -153,7 +153,8 @@ export default function AdminEditUserScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.pad}>
         {loadError ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -177,28 +178,27 @@ export default function AdminEditUserScreen() {
         {/* Photo: applies immediately */}
         <View style={styles.avatarWrap}>
           <Pressable onPress={pickAvatar} disabled={avatarBusy} accessibilityRole="button" accessibilityLabel="Change photo">
-            <LinearGradient colors={[c.soft, c.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
-              <View style={[styles.avatar, { backgroundColor: c.raised, borderColor: c.bg }]}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
-                ) : (
-                  <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
-                )}
-                {avatarBusy ? (
-                  <View style={[StyleSheet.absoluteFill, styles.avatarBusy]}>
-                    <ActivityIndicator color="#fff" />
-                  </View>
-                ) : null}
-              </View>
-            </LinearGradient>
+            <View style={[styles.avatar, { backgroundColor: c.raised }]}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
+              ) : (
+                <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
+              )}
+              {avatarBusy ? (
+                <View style={[StyleSheet.absoluteFill, styles.avatarBusy]}>
+                  <View style={[StyleSheet.absoluteFill, styles.avatarVeil, { backgroundColor: c.raised }]} />
+                  <ActivityIndicator color={c.text} />
+                </View>
+              ) : null}
+            </View>
           </Pressable>
           <View style={styles.photoActions}>
-            <Pressable onPress={pickAvatar} disabled={avatarBusy} hitSlop={8} style={styles.photoAction}>
-              <Camera size={16} color={c.primary} weight="fill" />
-              <Text style={[styles.photoActionText, { color: c.primary }]}>{avatarUrl ? 'Change photo' : 'Add photo'}</Text>
+            <Pressable onPress={pickAvatar} disabled={avatarBusy} hitSlop={8} accessibilityRole="button" style={styles.photoAction}>
+              <Camera size={16} color={c.text} weight="fill" />
+              <Text style={[styles.photoActionText, { color: c.text }]}>{avatarUrl ? 'Change photo' : 'Add photo'}</Text>
             </Pressable>
             {avatarUrl ? (
-              <Pressable onPress={removeAvatar} disabled={avatarBusy} hitSlop={8} style={styles.photoAction}>
+              <Pressable onPress={removeAvatar} disabled={avatarBusy} hitSlop={8} accessibilityRole="button" accessibilityLabel="Remove photo" style={styles.photoAction}>
                 <Trash size={16} color={c.danger} weight="fill" />
                 <Text style={[styles.photoActionText, { color: c.danger }]}>Remove</Text>
               </Pressable>
@@ -250,18 +250,17 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   avatarWrap: { alignSelf: 'center', alignItems: 'center' },
-  ring: { width: AVATAR + 8, height: AVATAR + 8, borderRadius: (AVATAR + 8) / 2, alignItems: 'center', justifyContent: 'center' },
   avatar: {
-    width: AVATAR + 2,
-    height: AVATAR + 2,
-    borderRadius: (AVATAR + 2) / 2,
-    borderWidth: 3,
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarBusy: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  initials: { fontSize: 34, ...cosmosFont.display },
+  avatarBusy: { alignItems: 'center', justifyContent: 'center' },
+  avatarVeil: { opacity: 0.7 },
+  initials: { fontSize: 32, ...cosmosFont.strong },
   photoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
   photoAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   photoActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

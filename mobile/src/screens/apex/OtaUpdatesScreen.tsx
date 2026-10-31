@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -155,7 +156,8 @@ export default function OtaUpdatesScreen() {
 
       {!groups ? (
         error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load(channel)} style={{ marginTop: spacing[4] }} />
           </View>
@@ -163,7 +165,8 @@ export default function OtaUpdatesScreen() {
           <ActivityIndicator color={c.text} style={styles.center} />
         )
       ) : groups.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>Nothing published on {channel} yet.</Text>
         </View>
       ) : (
@@ -174,9 +177,11 @@ export default function OtaUpdatesScreen() {
             const pct = g.rolloutPercentage ?? 0;
             const isMine = !!mine.updateId && g.updateIds.includes(mine.updateId);
             return (
-              <View key={g.group} style={[styles.card, { backgroundColor: c.raised }]}>
+              <View key={g.group} style={styles.card}>
+                <CardBackdrop shape={styles.card} />
                 <View style={styles.head}>
                   <Badge label={b.label} tone={b.tone} />
+                  {isMine ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
                   {isMine ? <Badge label="This phone" tone="accent" /> : null}
                 </View>
                 <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
@@ -193,7 +198,7 @@ export default function OtaUpdatesScreen() {
 
                 {s === 'rollout' ? (
                   <>
-                    <View style={[styles.track, { backgroundColor: c.border }]}>
+                    <View style={[styles.track, { backgroundColor: c.tint }]}>
                       <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.warn }]} />
                     </View>
                     <View style={styles.actions}>
@@ -278,9 +283,11 @@ function StaleCard({ s }: { s: OtaStaleness }) {
   const old = s.oldestUnshippedAt ? daysAgo(s.oldestUnshippedAt) : 0;
   const tone: BadgeTone = !n ? 'success' : old >= 7 ? 'danger' : 'warning';
   return (
-    <View style={[styles.card, styles.section, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, styles.section]}>
+      <CardBackdrop shape={styles.card} />
       <View style={styles.head}>
         {count != null ? <Badge label={n ? `${count} unshipped` : 'Up to date'} tone={tone} /> : null}
+        {count != null && s.main ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
         {s.main ? (
           <Badge label={s.main.otaSafe ? 'Main is OTA-safe' : 'Main needs a store build'} tone={s.main.otaSafe ? 'success' : 'danger'} />
         ) : null}
@@ -331,13 +338,14 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
           {users} · {pct(users, total)}%
         </Text>
       </View>
-      <View style={[styles.track, { backgroundColor: c.border }]}>
-        <View style={[styles.fill, { width: `${pct(users, total)}%`, backgroundColor: indent ? c.muted : c.primary }]} />
+      <View style={[styles.track, { backgroundColor: c.tint }]}>
+        <View style={[styles.fill, { width: `${pct(users, total)}%`, backgroundColor: indent ? c.muted : c.sky }]} />
       </View>
     </View>
   );
   return (
-    <View style={[styles.card, styles.section, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, styles.section]}>
+      <CardBackdrop shape={styles.card} />
       <Text style={[styles.title, { color: c.text }]}>What phones run</Text>
       <Text style={[styles.small, { color: c.muted }]}>
         {a.total} active user{a.total === 1 ? '' : 's'} (app reported in the last {a.days} days)
@@ -364,7 +372,8 @@ const styles = StyleSheet.create({
   empty: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
   list: { marginTop: spacing[4], gap: spacing[3] },
   card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], gap: spacing[2] },
-  head: { flexDirection: 'row', gap: spacing[2] },
+  head: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing[2] },
+  sep: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   small: { fontSize: typography.fontSize.xs, ...cosmosFont.body },

@@ -10,6 +10,7 @@ import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import {
   getMyHackathon,
@@ -23,7 +24,7 @@ import { blockCopy, formatWhen, placesLabel } from '../lib/hackathon';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /**
  * The team's problem statement. Once locked it just shows what the team has.
@@ -84,7 +85,8 @@ export default function HackathonStatementScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.box, { backgroundColor: c.raised }]}>
+          <View style={styles.box}>
+            <CardBackdrop shape={styles.box} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -178,19 +180,21 @@ export default function HackathonStatementScreen() {
             description={mine.description}
             theme={mine.themeLabel}
             expanded
+            hero
           />
           <Text style={[styles.note, { color: c.muted }]}>
             Your team’s problem statement is final. Only the organisers can change it.
           </Text>
         </>
       ) : stop ? (
-        <View style={[styles.box, { backgroundColor: c.raised }]}>
+        <View style={styles.box}>
+          <CardBackdrop shape={styles.box} />
           <Text style={[styles.boxTitle, { color: c.text }]}>{stop.title}</Text>
           <Text style={[styles.boxBody, { color: c.soft }]}>{stop.body}</Text>
         </View>
       ) : (
         <>
-          <Text style={[styles.heading, { color: c.text }]}>
+          <Text style={[styles.heading, { color: c.text }]} accessibilityRole="header">
             {writing ? 'Write your problem statement' : 'Pick your problem statement'}
           </Text>
           <Text style={[styles.body, { color: c.soft }]}>
@@ -229,7 +233,8 @@ export default function HackathonStatementScreen() {
               </SettingsGroup>
             ) : null
           ) : opts.statements.length === 0 ? (
-            <View style={[styles.box, { backgroundColor: c.raised, marginTop: spacing[5] }]}>
+            <View style={[styles.box, { marginTop: spacing[5] }]}>
+              <CardBackdrop shape={styles.box} />
               <Text style={[styles.emptyText, { color: c.soft }]}>The organisers haven’t added problem statements yet.</Text>
             </View>
           ) : (
@@ -310,7 +315,7 @@ export default function HackathonStatementScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  heading: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  heading: { fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   lockedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },

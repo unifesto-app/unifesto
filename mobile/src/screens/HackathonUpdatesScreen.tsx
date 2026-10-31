@@ -160,18 +160,19 @@ export default function HackathonUpdatesScreen() {
 
       {anyUnread ? (
         <Pressable onPress={() => void markAllRead()} style={styles.markAll} accessibilityRole="button" hitSlop={8}>
-          <Text style={[styles.markAllText, { color: c.primary }]}>Mark all as read</Text>
+          <Text style={[styles.markAllText, { color: c.text }]}>Mark all as read</Text>
         </Pressable>
       ) : null}
 
       {!items ? (
         <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
       ) : items.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
-          <Text style={[styles.emptyTitle, { color: c.text }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
+          <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
             {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
           </Text>
-          <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>
+          <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
             {eventId
               ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
               : tab === 'staff'
@@ -196,7 +197,7 @@ export default function HackathonUpdatesScreen() {
             >
               <CardBackdrop shape={styles.card} />
               <View style={styles.cardHead}>
-                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.primary }]} /> : null}
+                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.text }]} accessibilityLabel="Unread" /> : null}
                 <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
                   {n.title}
                 </Text>
@@ -219,10 +220,10 @@ export default function HackathonUpdatesScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4] },
+  emptyTitle: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing[3] },
   markAllText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },

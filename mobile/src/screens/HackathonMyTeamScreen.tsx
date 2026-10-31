@@ -6,6 +6,7 @@ import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { GUTTER } from '../components/home/Section';
 import { getMyHackathon, renameMyTeam, type HackathonHub } from '../lib/api/hackathon';
@@ -47,7 +48,8 @@ export default function HackathonMyTeamScreen() {
         {hub === undefined && !error ? (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
             {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
           </View>
@@ -97,7 +99,7 @@ export default function HackathonMyTeamScreen() {
           </Text>
         </>
       ) : (
-        <SettingsGroup title="Team" plain>
+        <SettingsGroup title="My team" plain>
           <SettingsRow label={team.name} value={team.teamCode ?? undefined} />
         </SettingsGroup>
       )}

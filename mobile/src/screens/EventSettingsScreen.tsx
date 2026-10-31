@@ -20,6 +20,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -160,7 +161,8 @@ export default function EventSettingsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={[styles.card, { alignItems: 'center' }]}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.muted, { color: c.soft, marginLeft: 0 }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -181,7 +183,17 @@ export default function EventSettingsScreen() {
   const canCancel = status === 'PUBLISHED';
   const icon = (I: typeof Trash, color = c.text) => <I size={ICON} color={color} />;
   const radio = (on: boolean) =>
-    on ? <CheckCircle size={22} color={c.primary} weight="fill" /> : <CircleIcon size={22} color={c.muted} />;
+    on ? <CheckCircle size={22} color={c.text} weight="fill" /> : <CircleIcon size={22} color={c.muted} />;
+  // Status as plain coloured text with its dot: live in mint, drafts amber, cancelled crimson.
+  const statusColor = isHidden
+    ? c.muted
+    : isCancelled
+      ? c.danger
+      : isDraft
+        ? c.warn
+        : status === 'ONGOING'
+          ? c.mint
+          : c.success;
 
   return (
     <CosmosScreen
@@ -194,15 +206,21 @@ export default function EventSettingsScreen() {
         setRefreshing(false);
       }}
     >
-      <Text style={[styles.status, { color: isCancelled ? c.danger : isDraft ? c.warn : c.success }]}>
-        {isHidden ? 'Hidden' : status.charAt(0) + status.slice(1).toLowerCase()}
-      </Text>
-      <Text style={[styles.muted, { color: c.soft, textAlign: 'left' }]}>
-        {isHidden ? 'Off every listing. Restore it to bring it back.' : STATUS_TEXT[status] ?? ''}
-      </Text>
-      {isCancelled && event.cancellationReason ? (
-        <Text style={[styles.note, { color: c.muted }]}>Reason: {event.cancellationReason}</Text>
-      ) : null}
+      <View style={styles.card}>
+        <CardBackdrop shape={styles.card} />
+        <View style={styles.statusRow}>
+          <View style={[styles.dot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.status, { color: statusColor }]} accessibilityRole="header">
+            {isHidden ? 'Hidden' : status.charAt(0) + status.slice(1).toLowerCase()}
+          </Text>
+        </View>
+        <Text style={[styles.statusText, { color: c.soft }]}>
+          {isHidden ? 'Off every listing. Restore it to bring it back.' : STATUS_TEXT[status] ?? ''}
+        </Text>
+        {isCancelled && event.cancellationReason ? (
+          <Text style={[styles.statusText, { color: c.muted }]}>Reason: {event.cancellationReason}</Text>
+        ) : null}
+      </View>
 
       {isDraft && isEventOwner ? (
         <Button
@@ -333,7 +351,7 @@ export default function EventSettingsScreen() {
             />
           ) : (
             <SettingsRow
-              icon={icon(EyeSlash, canHide ? c.primary : c.muted)}
+              icon={icon(EyeSlash, canHide ? c.text : c.muted)}
               label="Hide event"
               trailing={busy === 'hide' ? <ActivityIndicator size="small" color={c.text} /> : undefined}
               onPress={canHide ? hide : undefined}
@@ -386,8 +404,11 @@ export default function EventSettingsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  status: { fontSize: typography.fontSize['2xl'], marginLeft: spacing[1], ...cosmosFont.display },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  statusText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   muted: { marginTop: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

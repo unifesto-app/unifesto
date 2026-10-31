@@ -6,6 +6,7 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { shareCsv } from '../lib/csvShare';
@@ -137,7 +138,8 @@ export default function StayBookingsScreen() {
         </View>
       }
       ListEmptyComponent={
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>
             {tab === 'requests' ? 'No new requests.' : tab === 'pay' ? 'Nobody is waiting to pay.' : 'Nothing here yet.'}
           </Text>

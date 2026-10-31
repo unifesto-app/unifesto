@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 import AuthButton from '../auth/AuthButton';
+import { CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -39,8 +40,12 @@ export function VerifyingOverlay({ visible }: { visible: boolean }) {
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
       <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: c.raised }]} accessible accessibilityLiveRegion="polite">
-          <ActivityIndicator size="large" color={c.primary} />
+        {/* Floating over the flow, so it takes the alert's glass. */}
+        <View style={styles.card} accessible accessibilityLiveRegion="polite">
+          <CardSurfaceProvider kind="glass">
+            <CardBackdrop opaque shape={styles.card} />
+          </CardSurfaceProvider>
+          <ActivityIndicator size="large" color={c.text} />
           <Text style={[styles.cardTitle, { color: c.text }]}>Confirming your payment</Text>
           <Text style={[styles.body, { color: c.muted }]}>Please keep the app open. This only takes a moment.</Text>
         </View>
@@ -51,7 +56,7 @@ export function VerifyingOverlay({ visible }: { visible: boolean }) {
 
 const styles = StyleSheet.create({
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8] },
-  title: { marginTop: spacing[5], fontSize: 18, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  title: { marginTop: spacing[5], fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   body: {
     marginTop: spacing[2],
     fontSize: typography.fontSize.sm,

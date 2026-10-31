@@ -6,11 +6,12 @@ import useTopSpacing from '../../hooks/useTopSpacing';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { ApexRow } from '../../components/apex/ApexRow';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cardSegment, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const TABS: { key: RequestTab; label: string }[] = [
   { key: 'open', label: 'Review' },
@@ -105,9 +106,10 @@ export default function RequestsScreen() {
                     accessibilityState={{ selected: on }}
                     style={({ pressed }) => [
                       styles.chip,
-                      { backgroundColor: on ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                      { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                     ]}
                   >
+                    {!on ? <CardBackdrop shape={styles.chip} /> : null}
                     <Text style={[styles.chipLabel, { color: on ? c.primaryFg : c.text }]}>
                       {chip.label}
                       {!loading && chip.count > 0 ? <Text style={[cosmosFont.figure, { color: on ? c.primaryFg : c.muted }]}>{`  ${chip.count}`}</Text> : null}
@@ -135,7 +137,8 @@ export default function RequestsScreen() {
           loading ? (
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
             </View>
           )
@@ -161,7 +164,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
   chipScroll: { marginTop: spacing[4], marginHorizontal: -GUTTER },
   chips: { gap: spacing[2], paddingHorizontal: GUTTER },
-  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
+  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: cosmosRadius },
   chipLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sectionHead: { marginTop: spacing[6], marginBottom: spacing[3] },
   sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

@@ -42,12 +42,18 @@ interface ApexRowProps {
 export function ApexRow({ title, meta, value, valueColor, imageUrl, unread, onPress }: ApexRowProps) {
   const c = useCosmos();
   return (
-    <Pressable disabled={!onPress} onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={[title, meta, value, unread ? 'unread' : null].filter(Boolean).join(', ')}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+    >
       {imageUrl !== undefined ? (
         imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.thumb} />
         ) : (
-          <View style={[styles.thumb, { backgroundColor: c.raised }]}>
+          <View style={[styles.thumb, { backgroundColor: c.tint }]}>
             <Text style={[styles.initial, { color: c.muted }]}>{title.trim().charAt(0).toUpperCase() || '?'}</Text>
           </View>
         )
@@ -63,7 +69,7 @@ export function ApexRow({ title, meta, value, valueColor, imageUrl, unread, onPr
         ) : null}
       </View>
       {value ? <Text style={[styles.value, { color: valueColor ?? c.soft }]}>{value}</Text> : null}
-      {unread ? <View style={[styles.dot, { backgroundColor: c.primary }]} /> : null}
+      {unread ? <View style={[styles.dot, { backgroundColor: c.text }]} /> : null}
       {onPress ? <CaretRight size={16} color={c.muted} /> : null}
     </Pressable>
   );
@@ -76,5 +82,5 @@ const styles = StyleSheet.create({
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   meta: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   value: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 });

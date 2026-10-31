@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import CosmosScreen from '../../../components/ui/CosmosScreen';
+import ShadeCard from '../../../components/ui/ShadeCard';
+import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -78,7 +80,8 @@ export default function TransactionDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -159,16 +162,22 @@ export default function TransactionDetailScreen() {
 
   return (
     <CosmosScreen keyboard refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content} keyboardDismissMode="interactive">
-        <Text style={[styles.amount, { color: c.text }]}>{inr(txn.totalAmount)}</Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
-          {[payerName(txn.user), txn.event.title, txn.ticketType?.name].filter(Boolean).join('  ·  ')}
-        </Text>
-        <View style={[styles.chip, { backgroundColor: `${status.color}26` }]}>
-          <Text style={[styles.status, { color: status.color }]}>
-            {status.text}
-            {Number(txn.refundedAmount) > 0 ? `  ·  ${inr(txn.refundedAmount)} refunded` : ''}
+        {/* The payment is the screen's hero, on the money's ivory shade. */}
+        <ShadeCard tone="ivory">
+          <Text style={[styles.amount, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+            {inr(txn.totalAmount)}
           </Text>
-        </View>
+          <Text style={[styles.muted, { color: c.soft }]}>
+            {[payerName(txn.user), txn.event.title, txn.ticketType?.name].filter(Boolean).join('  ·  ')}
+          </Text>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: status.color }]} />
+            <Text style={[styles.status, { color: status.color }]}>
+              {status.text}
+              {Number(txn.refundedAmount) > 0 ? <Text style={{ color: c.soft }}>{`  ·  ${inr(txn.refundedAmount)} refunded`}</Text> : null}
+            </Text>
+          </View>
+        </ShadeCard>
 
         {outcomeMsg ? <Text style={[styles.note, { color: outcomeMsg.danger ? c.danger : c.soft }]}>{outcomeMsg.text}</Text> : null}
 
@@ -214,10 +223,10 @@ export default function TransactionDetailScreen() {
           <SettingsRow label="Processing fee" value={inr(txn.processingFee)} />
           <SettingsRow label="Refunded" value={inr(txn.refundedAmount)} />
           <SettingsRow label="Quantity" value={txn.groupSize ? `${txn.quantity} · group of ${txn.groupSize}` : String(txn.quantity)} />
-          <SettingsRow label="Order id" value={txn.orderId ?? '—'} onPress={copy('Order id', txn.orderId)} />
-          <SettingsRow label="Payment id" value={txn.paymentId ?? '—'} onPress={copy('Payment id', txn.paymentId)} />
+          <SettingsRow label="Order id" value={txn.orderId ?? '–'} onPress={copy('Order id', txn.orderId)} />
+          <SettingsRow label="Payment id" value={txn.paymentId ?? '–'} onPress={copy('Payment id', txn.paymentId)} />
           <SettingsRow label="Ticket status" value={titleCase(txn.status)} />
-          <SettingsRow label="Paid" value={longDate(txn.paidAt) || '—'} />
+          <SettingsRow label="Paid" value={longDate(txn.paidAt) || '–'} />
           <SettingsRow label="Registered" value={longDate(txn.registeredAt)} />
           {txn.cancelledAt ? <SettingsRow label="Cancelled" value={longDate(txn.cancelledAt)} /> : null}
         </SettingsGroup>
@@ -269,10 +278,11 @@ export default function TransactionDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
+  amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   chips: { padding: spacing[4] },
 });

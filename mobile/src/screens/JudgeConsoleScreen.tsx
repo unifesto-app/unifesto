@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { useFocusEffect, useRouter } from 'expo-router';
 import { CheckCircle, Hourglass, LockSimple, MegaphoneSimple, PencilSimple, UserMinus, VideoCamera } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -81,7 +82,8 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -95,23 +97,23 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const openRound = data.rounds.some((r) => r.status === 'ACTIVE');
   const mentor = data.kind === 'MENTOR';
 
-  const slotCard = (q: ConsoleQueue, s: JudgeSlot) => {
+  // The first team in a slot is the screen's hero (blue shade); any other is a plain card.
+  const slotCard = (q: ConsoleQueue, s: JudgeSlot, hero: boolean) => {
     const team = s.team;
     const graceLeft = secondsUntil(s.graceEndsAt, now);
     const canNoShow = s.status === 'CALLED' && (graceLeft == null || graceLeft <= 0);
     const marking = s.status === 'IN_PROGRESS' || s.status === 'AWAITING_MARKS';
     const submitted = !!s.myMarks?.submittedAt;
     const meeting = q.meetingUrl;
-    return (
-      <View key={s.requestId} style={styles.card}>
-        <CardBackdrop shape={styles.card} />
-        <Text style={[styles.overline, { color: c.muted }]}>
+    const content = (
+      <>
+        <Text style={[styles.overline, { color: c.soft }]}>
           {[q.kind === 'PANEL' ? q.name : null, s.round?.name, evalStatusLabel(s.status)].filter(Boolean).join(' · ')}
         </Text>
-        <Text style={[styles.teamCode, { color: c.text }]}>{team?.teamCode ?? '—'}</Text>
-        <Text style={[styles.teamName, { color: c.soft }]}>{team?.name}</Text>
+        <Text style={[styles.teamCode, { color: c.text }]}>{team?.teamCode ?? '–'}</Text>
+        <Text style={[styles.teamName, { color: c.text }]}>{team?.name}</Text>
         {team?.statement ? (
-          <Text style={[styles.body, { color: c.text }]} numberOfLines={3}>
+          <Text style={[styles.body, { color: c.soft }]} numberOfLines={3}>
             {[team.statement.code, team.statement.title].filter(Boolean).join(' · ')}
             {team.statement.themeLabel ? `  (${team.statement.themeLabel})` : ''}
           </Text>
@@ -123,7 +125,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         {team?.links.length ? (
           <View style={{ marginTop: spacing[2] }}>
             {team.links.map((l) => (
-              <Text key={l.url} style={[styles.meta, { color: c.primary }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+              <Text key={l.url} style={[styles.link, { color: c.text }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
                 {l.label} ↗
               </Text>
             ))}
@@ -131,7 +133,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
           </View>
         ) : null}
 
-        <View style={{ marginTop: spacing[3] }}>
+        <View style={{ marginTop: spacing[4] }}>
           {s.status === 'CALLED' ? <SlotTimer until={s.graceEndsAt} label="to arrive" doneLabel="Grace time over" /> : null}
           {s.status === 'IN_PROGRESS' ? <SlotTimer large until={s.slotEndsAt} label="left" doneLabel="Time’s up" /> : null}
           {s.status === 'AWAITING_MARKS' ? (
@@ -184,7 +186,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         ) : null}
         {meeting ? (
           <Button
-            label="Open your call"
+            label="Open my call"
             variant="ghost"
             fullWidth
             icon={<VideoCamera size={18} color={c.text} />}
@@ -192,9 +194,20 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
             style={{ marginTop: spacing[1] }}
           />
         ) : null}
+      </>
+    );
+    return hero ? (
+      <ShadeCard key={s.requestId} tone="blue" style={styles.slot}>
+        {content}
+      </ShadeCard>
+    ) : (
+      <View key={s.requestId} style={[styles.card, styles.slot]}>
+        <CardBackdrop shape={styles.card} />
+        {content}
       </View>
     );
   };
+  const current = data.queues.filter((q) => q.current);
 
   return (
     <CosmosScreen
@@ -207,7 +220,9 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         setRefreshing(false);
       }}
     >
-      <SettingsGroup plain>
+      {current.map((q, i) => slotCard(q, q.current!, i === 0))}
+
+      <SettingsGroup plain style={{ marginTop: 0 }}>
         <SwitchRow
           label="Taking teams"
           hint={data.isAvailable ? 'Teams can join your queue.' : 'On a break: teams can’t join your queue.'}
@@ -224,18 +239,17 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         </Text>
       ) : null}
       {!openRound ? (
-        <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[4] }]}>
+        <View style={[styles.empty, { marginTop: spacing[4] }]}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>
             No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
           </Text>
         </View>
       ) : null}
 
-      {data.queues.filter((q) => q.current).map((q) => slotCard(q, q.current!))}
-
       {data.queues.map((q) => {
         if (q.kind === 'PANEL' && !openRound && !q.waiting.length) return null;
-        const title = q.kind === 'PANEL' ? `${q.name} · queue` : 'Your queue';
+        const title = q.kind === 'PANEL' ? `${q.name} · queue` : 'My queue';
         return (
           <View key={`${q.kind}:${q.id}`}>
             <SettingsGroup title={`${title} · ${q.waiting.length} waiting`}>
@@ -244,7 +258,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
                 <SettingsRow
                   key={w.requestId}
                   icon={<Hourglass size={ICON} color={c.muted} />}
-                  label={`${w.position}. ${w.team?.teamCode ?? '—'}  ${w.team?.name ?? ''}`}
+                  label={`${w.position}. ${w.team?.teamCode ?? '–'}  ${w.team?.name ?? ''}`}
                   value={[w.team?.themeLabel, w.roundName].filter(Boolean).join(' · ') || undefined}
                 />
               ))}
@@ -282,14 +296,14 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
                   r.status === 'NO_SHOW' ? (
                     <UserMinus size={ICON} color={c.muted} />
                   ) : editable ? (
-                    <PencilSimple size={ICON} color={c.primary} weight="fill" />
+                    <PencilSimple size={ICON} color={c.text} />
                   ) : r.submittedAt ? (
-                    <LockSimple size={ICON} color={c.muted} weight="fill" />
+                    <LockSimple size={ICON} color={c.success} weight="fill" />
                   ) : (
                     <CheckCircle size={ICON} color={c.success} weight="fill" />
                   )
                 }
-                label={`${r.team?.teamCode ?? '—'}  ${r.team?.name ?? ''}`}
+                label={`${r.team?.teamCode ?? '–'}  ${r.team?.name ?? ''}`}
                 value={
                   r.status === 'NO_SHOW'
                     ? 'No-show'
@@ -317,10 +331,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { marginTop: spacing[5], borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  slot: { marginBottom: spacing[4] },
   overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  teamCode: { marginTop: spacing[1], fontSize: typography.fontSize['3xl'], ...cosmosFont.figure },
-  teamName: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[3], fontSize: 40, lineHeight: 46, ...cosmosFont.figure },
+  teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  link: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   meta: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   actions: { marginTop: spacing[4], gap: spacing[2] },

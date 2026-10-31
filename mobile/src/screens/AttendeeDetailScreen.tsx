@@ -1,9 +1,10 @@
 import { isEmail } from '../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, ArrowsLeftRight, Check, EnvelopeSimple, PencilSimple, Phone, Receipt, XCircle } from '@unifesto/unicon/react-native';
+import { Avatar } from '../components/checkin/PersonRow';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';
 import SeatRow, { seatPerson } from '../components/manage/SeatRow';
@@ -229,7 +230,8 @@ export default function AttendeeDetailScreen() {
   if (error || !reg) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Not found'}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
         </View>
@@ -259,16 +261,19 @@ export default function AttendeeDetailScreen() {
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
-        {reg.user.avatarUrl ? (
-          <Image source={{ uri: reg.user.avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: c.raised }]}>
-            <User size={32} color={c.muted} />
-          </View>
-        )}
-        <Text style={[styles.name, { color: c.text }]}>{name}</Text>
+        <View style={styles.avatar}>
+          <Avatar name={name} url={reg.user.avatarUrl} size={AVATAR} />
+        </View>
+        <Text style={[styles.name, { color: c.text }]} accessibilityRole="header">{name}</Text>
         {reg.user.username ? <Text style={[styles.muted, { color: c.muted }]}>@{reg.user.username}</Text> : null}
-        <Text style={[styles.badge, { color: badge.color, backgroundColor: `${badge.color}26` }]}>{badge.text}</Text>
+        <View style={styles.badge}>
+          {badge.color === c.success ? (
+            <Check size={13} color={badge.color} weight="bold" />
+          ) : (
+            <View style={[styles.dot, { backgroundColor: badge.color }]} />
+          )}
+          <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
+        </View>
       </View>
 
       {reg.user.mobileNumber || reg.user.email ? (
@@ -283,7 +288,7 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       <SettingsGroup title="Booking" plain>
-        <SettingsRow label="Ticket" value={reg.ticketType?.name ?? '—'} />
+        <SettingsRow label="Ticket" value={reg.ticketType?.name ?? 'None'} />
         {reg.groupSize && reg.groupSize > 1 ? <SettingsRow label="Group size" value={String(reg.groupSize)} /> : null}
         <SettingsRow label="Paid" value={money(reg.totalAmount, reg.ticketType?.currency)} />
         <SettingsRow label="Registered" value={when(reg.registeredAt)} />
@@ -434,10 +439,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   hero: { alignItems: 'center', gap: 4, marginBottom: spacing[6] },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, marginBottom: spacing[2] },
-  avatarEmpty: { alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: typography.fontSize['2xl'], textAlign: 'center', ...cosmosFont.display },
-  badge: { marginTop: spacing[2], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999, overflow: 'hidden', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  avatar: { marginBottom: spacing[2] },
+  // A person's name: Hanken, never display.
+  name: { fontSize: typography.fontSize['2xl'], lineHeight: 30, textAlign: 'center', ...cosmosFont.strong },
+  // The status is plain text, never a pill.
+  badge: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginTop: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 2 },
+  badgeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   answer: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
   answerLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },

@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -16,7 +17,7 @@ import { AfterEventGroup, useEventCertificate } from '../components/EventEnded';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -72,7 +73,7 @@ export default function HackathonHubScreen() {
           ? () => (
               <HeaderActions>
                 <HeaderIconButton onPress={() => router.push(`/hackathon/${eventId}/updates`)} label={unread ? `${unread} new updates` : 'Updates'}>
-                  {unread ? <BellRinging size={24} color={c.primary} weight="fill" /> : <Bell size={24} color={c.text} />}
+                  {unread ? <BellRinging size={24} color={c.text} weight="fill" /> : <Bell size={24} color={c.text} />}
                 </HeaderIconButton>
               </HeaderActions>
             )
@@ -97,11 +98,12 @@ export default function HackathonHubScreen() {
       <>
         {header}
         <CosmosScreen contentContainerStyle={styles.content}>
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
-            <Text style={[styles.emptyTitle, { color: c.text }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
               {!hub ? 'No hackathon here right now' : 'You’re not on a hackathon team'}
             </Text>
-            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>
+            <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>
               {error ||
                 (!hub
                   ? 'This event isn’t running its hackathon in the app at the moment.'
@@ -123,7 +125,7 @@ export default function HackathonHubScreen() {
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
   const joined = team.members.filter((m) => m.joined).length;
   const request = team.evaluation?.request ?? null;
-  const icon = (I: typeof MapPin) => <I size={ICON} color={c.primary} weight="fill" />;
+  const icon = (I: typeof MapPin) => <I size={ICON} color={c.text} />;
   const go = (path: string) => () => router.push(`/hackathon/${eventId}/${path}`);
 
   // The one thing the team should do right now, if any, lives on the pass.
@@ -154,11 +156,10 @@ export default function HackathonHubScreen() {
           setRefreshing(false);
         }}
       >
-        {/* Team pass: who you are, then what's next */}
-        <View style={styles.pass}>
-          <CardBackdrop shape={styles.pass} />
+        {/* Team pass: the screen's hero, on the hackathon's blue shade. Who you are, then what's next. */}
+        <ShadeCard tone="blue" style={styles.pass}>
           <View style={styles.passTop}>
-            <Text style={[styles.label, { color: c.muted }]} numberOfLines={1}>
+            <Text style={[styles.label, { color: c.soft }]} numberOfLines={1}>
               {hub.event.title}
             </Text>
             <Text
@@ -167,14 +168,14 @@ export default function HackathonHubScreen() {
               adjustsFontSizeToFit
               accessibilityLabel={`Team ID ${team.teamCode ?? 'not assigned'}`}
             >
-              {team.teamCode ?? '—'}
+              {team.teamCode ?? '–'}
             </Text>
             <Text style={[styles.teamName, { color: c.soft }]} numberOfLines={2}>
               {team.name}
               {team.isLead ? ' · Lead' : ''}
             </Text>
           </View>
-          <View style={[styles.passDivider, { backgroundColor: c.bg }]} />
+          <View style={[styles.passDivider, { backgroundColor: c.border }]} />
           <View style={styles.passBottom}>
             <View style={styles.stageRow}>
               {cancelled ? <WarningCircle size={22} color={c.danger} weight="fill" /> : null}
@@ -185,7 +186,7 @@ export default function HackathonHubScreen() {
             </View>
             {cta ? <Button label={cta.label} onPress={cta.onPress} style={{ marginTop: spacing[4] }} /> : null}
           </View>
-        </View>
+        </ShadeCard>
 
         <View style={{ marginTop: spacing[4] }}>
           <QuickTiles tiles={tiles} />
@@ -268,14 +269,14 @@ export default function HackathonHubScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
+  emptyTitle: { fontSize: typography.fontSize['2xl'], lineHeight: 28, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(22) },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
-  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  pass: { padding: 0 },
   passTop: { paddingHorizontal: spacing[5], paddingTop: spacing[6], paddingBottom: spacing[5], alignItems: 'center' },
-  passDivider: { height: 2 },
+  passDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: spacing[5] },
   passBottom: { padding: spacing[5] },
-  label: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], ...cosmosFont.figure },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[2], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
   stageRow: { flexDirection: 'row', gap: spacing[3] },
   stageTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

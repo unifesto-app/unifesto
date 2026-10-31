@@ -7,12 +7,14 @@ import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import {
   ArrowCounterClockwise,
   ArrowUpRight,
   Bed,
   CalendarPlus,
   CaretRight,
+  Check,
   CheckCircle,
   Export,
   Globe,
@@ -38,6 +40,8 @@ import { useBannerAccent } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import ShadeCard from '../components/ui/ShadeCard';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
@@ -56,7 +60,8 @@ type TicketDetail = ReturnType<typeof useTicketDetail>;
 
 /**
  * The entry pass, in the fusion cosmos look of the event page: the sky lit by
- * the event's colour (white-label, else the banner's hue), a pass (event, tear line, big QR stub), a facts card (when,
+ * the event's colour (white-label, else the banner's hue), a pass on the sky
+ * shade (event, tear line, big QR stub on its white panel), a facts card (when,
  * where, ticket type, view event), then grouped actions with refund/cancel last.
  */
 export default function TicketDetailScreen() {
@@ -156,20 +161,21 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <TicketIcon size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>Ticket not found</Text>
+        <Text accessibilityRole="header" style={[styles.emptyTitle, { color: c.text }]}>Ticket not found</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
 
-  const badge =
+  // The status as plain text: a tick when checked in, the countdown in the pass's sky.
+  const badge: { text: string; color: string; tick?: boolean } =
     t.status === 'cancelled'
       ? { text: 'Cancelled', color: c.danger }
       : t.ended
         ? { text: t.status === 'checkedIn' ? 'Attended' : 'Ended', color: c.muted }
         : t.status === 'checkedIn'
-          ? { text: 'Checked in', color: c.success }
-          : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
+          ? { text: 'Checked in', color: c.mint, tick: true }
+          : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.sky };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
   const canCalendar = !!t.eventSlug && upcoming && !cancelled;
@@ -192,8 +198,16 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       >
         {/* ── The pass: what it's for, then the stub that gets scanned ── */}
         <View onLayout={(e) => setPassSize(e.nativeEvent.layout)}>
+          {/* The sky shade, cut to the pass outline. It sits behind the content, so the
+              QR's white panel is drawn above it, never under its grain. */}
           {passSize && notchY != null ? (
-            <PassShape width={passSize.width} height={passSize.height} notchY={notchY} fill={c.raised} />
+            <MaskedView
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+              maskElement={<PassShape width={passSize.width} height={passSize.height} notchY={notchY} fill={c.text} />}
+            >
+              <ShadeCard tone="sky" style={StyleSheet.absoluteFill}>{null}</ShadeCard>
+            </MaskedView>
           ) : null}
           <View style={styles.passTop} onLayout={(e) => setNotchY(e.nativeEvent.layout.height + NOTCH / 2)}>
             <View style={[styles.thumb, { backgroundColor: c.card }]}>
@@ -204,8 +218,12 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               )}
             </View>
             <View style={styles.flex}>
-              <View style={[styles.badge, { backgroundColor: c.tint }]}>
-                <View style={[styles.badgeDot, { backgroundColor: badge.color }]} />
+              <View style={styles.badge}>
+                {badge.tick ? (
+                  <Check size={13} color={badge.color} weight="bold" />
+                ) : (
+                  <View style={[styles.badgeDot, { backgroundColor: badge.color }]} />
+                )}
                 <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
               </View>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>{t.title}</Text>
@@ -230,8 +248,8 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
                   <Text style={[styles.voidText, { color: c.danger }]}>This ticket was cancelled</Text>
                 </View>
               ) : null}
-              {t.code ? <Text style={[styles.code, { color: c.text }]}>{t.code}</Text> : null}
-              <Text style={[styles.hint, { color: c.muted }]}>
+              {t.code ? <Text style={[styles.code, { color: c.sky }]}>{t.code}</Text> : null}
+              <Text style={[styles.hint, { color: c.soft }]}>
                 {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
               </Text>
             </View>
@@ -239,7 +257,8 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         </View>
 
         {/* ── Facts: a date stub, then where, then what I hold ── */}
-        <View style={[styles.facts, { backgroundColor: c.raised }]}>
+        <View style={styles.facts}>
+          <CardBackdrop shape={styles.facts} />
           <Pressable
             onPress={canCalendar ? t.addToCalendar : undefined}
             disabled={!canCalendar}
@@ -247,9 +266,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             accessibilityLabel={`${when.weekday}, ${when.time}${canCalendar ? '. Add to calendar' : ''}`}
             style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
           >
-            <View style={[styles.dateStub, { borderColor: c.border }]}>
+            <View style={styles.dateStub}>
               <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
-              <Text style={[styles.stubDay, { color: c.text }]}>{when.day}</Text>
+              <Text style={[styles.stubDay, { color: c.sky }]}>{when.day}</Text>
             </View>
             <View style={styles.flex}>
               <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
@@ -266,7 +285,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
           {t.ticketTypeName ? (
             <>
               <Divider />
-              <Fact icon={<TicketIcon size={ICON} color={c.text} />} title={t.ticketTypeName} sub={price} />
+              <Fact icon={<TicketIcon size={ICON} color={c.sky} />} title={t.ticketTypeName} titleColor={c.sky} sub={price} />
             </>
           ) : null}
           {t.eventSlug ? (
@@ -293,7 +312,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (
-          <SettingsGroup title="Cancellation" plain surface={c.raised}>
+          <SettingsGroup title="Cancellation" plain>
             {t.cancelledAt ? (
               <SettingsRow
                 label={t.cancellation.byOrganiser ? 'Cancelled by the organiser' : 'Cancelled'}
@@ -313,7 +332,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* ── Actions ── */}
         {!cancelled ? (
-          <SettingsGroup surface={c.raised}>
+          <SettingsGroup>
             {!t.ended ? (
               <SettingsRow
                 icon={<ShareNetwork size={24} color={c.text} />}
@@ -374,7 +393,6 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
           <AfterEventGroup
             cert={cert}
             feedback={feedback && { ...feedback, onPress: () => router.push(`/feedback/${t.eventId}` as never) }}
-            surface={c.raised}
             results={
               !t.eventId
                 ? null
@@ -388,9 +406,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (
-          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`} surface={c.raised}>
+          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
             <SettingsRow
-              icon={<WhatsappLogo size={24} color="#25D366" weight="fill" />}
+              icon={<WhatsappLogo size={24} color={c.text} weight="fill" />}
               label={`Join the ${t.waGroup.isCommunity ? 'community' : 'group'}`}
               external
               onPress={t.openWhatsapp}
@@ -403,8 +421,8 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
                   value={!!t.waGroup.joined}
                   onValueChange={t.toggleJoinedWhatsapp}
                   disabled={t.waSaving}
-                  trackColor={{ false: c.input, true: c.success }}
-                  thumbColor="#ffffff"
+                  trackColor={{ false: c.input, true: c.primary }}
+                  thumbColor={t.waGroup.joined ? c.primaryFg : undefined}
                   ios_backgroundColor={c.input}
                 />
               }
@@ -413,14 +431,14 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.checkins.length > 0 ? (
-          <SettingsGroup title="Check-ins" surface={c.raised}>
+          <SettingsGroup title="Check-ins">
             {t.checkins.map((ci) => {
               const at = new Date(ci.checkedInAt);
               const when = `${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${formatTime(at)}`;
               return (
                 <SettingsRow
                   key={ci.id}
-                  icon={<CheckCircle size={24} color={c.success} weight="fill" />}
+                  icon={<CheckCircle size={24} color={c.mint} weight="fill" />}
                   label={[ci.checkinType || 'Check-in', ci.checkedBy ? `by ${ci.checkedBy}` : null].filter(Boolean).join(' · ')}
                   value={when}
                 />
@@ -430,7 +448,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.canRefund || t.canCancelFree ? (
-          <SettingsGroup surface={c.raised}>
+          <SettingsGroup>
             {t.canRefund ? (
               <SettingsRow
                 icon={<ArrowCounterClockwise size={24} color={c.danger} />}
@@ -491,13 +509,13 @@ function Divider() {
 }
 
 /** One line of the facts card: bare icon, title, optional quieter line under it. */
-function Fact({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string | null }) {
+function Fact({ icon, title, titleColor, sub }: { icon: React.ReactNode; title: string; titleColor?: string; sub?: string | null }) {
   const c = useCosmos();
   return (
     <View style={styles.factRow}>
       <View style={styles.factIcon}>{icon}</View>
       <View style={styles.flex}>
-        <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={2}>{title}</Text>
+        <Text style={[styles.factTitle, { color: titleColor ?? c.text }]} numberOfLines={2}>{title}</Text>
         {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{sub}</Text> : null}
       </View>
     </View>
@@ -530,24 +548,16 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
   passTop: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start', padding: spacing[5] },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 12, overflow: 'hidden' },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
-  },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
+  badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6 },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 12, ...cosmosFont.strong },
+  badgeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { marginTop: spacing[2], fontSize: 21, lineHeight: 27, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center' },
   perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },
   // The QR keeps its white field: scanners need the contrast.
-  qr: { padding: 14, borderRadius: cosmosCardRadius, backgroundColor: '#ffffff' },
+  qr: { padding: 14, borderRadius: borderRadius.md, backgroundColor: '#ffffff' },
   voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   code: { marginTop: spacing[4], fontSize: 18, ...cosmosFont.figure, letterSpacing: 2 },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
@@ -555,14 +565,14 @@ const styles = StyleSheet.create({
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
-  dateStub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
+  dateStub: { width: STUB, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  stubDay: { fontSize: 24, lineHeight: 28, ...cosmosFont.figure },
   factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   factSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
   reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
   reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
-  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], fontSize: 20, ...cosmosFont.display },
 });

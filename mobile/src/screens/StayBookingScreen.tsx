@@ -12,6 +12,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getProfile } from '../lib/api/profile';
 import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
@@ -35,7 +36,7 @@ import {
 import { firstFormProblem, visibleFields, type FileAnswer } from '../utils/formQuestions';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 
 const GENDERS: GuestGender[] = ['MALE', 'FEMALE', 'OTHER'];
 
@@ -124,7 +125,8 @@ export default function StayBookingScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title: 'Book a stay' }} />
         {loadError ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
           </View>
         ) : (
@@ -337,7 +339,9 @@ export default function StayBookingScreen() {
           <SettingsRow label="Nights" value={`${nights} × ${guests.length} guest${guests.length === 1 ? '' : 's'}`} />
           <SettingsRow label="Stay" value={base ? rupees(base) : 'Free'} />
           {fee ? <SettingsRow label="Processing fee" value={rupees(fee)} /> : null}
-          {base ? <SettingsRow label="Total" value={rupees(base + fee)} /> : null}
+          {base ? (
+            <SettingsRow label="Total" trailing={<Text style={[styles.total, { color: c.ivory }]}>{rupees(base + fee)}</Text>} />
+          ) : null}
         </SettingsGroup>
         <Text style={[styles.hint, { color: c.muted }]}>
           {!base
@@ -439,7 +443,7 @@ function IdProofPicker({
       <Text style={[styles.caption, { color: c.muted }]}>Photo ID{required ? '' : ' (optional)'}</Text>
       {value ? (
         <View style={[styles.file, { backgroundColor: c.tint }]}>
-          <Paperclip size={18} color={c.primary} />
+          <Paperclip size={18} color={c.text} />
           <Text style={[styles.fileName, { color: c.text }]} numberOfLines={1}>
             {value.name}
           </Text>
@@ -454,8 +458,8 @@ function IdProofPicker({
           accessibilityRole="button"
           style={({ pressed }) => [styles.file, { backgroundColor: c.tint, opacity: pressed ? 0.85 : 1 }]}
         >
-          {busy ? <ActivityIndicator color={c.text} /> : <IdentificationCard size={20} color={c.primary} />}
-          <Text style={[styles.fileName, { color: c.primary }]}>{busy ? 'Uploading…' : 'Upload college or government ID'}</Text>
+          {busy ? <ActivityIndicator color={c.text} /> : <IdentificationCard size={20} color={c.text} />}
+          <Text style={[styles.fileName, { color: c.text }]}>{busy ? 'Uploading…' : 'Upload college or government ID'}</Text>
         </Pressable>
       )}
       {err ? <Text style={[styles.hint, { color: c.danger }]}>{err}</Text> : null}
@@ -468,7 +472,7 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
+  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   block: { marginTop: spacing[6] },
   dayRow: { gap: spacing[2], paddingRight: spacing[4] },
   day: { width: 64, paddingVertical: spacing[2], borderRadius: cosmosRadius, alignItems: 'center', gap: 1 },
@@ -493,4 +497,5 @@ const styles = StyleSheet.create({
   },
   fileName: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  total: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
 });

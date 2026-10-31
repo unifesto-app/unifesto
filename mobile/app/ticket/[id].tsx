@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import TicketDetailScreen from '../../src/screens/TicketDetailScreen';
+import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { readUpNextSnapshot } from '../../src/widgets/sync';
 import { useCosmos } from '../../src/theme/cosmos';
 
@@ -33,7 +34,8 @@ export default function TicketDetail() {
     if (missing) return <Redirect href="/tickets" />;
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}>
-        <ActivityIndicator color={c.primary} />
+        <CosmosBackdrop horizon={false} />
+        <ActivityIndicator color={c.text} accessibilityLabel="Loading ticket" />
       </View>
     );
   }

@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } from '@unifesto/unicon/react-native';
+import { CaretRight, Check, FileCsv, Trophy, WarningCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { GUTTER } from '../components/home/Section';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
@@ -27,12 +29,9 @@ import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from '../
 import { shareCsvText } from '../lib/csvShare';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
-const ICON = 26;
 const OVERALL = '__overall__';
-
-const teamLabel = (t: ResultTeam) => `${t.teamCode ?? '—'}  ${t.name}`;
 
 /**
  * The curator's results (plan §9): the ranking overall and per round, from
@@ -79,7 +78,8 @@ export default function HackathonResultsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -91,6 +91,8 @@ export default function HackathonResultsScreen() {
   }
 
   const round = data.rounds.find((r) => r.id === view) ?? null;
+  // The overall leader is the screen's hero; rankings are still a guide.
+  const leader = !round ? data.teams.find((t) => t.rank === 1 && t.total != null && t.stage !== 'CANCELLED') ?? null : null;
 
   const setMode = async (mode: ScoringMode) => {
     if (mode === data.scoringMode) return;
@@ -214,6 +216,31 @@ export default function HackathonResultsScreen() {
               value={view}
               onChange={(v) => v && setView(v)}
             />
+            {leader ? (
+              <ShadeCard
+                tone="blue"
+                onPress={() => openTeam(leader.id)}
+                accessibilityLabel={`Leading: ${leader.name}, ${formatScore(leader.total)}. Opens the team`}
+                style={{ marginTop: spacing[5] }}
+              >
+                <View style={styles.heroTop}>
+                  <Trophy size={20} color={c.text} weight="fill" />
+                  <Text style={[styles.heroLabel, { color: c.soft }]}>Leading</Text>
+                </View>
+                <View style={styles.heroRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.heroName, { color: c.text }]} numberOfLines={2}>
+                      {leader.name}
+                    </Text>
+                    {leader.teamCode ? <Text style={[styles.heroCode, { color: c.soft }]}>{leader.teamCode}</Text> : null}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.heroScore, { color: c.text }]}>{formatScore(leader.total)}</Text>
+                    <Text style={[styles.heroLabel, { color: c.soft }]}>{data.scoringMode === 'CUMULATIVE' ? 'Total' : 'Score'}</Text>
+                  </View>
+                </View>
+              </ShadeCard>
+            ) : null}
             <SettingsGroupHeader
               title={
                 !round
@@ -233,7 +260,7 @@ export default function HackathonResultsScreen() {
           </GroupCell>
         }
         renderItem={({ item, index }) => (
-          <GroupCell index={index} count={round ? roundTeams.length : data.teams.length}>
+          <GroupCell index={index} count={round ? roundTeams.length : data.teams.length} divider={styles.divider}>
             {round && item.p ? (
               <RoundRow t={item.t} p={item.p} round={round} onOpen={openTeam} />
             ) : (
@@ -323,25 +350,65 @@ export default function HackathonResultsScreen() {
   );
 }
 
+/** One leaderboard line: rank, team, status, score. Plain card; figures in c.text. */
+function RankRow({ rank, t, figure, meta, onOpen }: {
+  rank: number | null;
+  t: ResultTeam;
+  /** The score figure; null shows nothing on the right. */
+  figure: string | null;
+  meta: React.ReactNode;
+  onOpen: (teamId: string) => void;
+}) {
+  const c = useCosmos();
+  return (
+    <Pressable
+      onPress={() => onOpen(t.id)}
+      accessibilityRole="button"
+      accessibilityLabel={[rank != null ? `Rank ${rank}` : null, t.teamCode, t.name, figure].filter(Boolean).join(', ')}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+    >
+      <Text style={[styles.rank, { color: rank != null ? c.text : c.muted }]}>{rank ?? '–'}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={styles.nameLine}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+            {t.name}
+          </Text>
+          {t.psChangedAfterEvalAt ? <WarningCircle size={16} color={c.warn} weight="fill" /> : null}
+        </View>
+        <View style={styles.metaLine}>
+          {t.teamCode ? <Text style={[styles.code, { color: c.muted }]}>{t.teamCode}</Text> : null}
+          {meta}
+        </View>
+      </View>
+      {figure ? <Text style={[styles.score, { color: c.text }]}>{figure}</Text> : null}
+      <CaretRight size={15} color={c.muted} />
+    </Pressable>
+  );
+}
+
 const OverallRow = React.memo(function OverallRow({ t, onOpen }: { t: ResultTeam; onOpen: (teamId: string) => void }) {
   const c = useCosmos();
   const won = t.awards.filter((a) => a.published).map((a) => a.title);
+  const out = t.stage === 'CANCELLED' ? 'Cancelled' : t.stage === 'ELIMINATED' ? 'Eliminated' : null;
   return (
-    <SettingsRow
-      icon={
-        t.awards.some((a) => a.published) ? (
-          <Trophy size={ICON} color={c.primary} weight="fill" />
-        ) : t.psChangedAfterEvalAt ? (
-          <WarningCircle size={ICON} color={c.warn} weight="fill" />
-        ) : t.stage === 'CANCELLED' || t.stage === 'ELIMINATED' ? (
-          <XCircle size={ICON} color={c.muted} weight="fill" />
-        ) : (
-          <CheckCircle size={ICON} color={c.success} weight="fill" />
-        )
+    <RankRow
+      rank={t.rank}
+      t={t}
+      figure={t.stage !== 'CANCELLED' && t.total != null ? formatScore(t.total) : null}
+      onOpen={onOpen}
+      meta={
+        <>
+          {out || t.total == null ? <Text style={[styles.meta, { color: c.muted }]}>{out ?? 'Not scored'}</Text> : null}
+          {won.length ? (
+            <View style={styles.status}>
+              <Trophy size={13} color={c.ivory} weight="fill" />
+              <Text style={[styles.meta, { color: c.ivory }]} numberOfLines={1}>
+                {won.join(', ')}
+              </Text>
+            </View>
+          ) : null}
+        </>
       }
-      label={`${t.rank != null ? `${t.rank}. ` : ''}${teamLabel(t)}`}
-      value={t.stage === 'CANCELLED' ? 'Cancelled' : [t.total != null ? formatScore(t.total) : 'Not scored', ...won].join(' · ')}
-      onPress={() => onOpen(t.id)}
     />
   );
 });
@@ -353,24 +420,29 @@ const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
   onOpen: (teamId: string) => void;
 }) {
   const c = useCosmos();
+  const mentoring = round.kind === 'MENTORING';
+  const standingColor = p.standing === 'ADVANCED' ? c.success : p.standing === 'ELIMINATED' ? c.danger : c.muted;
   return (
-    <SettingsRow
-      icon={
-        p.standing === 'ADVANCED' ? (
-          <CheckCircle size={ICON} color={c.success} weight="fill" />
-        ) : p.standing === 'ELIMINATED' ? (
-          <XCircle size={ICON} color={c.danger} weight="fill" />
-        ) : (
-          <CircleDashed size={ICON} color={c.muted} />
-        )
+    <RankRow
+      rank={p.rank}
+      t={t}
+      figure={!mentoring && p.score != null ? formatScore(p.score) : null}
+      onOpen={onOpen}
+      meta={
+        <>
+          {mentoring || p.score == null ? (
+            <Text style={[styles.meta, { color: c.muted }]}>
+              {mentoring ? `${p.evaluations.length} session${p.evaluations.length === 1 ? '' : 's'}` : 'Not evaluated'}
+            </Text>
+          ) : null}
+          {!mentoring && round.eliminationEnabled ? (
+            <View style={styles.status}>
+              {p.standing === 'ADVANCED' ? <Check size={13} color={standingColor} weight="bold" /> : null}
+              <Text style={[styles.meta, { color: standingColor }]}>{standingLabel(p.standing)}</Text>
+            </View>
+          ) : null}
+        </>
       }
-      label={`${p.rank != null ? `${p.rank}. ` : ''}${teamLabel(t)}`}
-      value={
-        round.kind === 'MENTORING'
-          ? `${p.evaluations.length} session${p.evaluations.length === 1 ? '' : 's'}`
-          : `${p.score != null ? formatScore(p.score) : 'Not evaluated'}${round.eliminationEnabled ? ` · ${standingLabel(p.standing)}` : ''}`
-      }
-      onPress={() => onOpen(t.id)}
     />
   );
 });
@@ -379,5 +451,22 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[4], marginTop: spacing[4] },
+  heroName: { fontSize: typography.fontSize.xl, lineHeight: 24, ...cosmosFont.strong },
+  heroCode: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  heroScore: { fontSize: 40, lineHeight: 46, ...cosmosFont.figure, letterSpacing: displayTracking(40) },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
+  rank: { width: 28, fontSize: typography.fontSize.lg, ...cosmosFont.figure },
+  nameLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
+  name: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  metaLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: spacing[2], marginTop: 2 },
+  code: { fontSize: typography.fontSize.xs, ...cosmosFont.figure },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  score: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
+  // Under the team name, past the rank column.
+  divider: { marginLeft: spacing[4] + 28 + spacing[3] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

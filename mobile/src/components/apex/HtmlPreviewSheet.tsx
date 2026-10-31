@@ -24,7 +24,7 @@ export default function HtmlPreviewSheet({ html, title, onClose }: { html: strin
       <View style={[styles.sheet, { top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
         <SheetBackdrop radius={borderRadius.xl} />
         <View style={styles.head}>
-          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">
             {title}
           </Text>
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close preview">
@@ -48,6 +48,7 @@ export default function HtmlPreviewSheet({ html, title, onClose }: { html: strin
 const styles = StyleSheet.create({
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[6], paddingVertical: spacing[4] },
-  title: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.display },
-  web: { flex: 1, backgroundColor: '#fff' },
+  title: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  // The email's own white canvas, like the ticket's QR panel.
+  web: { flex: 1, backgroundColor: '#ffffff' },
 });

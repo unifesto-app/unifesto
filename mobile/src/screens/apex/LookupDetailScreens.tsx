@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import * as Clipboard from 'expo-clipboard';
 import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,11 +27,11 @@ import { longDate, shortDate } from '../../components/apex/ApexRow';
 import ManageStats from '../../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { inr, inrShort } from '../../utils/money';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 /*
  * Read-only detail screens for Apex lookups. Each loads one record by id and
@@ -38,7 +39,7 @@ import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../the
  */
 
 const nameOf = (u?: { fullName: string | null; username: string | null } | null) =>
-  u?.fullName || (u?.username ? `@${u.username}` : '—');
+  u?.fullName || (u?.username ? `@${u.username}` : '–');
 
 /** Load one record; `denied` becomes a friendly line. */
 function useRecord<T>(load: () => Promise<Result<T>>) {
@@ -88,7 +89,8 @@ function Shell({
       {loading ? (
         <CosmosScreen contentContainerStyle={styles.content}>
           {error ? (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={onRefresh} style={{ marginTop: spacing[4] }} />
             </View>
@@ -105,13 +107,16 @@ function Shell({
   );
 }
 
+/** The record's name at the top of the page; a person's name is set in Hanken, never the display face. */
 function Hero({ imageUrl, title, lines, square }: { imageUrl?: string | null; title: string; lines: (string | null | undefined)[]; square?: boolean }) {
   const c = useCosmos();
   return (
     <View style={styles.hero}>
       {imageUrl ? <Image source={{ uri: imageUrl }} style={[styles.heroImg, !square && { borderRadius: 32 }]} /> : null}
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: c.text }]}>{title}</Text>
+        <Text style={[square ? styles.title : styles.personName, { color: c.text }]} accessibilityRole="header">
+          {title}
+        </Text>
         {lines.filter(Boolean).map((l) => (
           <Text key={l} style={[styles.muted, { color: c.muted }]} numberOfLines={2}>
             {l}
@@ -248,7 +253,7 @@ export function UserDetailScreen() {
               <InfoRow
                 key={i.id}
                 title={titleCase(i.provider)}
-                subtitle={[i.email ?? '—', i.isPrimary ? 'primary' : null, i.emailVerified ? 'verified' : 'not verified'].filter(Boolean).join(' · ')}
+                subtitle={[i.email ?? '–', i.isPrimary ? 'primary' : null, i.emailVerified ? 'verified' : 'not verified'].filter(Boolean).join(' · ')}
                 trailing={verifiedMark(i.emailVerified)}
               />
             ))}
@@ -424,17 +429,23 @@ export function SpaceDetailAdminScreen() {
             title={s.name}
             lines={[`/${s.slug}`, [s.city, s.state].filter(Boolean).join(', ') || null]}
           />
-          <Text style={[styles.status, { color: statusColor(s.status) }]}>
-            {[titleCase(s.status), s.type === 'SUPER' ? 'Parent space' : 'Regular space', titleCase(s.visibility)].join(' · ')}
-          </Text>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: statusColor(s.status) }]} />
+            <Text style={[styles.status, { color: statusColor(s.status) }]}>
+              {titleCase(s.status)}
+              <Text style={[cosmosFont.body, { color: c.muted }]}>
+                {` · ${s.type === 'SUPER' ? 'Parent space' : 'Regular space'} · ${titleCase(s.visibility)}`}
+              </Text>
+            </Text>
+          </View>
           <Text style={[styles.bio, { color: s.description ? c.soft : c.muted }]}>{s.description || 'No description added yet.'}</Text>
 
           {s._count ? (
             <View style={{ marginTop: spacing[5] }}>
               <ManageStats
                 stats={[
-                  { label: 'People', value: s._count.userRoles },
-                  { label: 'Events', value: s._count.events },
+                  { label: 'People', value: s._count.userRoles, tone: 'sky' },
+                  { label: 'Events', value: s._count.events, tone: 'sky' },
                   { label: 'Sub-spaces', value: s._count.childSpaces },
                 ]}
               />
@@ -548,24 +559,27 @@ export function EventDetailAdminScreen() {
       {e ? (
         <>
           {e.coverImageUrl ? <Image source={{ uri: e.coverImageUrl }} style={styles.banner} /> : null}
-          <Text style={[styles.title, { color: c.text }]}>{e.title}</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{e.title}</Text>
           <Text style={[styles.muted, { color: c.muted }]}>
             {[longDate(e.startDateTime), e.venueName || e.city].filter(Boolean).join('  ·  ')}
           </Text>
-          <Text style={[styles.status, { color: e.deletedAt ? c.danger : c.soft }]}>
-            {e.deletedAt ? `Deleted · ${titleCase(e.status)}` : titleCase(e.status)}
-          </Text>
+          <View style={styles.statusRow}>
+            {e.deletedAt ? <View style={[styles.dot, { backgroundColor: c.danger }]} /> : null}
+            <Text style={[styles.status, { color: e.deletedAt ? c.danger : c.soft }]}>
+              {e.deletedAt ? `Deleted · ${titleCase(e.status)}` : titleCase(e.status)}
+            </Text>
+          </View>
 
           <View style={{ marginTop: spacing[5], gap: spacing[3] }}>
             <ManageStats
               stats={[
-                { label: 'Attending', value: e.attendeeCount },
-                { label: 'Bookings', value: e._count?.registrations ?? 0 },
+                { label: 'Attending', value: e.attendeeCount, tone: 'sky' },
+                { label: 'Bookings', value: e._count?.registrations ?? 0, tone: 'sky' },
               ]}
             />
             <ManageStats
               stats={[
-                { label: 'Collected', value: inrShort(e.sales.grossSales) },
+                { label: 'Collected', value: inrShort(e.sales.grossSales), tone: 'ivory' },
                 { label: 'Refunded', value: inrShort(e.sales.refunded) },
               ]}
             />
@@ -623,11 +637,14 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  heroImg: { width: 64, height: 64, borderRadius: cosmosRadius },
+  heroImg: { width: 64, height: 64, borderRadius: borderRadius.md },
   banner: { width: '100%', aspectRatio: 4 / 3, borderRadius: cosmosCardRadius, marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
+  personName: { fontSize: typography.fontSize['2xl'], lineHeight: 28, ...cosmosFont.strong },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
   rowTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   rowSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },

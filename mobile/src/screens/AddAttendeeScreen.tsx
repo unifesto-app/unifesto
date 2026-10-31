@@ -22,6 +22,7 @@ import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -241,7 +242,8 @@ export default function AddAttendeeScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {loadError ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
           </View>
         ) : (
@@ -254,7 +256,8 @@ export default function AddAttendeeScreen() {
   if (tickets.length === 0) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft }]}>Add a ticket or RSVP option to this event first.</Text>
         </View>
       </CosmosScreen>
@@ -328,7 +331,7 @@ export default function AddAttendeeScreen() {
 
       {isGroup && teamFields.length > 0 ? (
         <>
-          <Text style={[styles.heading, { color: c.text }]}>About the team</Text>
+          <Text style={[styles.heading, { color: c.muted }]} accessibilityRole="header">About the team</Text>
           {visibleFields(teamFields, team).map((f) => (
             <View key={f.id} style={styles.block}>
               <CustomFieldInput field={f} value={team[f.id]} onChange={(v) => setTeam((t) => ({ ...t, [f.id]: v }))} />
@@ -383,6 +386,7 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   block: { marginTop: spacing[4] },
-  heading: { marginTop: spacing[8], marginLeft: spacing[1], fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  // Same as a SettingsGroup title: muted Hanken SemiBold, sentence case.
+  heading: { marginTop: spacing[8], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

@@ -7,6 +7,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import PromptCard from '../components/home/PromptCard';
@@ -17,7 +18,7 @@ import NextPassCard, { NextPassCardSkeleton } from '../components/tickets/NextPa
 import WaitlistCard from '../components/tickets/WaitlistCard';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /** Bucket tickets under "October 2026"-style headers, preserving order. */
 function groupByMonth(tickets: MyTicket[]) {
@@ -120,7 +121,7 @@ export default function TicketsScreen() {
     const Icon = e.icon;
     return (
       <View style={styles.empty}>
-        <Icon size={44} color={c.soft} weight="duotone" accessibilityElementsHidden importantForAccessibility="no" />
+        <Icon size={44} color={c.muted} weight="duotone" accessibilityElementsHidden importantForAccessibility="no" />
         <Text accessibilityRole="header" style={[styles.emptyTitle, { color: c.text }]}>{e.title}</Text>
         <Text style={[styles.emptyBody, { color: c.muted }]}>{e.body}</Text>
         {e.cta ? (
@@ -137,8 +138,8 @@ export default function TicketsScreen() {
         <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ flexGrow: 1 }}>
           {header}
-          <View style={[styles.guest, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+          <View style={styles.guest}>
+            <CardBackdrop shape={styles.guest} />
             <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Every pass, one place</Text>
             <Text style={[styles.guestBody, { color: c.soft }]}>
               Sign in to register for events and keep your tickets ready for the door.
@@ -225,7 +226,7 @@ export default function TicketsScreen() {
         <View style={styles.pad}>
           {next ? (
             <View style={styles.group}>
-              <Text accessibilityRole="header" style={[styles.label, { color: c.soft }]}>Up next</Text>
+              <Text accessibilityRole="header" style={[styles.label, { color: c.muted }]}>Up next</Text>
               <NextPassCard ticket={next} onPress={() => openTicket(next)} />
             </View>
           ) : null}
@@ -301,12 +302,12 @@ function Skeletons() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
-  title: { fontSize: 26, lineHeight: 34, ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   list: { gap: spacing[3] },
   group: { marginBottom: spacing[8] },
   label: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], ...cosmosFont.strong },
   empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: GUTTER + spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, textAlign: 'center', ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyBody: {
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
@@ -316,7 +317,6 @@ const styles = StyleSheet.create({
     ...cosmosFont.body,
   },
   emptyCta: { marginTop: spacing[6], alignSelf: 'stretch' },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
   guest: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
   guestTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },

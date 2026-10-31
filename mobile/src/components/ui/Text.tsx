@@ -3,7 +3,7 @@ import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'r
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
 
-// Type ramp, cosmos: DM Sans for display and titles, Hanken Grotesk for the rest.
+// Type ramp, Horizon: DM Sans for display and titles, Hanken Grotesk for the rest.
 const VARIANTS = {
   display: { fontSize: typography.fontSize['4xl'], lineHeight: 1.1, ...cosmosFont.display },
   title: { fontSize: typography.fontSize['2xl'], lineHeight: 1.2, ...cosmosFont.display },

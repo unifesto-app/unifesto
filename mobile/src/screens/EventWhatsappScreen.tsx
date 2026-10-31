@@ -11,6 +11,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -128,7 +129,8 @@ export default function EventWhatsappScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {loadError ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -209,7 +211,7 @@ export default function EventWhatsappScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, marginLeft: spacing[1], ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },

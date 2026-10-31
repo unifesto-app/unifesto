@@ -20,7 +20,7 @@ const BANNER_W = 116;
 const BANNER_H = (BANNER_W * 3) / 4;
 const LOGO = 34;
 
-/** Featured partner row ("Beyond by Unifesto"), accent-tinted to stand apart. */
+/** Featured partner row ("Beyond by Unifesto"): the space's banner, logo, name and reach. */
 export default function BeyondFeature({ space, onPress }: { space: Space; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
@@ -38,12 +38,6 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
         style={styles.card}
       >
         <CardBackdrop shape={styles.card} />
-        <LinearGradient
-          colors={[c.tint, 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         <View>
           <View style={[styles.banner, { backgroundColor: c.card }]}>
             {banner ? (
@@ -64,11 +58,11 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
         </View>
 
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.eyebrow, { color: c.primary }]}>Featured space</Text>
+          <Text style={[styles.eyebrow, { color: c.muted }]}>Featured space</Text>
           <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
           <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
         </View>
-        <CaretRight size={16} color={c.soft} weight="bold" />
+        <CaretRight size={16} color={c.muted} weight="bold" />
       </PressableScale>
     </View>
   );

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { CardBackdrop } from '../ui/CardSurface';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface MultiChipsProps {
   options: { value: string; label: string }[];
@@ -11,7 +11,7 @@ interface MultiChipsProps {
   onChange: (v: string[]) => void;
 }
 
-/** Wrapping row of multi-select chips (same look as ChipPicker). */
+/** Wrapping row of multi-select chips (same look as ChipPicker). Controls, so they keep their fill. */
 export default function MultiChips({ options, value, onChange }: MultiChipsProps) {
   const c = useCosmos();
   return (
@@ -40,6 +40,6 @@ export default function MultiChips({ options, value, onChange }: MultiChipsProps
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
+  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: cosmosRadius },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

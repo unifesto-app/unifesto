@@ -80,7 +80,7 @@ export function SwitchRow({ label, hint, value, onValueChange, disabled }: Switc
         onValueChange={onValueChange}
         disabled={disabled}
         trackColor={{ false: c.input, true: c.primary }}
-        thumbColor={value ? c.primaryFg : '#ffffff'}
+        thumbColor={value ? c.primaryFg : c.scheme === 'dark' ? c.text : c.card}
         ios_backgroundColor={c.input}
         accessibilityLabel={label}
       />

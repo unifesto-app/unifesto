@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Check } from '@unifesto/unicon/react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CardBackdrop } from '../components/ui/CardSurface';
@@ -73,7 +74,8 @@ export default function HackathonHelpScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -136,21 +138,34 @@ export default function HackathonHelpScreen() {
 
       {help.queries.length ? (
         <>
-          <Text style={[styles.section, { color: c.muted }]}>Your queries</Text>
-          {help.queries.map((q) => (
-            <View key={q.id} style={styles.card}>
-              <CardBackdrop shape={styles.card} />
-              <View style={styles.cardHead}>
-                <Text style={[styles.topic, { color: c.text }]}>{q.topicName}</Text>
-                <Text style={[styles.status, { color: q.status === 'RESOLVED' ? c.muted : c.warn }]}>
-                  {HELP_STATUS_LABEL[q.status]}
-                  {q.status !== 'OPEN' && q.handledByName ? ` · ${q.handledByName}` : ''}
-                </Text>
+          <Text style={[styles.section, { color: c.muted }]}>My queries</Text>
+          {help.queries.map((q) => {
+            // Plain status text: waiting needs attention, resolved is done.
+            const statusColor = q.status === 'OPEN' ? c.warn : q.status === 'ACKNOWLEDGED' ? c.soft : c.success;
+            return (
+              <View key={q.id} style={styles.card}>
+                <CardBackdrop shape={styles.card} />
+                <View style={styles.cardHead}>
+                  <Text style={[styles.topic, { color: c.text }]} numberOfLines={1}>
+                    {q.topicName}
+                  </Text>
+                  <View style={styles.statusRow}>
+                    {q.status === 'RESOLVED' ? (
+                      <Check size={13} color={statusColor} weight="bold" />
+                    ) : q.status === 'OPEN' ? (
+                      <View style={[styles.dot, { backgroundColor: statusColor }]} />
+                    ) : null}
+                    <Text style={[styles.status, { color: statusColor }]}>
+                      {HELP_STATUS_LABEL[q.status]}
+                      {q.status !== 'OPEN' && q.handledByName ? ` · ${q.handledByName}` : ''}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.message, { color: c.soft }]}>{q.message}</Text>
+                <Text style={[styles.meta, { color: c.muted }]}>{timeAgo(q.createdAt)}</Text>
               </View>
-              <Text style={[styles.message, { color: c.soft }]}>{q.message}</Text>
-              <Text style={[styles.meta, { color: c.muted }]}>{timeAgo(q.createdAt)}</Text>
-            </View>
-          ))}
+            );
+          })}
         </>
       ) : null}
     </CosmosScreen>
@@ -161,11 +176,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  section: { marginTop: spacing[6], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
-  topic: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  topic: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   message: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },

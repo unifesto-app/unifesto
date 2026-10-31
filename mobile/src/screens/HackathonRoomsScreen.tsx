@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Plus } from '@unifesto/unicon/react-native';
+import { Check, Plus } from '@unifesto/unicon/react-native';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import ManageStats from '../components/manage/ManageStats';
 import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -110,19 +112,31 @@ export default function HackathonRoomsScreen() {
         }}
       >
         {rooms.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
-            <Text style={[styles.empty, { color: c.text }]}>No rooms yet</Text>
-            <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>
+          <View style={styles.emptyCard}>
+            <CardBackdrop shape={styles.emptyCard} />
+            <Text style={[styles.empty, { color: c.text }]} accessibilityRole="header">
+              No rooms yet
+            </Text>
+            <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
               Add the rooms teams will work in, with how many teams each one fits.
             </Text>
             <Button label="Add a room" onPress={() => openRoom('new')} style={{ marginTop: spacing[5] }} />
           </View>
         ) : (
           <>
-            <Text style={[styles.summary, { color: c.text }]}>
-              {unallocated ? `${unallocated} team${unallocated === 1 ? '' : 's'} without a room` : 'Every team has a room'}
-            </Text>
-            <Text style={[styles.note, { color: c.muted }]}>{free} free place{free === 1 ? '' : 's'} across {rooms.length} room{rooms.length === 1 ? '' : 's'}</Text>
+            <ManageStats
+              stats={[
+                { label: 'Without a room', value: unallocated },
+                { label: free === 1 ? 'Free place' : 'Free places', value: free, tone: 'sky' },
+                { label: rooms.length === 1 ? 'Room' : 'Rooms', value: rooms.length },
+              ]}
+            />
+            {!unallocated ? (
+              <View style={styles.done}>
+                <Check size={14} color={c.success} weight="bold" />
+                <Text style={[styles.doneText, { color: c.success }]}>Every team has a room</Text>
+              </View>
+            ) : null}
             {unallocated ? (
               <Button
                 label="Auto-allocate"
@@ -159,7 +173,8 @@ export default function HackathonRoomsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  empty: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  summary: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
+  empty: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  done: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2, marginTop: spacing[3], marginHorizontal: spacing[1] },
+  doneText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

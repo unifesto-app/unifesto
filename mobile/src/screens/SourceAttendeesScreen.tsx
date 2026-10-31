@@ -6,10 +6,11 @@ import { UserCircle } from '@unifesto/unicon/react-native';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -56,17 +57,21 @@ export default function SourceAttendeesScreen() {
 
   return (
     <CosmosScreen contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: c.text }]}>{sourceLabel(tags)}</Text>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
+        {sourceLabel(tags)}
+      </Text>
       <Text style={[styles.muted, { color: c.muted }]}>
         {[tags.medium, tags.campaign].filter(Boolean).join(' · ') || 'No tags'}
       </Text>
 
       {error ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
         </View>
       ) : rows!.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No confirmed registrations from this source.</Text>
         </View>
       ) : (
@@ -81,7 +86,7 @@ export default function SourceAttendeesScreen() {
                   r.user.avatarUrl ? (
                     <Image source={{ uri: r.user.avatarUrl }} style={styles.avatar} />
                   ) : (
-                    <UserCircle size={ICON} color={c.primary} weight="fill" />
+                    <UserCircle size={ICON} color={c.muted} weight="fill" />
                   )
                 }
                 label={r.user.fullName || r.user.username || 'Attendee'}
@@ -105,8 +110,8 @@ export default function SourceAttendeesScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },

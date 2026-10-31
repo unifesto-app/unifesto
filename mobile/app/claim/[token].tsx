@@ -10,6 +10,7 @@ import { AppAlert } from '../../src/components/ui/AppAlert';
 import { markClaimLinkHandled } from '../../src/services/claimLinks';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import CosmosScreen from '../../src/components/ui/CosmosScreen';
+import ShadeCard from '../../src/components/ui/ShadeCard';
 import { GUTTER } from '../../src/components/home/Section';
 import { ActionBar, useActionBarSpace } from '../../src/components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
@@ -208,7 +209,7 @@ export default function ClaimSeatRoute() {
     const view =
       phase === 'signedOut'
         ? {
-            icon: <Ticket size={64} color={c.primary} weight="duotone" />,
+            icon: <Ticket size={64} color={c.text} weight="duotone" />,
             title: "You've been invited",
             body: 'Sign in to claim your seat. Use the email address your invite was sent to.',
             action: 'Sign in to claim',
@@ -216,7 +217,7 @@ export default function ClaimSeatRoute() {
           }
         : phase === 'already'
           ? {
-              icon: <CheckCircle size={64} color={c.success} weight="duotone" />,
+              icon: <CheckCircle size={64} color={c.text} weight="duotone" />,
               title: "You're already going",
               body: `This account already has a ticket for ${info?.event?.title ?? 'this event'}, so this seat can't be claimed too. Decline it so your team lead can give it to someone else.`,
               action: 'View my tickets',
@@ -224,7 +225,7 @@ export default function ClaimSeatRoute() {
             }
         : phase === 'claimed'
           ? {
-              icon: <CheckCircle size={72} color={c.success} weight="duotone" />,
+              icon: <CheckCircle size={72} color={c.text} weight="duotone" />,
               title: 'Your seat is yours',
               body: `You're going to ${info?.event?.title ?? 'the event'}. Your ticket is waiting in the Tickets tab.`,
               action: 'View my ticket',
@@ -232,7 +233,7 @@ export default function ClaimSeatRoute() {
             }
           : phase === 'declined'
             ? {
-                icon: <CheckCircle size={64} color={c.soft} weight="duotone" />,
+                icon: <CheckCircle size={64} color={c.muted} weight="duotone" />,
                 title: 'Invite declined',
                 body: 'The seat is back with your group, so your team lead can invite someone else.',
                 action: 'Done',
@@ -240,7 +241,7 @@ export default function ClaimSeatRoute() {
               }
             : different
               ? {
-                  icon: <UserSwitch size={64} color={c.warn} weight="duotone" />,
+                  icon: <UserSwitch size={64} color={c.text} weight="duotone" />,
                   title: 'Wrong account',
                   // The server names the invited address (masked), e.g. "dh•••@wegobeyond.in".
                   body: error,
@@ -251,7 +252,7 @@ export default function ClaimSeatRoute() {
                   },
                 }
               : {
-                  icon: <LinkBreak size={64} color={c.soft} weight="duotone" />,
+                  icon: <LinkBreak size={64} color={c.muted} weight="duotone" />,
                   title: taken ? 'This seat is taken' : over ? "This seat can't be claimed" : "This link doesn't work",
                   body: taken
                     ? 'Someone has already claimed this seat. If it was meant for you, ask your team lead to send a new invite.'
@@ -301,14 +302,15 @@ export default function ClaimSeatRoute() {
       footer={<ActionBar info={null} label="Claim my seat" disabled={!canClaim} loading={submitting} accent={c.primary} onPress={claim} />}
     >
           {header}
-          <View style={styles.hero}>
-            <Ticket size={56} color={c.primary} weight="duotone" />
+          {/* The seat being claimed: the screen's hero, on the ticket's sky shade. */}
+          <ShadeCard tone="sky">
             <Text style={[styles.kicker, { color: c.soft }]}>You've been invited to</Text>
             <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{info?.event?.title ?? 'an event'}</Text>
+            <Text style={[styles.seat, { color: c.sky }]}>Seat {info?.seatIndex}</Text>
             <Text style={[styles.meta, { color: c.soft }]}>
-              Seat {info?.seatIndex} in a group ticket{info?.invitedEmail ? ` · for ${info.invitedEmail}` : ''}
+              In a group ticket{info?.invitedEmail ? ` · for ${info.invitedEmail}` : ''}
             </Text>
-          </View>
+          </ShadeCard>
 
           {eventLink ? (
             <Pressable
@@ -324,12 +326,11 @@ export default function ClaimSeatRoute() {
 
           {anyLocked ? (
             <>
-              <Text style={[styles.section, { color: c.muted }]}>Your details</Text>
-              <SettingsGroup>
-                {locked.name ? <SettingsRow icon={<User size={24} color={c.primary} weight="duotone" />} label={name} /> : null}
-                {email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.primary} weight="duotone" />} label={email} /> : null}
-                {locked.mobile ? <SettingsRow icon={<Phone size={24} color={c.primary} weight="duotone" />} label={`+91 ${mobile}`} /> : null}
-                {locked.gender ? <SettingsRow icon={<GenderIntersex size={24} color={c.primary} weight="duotone" />} label={gender} /> : null}
+              <SettingsGroup title="Your details">
+                {locked.name ? <SettingsRow icon={<User size={24} color={c.text} />} label={name} /> : null}
+                {email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={email} /> : null}
+                {locked.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${mobile}`} /> : null}
+                {locked.gender ? <SettingsRow icon={<GenderIntersex size={24} color={c.text} />} label={gender} /> : null}
               </SettingsGroup>
               <Text style={[styles.hint, { color: c.muted }]}>From your profile.</Text>
             </>
@@ -337,11 +338,10 @@ export default function ClaimSeatRoute() {
 
           {!locked.name || !locked.mobile ? (
             <>
-              <Text style={[styles.section, { color: c.muted }]}>{anyLocked ? "Add what's missing" : 'Your details'}</Text>
-              <SettingsGroup>
+              <SettingsGroup title={anyLocked ? "Add what's missing" : 'Your details'}>
                 {!locked.name ? (
                   <FormRow
-                    icon={<User size={24} color={c.primary} weight="duotone" />}
+                    icon={<User size={24} color={c.text} />}
                     value={name}
                     onChangeText={setName}
                     placeholder="Full name"
@@ -352,7 +352,7 @@ export default function ClaimSeatRoute() {
                 ) : null}
                 {!locked.mobile ? (
                   <FormRow
-                    icon={<Phone size={24} color={c.primary} weight="duotone" />}
+                    icon={<Phone size={24} color={c.text} />}
                     prefix="+91"
                     value={mobile}
                     onChangeText={(v) => setMobile(v.replace(/[^0-9]/g, ''))}
@@ -422,20 +422,19 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
   loading: { paddingHorizontal: GUTTER, paddingTop: spacing[6], alignItems: 'center' },
-  hero: { alignItems: 'center', paddingHorizontal: spacing[2] },
-  kicker: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: {
     marginTop: spacing[1],
-    textAlign: 'center',
     fontSize: typography.fontSize['2xl'],
     lineHeight: typography.fontSize['2xl'] * 1.35,
     ...cosmosFont.display,
   },
-  meta: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  seat: { marginTop: spacing[5], fontSize: 32, lineHeight: 38, ...cosmosFont.figure },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   eventRow: {
-    marginTop: spacing[6],
+    marginTop: spacing[4],
     height: 52,
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosCardRadius,
     paddingHorizontal: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,7 +450,7 @@ const styles = StyleSheet.create({
   link: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.strong },
   decline: { marginTop: spacing[4] },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8] },
-  stateTitle: { marginTop: spacing[5], fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  stateTitle: { marginTop: spacing[5], fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   stateBody: {
     marginTop: spacing[2],
     fontSize: typography.fontSize.base,

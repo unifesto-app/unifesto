@@ -32,7 +32,7 @@ import { typography } from '../../theme/typography';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
 import { Button } from '../../components/ui';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 // While the thread is open, check for new messages this often.
 const POLL_MS = 10_000;
@@ -139,24 +139,25 @@ export default function WhatsappThreadScreen() {
             ? () => (
                 <View style={styles.headerActions}>
                   {caseId ? (
-                    <Pressable hitSlop={8} onPress={() => router.push(`/manage/support/${caseId}`)}>
-                      <Text style={[styles.headerAction, { color: c.primary }]}>Open case</Text>
+                    <Pressable hitSlop={8} onPress={() => router.push(`/manage/support/${caseId}`)} accessibilityRole="button">
+                      <Text style={[styles.headerAction, { color: c.text }]}>Open case</Text>
                     </Pressable>
                   ) : (
                     <Pressable
                       hitSlop={8}
                       onPress={() => void convert()}
                       disabled={!pickCount || converting}
+                      accessibilityRole="button"
                       accessibilityHint="Tap messages to choose what goes into the case"
                       style={{ opacity: !pickCount || converting ? 0.4 : 1 }}
                     >
-                      <Text style={[styles.headerAction, { color: c.primary }]}>
+                      <Text style={[styles.headerAction, { color: c.text }]}>
                         {converting ? 'Opening…' : `Convert to case (${pickCount})`}
                       </Text>
                     </Pressable>
                   )}
-                  <Pressable hitSlop={12} onPress={() => void Linking.openURL(`tel:+${convo.waId}`)} accessibilityLabel="Call">
-                    <Phone size={22} color={c.primary} />
+                  <Pressable hitSlop={12} onPress={() => void Linking.openURL(`tel:+${convo.waId}`)} accessibilityRole="button" accessibilityLabel="Call">
+                    <Phone size={22} color={c.text} />
                   </Pressable>
                 </View>
               )
@@ -166,7 +167,8 @@ export default function WhatsappThreadScreen() {
       {!convo ? (
         <View style={styles.center}>
           {error ? (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
             </View>
@@ -213,10 +215,11 @@ export default function WhatsappThreadScreen() {
               onPress={() => void send()}
               disabled={!draft.trim() || sending}
               hitSlop={8}
+              accessibilityRole="button"
               accessibilityLabel="Send"
               style={({ pressed }) => [styles.send, { opacity: !draft.trim() || sending ? 0.4 : pressed ? 0.6 : 1 }]}
             >
-              {sending ? <ActivityIndicator color={c.text} /> : <PaperPlaneRight size={26} color={c.primary} weight="fill" />}
+              {sending ? <ActivityIndicator color={c.text} /> : <PaperPlaneRight size={26} color={c.text} weight="fill" />}
             </Pressable>
           </View>
         ) : (
@@ -266,8 +269,8 @@ const styles = StyleSheet.create({
   left: { alignSelf: 'flex-start' },
   right: { alignSelf: 'flex-end' },
   // Transparent 2px border always, so picking a message doesn't shift the layout.
-  bubble: { borderRadius: borderRadius.xl, borderWidth: 2, paddingHorizontal: spacing[3], paddingVertical: spacing[2], overflow: 'hidden' },
-  media: { width: 220, height: 220, borderRadius: borderRadius.lg, marginBottom: spacing[1] },
+  bubble: { borderRadius: cosmosCardRadius, borderWidth: 2, paddingHorizontal: spacing[3], paddingVertical: spacing[2], overflow: 'hidden' },
+  media: { width: 220, height: 220, borderRadius: borderRadius.md, marginBottom: spacing[1] },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.35, ...cosmosFont.body },
   meta: { marginTop: 2, marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   composer: {
@@ -278,7 +281,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  inputWrap: { flex: 1, borderRadius: borderRadius.xl },
+  inputWrap: { flex: 1, borderRadius: cosmosRadius },
   input: {
     minHeight: 40,
     maxHeight: 140,

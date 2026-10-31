@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import BrandGlow from '../../src/components/ui/BrandGlow';
+import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { typography } from '../../src/theme/typography';
 import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
 
@@ -21,7 +21,7 @@ export default function AuthCallback() {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: c.bg }}>
-      <BrandGlow />
+      <CosmosBackdrop />
       <ActivityIndicator color={c.primary} />
       <Text style={{ color: c.soft, fontSize: typography.fontSize.sm, ...cosmosFont.strong }}>
         Signing you in

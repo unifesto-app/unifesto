@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import SaveBar from '../components/manage/SaveBar';
 import { GUTTER } from '../components/home/Section';
 import {
@@ -23,7 +24,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type Answers = Record<string, unknown>;
 
@@ -111,12 +112,12 @@ export default function EditDetailsScreen() {
       }
     } else if (mine) {
       if (mine.role !== 'member' && teamFields.length) {
-        out.push({ key: 'team', title: mine.role === 'lead' ? 'Team answers' : 'Your answers', fields: teamFields, answers: mine.formResponses ?? {} });
+        out.push({ key: 'team', title: mine.role === 'lead' ? 'Team answers' : 'My answers', fields: teamFields, answers: mine.formResponses ?? {} });
       }
       if (mine.member) {
         out.push({
           key: 'me',
-          title: 'Your details',
+          title: 'My details',
           fields: memberFields,
           answers: mine.member.customFields,
           seatIndex: mine.member.seatIndex,
@@ -188,7 +189,8 @@ export default function EditDetailsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
@@ -215,8 +217,9 @@ export default function EditDetailsScreen() {
         {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">{title}</Text> : null}
 
         {!editable ? (
-          <View style={[styles.locked, { backgroundColor: c.raised }]}>
-            <Lock size={18} color={c.soft} weight="bold" />
+          <View style={styles.locked}>
+            <CardBackdrop shape={styles.locked} />
+            <Lock size={18} color={c.muted} weight="bold" />
             <Text style={[styles.lockedText, { color: c.soft }]}>
               {mine?.lockedReason ?? 'These details can’t be changed right now.'} Ask the organiser if something is wrong.
             </Text>
@@ -235,7 +238,8 @@ export default function EditDetailsScreen() {
         ) : null}
 
         {sections.length === 0 ? (
-          <View style={[styles.card, { backgroundColor: c.raised, marginTop: spacing[6] }]}>
+          <View style={[styles.card, { marginTop: spacing[6] }]}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.muted, { color: c.soft }]}>This ticket has no details to change.</Text>
           </View>
         ) : null}
@@ -248,7 +252,7 @@ export default function EditDetailsScreen() {
                 <>
                   <Text style={[styles.section, { color: c.muted }]}>{s.title}</Text>
                   {curator && s.seatIndex !== undefined ? (
-                    <SettingsGroup plain>
+                    <SettingsGroup plain style={{ marginTop: 0 }}>
                       <FieldRow label="Name" value={d.name ?? ''} onChangeText={(v) => set(s.key, { name: v })} maxLength={100} />
                     </SettingsGroup>
                   ) : null}
@@ -262,7 +266,7 @@ export default function EditDetailsScreen() {
                   ))}
                 </>
               ) : (
-                <SettingsGroup title={s.title} plain>
+                <SettingsGroup title={s.title} plain style={{ marginTop: 0 }}>
                   {s.seatIndex !== undefined ? <SettingsRow label="Name" value={s.name || '–'} /> : null}
                   {visibleFields(s.fields, s.answers).map((f) => (
                     <SettingsRow key={f.id} label={f.label} value={displayAnswer(f, s.answers[f.id]) || '–'} />
@@ -285,7 +289,7 @@ export default function EditDetailsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   card: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  title: { fontSize: typography.fontSize.xl, lineHeight: 28, marginBottom: spacing[3], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[3], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   section: { marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },

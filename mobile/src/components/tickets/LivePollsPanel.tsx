@@ -4,9 +4,10 @@ import { CheckCircle } from '@unifesto/unicon/react-native';
 import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { getPollFeed, votePoll, type FeedPoll } from '../../lib/api/polls';
 import { AppAlert } from '../ui/AppAlert';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { CardBackdrop } from '../ui/CardSurface';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** Older closed polls drop off; the panel is about the room right now. */
 const MAX_SHOWN = 3;
@@ -50,8 +51,12 @@ export default function LivePollsPanel({ eventId }: { eventId: string }) {
   if (!shown.length) return null;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <Text style={[styles.title, { color: c.text }]}>Live polls</Text>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
+      <View style={styles.titleRow}>
+        <View style={[styles.dot, { backgroundColor: c.mint }]} />
+        <Text accessibilityRole="header" style={[styles.title, { color: c.text }]}>Live polls</Text>
+      </View>
       {shown.map((p) => {
         const open = p.status === 'LIVE' && p.myVote === null;
         const total = p.totalVotes ?? 0;
@@ -78,8 +83,8 @@ export default function LivePollsPanel({ eventId }: { eventId: string }) {
                   <Text style={[styles.optionText, { color: c.text }]} numberOfLines={2}>
                     {o}
                   </Text>
-                  {mine ? <CheckCircle size={18} color={c.primary} weight="fill" /> : null}
-                  {pct !== null ? <Text style={[styles.pct, { color: c.soft }]}>{pct}%</Text> : null}
+                  {mine ? <CheckCircle size={18} color={c.mint} weight="fill" /> : null}
+                  {pct !== null ? <Text style={[styles.pct, { color: c.mint }]}>{pct}%</Text> : null}
                 </Pressable>
               );
             })}
@@ -101,6 +106,8 @@ export default function LivePollsPanel({ eventId }: { eventId: string }) {
 
 const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, padding: spacing[5], marginTop: spacing[6], gap: spacing[5] },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   poll: { gap: spacing[2] },
   question: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.strong },
@@ -111,11 +118,11 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: spacing[4],
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
     overflow: 'hidden',
   },
   bar: { position: 'absolute', left: 0, top: 0, bottom: 0 },
   optionText: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
-  pct: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  pct: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

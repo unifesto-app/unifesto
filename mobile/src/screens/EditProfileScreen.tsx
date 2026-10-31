@@ -17,13 +17,14 @@ import { Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/reac
 import useTopSpacing from '../hooks/useTopSpacing';
 import { GENDER_OPTIONS, useEditProfile } from '../hooks/useEditProfile';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthField from '../components/auth/AuthField';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import Skeleton from '../components/Skeleton';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const AVATAR = 76;
 
@@ -115,16 +116,15 @@ export default function EditProfileScreen() {
           onPress={p.pickAvatar}
           accessibilityRole="button"
           accessibilityLabel="Change photo"
-          style={({ pressed }) => [styles.identity, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.99 : 1 }] }]}
+          style={({ pressed }) => [styles.identity, { transform: [{ scale: pressed ? 0.99 : 1 }] }]}
         >
-          <View style={[styles.ring, { borderColor: c.outline }]}>
-            <View style={[styles.avatar, { backgroundColor: c.card }]}>
-              {p.avatarUrl ? (
-                <Image source={{ uri: p.avatarUrl }} style={StyleSheet.absoluteFill} />
-              ) : (
-                <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
-              )}
-            </View>
+          <CardBackdrop shape={styles.identity} />
+          <View style={[styles.avatar, { backgroundColor: c.tint }]}>
+            {p.avatarUrl ? (
+              <Image source={{ uri: p.avatarUrl }} style={StyleSheet.absoluteFill} />
+            ) : (
+              <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
+            )}
           </View>
           <View style={styles.who}>
             <Text style={[styles.name, { color: fields.fullName.trim() ? c.text : c.muted }]} numberOfLines={2}>
@@ -134,8 +134,8 @@ export default function EditProfileScreen() {
               <Text style={[styles.handle, { color: c.muted }]} numberOfLines={1}>@{fields.username}</Text>
             ) : null}
             <View style={styles.changePhoto}>
-              <Camera size={15} color={c.soft} weight="fill" />
-              <Text style={[styles.changePhotoText, { color: c.soft }]}>
+              <Camera size={16} color={c.text} weight="fill" />
+              <Text style={[styles.changePhotoText, { color: c.text }]}>
                 {p.avatarUrl ? 'Change photo' : 'Add a photo'}
               </Text>
             </View>
@@ -195,7 +195,7 @@ export default function EditProfileScreen() {
           </View>
         </Section>
 
-        <Section title="About you" subtitle="Shown on your public profile">
+        <Section title="About you" subtitle="Shown on your public profile" style={styles.section}>
           <View style={styles.fields}>
             <AuthField
               label="Bio"
@@ -207,7 +207,7 @@ export default function EditProfileScreen() {
           </View>
         </Section>
 
-        <Section title="Links" subtitle="Where people can find you">
+        <Section title="Links" subtitle="Where people can find you" style={styles.section}>
           <View style={styles.fields}>
             {LINKS.map((l) => (
               <AuthField
@@ -255,14 +255,6 @@ const styles = StyleSheet.create({
     padding: spacing[6],
     borderRadius: cosmosCardRadius,
   },
-  ring: {
-    width: AVATAR + 8,
-    height: AVATAR + 8,
-    borderRadius: (AVATAR + 8) / 2,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -271,14 +263,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 22, ...cosmosFont.display },
+  initials: { fontSize: 22, ...cosmosFont.strong },
   who: { flex: 1 },
-  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  // Names are never display.
+  name: { fontSize: 18, lineHeight: 24, ...cosmosFont.strong },
   handle: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   changePhoto: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
   changePhotoText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  // Section's default top margin is sized for Home; tighter under the card.
-  firstSection: { marginTop: spacing[10] },
+  // Section's default top margin is sized for Home; a form steps by spacing[8].
+  firstSection: { marginTop: spacing[8] },
+  section: { marginTop: spacing[8] },
   fields: { paddingHorizontal: GUTTER, gap: spacing[5] },
   label: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
   error: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -289,7 +283,7 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 40,
     paddingHorizontal: spacing[4],
-    borderRadius: 999,
+    borderRadius: cosmosRadius,
   },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: {

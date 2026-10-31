@@ -7,13 +7,14 @@ import { BlockTitle } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getFeedback, submitFeedback, toCustomField, type FeedbackForm } from '../lib/api/feedback';
 import { selectionTick } from '../lib/haptics';
 import { firstFormProblem, visibleFields } from '../utils/formQuestions';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 
 /** A row of numbered cells, `from`..`to`; tapping the picked one clears it. */
 function Scale({ from, to, value, onChange }: { from: number; to: number; value: number | null; onChange: (v: number | null) => void }) {
@@ -94,7 +95,7 @@ export default function FeedbackScreen() {
         {loadError ? (
           <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
         ) : (
-          <ActivityIndicator color={c.primary} style={{ marginTop: spacing[8] }} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[8] }} />
         )}
       </CosmosScreen>
     );
@@ -104,7 +105,8 @@ export default function FeedbackScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title: 'Feedback' }} />
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft }]}>
             {!form.enabled
               ? 'This event is not collecting feedback.'
@@ -120,7 +122,7 @@ export default function FeedbackScreen() {
   return (
     <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={60 + insets.bottom} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Feedback' }} />
-      <Text style={[styles.title, { color: c.text }]}>{form.event.title}</Text>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{form.event.title}</Text>
       <Text style={[styles.hint, { color: c.muted, marginTop: spacing[1] }]}>
         {form.unlocksCertificate ? 'Sending this unlocks your certificate. ' : ''}Open until{' '}
         {new Date(form.closesAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.
@@ -179,11 +181,11 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6], marginTop: spacing[4] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  title: { marginTop: spacing[2], fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
+  title: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   block: { marginTop: spacing[6] },
   scale: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[2] },
   cell: { minWidth: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: cosmosRadius, borderWidth: 1 },
-  cellText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  cellText: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[1] },
   hint: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   comment: { marginTop: spacing[2], minHeight: 96, borderRadius: cosmosRadius, padding: spacing[3], textAlignVertical: 'top', fontSize: typography.fontSize.base, ...cosmosFont.body },

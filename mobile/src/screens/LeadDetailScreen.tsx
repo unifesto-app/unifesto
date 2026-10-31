@@ -22,6 +22,7 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import PressableScale from '../components/ui/PressableScale';
 import Skeleton from '../components/Skeleton';
@@ -149,7 +150,8 @@ export default function LeadDetailScreen() {
         <Stack.Screen options={{ title }} />
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={styles.card}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.meta, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             </View>
           ) : (
@@ -185,7 +187,8 @@ export default function LeadDetailScreen() {
 
       {lead ? (
         <>
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.name, { color: c.text }]} accessibilityRole="header">
               {leadName(lead)}
             </Text>
@@ -208,7 +211,7 @@ export default function LeadDetailScreen() {
                     accessibilityLabel={label}
                     style={[styles.reachBtn, { borderColor: c.outline }]}
                   >
-                    <I size={ICON} color={c.text} weight="fill" />
+                    <I size={ICON} color={c.text} />
                     <Text style={[styles.reachText, { color: c.text }]}>{label}</Text>
                   </PressableScale>
                 ))}
@@ -270,7 +273,8 @@ export default function LeadDetailScreen() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
-  name: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  // A person's name: never display (DESIGN §4).
+  name: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.strong },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   reach: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   reachBtn: {

@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { cosmosFor } from '../../theme/cosmos';
 
 export type ReticleState = 'idle' | 'busy' | 'success' | 'already' | 'error';
 
@@ -18,20 +19,21 @@ const ARM = 44;
 const STROKE = 4;
 const RADIUS = 22;
 
-// The camera overlay is dark in both themes, so these are fixed, not tokens.
+// The camera overlay is dark in both themes, so it always takes the night tokens.
+const night = cosmosFor('dark');
 const COLORS: Record<ReticleState, string> = {
-  idle: '#ffffff',
-  busy: '#ffffff',
-  success: '#10b981',
-  already: '#f59e0b',
-  error: '#ef4444',
+  idle: night.text,
+  busy: night.text,
+  success: night.mint,
+  already: night.warn,
+  error: night.danger,
 };
 const ORDER: ReticleState[] = ['idle', 'busy', 'success', 'already', 'error'];
 
 /**
  * Four corner brackets framing the QR. They breathe while a scan is in
- * flight, pop and change colour on the result (green in, amber already in,
- * red failed), then settle back to white.
+ * flight, pop and change colour on the result (mint in, amber already in,
+ * crimson failed), then settle back to silver.
  */
 export default function ScanReticle({ state }: { state: ReticleState }) {
   const tone = useSharedValue(0);
@@ -70,7 +72,7 @@ export default function ScanReticle({ state }: { state: ReticleState }) {
 
 const styles = StyleSheet.create({
   frame: { width: SIZE, height: SIZE },
-  corner: { position: 'absolute', width: ARM, height: ARM, borderColor: '#fff' },
+  corner: { position: 'absolute', width: ARM, height: ARM, borderColor: night.text },
   tl: { top: 0, left: 0, borderTopWidth: STROKE, borderLeftWidth: STROKE, borderTopLeftRadius: RADIUS },
   tr: { top: 0, right: 0, borderTopWidth: STROKE, borderRightWidth: STROKE, borderTopRightRadius: RADIUS },
   bl: { bottom: 0, left: 0, borderBottomWidth: STROKE, borderLeftWidth: STROKE, borderBottomLeftRadius: RADIUS },

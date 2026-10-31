@@ -9,6 +9,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
+import { CardBackdrop } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import PressableScale from '../ui/PressableScale';
 
@@ -40,11 +41,9 @@ export default function InviteCards({
             onPress={() => onOpen(inv.token)}
             accessibilityRole="button"
             accessibilityLabel={`Seat invite for ${inv.event.title}`}
-            style={[
-              styles.card,
-              { backgroundColor: c.tint },
-            ]}
+            style={styles.card}
           >
+            <CardBackdrop shape={styles.card} />
             <View style={[styles.cover, { backgroundColor: c.card }]}>
               {coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ? (
                 <Image source={{ uri: coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -53,7 +52,7 @@ export default function InviteCards({
               )}
             </View>
             <View style={styles.body}>
-              <Text style={[styles.kicker, { color: c.primary }]} numberOfLines={1}>
+              <Text style={[styles.kicker, { color: c.sky }]} numberOfLines={1}>
                 {inv.invitedBy ? `${inv.invitedBy} saved you a seat` : 'You have a seat waiting'}
               </Text>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{inv.event.title}</Text>
@@ -61,7 +60,7 @@ export default function InviteCards({
                 {[relativeWhen(inv.event.startDateTime), where].filter(Boolean).join(' · ')}
               </Text>
             </View>
-            <Text style={[styles.view, { color: c.primary }]}>View</Text>
+            <Text style={[styles.view, { color: c.text }]}>View</Text>
             <PressableScale feedback="inline"
               onPress={() => onDecline(inv.token)}
               hitSlop={10}
@@ -83,7 +82,7 @@ const styles = StyleSheet.create({
   // Event covers are 4:3.
   cover: { width: 72, height: 54, borderRadius: borderRadius.md, overflow: 'hidden' },
   body: { flex: 1, gap: 2 },
-  kicker: { fontSize: 12, ...cosmosFont.strong },
+  kicker: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   view: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

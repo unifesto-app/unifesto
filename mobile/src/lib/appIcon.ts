@@ -19,7 +19,7 @@ try {
 }
 
 /** 'Auto' (iOS only) is the store icon itself, which follows the system appearance: Day by day, Night by night. */
-export type AppIconName = 'Auto' | 'Night' | 'Day' | 'Aurora' | 'Nebula' | 'Ember' | 'Ocean' | 'Mono';
+export type AppIconName = 'Auto' | 'Night' | 'Day' | 'Mint' | 'Sky' | 'Ivory' | 'Blue' | 'Dark' | 'Light';
 
 export const APP_ICONS: { name: AppIconName; label: string; preview: ImageSourcePropType }[] = [
   ...(Platform.OS === 'ios'
@@ -27,11 +27,13 @@ export const APP_ICONS: { name: AppIconName; label: string; preview: ImageSource
     : []),
   { name: 'Night', label: 'Night', preview: require('../../assets/app-icons/night-preview.png') },
   { name: 'Day', label: 'Day', preview: require('../../assets/app-icons/day-preview.png') },
-  { name: 'Aurora', label: 'Aurora', preview: require('../../assets/app-icons/aurora-preview.png') },
-  { name: 'Nebula', label: 'Nebula', preview: require('../../assets/app-icons/nebula-preview.png') },
-  { name: 'Ember', label: 'Ember', preview: require('../../assets/app-icons/ember-preview.png') },
-  { name: 'Ocean', label: 'Ocean', preview: require('../../assets/app-icons/ocean-preview.png') },
-  { name: 'Mono', label: 'Mono', preview: require('../../assets/app-icons/mono-preview.png') },
+  // Product on a shade (guidelines §08), then the two plains.
+  { name: 'Mint', label: 'Mint', preview: require('../../assets/app-icons/mint-preview.png') },
+  { name: 'Sky', label: 'Sky', preview: require('../../assets/app-icons/sky-preview.png') },
+  { name: 'Ivory', label: 'Ivory', preview: require('../../assets/app-icons/ivory-preview.png') },
+  { name: 'Blue', label: 'Blue', preview: require('../../assets/app-icons/blue-preview.png') },
+  { name: 'Dark', label: 'Dark', preview: require('../../assets/app-icons/dark-preview.png') },
+  { name: 'Light', label: 'Light', preview: require('../../assets/app-icons/light-preview.png') },
 ];
 
 /** The icon each store build ships with (app.config.js `ios.icon` / `android.icon`). */
@@ -45,10 +47,14 @@ export const appIconsSupported = (): boolean => {
   }
 };
 
-/** The icon on the home screen right now (the platform default when none is set). */
+/**
+ * The icon on the home screen right now: the platform default when none is set,
+ * or when the set one was retired (Aurora, Nebula, Ember, Ocean and Mono went on 31 Oct 2026).
+ */
 export function currentAppIcon(): AppIconName {
   try {
-    return (mod?.getAppIconName() as AppIconName | null) ?? PLATFORM_DEFAULT;
+    const name = mod?.getAppIconName();
+    return APP_ICONS.find((i) => i.name === name)?.name ?? PLATFORM_DEFAULT;
   } catch {
     return PLATFORM_DEFAULT;
   }

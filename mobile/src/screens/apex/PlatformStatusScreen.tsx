@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import { useFocusEffect } from 'expo-router';
@@ -70,7 +71,8 @@ function ServiceCard({ service }: { service: Service }) {
       : 'No data yet';
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <View style={styles.serviceHead}>
         <Text style={[styles.serviceName, { color: c.text }]} numberOfLines={1}>
           {service.name}
@@ -78,6 +80,7 @@ function ServiceCard({ service }: { service: Service }) {
         {service.latencyMs != null && service.currentStatus === 'up' ? (
           <Text style={[styles.figure, { color: c.muted }]}>{service.latencyMs} ms</Text>
         ) : null}
+        <View style={[styles.dot, { backgroundColor: word.color }]} />
         <Text style={[styles.word, { color: word.color }]}>{word.text}</Text>
       </View>
       <UptimeBars days={service.days} selected={selected} onSelect={setSelected} />
@@ -101,11 +104,12 @@ function IncidentItem({ incident, onResolve }: { incident: StatusIncident; onRes
 
   return (
     <View style={styles.incident}>
-      <Text style={[styles.incidentTitle, { color: resolved ? c.text : impactColor(incident.impact, c) }]}>
-        {incident.title}
-      </Text>
+      <Text style={[styles.incidentTitle, { color: c.text }]}>{incident.title}</Text>
       <Text style={[styles.body, { color: c.soft }]}>
-        <Text style={cosmosFont.strong}>{titleCase(incident.status)}</Text>
+        <Text style={[cosmosFont.strong, { color: resolved ? c.success : impactColor(incident.impact, c) }]}>
+          {resolved ? '✓ ' : ''}
+          {titleCase(incident.status)}
+        </Text>
         {incident.body ? ` · ${incident.body}` : ''}
       </Text>
       <Text style={[styles.small, { color: c.muted }]}>
@@ -152,7 +156,8 @@ function ReportIncident({ services, onDone }: { services: Service[]; onDone: () 
 
   const input = [styles.input, { color: c.text, backgroundColor: c.tint }];
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <TextInput value={title} onChangeText={setTitle} placeholder="What's wrong" placeholderTextColor={c.muted} maxLength={300} style={input} />
       <TextInput
         value={body}
@@ -255,7 +260,8 @@ export default function PlatformStatusScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -284,23 +290,28 @@ export default function PlatformStatusScreen() {
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
-      <View style={[styles.banner, { backgroundColor: `${overall.color}26` }]}>
-        <View style={[styles.dot, { backgroundColor: overall.color }]} />
-        <Text style={[styles.bannerText, { color: c.text }]}>{overall.text}</Text>
+      {/* The overall state, as plain text in its colour with a dot. */}
+      <View style={styles.banner} accessible accessibilityLabel={`${overall.text}. ${data.stale ? 'Health checks have stopped reporting.' : `As of ${time(checked)}`}`}>
+        <CardBackdrop shape={styles.banner} />
+        <View style={styles.bannerHead}>
+          <View style={[styles.bannerDot, { backgroundColor: overall.color }]} />
+          <Text style={[styles.bannerText, { color: overall.color }]}>{overall.text}</Text>
+        </View>
         <Text style={[styles.small, { color: c.muted }]}>
           {data.stale ? (data.lastSampleAt ? `Last check ${dayLabel(new Date(checked))}, ${time(checked)}` : 'Never checked') : `As of ${time(checked)}`}
         </Text>
+        {data.stale ? (
+          <Text style={[styles.body, { color: c.warn }]}>
+            Health checks have stopped reporting. The backend sampler, Redis or the database may be down.
+          </Text>
+        ) : null}
       </View>
-      {data.stale ? (
-        <Text style={[styles.hint, { color: c.warn }]}>
-          Health checks have stopped reporting. The backend sampler, Redis or the database may be down.
-        </Text>
-      ) : null}
 
       {open.length > 0 ? (
         <>
           <Text style={[styles.section, { color: c.muted }]}>Happening now</Text>
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             {open.map((i, n) => (
               <View key={i.id}>
                 {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -335,7 +346,8 @@ export default function PlatformStatusScreen() {
           ) : (
             <>
               {external.monitors.length > 0 ? (
-                <View style={[styles.card, { backgroundColor: c.raised }]}>
+                <View style={styles.card}>
+                  <CardBackdrop shape={styles.card} />
                   {external.monitors.map((m, n) => (
                     <View key={m.id}>
                       {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -357,17 +369,22 @@ export default function PlatformStatusScreen() {
       ) : null}
 
       <Text style={[styles.section, { color: c.muted }]}>Past incidents</Text>
-      {history.map(({ date, items }) => (
-        <View key={localKey(date)} style={styles.day}>
-          <Text style={[styles.dayTitle, { color: c.text }]}>{dayLabel(date)}</Text>
-          <View style={[styles.rule, { backgroundColor: c.border }]} />
-          {items.length === 0 ? (
-            <Text style={[styles.body, { color: c.muted }]}>No incidents reported.</Text>
-          ) : (
-            items.map((i) => <IncidentItem key={i.id} incident={i} />)
-          )}
-        </View>
-      ))}
+      <View style={styles.card}>
+        <CardBackdrop shape={styles.card} />
+        {history.map(({ date, items }, n) => (
+          <View key={localKey(date)}>
+            {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
+            <View style={styles.day}>
+              <Text style={[styles.dayTitle, { color: c.text }]}>{dayLabel(date)}</Text>
+              {items.length === 0 ? (
+                <Text style={[styles.body, { color: c.muted }]}>No incidents reported.</Text>
+              ) : (
+                items.map((i) => <IncidentItem key={i.id} incident={i} />)
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
     </CosmosScreen>
   );
 }
@@ -375,19 +392,14 @@ export default function PlatformStatusScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[4],
-    borderRadius: cosmosCardRadius,
-  },
-  bannerText: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.display },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  banner: { borderRadius: cosmosCardRadius, padding: spacing[5], gap: spacing[2] },
+  bannerHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  bannerDot: { width: 8, height: 8, borderRadius: 4 },
+  bannerText: { flex: 1, fontSize: typography.fontSize.xl, ...cosmosFont.strong },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   services: { gap: spacing[3] },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], gap: spacing[3] },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[3] },
   serviceHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   serviceName: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   word: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -398,9 +410,8 @@ const styles = StyleSheet.create({
   incidentTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[2] },
-  day: { marginBottom: spacing[5], gap: spacing[2] },
-  dayTitle: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
-  rule: { height: StyleSheet.hairlineWidth },
+  day: { gap: spacing[2] },
+  dayTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: cosmosRadius, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   multiline: { minHeight: 80, paddingTop: spacing[3], textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: spacing[2] },

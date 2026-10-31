@@ -5,6 +5,7 @@ import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { askQuestion, getQaFeed, upvoteQuestion, type QaBoard, type Question } from '../../lib/api/questions';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';
+import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -65,8 +66,12 @@ export default function LiveQaPanel({ eventId }: { eventId: string }) {
   const canSend = text.trim().length >= 3 && !sending;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <Text style={[styles.title, { color: c.text }]}>Q&A</Text>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
+      <View style={styles.titleRow}>
+        <View style={[styles.dot, { backgroundColor: c.mint }]} />
+        <Text accessibilityRole="header" style={[styles.title, { color: c.text }]}>Q&A</Text>
+      </View>
 
       {board.sessions.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -143,6 +148,8 @@ export default function LiveQaPanel({ eventId }: { eventId: string }) {
 
 const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, padding: spacing[5], marginTop: spacing[6], gap: spacing[4] },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   chips: { gap: spacing[2] },
   chip: { borderWidth: 1, borderRadius: borderRadius.full, paddingHorizontal: spacing[3], paddingVertical: spacing[1] + 2, maxWidth: 220 },
@@ -161,8 +168,8 @@ const styles = StyleSheet.create({
     ...cosmosFont.body,
   },
   row: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start' },
-  vote: { width: 44, minHeight: 44, borderWidth: 1, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
-  voteCount: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  vote: { width: 44, minHeight: 44, borderWidth: 1, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
+  voteCount: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   body: { flex: 1, gap: spacing[1] },
   question: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },

@@ -118,8 +118,8 @@ export default function SpacesListScreen() {
     return (
       <View style={[styles.empty, { backgroundColor: c.raised }]}>
         <UsersThree size={40} color={c.muted} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
-        <Text style={[styles.emptyBody, { color: c.soft }]}>{body}</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
+        <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
       </View>
     );
   })();
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: GAP },
   skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   empty: { alignItems: 'center', padding: spacing[6], borderRadius: cosmosCardRadius },
-  emptyTitle: { marginTop: spacing[3], fontSize: typography.fontSize.base, textAlign: 'center', ...cosmosFont.strong },
+  emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyBody: {
     marginTop: 6,
     fontSize: typography.fontSize.sm,

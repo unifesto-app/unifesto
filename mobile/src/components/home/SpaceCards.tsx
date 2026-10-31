@@ -31,7 +31,7 @@ export function Monogram({ name, size, radius }: { name: string; size: number; r
       end={{ x: 1, y: 1 }}
       style={{ width: size, height: size, borderRadius: radius, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Text style={{ fontSize: size * 0.36, color: c.text, ...cosmosFont.display }}>{name.charAt(0).toUpperCase()}</Text>
+      <Text style={{ fontSize: size * 0.36, color: c.text, ...cosmosFont.strong }}>{name.charAt(0).toUpperCase()}</Text>
     </LinearGradient>
   );
 }
@@ -132,9 +132,9 @@ export function roleOf(space: Space): string | null {
 }
 
 /**
- * "My circles": a rail of membership tiles. Logo and my role up top, then the
- * name, place · members, and the event count in DM Sans, closing with a
- * dashed "Find more circles" tile so the row always leads somewhere.
+ * "My circles": a rail of membership tiles. Logo and my role (plain text) up
+ * top, then the name, place · members, and the event count in sky, closing
+ * with a "Find more circles" link tile so the row always leads somewhere.
  */
 export function CircleRow({
   spaces,
@@ -155,7 +155,7 @@ export function CircleRow({
       <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
         {[0, 1].map((i) => (
           <View key={i} style={[styles.tile, { backgroundColor: c.raised }]}>
-            <Skeleton width={TILE_LOGO} height={TILE_LOGO} borderRadius={14} />
+            <Skeleton width={TILE_LOGO} height={TILE_LOGO} borderRadius={borderRadius.md} />
             <Skeleton width={TILE_W * 0.7} height={14} borderRadius={6} style={{ marginTop: spacing[4] }} />
             <Skeleton width={TILE_W * 0.5} height={11} borderRadius={6} style={{ marginTop: 8 }} />
             <Skeleton width={TILE_W * 0.35} height={14} borderRadius={6} style={{ marginTop: spacing[5] }} />
@@ -185,18 +185,14 @@ export function CircleRow({
               {logo ? (
                 <Image source={{ uri: logo }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />
               ) : (
-                <Monogram name={space.name} size={TILE_LOGO} radius={14} />
+                <Monogram name={space.name} size={TILE_LOGO} radius={borderRadius.md} />
               )}
-              {role ? (
-                <View style={[styles.role, { backgroundColor: c.tint }]}>
-                  <Text style={[styles.roleText, { color: c.text }]}>{role}</Text>
-                </View>
-              ) : null}
+              {role ? <Text style={[styles.roleText, { color: c.muted }]}>{role}</Text> : null}
             </View>
             <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
             <Text style={[styles.tileMeta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
             <View style={styles.tileFoot}>
-              <Text style={[styles.tileCount, { color: c.text }]}>{compact(events)}</Text>
+              <Text style={[styles.tileCount, { color: c.sky }]}>{compact(events)}</Text>
               <Text style={[styles.tileMeta, { color: c.muted }]}>{events === 1 ? 'event' : 'events'}</Text>
             </View>
           </PressableScale>
@@ -207,7 +203,7 @@ export function CircleRow({
         onPress={onFindMore}
         accessibilityRole="button"
         accessibilityLabel="Find more circles"
-        style={[styles.tile, styles.more, { borderColor: c.outline }]}
+        style={[styles.tile, styles.more]}
       >
         <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
         <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs, communities and organisers</Text>
@@ -239,16 +235,16 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   tileRow: { paddingHorizontal: GUTTER, gap: spacing[3] },
   tile: { width: TILE_W, borderRadius: cosmosCardRadius, padding: spacing[4] },
-  // The role pill wraps under the logo rather than truncating ("Space ad…").
+  // The role wraps under the logo rather than truncating ("Space ad…").
   tileTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
-  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: 14, overflow: 'hidden' },
-  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  roleText: { fontSize: 11, ...cosmosFont.strong },
+  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
+  roleText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   tileName: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   tileMeta: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   // Pinned to the bottom so counts line up across tiles with one- and two-line names.
   tileFoot: { marginTop: 'auto', paddingTop: spacing[4], flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   tileCount: { fontSize: 16, ...cosmosFont.figure },
-  more: { borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center' },
+  // A link, not another circle: no fill, no outline.
+  more: { justifyContent: 'center' },
   moreTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

@@ -17,7 +17,6 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
-import { CoverTag } from './PosterCard';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
 import PressableScale from '../ui/PressableScale';
@@ -90,13 +89,13 @@ function HeroCarousel({ events, loading, failed, onRetry, onPressEvent }: HeroCa
         <CardBackdrop shape={styles.empty} />
         {failed ? (
           <>
-            <Text style={[styles.emptyTitle, { color: c.text }]}>Couldn't load events</Text>
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">Couldn't load events</Text>
             <Text style={[styles.emptyText, { color: c.muted }]}>Check your connection and try again.</Text>
             {onRetry ? <AuthButton label="Try again" variant="secondary" onPress={onRetry} style={styles.retry} /> : null}
           </>
         ) : (
           <>
-            <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing on the calendar yet</Text>
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">Nothing on the calendar yet</Text>
             <Text style={[styles.emptyText, { color: c.muted }]}>New events land here first. Pull to refresh.</Text>
           </>
         )}
@@ -163,6 +162,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
   const titleLines = useWindowDimensions().fontScale > 1.3 ? 2 : 1;
   const place = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : null);
   const tag = event.categories?.[0] || event.category;
+  const facts = [tag, place].filter(Boolean).join(' · ');
 
   // Distance from focus in "cards": 0 = centred, 1 = one card away.
   // Reduce Motion: every card stays still and fully lit.
@@ -196,14 +196,14 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
           ) : (
             <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}
-          {tag ? <CoverTag label={tag} style={styles.tag} /> : null}
         </View>
 
-        <Text style={[styles.title, { color: c.text }]} numberOfLines={titleLines}>{event.title}</Text>
+        {facts ? <Text style={[styles.facts, { color: c.muted }]} numberOfLines={1}>{facts}</Text> : null}
+        <Text style={[styles.title, { color: c.text, marginTop: facts ? 2 : spacing[3] }]} numberOfLines={titleLines}>{event.title}</Text>
         <Text style={styles.meta} numberOfLines={1}>
-          <Text style={{ color: c.primary }}>{relativeWhen(event.startDateTime)}</Text>
-          <Text style={{ color: c.soft }}>{`  ·  ${shortPrice(event)}`}</Text>
-          {place ? <Text style={{ color: c.muted }}>{`  ·  ${place}`}</Text> : null}
+          <Text style={{ color: c.soft }}>{relativeWhen(event.startDateTime)}</Text>
+          <Text style={{ color: c.muted }}>{'  ·  '}</Text>
+          <Text style={[styles.price, { color: c.text }]}>{shortPrice(event)}</Text>
         </Text>
       </PressableScale>
     </Animated.View>
@@ -227,14 +227,14 @@ function Dot({ index, scrollX, snap }: { index: number; scrollX: SharedValue<num
 const styles = StyleSheet.create({
   skeletonRow: { flexDirection: 'row', gap: GAP, paddingHorizontal: GUTTER, overflow: 'hidden' },
   cover: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  tag: { position: 'absolute', left: spacing[3], bottom: spacing[3] },
+  facts: { marginTop: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   title: {
-    marginTop: spacing[3],
     fontSize: typography.fontSize.lg,
     letterSpacing: -0.2,
     ...cosmosFont.strong,
   },
-  meta: { marginTop: 3, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  meta: { marginTop: 3, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  price: { ...cosmosFont.figure },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 1, marginTop: spacing[4] },
   dot: { width: 20, height: 6, borderRadius: 3 },
   empty: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  emptyTitle: { fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   retry: { marginTop: spacing[4] },
 });

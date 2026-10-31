@@ -7,12 +7,13 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { createSubSpaceRequest, getAllSpacesForPicker, getSpaceDetail, type AdminSpaceDetail, type AdminSpaceRow } from '../../lib/api/apex';
 import { ACTION_LABEL, availableActions, buildRequest, needsPicker, pickerOptions, type HierarchyAction } from '../../lib/apexHierarchy';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 const PICKER_LIMIT = 40;
 
@@ -54,7 +55,8 @@ export default function SpaceHierarchyScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.hint, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -84,7 +86,7 @@ export default function SpaceHierarchyScreen() {
 
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content}>
-        <Text style={[styles.summary, { color: c.text }]}>{space.name}</Text>
+        <Text style={[styles.summary, { color: c.text }]} accessibilityRole="header">{space.name}</Text>
         <Text style={[styles.hint, { color: c.muted }]}>
           {space.type === 'SUPER' ? `Parent space · ${space._count?.childSpaces ?? 0} child spaces` : 'Regular space'}
           {space.parentSpace ? ` · under ${space.parentSpace.name}` : ''}
@@ -96,7 +98,7 @@ export default function SpaceHierarchyScreen() {
               key={a}
               label={ACTION_LABEL[a]}
               onPress={() => choose(a)}
-              trailing={action === a ? <Check size={18} color={c.primary} weight="bold" /> : <View />}
+              trailing={action === a ? <Check size={18} color={c.text} weight="bold" /> : <View />}
             />
           ))}
         </SettingsGroup>
@@ -114,7 +116,7 @@ export default function SpaceHierarchyScreen() {
                   label={s.name}
                   value={s.type === 'SUPER' ? 'Parent' : undefined}
                   onPress={() => setPicked(s)}
-                  trailing={picked?.id === s.id ? <Check size={18} color={c.primary} weight="bold" /> : <View />}
+                  trailing={picked?.id === s.id ? <Check size={18} color={c.text} weight="bold" /> : <View />}
                 />
               ))}
             </SettingsGroup>
@@ -144,7 +146,7 @@ export default function SpaceHierarchyScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  summary: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  summary: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   hint: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

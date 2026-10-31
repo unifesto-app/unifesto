@@ -11,6 +11,8 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import ShadeCard from '../../components/ui/ShadeCard';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
@@ -33,7 +35,8 @@ export default function AdminPayoutDetailScreen() {
   if (!payout) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
         </View>
       </CosmosScreen>
@@ -91,13 +94,19 @@ export default function AdminPayoutDetailScreen() {
 
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
-        <Text style={[styles.amount, { color: c.text }]}>{inr(payout.netAmount)}</Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
-          {[payout.event?.title ?? payout.session?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
-        </Text>
-        <View style={[styles.chip, { backgroundColor: `${status.color}26` }]}>
-          <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
-        </View>
+        {/* The payout is the screen's hero, on the money's ivory shade. */}
+        <ShadeCard tone="ivory">
+          <Text style={[styles.amount, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+            {inr(payout.netAmount)}
+          </Text>
+          <Text style={[styles.muted, { color: c.soft }]}>
+            {[payout.event?.title ?? payout.session?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
+          </Text>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: status.color }]} />
+            <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
+          </View>
+        </ShadeCard>
 
         <SettingsGroup title="Money" plain>
           <SettingsRow label="Ticket revenue" value={inr(payout.grossRevenue)} />
@@ -143,9 +152,10 @@ export default function AdminPayoutDetailScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
+  amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

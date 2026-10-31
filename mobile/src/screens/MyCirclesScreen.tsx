@@ -11,10 +11,11 @@ import { logoOr, useDefaultImages } from '../lib/defaultImages';
 import { spaceLogo, spaceMembers } from '../utils/eventFormat';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { Monogram, compact, roleOf } from '../components/home/SpaceCards';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
@@ -24,8 +25,8 @@ const SEARCH_FROM = 7;
 
 /**
  * Profile › My circles: the spaces I belong to. The ones I run come first
- * (they're where I have work to do), then the ones I'm a member of, each as a
- * list card with my role, then a way to find more.
+ * (they're where I have work to do), then the ones I'm a member of, each group
+ * one card of rows divided by hairlines (my role as plain text), then a way to find more.
  */
 export default function MyCirclesScreen() {
   const router = useRouter();
@@ -86,8 +87,19 @@ export default function MyCirclesScreen() {
   }, [spaces, query]);
 
   const open = (s: Space) => router.push(`/space/${s.id}`);
-  const card = (s: Space) => (
-    <CircleCard key={s.id} space={s} parent={s.parentSpaceId ? parents[s.parentSpaceId] : null} onPress={() => open(s)} />
+  const group = (list: Space[]) => (
+    <View style={styles.group}>
+      <CardBackdrop shape={styles.group} />
+      {list.map((s, i) => (
+        <CircleCard
+          key={s.id}
+          space={s}
+          parent={s.parentSpaceId ? parents[s.parentSpaceId] : null}
+          divider={i > 0}
+          onPress={() => open(s)}
+        />
+      ))}
+    </View>
   );
 
   const findMore = (
@@ -95,8 +107,9 @@ export default function MyCirclesScreen() {
       onPress={() => router.push('/spaces')}
       accessibilityRole="button"
       accessibilityLabel="Find more circles"
-      style={({ pressed }) => [styles.more, { borderColor: c.outline, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.more, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
+      <CardBackdrop shape={styles.more} />
       <View style={{ flex: 1 }}>
         <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
         <Text style={[styles.meta, { color: c.muted }]}>Clubs, communities and organisers</Text>
@@ -108,17 +121,20 @@ export default function MyCirclesScreen() {
   const body = (() => {
     if (loading) {
       return (
-        <View style={[styles.list, styles.pad, { marginTop: spacing[4] }]}>
-          {[0, 1, 2, 3].map((i) => <CircleCardSkeleton key={i} />)}
+        <View style={[styles.pad, { marginTop: spacing[4] }]}>
+          <View style={styles.group}>
+            <CardBackdrop shape={styles.group} />
+            {[0, 1, 2, 3].map((i) => <CircleCardSkeleton key={i} divider={i > 0} />)}
+          </View>
         </View>
       );
     }
     if (spaces.length === 0) {
       return (
         <View style={[styles.prompt, { backgroundColor: c.raised }]}>
-          <UsersThree size={40} color={c.soft} weight="duotone" />
-          <Text style={[styles.promptTitle, { color: c.text }]}>No circles yet</Text>
-          <Text style={[styles.promptBody, { color: c.soft }]}>
+          <UsersThree size={40} color={c.muted} weight="duotone" />
+          <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">No circles yet</Text>
+          <Text style={[styles.promptBody, { color: c.muted }]}>
             Join a club or community to see its events first. The ones you join land here.
           </Text>
           <AuthButton label="Explore circles" arrow onPress={() => router.push('/spaces')} style={{ marginTop: spacing[6] }} />
@@ -153,13 +169,13 @@ export default function MyCirclesScreen() {
         ) : null}
 
         {running.length > 0 ? (
-          <Section title="You run" subtitle="Spaces where you have a role" style={styles.firstSection}>
-            <View style={[styles.list, styles.pad]}>{running.map(card)}</View>
+          <Section title="I run" subtitle="Spaces where I have a role" style={styles.firstSection}>
+            <View style={styles.pad}>{group(running)}</View>
           </Section>
         ) : null}
         {member.length > 0 ? (
           <Section title="Member of" style={running.length ? undefined : styles.firstSection}>
-            <View style={[styles.list, styles.pad]}>{member.map(card)}</View>
+            <View style={styles.pad}>{group(member)}</View>
           </Section>
         ) : null}
 
@@ -188,8 +204,8 @@ export default function MyCirclesScreen() {
   );
 }
 
-/** One circle: 1:1 logo, name, my role, place · members · events, parent. */
-function CircleCard({ space, parent, onPress }: { space: Space; parent?: string | null; onPress: () => void }) {
+/** One circle row: 1:1 logo, name, my role, place · members · events, parent. */
+function CircleCard({ space, parent, divider, onPress }: { space: Space; parent?: string | null; divider?: boolean; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
   const logo = logoOr(defaults, space.id, spaceLogo(space));
@@ -209,38 +225,38 @@ function CircleCard({ space, parent, onPress }: { space: Space; parent?: string 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[space.name, role, meta].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       {logo ? (
         <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: c.card }]} contentFit="cover" />
       ) : (
-        <Monogram name={space.name} size={LOGO} radius={14} />
+        <Monogram name={space.name} size={LOGO} radius={borderRadius.md} />
       )}
-      <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{space.name}</Text>
-          {role ? (
-            <View style={[styles.role, { backgroundColor: c.tint }]}>
-              <Text style={[styles.roleText, { color: c.text }]}>{role}</Text>
-            </View>
-          ) : null}
+      <View style={[styles.body, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
+        <View style={styles.info}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{space.name}</Text>
+            {role ? <Text style={[styles.roleText, { color: c.muted }]} numberOfLines={1}>{role}</Text> : null}
+          </View>
+          <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
+          {parent ? <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>Part of {parent}</Text> : null}
         </View>
-        <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
-        {parent ? <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>Part of {parent}</Text> : null}
+        <CaretRight size={16} color={c.muted} />
       </View>
-      <CaretRight size={16} color={c.muted} />
     </Pressable>
   );
 }
 
-function CircleCardSkeleton() {
+function CircleCardSkeleton({ divider }: { divider?: boolean }) {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <Skeleton width={LOGO} height={LOGO} borderRadius={14} />
-      <View style={[styles.info, { gap: 8 }]}>
-        <Skeleton width="70%" height={15} borderRadius={6} />
-        <Skeleton width="50%" height={12} borderRadius={6} />
+    <View style={styles.row}>
+      <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.md} />
+      <View style={[styles.body, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
+        <View style={[styles.info, { gap: 8 }]}>
+          <Skeleton width="70%" height={15} borderRadius={6} />
+          <Skeleton width="50%" height={12} borderRadius={6} />
+        </View>
       </View>
     </View>
   );
@@ -251,7 +267,6 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   // Section's default top margin is sized for Home; tighter at the top of a page.
   firstSection: { marginTop: spacing[6] },
-  list: { gap: spacing[3] },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -263,21 +278,17 @@ const styles = StyleSheet.create({
     borderRadius: cosmosRadius,
     borderWidth: 1,
   },
-  searchInput: { flex: 1, height: '100%', fontSize: 16, ...cosmosFont.body },
+  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
   noMatch: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    padding: spacing[4],
-    borderRadius: cosmosCardRadius,
-  },
-  logo: { width: LOGO, height: LOGO, borderRadius: 14, overflow: 'hidden' },
+  // One card per group; rows sit on it, divided by hairlines that start at the text.
+  group: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingLeft: spacing[4] },
+  body: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[4], paddingRight: spacing[4] },
+  logo: { width: LOGO, height: LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
   info: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },
-  role: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  roleText: { fontSize: 11, ...cosmosFont.strong },
+  roleText: { flexShrink: 0, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   more: {
     flexDirection: 'row',
@@ -285,8 +296,6 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     padding: spacing[5],
     borderRadius: cosmosCardRadius,
-    borderWidth: 1,
-    borderStyle: 'dashed',
   },
   moreTitle: { fontSize: typography.fontSize.base, marginBottom: 3, ...cosmosFont.strong },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },

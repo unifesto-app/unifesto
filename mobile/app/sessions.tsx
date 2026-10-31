@@ -16,7 +16,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { formatTime } from '../src/utils/eventFormat';
 import { borderRadius, spacing } from '../src/theme/spacing';
 import { typography } from '../src/theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../src/theme/cosmos';
 
 // Session covers follow the event banner ratio: 4:3.
 const THUMB_W = 104;
@@ -171,8 +171,8 @@ export default function SessionsListScreen() {
           ) : (
             <View style={[styles.empty, { backgroundColor: c.raised }]}>
               <VideoCamera size={40} color={c.muted} weight="duotone" />
-              <Text style={[styles.emptyTitle, { color: c.text }]}>No sessions coming up</Text>
-              <Text style={[styles.emptyBody, { color: c.soft }]}>
+              <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">No sessions coming up</Text>
+              <Text style={[styles.emptyBody, { color: c.muted }]}>
                 When spaces schedule online talks or workshops, they show up here.
               </Text>
             </View>
@@ -212,7 +212,7 @@ const SessionRow = React.memo(function SessionRow({ s, live, withDay, onOpen }: 
         )}
       </View>
       <View style={{ flex: 1, gap: 3 }}>
-        {live ? <LiveChip color={c.danger} /> : null}
+        {live ? <LiveChip color={c.mint} /> : null}
         <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={2}>{s.title}</Text>
         <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
           {withDay ? `${dayLabel(start)}, ` : ''}{formatTime(start)} · {s.durationMinutes || 60} min · {platformOf(s)}
@@ -225,7 +225,7 @@ const SessionRow = React.memo(function SessionRow({ s, live, withDay, onOpen }: 
   );
 });
 
-/** Pulsing "Live now" marker. */
+/** Pulsing "Live now" marker: a 6pt mint dot and plain text, never a pill. */
 function LiveChip({ color }: { color: string }) {
   const pulse = useSharedValue(0);
   useEffect(() => {
@@ -246,7 +246,7 @@ function LiveChip({ color }: { color: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   lead: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   chipsWrap: { marginTop: spacing[5], marginHorizontal: -GUTTER },
   chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
@@ -259,10 +259,10 @@ const styles = StyleSheet.create({
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   live: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDotWrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
-  liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
-  liveDot: { width: 7, height: 7, borderRadius: 4 },
-  liveText: { fontSize: 12, ...cosmosFont.strong },
+  liveRing: { position: 'absolute', width: 6, height: 6, borderRadius: 3 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  liveText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   empty: { alignItems: 'center', marginTop: spacing[6], padding: spacing[6], borderRadius: cosmosCardRadius },
-  emptyTitle: { marginTop: spacing[3], fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyBody: { marginTop: 6, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

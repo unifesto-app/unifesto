@@ -1,15 +1,6 @@
-// Unifesto semantic color tokens.
-//
-// Components should ask for a ROLE (surface, textMuted, accent…) rather than a
-// raw hex, so the same component renders correctly in dark and light. The dark
-// set reuses the legacy `colors` values, so adopting tokens changes no pixels
-// today. Note the legacy names were inverted: legacy `textMuted` (#94a3b8) is
-// the brighter grey, so it becomes `textSecondary` here, and legacy
-// `textSecondary` (#64748b) becomes `textMuted`. ThemeContext picks the set
-// from the user's Appearance choice (light / dark / system).
-//
-// The legacy `colors` export in ./colors stays as-is for screens that haven't
-// migrated yet.
+// Semantic tokens for native chrome and shared surfaces (navigation theme, tab
+// bars, CardBackdrop), in Unifesto Horizon values. Screens read cosmos.ts.
+// ThemeContext picks the set from the user's Appearance choice.
 
 export interface Tokens {
   // Surfaces
@@ -50,9 +41,10 @@ export interface Tokens {
 // Soft charcoal rather than pure black: OLED black made the canvas feel like a
 // void and flattened elevation. Cards still lift by stepping lighter.
 export const darkTokens: Tokens = {
-  bg: '#0b0b0d',
-  surface: '#121214',
-  elevated: '#1a1a1d',
+  bg: '#000000',
+  surface: '#0a0a0b',
+  /** Borderless cards: the same lift as cosmos `raised`. */
+  elevated: '#141416',
   border: 'rgba(255, 255, 255, 0.1)',
   borderStrong: 'rgba(255, 255, 255, 0.28)',
   overlay: 'rgba(0, 0, 0, 0.8)',
@@ -60,8 +52,8 @@ export const darkTokens: Tokens = {
   fillStrong: 'rgba(255, 255, 255, 0.14)',
   pressed: 'rgba(255, 255, 255, 0.05)',
 
-  text: '#ffffff',
-  textSecondary: '#94a3b8',
+  text: '#ececee',
+  textSecondary: '#b4b4ba',
   textMuted: '#8a8a90', // 4.1:1 was under AA; cosmos muted holds 5.7:1 on bg
 
   accent: '#e8e8ea',
@@ -91,8 +83,8 @@ export const lightTokens: Tokens = {
   fillStrong: 'rgba(0, 0, 0, 0.12)',
   pressed: 'rgba(0, 0, 0, 0.05)',
 
-  text: '#0a0a0b',
-  textSecondary: '#52525b',
+  text: '#111113',
+  textSecondary: '#3f3f46',
   textMuted: '#63636a',
 
   accent: '#111113',

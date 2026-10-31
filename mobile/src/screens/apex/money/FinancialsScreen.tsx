@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import CosmosScreen from '../../../components/ui/CosmosScreen';
+import ShadeCard from '../../../components/ui/ShadeCard';
+import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { Button } from '../../../components/ui';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect } from 'expo-router';
@@ -98,7 +100,8 @@ export default function FinancialsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -111,12 +114,23 @@ export default function FinancialsScreen() {
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
-      <Text style={[styles.hero, { color: c.text }]}>{inr(totals.platformEarnings)}</Text>
-      <Text style={[styles.muted, { color: c.muted }]}>Platform earnings · app fees + revenue share</Text>
+      {/* Platform earnings: the screen's hero, on the money's ivory shade. */}
+      <ShadeCard tone="ivory" accessibilityLabel={`Platform earnings ${inr(totals.platformEarnings)}, app fees plus revenue share`}>
+        <Text style={[styles.heroLabel, { color: c.soft }]}>Platform earnings</Text>
+        <Text style={[styles.hero, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+          {inr(totals.platformEarnings)}
+        </Text>
+        <Text style={[styles.muted, { color: c.soft }]}>App fees + revenue share</Text>
+      </ShadeCard>
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       <View style={styles.tiles}>
-        <ManageStats stats={[{ label: 'Collected', value: inrShort(totals.collectedOverall) }, { label: 'Ticket revenue', value: inrShort(totals.ticketRevenue) }]} />
+        <ManageStats
+          stats={[
+            { label: 'Collected', value: inrShort(totals.collectedOverall), tone: 'ivory' },
+            { label: 'Ticket revenue', value: inrShort(totals.ticketRevenue), tone: 'ivory' },
+          ]}
+        />
         <ManageStats stats={[{ label: 'Processing fees', value: inrShort(totals.processingFees) }, { label: 'Refunded', value: inrShort(totals.refunded) }]} />
       </View>
 
@@ -134,7 +148,8 @@ export default function FinancialsScreen() {
           <BlockTitle>By space</BlockTitle>
           <ChipPicker options={SORTS} value={sort} onChange={(v) => v && setSort(v)} />
           {sorted.length === 0 ? (
-            <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[3] }]}>
+            <View style={[styles.empty, { marginTop: spacing[3] }]}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>No space has collected money yet.</Text>
             </View>
           ) : null}
@@ -152,7 +167,8 @@ function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials;
   const fee = space.feePercent > 0 ? `${space.feePercent}% rev-share` : 'No rev-share';
   const Caret = open ? CaretDown : CaretRight;
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <Pressable onPress={onToggle} style={({ pressed }) => [styles.cardHead, pressed && { opacity: 0.6 }]} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>
@@ -163,7 +179,7 @@ function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials;
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.cardValue, { color: sortKey === 'available' && space.available > 0 ? c.warn : c.text }]}>{inr(space[sortKey])}</Text>
+          <Text style={[styles.cardValue, { color: sortKey === 'available' && space.available > 0 ? c.warn : c.ivory }]}>{inr(space[sortKey])}</Text>
           <Text style={[styles.tiny, { color: c.muted }]}>{SORTS.find((s) => s.value === sortKey)?.label}</Text>
         </View>
         <Caret size={15} color={c.muted} />
@@ -211,7 +227,8 @@ function Figures({ f }: { f: FinancialsFigures }) {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  hero: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  hero: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   tiles: { marginTop: spacing[5], gap: spacing[3] },

@@ -10,6 +10,7 @@ import { SheetBackdrop } from './ui/CardSurface';
 import AuthButton from './auth/AuthButton';
 import { WHATS_NEW, sectionsFor, shouldShowWhatsNew } from '../lib/whatsNew';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const SEEN_KEY = 'whatsNew.seen';
@@ -107,7 +108,7 @@ export default function WhatsNewSheet() {
               <Text style={[styles.version, { color: c.muted }]}>Version {release.version}</Text>
             </View>
             <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
-              <X size={22} color={c.soft} weight="bold" />
+              <X size={22} color={c.muted} weight="bold" />
             </Pressable>
           </View>
 
@@ -150,12 +151,12 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], marginBottom: spacing[2] },
   title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  version: { marginTop: spacing[1], fontSize: 14, ...cosmosFont.body },
+  version: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   list: { paddingVertical: spacing[3], gap: spacing[6] },
   section: { gap: spacing[4] },
-  sectionTitle: { fontSize: 14, ...cosmosFont.strong },
+  sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   item: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] },
-  itemTitle: { fontSize: 16, lineHeight: 22, ...cosmosFont.strong },
-  itemBody: { marginTop: 2, fontSize: 15, lineHeight: 21, ...cosmosFont.body },
+  itemTitle: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },
+  itemBody: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   button: { marginTop: spacing[4] },
 });

@@ -20,7 +20,7 @@ import { GUTTER } from '../components/home/Section';
 import { shareLink } from '../lib/share';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -145,7 +145,7 @@ export default function ShortLinksScreen() {
     );
   }
 
-  const icon = <LinkSimple size={ICON} color={c.primary} weight="bold" />;
+  const icon = <LinkSimple size={ICON} color={c.text} />;
   const destination =
     scope?.kind === 'event' ? 'this event' : scope?.kind === 'space' ? 'the space page' : 'any unifesto.app page';
 
@@ -160,11 +160,15 @@ export default function ShortLinksScreen() {
         setRefreshing(false);
       }}
     >
-      {title ? <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
+      {/* The header already says Short links; the group keeps only its action. */}
       <SettingsGroup
-        title="Short links"
         action={
           adding
             ? { label: 'Cancel', onPress: () => { setAdding(false); setFormError(''); } }
@@ -236,7 +240,7 @@ const fmtCount = (n: number, unit: string) => `${n.toLocaleString('en-IN')} ${un
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[2], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

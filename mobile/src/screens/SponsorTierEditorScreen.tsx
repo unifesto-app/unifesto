@@ -9,12 +9,16 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
+
+/** Ink for the tick on a picked swatch: tier colours are mostly light metals. */
+const SWATCH_INK = cosmosFor('light').text;
 
 const SWATCH = 40;
 
@@ -116,7 +120,8 @@ export default function SponsorTierEditorScreen() {
         <Stack.Screen options={{ title }} />
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={styles.card}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.body, { color: c.soft }]}>{error}</Text>
             </View>
           ) : (
@@ -146,7 +151,8 @@ export default function SponsorTierEditorScreen() {
       </SettingsGroup>
 
       <Section title="Colour" subtitle="Picking a preset on a new tier also fills in its name">
-        <View style={[styles.card, { backgroundColor: c.raised }]}>
+        <View style={styles.card}>
+          <CardBackdrop shape={styles.card} />
           <View style={styles.swatches} accessibilityRole="radiogroup">
             <Swatch label="None" on={!picked} fill={c.tint} onPress={() => set({ color: '' })} />
             {PRESETS.map((p) => (
@@ -199,11 +205,11 @@ function Swatch({ label, fill, on, onPress }: { label: string; fill: string; on:
       accessibilityRole="radio"
       accessibilityState={{ selected: on }}
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.swatchCell, { opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [styles.swatchCell, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
     >
       <View style={[styles.ring, { borderColor: on ? c.text : 'transparent' }]}>
         <View style={[styles.swatch, { backgroundColor: fill }]}>
-          {on ? <Check size={16} color={fill === c.tint ? c.text : '#111111'} weight="bold" /> : null}
+          {on ? <Check size={16} color={fill === c.tint ? c.text : SWATCH_INK} weight="bold" /> : null}
         </View>
       </View>
       <Text style={[styles.swatchName, { color: on ? c.text : c.muted }]}>{label}</Text>
@@ -213,7 +219,7 @@ function Swatch({ label, fill, on, onPress }: { label: string; fill: string; on:
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[4] },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
   body: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   // Section owns the top spacing and the title; the card just needs the gutter.
   group: { marginTop: 0, marginHorizontal: GUTTER },
@@ -221,5 +227,5 @@ const styles = StyleSheet.create({
   swatchCell: { alignItems: 'center', gap: spacing[1], width: '25%' },
   ring: { padding: 3, borderRadius: SWATCH, borderWidth: 2 },
   swatch: { width: SWATCH, height: SWATCH, borderRadius: SWATCH / 2, alignItems: 'center', justifyContent: 'center' },
-  swatchName: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  swatchName: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

@@ -3,9 +3,9 @@ import { View, StyleSheet, Platform, StatusBar, TouchableOpacity, Text } from 'r
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { MapPin } from '@unifesto/unicon/react-native';
-import UnifestoAppWordmark from './UnifestoAppWordmark';
-import { spacing, borderRadius, typography } from '../theme';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import BrandWordmark from './BrandWordmark';
+import { spacing, typography } from '../theme';
+import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 export const HEADER_CONTENT_HEIGHT = 80;
 
@@ -51,7 +51,7 @@ export default function CustomHeader({ detectedCity, locationStatus, onEnableLoc
       <View style={styles.content}>
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <UnifestoAppWordmark height={Platform.OS === 'android' ? 38 : 44} width={Platform.OS === 'android' ? 120 : 140} />
+          <BrandWordmark width={Platform.OS === 'android' ? 104 : 120} />
         </View>
 
         {/* Right side: Location control */}
@@ -68,6 +68,8 @@ export default function CustomHeader({ detectedCity, locationStatus, onEnableLoc
               style={styles.locationPill}
               onPress={onEnableLocation}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Enable location"
             >
               <MapPin size={12} color={c.muted} />
               <Text style={[styles.locationPillText, { color: c.muted }]}>Enable</Text>
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
     gap: spacing[1],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosRadius,
     maxWidth: 140,
   },
   locationPillText: {

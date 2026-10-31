@@ -8,13 +8,15 @@ import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { createSpaceRequest, getMySpaceRequests, type SpaceRequest } from '../lib/api/spaces';
 import Skeleton from '../components/Skeleton';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import { Badge, type BadgeTone } from '../components/ui/Badge';
 import AuthField from '../components/auth/AuthField';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const SPACE_TYPES = [
@@ -36,6 +38,9 @@ const STATUS = {
   APPROVED: 'Approved',
   REJECTED: 'Not approved',
 } as const;
+
+/** Statuses as plain text (Badge): approved is done, review needs a wait, a no is crimson. */
+const STATUS_TONE: Record<keyof typeof STATUS, BadgeTone> = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' };
 
 /** Requests shown before "Load more", and how many each tap adds. */
 const PAGE = 3;
@@ -154,10 +159,11 @@ export default function SpaceRequestScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          {/* The pitch */}
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-            <Text style={[styles.title, { color: c.text }]}>Run events for your community</Text>
+          {/* The pitch: the screen's own title and what a space gets you, straight on the page. */}
+          <View style={styles.head}>
+            <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
+              Run events for your community
+            </Text>
             <Text style={[styles.lead, { color: c.soft }]}>
               A space is your home on Unifesto: your events, members and team in one place.
             </Text>
@@ -172,11 +178,12 @@ export default function SpaceRequestScreen() {
           </View>
 
           {pending ? (
-            <Section title="Your request" style={styles.tightSection}>
-              <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <Section title="My request" style={styles.tightSection}>
+              <View style={styles.card}>
+                <CardBackdrop shape={styles.card} />
                 <View style={styles.pendingHead}>
-                  <LiveDot color={c.text} />
-                  <Text style={[styles.pendingLabel, { color: c.text }]}>Under review</Text>
+                  <LiveDot color={c.warn} />
+                  <Text style={[styles.pendingLabel, { color: c.warn }]}>Under review</Text>
                 </View>
                 <Text style={[styles.pendingName, { color: c.text }]}>{pending.name}</Text>
                 <Text style={[styles.lead, { color: c.soft, marginTop: spacing[2] }]}>
@@ -187,7 +194,7 @@ export default function SpaceRequestScreen() {
             </Section>
           ) : (
             <>
-              <Section title="Your space" subtitle="What people will see" style={styles.tightSection}>
+              <Section title="My space" subtitle="What people will see" style={styles.tightSection}>
                 <View style={styles.fields}>
                   <AuthField label="Name" value={name} onChangeText={setName} placeholder="e.g. Hyderabad Runners" maxLength={255} />
                   <AuthField
@@ -223,9 +230,10 @@ export default function SpaceRequestScreen() {
                         style={({ pressed }) => [
                           styles.type,
                           // Selected = silver fill, never an outline (borderless cards).
-                          { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                          { backgroundColor: active ? c.primary : undefined, transform: [{ scale: pressed ? 0.97 : 1 }] },
                         ]}
                       >
+                        {!active ? <CardBackdrop shape={styles.type} /> : null}
                         <View style={styles.typeHead}>
                           <Icon size={26} color={active ? c.primaryFg : c.text} weight={active ? 'fill' : 'regular'} />
                           {active ? <CheckCircle size={20} color={c.primaryFg} weight="fill" /> : <Circle size={20} color={c.muted} />}
@@ -250,9 +258,10 @@ export default function SpaceRequestScreen() {
                         accessibilityState={{ selected: active }}
                         style={({ pressed }) => [
                           styles.chip,
-                          { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                          { backgroundColor: active ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                         ]}
                       >
+                        {!active ? <CardBackdrop shape={styles.chip} /> : null}
                         <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{name_}</Text>
                       </Pressable>
                     );
@@ -298,15 +307,14 @@ export default function SpaceRequestScreen() {
                   // The last card fades into the page while more are tucked away below it.
                   const faded = shown < requests.length && i === visible.length - 1;
                   return (
-                    <View key={r.id} style={[styles.request, { backgroundColor: c.raised }]}>
+                    <View key={r.id} style={styles.request}>
+                      <CardBackdrop shape={styles.request} />
                       <View style={styles.requestHead}>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.requestName, { color: c.text }]} numberOfLines={1}>{r.name}</Text>
                           <Text style={[styles.small, { color: c.muted }]}>{formatDate(r.createdAt)}</Text>
                         </View>
-                        <View style={[styles.pill, { backgroundColor: r.status === 'REJECTED' ? 'rgba(239,68,68,0.14)' : c.tint }]}>
-                          <Text style={[styles.pillText, { color: r.status === 'REJECTED' ? c.danger : c.text }]}>{STATUS[r.status]}</Text>
-                        </View>
+                        <Badge label={STATUS[r.status]} tone={STATUS_TONE[r.status]} style={{ alignSelf: 'center' }} />
                       </View>
                       {r.status === 'REJECTED' && r.reviewNote ? (
                         <Text style={[styles.note, { color: c.soft }]}>“{r.reviewNote}”</Text>
@@ -386,16 +394,16 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   // Section's default top margin is sized for Home; tighter under the pitch.
   tightSection: { marginTop: spacing[10] },
-  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
-  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[5] },
+  head: { paddingHorizontal: GUTTER, marginTop: spacing[4] },
+  title: { fontSize: 28, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   lead: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   perks: { marginTop: spacing[5], gap: spacing[3] },
   perk: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   perkText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   pendingHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   pendingLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  pendingName: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  pendingName: { marginTop: spacing[4], fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   liveWrap: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 12, height: 12, borderRadius: 6 },
   liveDot: { width: 9, height: 9, borderRadius: 5 },
@@ -406,17 +414,15 @@ const styles = StyleSheet.create({
   typeTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   typeBody: { fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: 999, justifyContent: 'center' },
+  chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: cosmosRadius, justifyContent: 'center' },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   list: { gap: spacing[3] },
-  request: { borderRadius: cosmosCardRadius, padding: spacing[4], overflow: 'hidden' },
+  request: { borderRadius: cosmosCardRadius, padding: spacing[5], overflow: 'hidden' },
   // Pulled up under the faded card so the two read as one.
   loadMore: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: spacing[2], marginTop: -spacing[2], paddingVertical: spacing[2] },
   requestHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   requestName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   small: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  pillText: { fontSize: 11, ...cosmosFont.strong },
   note: { marginTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   rowAction: { alignSelf: 'flex-start', marginTop: spacing[3] },
   rowActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

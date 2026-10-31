@@ -36,7 +36,7 @@ import {
   isTrackReference,
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';
-import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { Button } from '../components/ui';
 import { joinSession } from '../lib/api/sessions';
@@ -47,8 +47,8 @@ import { cosmosCardRadius, cosmosFont, cosmosFor, cosmosRadius, useCosmos } from
 // The call canvas is dark in any app theme (video reads best on black), so the
 // room uses the dark cosmos set; the joining states and the chat follow the app.
 const NIGHT = cosmosFor('dark');
-/** Names over a video frame. */
-const WHITE = '#ffffff';
+/** Names over a video frame: night silver, whatever the app theme. */
+const WHITE = NIGHT.text;
 
 /**
  * In-app live room for a UNIFESTO_LIVE session, powered by LiveKit.
@@ -128,7 +128,8 @@ export default function LiveSessionScreen({ sessionId }: { sessionId: string }) 
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
-        <View style={[styles.errorCard, { backgroundColor: c.raised }]}>
+        <View style={styles.errorCard}>
+          <CardBackdrop shape={styles.errorCard} />
           <Text style={[styles.msg, { color: c.soft, marginTop: 0 }]}>
             {error || 'Could not join the room.'}
           </Text>
@@ -198,7 +199,7 @@ function RoomView({
             />
             <Text style={styles.tileName} numberOfLines={1}>
               {(ref.participant.isLocal ? 'You' : ref.participant.name || 'Guest') +
-                ' — screen'}
+                ' · screen'}
             </Text>
           </View>
         ))}
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
     paddingTop: 52,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  chatTitle: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  chatTitle: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   chatList: { flex: 1 },
   chatFrom: { fontSize: 12, marginBottom: 2, ...cosmosFont.strong },
   chatMessage: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
   },
   chatInput: {
     flex: 1,
-    borderRadius: 22,
+    borderRadius: cosmosRadius,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 10,

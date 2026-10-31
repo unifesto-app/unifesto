@@ -16,11 +16,13 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import ShadeCard from '../components/ui/ShadeCard';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type Mode = 'full' | 'custom';
 const MODES: { key: Mode; label: string }[] = [
@@ -83,7 +85,8 @@ export default function RequestPayoutScreen() {
   if (!summary) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+        <View style={styles.emptyCard}>
+          <CardBackdrop shape={styles.emptyCard} />
           <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
         </View>
       </CosmosScreen>
@@ -141,25 +144,42 @@ export default function RequestPayoutScreen() {
 
   return (
     <CosmosScreen keyboard keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
-        {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.event, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
 
-      <SettingsGroup title="Balance" plain>
-        <SettingsRow label="Event earnings" value={inr(summary.eventNet)} />
-        <SettingsRow label="Paid out or queued" value={summary.committed > 0 ? `− ${inr(summary.committed)}` : inr(0)} />
-        <SettingsRow label="Available" value={inr(available)} />
-      </SettingsGroup>
+      {/* The balance: the screen's hero, on the money's ivory shade. */}
+      <ShadeCard tone="ivory" style={title ? { marginTop: spacing[5] } : null}>
+        <Text style={[styles.heroLabel, { color: c.soft }]}>Available</Text>
+        <Text style={[styles.heroValue, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+          {inr(available)}
+        </Text>
+        <View style={[styles.line, styles.firstLine, { borderTopColor: c.border }]}>
+          <Text style={[styles.lineLabel, { color: c.soft }]}>Event earnings</Text>
+          <Text style={[styles.lineValue, { color: c.text }]}>{inr(summary.eventNet)}</Text>
+        </View>
+        <View style={[styles.line, { borderTopColor: c.border }]}>
+          <Text style={[styles.lineLabel, { color: c.soft }]}>Paid out or queued</Text>
+          <Text style={[styles.lineValue, { color: c.text }]}>
+            {summary.committed > 0 ? `− ${inr(summary.committed)}` : inr(0)}
+          </Text>
+        </View>
+      </ShadeCard>
       <Text style={[styles.note, { color: c.muted }]}>
         Earnings are after the {summary.defaultPlatformFeePercent}% platform fee and any refunds.
       </Text>
 
       {available <= 0 ? (
-        <View style={[styles.emptyCard, { marginTop: spacing[8], backgroundColor: c.raised }]}>
+        <View style={[styles.emptyCard, { marginTop: spacing[8] }]}>
+          <CardBackdrop shape={styles.emptyCard} />
           <Text style={[styles.empty, { color: c.soft }]}>Nothing left to pay out for this event.</Text>
         </View>
       ) : (
         <>
           <View style={{ marginTop: spacing[8] }}>
-            <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} />
+            <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} glass={false} />
           </View>
           {mode === 'custom' ? (
             <SettingsGroup plain>
@@ -181,7 +201,7 @@ export default function RequestPayoutScreen() {
               accounts.map((a) => {
                 const selected = a.id === accountId;
                 return (
-                  <Pressable key={a.id} onPress={() => setAccountId(a.id)} accessibilityRole="radio" accessibilityState={{ selected }} style={styles.account}>
+                  <Pressable key={a.id} onPress={() => setAccountId(a.id)} accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={describeAccount(a)} style={styles.account}>
                     {selected ? (
                       <CheckCircle size={24} color={c.primary} weight="fill" />
                     ) : (
@@ -222,8 +242,21 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  event: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
+  line: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingVertical: spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  firstLine: { marginTop: spacing[4] },
+  lineLabel: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  lineValue: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   account: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
   accountName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

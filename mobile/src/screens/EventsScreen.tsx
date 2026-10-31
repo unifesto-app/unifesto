@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import EventListCard, { EventListCardSkeleton, placeOf } from '../components/EventListCard';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
 import { PRESET_ITEMS } from '../components/home/HomeHeader';
@@ -171,16 +172,17 @@ export default function EventsScreen() {
       {[0, 1, 2, 3].map((i) => <EventListCardSkeleton key={i} />)}
     </View>
   ) : featured ? null : (
-    <View style={[styles.prompt, { backgroundColor: c.raised }]}>
+    <View style={styles.prompt}>
+      <CardBackdrop shape={styles.prompt} />
       {b.error ? (
-        <CalendarBlank size={40} color={c.soft} weight="duotone" />
+        <CalendarBlank size={40} color={c.muted} weight="duotone" />
       ) : (
-        <MagnifyingGlass size={40} color={c.soft} weight="duotone" />
+        <MagnifyingGlass size={40} color={c.muted} weight="duotone" />
       )}
-      <Text style={[styles.promptTitle, { color: c.text }]}>
+      <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">
         {b.error ? "Couldn't load events" : b.filtered ? 'Nothing matches that' : 'No events yet'}
       </Text>
-      <Text style={[styles.promptBody, { color: c.soft }]}>
+      <Text style={[styles.promptBody, { color: c.muted }]}>
         {b.error
           ? 'Check your connection and try again.'
           : b.filtered

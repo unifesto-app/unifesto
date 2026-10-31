@@ -24,7 +24,7 @@ import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from './ui/CardSurface';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 /** Event fields the share card needs — resolved by the caller from whatever
  *  shape it has (event detail, ticket, etc.). */
@@ -32,8 +32,8 @@ export interface AttendingEvent {
   title: string;
   /** Pre-formatted, human date, e.g. "12 Oct 2026". */
   dateLabel?: string | null;
-  /** ISO start time — drives the date chip on the banner (display strings
-   *  like "12 Oct 2026" don't parse reliably on Hermes). */
+  /** ISO start time: the date line when `dateLabel` is missing (display
+   *  strings like "12 Oct 2026" don't parse reliably on Hermes). */
   startIso?: string | null;
   /** Venue name or city. */
   venueLabel?: string | null;
@@ -41,8 +41,8 @@ export interface AttendingEvent {
   bannerUrl?: string | null;
   /** Organiser space logo (1:1). Shown on the banner only when present. */
   spaceLogoUrl?: string | null;
-  /** Approved white-label accent (hex). Recolours the card glow, chip and
-   *  button so the shared image carries the organiser's brand. */
+  /** Approved white-label accent (hex). Recolours the shared image's glow and
+   *  "I'm going" dot so it carries the organiser's brand. */
   brandColor?: string | null;
 }
 
@@ -71,13 +71,15 @@ export const SHARE_FORMATS: ShareFormat[] = [
   { key: 'post', label: 'Post', short: 'Post', ratio: 3 / 4, orientation: 'portrait' },
 ];
 
-// The artwork is its own dark canvas (it leaves the app as a PNG), so its
-// colours are fixed rather than theme tokens.
-const CANVAS = '#050505';
-const INK = '#ffffff';
-const SOFT = 'rgba(255,255,255,0.62)';
-const DEFAULT_ACCENT = '#e8e8ea';
-const DEFAULT_ACCENT_DEEP = '#8a8a90';
+// The artwork is its own night canvas (it leaves the app as a PNG, the same in
+// light and dark mode), so it always takes the Horizon night tokens.
+const NIGHT = cosmosFor('dark');
+const CANVAS = NIGHT.bg;
+const RAISED = NIGHT.raised;
+const INK = NIGHT.text;
+const SOFT = NIGHT.soft;
+const DEFAULT_ACCENT = NIGHT.primary;
+const DEFAULT_ACCENT_DEEP = NIGHT.muted;
 
 interface CardProps {
   width: number;
@@ -92,10 +94,10 @@ interface CardProps {
 }
 
 /**
- * The exported pixels. Dark canvas with one glow of the accent, wordmark and
- * "I'm going" chip up top, the event's 4:3 banner (date chip + 1:1 space logo),
- * title and details, then the attendee. Everything is plain views, gradients
- * and SVG, so react-native-view-shot captures it exactly as shown.
+ * The exported pixels. Night canvas with one glow of the accent, wordmark and
+ * a plain "I'm going" up top, the event's clean 4:3 banner (1:1 space logo in
+ * its corner), title, date and place, then the attendee. Everything is plain
+ * views, gradients and SVG, so react-native-view-shot captures it exactly as shown.
  */
 const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
   { width, height, event, userName, username, avatarUrl, onBannerReady, onAvatarReady, onLogoReady },
@@ -111,7 +113,9 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
   const bannerH = Math.round((bannerW * 3) / 4); // event banners are 4:3
   const titleSize = compact ? 18 : 22;
   const date = event.startIso ? new Date(event.startIso) : null;
-  const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
+  const dateLine =
+    event.dateLabel ||
+    (date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 
   return (
     <View ref={ref} collapsable={false} style={{ width, height, backgroundColor: CANVAS, overflow: 'hidden' }}>
@@ -130,8 +134,9 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
       <View style={{ flex: 1, padding: pad, justifyContent: 'space-between' }}>
         <View style={cardStyles.topRow}>
           <UnifestoAppWordmark width={compact ? 84 : 100} height={compact ? 24 : 30} />
-          <View style={[cardStyles.chip, { backgroundColor: accent }]}>
-            <Text style={[cardStyles.chipText, { fontSize: compact ? 11 : 12 }]}>I'm going</Text>
+          <View style={cardStyles.going}>
+            <View style={[cardStyles.goingDot, { backgroundColor: accent }]} />
+            <Text style={[cardStyles.goingText, { fontSize: compact ? 11 : 12 }]}>I'm going</Text>
           </View>
         </View>
 
@@ -148,12 +153,6 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
             ) : (
               <LinearGradient colors={[accent, accentDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
-            {validDate ? (
-              <View style={cardStyles.dateChip}>
-                <Text style={cardStyles.dateDay}>{validDate.getDate()}</Text>
-                <Text style={cardStyles.dateMonth}>{validDate.toLocaleDateString('en-IN', { month: 'short' })}</Text>
-              </View>
-            ) : null}
             {event.spaceLogoUrl ? (
               <Image
                 source={{ uri: event.spaceLogoUrl }}
@@ -171,9 +170,9 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
           >
             {event.title}
           </Text>
-          {event.dateLabel || event.venueLabel ? (
+          {dateLine || event.venueLabel ? (
             <Text style={[cardStyles.meta, { fontSize: compact ? 12 : 13 }]} numberOfLines={2}>
-              {[event.dateLabel, event.venueLabel].filter(Boolean).join('  ·  ')}
+              {[dateLine, event.venueLabel].filter(Boolean).join('  ·  ')}
             </Text>
           ) : null}
         </View>
@@ -198,41 +197,30 @@ const AttendingCard = forwardRef<View, CardProps>(function AttendingCard(
 
 const cardStyles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  chipText: { color: '#ffffff', ...cosmosFont.strong },
-  banner: { borderRadius: 12, overflow: 'hidden', backgroundColor: '#141414' },
-  dateChip: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    minWidth: 44,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.62)',
-    alignItems: 'center',
-  },
-  dateDay: { fontSize: 18, lineHeight: 20, color: INK, ...cosmosFont.figure },
-  dateMonth: { fontSize: 10, color: SOFT, ...cosmosFont.strong },
+  // A status, so plain text with a dot, never a pill.
+  going: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  goingDot: { width: 6, height: 6, borderRadius: 3 },
+  goingText: { color: INK, ...cosmosFont.strong },
+  banner: { borderRadius: borderRadius.md, overflow: 'hidden', backgroundColor: RAISED },
   logo: {
     position: 'absolute',
     right: 10,
     bottom: 10,
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: '#141414',
+    borderRadius: borderRadius.sm,
+    backgroundColor: RAISED,
   },
   title: { color: INK, ...cosmosFont.display },
   meta: { color: SOFT, marginTop: 6, ...cosmosFont.body },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 46, height: 46, borderRadius: 23, borderWidth: 2, backgroundColor: '#141414' },
+  avatar: { width: 46, height: 46, borderRadius: 23, borderWidth: 2, backgroundColor: RAISED },
   name: { color: INK, ...cosmosFont.strong },
   handle: { color: SOFT, fontSize: 12, marginTop: 1, ...cosmosFont.body },
   site: { color: SOFT, fontSize: 11, ...cosmosFont.strong },
 });
 
-/** Two-option switch with a sliding pill (Story / Post). */
+/** Two-option segmented switch with a sliding thumb (Story / Post). */
 function FormatSwitch({ value, onChange }: { value: ShareFormatKey; onChange: (k: ShareFormatKey) => void }) {
   const c = useCosmos();
   const [w, setW] = useState(0);
@@ -283,7 +271,6 @@ export default function AttendingShareModal({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
-  const accent = event.brandColor || c.primary;
 
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
@@ -339,14 +326,14 @@ export default function AttendingShareModal({
           <Pressable onPress={onClose} hitSlop={10} style={modalStyles.close} accessibilityRole="button" accessibilityLabel="Close">
             <X size={24} color={c.text} weight="bold" />
           </Pressable>
-          <Text style={[modalStyles.headerTitle, { color: c.text }]}>Share that I'm going</Text>
+          <Text style={[modalStyles.headerTitle, { color: c.text }]} accessibilityRole="header">Share that I'm going</Text>
           <View style={modalStyles.close} />
         </View>
 
         {!complete ? (
           <View style={modalStyles.gate}>
-            <UserCircle size={56} color={accent} weight="duotone" />
-            <Text style={[modalStyles.gateTitle, { color: c.text }]}>Add your name and photo</Text>
+            <UserCircle size={56} color={c.text} weight="duotone" />
+            <Text style={[modalStyles.gateTitle, { color: c.text }]} accessibilityRole="header">Add your name and photo</Text>
             <Text style={[modalStyles.gateBody, { color: c.muted }]}>
               Both appear on the card you share. Add them, then come back to post it.
             </Text>
@@ -355,8 +342,8 @@ export default function AttendingShareModal({
         ) : (
           <>
             <ScrollView contentContainerStyle={modalStyles.body} showsVerticalScrollIndicator={false}>
-              <View style={modalStyles.previewShadow}>
-                <View style={{ borderRadius: 14, overflow: 'hidden' }}>
+              <View style={modalStyles.preview}>
+                <View style={{ borderRadius: cosmosRadius, overflow: 'hidden' }}>
                   <AttendingCard
                     ref={cardRef}
                     width={cardWidth}
@@ -376,18 +363,15 @@ export default function AttendingShareModal({
             </ScrollView>
 
             <View style={[modalStyles.footer, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
-              <Pressable
-                onPress={handleShare}
+              {/* The primary: silver by night, ink by day (never the brand colour). */}
+              <Button
+                label={sharing ? 'Creating image…' : ready ? 'Share' : 'Preparing…'}
+                size="lg"
+                fullWidth
+                icon={<ShareNetwork size={20} color={c.primaryFg} weight="bold" />}
                 disabled={!ready || sharing}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  modalStyles.shareBtn,
-                  { backgroundColor: accent, opacity: !ready || sharing ? 0.6 : pressed ? 0.85 : 1 },
-                ]}
-              >
-                <ShareNetwork size={20} color="#ffffff" weight="bold" />
-                <Text style={modalStyles.shareText}>{sharing ? 'Creating image…' : ready ? 'Share' : 'Preparing…'}</Text>
-              </Pressable>
+                onPress={handleShare}
+              />
             </View>
           </>
         )}
@@ -408,30 +392,14 @@ const modalStyles = StyleSheet.create({
   close: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
   headerTitle: { fontSize: 17, ...cosmosFont.strong },
   body: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[4], paddingBottom: spacing[6], gap: spacing[6] },
-  previewShadow: {
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 14,
-  },
-  switch: { flexDirection: 'row', padding: 4, borderRadius: borderRadius.full, width: 220 },
-  switchPill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: borderRadius.full },
+  preview: { borderRadius: cosmosRadius },
+  switch: { flexDirection: 'row', padding: 4, borderRadius: cosmosRadius, width: 220 },
+  switchPill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: cosmosRadius - 4 },
   switchSeg: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center' },
   switchText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   error: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   footer: { paddingHorizontal: spacing[6], paddingTop: spacing[3] },
-  shareBtn: {
-    height: 54,
-    borderRadius: borderRadius.full,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
-  shareText: { color: '#ffffff', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   gate: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], paddingBottom: spacing[16], gap: spacing[2] },
-  gateTitle: { marginTop: spacing[3], fontSize: typography.fontSize.xl, textAlign: 'center', ...cosmosFont.display },
+  gateTitle: { marginTop: spacing[3], fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   gateBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

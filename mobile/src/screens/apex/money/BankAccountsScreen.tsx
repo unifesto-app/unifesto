@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CosmosList } from '../../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import * as Clipboard from 'expo-clipboard';
 import { getAllBankAccounts, setBankAccountStatus, type AdminBankAccount } from '../../../lib/api/apexMoney';
@@ -121,7 +122,8 @@ export default function BankAccountsScreen() {
         loading ? (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
             {error ? <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} /> : null}
           </View>
@@ -132,13 +134,15 @@ export default function BankAccountsScreen() {
         const owner = a.user?.fullName || (a.user?.username ? `@${a.user.username}` : 'Organiser');
         const upi = a.methodType === 'UPI';
         return (
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             <View style={styles.head}>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
                 {upi ? 'UPI' : a.bankName || 'Bank account'}
                 {a.isPrimary ? <Text style={{ color: c.muted }}>{'  ·  Primary'}</Text> : null}
               </Text>
-              <View style={[styles.chip, { backgroundColor: `${s.color}26` }]}>
+              <View style={styles.statusRow}>
+                <View style={[styles.dot, { backgroundColor: s.color }]} />
                 <Text style={[styles.status, { color: s.color }]}>{s.text}</Text>
               </View>
             </View>
@@ -216,8 +220,9 @@ const styles = StyleSheet.create({
   card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  chip: { paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   line: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   meta: { marginTop: 4, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   input: { marginTop: spacing[3], height: 44, paddingHorizontal: spacing[3], borderRadius: cosmosRadius, fontSize: typography.fontSize.sm, ...cosmosFont.body },

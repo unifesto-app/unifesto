@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Lifebuoy } from '@unifesto/unicon/react-native';
 import {
   CATEGORY_LABEL,
   DESK_STATUS_LABEL,
@@ -15,6 +16,7 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { personName } from '../components/support/CaseThread';
 import { spacing } from '../theme/spacing';
+import { useCosmos } from '../theme/cosmos';
 
 type Filter = SupportTicketStatus | 'unread' | 'all';
 
@@ -36,6 +38,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 export default function SpaceSupportScreen() {
   const { spaceId, admin } = useLocalSearchParams<{ spaceId: string; admin?: string }>();
   const router = useRouter();
+  const c = useCosmos();
   const [filter, setFilter] = useState<Filter>('all');
 
   const fetchPage = useCallback(
@@ -62,8 +65,9 @@ export default function SpaceSupportScreen() {
       header={
         <View style={{ marginTop: spacing[4], gap: spacing[4] }}>
           {admin ? (
-            <SettingsGroup plain style={{ marginTop: 0 }}>
+            <SettingsGroup style={{ marginTop: 0 }}>
               <SettingsRow
+                icon={<Lifebuoy size={26} color={c.text} />}
                 label="Ask Unifesto about this space"
                 onPress={() => router.push({ pathname: '/manage/support/new', params: { spaceId } })}
               />

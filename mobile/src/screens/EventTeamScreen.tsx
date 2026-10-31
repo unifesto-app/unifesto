@@ -33,7 +33,7 @@ function Avatar({ user }: { user: TeamUser }) {
   return user.avatarUrl ? (
     <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
   ) : (
-    <User size={AVATAR - 2} color={c.primary} weight="fill" />
+    <User size={AVATAR - 2} color={c.muted} weight="fill" />
   );
 }
 
@@ -172,7 +172,7 @@ export default function EventTeamScreen() {
               value={onTeam.has(u.id) ? 'On the team' : undefined}
               trailing={
                 onTeam.has(u.id) ? <View /> : busy === u.id ? <ActivityIndicator size="small" color={c.text} /> : (
-                  <Text style={[styles.link, { color: c.primary }]}>Add</Text>
+                  <Text style={[styles.link, { color: c.text }]}>Add</Text>
                 )
               }
               onPress={onTeam.has(u.id) || busy ? undefined : () => add(u)}
@@ -193,7 +193,7 @@ export default function EventTeamScreen() {
               busy === m.userId ? (
                 <ActivityIndicator size="small" color={c.danger} />
               ) : !canEdit(m) ? undefined : (
-                <Pressable onPress={() => remove(m)} hitSlop={8}>
+                <Pressable onPress={() => remove(m)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${nameOf(m.user)}`}>
                   <Text style={[styles.link, { color: c.danger }]}>Remove</Text>
                 </Pressable>
               )
@@ -203,11 +203,13 @@ export default function EventTeamScreen() {
       </SettingsGroup>
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
-      <View style={{ marginTop: spacing[6], gap: spacing[2] }}>
+      {/* What each role can do: a quiet legend, a label over its line. */}
+      <View style={styles.legend}>
         {TEAM_ROLES.map((r) => (
-          <Text key={r.code} style={[styles.note, { color: c.muted }]}>
-            <Text style={{ color: c.soft, ...cosmosFont.strong }}>{r.label}</Text>  {r.blurb}
-          </Text>
+          <View key={r.code}>
+            <Text style={[styles.legendLabel, { color: c.soft }]}>{r.label}</Text>
+            <Text style={[styles.note, { color: c.muted }]}>{r.blurb}</Text>
+          </View>
         ))}
       </View>
     </CosmosScreen>
@@ -218,5 +220,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  legend: { marginTop: spacing[8], gap: spacing[4] },
+  legendLabel: { marginHorizontal: spacing[1], marginBottom: 2, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

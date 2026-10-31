@@ -109,7 +109,12 @@ export default function AttendeeActionScreen() {
       <Text style={[styles.intro, { color: c.soft }]}>{copy.intro}</Text>
 
       {existing && action === 'transfer' ? (
-        <Text style={[styles.note, { color: existing.status === 'REJECTED' ? c.danger : c.soft }]}>
+        <Text
+          style={[
+            styles.note,
+            { color: existing.status === 'REJECTED' ? c.danger : existing.status === 'PENDING' ? c.warn : c.success },
+          ]}
+        >
           {existing.status === 'PENDING'
             ? `Transfer to ${existing.targetEmail} is waiting for review.`
             : existing.status === 'APPROVED'
@@ -154,5 +159,5 @@ export default function AttendeeActionScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  note: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.strong },
 });
