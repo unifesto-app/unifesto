@@ -1041,3 +1041,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Public site navbar animates with CSS instead of motion, so the home page loads about 40 KB less JavaScript (gzip). Needs rebuild web. (#482)
 - **2026-10-31** · Auto-blog cuts an over-long meta title or description at a word instead of failing the post (#483)
 - **2026-10-31** · J1 banner palette fetches only our own S3 bucket (any *.amazonaws.com host was accepted) (#484)
+- **2026-10-31** · Web: /events and /blog prerendered and cached at the edge; /public files cached for a day; deploy purges Cloudflare's www cache (#485)
