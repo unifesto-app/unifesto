@@ -18,11 +18,12 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 type StatusFilter = ReportStatus | 'all';
 type TypeFilter = ReportTarget | 'all';
@@ -181,7 +182,8 @@ export function ContentReportDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
           </View>
@@ -197,10 +199,14 @@ export function ContentReportDetailScreen() {
 
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
-      <Text style={[styles.title, { color: c.text }]}>{reasonLabel(report)}</Text>
-      <Text style={[styles.meta, { color: c.muted }]}>
-        {REPORT_STATUS_LABEL[report.status]} · reported {longDate(report.createdAt)}
-      </Text>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{reasonLabel(report)}</Text>
+      <View style={styles.metaRow}>
+        <View style={[styles.dot, { backgroundColor: active ? c.warn : c.muted }]} />
+        <Text style={[styles.meta, { color: active ? c.warn : c.muted }]}>
+          {REPORT_STATUS_LABEL[report.status]}
+          <Text style={[cosmosFont.body, { color: c.muted }]}>{` · reported ${longDate(report.createdAt)}`}</Text>
+        </Text>
+      </View>
 
       {report.details ? <Text style={[styles.details, { color: c.soft }]}>{report.details}</Text> : null}
 
@@ -257,8 +263,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   details: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   actions: { marginTop: spacing[6], gap: spacing[3] },
 });

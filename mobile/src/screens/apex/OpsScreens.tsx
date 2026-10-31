@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
@@ -25,7 +26,7 @@ import {
 import { inrShort } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 /* Apex Sessions (Unifesto Huddle) and API logs, both read-only like the web. */
 
@@ -68,7 +69,7 @@ export function SessionsAdminScreen() {
           title={s.title}
           meta={[s.space?.name ?? who(s.creator), shortDate(s.startDateTime), `${s.registeredCount} joined`].join('  ·  ')}
           value={s.sales.grossSales ? inrShort(s.sales.grossSales) : titleCase(s.status)}
-          valueColor={s.status === 'CANCELLED' ? c.danger : undefined}
+          valueColor={s.status === 'CANCELLED' ? c.danger : s.sales.grossSales ? c.ivory : undefined}
           onPress={() => router.push(`/apex/sessions/${s.id}`)}
         />
       )}
@@ -94,7 +95,8 @@ export function SessionAdminDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.pad}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
           </View>
@@ -108,7 +110,7 @@ export function SessionAdminDetailScreen() {
   const net = s.sales.grossSales - s.sales.processingFees - s.sales.refunded;
   return (
     <CosmosScreen contentContainerStyle={styles.pad}>
-      <Text style={[styles.title, { color: c.text }]}>{s.title}</Text>
+      <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{s.title}</Text>
       <Text style={[styles.muted, { color: c.muted, textAlign: 'left', marginTop: 4 }]}>
         {titleCase(s.status)} · {longDate(s.startDateTime)} · {s.durationMinutes} min
       </Text>
@@ -116,15 +118,15 @@ export function SessionAdminDetailScreen() {
       <View style={{ marginTop: spacing[5] }}>
         <ManageStats
           stats={[
-            { label: 'Joined', value: s.capacity ? `${s.registeredCount}/${s.capacity}` : s.registeredCount },
-            { label: 'Sales', value: inrShort(s.sales.grossSales) },
-            { label: 'Net', value: inrShort(net) },
+            { label: 'Joined', value: s.capacity ? `${s.registeredCount}/${s.capacity}` : s.registeredCount, tone: 'sky' },
+            { label: 'Sales', value: inrShort(s.sales.grossSales), tone: 'ivory' },
+            { label: 'Net', value: inrShort(net), tone: 'ivory' },
           ]}
         />
       </View>
 
       <SettingsGroup title="Details">
-        <SettingsRow label="Space" value={s.space?.name ?? '—'} onPress={s.space ? () => router.push(`/apex/spaces/${s.space!.id}`) : undefined} />
+        <SettingsRow label="Space" value={s.space?.name ?? '–'} onPress={s.space ? () => router.push(`/apex/spaces/${s.space!.id}`) : undefined} />
         <SettingsRow label="Host" value={who(s.creator)} />
         <SettingsRow label="Platform" value={titleCase(s.platform)} />
         <SettingsRow label="Price" value={Number(s.price) ? inrShort(s.price) : 'Free'} />
@@ -237,7 +239,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   log: { paddingVertical: spacing[3] },
   logHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2] },
   code: { width: 36, fontSize: typography.fontSize.sm, ...cosmosFont.figure },

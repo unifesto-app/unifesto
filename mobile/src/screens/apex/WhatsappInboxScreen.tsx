@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CosmosList } from "../../components/ui/CosmosScreen";
+import { CardBackdrop } from "../../components/ui/CardSurface";
 import SearchField from "../../components/manage/SearchField";
 import { GUTTER } from "../../components/home/Section";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -109,7 +110,8 @@ export default function WhatsappInboxScreen() {
               style={{ marginTop: spacing[10] }}
             />
           ) : (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>
                 {error || (query ? "No matches." : "No messages yet.")}
               </Text>

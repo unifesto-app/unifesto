@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import {
@@ -27,7 +27,6 @@ import {
   ImageSquare,
   Lifebuoy,
   LinkBreak,
-  MagnifyingGlass,
   Megaphone,
   Pulse,
   Receipt,
@@ -40,12 +39,12 @@ import {
   VideoCamera,
   Wallet,
   WhatsappLogo,
-  X,
   type Icon,
 } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import SearchField from '../components/manage/SearchField';
 import Skeleton from '../components/Skeleton';
 import PressableScale from '../components/ui/PressableScale';
 import { openApexWeb } from '../lib/openOnWeb';
@@ -75,7 +74,7 @@ import { overallLabel } from './apex/PlatformStatusScreen';
 import { inrShort } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const GAP = spacing[3];
@@ -355,9 +354,7 @@ export default function ApexScreen() {
         <View style={styles.tileTop}>
           <t.icon size={ICON} color={isStatus && sys ? sys.color : c.text} />
           {n ? (
-            <View style={[styles.count, { backgroundColor: `${c.warn}26` }]}>
-              <Text style={[styles.countText, { color: c.warn }]}>{fmt(n)}</Text>
-            </View>
+            <Text style={[styles.countText, { color: c.warn }]}>{fmt(n)}</Text>
           ) : t.web ? (
             <ArrowUpRight size={14} color={c.muted} />
           ) : null}
@@ -369,13 +366,12 @@ export default function ApexScreen() {
     );
   };
 
-  /** Headline-face section heading behind a short silver rule, like Home's sections. */
+  /** Section title in the headline face, like Home's sections; a count sits beside it, muted. */
   const heading = (title: string, extra?: string) => (
     <View style={styles.heading}>
-      <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
       <Text accessibilityRole="header" style={[styles.headingText, { color: c.text }]}>
         {title}
-        {extra ? <Text style={{ color: c.warn }}>{`  ${extra}`}</Text> : null}
+        {extra ? <Text style={[styles.headingCount, { color: c.muted }]}>{`  ${extra}`}</Text> : null}
       </Text>
     </View>
   );
@@ -388,6 +384,12 @@ export default function ApexScreen() {
     a11y: string;
     to: Href;
     w?: number;
+    /** The figure's accent by the card's job: sky people and events, ivory money. */
+    tone?: string;
+    /** The page's lead figure, set large. */
+    hero?: boolean;
+    /** The value is a name (top event, top space), set in text, not as a figure. */
+    name?: boolean;
     children: React.ReactNode;
   }) => (
     <PressableScale
@@ -407,7 +409,7 @@ export default function ApexScreen() {
       {loading ? (
         <Skeleton width={80} height={22} />
       ) : (
-        <Text style={[styles.cardValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+        <Text style={[styles.cardValue, p.hero && styles.cardValueHero, p.name && styles.cardName, { color: p.tone ?? c.text }]} numberOfLines={1} adjustsFontSizeToFit>
           {p.value}
         </Text>
       )}
@@ -438,10 +440,11 @@ export default function ApexScreen() {
         }
       >
         {/* ── Header ─────────────────────────────────────────────── */}
-        <View style={[styles.header, { paddingTop: topInset + spacing[4] }]}>
+        <View style={{ paddingTop: topInset + spacing[4] }}>
           <Text accessibilityRole="header" style={[styles.pageTitle, { color: c.text }]}>
             Apex
           </Text>
+          {/* Platform status as plain text under the title: a dot and a word, then when the numbers were made. */}
           {sys || updated ? (
             <Pressable
               onPress={() => open('/apex/status')}
@@ -449,11 +452,12 @@ export default function ApexScreen() {
               accessibilityRole="button"
               accessibilityLabel={[sys && `Platform status: ${sys.text}`, updated && `updated ${updated}`].filter(Boolean).join(', ')}
               hitSlop={8}
-              style={({ pressed }) => [styles.statusPill, { backgroundColor: c.tint, opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [styles.statusRow, { opacity: pressed ? 0.6 : 1 }]}
             >
               {sys ? <View style={[styles.dot, { backgroundColor: sys.color }]} /> : null}
-              <Text style={[styles.statusText, { color: c.soft }]} numberOfLines={1}>
-                {[sys?.text, updated].filter(Boolean).join(' · ')}
+              <Text style={[styles.statusText, { color: sys?.color ?? c.muted }]} numberOfLines={1}>
+                {sys?.text}
+                {updated ? <Text style={{ color: c.muted }}>{`${sys ? ' · ' : ''}updated ${updated}`}</Text> : null}
               </Text>
             </Pressable>
           ) : null}
@@ -466,26 +470,14 @@ export default function ApexScreen() {
         ) : null}
 
         {/* ── Search ─────────────────────────────────────────────── */}
-        <View style={[styles.search, !LIQUID_GLASS && { backgroundColor: c.card }]}>
-          <GlassFill radius={cosmosRadius} interactive />
-          <MagnifyingGlass size={18} color={c.muted} />
-          <TextInput
+        <View style={styles.search}>
+          <SearchField
             value={query}
             onChangeText={setQuery}
             placeholder="Find a tool, e.g. refunds"
-            placeholderTextColor={c.muted}
-            style={[styles.searchInput, { color: c.text }]}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
             clearButtonMode="never"
             accessibilityLabel="Find an Apex tool"
           />
-          {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={12} accessibilityRole="button" accessibilityLabel="Clear search">
-              <X size={18} color={c.muted} />
-            </Pressable>
-          ) : null}
         </View>
 
         {q ? (
@@ -552,7 +544,7 @@ export default function ApexScreen() {
               // range, seats, stays and since-refunded payments included, so it
               // can be larger and says so.
               title: 'Gross sales (GMV)',
-              value: data ? inrShort(data.revenue.totalPaid) : '—',
+              value: data ? inrShort(data.revenue.totalPaid) : '–',
               sub: money?.length
                 ? [`${inrShort(sum(moneyVals))} collected in ${span} (all sales)`, trend(moneyVals, moneyLabels)].filter(Boolean).join(' · ')
                 : null,
@@ -560,27 +552,31 @@ export default function ApexScreen() {
                 .map((l, i) => `${l} ${inrShort(moneyVals[i])}`)
                 .join(', ')}`,
               to: '/apex/money/financials',
-              children: chartOrSkeleton(!!money, <AreaChart values={moneyVals} labels={moneyLabels} height={56} format={inrShort} />, 56),
+              tone: c.ivory,
+              hero: true,
+              children: chartOrSkeleton(!!money, <AreaChart values={moneyVals} labels={moneyLabels} height={56} format={inrShort} color={c.ivory} />, 56),
             })}
 
             <View style={styles.pair}>
               {chartCard({
                 title: 'Total users',
-                value: data ? fmt(data.users.total) : '—',
+                value: data ? fmt(data.users.total) : '–',
                 sub: growth?.length ? `+${fmt(sum(userVals))} in ${rangeShort}` : null,
                 a11y: `Total users, ${data ? fmt(data.users.total) : 'loading'}. New users: ${growthLabels.map((l, i) => `${l} ${userVals[i]}`).join(', ')}`,
                 to: '/apex/users',
                 w: halfW,
-                children: chartOrSkeleton(!!growth, <BarChart values={userVals} labels={growthLabels} height={40} />, 40),
+                tone: c.sky,
+                children: chartOrSkeleton(!!growth, <BarChart values={userVals} labels={growthLabels} height={40} color={c.sky} />, 40),
               })}
               {chartCard({
                 title: 'Total bookings',
-                value: data ? fmt(data.registrations.total) : '—',
+                value: data ? fmt(data.registrations.total) : '–',
                 sub: growth?.length ? `+${fmt(sum(regVals))} in ${rangeShort}` : null,
                 a11y: `Total bookings, ${data ? fmt(data.registrations.total) : 'loading'}. New: ${growthLabels.map((l, i) => `${l} ${regVals[i]}`).join(', ')}`,
                 to: '/apex/money/transactions',
                 w: halfW,
-                children: chartOrSkeleton(!!growth, <BarChart values={regVals} labels={growthLabels} height={40} />, 40),
+                tone: c.sky,
+                children: chartOrSkeleton(!!growth, <BarChart values={regVals} labels={growthLabels} height={40} color={c.sky} />, 40),
               })}
             </View>
 
@@ -606,8 +602,10 @@ export default function ApexScreen() {
                       sub: 'Net after fees and refunds',
                       a11y: `Money in ${span}: collected ${inrShort(sum(moneyVals))}, fees ${inrShort(sum(money.map((m) => m.processingFees)))}, refunded ${inrShort(sum(money.map((m) => m.refunded)))}, net ${inrShort(sum(money.map((m) => m.netRevenue)))}`,
                       to: '/apex/money/financials',
+                      tone: c.ivory,
                       children: (
                         <BarList
+                          color={c.ivory}
                           items={[
                             { key: 'in', label: 'Collected', value: sum(moneyVals), display: inrShort(sum(moneyVals)) },
                             { key: 'fee', label: 'Processing fees', value: sum(money.map((m) => m.processingFees)), display: inrShort(sum(money.map((m) => m.processingFees))) },
@@ -622,7 +620,7 @@ export default function ApexScreen() {
                 <View style={styles.pair}>
                   {chartCard({
                     title: 'New spaces',
-                    value: growth ? fmt(sum(spaceVals)) : '—',
+                    value: growth ? fmt(sum(spaceVals)) : '–',
                     sub: `in ${rangeShort}`,
                     a11y: `New spaces in ${span}: ${fmt(sum(spaceVals))}. ${growthLabels.map((l, i) => `${l} ${spaceVals[i]}`).join(', ')}`,
                     to: '/apex/spaces',
@@ -631,19 +629,20 @@ export default function ApexScreen() {
                   })}
                   {chartCard({
                     title: 'New events',
-                    value: growth ? fmt(sum(eventVals)) : '—',
+                    value: growth ? fmt(sum(eventVals)) : '–',
                     sub: `in ${rangeShort}`,
                     a11y: `New events in ${span}: ${fmt(sum(eventVals))}. ${growthLabels.map((l, i) => `${l} ${eventVals[i]}`).join(', ')}`,
                     to: '/apex/events',
                     w: halfW,
-                    children: chartOrSkeleton(!!growth, <BarChart values={eventVals} labels={growthLabels} height={40} />, 40),
+                    tone: c.sky,
+                    children: chartOrSkeleton(!!growth, <BarChart values={eventVals} labels={growthLabels} height={40} color={c.sky} />, 40),
                   })}
                 </View>
 
                 <View style={styles.pair}>
                   {[
-                    { title: 'Spaces active', part: data?.spaces.active ?? 0, whole: data?.spaces.total ?? 0, to: '/apex/spaces' as Href },
-                    { title: 'Events published', part: data?.events.published ?? 0, whole: data?.events.total ?? 0, to: '/apex/events' as Href },
+                    { title: 'Spaces active', part: data?.spaces.active ?? 0, whole: data?.spaces.total ?? 0, to: '/apex/spaces' as Href, tone: undefined },
+                    { title: 'Events published', part: data?.events.published ?? 0, whole: data?.events.total ?? 0, to: '/apex/events' as Href, tone: c.sky },
                   ].map((r) => (
                     <PressableScale
                       key={r.title}
@@ -653,10 +652,10 @@ export default function ApexScreen() {
                       style={[styles.ringCard, { width: halfW }]}
                     >
                       <CardBackdrop shape={styles.ringCard} />
-                      {loading ? <Skeleton width={44} height={44} borderRadius={22} /> : <Ring part={r.part} whole={r.whole} size={44} />}
+                      {loading ? <Skeleton width={44} height={44} borderRadius={22} /> : <Ring part={r.part} whole={r.whole} size={44} color={r.tone} />}
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.ringValue, { color: c.text }]} numberOfLines={1}>
-                          {data ? `${fmt(r.part)}/${fmt(r.whole)}` : '—'}
+                        <Text style={[styles.ringValue, { color: r.tone ?? c.text }]} numberOfLines={1}>
+                          {data ? `${fmt(r.part)}/${fmt(r.whole)}` : '–'}
                         </Text>
                         <Text style={[styles.cardTitle, { color: c.muted }]} numberOfLines={2}>
                           {r.title}
@@ -669,8 +668,8 @@ export default function ApexScreen() {
                 {byStatus ? (
                   <View style={styles.pair}>
                     {[
-                      { title: 'Events by status', rows: byStatus.events, to: '/apex/events' as Href },
-                      { title: 'Spaces by status', rows: byStatus.spaces, to: '/apex/spaces' as Href },
+                      { title: 'Events by status', rows: byStatus.events, to: '/apex/events' as Href, tone: c.sky },
+                      { title: 'Spaces by status', rows: byStatus.spaces, to: '/apex/spaces' as Href, tone: undefined },
                     ].map((b) =>
                       chartCard({
                         title: b.title,
@@ -678,8 +677,10 @@ export default function ApexScreen() {
                         a11y: `${b.title}: ${b.rows.map((r) => `${titleCase(r.status)} ${r.count}`).join(', ')}`,
                         to: b.to,
                         w: halfW,
+                        tone: b.tone,
                         children: (
                           <BarList
+                            color={b.tone}
                             items={[...b.rows]
                               .sort((x, y) => y.count - x.count)
                               .map((r) => ({ key: r.status, label: titleCase(r.status), value: r.count }))}
@@ -697,18 +698,21 @@ export default function ApexScreen() {
                       sub: `${fmt(traffic.visitors)} visitors · ${fmt(traffic.registrations)} registrations`,
                       a11y: `Views in the last ${traffic.days} days, ${fmt(traffic.views)}, from ${fmt(traffic.visitors)} visitors`,
                       to: '/apex/traffic',
-                      children: <AreaChart values={views} labels={viewLabels} height={44} />,
+                      tone: c.sky,
+                      children: <AreaChart values={views} labels={viewLabels} height={44} color={c.sky} />,
                     })
                   : null}
 
                 {traffic?.topEvents.length
                   ? chartCard({
                       title: 'Top events by views',
-                      value: traffic.topEvents[0].title ?? '—',
+                      value: traffic.topEvents[0].title ?? '–',
+                      name: true,
                       a11y: `Top events by views: ${traffic.topEvents.slice(0, 5).map((e) => `${e.title} ${e.views}`).join(', ')}`,
                       to: '/apex/traffic',
                       children: (
                         <BarList
+                          color={c.sky}
                           items={traffic.topEvents.slice(0, 5).map((e) => ({
                             key: e.id,
                             label: e.title ?? e.slug,
@@ -723,7 +727,8 @@ export default function ApexScreen() {
                 {traffic?.topSpaces.length
                   ? chartCard({
                       title: 'Top spaces by views',
-                      value: traffic.topSpaces[0].name ?? '—',
+                      value: traffic.topSpaces[0].name ?? '–',
+                      name: true,
                       a11y: `Top spaces by views: ${traffic.topSpaces.slice(0, 5).map((e) => `${e.name} ${e.views}`).join(', ')}`,
                       to: '/apex/traffic',
                       children: (
@@ -770,34 +775,16 @@ export default function ApexScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: GUTTER, paddingBottom: 140 },
-  pageTitle: { fontSize: 26, lineHeight: 34, ...cosmosFont.display },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3] },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing[3],
-    minHeight: 30,
-    borderRadius: 999,
-    flexShrink: 1,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  pageTitle: { fontSize: 28, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
+  statusRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing[2], marginTop: spacing[2], minHeight: 24 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    height: 48,
-    marginTop: spacing[5],
-    paddingHorizontal: spacing[4],
-    borderRadius: cosmosRadius,
-  },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  search: { marginTop: spacing[5] },
   resultCount: { marginTop: spacing[5], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   heading: { marginTop: spacing[8], marginBottom: spacing[3] },
-  rule: { width: 32, height: 1, marginBottom: spacing[2] },
-  headingText: { fontSize: 18, lineHeight: 24, ...cosmosFont.display },
+  headingText: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  headingCount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   // Rails run edge to edge; the first card still lines up with the gutter.
   bleed: { marginHorizontal: -GUTTER },
   rail: { paddingHorizontal: GUTTER, gap: GAP },
@@ -810,6 +797,9 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[2] },
   cardTitle: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   cardValue: { fontSize: typography.fontSize.lg, lineHeight: 26, ...cosmosFont.figure },
+  // Gross sales leads the page.
+  cardValueHero: { fontSize: 32, lineHeight: 40 },
+  cardName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardSub: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   cardChart: { marginTop: spacing[3] },
   pair: { flexDirection: 'row', gap: GAP },
@@ -826,8 +816,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   tile: { minHeight: 84, borderRadius: cosmosCardRadius, padding: PAD, justifyContent: 'space-between', gap: spacing[2] },
   tileTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  count: { paddingHorizontal: spacing[2], paddingVertical: 2, borderRadius: 999 },
-  countText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  countText: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   tileLabel: { fontSize: typography.fontSize.xs, lineHeight: 16, ...cosmosFont.strong },
   moreStats: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 },
   webLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing[8], minHeight: 44 },

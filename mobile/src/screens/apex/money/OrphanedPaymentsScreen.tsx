@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import CosmosScreen from '../../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import { useRouter } from 'expo-router';
 import { getOrphanedPayments, reconcileTransaction, type OrphanedPaymentRow, type OrphanedPayments } from '../../../lib/api/apexMoney';
@@ -100,7 +101,8 @@ export default function OrphanedPaymentsScreen() {
       <ChipPicker options={WINDOWS} value={days} onChange={(v) => v && setDays(v)} />
 
       {error ? (
-        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+        <View style={styles.emptyCard}>
+          <CardBackdrop shape={styles.emptyCard} />
           <Text style={[styles.empty, { color: c.soft }]}>{error}</Text>
           <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} />
         </View>
@@ -114,7 +116,8 @@ export default function OrphanedPaymentsScreen() {
             <ManageStats stats={[{ label: 'Unsettled', value: data.counts.unsettled }, { label: 'No target found', value: data.counts.unresolved }]} />
           </View>
           {data.rows.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+            <View style={styles.emptyCard}>
+              <CardBackdrop shape={styles.emptyCard} />
               <Text style={[styles.empty, { color: c.soft }]}>Every captured payment in this window is a paid ticket.</Text>
             </View>
           ) : null}
@@ -124,10 +127,12 @@ export default function OrphanedPaymentsScreen() {
             const hasTarget = !!row.targetRegistrationId;
             const openTxn = (id: string) => router.push(`/apex/money/transactions/${id}?pay=${encodeURIComponent(row.paymentId)}` as never);
             return (
-              <View key={row.paymentId} style={[styles.card, { backgroundColor: c.raised }]}>
+              <View key={row.paymentId} style={styles.card}>
+                <CardBackdrop shape={styles.card} />
                 <View style={styles.head}>
-                  <Text style={[styles.amount, { color: c.text }]}>{inr(row.amount)}</Text>
-                  <View style={[styles.chip, { backgroundColor: `${orphan ? c.danger : c.warn}26` }]}>
+                  <Text style={[styles.amount, { color: c.ivory }]}>{inr(row.amount)}</Text>
+                  <View style={styles.kindRow}>
+                    <View style={[styles.dot, { backgroundColor: orphan ? c.danger : c.warn }]} />
                     <Text style={[styles.kind, { color: orphan ? c.danger : c.warn }]}>{orphan ? 'Orphaned' : 'Unsettled'}</Text>
                   </View>
                 </View>
@@ -143,7 +148,7 @@ export default function OrphanedPaymentsScreen() {
                     : 'Captured, but the ticket stayed pending (missed webhook). Attaching settles that registration in place.'}
                 </Text>
                 {hasTarget ? (
-                  <Text style={[styles.link, { color: c.primary }]} onPress={() => openTxn(row.targetRegistrationId!)}>
+                  <Text style={[styles.link, { color: c.text }]} onPress={() => openTxn(row.targetRegistrationId!)} accessibilityRole="link">
                     Open the registration
                   </Text>
                 ) : (
@@ -201,8 +206,9 @@ const styles = StyleSheet.create({
   card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   amount: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
-  chip: { paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  kind: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  kindRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  kind: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   meta: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   why: { marginTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   link: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

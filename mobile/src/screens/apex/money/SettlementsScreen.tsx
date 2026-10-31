@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { CosmosList } from '../../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { Button } from '../../../components/ui';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -115,14 +116,15 @@ export default function SettlementsScreen() {
           <ManageStats
             loading={!payouts && !error}
             stats={[
-              { label: 'Queued', value: inrShort(summary.queued) },
-              { label: 'This month', value: inrShort(summary.thisMonth) },
-              { label: 'Settled', value: inrShort(summary.settled) },
+              { label: 'Queued', value: inrShort(summary.queued), tone: 'ivory' },
+              { label: 'This month', value: inrShort(summary.thisMonth), tone: 'ivory' },
+              { label: 'Settled', value: inrShort(summary.settled), tone: 'ivory' },
             ]}
           />
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
           {error ? (
-            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+            <View style={styles.emptyCard}>
+              <CardBackdrop shape={styles.emptyCard} />
               <Text style={[styles.empty, { color: c.soft }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} />
             </View>
@@ -133,7 +135,8 @@ export default function SettlementsScreen() {
         !payouts && !error ? (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : payouts ? (
-          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+          <View style={styles.emptyCard}>
+            <CardBackdrop shape={styles.emptyCard} />
             <Text style={[styles.empty, { color: c.soft }]}>Nothing here.</Text>
           </View>
         ) : null
@@ -150,7 +153,7 @@ export default function SettlementsScreen() {
               .filter(Boolean)
               .join('  ·  ')}
             value={inr(p.netAmount)}
-            valueColor={p.status === 'COMPLETED' ? c.text : s.color}
+            valueColor={p.status === 'COMPLETED' ? c.ivory : s.color}
             onPress={() => router.push(openPayout(p) as never)}
             />
           </View>

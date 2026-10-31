@@ -5,6 +5,7 @@ import type { Result } from '../../lib/api/apex';
 import { CosmosList } from '../ui/CosmosScreen';
 import SearchField from '../manage/SearchField';
 import { GUTTER } from '../home/Section';
+import { CardBackdrop } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -130,7 +131,8 @@ export default function SearchList<T>({
         loading ? (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
           </View>
         )

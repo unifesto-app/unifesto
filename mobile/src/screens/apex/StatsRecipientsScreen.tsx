@@ -5,6 +5,7 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import SaveBar from '../../components/manage/SaveBar';
 import { GUTTER } from '../../components/home/Section';
 import { getStatsRecipients, updateStatsRecipients } from '../../lib/api/apex';
@@ -105,7 +106,8 @@ export default function StatsRecipientsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.pad}>
         {loadError ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -158,7 +160,7 @@ export default function StatsRecipientsScreen() {
             onSubmitEditing={add}
             trailing={
               <Pressable onPress={add} hitSlop={12} disabled={!input.trim()} accessibilityRole="button" accessibilityLabel="Add number">
-                <PlusCircle size={26} color={input.trim() ? c.primary : c.muted} weight="fill" />
+                <PlusCircle size={26} color={input.trim() ? c.text : c.muted} weight="fill" />
               </Pressable>
             }
           />

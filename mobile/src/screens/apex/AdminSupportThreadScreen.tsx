@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/support';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import SearchField from '../../components/manage/SearchField';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -110,7 +111,8 @@ export default function AdminSupportThreadScreen() {
     return (
       <CosmosScreen contentContainerStyle={{ paddingHorizontal: GUTTER }}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -136,7 +138,7 @@ export default function AdminSupportThreadScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.subject, { color: c.text }]}>{ticket.subject}</Text>
+        <Text style={[styles.subject, { color: c.text }]} accessibilityRole="header">{ticket.subject}</Text>
         <Text style={[styles.meta, { color: c.muted }]}>
           {KIND_LABEL[ticket.kind]} · {CATEGORY_LABEL[ticket.category]} · opened {longDate(ticket.createdAt)}
         </Text>
@@ -285,7 +287,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  subject: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  subject: { fontSize: typography.fontSize['2xl'], lineHeight: 28, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   label: { marginTop: spacing[4], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },

@@ -26,7 +26,7 @@ import {
 } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 const NAME_TOKEN = '{name}';
 // Typed to unlock an app-wide blast (client-side guard, like Apex web).
@@ -171,7 +171,7 @@ export default function WhatsappBroadcastScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.center}>
         <CheckCircle size={56} color={c.success} weight="fill" />
-        <Text style={[styles.doneTitle, { color: c.text }]}>Broadcast started</Text>
+        <Text style={[styles.doneTitle, { color: c.text }]} accessibilityRole="header">Broadcast started</Text>
         <Text style={[styles.doneBody, { color: c.muted }]}>
           Sending {template?.name} to {sentTo} recipient{sentTo === 1 ? '' : 's'}. Delivery runs in the background; individual sends show in
           Meta's dashboards.
@@ -203,7 +203,8 @@ export default function WhatsappBroadcastScreen() {
         <BlockTitle>Who receives it</BlockTitle>
         <ChipPicker options={AUDIENCES} value={audience} onChange={(v) => v && setAudience(v)} />
 
-        <SettingsGroup plain>
+        {/* The audience's picker sits right under its chips: one block, not a new section. */}
+        <SettingsGroup plain style={styles.audience}>
           {audience === 'SPACE' ? (
             <SelectRow
               label="Space"
@@ -255,7 +256,7 @@ export default function WhatsappBroadcastScreen() {
           {template ? (
             <View style={styles.templateBody}>
               <Text style={[styles.meta, { color: c.muted }]}>{titleCase(template.category)}</Text>
-              {template.bodyText ? <Text style={[styles.quote, { color: c.text }]}>"{template.bodyText}"</Text> : null}
+              {template.bodyText ? <Text style={[styles.quote, { color: c.text }]}>“{template.bodyText}”</Text> : null}
               {template.needsMediaHeader ? (
                 <Text style={[styles.meta, { color: c.danger }]}>Has a media header this sender can't fill. It may fail.</Text>
               ) : null}
@@ -302,9 +303,10 @@ export default function WhatsappBroadcastScreen() {
 
 const styles = StyleSheet.create({
   center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: GUTTER, gap: spacing[3] },
-  doneTitle: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  doneTitle: { marginTop: spacing[2], fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   doneBody: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   doneActions: { marginTop: spacing[4], flexDirection: 'row', gap: spacing[3] },
+  audience: { marginTop: spacing[3] },
   warn: { flexDirection: 'row', gap: spacing[3], padding: spacing[4] },
   warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   templateBody: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: spacing[2] },

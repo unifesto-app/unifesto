@@ -105,7 +105,7 @@ export function EventsLookupScreen() {
           title={e.title}
           meta={[e.space?.name, shortDate(e.startDateTime), `${e._count?.registrations ?? 0} reg`].filter(Boolean).join('  ·  ')}
           value={e.sales?.grossSales ? inrShort(e.sales.grossSales) : titleCase(e.status)}
-          valueColor={e.sales?.grossSales ? c.text : undefined}
+          valueColor={e.sales?.grossSales ? c.ivory : undefined}
           onPress={() => router.push(`/apex/events/${e.id}`)}
         />
       )}
