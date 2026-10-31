@@ -26,10 +26,11 @@ export default function EventsGrid() {
     };
   }, []);
 
-  // Detect device location → reverse-geocode to a city name (mirrors mobile app)
+  // City from the device location, only when access was already granted: a
+  // permission prompt on load is a modal on phones and lands mid first tap.
   useEffect(() => {
     let active = true;
-    detectCity({ prompt: true }).then((c) => active && c && setCity(c));
+    detectCity({ prompt: false }).then((c) => active && c && setCity(c));
     return () => {
       active = false;
     };
