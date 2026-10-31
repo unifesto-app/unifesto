@@ -1039,3 +1039,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · QR sign-in on the web: unifesto.app/login shows a code, Account settings › Link a device in the app approves it, and the browser joins Linked devices. Needs rebuild backend + web; mobile is OTA-able. (#480)
 - **2026-10-31** · Web: first-party pages (home, pricing, legal, blog, help) prerendered and cacheable; K14 nonce kept on event, space, sign-in and console pages (#481)
 - **2026-10-31** · Public site navbar animates with CSS instead of motion, so the home page loads about 40 KB less JavaScript (gzip). Needs rebuild web. (#482)
+- **2026-10-31** · Auto-blog cuts an over-long meta title or description at a word instead of failing the post (#483)
