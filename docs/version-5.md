@@ -1028,3 +1028,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Web: the home page look on every page (shade cards, liquid glass cards, home sky heroes, hairlines inside cards, 16/8 radius) (#469)
 - **2026-10-31** · J14 prod-DB guard reads NODE_ENV from the shell or container only, so a laptop .env saying production can't switch it off (#470)
 - **2026-10-31** · J15 check-in QR rendered locally as an inline image; api.qrserver.com no longer sees ticket tokens (#471)
+- **2026-10-31** · Z2 organiser fee live 31 Oct: plans priced by fee (General 3, Club 3.5, Growth 4 min ₹999/event, Pro 4.5 min ₹2,999/event, Enterprise contract), no monthly prices, every space moved to General, site + console + notice updated (#472)
