@@ -501,7 +501,7 @@ export default function EditEventPage() {
             <CardTitle className="text-base">Banner image</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-4 py-4">
-            <div className="relative aspect-[16/9] w-full max-w-xl overflow-hidden rounded-lg border border-border bg-muted">
+            <div className="relative aspect-[4/3] w-full max-w-md overflow-hidden rounded-lg border border-border bg-muted">
               {coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

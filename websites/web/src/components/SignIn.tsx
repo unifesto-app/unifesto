@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { QrCode } from "@unifesto/unicon/react";
 import QrSignIn from "@/components/QrSignIn";
 import SocialSignIn from "@/components/SocialSignIn";
@@ -13,9 +14,28 @@ const FIELD =
 /**
  * K18/K19: sign in to an existing account on the web: Google, or the email
  * code. A new email or Google account has nothing to show here, so it gets
- * told so (registration is where accounts are made). Signing in updates the
- * shared session, so the page re-renders signed in.
+ * told where accounts are made (Q20). Signing in updates the shared session,
+ * so the page re-renders signed in.
  */
+
+const LINK = "text-paper underline underline-offset-4";
+
+/** Q20: what a new email or Google account does instead of signing in. */
+function NewHere() {
+  return (
+    <>
+      To make one,{" "}
+      <Link href="/events" className={LINK}>
+        register for an event
+      </Link>
+      , or{" "}
+      <Link href="/request-space" className={LINK}>
+        request a space
+      </Link>{" "}
+      to run your own.
+    </>
+  );
+}
 export default function SignIn({
   next,
   intro,
@@ -34,11 +54,13 @@ export default function SignIn({
   const [qr, setQr] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [noAccount, setNoAccount] = useState(false);
 
   const run = (fn: () => Promise<void>) => async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setNoAccount(false);
     try {
       await fn();
     } catch (err) {
@@ -54,7 +76,7 @@ export default function SignIn({
   });
   const verify = run(async () => {
     const res = await verifyEmailCode(email.trim(), otp.trim());
-    if (!res.accessToken) throw new Error("There's no Unifesto account with this email yet.");
+    if (!res.accessToken) return setNoAccount(true);
     await startSession(res, { email: email.trim(), fullName: res.user?.fullName || null });
   });
 
@@ -65,7 +87,8 @@ export default function SignIn({
         registered with instead.{" "}
         <button type="button" onClick={clearSession} className="underline hover:text-paper">
           Use my email
-        </button>
+        </button>{" "}
+        New here? <NewHere />
       </p>
     );
   }
@@ -89,10 +112,22 @@ export default function SignIn({
         className={FIELD}
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {noAccount && (
+        <p className="text-sm text-paper/75">
+          There&apos;s no Unifesto account with this email yet. <NewHere />
+        </p>
+      )}
       <button type="submit" disabled={busy} className="btn btn-primary w-full">
         {busy ? "Verifying…" : submitLabel}
       </button>
-      <button type="button" onClick={() => setCodeSent(false)} className="text-sm text-paper/65 hover:text-paper">
+      <button
+        type="button"
+        onClick={() => {
+          setCodeSent(false);
+          setNoAccount(false);
+        }}
+        className="text-sm text-paper/65 hover:text-paper"
+      >
         Change email
       </button>
     </form>

@@ -24,6 +24,7 @@ import {
   type EventVisibility,
 } from "@/console/lib/api/events-api";
 import { getCategories, type Category } from "@/console/lib/api/categories-api";
+import { getSpaceUsage, PLAN_LABEL, type SubscriptionUsage } from "@/console/lib/api/subscriptions-api";
 import {
   EVENT_TYPES,
   VISIBILITY_OPTIONS,
@@ -242,6 +243,14 @@ function CreateEventInner() {
   const [error, setError] = useState("");
   // Set once the event exists, so a failed ticket retry can't create a duplicate.
   const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  // Q21: the plan's limits, checked before the create call so a space over them
+  // never gets a half-made event. Null (no plan yet, or no billing access) skips
+  // the pre-check; the backend enforces both either way.
+  const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
+
+  useEffect(() => {
+    if (spaceId) void getSpaceUsage(spaceId).then(({ data }) => setUsage(data));
+  }, [spaceId]);
 
   useEffect(() => {
     let active = true;
@@ -259,6 +268,13 @@ function CreateEventInner() {
   const showVenue = form.type === "IN_PERSON" || form.type === "HYBRID";
   const showOnline = form.type === "ONLINE" || form.type === "HYBRID";
   const noun = isSubEvent ? "sub-event" : "event";
+  const planName = usage ? PLAN_LABEL[usage.plan] : "";
+  const perMonth = usage?.limits.eventsPerMonth ?? null;
+  const maxTickets = usage?.limits.ticketTypes ?? null;
+  const monthFull = !!usage && perMonth !== null && usage.eventsThisMonth >= perMonth;
+  const monthMessage = `The ${planName} plan includes ${perMonth} events a month, and this space has used them all.`;
+  const ticketRows = form.tickets.filter((t) => t.name.trim()).length;
+  const ticketNoun = isPaid ? "ticket types" : "RSVP options";
 
   const set = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -330,6 +346,8 @@ function CreateEventInner() {
         }
         return "";
       case "tickets":
+        if (maxTickets !== null && ticketRows > maxTickets)
+          return `The ${planName} plan allows ${maxTickets} ${ticketNoun} per event. Remove ${ticketRows - maxTickets}, or upgrade.`;
         for (const t of form.tickets) {
           const started = t.name.trim() || t.price.trim() || t.capacity.trim();
           if (started && !t.name.trim())
@@ -349,6 +367,8 @@ function CreateEventInner() {
           }
         }
         return "";
+      case "review":
+        return monthFull ? monthMessage : "";
       default:
         return "";
     }
@@ -357,7 +377,7 @@ function CreateEventInner() {
   const stepError = useMemo(
     () => validateStep(step.id),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [step.id, form]
+    [step.id, form, usage]
   );
 
   function goNext() {
@@ -566,6 +586,16 @@ function CreateEventInner() {
       </nav>
 
       {error && <ErrorNotice message={error} />}
+
+      {/* Said up front, before anything is filled in, so nobody builds an event they can't create. */}
+      {monthFull && (
+        <p className="rounded-2xl bg-destructive-soft px-4 py-4 text-sm text-destructive">
+          {monthMessage}{" "}
+          <Link href="/console/billing" className="underline">
+            See plans
+          </Link>
+        </p>
+      )}
 
       {/* Step body */}
       <div className="space-y-4">
@@ -845,10 +875,19 @@ function CreateEventInner() {
               ))}
             </div>
 
-            <Button type="button" variant="secondary" size="sm" onClick={addTicket}>
-              <Plus className="h-4 w-4" weight="bold" />
-              Add {isPaid ? "ticket" : "option"}
-            </Button>
+            {maxTickets !== null && form.tickets.length >= maxTickets ? (
+              <p className="text-sm text-muted-foreground">
+                The {planName} plan allows {maxTickets} {ticketNoun} per event.{" "}
+                <Link href="/console/billing" className="underline">
+                  See plans
+                </Link>
+              </p>
+            ) : (
+              <Button type="button" variant="secondary" size="sm" onClick={addTicket}>
+                <Plus className="h-4 w-4" weight="bold" />
+                Add {isPaid ? "ticket" : "option"}
+              </Button>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Leave capacity blank for unlimited. Remove every row to skip.
@@ -985,7 +1024,7 @@ function CreateEventInner() {
         </Button>
 
         {isLast ? (
-          <Button type="button" onClick={submit} disabled={busy}>
+          <Button type="button" onClick={submit} disabled={busy || (!createdEventId && !!stepError)}>
             {busy ? "Creating…" : createdEventId ? "Go to event" : `Create ${noun}`}
             {!busy &&
               (createdEventId ? (

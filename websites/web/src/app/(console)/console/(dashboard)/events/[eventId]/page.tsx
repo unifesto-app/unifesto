@@ -12,6 +12,7 @@ import {
   Trash,
   CheckCircle,
   Megaphone,
+  ShareNetwork,
   Flag,
 } from "@unifesto/unicon/react";
 import { publishEvent, deleteEvent, endEvent } from "@/console/lib/api/events-api";
@@ -37,6 +38,7 @@ import { RegistrationSourcesCard } from "@/console/components/shared/Registratio
 import { EventCompleteness } from "@/console/components/shared/EventCompleteness";
 import { EventEndOfEventChecklist } from "@/console/components/hackathon/EndOfEventChecklist";
 import { AnnounceDialog } from "./AnnounceDialog";
+import { ShareDialog } from "./ShareDialog";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", {
@@ -85,6 +87,7 @@ export default function EventOverviewPage() {
   const [error] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [attendeeStats, setAttendeeStats] = useState<AttendeeStats | null>(null);
 
   const loadEvent = useCallback(async () => {
@@ -114,6 +117,7 @@ export default function EventOverviewPage() {
       alert(error.message);
     } else {
       await loadEvent();
+      setShareOpen(true);
     }
     setActionLoading(false);
   };
@@ -183,6 +187,12 @@ export default function EventOverviewPage() {
                 Publish
               </Button>
             )}
+            {(event.status === "PUBLISHED" || event.status === "ONGOING") && (
+              <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+                <ShareNetwork className="h-4 w-4" />
+                Share
+              </Button>
+            )}
             {(event.status === "PUBLISHED" || event.status === "ONGOING") && can("event:edit") && (
               <Button
                 variant="outline"
@@ -218,6 +228,7 @@ export default function EventOverviewPage() {
         open={announceOpen}
         onOpenChange={setAnnounceOpen}
       />
+      <ShareDialog event={event} open={shareOpen} onOpenChange={setShareOpen} />
 
       {/* Setup completeness — event info, registration and richer content.
           Most useful while a DRAFT is being built; hidden once completed or
