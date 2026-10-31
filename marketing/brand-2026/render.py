@@ -42,14 +42,14 @@ for n in ("night", "day", "mint", "sky", "ivory", "blue", "dark", "light"):
 for theme in ("dark", "light", "white", "black"):
     JOBS.append((f"powered-by-{theme}.svg", f"powered-by-{theme}.png", 1716, 384, None))
     JOBS.append((f"powered-by-{theme}-stacked.svg", f"powered-by-{theme}-stacked.png", 1527, 660, None))
-for p in ("huddle", "sprint"):
+for p in ("sprint",):
     for layout in ("header", "signoff", "light"):
         JOBS.append((f"poster-{p}-{layout}.svg", f"poster-{p}-{layout}.png", 1080, 1350, None))
 for k in ("photo", "colour", "light", "stacked"):
     JOBS.append((f"poster-powered-by-{k}.svg", f"poster-powered-by-{k}.png", 1080, 1350, None))
 for kind in ("silver", "ink", "white", "black"):
     JOBS.append((f"wordmark-{kind}.svg", f"wordmark-{kind}-2400.png", 2400, 551, None))
-    for p in ("stay", "huddle", "sprint", "orbit"):  # height 400; width keeps each lockup's own ratio
+    for p in ("stay", "sprint", "orbit"):  # height 400; width keeps each lockup's own ratio
         vb = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', open(os.path.join(HERE, "svg", f"lockup-{p}-{kind}.svg")).read())
         JOBS.append((f"lockup-{p}-{kind}.svg", f"lockup-{p}-{kind}.png", round(400 * float(vb[1]) / float(vb[2])), 400, None))
 

@@ -235,7 +235,7 @@ def powered_by(theme, stacked=False):
 
 
 # ── Product lockups: the wordmark + product name, one colour family ──
-PRODUCTS = ("Stay", "Huddle", "Sprint", "Orbit")
+PRODUCTS = ("Stay", "Sprint", "Orbit")
 LOCKUP_FILLS = {"silver": None, "ink": "#111113", "white": "#ffffff", "black": "#111113"}
 
 
@@ -313,26 +313,7 @@ def poster(product, layout):
     if dark:
         defs += SILVER.format(id="pt").replace('x2=".6" y2="1"', 'x2="0" y2="1"')
     L = 90
-    if product == "Huddle" and layout == "header":      # lockup as the masthead
-        body += lk(L, 150, 40)
-        body += _text("Live session", 30, L, 470, muted)
-        body += _text("Design systems", 104, L, 600, fg) + _text("that scale", 104, L, 720, fg)
-        body += _text("with Aarav Mehta, Product Designer", 34, L, 800, muted)
-        body += _text("Sat 18 Oct · 7:00 PM IST", 36, L, 1010, fg) + _text("Online · 60 min", 30, L, 1060, muted)
-    elif product == "Huddle" and layout == "signoff":   # content first, lockup as the sign-off
-        body += _text("Sat 18 Oct · 7:00 PM IST", 32, PW / 2, 200, muted, "middle")
-        body += _text("Pitching to", 110, PW / 2, 520, fg, "middle") + _text("your first", 110, PW / 2, 645, fg, "middle")
-        body += _text("investor", 110, PW / 2, 770, fg, "middle")
-        body += _text("with Riya Sen, Founder", 34, PW / 2, 860, muted, "middle")
-        body += _text("Join live on", 26, PW / 2, 1205, muted, "middle") + lk(PW / 2, 1270, 34, "middle")
-    elif product == "Huddle":                            # light: ink lockup, top centre
-        body += lk(PW / 2, 170, 40, "middle")
-        body += f'<line x1="{L}" y1="250" x2="{PW - L}" y2="250" stroke="#111113" stroke-opacity=".12" stroke-width="2"/>'
-        body += _text("Workshop", 30, PW / 2, 470, muted, "middle")
-        body += _text("Shooting on", 110, PW / 2, 600, fg, "middle") + _text("your phone", 110, PW / 2, 725, fg, "middle")
-        body += _text("with Kabir Rao, Filmmaker", 34, PW / 2, 815, muted, "middle")
-        body += _text("Sun 26 Oct · 11:00 AM IST · Online", 32, PW / 2, 1190, fg, "middle")
-    elif layout == "header":                             # Sprint as the headline
+    if layout == "header":                               # Sprint as the headline
         body += _text("Hackathon", 30, PW / 2, 260, muted, "middle")
         body += lk(PW / 2, 400, 86, "middle")
         body += _text("Build Night 2026", 70, PW / 2, 560, fg, "middle")
@@ -356,7 +337,7 @@ def poster(product, layout):
     return svg(body, defs, vb=f"0 0 {PW} {PH}")
 
 
-POSTERS = [(p, l) for p in ("Huddle", "Sprint") for l in ("header", "signoff", "light")]
+POSTERS = [(p, l) for p in ("Sprint",) for l in ("header", "signoff", "light")]
 
 
 def _badge(theme, stacked, x, y, w):

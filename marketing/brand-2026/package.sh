@@ -17,7 +17,7 @@ for t in dark light white black; do for v in "" -stacked; do
   cp "svg/powered-by-$t$v.svg" "$K/Powered by/SVG/unifesto-powered-by-$t$v.svg"
   cp "png/powered-by-$t$v.png" "$K/Powered by/PNG/unifesto-powered-by-$t$v.png"
 done; done
-for p in stay huddle sprint orbit; do for c in silver ink white black; do
+for p in stay sprint orbit; do for c in silver ink white black; do
   cp "svg/lockup-$p-$c.svg" "$K/Products/SVG/unifesto-$p-$c.svg"
   cp "png/lockup-$p-$c.png" "$K/Products/PNG/unifesto-$p-$c.png"
 done; done
@@ -31,7 +31,7 @@ Symbol/    The "u" on its own, for avatars and small spaces.
 App icon/  The app icon, square (stores apply their own mask) and rounded (for slides and mockups).
 Favicon/   Browser and small-size icon.
 Social/    Profile picture for social accounts.
-Products/  Unifesto Stay, Unifesto Huddle, Unifesto Sprint and Unifesto Orbit lockups. Same colour rules as the logo.
+Products/  Unifesto Stay, Unifesto Sprint and Unifesto Orbit lockups. Same colour rules as the logo.
 Powered by/  Badges for events run on Unifesto: boxed dark/light, one-colour white/black, horizontal and stacked.
 Backgrounds/ The Horizon sky (orbit hairlines, the horizon line and its blue glow), night and day, for slides and video.
 
@@ -44,6 +44,6 @@ P=../../websites/web/public/press
 mkdir -p "$P"
 cp dist/Unifesto-Brand-Kit.zip Unifesto-Brand-Guidelines.pdf "$P/"
 cp svg/wordmark-silver.svg svg/wordmark-ink.svg svg/symbol-silver.svg svg/symbol-ink.svg png/app-icon-dark-rounded-1024.png png/app-icon-dark-1024.png "$P/"
-for p in stay huddle sprint orbit; do cp "svg/lockup-$p-silver.svg" "svg/lockup-$p-ink.svg" "png/lockup-$p-silver.png" "png/lockup-$p-ink.png" "$P/"; done
+for p in stay sprint orbit; do cp "svg/lockup-$p-silver.svg" "svg/lockup-$p-ink.svg" "png/lockup-$p-silver.png" "png/lockup-$p-ink.png" "$P/"; done
 for t in dark light white black; do cp "svg/powered-by-$t.svg" "svg/powered-by-$t-stacked.svg" "png/powered-by-$t.png" "png/powered-by-$t-stacked.png" "$P/"; done
 ls -la "$P"
