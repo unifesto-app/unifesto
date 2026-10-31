@@ -163,7 +163,7 @@ export default function SpaceRequestsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Space requests"
-        subtitle="Review and approve new organisations before they go live"
+        subtitle="New spaces go live at once, marked Unverified. Only requests sent before that wait here"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -225,7 +225,7 @@ export default function SpaceRequestsPage() {
               title={filter === "PENDING" ? "The queue is clear" : "Nothing here"}
               description={
                 filter === "PENDING"
-                  ? "When someone requests a new space, it will land here for your review."
+                  ? "New spaces go live at once now. Verify them from the space page."
                   : `No ${filter.toLowerCase()} space requests yet.`
               }
             />

@@ -156,6 +156,32 @@ describe('payout request needs the money capability (S23)', () => {
   });
 });
 
+describe('an Unverified space is paid out only to a verified payout method (Q29)', () => {
+  // A space that went live at once (ACTIVE, verifiedAt null) whose owner added a bank account Platform has not checked yet.
+  function unverified() {
+    const ctx = setup();
+    ctx.authz.can.mockImplementation(async (_u: any, action: Action) => action === Action.EVENT_MANAGE_MONEY);
+    ctx.db.space.findFirst.mockResolvedValue({ status: 'ACTIVE', verifiedAt: null });
+    const account = { id: 'acct-1', userId: 'creator', status: 'PENDING', isPrimary: true, createdAt: new Date() };
+    const matches = (w: any) => Object.entries(w).every(([k, v]) => (account as any)[k] === v);
+    ctx.db.payoutBankAccount.findFirst = jest.fn(async ({ where }: any) => (matches(where) ? account : null));
+    ctx.db.payoutBankAccount.findMany = jest.fn(async ({ where }: any) => (matches(where) ? [account] : []));
+    return { ...ctx, account };
+  }
+
+  it('refuses the payout while the bank account is unverified, and creates nothing', async () => {
+    const { service, db } = unverified();
+    await expect(service.requestPayout('curator', { eventId: 'ev-1' })).rejects.toThrow(/no verified payout method/);
+    expect(db.payout.create).not.toHaveBeenCalled();
+  });
+
+  it('pays out once Platform verifies the bank account, with the space still Unverified', async () => {
+    const { service, account } = unverified();
+    account.status = 'VERIFIED';
+    await expect(service.requestPayout('curator', { eventId: 'ev-1' })).resolves.toMatchObject({ bankAccountId: 'acct-1', netAmount: 1000 });
+  });
+});
+
 describe("an overdrawn event holds back the space's other payouts (A20)", () => {
   // ev-1: ₹1000 paid out, then refunds left ₹600 → overdrawn by ₹400.
   const overdrawn = { netAmount: 1000, status: PayoutStatus.COMPLETED, eventId: 'ev-1' };

@@ -135,7 +135,7 @@ export default async function PricingPage() {
         </p>
         <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href="/request-space" className="btn btn-lg btn-primary">
-            Request a Space
+            Start a Space
             <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
           </Link>
           <a href={`mailto:${SITE.email}`} className="btn btn-lg btn-secondary">Talk to us</a>

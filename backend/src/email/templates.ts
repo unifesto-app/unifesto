@@ -733,8 +733,9 @@ export function spaceApprovedEmail(d: SpaceApprovedData): Email {
     html: layout(
       `${h1('Your space is live')}
       ${greet(d.organizerName)}
-      ${p(`${strong(d.spaceName)} is approved and live. You can now:`)}
+      ${p(`${strong(d.spaceName)} is live. You can now:`)}
       ${list(['Create and publish events', 'Bring your team in as curators and crew', 'Build a following that hears about every event'])}
+      ${small('It shows as Unverified until Unifesto confirms who runs it. Payouts need a verified bank account or UPI.')}
       ${button('Open my space', SPACE_APP)}
       ${small(`Public page: ${link(`unifesto.app/space/${d.spaceSlug}`, `${WEB}/space/${encodeURIComponent(d.spaceSlug)}`)}`)}`,
     ),
@@ -818,35 +819,7 @@ export function spaceRejectedEmail(d: SpaceRejectedData): Email {
       ${p(`Thanks for submitting ${strong(d.spaceName)}. We can't approve it as it stands.`)}
       ${note(`Reason: ${esc(d.rejectionReason)}`)}
       ${p(`Make the changes and submit again, or write to ${link(SUPPORT, `mailto:${SUPPORT}`)} if anything is unclear.`)}
-      ${button('Request a space', `${WEB}/request-space`)}`,
-    ),
-  };
-}
-
-export interface NewSpaceSubmittedData {
-  adminEmail: string;
-  spaceName: string;
-  organizerName: string;
-  organizerMobile: string;
-  spaceDescription?: string;
-  submittedAt: string;
-}
-
-export function newSpaceSubmittedEmail(d: NewSpaceSubmittedData): Email {
-  return {
-    subject: `New space to review: ${d.spaceName}`,
-    html: layout(
-      `${h1('New space to review')}
-      ${details(
-        [
-          ['Submitted by', esc(d.organizerName)],
-          ['Mobile', esc(d.organizerMobile)],
-          ['Submitted', esc(d.submittedAt)],
-          ['About', d.spaceDescription && esc(d.spaceDescription)],
-        ],
-        esc(d.spaceName),
-      )}
-      ${button('Review in Apex', `${APEX}/dashboard/spaces`)}`,
+      ${button('Start a space', `${WEB}/request-space`)}`,
     ),
   };
 }

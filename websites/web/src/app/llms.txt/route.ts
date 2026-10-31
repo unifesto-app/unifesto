@@ -47,7 +47,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Pricing](${SITE.url}/pricing): plans and platform fees, no monthly fee; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
-- [Request a Space](${SITE.url}/request-space): how organisers get started
+- [Start a Space](${SITE.url}/request-space): how organisers get started
 - [Support](${SITE.url}/support): help and contact
 
 ## What organisers get

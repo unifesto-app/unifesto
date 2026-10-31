@@ -391,7 +391,7 @@ function SpacesContent({ initialSpaces }: { initialSpaces: Space[] | null }) {
         </p>
         <div data-reveal="rise" className="mt-9 flex justify-center">
           <Link href="/request-space" className="btn btn-lg btn-primary">
-            Request a Space
+            Start a Space
             <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
           </Link>
         </div>

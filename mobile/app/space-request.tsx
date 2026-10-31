@@ -5,7 +5,7 @@ export default function SpaceRequest() {
   return (
     <>
       <Stack.Screen options={{
-        title: 'Request a space',
+        title: 'Start a space',
        headerShown: true,
       }} />
       <SpaceRequestScreen />

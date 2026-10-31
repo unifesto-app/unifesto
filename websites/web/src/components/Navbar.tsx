@@ -33,7 +33,7 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
       { label: "Unifesto Sprint", href: "/sprint", description: "Hackathons: teams, judging and help desks" },
       { label: "Unifesto Stay", href: "/stay", description: "Rooms for your event's guests" },
       { label: "Unifesto Orbit", href: "/orbit", description: "The campus programme for students" },
-      { label: "Request a Space", href: "/request-space", description: "Get your club or institution set up" },
+      { label: "Start a Space", href: "/request-space", description: "Get your club or institution set up" },
       { label: "Host one event", href: "/request-event", description: "No Space yet? We set one up for you" },
     ],
   },

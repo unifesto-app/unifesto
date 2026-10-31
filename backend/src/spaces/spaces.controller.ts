@@ -18,6 +18,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { uploadLimit } from '../common/upload-limits';
 import { SpacesService } from './spaces.service';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
@@ -162,7 +163,8 @@ export class SpacesController {
   }
 
   /**
-   * Ask to host one event without a space (Assist D7)
+   * Host one event without a space (Assist D7): a personal space and the
+   * event as a draft, at once (Q29)
    * POST /spaces/event-requests
    */
   @Post('event-requests')
@@ -651,11 +653,13 @@ export class SpacesController {
     return this.spacesService.removeSpaceMember(id, userRoleId, user.id);
   }
   /**
-   * Submit a space request (authenticated users)
+   * Start a space (authenticated users): live at once, Unverified (Q29)
    * POST /spaces/request
    */
   @Post('request')
   @UseGuards(JwtAuthGuard)
+  // Nobody reviews a new space any more, so cap how many one account starts.
+  @Throttle({ default: { limit: 5, ttl: 86_400_000 } })
   async createSpaceRequest(
     @Body() dto: CreateSpaceRequestDto,
     @CurrentUser() user: User,

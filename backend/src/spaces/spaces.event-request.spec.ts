@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { SpacesService } from './spaces.service';
 import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE } from '../support/subject-cases';
 
-// D7: host one event without a space. Approval = personal space + draft event.
+// D7: host one event without a space: a personal space + draft event, at once since Q29.
 describe('SpacesService event requests', () => {
   const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
   const dto = { title: 'Robotics night', startDateTime: future(10), endDateTime: future(10.1), city: 'Hyderabad' };
@@ -22,6 +22,7 @@ describe('SpacesService event requests', () => {
     };
     const tx = {
       eventRequest: {
+        create: jest.fn((a) => ({ ...req, ...a.data })),
         updateMany: jest.fn().mockResolvedValue({ count: opts.claimed ?? 1 }),
         update: jest.fn((a) => ({ ...req, ...a.data })),
       },
@@ -39,6 +40,7 @@ describe('SpacesService event requests', () => {
         findUnique: jest.fn().mockResolvedValue(req),
         updateMany: jest.fn().mockResolvedValue({ count: opts.claimed ?? 1 }),
       },
+      user: { findUnique: jest.fn().mockResolvedValue(req.user) },
       $transaction: jest.fn((fn) => fn(tx)),
     };
     const events = { emit: jest.fn() };
@@ -46,20 +48,17 @@ describe('SpacesService event requests', () => {
     return { svc, prisma, tx, events };
   }
 
-  it('files the request and opens a REQUEST case on the Platform desk', async () => {
-    const { svc, events } = build();
-    await svc.createEventRequest('u1', dto);
-    expect(events.emit).toHaveBeenCalledWith(
-      SUBJECT_CASE_OPEN,
-      expect.objectContaining({
-        subjectType: 'EventRequest',
-        subjectId: 'r1',
-        kind: 'REQUEST',
-        requestType: 'EVENT',
-        desk: 'PLATFORM',
-        notify: true,
-      }),
-    );
+  it('makes the personal space (live, Unverified) and the draft event at once, with nothing to review', async () => {
+    const { svc, tx, events } = build();
+    const out = await svc.createEventRequest('u1', dto);
+    expect(tx.eventRequest.create.mock.calls[0][0].data).toMatchObject({ userId: 'u1', status: 'APPROVED' });
+    const space = tx.space.create.mock.calls[0][0].data;
+    expect(space).toMatchObject({ name: 'Asha Rao', createdBy: 'u1', status: 'ACTIVE', approvedBy: null });
+    expect(space.verifiedAt).toBeUndefined();
+    expect(tx.userRole.create.mock.calls[0][0].data).toMatchObject({ userId: 'u1', spaceId: 's1', assignedBy: null });
+    expect(tx.event.create.mock.calls[0][0].data).toMatchObject({ title: 'Robotics night', spaceId: 's1' });
+    expect(out).toMatchObject({ spaceId: 's1', eventId: 'e1' });
+    expect(events.emit.mock.calls.map(([name]) => name)).not.toContain(SUBJECT_CASE_OPEN);
   });
 
   it('sends people who already run a space to it, and allows one pending request', async () => {

@@ -311,6 +311,8 @@ export interface SpaceRequest {
   createdAt: string;
 }
 
+/** Q29: the space is made at once, live and Unverified. */
+
 export const createSpaceRequest = async (data: {
   name: string;
   description?: string;
@@ -322,24 +324,16 @@ export const createSpaceRequest = async (data: {
   websiteUrl?: string;
   requesterRole?: string;
   authorityConfirmed?: boolean;
-}): Promise<SpaceRequest> => {
+}): Promise<SpaceRequest & { space: { id: string; slug: string; name: string } }> => {
   const response = await makeAuthenticatedRequest('/spaces/request', {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!response?.ok) throw await errorFrom(response, 'Failed to submit request');
+  if (!response?.ok) throw await errorFrom(response, 'Could not create the space');
   return response.json();
 };
 
-export const getMySpaceRequests = async (): Promise<SpaceRequest[]> => {
-  const response = await makeAuthenticatedRequest('/spaces/my-requests');
-  if (!response?.ok) return [];
-  const text = await response.text();
-  if (!text) return [];
-  try { return JSON.parse(text); } catch { return []; }
-};
-
-/** D7: ask to host one event without a space. Followed in My help as a case. */
+/** D7: host one event without a space: a personal space and the event as a draft, at once (Q29). */
 export const createEventRequest = async (data: {
   title: string;
   description?: string;
@@ -347,11 +341,11 @@ export const createEventRequest = async (data: {
   startDateTime: string;
   endDateTime: string;
   city?: string;
-}): Promise<{ id: string }> => {
+}): Promise<{ id: string; spaceId: string | null; eventId: string | null }> => {
   const response = await makeAuthenticatedRequest('/spaces/event-requests', {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!response?.ok) throw await errorFrom(response, 'Failed to send request');
+  if (!response?.ok) throw await errorFrom(response, 'Could not create the event');
   return response.json();
 };

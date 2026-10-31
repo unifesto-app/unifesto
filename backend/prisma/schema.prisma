@@ -1144,7 +1144,7 @@ model Space {
   coCuratorLimit Int @default(5) @map("co_organiser_limit") // Set by admin
 
   // Status & Workflow
-  status          SpaceStatus @default(PENDING)
+  status          SpaceStatus @default(ACTIVE)
   submittedAt     DateTime?   @map("submitted_at") @db.Timestamptz(6)
   approvedAt      DateTime?   @map("approved_at") @db.Timestamptz(6)
   rejectedAt      DateTime?   @map("rejected_at") @db.Timestamptz(6)

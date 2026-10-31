@@ -9,7 +9,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 
 /**
  * Closing band for people who only attend (the web's FinalCTASection): the
- * other side of the door, one silver button into a Space request.
+ * other side of the door, one silver button into starting a Space.
  */
 export default function HostCta({ onPress }: { onPress: () => void }) {
   const c = useCosmos();
@@ -21,7 +21,7 @@ export default function HostCta({ onPress }: { onPress: () => void }) {
         <Text style={[styles.body, { color: c.soft }]}>
           Tickets, QR check-in and payouts for your club or community. Free for RSVP events.
         </Text>
-        <AuthButton label="Request a space" arrow onPress={onPress} style={styles.button} />
+        <AuthButton label="Start a space" arrow onPress={onPress} style={styles.button} />
       </View>
     </View>
   );

@@ -21,7 +21,7 @@ export type OgPage = { kind: string; title: string; subtitle: string; cta?: stri
  */
 export const OG_PAGES: Record<string, OgPage> = {
   // Product
-  "/organisers": { kind: "For organisers", title: "Run every event from one Space", subtitle: "Tickets, QR check-in, payouts, certificates and sponsors, with your whole team on board.", cta: "Request a Space", icon: SquaresFour },
+  "/organisers": { kind: "For organisers", title: "Run every event from one Space", subtitle: "Tickets, QR check-in, payouts, certificates and sponsors, with your whole team on board.", cta: "Start a Space", icon: SquaresFour },
   "/pricing": { kind: "Pricing", title: "Free RSVP events on every plan", subtitle: "See what students pay and what you keep on every paid ticket.", cta: "See pricing", icon: CurrencyInr },
   "/sprint": { kind: "Unifesto Sprint", title: "Hackathons, judged properly", subtitle: "Teams, rubrics, judge panels, a help desk and a live leaderboard, in one Space.", cta: "Run a hackathon", icon: Trophy },
   "/stay": { kind: "Unifesto Stay", title: "Rooms for your event's guests", subtitle: "Requests, approvals, payment and a Stay Pass at arrival.", cta: "Add Stay", icon: Bed },
@@ -33,7 +33,7 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/spaces": { kind: "Spaces", title: "Clubs, campuses and communities", subtitle: "Explore the Spaces that run their events on Unifesto.", cta: "Explore Spaces", icon: UsersThree },
 
   // Get started
-  "/request-space": { kind: "Get started", title: "Bring your club to Unifesto", subtitle: "Request a Space for your club, community or institution. We review every one.", cta: "Request a Space", icon: PlusCircle },
+  "/request-space": { kind: "Get started", title: "Bring your club to Unifesto", subtitle: "Start a Space for your club, community or institution. Live in minutes.", cta: "Start a Space", icon: PlusCircle },
   "/request-event": { kind: "Get started", title: "Host one event, no Space needed", subtitle: "Run a single event on Unifesto without setting up a Space.", cta: "Host an event", icon: CalendarPlus },
 
   // Orbit
