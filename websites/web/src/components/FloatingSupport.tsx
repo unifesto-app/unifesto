@@ -60,7 +60,7 @@ export default function FloatingSupport({ hasHelp }: { hasHelp: boolean }) {
               <p className="text-base font-semibold text-paper">How can we help?</p>
               <p className="mt-0.5 text-sm text-paper/55">Ask Assist, or reach a person. We reply within 24 hours.</p>
             </div>
-            <div className="divide-y divide-white/[0.06]">
+            <div className="divide-y divide-border">
               <SupportRow
                 icon={<Sparkle weight="fill" className="h-7 w-7 text-primary" />}
                 label="Ask Assist"

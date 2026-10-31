@@ -70,7 +70,7 @@ export default function AboutPage() {
         </h2>
         <dl data-stagger="rise" className="mt-12">
           {BEFORE_AFTER.map(([before, after]) => (
-            <div key={before} className="grid gap-2 py-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.1)] sm:grid-cols-2 sm:gap-10">
+            <div key={before} className="grid gap-2 py-5 border-t border-border sm:grid-cols-2 sm:gap-10">
               <dt className="text-[15px] text-ink/45 line-through decoration-ink/30">{before}</dt>
               <dd className="text-[15px] text-ink">{after}</dd>
             </div>
@@ -84,7 +84,7 @@ export default function AboutPage() {
         </h2>
         <div data-stagger="rise" className="mt-12 grid gap-10 md:grid-cols-3">
           {HOLD_TO.map((h) => (
-            <div key={h.title} className="pt-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.14)]">
+            <div key={h.title} className="pt-5 border-t border-border">
               <h3 className="text-lg text-paper">{h.title}</h3>
               <p className="mt-3 max-w-[40ch] text-[15px] font-light leading-relaxed text-paper/65">{h.body}</p>
             </div>

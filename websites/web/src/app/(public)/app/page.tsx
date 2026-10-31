@@ -7,6 +7,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import StoreBadges from "@/components/site/StoreBadges";
 import { FeedScreen, PassScreen, ExtrasScreen } from "@/components/visuals/AppScreens";
 import { RubricVisual } from "@/components/visuals/Hackathon";
@@ -33,8 +34,25 @@ const appLd = {
 };
 
 /* Discover shows the feed; the pass row shows the moment it is used, at
-   the gate; the hero already carries the pass itself. */
-const SCREENS: Record<string, React.ReactNode> = { discover: <FeedScreen />, pass: <ScanVisual />, more: <ExtrasScreen /> };
+   the gate; the hero already carries the pass itself. Each on its shade,
+   the pass on the door's mint. */
+const SCREENS: Record<string, React.ReactNode> = {
+  discover: (
+    <ShadeFrame shade="sky" phone>
+      <FeedScreen />
+    </ShadeFrame>
+  ),
+  pass: (
+    <ShadeFrame shade="mint">
+      <ScanVisual />
+    </ShadeFrame>
+  ),
+  more: (
+    <ShadeFrame shade="ivory" phone>
+      <ExtrasScreen />
+    </ShadeFrame>
+  ),
+};
 
 export default function AppPage() {
   // Register folds into the pass row: one story from tap to gate.
@@ -51,6 +69,7 @@ export default function AppPage() {
         lede="The Unifesto app is free on iOS and Android. Find what is on, register in a few taps, and walk in with the pass already on your phone."
         actions={<StoreBadges />}
         aside={<PassScreen />}
+        card={<ScanVisual />}
       />
 
       <Section pad="tight">
@@ -73,7 +92,11 @@ export default function AppPage() {
           id="team-heading"
           title="In a hackathon? Your team lives here too."
           lede="See your problem statement, manage your team, submit your project, raise a help desk query and follow results. Judges score teams from the same app."
-          visual={<RubricVisual />}
+          visual={
+            <ShadeFrame shade="blue">
+              <RubricVisual />
+            </ShadeFrame>
+          }
         />
       </Section>
 

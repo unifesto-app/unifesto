@@ -9,8 +9,9 @@ import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
-import { PILLAR_VISUALS, ScanVisual } from "@/components/visuals/Product";
+import { PILLAR_SHADES, PILLAR_VISUALS, ScanVisual } from "@/components/visuals/Product";
 import { RubricVisual } from "@/components/visuals/Hackathon";
 import { FAQ_ORGANISERS, PILLARS, PLANS, SITE } from "@/lib/site";
 
@@ -64,7 +65,7 @@ export default function OrganisersPage() {
             </Link>
           </>
         }
-        aside={<ScanVisual />}
+        card={<ScanVisual />}
       />
 
       {/* In-page index: quick jumps for people, sitelinks for search. */}
@@ -88,7 +89,20 @@ export default function OrganisersPage() {
         {PILLARS.map((p, i) => {
           const Visual = PILLAR_VISUALS[p.id];
           return (
-            <FeatureRow key={p.id} as="h2" id={p.id} title={p.title} lede={p.lede} points={p.points} visual={<Visual />} flip={i % 2 === 1}>
+            <FeatureRow
+              key={p.id}
+              as="h2"
+              id={p.id}
+              title={p.title}
+              lede={p.lede}
+              points={p.points}
+              visual={
+                <ShadeFrame shade={PILLAR_SHADES[p.id]} phone={p.id === "spaces"}>
+                  <Visual />
+                </ShadeFrame>
+              }
+              flip={i % 2 === 1}
+            >
               {p.id === "after" && (
                 <Link href="/stay" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
                   More on Unifesto Stay <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
@@ -105,7 +119,11 @@ export default function OrganisersPage() {
           id="hack-heading"
           title="Running a hackathon?"
           lede="Teams and statements, rounds with weighted rubrics, judge panels scoring from their phones, a help desk and a live leaderboard. It is all part of the same Space."
-          visual={<RubricVisual />}
+          visual={
+            <ShadeFrame shade="blue">
+              <RubricVisual />
+            </ShadeFrame>
+          }
         >
           <Link href="/sprint" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
             More on Unifesto Sprint <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
@@ -119,7 +137,7 @@ export default function OrganisersPage() {
         </h2>
         <ol data-stagger="rise" className="mt-12 grid gap-10 md:grid-cols-3">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="pt-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.14)]">
+            <li key={s.title} className="pt-5 border-t border-border">
               <span className="font-display tabular text-sm text-paper/45">{i + 1}</span>
               <h3 className="mt-3 text-lg text-paper">{s.title}</h3>
               <p className="mt-2 max-w-[38ch] text-[15px] font-light leading-relaxed text-paper/65">{s.body}</p>

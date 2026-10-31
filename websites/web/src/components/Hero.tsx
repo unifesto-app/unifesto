@@ -60,7 +60,7 @@ export default function Hero() {
               <PassScreen />
             </div>
             {/* Frosted glass over the phone (solid until the effect runs). */}
-            <div data-glass className="enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "420ms" }}>
+            <div data-glass className="hero-card enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "420ms" }}>
               <DoorVisual />
             </div>
           </LiquidGlassRoot>

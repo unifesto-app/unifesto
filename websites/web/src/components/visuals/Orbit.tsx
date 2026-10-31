@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Panel } from "@/components/visuals/Product";
+import { Panel, panelRow, panelRows } from "@/components/visuals/Product";
 
 /* Unifesto Orbit fragments: a campus drawn as a small solar system (clubs
    circling a Unifesto core), the Orbit Lead's ID card, the start-period
@@ -67,7 +67,7 @@ export function OrbitIdCard() {
     ["Blood group", "B+"],
   ];
   const face =
-    "overflow-hidden rounded-2xl bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_30px_60px_-30px_rgba(0,0,0,0.9)] [backface-visibility:hidden]";
+    "overflow-hidden rounded-xl bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_30px_60px_-30px_rgba(0,0,0,0.9)] [backface-visibility:hidden]";
   // Click, tap or keyboard (the checkbox) flips the card; CSS only, so it
   // works in a server component. Reduced motion swaps without the spin.
   return (
@@ -85,7 +85,7 @@ export function OrbitIdCard() {
         <span className="h-1.5 w-12 rounded-full bg-night shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]" />
       </div>
 
-      <div className="mt-3 flex items-center justify-between bg-night-3 px-4 py-2.5">
+      <div className="mt-3 flex items-center justify-between px-4 py-2.5">
         <span className="flex items-center gap-2">
           <svg viewBox="0 0 64 40" className="h-6 w-10">
             <ellipse cx="32" cy="22" rx="27" ry="7" fill="none" stroke="rgb(var(--glow) / 0.45)" strokeWidth="1.2" transform="rotate(-18 32 22)" />
@@ -165,9 +165,9 @@ export function OrbitStartVisual() {
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-night-3">
         <div className="h-full w-[40%] rounded-full bg-primary" />
       </div>
-      <div className="mt-3 space-y-1.5">
+      <div className={`mt-3 ${panelRows}`}>
         {clubs.map(([n, s]) => (
-          <div key={n} className="flex items-center justify-between rounded-md bg-night-3 px-2.5 py-2 text-[10px]">
+          <div key={n} className={`${panelRow} py-2 text-[10px]`}>
             <span className="text-paper">{n}</span>
             <span className="text-paper/60">{s}</span>
           </div>
@@ -265,7 +265,7 @@ export function OrbitCertificate() {
 export function Pinned({ tilt = 0, className = "", children }: { tilt?: number; className?: string; children: ReactNode }) {
   return (
     <div
-      className={`relative rounded-lg bg-night-2 p-5 pt-6 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_24px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
+      className={`relative rounded-2xl bg-night-2 p-5 pt-6 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_24px_40px_-24px_rgba(0,0,0,0.9)] ${className}`}
       style={{ transform: `rotate(${tilt}deg)` }}
     >
       <span aria-hidden="true" className="absolute -top-1.5 left-1/2 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_30%,var(--primary-bright),rgb(var(--glow)/0.3))] shadow-[0_3px_6px_rgba(0,0,0,0.6)]" />

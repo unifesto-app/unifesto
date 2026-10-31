@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
+import ShadeCard, { SHADES, type Shade } from "@/components/site/ShadeCard";
 import { getPosts, postMeta, type BlogPostSummary as BlogPost } from "@/lib/api/blog";
 
 export const metadata: Metadata = withSocial({
@@ -68,45 +69,43 @@ function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
 
 function FeaturedCard({ post }: { post: BlogPost }) {
   return (
-    <Link
-      href={`/blog/${post.slug}`}
-      className="group grid overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3 md:grid-cols-2"
-    >
-      <CardImage post={post} large />
-      <div className="flex flex-col justify-center gap-4 p-8 md:p-10">
-        <h2 className="font-display text-2xl font-bold leading-snug text-paper md:text-3xl" style={{ letterSpacing: "-0.03em" }}>
-          {post.title}
-        </h2>
-        <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
-          {post.excerpt}
-        </p>
-        <Meta post={post} />
-        <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
-          Read article
-          <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
-        </span>
-      </div>
-    </Link>
+    <ShadeCard shade="blue" glass className="p-3" glassClassName="w-full">
+      <Link href={`/blog/${post.slug}`} className="group grid overflow-hidden rounded-xl bg-night-2 md:grid-cols-2">
+        <CardImage post={post} large />
+        <div className="flex flex-col justify-center gap-4 p-8 md:p-10">
+          <h2 className="font-display text-2xl font-bold leading-snug text-paper md:text-3xl" style={{ letterSpacing: "-0.03em" }}>
+            {post.title}
+          </h2>
+          <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
+            {post.excerpt}
+          </p>
+          <Meta post={post} />
+          <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+            Read article
+            <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+          </span>
+        </div>
+      </Link>
+    </ShadeCard>
   );
 }
 
-function PostCard({ post }: { post: BlogPost }) {
+function PostCard({ post, shade }: { post: BlogPost; shade: Shade }) {
   return (
-    <Link
-      href={`/blog/${post.slug}`}
-      className="group flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
-    >
-      <CardImage post={post} />
-      <div className="flex flex-1 flex-col gap-4 p-6">
-        <h3 className="text-lg font-semibold leading-snug text-paper">
-          {post.title}
-        </h3>
-        <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
-        <div className="mt-auto pt-1">
-          <Meta post={post} />
+    <ShadeCard shade={shade} glass className="p-3" glassClassName="h-full">
+      <Link href={`/blog/${post.slug}`} className="group flex h-full flex-col overflow-hidden rounded-xl bg-night-2">
+        <CardImage post={post} />
+        <div className="flex flex-1 flex-col gap-4 p-6">
+          <h3 className="text-lg font-semibold leading-snug text-paper">
+            {post.title}
+          </h3>
+          <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
+          <div className="mt-auto pt-1">
+            <Meta post={post} />
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </ShadeCard>
   );
 }
 
@@ -189,8 +188,8 @@ export default async function BlogPage({
                 Latest posts
               </h2>
               <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
-                {regularPosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                {regularPosts.map((post, i) => (
+                  <PostCard key={post.id} post={post} shade={SHADES[i % SHADES.length]} />
                 ))}
               </div>
             </Section>

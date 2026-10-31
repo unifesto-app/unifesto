@@ -11,9 +11,9 @@ import Footer from "@/components/Footer";
 import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
-import ShadeCard, { type Shade } from "@/components/site/ShadeCard";
+import ShadeCard, { ShadeFrame } from "@/components/site/ShadeCard";
 import { PassScreen, ManageScreen } from "@/components/visuals/AppScreens";
-import { PILLAR_VISUALS } from "@/components/visuals/Product";
+import { PILLAR_SHADES, PILLAR_VISUALS } from "@/components/visuals/Product";
 import { LeaderboardVisual } from "@/components/visuals/Hackathon";
 import { FAQ_HOME, PILLARS, PROOF, SITE, SOCIAL } from "@/lib/site";
 import JsonLd from "@/components/site/JsonLd";
@@ -55,12 +55,9 @@ const orgLd = [
 ];
 
 const HIGHLIGHTS = ["tickets", "door", "money"] as const;
-/* Each job's card in its accent: tickets sky, the door mint, money ivory. */
-const PILLAR_SHADES: Record<(typeof HIGHLIGHTS)[number], Shade> = { tickets: "sky", door: "mint", money: "ivory" };
-const PANEL_CARD = "w-full max-w-[30rem] p-8 sm:p-10";
 
 export default function Home() {
-  const pillars = HIGHLIGHTS.map((id) => ({ ...PILLARS.find((p) => p.id === id)!, shade: PILLAR_SHADES[id] }));
+  const pillars = HIGHLIGHTS.map((id) => PILLARS.find((p) => p.id === id)!);
   // overflow-x-clip, not hidden: hidden makes <main> a scroll container,
   // which would capture the door's scroll-driven animation.
   return (
@@ -127,9 +124,9 @@ export default function Home() {
               lede={p.lede}
               points={p.points.slice(0, 3)}
               visual={
-                <ShadeCard shade={p.shade} glass className={PANEL_CARD}>
+                <ShadeFrame shade={PILLAR_SHADES[p.id]}>
                   <Visual />
-                </ShadeCard>
+                </ShadeFrame>
               }
               flip={i % 2 === 1}
             />
@@ -148,9 +145,9 @@ export default function Home() {
           title="Hackathons, judged properly."
           lede="Teams, problem statements, rounds with weighted rubrics, judge panels, a help desk and a live leaderboard. The whole hackathon, from registration to certificates, in the same Space."
           visual={
-            <ShadeCard shade="blue" glass className={PANEL_CARD}>
+            <ShadeFrame shade="blue">
               <LeaderboardVisual />
-            </ShadeCard>
+            </ShadeFrame>
           }
         >
           <Link href="/sprint" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">

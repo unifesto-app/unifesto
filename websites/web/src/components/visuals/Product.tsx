@@ -1,5 +1,6 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
 import type { ReactNode } from "react";
+import type { Shade } from "@/components/site/ShadeCard";
 import { SpaceScreen } from "@/components/visuals/AppScreens";
 import { Check, ScanSmiley, WhatsappLogo, Link as LinkIcon, Certificate, Handshake, FilePdf, Bed } from "@unifesto/unicon/react";
 
@@ -28,7 +29,12 @@ export function Panel({ title, children, className = "" }: { title: string; chil
   );
 }
 
-const row = "flex items-center justify-between rounded-md bg-night-3 px-2.5 py-1.5";
+/* Rows inside a panel are separated by hairlines and space, never boxed:
+   put `panelRows` on the list and `panelRow` on each line. */
+export const panelRows = "divide-y divide-border";
+export const panelRow = "flex items-center justify-between py-1.5";
+/* A line set off from the list above it (a coupon, the payout). */
+export const panelAfter = "mt-3 flex items-center justify-between border-t border-border pt-2.5";
 
 /* Tickets: a fest nesting sub-events, with its ticket types. */
 export function TicketsVisual() {
@@ -45,9 +51,9 @@ export function TicketsVisual() {
   ];
   return (
     <Panel title="Event builder">
-      <div className="space-y-1.5">
+      <div className={panelRows}>
         {tree.map(([d, label, meta]) => (
-          <div key={label} className={row} style={{ paddingLeft: `${0.625 + d * 0.9}rem` }}>
+          <div key={label} className={panelRow} style={{ paddingLeft: `${d * 0.9}rem` }}>
             <span className={`text-[11px] ${d === 0 ? "text-paper" : "text-paper/75"}`}>
               {d > 0 && <span className="mr-1.5 text-paper/35">└</span>}
               {label}
@@ -56,7 +62,7 @@ export function TicketsVisual() {
           </div>
         ))}
       </div>
-      <div className="mt-3 space-y-1.5 pt-3 shadow-[inset_0_1px_0_rgb(var(--glow)/0.08)]">
+      <div className="mt-3 space-y-1.5 pt-3 border-t border-border">
         {tickets.map(([name, price, left]) => (
           <div key={name} className="flex items-center justify-between text-[11px]">
             <span className="text-paper/75">{name}</span>
@@ -66,7 +72,7 @@ export function TicketsVisual() {
             </span>
           </div>
         ))}
-        <div className="flex items-center justify-between rounded-md bg-sky/[0.08] px-2.5 py-1.5 text-[10px]">
+        <div className={`${panelAfter} text-[10px]`}>
           <span className="text-paper/75">Coupon FRESHERS20</span>
           <span className="text-sky">−20%</span>
         </div>
@@ -91,9 +97,9 @@ export function DoorVisual() {
       <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
         <div data-reveal="fill" className="h-full origin-left rounded-full bg-mint" style={{ transform: "scaleX(0.94)" }} />
       </div>
-      <div className="space-y-1.5">
+      <div className={panelRows}>
         {points.map(([name, count, live]) => (
-          <div key={name} className={row}>
+          <div key={name} className={panelRow}>
             <span className="flex items-center gap-2 text-[11px] text-paper/75">
               <ScanSmiley className="h-3.5 w-3.5 text-paper/55" />
               {name}
@@ -120,7 +126,7 @@ export function MoneyVisual() {
     <Panel title="Financials · Nav Nirman 4.0">
       <div className="space-y-2">
         {lines.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between pb-2 shadow-[inset_0_-1px_0_rgb(var(--glow)/0.06)]">
+          <div key={label} className="flex items-center justify-between pb-2 border-b border-border">
             <span className="text-[11px] text-paper/65">{label}</span>
             <span className="tabular text-[12px] text-paper/85">{value}</span>
           </div>
@@ -130,7 +136,7 @@ export function MoneyVisual() {
           <span className="font-display tabular text-base text-paper">₹1,38,413</span>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1.5 rounded-md bg-ivory/[0.08] px-2.5 py-1.5">
+      <div className={`${panelAfter} justify-start gap-1.5`}>
         <Check weight="bold" className="h-3 w-3 text-ivory" />
         <span className="text-[10px] text-paper/75">Paid to HDFC ····4821</span>
       </div>
@@ -147,7 +153,7 @@ export function ReachVisual() {
   ];
   return (
     <Panel title="Reach">
-      <div className="rounded-lg bg-night-3 p-3">
+      <div className="pb-3">
         <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-paper/55">
           <WhatsappLogo weight="fill" className="h-3.5 w-3.5 text-paper/70" />
           Unifesto · now
@@ -156,7 +162,7 @@ export function ReachVisual() {
           You are in for Hack League 2026. Your pass is in the app. Join the team group: chat.whatsapp.com/…
         </p>
       </div>
-      <div className="mt-3 space-y-2">
+      <div className="space-y-2 border-t border-border pt-3">
         {sources.map(([name, pct]) => (
           <div key={name}>
             <div className="mb-1 flex justify-between text-[10px]">
@@ -178,7 +184,7 @@ export function ReachVisual() {
 
 /* After: certificates, sponsor leads, report, stays. */
 export function AfterVisual() {
-  const rows = [
+  const items = [
     { icon: Certificate, label: "Certificates issued", value: "312" },
     { icon: Handshake, label: "Sponsor leads", value: "48" },
     { icon: Bed, label: "Stay check-ins", value: "64" },
@@ -186,9 +192,9 @@ export function AfterVisual() {
   ];
   return (
     <Panel title="After the event">
-      <div className="space-y-1.5">
-        {rows.map(({ icon: Icon, label, value }) => (
-          <div key={label} className={`${row} py-2`}>
+      <div className={panelRows}>
+        {items.map(({ icon: Icon, label, value }) => (
+          <div key={label} className={`${panelRow} py-2`}>
             <span className="flex items-center gap-2 text-[11px] text-paper/75">
               <Icon className="h-3.5 w-3.5 text-paper/55" />
               {label}
@@ -228,4 +234,15 @@ export const PILLAR_VISUALS: Record<string, () => ReactNode> = {
   money: MoneyVisual,
   reach: ReachVisual,
   after: AfterVisual,
+};
+
+/* Each job's shade card: tickets sky, the door mint, money ivory, the Space
+   in Unifesto blue. Neighbouring rows never share a shade. */
+export const PILLAR_SHADES: Record<string, Shade> = {
+  spaces: "blue",
+  tickets: "sky",
+  door: "mint",
+  money: "ivory",
+  reach: "sky",
+  after: "mint",
 };

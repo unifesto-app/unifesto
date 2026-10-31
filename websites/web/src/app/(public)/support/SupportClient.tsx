@@ -15,6 +15,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SupportGroup, SupportRow, supportMailto, whatsappHref } from "@/components/support";
+import { HeroSky } from "@/components/site/CosmicBackdrop";
 import { PLATFORM_FEE_STARTS_LABEL, SITE, buyerFeeText, planFeesText } from "@/lib/site";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -150,15 +151,20 @@ export default function SupportClient({ hasHelp }: { hasHelp: boolean }) {
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
 
-      <div className="mx-auto max-w-2xl px-4 pb-24 pt-32 sm:px-6 md:pt-40">
-        <h1
-          className="font-display text-[clamp(2.25rem,5.4vw,3.5rem)] font-bold leading-[1.05] text-paper"
-          style={{ letterSpacing: "-0.035em" }}
-        >
-          How can we help?
-        </h1>
-        <p className="mt-3 text-base text-paper/70">Reach the Unifesto team directly. We reply within 24 hours.</p>
+      <header id="page-hero" className="surface-night relative overflow-hidden px-4 pb-12 pt-32 sm:px-6 md:pt-40">
+        <HeroSky targetId="page-hero" />
+        <div className="relative mx-auto max-w-2xl">
+          <h1
+            className="font-display text-[clamp(2.25rem,5.4vw,3.5rem)] font-bold leading-[1.05] text-paper"
+            style={{ letterSpacing: "-0.035em" }}
+          >
+            How can we help?
+          </h1>
+          <p className="mt-3 text-base text-paper/70">Reach the Unifesto team directly. We reply within 24 hours.</p>
+        </div>
+      </header>
 
+      <div className="mx-auto max-w-2xl px-4 pb-24 sm:px-6">
         <SupportGroup title="Contact">
           <SupportRow
             icon={<EnvelopeSimple weight="fill" className="h-7 w-7 text-primary" />}
@@ -221,7 +227,7 @@ export default function SupportClient({ hasHelp }: { hasHelp: boolean }) {
             })}
           </div>
 
-          <div className="mt-3 divide-y divide-white/[0.06] overflow-hidden rounded-2xl bg-night-2">
+          <div className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-night-2">
             {filteredFaqs.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-paper/70">
                 No results for “{search}”. Email or WhatsApp us and we will sort it out.

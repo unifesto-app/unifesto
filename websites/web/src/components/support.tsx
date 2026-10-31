@@ -20,7 +20,7 @@ export function SupportGroup({ title, children }: { title: string; children: Rea
   return (
     <section className="mt-8">
       <h2 className="mb-2 px-1 text-sm font-medium text-paper/55">{title}</h2>
-      <div className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl bg-night-2">{children}</div>
+      <div className="divide-y divide-border overflow-hidden rounded-2xl bg-night-2">{children}</div>
     </section>
   );
 }

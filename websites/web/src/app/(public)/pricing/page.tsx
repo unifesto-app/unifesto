@@ -7,6 +7,7 @@ import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import FaqList from "@/components/site/FaqList";
 import PassPaysYou from "@/components/site/PassPaysYou";
+import ShadeCard, { SHADES } from "@/components/site/ShadeCard";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -56,14 +57,17 @@ export default async function PricingPage() {
       />
 
       <Section pad="tight" id="plans">
-        {/* Each card spans 7 rows of one shared grid (subgrid), so name, price,
-            fee and button line up across cards however their text wraps. */}
+        {/* Each card spans 7 rows of one shared grid (subgrid, through every
+            layer of the card), so name, price, fee and button line up across
+            cards however their text wraps. Plans sit as glass on their shade;
+            the featured one stays solid blue. */}
         <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" data-stagger="rise">
-          {plans.map((plan) => {
+          {plans.map((plan, i) => {
             const featured = plan.id === "growth";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
-            return (
-              <article key={plan.id} className={`relative row-span-7 mb-5 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid gap-y-0 rounded-2xl p-6 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
+            const rows = "row-span-7 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid";
+            const card = (
+              <article className={`${rows} gap-y-0 rounded-xl p-6 ${featured ? "" : "bg-night-2"}`}>
                 <h2 className="font-display text-lg text-paper">{plan.name}</h2>
                 <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
 
@@ -86,7 +90,7 @@ export default async function PricingPage() {
                   {plan.annualMonthly ? `${inr(plan.annualMonthly)}/mo billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
                 </p>
 
-                <p className="mt-5 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
+                <p className="mt-5 border-y border-border py-2.5 text-sm text-paper">
                   <span className="tabular font-display">{planFee(plan)}</span>{" "}
                   <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
                   <span className="block text-xs text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
@@ -106,6 +110,15 @@ export default async function PricingPage() {
                   ))}
                 </ul>
               </article>
+            );
+            return featured ? (
+              <div key={plan.id} className={`${rows} mb-5 rounded-2xl bg-primary p-3`}>
+                {card}
+              </div>
+            ) : (
+              <ShadeCard key={plan.id} shade={SHADES[i % SHADES.length]} glass className={`${rows} mb-5 p-3`} glassClassName={rows}>
+                {card}
+              </ShadeCard>
             );
           })}
         </div>

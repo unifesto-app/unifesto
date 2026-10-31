@@ -1,5 +1,5 @@
 import { Trophy, Lifebuoy, Check } from "@unifesto/unicon/react";
-import { Panel } from "@/components/visuals/Product";
+import { Panel, panelAfter, panelRows } from "@/components/visuals/Product";
 
 /* Hackathon fragments: the live leaderboard, a judge's rubric, the help
    desk queue. Server-rendered HTML, decorative to assistive tech. */
@@ -13,9 +13,9 @@ export function LeaderboardVisual() {
   ];
   return (
     <Panel title="Leaderboard · Finals">
-      <div className="space-y-1.5">
+      <div className={panelRows}>
         {teams.map(([name, track, score], i) => (
-          <div key={name} className="flex items-center gap-3 rounded-md bg-night-3 px-2.5 py-2">
+          <div key={name} className="flex items-center gap-3 py-2">
             <span className={`tabular w-4 text-[11px] ${i === 0 ? "text-paper" : "text-paper/45"}`}>{i + 1}</span>
             <span className="flex-1">
               <span className="block text-[11px] text-paper">{name}</span>
@@ -52,7 +52,7 @@ export function RubricVisual() {
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-between rounded-md bg-primary/[0.08] px-2.5 py-1.5 text-[10px]">
+      <div className={`${panelAfter} text-[10px]`}>
         <span className="text-paper/75">Panel B · 3 of 3 judges scored</span>
         <Check weight="bold" className="h-3 w-3 text-primary" />
       </div>
@@ -68,9 +68,9 @@ export function HelpDeskVisual() {
   ];
   return (
     <Panel title="Help desk">
-      <div className="space-y-1.5">
+      <div className={panelRows}>
         {queries.map(([q, to, state]) => (
-          <div key={q} className="rounded-md bg-night-3 px-2.5 py-2">
+          <div key={q} className="py-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-[11px] text-paper">
                 <Lifebuoy className="h-3 w-3 text-paper/55" /> {q}

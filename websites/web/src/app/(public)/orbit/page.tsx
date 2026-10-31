@@ -9,6 +9,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
 import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_CREW_EARN, ORBIT_QUARTERLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
 import { OrbitKitShowcase } from "@/components/visuals/OrbitKitShowcase";
@@ -88,7 +89,11 @@ export default async function OrbitPage() {
             "Active in a club or fest team",
             "Remote, flexible, no fixed hours",
           ]}
-          visual={<OrbitIdCard />}
+          visual={
+            <ShadeFrame shade="sky" phone>
+              <OrbitIdCard />
+            </ShadeFrame>
+          }
         />
         <FeatureRow
           as="h2"
@@ -101,7 +106,11 @@ export default async function OrbitPage() {
             "No end date after that",
             "Exam breaks are fine. Tell your Program Lead.",
           ]}
-          visual={<OrbitStartVisual />}
+          visual={
+            <ShadeFrame shade="mint">
+              <OrbitStartVisual />
+            </ShadeFrame>
+          }
           flip
         />
       </Section>

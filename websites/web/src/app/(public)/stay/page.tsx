@@ -10,6 +10,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import { StaySetupVisual, StayRequestsVisual, StayPassScreen, StayScanVisual } from "@/components/visuals/Stay";
 import { FAQ_STAY, STAY_STEPS } from "@/lib/site";
 
@@ -42,6 +43,7 @@ export default function StayPage() {
           </>
         }
         aside={<StayPassScreen />}
+        card={<StayScanVisual />}
       />
 
       <Section pad="tight">
@@ -56,7 +58,11 @@ export default function StayPage() {
             "Paid online through Razorpay, at the property, or not at all",
             "Your own booking questions, and a group size limit per request",
           ]}
-          visual={<StaySetupVisual />}
+          visual={
+            <ShadeFrame shade="sky">
+              <StaySetupVisual />
+            </ShadeFrame>
+          }
         />
         <FeatureRow
           as="h2"
@@ -69,7 +75,11 @@ export default function StayPage() {
             "Payment window for online stays, 48 hours by default",
             "One open booking per person per event",
           ]}
-          visual={<StayRequestsVisual />}
+          visual={
+            <ShadeFrame shade="ivory">
+              <StayRequestsVisual />
+            </ShadeFrame>
+          }
           flip
         />
         <FeatureRow
@@ -78,7 +88,11 @@ export default function StayPage() {
           title="Arrival takes one scan"
           lede="Approved guests carry a Stay Pass in the Unifesto app. Your team scans it at the property to check them in, and again at check-out, so you always know who is in the building."
           points={["Scan Stay Pass from the organiser app", "Check-in and check-out per booking", "Live count of guests checked in"]}
-          visual={<StayScanVisual />}
+          visual={
+            <ShadeFrame shade="mint">
+              <StayScanVisual />
+            </ShadeFrame>
+          }
         />
       </Section>
 
@@ -88,7 +102,7 @@ export default function StayPage() {
         </h2>
         <ol data-stagger="rise" className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
           {STAY_STEPS.map((s, i) => (
-            <li key={s.title} className="pt-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.14)]">
+            <li key={s.title} className="pt-5 border-t border-border">
               <span className="font-display tabular text-sm text-ink/45">{i + 1}</span>
               <h3 className="mt-3 text-base text-ink">{s.title}</h3>
               <p className="mt-2 text-sm font-light leading-relaxed text-ink/60">{s.body}</p>

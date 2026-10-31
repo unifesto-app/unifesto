@@ -10,6 +10,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import { ShadeFrame } from "@/components/site/ShadeCard";
 import { LeaderboardVisual, RubricVisual, HelpDeskVisual } from "@/components/visuals/Hackathon";
 import { FAQ_HACKATHONS, HACKATHON_STAGES } from "@/lib/site";
 
@@ -41,7 +42,7 @@ export default function SprintPage() {
             </Link>
           </>
         }
-        aside={<LeaderboardVisual />}
+        card={<LeaderboardVisual />}
       />
 
       {/* The stages are a real sequence, so they carry their order. */}
@@ -51,7 +52,7 @@ export default function SprintPage() {
         </h2>
         <ol data-stagger="rise" className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
           {HACKATHON_STAGES.map((s, i) => (
-            <li key={s.title} className="pt-5 shadow-[inset_0_1px_0_rgb(var(--glow)/0.14)]">
+            <li key={s.title} className="pt-5 border-t border-border">
               <span className="font-display tabular text-sm text-paper/45">{i + 1}</span>
               <h3 className="mt-3 text-base text-paper">{s.title}</h3>
               <p className="mt-2 text-sm font-light leading-relaxed text-paper/60">{s.body}</p>
@@ -67,7 +68,11 @@ export default function SprintPage() {
           title="Scores you can defend."
           lede="Every round has weighted criteria. Judges sit on panels, score from their phones, and see only the teams sent to them. Organisers watch panels complete, then publish results when they are ready."
           points={["Rounds, criteria and weights per hackathon", "Judge panels with evaluation requests", "Rubric or metric leaderboards", "Winners, awards and results pages"]}
-          visual={<RubricVisual />}
+          visual={
+            <ShadeFrame shade="blue">
+              <RubricVisual />
+            </ShadeFrame>
+          }
         />
         <FeatureRow
           as="h2"
@@ -75,7 +80,11 @@ export default function SprintPage() {
           title="Help that reaches the right person."
           lede="Map teams to rooms and give each room its volunteers. When a team is stuck, they raise a query by topic and it lands with the point of contact for that topic, not in a crowded group chat."
           points={["Rooms with assigned volunteers", "Help topics with points of contact", "Team queries tracked to resolution", "Announcements pushed to every participant"]}
-          visual={<HelpDeskVisual />}
+          visual={
+            <ShadeFrame shade="sky">
+              <HelpDeskVisual />
+            </ShadeFrame>
+          }
           flip
         />
       </Section>
