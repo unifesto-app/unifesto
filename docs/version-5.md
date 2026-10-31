@@ -1035,3 +1035,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Mobile web: first taps work again (no location prompt on load, no liquid glass on touch screens) (#478)
 - **2026-10-31** · Blog queue rows get a Start button that writes that question now, in the background (#476)
 - **2026-10-31** · J4 Apex › Status lists unresolved Sentry issues (last 24h, all projects) and resolves them, via a server-side SENTRY_API_TOKEN; resolves are audited (#477)
+- **2026-10-31** · Linked devices: every phone and browser signed in to my account, with per-device sign out on mobile Account settings and web Security; signing a phone out also stops its pushes. Needs migrate deploy + rebuild backend and web; mobile is OTA-able. (#479)
