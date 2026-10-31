@@ -1038,3 +1038,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Linked devices: every phone and browser signed in to my account, with per-device sign out on mobile Account settings and web Security; signing a phone out also stops its pushes. Needs migrate deploy + rebuild backend and web; mobile is OTA-able. (#479)
 - **2026-10-31** · QR sign-in on the web: unifesto.app/login shows a code, Account settings › Link a device in the app approves it, and the browser joins Linked devices. Needs rebuild backend + web; mobile is OTA-able. (#480)
 - **2026-10-31** · Web: first-party pages (home, pricing, legal, blog, help) prerendered and cacheable; K14 nonce kept on event, space, sign-in and console pages (#481)
+- **2026-10-31** · Public site navbar animates with CSS instead of motion, so the home page loads about 40 KB less JavaScript (gzip). Needs rebuild web. (#482)
