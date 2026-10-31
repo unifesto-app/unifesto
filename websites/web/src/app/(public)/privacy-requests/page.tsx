@@ -18,6 +18,7 @@ export const metadata: Metadata = withSocial({
 }, { title: "Unifesto Privacy Request Center" });
 
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 const ask = (subject: string, body: string) =>
   `mailto:${LEGAL.email.privacy}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

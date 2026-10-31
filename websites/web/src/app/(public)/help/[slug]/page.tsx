@@ -10,6 +10,8 @@ import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { getHelpArticle } from "@/lib/api/help";
 import { IST } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

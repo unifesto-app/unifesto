@@ -8,6 +8,8 @@ import Section from "@/components/site/Section";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { BRAND_KIT, PROOF, RELEASES, SITE } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "Press & Releases",
   description:

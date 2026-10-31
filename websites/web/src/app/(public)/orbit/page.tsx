@@ -27,6 +27,7 @@ const tilts = [-1.2, 0.8, -0.6, 1.1];
 
 /* The application map refreshes from the API at most every 5 minutes. */
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default async function OrbitPage() {
   const map = await getOrbitMap();

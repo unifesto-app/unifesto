@@ -16,6 +16,7 @@ import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export async function generateMetadata(): Promise<Metadata> {
   const { plans, buyerFee, buyerFeeCap } = await getRateCard();

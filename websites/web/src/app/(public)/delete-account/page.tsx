@@ -4,6 +4,8 @@ import { withSocial } from "@/lib/seo";
 import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
 import { LEGAL } from "@/lib/legal";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 /* Account deletion, as the backend actually does it (users.service:
    requestAccountDeletion → 30-day grace → purgeDueDeletions/closeAccount).
    This page is the web deletion URL listed on Google Play and the App

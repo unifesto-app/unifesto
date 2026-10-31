@@ -10,6 +10,8 @@ import Section from "@/components/site/Section";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { PROOF } from "@/lib/site";
 
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
 export const metadata: Metadata = withSocial({
   title: "About Unifesto",
   description: `Unifesto is built in Hyderabad by people who ran college events on forms, spreadsheets and group chats. It started at ${PROOF.firstCampus} and now hosts ${PROOF.spacesLive} Spaces.`,

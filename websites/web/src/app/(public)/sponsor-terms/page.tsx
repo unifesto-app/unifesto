@@ -12,6 +12,7 @@ export const metadata: Metadata = withSocial({
 }, { title: "Unifesto Sponsor and Partner Terms" });
 
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default function SponsorTermsPage() {
   return (

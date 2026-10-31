@@ -17,6 +17,7 @@ export const metadata: Metadata = withSocial({
 }, { title: "Unifesto Code of Conduct" });
 
 export const revalidate = 300;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default function CodeOfConductPage() {
   return (

@@ -30,6 +30,7 @@ export const metadata: Metadata = withSocial(
 );
 
 export const revalidate = 3600;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default async function LinksPage() {
   const latest = (await getPosts())[0];

@@ -1,6 +1,7 @@
 import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
 import { isOwnHost } from '@/lib/own-host';
+import { isCachedPage } from '@/lib/cached-pages';
 import type { NextRequest } from 'next/server';
 
 const MAIN = 'https://www.unifesto.app';
@@ -24,14 +25,16 @@ const origin = (url: string | undefined) => {
  * checkout.js and what it pulls in). Hosts in script-src are the fallback for
  * browsers without CSP3. Styles stay 'unsafe-inline': React style attributes
  * need it, and a style can't read localStorage.
+ * Prerendered pages (src/lib/cached-pages.ts) get no nonce: their inline
+ * scripts need 'unsafe-inline'. Script from other hosts stays blocked there.
  */
-function csp(nonce: string, isConsole: boolean): string {
+function csp(nonce: string | null, isConsole: boolean): string {
   const dev = process.env.NODE_ENV === 'development';
   const razorpay = 'https://checkout.razorpay.com https://api.razorpay.com';
   const api = origin(process.env.NEXT_PUBLIC_API_URL) || 'https://api.unifesto.app';
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com${dev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' ${nonce ? `'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com` : "'unsafe-inline'"}${dev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     // Event banners, space logos and avatars come from S3 and elsewhere.
@@ -108,22 +111,33 @@ async function tenantSlug(host: string): Promise<string | null> {
  *    main site.
  */
 export async function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-  const policy = csp(nonce, under(request.nextUrl.pathname, '/console'));
-  // Next reads the nonce from the request's CSP header while rendering.
+  const { pathname } = request.nextUrl;
+  const cached = isOwnHost(hostOf(request)) && isCachedPage(pathname);
+  const nonce = cached ? null : Buffer.from(crypto.randomUUID()).toString('base64');
+  const policy = csp(nonce, under(pathname, '/console'));
+  // Next reads the nonce from the request's CSP header while rendering. A
+  // prerendered page's background re-render must not bake one in.
   const headers = new Headers(request.headers);
-  headers.set('x-nonce', nonce);
-  headers.set('content-security-policy', policy);
+  if (nonce) {
+    headers.set('x-nonce', nonce);
+    headers.set('content-security-policy', policy);
+  } else {
+    headers.delete('x-nonce');
+    headers.delete('content-security-policy');
+  }
   const res = await route(request, headers);
   res.headers.set('Content-Security-Policy', policy);
   return res;
 }
 
+// Standalone Next reports its bind address (0.0.0.0) in nextUrl, not the
+// visitor's host; Caddy passes the real one through in Host.
+const hostOf = (request: NextRequest) =>
+  (request.headers.get('host') ?? request.nextUrl.hostname).toLowerCase().replace(/:\d+$/, '');
+
 async function route(request: NextRequest, reqHeaders: Headers): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
-  // Standalone Next reports its bind address (0.0.0.0) in nextUrl, not the
-  // visitor's host; Caddy passes the real one through in Host.
-  const hostname = (request.headers.get('host') ?? request.nextUrl.hostname).toLowerCase().replace(/:\d+$/, '');
+  const hostname = hostOf(request);
 
   if (pathname.startsWith('/.well-known/')) return NextResponse.next({ request: { headers: reqHeaders } });
 
