@@ -96,3 +96,25 @@ export async function removeIdentity(identityId: string): Promise<{ message: str
     'Failed to remove account',
   );
 }
+
+/** A phone or browser signed in to my account. `current` is this phone. */
+export interface LinkedDevice {
+  id: string;
+  name: string;
+  kind: 'app' | 'browser';
+  current: boolean;
+  signedInAt: string;
+  lastActiveAt: string;
+}
+
+export async function getLinkedDevices(): Promise<LinkedDevice[]> {
+  return expectOk(await makeAuthenticatedRequest('/auth/sessions'), 'Failed to load linked devices');
+}
+
+/** Signs that device out right away; a phone also stops getting notifications. */
+export async function signOutDevice(id: string): Promise<{ revoked: true }> {
+  return expectOk(
+    await makeAuthenticatedRequest(`/auth/sessions/${id}`, { method: 'DELETE' }),
+    "Couldn't sign that device out",
+  );
+}

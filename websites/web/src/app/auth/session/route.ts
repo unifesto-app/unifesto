@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  const tokens = await rotate(given || stored);
+  const tokens = await rotate(given || stored, req.headers.get("user-agent"));
   if (!tokens) {
     const res = NextResponse.json({ message: "Signed out" }, { status: 401 });
     clearRefresh(res);

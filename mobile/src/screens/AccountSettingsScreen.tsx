@@ -39,6 +39,15 @@ const formatPhone = (n?: string | null) => {
 export const formatDeletionDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
+/** A linked device's last activity: "Now", "3h ago", "12 Oct". */
+const lastActive = (iso: string) => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 10) return 'Now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
 /** One row per email: Google and Email sign-ins on the same address merge. */
 function groupByEmail(identities: AuthAPI.UserIdentity[]) {
   const groups: { email: string | null; identities: AuthAPI.UserIdentity[] }[] = [];
@@ -62,6 +71,8 @@ export default function AccountSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
   const [identities, setIdentities] = useState<AuthAPI.UserIdentity[]>([]);
+  // null hides the section: a failed load shouldn't take the whole screen down.
+  const [devices, setDevices] = useState<AuthAPI.LinkedDevice[] | null>(null);
   const [managing, setManaging] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -70,12 +81,14 @@ export default function AccountSettingsScreen() {
       return;
     }
     try {
-      const [userProfile, userIdentities] = await Promise.all([
+      const [userProfile, userIdentities, linkedDevices] = await Promise.all([
         AuthAPI.getCurrentUser(),
         AuthAPI.getUserIdentities(),
+        AuthAPI.getLinkedDevices().catch(() => null),
       ]);
       setProfile(userProfile);
       setIdentities(userIdentities);
+      setDevices(linkedDevices);
     } catch (error) {
       if (__DEV__) console.error('Failed to load data:', error);
       AppAlert.alert('Error', 'Failed to load account settings');
@@ -113,6 +126,24 @@ export default function AccountSettingsScreen() {
             await loadData();
           } catch (e: any) {
             AppAlert.alert('Error', e.message || 'Failed to remove account');
+          }
+        },
+      },
+    ]);
+  };
+
+  const confirmSignOutDevice = (device: AuthAPI.LinkedDevice) => {
+    AppAlert.alert(`Sign out ${device.name}?`, "It's signed out right away, and a phone stops getting notifications.", [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await AuthAPI.signOutDevice(device.id);
+            await loadData();
+          } catch (e: any) {
+            AppAlert.alert('Error', e.message || "Couldn't sign that device out");
           }
         },
       },
@@ -274,6 +305,28 @@ export default function AccountSettingsScreen() {
             <Text style={[styles.note, { color: c.muted }]}>Add another sign-in before removing this one.</Text>
           ) : null}
         </Section>
+
+        {devices?.length ? (
+          <Section title="Linked devices" subtitle="Phones and browsers signed in to my account">
+            <SettingsGroup style={styles.group}>
+              {devices.map((d) => (
+                <SettingsRow
+                  key={d.id}
+                  icon={unicon(d.kind === 'app' ? 'device-mobile' : 'desktop')}
+                  label={d.name}
+                  value={d.current ? 'This phone' : lastActive(d.lastActiveAt)}
+                  trailing={
+                    d.current ? undefined : (
+                      <Pressable onPress={() => confirmSignOutDevice(d)} hitSlop={8} accessibilityRole="button">
+                        <Text style={[styles.inlineAction, { color: c.text }]}>Sign out</Text>
+                      </Pressable>
+                    )
+                  }
+                />
+              ))}
+            </SettingsGroup>
+          </Section>
+        ) : null}
 
         {profile?.deletionScheduledFor ? null : (
           <Section title="Delete account">

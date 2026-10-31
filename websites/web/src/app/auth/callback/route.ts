@@ -53,7 +53,11 @@ export async function GET(req: NextRequest) {
     const { id_token: idToken } = (await tokenRes.json().catch(() => ({}))) as { id_token?: string };
     if (!tokenRes.ok || !idToken) return back("google");
 
-    const { status, data } = await api<CognitoLogin>("/auth/cognito", { method: "POST", body: { idToken } });
+    const { status, data } = await api<CognitoLogin>("/auth/cognito", {
+      method: "POST",
+      body: { idToken },
+      userAgent: req.headers.get("user-agent"),
+    });
     if (status !== 200 && status !== 201) return back("google");
 
     const res = back();

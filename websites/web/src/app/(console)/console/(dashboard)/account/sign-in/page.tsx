@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AppleLogo, EnvelopeSimple, GoogleLogo, Phone } from "@unifesto/unicon/react";
-import { getIdentities, makePrimary, removeIdentity, signOutEverywhere, type Identity } from "@/lib/api/account";
+import { AppleLogo, Desktop, DeviceMobile, EnvelopeSimple, GoogleLogo, Phone } from "@unifesto/unicon/react";
+import {
+  getIdentities,
+  getLinkedDevices,
+  makePrimary,
+  removeIdentity,
+  signOutDevice,
+  signOutEverywhere,
+  type Identity,
+  type LinkedDevice,
+} from "@/lib/api/account";
 import { useWebSession } from "@/lib/auth";
 import { signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
@@ -36,17 +45,32 @@ function byEmail(ids: Identity[]) {
   return groups;
 }
 
-/** Security (the app's Account settings; the URL keeps its old name): my phone, how I sign in, signing out everywhere, and deleting my account. */
+/** "Active now", "Active 3h ago", "Active 12 Oct". */
+function active(iso: string) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 10) return "Active now";
+  if (mins < 60) return `Active ${mins}m ago`;
+  if (mins < 24 * 60) return `Active ${Math.round(mins / 60)}h ago`;
+  return `Active ${new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+}
+
+/** Security (the app's Account settings; the URL keeps its old name): my phone, how I sign in, my linked devices, signing out everywhere, and deleting my account. */
 export default function SignInPage() {
   const { session } = useWebSession();
   const token = session?.token ?? "";
   const { me } = useAccount();
   const [ids, setIds] = useState<Identity[] | null>(null);
+  const [devices, setDevices] = useState<LinkedDevice[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const load = () => getIdentities(token).then(setIds, (e) => setError(e.message));
+  const load = () =>
+    Promise.all([
+      getIdentities(token).then(setIds, (e) => setError(e.message)),
+      // Never empty once loaded (this browser is on it), so [] means it failed.
+      getLinkedDevices(token).then(setDevices, () => setDevices([])),
+    ]);
   useEffect(() => {
     if (token) void load();
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -153,6 +177,43 @@ export default function SignInPage() {
         )}
         {ids && groups.length === 1 && <p className="pt-4 text-xs text-muted-foreground">My only sign-in can&apos;t be removed.</p>}
         {ids && error && <p className="pt-4 text-sm text-destructive">{error}</p>}
+      </Section>
+
+      <Section title="Linked devices" description="Where I'm signed in. Signing out a phone also stops its notifications.">
+        {!devices?.length ? (
+          <p className={`text-sm ${devices ? "text-destructive" : "text-muted-foreground"}`}>
+            {devices ? "Couldn't load my devices." : "Loading…"}
+          </p>
+        ) : (
+          <ul className="-my-4 divide-y divide-border">
+            {devices.map((d) => {
+              const Icon = d.kind === "app" ? DeviceMobile : Desktop;
+              return (
+                <li key={d.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{d.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {d.current ? <span className="font-medium text-foreground">This browser</span> : active(d.lastActiveAt)}
+                      </p>
+                    </div>
+                  </div>
+                  {!d.current &&
+                    (sure === d.id ? (
+                      <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={() => act(() => signOutDevice(token, d.id))}>
+                        {busy ? "Signing out…" : "Yes, sign out"}
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => setSure(d.id)}>
+                        Sign out
+                      </Button>
+                    ))}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Section>
 
       <Section title="Signed in elsewhere?" description="Signs out the app and every browser, this one too.">
