@@ -1057,3 +1057,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · S61 dead code removed across backend, mobile and web (Cognito bearer branch, unread Redis caches, 4 unsent notify kinds, Swagger, unused DTOs/helpers/screens); schema drops follow as a contract migration (#498)
 - **2026-11-01** · S60 partner tracking links and short links removed (backend, web console, mobile); UTM attribution unchanged; tables and the Caddy /l/* block go in a later contract migration (#499)
 - **2026-11-01** · S58 recurring event series removed across backend, web console, Apex, mobile and site copy; recurrenceRule still accepted for app 4.0.5; columns drop in a later contract migration (#500)
+- **2026-11-01** · Unifesto Huddle sessions removed (backend, web, Apex, mobile, LiveKit); tables and payouts read side kept (#501)
