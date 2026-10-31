@@ -34,7 +34,7 @@ const STATUS: { value: Exclude<StatusFilter, 'all'>; label: string }[] = [
 ];
 
 const statusColor = (s: string, c: Cosmos) =>
-  s === 'PAID' ? c.success : s === 'FAILED' ? c.danger : s === 'PARTIALLY_REFUNDED' ? c.warn : c.muted;
+  s === 'PAID' ? c.success : s === 'FAILED' ? c.danger : s === 'REFUNDED' || s === 'PARTIALLY_REFUNDED' ? c.warn : c.muted;
 
 const statusLabel = (s: string) => (s === 'PARTIALLY_REFUNDED' ? 'Part refunded' : s.charAt(0) + s.slice(1).toLowerCase());
 

@@ -152,7 +152,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
         // Statuses ride the muted facts line; the sky price line is for what's on sale.
         price={past ? undefined : shortPrice(e)}
-        tag={past ? 'Ended' : isDraft(e) ? 'Draft' : null}
+        tag={[isDraft(e) && 'Draft', past && 'Ended'].filter(Boolean).join(' · ') || null}
         onPress={() => router.push(`/event/${e.slug || e.id}`)}
       />
     </View>

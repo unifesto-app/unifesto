@@ -45,7 +45,7 @@ export default function CheckinProgressCard({ stats, loading }: { stats: Checkin
             </Text>
           </View>
 
-          <View style={[styles.track, { backgroundColor: c.tint }]}>
+          <View style={[styles.track, { backgroundColor: c.border }]}>
             <Animated.View style={[styles.fill, { backgroundColor: c.mint }, bar]} />
           </View>
 

@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   sectionFigure: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing[2] },
-  reopen: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[3], paddingTop: spacing[3], borderTopWidth: StyleSheet.hairlineWidth },
+  reopen: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[3], minHeight: 44, borderTopWidth: StyleSheet.hairlineWidth },
   judge: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   judgeScore: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   markRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing[1] },

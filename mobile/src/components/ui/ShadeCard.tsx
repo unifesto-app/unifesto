@@ -31,8 +31,10 @@ export default function ShadeCard({
   const c = useCosmos();
   const isDark = c.scheme === 'dark';
   const { s1, s2, s3 } = SHADES[c.scheme][tone];
-  // Blue is held back, as on the site.
-  const opacity = tone === 'blue' ? (isDark ? 0.45 : 0.7) : isDark ? 0.7 : 0.85;
+  // The site runs the shapes at 70% under a dark glass panel; here text sits on
+  // the shade itself, so night holds them to 40% (silver text stays above 4.5:1
+  // on the brightest orb or beam). Blue is held back, as on the site.
+  const opacity = tone === 'blue' ? (isDark ? 0.28 : 0.7) : isDark ? 0.4 : 0.85;
 
   const fill = (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: s3 }]}>

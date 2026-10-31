@@ -566,7 +566,7 @@ export default function NewLoginScreen() {
             <Text style={[styles.lead, styles.leadStrong, { marginTop: 0 }]} numberOfLines={1}>
               {isEmail ? email : `+91 ${formatMobile(mobileNumber)}`}
             </Text>
-            <Pressable onPress={handleBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Edit">
+            <Pressable onPress={handleBack} hitSlop={14} accessibilityRole="button" accessibilityLabel="Edit">
               <Text style={styles.editLinkText}>Edit</Text>
             </Pressable>
           </View>

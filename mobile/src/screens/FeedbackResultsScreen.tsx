@@ -72,7 +72,10 @@ export default function FeedbackResultsScreen() {
                 <View style={[styles.track, { backgroundColor: c.tint }]}>
                   <View style={[styles.fill, { backgroundColor: c.sky, width: `${pct(d.count)}%` }]} />
                 </View>
-                <Text style={[styles.barCount, { color: c.text }]}>{pct(d.count)}%</Text>
+                <Text style={[styles.barCount, { color: c.text }]}>
+                  {d.count}
+                  <Text style={{ color: c.muted }}>{` · ${pct(d.count)}%`}</Text>
+                </Text>
               </View>
             ))}
           </SettingsGroup>
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
   // Thin progress fill on a tint track (DESIGN §3).
   track: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3 },
-  barCount: { width: 44, textAlign: 'right', fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  barCount: { width: 76, textAlign: 'right', fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   empty: { marginTop: spacing[10], alignItems: 'center', paddingHorizontal: spacing[4] },
   emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   comment: { flexDirection: 'row', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3] },

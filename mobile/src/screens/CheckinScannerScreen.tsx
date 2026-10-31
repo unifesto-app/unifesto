@@ -544,7 +544,8 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', left: 0, right: 0, gap: spacing[3], zIndex: 2 },
   // The point is a label, not a pill: a glyph and plain text over the scrim.
   point: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: spacing[5] },
-  pointText: { flexShrink: 1, color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  // A soft shadow keeps the label readable over a bright camera feed.
+  pointText: { flexShrink: 1, color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong, textShadowColor: 'rgba(0, 0, 0, 0.6)', textShadowRadius: 6 },
   count: { color: WHITE_DIM, fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], ...cosmosFont.figure },
   countStrong: { color: WHITE },
   syncLine: { color: NIGHT.warn, fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], marginTop: -spacing[2], ...cosmosFont.strong },

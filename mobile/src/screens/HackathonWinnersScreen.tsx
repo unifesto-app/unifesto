@@ -123,6 +123,7 @@ export default function HackathonWinnersScreen() {
         </ShadeCard>
       ) : null}
 
+      {!top || rest.length || data.canDeclareWinners ? (
       <SettingsGroup title={top ? 'More awards' : 'Awards'}>
         {data.awards.length === 0 ? <SettingsRow label="No awards yet" /> : null}
         {rest.map((a) => (
@@ -139,6 +140,7 @@ export default function HackathonWinnersScreen() {
           <SettingsRow icon={<Plus size={ICON} color={c.text} />} label="Add an award" external onPress={openAwards} />
         ) : null}
       </SettingsGroup>
+      ) : null}
       <Text style={[styles.note, { color: c.muted }]}>
         {data.canDeclareWinners
           ? 'Pick any team, whatever its rank, and say why it won. Teams see awards and notes once you publish.'

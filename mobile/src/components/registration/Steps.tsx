@@ -179,7 +179,8 @@ function TicketOption({ s, selected, onPress }: { s: TicketState; selected: bool
         styles.ticket,
         {
           // Always 1.5pt so selecting never shifts the layout; only the colour changes.
-          borderColor: selected ? c.primary : 'transparent',
+          // Unselected, the border wears the card fill so no ring shows around it.
+          borderColor: selected ? c.primary : c.raised,
           opacity: s.selectable ? 1 : 0.55,
         },
       ]}

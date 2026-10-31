@@ -105,7 +105,7 @@ export default function EventDayScreen() {
           {inNow.toLocaleString('en-IN')}
           <Text style={[styles.of, { color: c.muted }]}>{` of ${total.toLocaleString('en-IN')}`}</Text>
         </Text>
-        <View style={[styles.track, { backgroundColor: c.tint }]}>
+        <View style={[styles.track, { backgroundColor: c.border }]}>
           <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.mint }]} />
         </View>
         <Text style={[styles.small, { color: c.soft }]}>
