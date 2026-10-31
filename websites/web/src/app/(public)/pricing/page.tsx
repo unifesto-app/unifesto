@@ -101,9 +101,9 @@ export default async function PricingPage() {
                   <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
                 </Link>
 
-                <ul className="mt-7 flex flex-col gap-2.5">
+                <ul className="mt-6 divide-y divide-border border-t border-border">
                   {plan.includes.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm text-paper/85">
+                    <li key={item} className="flex items-start gap-2.5 py-2.5 text-sm text-paper/85">
                       <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-paper/60" weight="bold" aria-hidden="true" />
                       {item}
                     </li>
@@ -200,17 +200,17 @@ function CompareSection({ plans, catalog }: { plans: Plan[]; catalog: Catalog })
             {catalog.map((g) => (
               <Fragment key={g.group}>
                 <tr>
-                  <th colSpan={plans.length + 1} className="border-t border-paper/10 bg-paper/[0.04] px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-paper/60">
+                  <th colSpan={plans.length + 1} className="border-t border-border px-4 pb-2 pt-5 text-left text-xs font-medium uppercase tracking-wide text-paper/60">
                     {g.group}
                   </th>
                 </tr>
                 {g.rows.map((r) => (
                   <tr key={r.label}>
-                    <th scope="row" className="sticky left-0 z-10 border-t border-paper/10 bg-canvas px-4 py-2.5 text-left font-normal text-paper/85">
+                    <th scope="row" className="sticky left-0 z-10 border-t border-border bg-canvas px-4 py-2.5 text-left font-normal text-paper/85">
                       {r.label}
                     </th>
                     {plans.map((p) => (
-                      <td key={p.id} className="tabular border-t border-paper/10 px-3 py-2.5 text-paper/85">
+                      <td key={p.id} className="tabular border-t border-border px-3 py-2.5 text-paper/85">
                         {cell(r, p)}
                       </td>
                     ))}

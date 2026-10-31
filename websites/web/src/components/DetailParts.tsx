@@ -64,7 +64,7 @@ export function FactRow({ icon, title, sub, href, external, danger, trailing }: 
       {trailing ?? (href ? <CaretRight className="h-4 w-4 shrink-0 text-paper/45" aria-hidden /> : null)}
     </>
   );
-  const cls = "flex items-center gap-4 border-t border-paper/10 px-4 py-4 first:border-t-0";
+  const cls = "flex items-center gap-4 border-t border-border px-4 py-4 first:border-t-0";
   if (!href) return <div className={cls}>{body}</div>;
   if (external) {
     return (
@@ -113,7 +113,7 @@ export function ActionBar({ label, value, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-paper/10 bg-canvas/85 backdrop-blur-xl">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-canvas/85 backdrop-blur-xl">
       {/* pr-20 keeps the CTA clear of the floating support bubble. */}
       <div className="mx-auto flex max-w-3xl items-center gap-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-5 pr-20 sm:pl-8 sm:pr-24">
         <div className="min-w-0 flex-1">

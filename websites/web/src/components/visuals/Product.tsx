@@ -16,7 +16,7 @@ export function Panel({ title, children, className = "" }: { title: string; chil
       aria-hidden="true"
       className={`w-full max-w-sm rounded-xl bg-night-2 p-4 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_30px_60px_-30px_rgba(0,0,0,0.9)] ${className}`}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between border-b border-border pb-3">
         <span className="text-[11px] font-medium text-paper/60">{title}</span>
         <span className="flex gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-white/15" />

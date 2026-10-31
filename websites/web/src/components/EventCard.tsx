@@ -222,7 +222,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         </div>
 
         {/* Footer: price + affordance (no gradient pill). */}
-        <div className="mt-auto flex items-center justify-between pt-3">
+        <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-bold text-paper">{priceLabel}</span>
             {priceSubLabel && (

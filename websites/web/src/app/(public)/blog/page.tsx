@@ -79,7 +79,9 @@ function FeaturedCard({ post }: { post: BlogPost }) {
           <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
             {post.excerpt}
           </p>
-          <Meta post={post} />
+          <div className="border-t border-border pt-4">
+            <Meta post={post} />
+          </div>
           <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
             Read article
             <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
@@ -100,7 +102,7 @@ function PostCard({ post, shade }: { post: BlogPost; shade: Shade }) {
             {post.title}
           </h3>
           <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
-          <div className="mt-auto pt-1">
+          <div className="mt-auto border-t border-border pt-4">
             <Meta post={post} />
           </div>
         </div>
