@@ -62,7 +62,7 @@ export const checkout = (o: CheckoutOptions & { upi?: boolean }) =>
       currency: o.currency,
       name: o.name,
       description: o.description,
-      prefill: o.upi ? { ...o.prefill, method: "upi" } : o.prefill,
+      prefill: o.upi && o.currency === "INR" ? { ...o.prefill, method: "upi" } : o.prefill,
       theme: { color: o.color },
       config: UPI_FIRST,
       handler: resolve,
@@ -187,9 +187,13 @@ export async function payByUpi(
       ),
     );
     onWait({ qr: null });
-    rzp.createPayment(
-      { amount: o.amount, currency: o.currency, email: o.prefill.email, contact, order_id: o.orderId, method: "upi" },
-      way === "qr" ? { app: "any", flow: "qr" } : { app: "any" },
-    );
+    try {
+      rzp.createPayment(
+        { amount: o.amount, currency: o.currency, email: o.prefill.email, contact, order_id: o.orderId, method: "upi" },
+        way === "qr" ? { app: "any", flow: "qr" } : { app: "any" },
+      );
+    } catch {
+      finish(() => resolve(checkout({ ...o, upi: true })));
+    }
   });
 }

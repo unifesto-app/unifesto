@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -82,32 +82,41 @@ try {
 let installed: Promise<UpiApp[]> | null = null;
 
 /**
- * The phone's UPI apps, asked once per launch. Custom UI drops every listener
- * when any call answers, so this must finish before a payment opens; a late
- * answer after the timeout leaves the list empty and Custom UI unused.
+ * The phone's UPI apps, asked once per launch. Not through the library's
+ * getAppsWhichSupportUPI: when it answers, it drops every app-wide listener
+ * for Razorpay::PAYMENT_*, react-native-razorpay's included, so a late answer
+ * would strand an open sheet. Our own subscription removes only itself.
  */
-function installedUpiApps(ui: CustomUi): Promise<UpiApp[]> {
-  installed ??= Promise.race([
-    ui.getAppsWhichSupportUPI().then((res) =>
-      (res?.data ?? []).map((a) => ({
-        id: a.packageName || a.appName,
-        name: Platform.OS === 'ios' ? IOS_NAMES[a.appName] ?? a.appName.replace(/_/g, ' ') : a.appName,
-        icon: a.iconBase64 ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}` : undefined,
-      })),
-    ),
-    new Promise<UpiApp[]>((resolve) => setTimeout(() => resolve([]), 4000)),
-  ]).catch(() => []);
+function installedUpiApps(): Promise<UpiApp[]> {
+  installed ??= new Promise<UpiApp[]>((resolve) => {
+    const done = (apps: UpiApp[]) => {
+      clearTimeout(timer);
+      sub.remove();
+      resolve(apps);
+    };
+    const sub = new NativeEventEmitter(NativeModules.RazorpayEventEmitterCustom).addListener(
+      'Razorpay::UPI_APPS',
+      (res: { data?: import('react-native-customui').UpiAppInfo[] }) =>
+        done(
+          (res?.data ?? []).map((a) => ({
+            id: a.packageName || a.appName,
+            name: Platform.OS === 'ios' ? IOS_NAMES[a.appName] ?? a.appName.replace(/_/g, ' ') : a.appName,
+            icon: a.iconBase64 ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}` : undefined,
+          })),
+        ),
+    );
+    const timer = setTimeout(() => done([]), 4000);
+    NativeModules.RazorpayCustomui.getAppsWhichSupportUpi();
+  }).catch(() => []);
   return installed;
 }
 
-/** Q40's kill switch for this platform. Unreadable (offline, older API) = off. */
+/** Q40's kill switch for this platform. Unreadable (offline, older API) or slow = off: the sheet. */
 async function upiCheckoutOn(): Promise<boolean> {
-  try {
-    const res = await makePublicRequest('/config/checkout');
-    return !!res?.ok && (await res.json())?.[Platform.OS] === true;
-  } catch {
-    return false;
-  }
+  const read = makePublicRequest('/config/checkout')
+    .then(async (res) => !!res?.ok && (await res.json())?.[Platform.OS] === true)
+    .catch(() => false);
+  return Promise.race([read, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
 }
 
 /** The UPI app id (or 'more') the last successful payment on this phone used. */
@@ -119,16 +128,15 @@ const lastMethodId = () => AsyncStorage.getItem(LAST_METHOD_KEY).catch(() => nul
  * phone has none: then only the sheet.
  */
 export async function checkoutMethods(currency = 'INR'): Promise<{ apps: UpiApp[]; selected: PayMethod }> {
-  const ui = customUi;
-  if (!ui || currency !== 'INR' || !(await upiCheckoutOn())) return { apps: [], selected: 'more' };
-  const [found, last] = await Promise.all([installedUpiApps(ui), lastMethodId()]);
+  if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return { apps: [], selected: 'more' };
+  const [found, last] = await Promise.all([installedUpiApps(), lastMethodId()]);
   const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last));
   return { apps, selected: last === 'more' || !apps.length ? 'more' : apps[0] };
 }
 
-/** Razorpay and the chooser report a dismissed payment as an error; it isn't one. */
+/** Razorpay and the chooser report a dismissed payment as an error; it isn't one. Custom UI's Android back press is code 5. */
 export function isPaymentCancelled(err: any): boolean {
-  return err?.code === 0 || /cancel/i.test(err?.description ?? '');
+  return err?.code === 0 || /cancel|back button/i.test(err?.description ?? '');
 }
 
 /** No summary screen to choose on: a short list. null = nothing to choose, so the sheet. */
@@ -183,7 +191,7 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
     });
   } else {
     // A UPI pick (or, with nothing picked, a UPI habit) opens the sheet on UPI.
-    const upi = !!upiApp || (!chosen && ![null, 'more'].includes(await lastMethodId()));
+    const upi = currency === 'INR' && (!!upiApp || (!chosen && ![null, 'more'].includes(await lastMethodId())));
     payment = (await RazorpayCheckout.open({
       key: order.razorpayKeyId,
       order_id: order.razorpayOrderId,
