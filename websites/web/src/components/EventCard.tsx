@@ -77,8 +77,6 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
   // The backend sends COMPLETED / CANCELLED; the mock data is lowercase.
   const status = event.status?.toLowerCase();
   const isCompleted = status === "completed" || status === "cancelled";
-  const isTrending = Boolean(event.is_trending);
-  const isFeatured = Boolean(event.is_featured);
 
 
   const tz = event.timezone || IST;
@@ -159,20 +157,6 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         >
           {event.category || "Event"}
         </span>
-
-        {/* Status, top-right, as plain text; photos get a soft top scrim. Over a
-            photo the sky is the night shade, since the scrim is always dark. */}
-        {(isTrending || isFeatured) && imageUrl && (
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-scrim/55 to-transparent" />
-        )}
-        <div
-          className={`pointer-events-none absolute right-3 top-3 z-10 flex gap-2 text-[10px] font-semibold ${
-            imageUrl ? "text-snow [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]" : "text-paper/70"
-          }`}
-        >
-          {isTrending && <span className={imageUrl ? "text-[#90d5ff]" : "text-sky"}>Trending</span>}
-          {isFeatured && <span>Featured</span>}
-        </div>
       </div>
 
       {/* Card body */}

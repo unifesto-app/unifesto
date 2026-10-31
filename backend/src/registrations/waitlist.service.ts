@@ -424,7 +424,6 @@ export class WaitlistService {
         totalQuantity: true,
         soldCount: true,
         waitlistEnabled: true,
-        waitlistOfferTtlHours: true,
       },
       orderBy: { order: 'asc' },
     });
@@ -447,7 +446,6 @@ export class WaitlistService {
         currency: t.currency,
         isPaid: Number(t.price) > 0,
         waitlistEnabled: t.waitlistEnabled,
-        offerTtlHours: t.waitlistOfferTtlHours,
         capacity: t.totalQuantity,
         soldCount: t.soldCount,
         seatsAvailable:

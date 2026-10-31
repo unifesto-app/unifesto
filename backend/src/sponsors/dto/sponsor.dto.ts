@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Equals,
   IsBoolean,
@@ -18,75 +17,69 @@ import {
 
 /** Create a rung on the space's sponsorship ladder (Platinum, Gold, ...). */
 export class CreateSponsorTierDto {
-  @ApiProperty() @IsString() @MaxLength(100) name: string;
+  @IsString() @MaxLength(100) name: string;
 
-  @ApiPropertyOptional({ description: '0 = most prominent tier' })
   @IsOptional()
   @IsInt()
   @Min(0)
   rank?: number;
 
-  @ApiPropertyOptional({ description: 'Accent colour, e.g. #C0C0C0' })
   @IsOptional()
   @IsHexColor()
   color?: string;
 }
 
 export class UpdateSponsorTierDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) name?: string;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) rank?: number;
-  @ApiPropertyOptional() @IsOptional() @IsHexColor() color?: string;
+  @IsOptional() @IsString() @MaxLength(100) name?: string;
+  @IsOptional() @IsInt() @Min(0) rank?: number;
+  @IsOptional() @IsHexColor() color?: string;
 }
 
 // ---- Roster sponsors ------------------------------------------------------
 
 /** Create a sponsor in the space's reusable roster. */
 export class CreateSponsorDto {
-  @ApiProperty() @IsString() @MaxLength(255) name: string;
+  @IsString() @MaxLength(255) name: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsUrl() logoUrl?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUrl() websiteUrl?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsUrl() logoUrl?: string;
+  @IsOptional() @IsUrl() websiteUrl?: string;
+  @IsOptional() @IsString() description?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) contactName?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(255) contactEmail?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) contactPhone?: string;
+  @IsOptional() @IsString() @MaxLength(255) contactName?: string;
+  @IsOptional() @IsEmail() @MaxLength(255) contactEmail?: string;
+  @IsOptional() @IsString() @MaxLength(50) contactPhone?: string;
 }
 
 export class UpdateSponsorDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) name?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUrl() logoUrl?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUrl() websiteUrl?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) contactName?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(255) contactEmail?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) contactPhone?: string;
+  @IsOptional() @IsString() @MaxLength(255) name?: string;
+  @IsOptional() @IsUrl() logoUrl?: string;
+  @IsOptional() @IsUrl() websiteUrl?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() @MaxLength(255) contactName?: string;
+  @IsOptional() @IsEmail() @MaxLength(255) contactEmail?: string;
+  @IsOptional() @IsString() @MaxLength(50) contactPhone?: string;
 }
 
 // ---- Attaching a sponsor to an event --------------------------------------
 
 /** Attach a roster sponsor to an event, with per-event overrides. */
 export class AttachSponsorDto {
-  @ApiProperty() @IsUUID() sponsorId: string;
+  @IsUUID() sponsorId: string;
 
-  @ApiPropertyOptional({ description: 'Tier for this event (roster tier id)' })
   @IsOptional()
   @IsUUID()
   tierId?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) order?: number;
+  @IsOptional() @IsInt() @Min(0) order?: number;
 
-  @ApiPropertyOptional({ description: 'Allow attendee lead capture at this event' })
   @IsOptional()
   @IsBoolean()
   leadCaptureEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Per-event logo override (null = inherit)' })
   @IsOptional()
   @IsUrl()
   overrideLogoUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Per-event description override (null = inherit)' })
   @IsOptional()
   @IsString()
   overrideDescription?: string;
@@ -96,30 +89,27 @@ export class AttachSponsorDto {
 
 /** Invite a person (by the email on their Unifesto account) to a sponsor. */
 export class InviteSponsorUserDto {
-  @ApiProperty() @IsEmail() @MaxLength(255) email: string;
+  @IsEmail() @MaxLength(255) email: string;
 }
 
 /** Booth scan: link an attendee's ticket QR to a sponsor at an event. */
 export class BoothScanDto {
-  @ApiProperty() @IsUUID() eventSponsorId: string;
-  @ApiProperty() @IsString() @MaxLength(200) qrCode: string;
+  @IsUUID() eventSponsorId: string;
+  @IsString() @MaxLength(200) qrCode: string;
   /**
    * The attendee said yes on the scanner's prompt to sharing their name, email
    * and phone with this sponsor. Scanning a ticket is not consent by itself.
    */
-  @ApiProperty()
   @Equals(true, { message: 'Ask the attendee first: they have to agree to share their contact details.' })
   attendeeConsent: boolean;
 }
 
 /** A sponsor's follow-up on one of its leads (E3). */
 export class UpdatePortalLeadDto {
-  @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED'] })
   @IsOptional()
   @IsIn(['NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED'])
   status?: 'NEW' | 'CONTACTED' | 'CONVERTED' | 'ARCHIVED';
 
-  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -128,9 +118,9 @@ export class UpdatePortalLeadDto {
 
 /** Patch an existing event-sponsor attachment (all fields optional). */
 export class UpdateEventSponsorDto {
-  @ApiPropertyOptional() @IsOptional() @IsUUID() tierId?: string | null;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) order?: number;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() leadCaptureEnabled?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsString() overrideLogoUrl?: string | null;
-  @ApiPropertyOptional() @IsOptional() @IsString() overrideDescription?: string | null;
+  @IsOptional() @IsUUID() tierId?: string | null;
+  @IsOptional() @IsInt() @Min(0) order?: number;
+  @IsOptional() @IsBoolean() leadCaptureEnabled?: boolean;
+  @IsOptional() @IsString() overrideLogoUrl?: string | null;
+  @IsOptional() @IsString() overrideDescription?: string | null;
 }

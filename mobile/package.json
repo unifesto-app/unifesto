@@ -36,7 +36,6 @@
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native-firebase/app": "^26.4.0",
     "@react-native-firebase/crashlytics": "^26.4.0",
-    "@react-native-google-signin/google-signin": "^16.1.5",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-menu/menu": "^2.0.0",
     "@sentry/react-native": "~7.11.0",

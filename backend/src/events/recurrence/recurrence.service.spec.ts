@@ -87,7 +87,7 @@ describe('RecurrenceService (S22)', () => {
     const ticket = (id: string, extra = {}) => ({
       id, name: id, description: null, price: new Prisma.Decimal(100), currency: 'INR', totalQuantity: 50,
       kind: 'INDIVIDUAL', groupPricingMode: null, minGroupSize: null, maxGroupSize: null,
-      saleStartsAt: null, saleEndsAt: null, perUserLimit: 1, waitlistEnabled: false, waitlistOfferTtlHours: 24,
+      saleStartsAt: null, saleEndsAt: null, perUserLimit: 1, waitlistEnabled: false,
       isVisible: true, isActive: true, order: 0, whatsappGroupUrl: null, blocks: [], ...extra,
     });
     const parent = {

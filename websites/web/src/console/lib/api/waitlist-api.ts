@@ -52,7 +52,6 @@ export interface WaitlistSummaryRow {
   currency: string;
   isPaid: boolean;
   waitlistEnabled: boolean;
-  offerTtlHours: number;
   capacity: number | null;
   soldCount: number;
   /** null when the ticket has unlimited capacity. */

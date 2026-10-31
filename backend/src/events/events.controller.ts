@@ -17,13 +17,6 @@ import {
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiConsumes,
-} from '@nestjs/swagger';
 import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
@@ -61,7 +54,6 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { toPage } from '../common/pagination';
 import { Audit } from '../audit/audit';
 
-@ApiTags('Events')
 @Controller('events')
 @UseInterceptors(SeriesSetupSyncInterceptor)
 export class EventsController {
@@ -72,28 +64,18 @@ export class EventsController {
   ) {}
 
   @Post()
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Create a new event' })
-  @ApiResponse({ status: 201 })
   async createEvent(@Request() req, @Body() dto: CreateEventDto) {
     return this.eventsService.createEvent(req.user.id, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get public events with filters' })
-  @ApiResponse({ status: 200 })
   async getEvents(@Query() filters: EventFilterDto) {
     return this.eventsService.getEvents(filters);
   }
 
   @Get('space/:spaceId')
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Events for a space — drafts/hidden only for its operators, published otherwise',
-  })
-  @ApiResponse({ status: 200 })
   async getSpaceEvents(
     @Request() req,
     @Param('spaceId') spaceId: string,
@@ -118,19 +100,13 @@ export class EventsController {
   }
 
   @Get('space/:spaceId/co-host-invites')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Pending co-host invites addressed to a space (its Space Admins)' })
   async listCoHostInvites(@Request() req, @Param('spaceId') spaceId: string) {
     return this.eventsService.listCoHostInvites(req.user.id, spaceId);
   }
 
   @Get(':slug')
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({
-    summary: 'Get event details by slug or id (drafts only for its operators)',
-  })
-  @ApiResponse({ status: 200 })
   async getEventBySlug(@Request() req, @Param('slug') slug: string) {
     return this.eventsService.getEventBySlug(slug, req.user?.id);
   }
@@ -139,8 +115,6 @@ export class EventsController {
   // Goes through getEventBySlug so drafts / private events stay gated.
   @Get(':slug/palette')
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({ summary: "Top 8 colours of the event banner, most frequent first" })
-  @ApiResponse({ status: 200 })
   async getEventPalette(@Request() req, @Param('slug') slug: string) {
     const event = await this.eventsService.getEventBySlug(slug, req.user?.id);
     return { colors: await this.bannerPalette.forUrl(event?.coverImageUrl) };
@@ -148,8 +122,6 @@ export class EventsController {
 
   // Two-segment path, so it never collides with the single-segment `:slug` route.
   @Get(':slug/calendar.ics')
-  @ApiOperation({ summary: 'Download a public event as an .ics calendar file' })
-  @ApiResponse({ status: 200 })
   async getEventCalendar(
     @Param('slug') slug: string,
     @Res() res: Response,
@@ -168,44 +140,25 @@ export class EventsController {
   // Recurring-series management (event-calendar P2). Two-segment paths, so they
   // never collide with the single-segment `:slug`/`:id` routes.
   @Get(':id/occurrences')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "List a recurring series' occurrences" })
-  @ApiResponse({ status: 200 })
   async getSeriesOccurrences(@Request() req, @Param('id') id: string) {
     return this.eventsService.getSeriesOccurrences(req.user.id, id);
   }
 
   @Post(':id/detach-from-series')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'Detach one occurrence from its series (edit "this occurrence")',
-  })
-  @ApiResponse({ status: 201 })
   async detachOccurrence(@Request() req, @Param('id') id: string) {
     return this.eventsService.detachOccurrenceFromSeries(req.user.id, id);
   }
 
   @Get(':id/whatsapp')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      "The event's private WhatsApp attendee-group config (event-level group, " +
-      'inherited parent group, and per-ticket-type overrides). Manage-only; ' +
-      'never exposed on the public event payload.',
-  })
-  @ApiResponse({ status: 200 })
   async getEventWhatsAppConfig(@Request() req, @Param('id') id: string) {
     return this.eventsService.getEventWhatsAppConfig(req.user.id, id);
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update event details' })
-  @ApiResponse({ status: 200 })
   async updateEvent(
     @Request() req,
     @Param('id') id: string,
@@ -215,62 +168,37 @@ export class EventsController {
   }
 
   @Delete(':id/hide')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Hide a completed or cancelled event. Reversible — nothing is destroyed',
-  })
-  @ApiResponse({ status: 200 })
   async softDeleteEvent(@Request() req, @Param('id') id: string) {
     return this.eventsService.softDeleteEvent(req.user.id, id);
   }
 
   @Patch(':id/restore')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Bring a hidden event back' })
-  @ApiResponse({ status: 200 })
   async restoreEvent(@Request() req, @Param('id') id: string) {
     return this.eventsService.restoreEvent(req.user.id, id);
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Permanently delete a draft or cancelled event. Irreversible, and never ' +
-      'allowed for a completed event',
-  })
-  @ApiResponse({ status: 200 })
   async permanentDeleteEvent(@Request() req, @Param('id') id: string) {
     return this.eventsService.permanentDeleteEvent(req.user.id, id);
   }
 
   @Patch(':id/publish')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Publish event' })
-  @ApiResponse({ status: 200 })
   async publishEvent(@Request() req, @Param('id') id: string) {
     return this.eventsService.publishEvent(req.user.id, id);
   }
 
   @Patch(':id/end')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'End a live event now (Q26): completes it and closes check-in' })
-  @ApiResponse({ status: 200 })
   async endEvent(@Request() req, @Param('id') id: string) {
     return this.eventsService.endEvent(req.user.id, id);
   }
 
   @Patch(':id/cancel')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Cancel event' })
-  @ApiResponse({ status: 200 })
   async cancelEvent(
     @Request() req,
     @Param('id') id: string,
@@ -280,12 +208,8 @@ export class EventsController {
   }
 
   @Post(':id/cover')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload event cover image' })
-  @ApiResponse({ status: 201 })
   async uploadCoverImage(
     @Request() req,
     @Param('id') id: string,
@@ -295,10 +219,7 @@ export class EventsController {
   }
 
   @Post(':id/ticket-types')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Create ticket type' })
-  @ApiResponse({ status: 201 })
   async createTicketType(
     @Request() req,
     @Param('id') id: string,
@@ -309,22 +230,13 @@ export class EventsController {
 
   // Static sub-paths first so they are not captured by ':typeId'.
   @Get(':id/ticket-types/manage')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'All ticket types incl. hidden/paused, with per-tier stats (operators only)',
-  })
-  @ApiResponse({ status: 200 })
   async getManageTicketTypes(@Request() req, @Param('id') id: string) {
     return this.eventsService.getManageTicketTypes(req.user.id, id);
   }
 
   @Patch(':id/ticket-types/reorder')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Set ticket type display order' })
-  @ApiResponse({ status: 200 })
   async reorderTicketTypes(
     @Request() req,
     @Param('id') id: string,
@@ -334,10 +246,7 @@ export class EventsController {
   }
 
   @Patch(':id/ticket-types/:typeId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update ticket type' })
-  @ApiResponse({ status: 200 })
   async updateTicketType(
     @Request() req,
     @Param('id') id: string,
@@ -348,10 +257,7 @@ export class EventsController {
   }
 
   @Delete(':id/ticket-types/:typeId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete ticket type' })
-  @ApiResponse({ status: 200 })
   async deleteTicketType(
     @Request() req,
     @Param('id') id: string,
@@ -361,19 +267,13 @@ export class EventsController {
   }
 
   @Post(':id/ai-draft')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'AI draft of description, agenda and FAQs from notes or a link (M1). Saves nothing.' })
-  @ApiResponse({ status: 201 })
   async aiDraft(@Request() req, @Param('id') id: string, @Body() dto: EventDraftDto) {
     return this.eventDraft.draft(req.user.id, id, dto);
   }
 
   @Post(':id/agenda')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add agenda item' })
-  @ApiResponse({ status: 201 })
   async createAgenda(
     @Request() req,
     @Param('id') id: string,
@@ -383,10 +283,7 @@ export class EventsController {
   }
 
   @Patch(':id/agenda/:agendaId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update agenda item' })
-  @ApiResponse({ status: 200 })
   async updateAgenda(
     @Request() req,
     @Param('id') id: string,
@@ -397,10 +294,7 @@ export class EventsController {
   }
 
   @Delete(':id/agenda/:agendaId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete agenda item' })
-  @ApiResponse({ status: 200 })
   async deleteAgenda(
     @Request() req,
     @Param('id') id: string,
@@ -410,10 +304,7 @@ export class EventsController {
   }
 
   @Post(':id/speakers')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add speaker' })
-  @ApiResponse({ status: 201 })
   async createSpeaker(
     @Request() req,
     @Param('id') id: string,
@@ -423,10 +314,7 @@ export class EventsController {
   }
 
   @Patch(':id/speakers/:speakerId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update speaker' })
-  @ApiResponse({ status: 200 })
   async updateSpeaker(
     @Request() req,
     @Param('id') id: string,
@@ -437,10 +325,7 @@ export class EventsController {
   }
 
   @Delete(':id/speakers/:speakerId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete speaker' })
-  @ApiResponse({ status: 200 })
   async deleteSpeaker(
     @Request() req,
     @Param('id') id: string,
@@ -452,10 +337,7 @@ export class EventsController {
   // --- Prizes / Takeaways ---
 
   @Post(':id/prizes')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add prize / takeaway' })
-  @ApiResponse({ status: 201 })
   async createPrize(
     @Request() req,
     @Param('id') id: string,
@@ -465,10 +347,7 @@ export class EventsController {
   }
 
   @Patch(':id/prizes/:prizeId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update prize / takeaway' })
-  @ApiResponse({ status: 200 })
   async updatePrize(
     @Request() req,
     @Param('id') id: string,
@@ -479,10 +358,7 @@ export class EventsController {
   }
 
   @Delete(':id/prizes/:prizeId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete prize / takeaway' })
-  @ApiResponse({ status: 200 })
   async deletePrize(
     @Request() req,
     @Param('id') id: string,
@@ -494,10 +370,7 @@ export class EventsController {
   // --- Contacts ---
 
   @Post(':id/contacts')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add contact' })
-  @ApiResponse({ status: 201 })
   async createContact(
     @Request() req,
     @Param('id') id: string,
@@ -507,10 +380,7 @@ export class EventsController {
   }
 
   @Patch(':id/contacts/:contactId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update contact' })
-  @ApiResponse({ status: 200 })
   async updateContact(
     @Request() req,
     @Param('id') id: string,
@@ -521,10 +391,7 @@ export class EventsController {
   }
 
   @Delete(':id/contacts/:contactId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete contact' })
-  @ApiResponse({ status: 200 })
   async deleteContact(
     @Request() req,
     @Param('id') id: string,
@@ -536,10 +403,7 @@ export class EventsController {
   // --- FAQs ---
 
   @Post(':id/faqs')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add FAQ' })
-  @ApiResponse({ status: 201 })
   async createFaq(
     @Request() req,
     @Param('id') id: string,
@@ -549,10 +413,7 @@ export class EventsController {
   }
 
   @Patch(':id/faqs/:faqId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update FAQ' })
-  @ApiResponse({ status: 200 })
   async updateFaq(
     @Request() req,
     @Param('id') id: string,
@@ -563,10 +424,7 @@ export class EventsController {
   }
 
   @Delete(':id/faqs/:faqId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete FAQ' })
-  @ApiResponse({ status: 200 })
   async deleteFaq(
     @Request() req,
     @Param('id') id: string,
@@ -576,10 +434,7 @@ export class EventsController {
   }
 
   @Post(':id/form-fields')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add custom form field' })
-  @ApiResponse({ status: 201 })
   async createFormField(
     @Request() req,
     @Param('id') id: string,
@@ -589,9 +444,7 @@ export class EventsController {
   }
 
   @Patch(':id/form-fields/:fieldId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update a custom form field' })
   async updateFormField(
     @Request() req,
     @Param('id') id: string,
@@ -602,9 +455,7 @@ export class EventsController {
   }
 
   @Delete(':id/form-fields/:fieldId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Delete a custom form field' })
   async deleteFormField(
     @Request() req,
     @Param('id') id: string,
@@ -614,17 +465,13 @@ export class EventsController {
   }
 
   @Get(':id/co-hosts')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'List the host + co-host spaces for an event' })
   async getCoHosts(@Request() req, @Param('id') id: string) {
     return this.eventsService.listCoHosts(req.user.id, id);
   }
 
   @Post(':id/co-hosts')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Invite a space to co-host (host space only)' })
   async addCoHost(
     @Request() req,
     @Param('id') id: string,
@@ -638,17 +485,13 @@ export class EventsController {
   // DELETE /co-hosts/:spaceId below, or Nest would bind spaceId="transfer".
 
   @Delete(':id/co-hosts/transfer')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Rescind a pending ownership transfer (host only)' })
   async cancelOwnershipTransfer(@Request() req, @Param('id') id: string) {
     return this.eventsService.cancelOwnershipTransfer(req.user.id, id);
   }
 
   @Delete(':id/co-hosts/:spaceId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Remove a co-host space' })
   async removeCoHost(
     @Request() req,
     @Param('id') id: string,
@@ -658,9 +501,7 @@ export class EventsController {
   }
 
   @Post(':id/co-hosts/transfer')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Offer ownership of an event to a co-host (host only)' })
   async requestOwnershipTransfer(
     @Request() req,
     @Param('id') id: string,
@@ -675,9 +516,7 @@ export class EventsController {
   }
 
   @Post(':id/co-hosts/transfer/accept')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Accept a pending ownership transfer (receiving space)' })
   async acceptOwnershipTransfer(
     @Request() req,
     @Param('id') id: string,
@@ -691,9 +530,7 @@ export class EventsController {
   }
 
   @Post(':id/co-hosts/transfer/decline')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Decline a pending ownership transfer (receiving space)' })
   async declineOwnershipTransfer(
     @Request() req,
     @Param('id') id: string,
@@ -709,9 +546,7 @@ export class EventsController {
   // Declared after the /co-hosts/transfer/* routes, which it would otherwise
   // shadow with spaceId="transfer".
   @Post(':id/co-hosts/:spaceId/accept')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Accept a co-host invite (invited space only). Decline = DELETE' })
   async acceptCoHost(
     @Request() req,
     @Param('id') id: string,
@@ -723,29 +558,19 @@ export class EventsController {
   // --- Sub-events (a "big event" grouping several sub-events) ---
 
   @Get(':id/sub-events')
-  @ApiOperation({
-    summary: 'List the published sub-events of a parent (public hub)',
-  })
   @UseGuards(OptionalJwtAuthGuard)
   async getSubEvents(@Request() req, @Param('id') id: string) {
     return this.eventsService.getSubEvents(id, false, req.user?.id);
   }
 
   @Get(':id/sub-events/manage')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'List all sub-events including drafts (organiser view)',
-  })
   async getManagedSubEvents(@Request() req, @Param('id') id: string) {
     return this.eventsService.getSubEventsForManagement(req.user.id, id);
   }
 
   @Post(':id/sub-events')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Attach an existing event as a sub-event' })
-  @ApiResponse({ status: 201 })
   async attachSubEvent(
     @Request() req,
     @Param('id') id: string,
@@ -759,23 +584,13 @@ export class EventsController {
   // segment is never swallowed as a childId.
 
   @Get(':id/sub-events/requests')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary:
-      'Pending attach requests concerning this event (incoming to approve, outgoing to rescind)',
-  })
   async getSubEventAttachRequests(@Request() req, @Param('id') id: string) {
     return this.eventsService.getSubEventAttachRequests(req.user.id, id);
   }
 
   @Post(':id/sub-events/requests')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: "Ask a co-host's space to nest its event under this parent",
-  })
-  @ApiResponse({ status: 201 })
   async requestSubEventAttach(
     @Request() req,
     @Param('id') id: string,
@@ -790,11 +605,7 @@ export class EventsController {
   }
 
   @Post(':id/sub-events/requests/:requestId/accept')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'Accept a request to nest this event (owning space only)',
-  })
   async acceptSubEventAttach(
     @Request() req,
     @Param('requestId') requestId: string,
@@ -808,11 +619,7 @@ export class EventsController {
   }
 
   @Post(':id/sub-events/requests/:requestId/decline')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'Decline a request to nest this event (owning space only)',
-  })
   async declineSubEventAttach(
     @Request() req,
     @Param('requestId') requestId: string,
@@ -826,9 +633,7 @@ export class EventsController {
   }
 
   @Delete(':id/sub-events/requests/:requestId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Rescind a pending attach request (requesting side)' })
   async cancelSubEventAttach(
     @Request() req,
     @Param('requestId') requestId: string,
@@ -837,9 +642,7 @@ export class EventsController {
   }
 
   @Delete(':id/sub-events/:childId')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Detach a sub-event, making it standalone again' })
   async detachSubEvent(
     @Request() req,
     @Param('id') id: string,
@@ -851,17 +654,13 @@ export class EventsController {
   // --- Team ---
 
   @Get(':id/team')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'List the event team' })
   async getEventTeam(@Request() req, @Param('id') id: string) {
     return this.eventsService.getEventTeam(req.user.id, id);
   }
 
   @Get(':id/team/search')
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Search space members to add to the team' })
   async searchTeamCandidates(
     @Request() req,
     @Param('id') id: string,
@@ -872,9 +671,7 @@ export class EventsController {
 
   @Post(':id/team')
   @Audit('event.team.add', (r) => ({ eventId: r.params.id, userId: (r.params.userId ?? r.body?.userId) as string }))
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Add a team member' })
   async addTeamMember(
     @Request() req,
     @Param('id') id: string,
@@ -890,9 +687,7 @@ export class EventsController {
 
   @Delete(':id/team/:userId')
   @Audit('event.team.remove', (r) => ({ eventId: r.params.id, userId: (r.params.userId ?? r.body?.userId) as string }))
-  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Remove a team member' })
   async removeTeamMember(
     @Request() req,
     @Param('id') id: string,

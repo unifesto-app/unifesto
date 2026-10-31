@@ -128,10 +128,6 @@ export function listSponsors(spaceId: string): Result<Sponsor[]> {
   return apiCall<Sponsor[]>(backendClient.get(base(spaceId)));
 }
 
-export function getSponsor(spaceId: string, id: string): Result<Sponsor> {
-  return apiCall<Sponsor>(backendClient.get(`${base(spaceId)}/${id}`));
-}
-
 export function createSponsor(spaceId: string, payload: CreateSponsorPayload): Result<Sponsor> {
   return apiCall<Sponsor>(backendClient.post(base(spaceId), payload));
 }

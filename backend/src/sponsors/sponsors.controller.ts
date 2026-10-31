@@ -17,7 +17,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Action } from '../auth/authorization/actions';
 import { Can } from '../auth/authorization/can.decorator';
 import { CanGuard } from '../auth/authorization/can.guard';
@@ -45,8 +44,6 @@ import {
  * Route order matters: the literal `tiers` and `events` segments are declared
  * before the `:sponsorId` param routes so they are not swallowed by it.
  */
-@ApiTags('Sponsors')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, CanGuard)
 @Controller('spaces/:spaceId/sponsors')
 export class SponsorsController {
@@ -61,7 +58,6 @@ export class SponsorsController {
   @Post('logo')
   @Can(Action.SPACE_MANAGE_SPONSORS)
   @UseInterceptors(FileInterceptor('logo', uploadLimit(2)))
-  @ApiOperation({ summary: 'Upload a sponsor logo' })
   uploadLogo(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @UploadedFile(
@@ -87,7 +83,6 @@ export class SponsorsController {
 
   @Post('tiers')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Create a sponsorship tier' })
   createTier(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Body() dto: CreateSponsorTierDto,
@@ -115,7 +110,6 @@ export class SponsorsController {
 
   @Get('events/:eventId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'List the sponsors attached to an event' })
   listEventSponsors(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -125,7 +119,6 @@ export class SponsorsController {
 
   @Get('events/:eventId/leads')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'List sponsor leads captured at an event' })
   listEventLeads(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -136,7 +129,6 @@ export class SponsorsController {
 
   @Post('events/:eventId')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Attach a roster sponsor to an event' })
   attachSponsor(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -181,7 +173,6 @@ export class SponsorsController {
 
   @Post()
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Add a sponsor to the space roster' })
   createSponsor(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Body() dto: CreateSponsorDto,
@@ -200,7 +191,6 @@ export class SponsorsController {
 
   @Get(':sponsorId/leads')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'List all leads for a sponsor across events' })
   listSponsorLeads(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('sponsorId', ParseUUIDPipe) sponsorId: string,
@@ -221,7 +211,6 @@ export class SponsorsController {
 
   @Post(':sponsorId/users')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Invite a person to the sponsor portal' })
   inviteSponsorUser(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('sponsorId', ParseUUIDPipe) sponsorId: string,

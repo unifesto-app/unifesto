@@ -10,7 +10,7 @@ const LINEUP = [OrgPlan.STARTER, OrgPlan.CLUB, OrgPlan.GROWTH, OrgPlan.PRO, OrgP
 /** The five plans: General (STARTER), Club, Growth, Pro, Enterprise, in ladder order. */
 describe('plan lineup', () => {
   const planConfig = new PlanConfigService({} as any);
-  const svc = new SubscriptionService({} as any, {} as any, {} as any, planConfig, rateCardTerms());
+  const svc = new SubscriptionService({} as any, {} as any, planConfig, rateCardTerms());
 
   it('lists every plan in ladder order', async () => {
     expect((await svc.getAllPlans()).map((p) => p.plan)).toEqual(LINEUP);

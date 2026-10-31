@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
 import { CardBackdrop } from '../../components/ui/CardSurface';
@@ -9,26 +9,21 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import ManageStats from '../../components/manage/ManageStats';
 import ChipPicker from '../../components/manage/ChipPicker';
 import SearchList from '../../components/apex/SearchList';
-import { ApexRow, longDate, shortDate, whenShort } from '../../components/apex/ApexRow';
+import { ApexRow, longDate, shortDate } from '../../components/apex/ApexRow';
 import { titleCase } from '../../lib/apexQueues';
 import {
   getAdminSession,
-  getLogStats,
   listAdminSessions,
-  listLogs,
   type AdminSession,
   type AdminSessionDetail,
   type AdminSessionStatus,
-  type ApiLog,
-  type LogStats,
-  type LogStatusFilter,
 } from '../../lib/api/apexPlatform';
 import { inrShort } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
-/* Apex Sessions (Unifesto Huddle) and API logs, both read-only like the web. */
+/* Apex Sessions (Unifesto Huddle), read-only like the web. */
 
 const who = (u: { fullName: string | null; username: string | null }) => u.fullName || (u.username ? `@${u.username}` : 'Unnamed');
 
@@ -152,98 +147,9 @@ export function SessionAdminDetailScreen() {
   );
 }
 
-// ── Logs ─────────────────────────────────────────────────────────────────────
-
-const LOG_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'error', label: 'Errors' },
-  { value: 'server_error', label: '5xx' },
-  { value: 'client_error', label: '4xx' },
-  { value: 'success', label: 'OK' },
-];
-
-export function LogsScreen() {
-  const c = useCosmos();
-  const [status, setStatus] = useState('error');
-  const [stats, setStats] = useState<LogStats | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void getLogStats().then((r) => r.ok && setStats(r.data));
-  }, []);
-
-  const fetchPage = useCallback(
-    async (search: string, page: number) => {
-      const r = await listLogs({ search, status: (status || undefined) as LogStatusFilter | undefined, page, limit: 30 });
-      return r.ok ? { ok: true as const, data: { items: r.data.logs, total: r.data.pagination.total } } : r;
-    },
-    [status],
-  );
-
-  const codeColor = (code: number) => (code >= 500 ? c.danger : code >= 400 ? c.warn : c.success);
-
-  return (
-    <SearchList<ApiLog>
-      placeholder="Path, e.g. /events"
-      noun={['request', 'requests']}
-      fetchPage={fetchPage}
-      keyOf={(l) => l.id}
-      header={
-        <View style={{ marginTop: spacing[4], gap: spacing[3] }}>
-          <ManageStats
-            loading={!stats}
-            stats={[
-              { label: 'Last 24h', value: stats?.last24h ?? 0 },
-              { label: 'Errors 24h', value: stats?.errors24h ?? 0 },
-              { label: 'Avg time', value: stats ? `${Math.round(stats.avgDurationMs)}ms` : 0 },
-            ]}
-          />
-          <ChipPicker options={LOG_FILTERS} value={status} onChange={setStatus} />
-        </View>
-      }
-      renderItem={(l) => (
-        <Pressable
-          onPress={() => setOpenId((cur) => (cur === l.id ? null : l.id))}
-          accessibilityRole="button"
-          accessibilityLabel={`${l.method} ${l.path}, status ${l.statusCode}`}
-          accessibilityState={{ expanded: openId === l.id }}
-          style={styles.log}
-        >
-          <View style={styles.logHead}>
-            <Text style={[styles.code, { color: codeColor(l.statusCode) }]}>{l.statusCode}</Text>
-            <Text style={[styles.path, { color: c.text }]} numberOfLines={openId === l.id ? undefined : 1}>
-              {l.method} {l.path}
-            </Text>
-          </View>
-          <Text style={[styles.logMeta, { color: c.muted }]}>
-            {whenShort(l.createdAt)} · {l.durationMs}ms{l.userId ? ' · signed in' : ''}
-          </Text>
-          {openId === l.id ? (
-            <View style={{ marginTop: spacing[2], gap: 4 }}>
-              {l.errorMessage ? <Text style={[styles.detail, { color: c.danger }]} selectable>{l.errorMessage}</Text> : null}
-              <Text style={[styles.detail, { color: c.soft }]} selectable>
-                {longDate(l.createdAt)}
-                {l.userId ? `\nUser ${l.userId}` : ''}
-                {l.ipAddress ? `\nIP ${l.ipAddress}` : ''}
-                {l.userAgent ? `\n${l.userAgent}` : ''}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
-      )}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
-  log: { paddingVertical: spacing[3] },
-  logHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2] },
-  code: { width: 36, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
-  path: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  logMeta: { marginTop: 2, marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  detail: { marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },
 });

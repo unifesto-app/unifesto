@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { EventsModule } from '../events/events.module';
 import { EmailModule } from '../email/email.module';
-import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { NotifyService } from './notify.service';
 import { OneSignalService } from './onesignal.service';
 import { NotificationsService } from './notifications.service';
@@ -26,11 +25,11 @@ import {
  * Imports EventsModule (organiser scoped-auth via canManageEvent). It is
  * one-directional — that module emits via EventEmitter2 and never imports this
  * one, so there's no cycle. Prisma/Redis come from their global modules.
- * EmailModule and WhatsAppModule (for NotifyService) import neither this
- * module nor anything that does, so they're cycle-free too.
+ * EmailModule (for NotifyService) imports neither this module nor anything
+ * that does, so it's cycle-free too.
  */
 @Module({
-  imports: [AuthModule, EventsModule, EmailModule, WhatsAppModule],
+  imports: [AuthModule, EventsModule, EmailModule],
   controllers: [
     AdminPushController,
     OrganiserAnnouncementController,

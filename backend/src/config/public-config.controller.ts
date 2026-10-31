@@ -1,5 +1,4 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
 import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
@@ -8,7 +7,6 @@ import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config'
  * Public, unauthenticated read of platform settings that clients need in order
  * to render pricing (e.g. the app-wide processing fee shown at checkout).
  */
-@ApiTags('Config')
 @Controller('config')
 export class PublicConfigController {
   constructor(
@@ -17,7 +15,6 @@ export class PublicConfigController {
   ) {}
 
   @Get('processing-fee')
-  @ApiOperation({ summary: 'Get the app-wide processing fee percentage' })
   getProcessingFee() {
     return {
       processingFeePercent: this.platformConfig.getProcessingFeePercent(),
@@ -32,7 +29,6 @@ export class PublicConfigController {
    * shows what is actually charged.
    */
   @Get('plan-fees')
-  @ApiOperation({ summary: 'Get sellable plans: prices, platform fees, limits and features (public rate card)' })
   getPlanFees() {
     return {
       buyerProcessingFeePercent: this.platformConfig.getProcessingFeePercent(),

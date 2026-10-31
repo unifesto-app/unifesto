@@ -59,14 +59,3 @@ export function freeSeatsLeft(requests: FreeAddRequest[], ticketTypeId: string):
   if (live.some((r) => r.approvedSeats === null)) return null;
   return live.reduce((n, r) => n + Math.max(0, (r.approvedSeats ?? 0) - r.usedSeats), 0);
 }
-
-/** My free-add requests, optionally scoped to one event. */
-export async function getMyFreeAddRequests(
-  eventId?: string
-): Promise<{ data: FreeAddRequest[] | null; error: ApiError | null }> {
-  return apiCall<FreeAddRequest[]>(
-    backendClient.get("/free-attendee-add/requests/my", {
-      params: eventId ? { eventId } : undefined,
-    })
-  );
-}

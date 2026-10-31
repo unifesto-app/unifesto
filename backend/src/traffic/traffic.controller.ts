@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { User } from '@prisma/client';
-import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
@@ -28,7 +27,6 @@ import {
   TrafficRangeQuery,
 } from './dto';
 
-@ApiTags('traffic')
 @Controller()
 export class TrafficController {
   constructor(private readonly traffic: TrafficService) {}
@@ -51,7 +49,6 @@ export class TrafficController {
 
   /** Short link redirect: https://unifesto.app/l/<code> (also on api.unifesto.app). */
   @Get('l/:code')
-  @ApiExcludeEndpoint()
   async redirect(@Param('code') code: string, @Req() req: Request, @Res() res: Response) {
     const url = await this.traffic.resolve(code, {
       ip: req.ip,
@@ -66,7 +63,6 @@ export class TrafficController {
 
   /** QR of a short link: /l/<code>/qr (SVG) or /l/<code>/qr?format=png. */
   @Get('l/:code/qr')
-  @ApiExcludeEndpoint()
   async qr(@Param('code') code: string, @Query('format') format: string | undefined, @Res() res: Response) {
     const png = format === 'png';
     const body = await this.traffic.qr(code, png ? 'png' : 'svg');

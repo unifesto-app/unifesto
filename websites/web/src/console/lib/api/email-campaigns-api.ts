@@ -81,7 +81,6 @@ export interface CreateCampaignPayload {
   body: string;
   templateId?: string;
   scheduledAt?: string;
-  wrap?: boolean;
 }
 
 export interface CampaignListResponse {

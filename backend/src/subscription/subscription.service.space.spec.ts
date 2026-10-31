@@ -21,7 +21,6 @@ describe('SubscriptionService.getEffectiveSubscriptionForSpace', () => {
       prisma as any,
       {} as any,
       {} as any,
-      {} as any,
       rateCardTerms(),
     );
     return { svc, prisma };

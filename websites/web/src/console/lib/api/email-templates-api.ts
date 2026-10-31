@@ -36,13 +36,6 @@ export async function listTemplates(
   return apiCall<EmailTemplate[]>(backendClient.get(base(spaceId)));
 }
 
-export async function getTemplate(
-  spaceId: string,
-  id: string
-): Promise<{ data: EmailTemplate | null; error: ApiError | null }> {
-  return apiCall<EmailTemplate>(backendClient.get(`${base(spaceId)}/${id}`));
-}
-
 export async function createTemplate(
   spaceId: string,
   payload: TemplatePayload

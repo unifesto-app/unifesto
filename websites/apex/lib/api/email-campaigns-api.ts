@@ -94,7 +94,6 @@ export interface CreateCampaignPayload {
   templateId?: string;
   segmentFilters?: SegmentFilters;
   scheduledAt?: string;
-  wrap?: boolean;
 }
 
 export interface CampaignListResponse {

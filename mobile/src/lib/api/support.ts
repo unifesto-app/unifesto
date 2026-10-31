@@ -98,10 +98,6 @@ export interface CreateTicketInput {
   clientInfo?: BuildInfo;
   /** Raise it on behalf of a space (operator support). */
   spaceId?: string;
-  /** Event context: the backend sends event questions to the organiser's desk. */
-  eventId?: string;
-  /** The requester's own registration; implies its event. */
-  registrationId?: string;
 }
 
 export const CATEGORY_LABEL: Record<SupportTicketCategory, string> = {

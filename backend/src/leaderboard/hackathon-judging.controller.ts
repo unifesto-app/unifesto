@@ -10,7 +10,6 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -43,8 +42,6 @@ import {
  * `hackathon/:eventId` and are gated by team membership. Same routes as the one
  * controller they were split from.
  */
-@ApiTags('Hackathon')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class HackathonJudgingController {
@@ -57,7 +54,6 @@ export class HackathonJudgingController {
   // ── Curator: rounds & criteria ────────────────────────────────────────────
 
   @Get('events/:eventId/hackathon/rounds')
-  @ApiOperation({ summary: 'Rounds with settings and progress' })
   listRounds(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -75,7 +71,6 @@ export class HackathonJudgingController {
   }
 
   @Get('events/:eventId/hackathon/rounds/:roundId')
-  @ApiOperation({ summary: 'A round: settings, criteria, its teams (no marks), what blocks opening it' })
   getRound(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -104,7 +99,6 @@ export class HackathonJudgingController {
   }
 
   @Post('events/:eventId/hackathon/rounds/:roundId/status')
-  @ApiOperation({ summary: 'Open, pause or close a round' })
   setRoundStatus(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -115,7 +109,6 @@ export class HackathonJudgingController {
   }
 
   @Put('events/:eventId/hackathon/rounds/:roundId/teams/:entrantId/decision')
-  @ApiOperation({ summary: 'Advance or eliminate a team in a round' })
   setTeamDecision(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -127,7 +120,6 @@ export class HackathonJudgingController {
   }
 
   @Put('events/:eventId/hackathon/rounds/:roundId/decisions')
-  @ApiOperation({ summary: 'Advance / eliminate several teams at once (the "top N" helper)' })
   setDecisions(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -181,7 +173,6 @@ export class HackathonJudgingController {
   }
 
   @Post('events/:eventId/hackathon/judges')
-  @ApiOperation({ summary: 'Add a judge by phone number or email (finds or creates the account)' })
   addJudge(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -200,7 +191,6 @@ export class HackathonJudgingController {
   }
 
   @Patch('events/:eventId/hackathon/judges/:judgeId')
-  @ApiOperation({ summary: 'Themes, location or call link, rounds, availability' })
   updateJudge(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -258,7 +248,6 @@ export class HackathonJudgingController {
   // ── Curator: live queues ──────────────────────────────────────────────────
 
   @Get('events/:eventId/hackathon/queues')
-  @ApiOperation({ summary: 'Every judge and panel: current slot and who is waiting; recent marks with lock state' })
   queues(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -276,7 +265,6 @@ export class HackathonJudgingController {
   }
 
   @Post('events/:eventId/hackathon/queue/:requestId/reassign')
-  @ApiOperation({ summary: 'Move a team that has not started to another judge or panel' })
   reassign(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -297,7 +285,6 @@ export class HackathonJudgingController {
   }
 
   @Post('events/:eventId/hackathon/judgments/:judgmentId/reopen')
-  @ApiOperation({ summary: 'Give a judge 5 more minutes on marks they submitted' })
   reopenJudgment(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -309,7 +296,6 @@ export class HackathonJudgingController {
   // ── Judge ─────────────────────────────────────────────────────────────────
 
   @Get('events/:eventId/hackathon/judge/console')
-  @ApiOperation({ summary: 'Judge console: availability, current slot, queues, recent marks' })
   judgeConsole(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -356,7 +342,6 @@ export class HackathonJudgingController {
   // ── Team member: evaluation queue ────────────────────────────────────────
 
   @Get('hackathon/:eventId/evaluate')
-  @ApiOperation({ summary: 'My team: rounds, my queue place, recent evaluations. Never includes marks.' })
   myEvaluation(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -365,7 +350,6 @@ export class HackathonJudgingController {
   }
 
   @Get('hackathon/:eventId/rounds/:roundId/evaluators')
-  @ApiOperation({ summary: 'Judges or panels my team can pick in a round' })
   evaluators(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -375,7 +359,6 @@ export class HackathonJudgingController {
   }
 
   @Post('hackathon/:eventId/rounds/:roundId/requests')
-  @ApiOperation({ summary: 'Join a judge or panel queue' })
   requestEvaluation(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,
@@ -386,7 +369,6 @@ export class HackathonJudgingController {
   }
 
   @Delete('hackathon/:eventId/requests/:requestId')
-  @ApiOperation({ summary: 'Leave the queue' })
   withdraw(
     @CurrentUser() user: User,
     @Param('eventId', ParseUUIDPipe) eventId: string,

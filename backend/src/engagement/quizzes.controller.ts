@@ -9,14 +9,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { QuizzesService } from './quizzes.service';
 import { AnswerQuizDto, SaveQuizDto } from './quizzes.dto';
 
-@ApiTags('quizzes')
 @Controller('events/:eventId/quizzes')
 export class QuizzesController {
   constructor(private readonly quizzes: QuizzesService) {}

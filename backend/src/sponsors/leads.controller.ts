@@ -10,7 +10,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { LeadSource, LeadStatus } from '@prisma/client';
 import { Action } from '../auth/authorization/actions';
 import { Can } from '../auth/authorization/can.decorator';
@@ -25,8 +24,6 @@ import { CreateLeadDto, UpdateLeadDto } from './dto/lead.dto';
  * the organiser's interest/inquiry leads. Public capture lives in
  * PublicLeadsController.
  */
-@ApiTags('Leads')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, CanGuard)
 @Controller('spaces/:spaceId/leads')
 export class LeadsController {
@@ -45,14 +42,12 @@ export class LeadsController {
 
   @Post()
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Manually add a lead to the funnel' })
   create(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Body() dto: CreateLeadDto) {
     return this.leads.createLead(spaceId, dto);
   }
 
   @Patch(':id')
   @Can(Action.SPACE_MANAGE_SPONSORS)
-  @ApiOperation({ summary: 'Re-stage or edit a lead' })
   update(
     @Param('spaceId', ParseUUIDPipe) spaceId: string,
     @Param('id', ParseUUIDPipe) id: string,

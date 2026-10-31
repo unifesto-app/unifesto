@@ -8,10 +8,10 @@ const SEARCH_DEBOUNCE_MS = 300;
  * Paged, searchable attendee list for one event: one page of PAGE_SIZE at a
  * time, with numbered navigation. Search is debounced and every request carries
  * a generation number, so a slow response for an old query or page can never
- * overwrite the rows for what the user is looking at now. A new search, tab or
- * ticket filter starts again from page 1.
+ * overwrite the rows for what the user is looking at now. A new search or tab
+ * starts again from page 1.
  */
-export function useEventAttendees(eventId: string | undefined, ticketTypeId?: string) {
+export function useEventAttendees(eventId: string | undefined) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [filter, setFilter] = useState<AttendeeFilter>('attending');
@@ -34,7 +34,7 @@ export function useEventAttendees(eventId: string | undefined, ticketTypeId?: st
     async (target: number) => {
       if (!eventId) return;
       const gen = ++generation.current;
-      const res = await getAttendees(eventId, { page: target, search: debounced, filter, limit: PAGE_SIZE, ticketTypeId });
+      const res = await getAttendees(eventId, { page: target, search: debounced, filter, limit: PAGE_SIZE });
       if (gen !== generation.current) return;
       if (!res.ok) {
         setDenied(res.denied);
@@ -46,7 +46,7 @@ export function useEventAttendees(eventId: string | undefined, ticketTypeId?: st
       setPage(target);
       setRows(res.data.registrations);
     },
-    [eventId, debounced, filter, ticketTypeId],
+    [eventId, debounced, filter],
   );
 
   useEffect(() => {

@@ -3,7 +3,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SPACE_APP } from '../email/layout';
-import { CacheService } from '../cache/cache.service';
 import { RedisService } from '../redis/redis.service';
 import { OrgPlan, Prisma } from '@prisma/client';
 import { addBillingCycle, lockSubscription } from './subscription.service';
@@ -37,7 +36,6 @@ export class SubscriptionSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    private readonly cache: CacheService,
     private readonly redis: RedisService,
   ) {}
 
@@ -56,11 +54,6 @@ export class SubscriptionSchedulerService {
       email: person?.identities[0]?.email ?? null,
       name: person?.fullName || person?.username || 'there',
     };
-  }
-
-  /** Invalidate whichever plan cache key this row feeds. */
-  private async invalidatePlan(sub: BillingRow): Promise<void> {
-    if (sub.spaceId) await this.cache.invalidateSpacePlanCache(sub.spaceId);
   }
 
   /**
@@ -156,9 +149,6 @@ export class SubscriptionSchedulerService {
         return 'expired' as const;
       });
       if (!outcome) continue;
-
-      // Invalidate whichever plan cache this row feeds
-      await this.invalidatePlan(sub);
       if (outcome === 'switched') continue;
       downgraded += 1;
       const oldPlan = sub.plan;

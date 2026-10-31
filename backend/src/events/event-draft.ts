@@ -1,6 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ApiPropertyOptional } from '@nestjs/swagger';
 import axios from 'axios';
 import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { lookup as dnsLookup, type LookupAddress } from 'dns';
@@ -286,13 +285,11 @@ export async function fetchPageText(raw: string): Promise<string> {
 // --- Endpoint ----------------------------------------------------------------
 
 export class EventDraftDto {
-  @ApiPropertyOptional({ example: 'Two-day hackathon for 2nd-4th years, teams of 2-4, ₹50k prize pool' })
   @IsOptional()
   @IsString()
   @MaxLength(MAX_NOTES_CHARS)
   notes?: string;
 
-  @ApiPropertyOptional({ example: 'https://example.com/events/hack-2026' })
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   @MaxLength(2000)

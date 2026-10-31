@@ -1,13 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { PartnerLinksService } from './partner-links.service';
 import { CreatePartnerLinkDto } from './dto';
 
-@ApiTags('partner-links')
 @Controller()
 export class PartnerLinksController {
   constructor(private readonly partners: PartnerLinksService) {}

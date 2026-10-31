@@ -74,35 +74,4 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
     this.logger.log('Disconnected from database');
   }
-
-  /**
-   * Clean database (useful for testing)
-   */
-  async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Cannot clean database in production');
-    }
-
-    const models = Reflect.ownKeys(this).filter(
-      (key) => key[0] !== '_' && key !== 'constructor',
-    );
-
-    return Promise.all(
-      models.map((modelKey) => {
-        const model = this[modelKey as keyof this];
-        if (model && typeof model === 'object' && 'deleteMany' in model) {
-          return (model as any).deleteMany();
-        }
-      }),
-    );
-  }
-
-  /**
-   * Enable shutdown hooks for graceful shutdown
-   */
-  async enableShutdownHooks(app: any) {
-    this.$on('beforeExit' as never, async () => {
-      await app.close();
-    });
-  }
 }

@@ -12,7 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { PickType } from '@nestjs/swagger';
+import { PickType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import { EmailTargetType } from '@prisma/client';
 
@@ -91,11 +91,6 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsISO8601()
   scheduledAt?: string;
-
-  /** Wrap the body in the branded Unifesto shell. Default true. */
-  @IsOptional()
-  @IsBoolean()
-  wrap?: boolean;
 }
 
 /** Render `body` with sample merge values — powers the composer's live preview. */

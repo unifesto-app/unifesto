@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, Header, Param, ParseUUIDPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
@@ -14,22 +13,18 @@ const uuid = new ParseUUIDPipe({ version: '4' });
  * F1 event feedback. Attendees read and submit their own response; the form
  * itself (on/off and questions) needs event:edit.
  */
-@ApiTags('feedback')
-@ApiBearerAuth()
 @Controller('events/:eventId/feedback')
 export class FeedbackController {
   constructor(private readonly feedback: FeedbackService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'The feedback form and my own response' })
   get(@CurrentUser() user: User, @Param('eventId', uuid) eventId: string) {
     return this.feedback.getForAttendee(user.id, eventId);
   }
 
   @Put()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Submit or update my feedback (attendees)' })
   submit(@CurrentUser() user: User, @Param('eventId', uuid) eventId: string, @Body() dto: SubmitFeedbackDto) {
     return this.feedback.submit(user.id, eventId, dto);
   }
@@ -44,7 +39,6 @@ export class FeedbackController {
   @Get('results')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
-  @ApiOperation({ summary: 'Averages, NPS, distribution, question summaries and comments (F3)' })
   results(@Param('eventId', uuid) eventId: string) {
     return this.feedback.results(eventId);
   }
@@ -53,7 +47,6 @@ export class FeedbackController {
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
   @Header('Content-Type', 'text/csv; charset=utf-8')
-  @ApiOperation({ summary: 'Every response as CSV (F3)' })
   resultsCsv(@Param('eventId', uuid) eventId: string) {
     return this.feedback.resultsCsv(eventId);
   }

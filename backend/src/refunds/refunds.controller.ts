@@ -9,7 +9,6 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { RefundsService } from './refunds.service';
 import {
   CreateRefundRequestDto,
@@ -23,8 +22,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode, RefundStatus } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
 
-@ApiTags('Refunds')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('refunds')
 export class RefundsController {

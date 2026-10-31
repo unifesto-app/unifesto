@@ -46,8 +46,6 @@ export interface EventTicketType {
   blockedBy?: { blockerId: string }[];
   /** Queue buyers once this ticket sells out. Requires a capacity. */
   waitlistEnabled: boolean;
-  /** Hours someone let in off the queue has to pay before the seat is released. */
-  waitlistOfferTtlHours: number;
   /** Per-ticket-type WhatsApp group link; overrides the event group for holders. */
   whatsappGroupUrl?: string | null;
 }
@@ -367,16 +365,6 @@ export async function getSpaceEvents(
 }
 
 /**
- * Get a single event by slug.
- * Backed by `GET /events/:slug`.
- */
-export async function getEventBySlug(
-  slug: string
-): Promise<{ data: Event | null; error: ApiError | null }> {
-  return apiCall<Event>(backendClient.get(`/events/${slug}`));
-}
-
-/**
  * Get a single event by ID.
  * Backed by `GET /events/:id`.
  */
@@ -630,8 +618,6 @@ export interface TicketTypePayload {
    * Rejected by the API unless `totalQuantity` is also set.
    */
   waitlistEnabled?: boolean;
-  /** Hours to pay before a held seat is released. Defaults to 24. */
-  waitlistOfferTtlHours?: number;
   /**
    * Per-ticket-type WhatsApp group invite link. Overrides the event group for
    * holders of this ticket. Empty string clears it; validated server-side.
@@ -1244,18 +1230,6 @@ export async function getManagedSubEvents(
 ): Promise<{ data: SubEvent[] | null; error: ApiError | null }> {
   return apiCall<SubEvent[]>(
     backendClient.get(`/events/${parentId}/sub-events/manage`)
-  );
-}
-
-/**
- * List the published sub-events of a parent (public hub).
- * `GET /events/:id/sub-events`.
- */
-export async function getSubEvents(
-  parentId: string
-): Promise<{ data: SubEvent[] | null; error: ApiError | null }> {
-  return apiCall<SubEvent[]>(
-    backendClient.get(`/events/${parentId}/sub-events`)
   );
 }
 

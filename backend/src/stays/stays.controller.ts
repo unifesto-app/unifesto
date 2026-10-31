@@ -14,12 +14,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import {
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
@@ -55,8 +49,6 @@ const uuid = new ParseUUIDPipe({ version: '4' });
  * property, check-in/out) needs event:check-in. Attendee routes live under
  * /stays/… and act only on the caller's own bookings.
  */
-@ApiTags('stays')
-@ApiBearerAuth()
 @Controller()
 export class StaysController {
   constructor(
@@ -69,9 +61,6 @@ export class StaysController {
   @Get('events/:eventId/stays/manage')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_VIEW, { eventKey: 'eventId' })
-  @ApiOperation({
-    summary: 'All stays on the event with bed counts and booking tallies',
-  })
   listForTeam(@Param('eventId', uuid) eventId: string) {
     return this.stays.listForTeam(eventId);
   }
@@ -122,7 +111,6 @@ export class StaysController {
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
   @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
-  @ApiConsumes('multipart/form-data')
   uploadCover(
     @Param('eventId', uuid) eventId: string,
     @Param('stayId', uuid) stayId: string,
@@ -135,7 +123,6 @@ export class StaysController {
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
   @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
-  @ApiConsumes('multipart/form-data')
   addGalleryPhoto(
     @Param('eventId', uuid) eventId: string,
     @Param('stayId', uuid) stayId: string,
@@ -297,7 +284,6 @@ export class StaysController {
   @Get('events/:eventId/stay-pass/:passCode')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_CHECK_IN, { eventKey: 'eventId' })
-  @ApiOperation({ summary: 'Look up a scanned Stay Pass' })
   lookupPass(
     @Param('eventId', uuid) eventId: string,
     @Param('passCode') passCode: string,
@@ -344,9 +330,6 @@ export class StaysController {
 
   @Get('events/:eventId/stays')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'Published stays for an event, with availability and my booking',
-  })
   listForAttendee(
     @Param('eventId', uuid) eventId: string,
     @CurrentUser() user: User,
@@ -358,11 +341,6 @@ export class StaysController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseInterceptors(FileInterceptor('file', uploadLimit(FILE_MAX_MB_CAP)))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary:
-      'Upload a guest photo ID, or a FILE answer (?questionId=), privately',
-  })
   upload(
     @Param('stayId', uuid) stayId: string,
     @Query('questionId') questionId: string | undefined,

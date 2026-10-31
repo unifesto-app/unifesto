@@ -95,18 +95,6 @@ export interface SupportTicketsResponse {
   };
 }
 
-export interface SupportStats {
-  open: number;
-  pending: number;
-  resolved: number;
-  closed: number;
-  total: number;
-  /** Cases on the side you work (Platform's desk for admins) with a message you haven't opened. */
-  unread: number;
-  /** Cases you raised with a reply you haven't opened. */
-  myUnread: number;
-}
-
 export interface CreateTicketInput {
   subject: string;
   message: string;
@@ -150,11 +138,6 @@ export async function listTickets(
   return apiCall<SupportTicketsResponse>(
     backendClient.get(`/support/tickets${qs ? `?${qs}` : ""}`)
   );
-}
-
-/** `GET /support/tickets/stats` — status counts for the current viewer. */
-export async function getSupportStats(): Promise<Result<SupportStats>> {
-  return apiCall<SupportStats>(backendClient.get("/support/tickets/stats"));
 }
 
 /** `GET /support/tickets/:id` — full ticket with its message thread. */

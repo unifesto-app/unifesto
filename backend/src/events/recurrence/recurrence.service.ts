@@ -273,7 +273,6 @@ export class RecurrenceService {
       saleEndsAt: shift(t.saleEndsAt, occStart),
       perUserLimit: t.perUserLimit,
       waitlistEnabled: t.waitlistEnabled,
-      waitlistOfferTtlHours: t.waitlistOfferTtlHours,
       isVisible: t.isVisible,
       isActive: t.isActive,
       order: t.order,

@@ -10,14 +10,12 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { CouponsService } from './coupons.service';
 import { CreateCouponDto, UpdateCouponDto, ValidateCouponDto } from './dto';
 
-@ApiTags('coupons')
 @Controller('events/:eventId/coupons')
 export class CouponsController {
   constructor(private readonly coupons: CouponsService) {}

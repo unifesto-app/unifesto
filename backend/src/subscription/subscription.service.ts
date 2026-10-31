@@ -5,7 +5,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
 import { BillingCycle, OrgPlan, Prisma } from '@prisma/client';
 import { PlanConfigService, SELLABLE_PLANS, subscriptionStatus } from './plan-config.service';
@@ -94,7 +93,6 @@ export class SubscriptionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cache: CacheService,
     private readonly emailService: EmailService,
     private readonly planConfig: PlanConfigService,
     private readonly terms: TermsService,
@@ -122,8 +120,8 @@ export class SubscriptionService {
 
   // =========================================================================
   // SPACE-CENTRIC BILLING (P0.2) — the billing subject is the Space.
-  // These mirror the legacy per-user methods above but key on `spaceId`, cache
-  // per-space, and route billing emails to the space's accountable admin
+  // These mirror the legacy per-user methods above but key on `spaceId` and
+  // route billing emails to the space's accountable admin
   // (Space.createdBy). Access is gated at the controller by can(space:manage-billing).
   // =========================================================================
 
@@ -148,7 +146,6 @@ export class SubscriptionService {
     if (!subscription) {
       throw new NotFoundException('This space has no subscription');
     }
-    await this.cache.setSpacePlan(spaceId, subscription.plan);
     return { ...subscription, status: subscriptionStatus(subscription) };
   }
 
@@ -483,7 +480,6 @@ export class SubscriptionService {
 
     if (!result.applied) return result;
 
-    await this.cache.invalidateSpacePlanCache(spaceId);
     this.logger.log(`Applied ${kind} to ${plan} for space ${spaceId} (payment ${paymentId})`);
 
     const recipient = await this.resolveSpaceBillingRecipient(spaceId);
@@ -563,7 +559,6 @@ export class SubscriptionService {
       });
     });
 
-    await this.cache.invalidateSpacePlanCache(spaceId);
     this.logger.log(`Cancelled subscription for space ${spaceId}`);
 
     const recipient = await this.resolveSpaceBillingRecipient(spaceId);
@@ -664,7 +659,6 @@ export class SubscriptionService {
       });
     });
 
-    await this.cache.invalidateSpacePlanCache(spaceId);
     return updated;
   }
 
@@ -731,7 +725,6 @@ export class SubscriptionService {
       });
     });
 
-    await this.cache.invalidateSpacePlanCache(spaceId);
     return updated;
   }
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StyleSheet } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -9,30 +9,13 @@ import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const CATEGORIES = (Object.keys(CATEGORY_LABEL) as SupportTicketCategory[]).map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
-/** Unifesto answers these even about an event (decision D2, mirrors the backend). */
-const PLATFORM_CATEGORIES: SupportTicketCategory[] = ['ACCOUNT', 'PAYMENTS', 'TECHNICAL'];
 
-/**
- * Raise a case. From an event or ticket ("Get help") it carries eventId or
- * registrationId and `about` (the event's title), and the backend routes it to
- * that event's organiser unless it's an account, payment or app question.
- * From a space (operator support) it carries spaceId and goes to Unifesto.
- */
+/** Raise a case. From a space (operator support) it carries spaceId and goes to Unifesto. */
 export default function NewSupportTicketScreen() {
-  const { spaceId, eventId, registrationId, about } = useLocalSearchParams<{
-    spaceId?: string;
-    eventId?: string;
-    registrationId?: string;
-    about?: string;
-  }>();
-  const aboutEvent = !!(eventId || registrationId);
+  const { spaceId } = useLocalSearchParams<{ spaceId?: string }>();
   const router = useRouter();
-  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const [category, setCategory] = useState<SupportTicketCategory>('EVENTS');
   const [subject, setSubject] = useState('');
@@ -49,7 +32,6 @@ export default function NewSupportTicketScreen() {
       message: message.trim(),
       category,
       ...(spaceId ? { spaceId } : {}),
-      ...(registrationId ? { registrationId } : eventId ? { eventId } : {}),
     });
     setBusy(false);
     if (!t) return setError("Couldn't send. Check your connection and try again.");
@@ -63,17 +45,8 @@ export default function NewSupportTicketScreen() {
       contentContainerStyle={styles.content}
       footer={<SaveBar visible label="Send" onPress={send} loading={busy} error={error} />}
     >
-        {aboutEvent ? <Stack.Screen options={{ title: 'Get help' }} /> : null}
-        {about ? <Text style={[styles.about, { color: c.text }]} accessibilityRole="header">{about}</Text> : null}
         <BlockTitle>About</BlockTitle>
         <ChipPicker options={CATEGORIES} value={category} onChange={(v) => v && setCategory(v)} />
-        {aboutEvent ? (
-          <Text style={[styles.hint, { color: c.muted }]}>
-            {PLATFORM_CATEGORIES.includes(category)
-              ? 'Unifesto answers account, payment and app questions.'
-              : 'The organiser answers this, and can pass it to Unifesto.'}
-          </Text>
-        ) : null}
         <SettingsGroup plain>
           <FieldRow
             stacked
@@ -94,7 +67,7 @@ export default function NewSupportTicketScreen() {
               setError('');
               setMessage(v);
             }}
-            placeholder={aboutEvent ? 'What you tried, what happened' : 'Which event, what you tried, what happened'}
+            placeholder="Which event, what you tried, what happened"
           />
         </SettingsGroup>
     </CosmosScreen>
@@ -103,7 +76,4 @@ export default function NewSupportTicketScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  // The event's name as the page's hero title.
-  about: { fontSize: 20, lineHeight: 26, marginBottom: spacing[2], ...cosmosFont.display },
-  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
