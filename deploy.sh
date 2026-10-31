@@ -459,6 +459,7 @@ rsync -az --delete \
   --exclude '*.tsbuildinfo' \
   --exclude '.DS_Store' \
   --exclude '/_company' \
+  --exclude '/content-bank' \
   --exclude '/.claude/settings.local.json' \
   --exclude '/.claude/worktrees' \
   --exclude '/backend/coverage' \
