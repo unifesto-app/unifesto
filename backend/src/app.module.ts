@@ -43,6 +43,7 @@ import { CareersModule } from './careers/careers.module';
 import { LegalModule } from './legal/legal.module';
 import { OrbitModule } from './orbit/orbit.module';
 import { PmModule } from './pm/pm.module';
+import { CompanyModule } from './company/company.module';
 import { ContentReportsModule } from './content-reports/content-reports.module';
 import { BlogModule } from './blog/blog.module';
 import { HelpModule } from './help/help.module';
@@ -201,6 +202,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     LegalModule,
     OrbitModule,
     PmModule,
+    CompanyModule,
     ContentReportsModule,
     BlogModule,
     HelpModule,

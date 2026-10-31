@@ -500,7 +500,7 @@ model User {
   adminDevices                 AdminDevice[]
   pushDevices                  UserPushDevice[]
   authSessions                 AuthSession[]
-  bankAccounts                PayoutBankAccount[]
+  bankAccounts                 PayoutBankAccount[]
   payoutsReceived              Payout[]                      @relation("PayoutUser")
   refundRequests               RefundRequest[]               @relation("RefundRequestedBy")
   spaceStatusRequests          SpaceStatusRequest[]          @relation("SpaceStatusRequestUser")
@@ -544,6 +544,7 @@ model User {
   legalAcceptances             LegalAcceptance[]
   orbitLeads                   OrbitLead[]
   orbitApplications            OrbitApplication[]
+  companyItemsOwned            CompanyItem[]                 @relation("CompanyItemOwner")
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -5999,6 +6000,83 @@ model PmApiToken {
 
   @@index([userId])
   @@map("pm_api_tokens")
+}
+
+// =====================================================
+// COMPANY (Apex /dashboard/company, Track U)
+// =====================================================
+
+enum CompanyItemCategory {
+  ROC
+  TAX
+  GST
+  IP
+  GOVERNANCE
+  PEOPLE
+  FINANCE
+  FUNDING
+}
+
+enum CompanyItemStatus {
+  TODO
+  IN_PROGRESS
+  WAITING // on someone outside the team: CA, registrar, bank
+  FILED // submitted, acknowledgement pending
+  DONE
+  NA
+}
+
+enum CompanyRecurrence {
+  NONE
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+/// One compliance obligation of the company (U4). Names, amounts and other
+/// private details live in these rows, never in the public repo.
+model CompanyItem {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Shown as "C<number>".
+  number     Int                 @unique @default(autoincrement())
+  title      String              @db.Text
+  category   CompanyItemCategory
+  status     CompanyItemStatus   @default(TODO)
+  dueDate    DateTime?           @map("due_date") @db.Date
+  ownerId    String?             @map("owner_id") @db.Uuid
+  /// Finance, bank, shareholding: hidden without company:view-restricted.
+  restricted Boolean             @default(false)
+  filedOn    DateTime?           @map("filed_on") @db.Date
+  /// SRN or acknowledgement number.
+  reference  String?             @db.VarChar(120)
+  notes      String?             @db.Text
+  /// Marking a recurring item DONE creates the next one (U5).
+  recurrence CompanyRecurrence   @default(NONE)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner    User?             @relation("CompanyItemOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  activity CompanyActivity[]
+
+  @@index([dueDate])
+  @@index([ownerId])
+  @@map("company_items")
+}
+
+/// Append-only log of every change and note on a company item.
+model CompanyActivity {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId  String @map("item_id") @db.Uuid
+  actor   String @db.VarChar(160)
+  message String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item CompanyItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, createdAt])
+  @@map("company_activity")
 }
 
 enum AiRunOutcome {
