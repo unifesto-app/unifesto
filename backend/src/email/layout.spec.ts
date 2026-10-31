@@ -1,4 +1,4 @@
-import { button, contrastText, layout } from './layout';
+import { button, contrastText, layout, qr } from './layout';
 
 const brand = {
   name: 'Acme <Fest>',
@@ -45,5 +45,13 @@ describe('email layout branding', () => {
     const html = layout('<p>x</p>', '', { ...brand, hidePoweredBy: true });
     expect(html).toContain('Sent by Acme &lt;Fest&gt; &middot;');
     expect(html).not.toContain('via <a');
+  });
+});
+
+describe('check-in QR (J15)', () => {
+  it('shows the inline attachment, never a third-party QR service', () => {
+    const html = qr('UF-7Q2K');
+    expect(html).toContain('src="cid:checkin-qr"');
+    expect(html).not.toContain('qrserver');
   });
 });

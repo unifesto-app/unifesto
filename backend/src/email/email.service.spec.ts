@@ -130,6 +130,37 @@ describe('EmailService confirmation .ics', () => {
   });
 });
 
+describe('EmailService inline check-in QR (J15)', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+  const resendSpy = () => {
+    const service = new EmailService(config) as any;
+    service.brandFor = async () => ({ brand: null });
+    service.sendViaResend = jest.fn().mockResolvedValue({ id: 'r-1' });
+    return service;
+  };
+
+  it('renders the QR locally and attaches it inline beside the .ics', async () => {
+    const service = resendSpy();
+    await expect(service.sendRegistrationConfirmation({
+      email: 'a@b.co', eventSlug: 'fest', eventTitle: 'Fest', qrCode: 'REG-123',
+      eventStartDateTime: new Date('2026-11-01T10:00:00Z'), eventEndDateTime: new Date('2026-11-01T12:00:00Z'),
+      eventTimezone: 'Asia/Kolkata',
+    })).resolves.toBe(true);
+    const [, , html, attachments] = service.sendViaResend.mock.calls[0];
+    expect(html).toContain('src="cid:checkin-qr"');
+    expect(attachments.map((a: any) => a.filename)).toEqual(['event.ics', 'checkin-qr.png']);
+    expect(attachments[1].contentId).toBe('checkin-qr');
+    expect(attachments[1].content.subarray(1, 4).toString()).toBe('PNG');
+  });
+
+  it('still sends when the QR cannot be rendered', async () => {
+    const service = resendSpy();
+    const email = { subject: 'Hi', html: '<p>Hi</p>', qr: 'x'.repeat(8000) }; // too big for a QR
+    await expect(service.deliver('resend', 'a@b.co', email)).resolves.toBe(true);
+    expect(service.sendViaResend.mock.calls[0][3]).toBeUndefined();
+  });
+});
+
 describe('EmailService marketing send (C8)', () => {
   const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
 

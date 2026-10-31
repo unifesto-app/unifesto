@@ -57,9 +57,26 @@ describe('email templates', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
   });
 
+  it('never puts the ticket token in the html (J15)', () => {
+    for (const { html } of Object.values(samples)) expect(html).not.toMatch(/qrserver|REG-123/);
+  });
+
   it('never asks for payment on a free waitlist spot', () => {
     expect(samples.waitlistFree.html).not.toContain('Pay and confirm');
     expect(samples.waitlistPaid.html).toContain('Pay and confirm');
+  });
+});
+
+describe('J15 check-in QR', () => {
+  it.each(['registration', 'payment', 'reminder', 'startingSoon'])('%s hands the QR payload to EmailService', (name) => {
+    expect(samples[name].qr).toBe('REG-123');
+    expect(samples[name].html).toContain('src="cid:checkin-qr"');
+  });
+
+  it('skips the QR when an online join link replaces it', () => {
+    const online = T.eventStartingSoonEmail({ ...event, isOnline: true, onlineUrl: 'https://meet.x/y', startsInMinutes: 15 });
+    expect(online.qr).toBeUndefined();
+    expect(online.html).not.toContain('cid:checkin-qr');
   });
 });
 

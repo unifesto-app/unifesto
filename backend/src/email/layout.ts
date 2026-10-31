@@ -286,12 +286,15 @@ export const code = (value: string) =>
     `<div ${themed([fg('text')], "text-align:center;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:8px;")}>${esc(value)}</div>`,
   );
 
-/** Check-in QR on a white tile (white in both themes so it always scans). */
-export function qr(data: string, ticketCode?: string): string {
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(data)}`;
+/**
+ * Check-in QR on a white tile (white in both themes so it always scans). The
+ * image is the inline attachment EmailService renders from `Email.qr` (J15:
+ * the ticket token never goes to a third-party QR service).
+ */
+export function qr(ticketCode?: string): string {
   return well(
     `<div align="center">
-  <div style="display:inline-block;padding:12px;background:#ffffff;border-radius:14px;"><img src="${src}" width="180" height="180" alt="Check-in QR code" style="display:block;border:0;"></div>
+  <div style="display:inline-block;padding:12px;background:#ffffff;border-radius:14px;"><img src="cid:checkin-qr" width="180" height="180" alt="Check-in QR code" style="display:block;border:0;"></div>
   <div ${themed([fg('muted')], 'padding-top:12px;font-size:14px;')}>Show this at check-in${ticketCode ? `<br><span ${themed([fg('text')], 'font-size:15px;font-weight:600;letter-spacing:1px;')}>${esc(ticketCode)}</span>` : ''}</div>
 </div>`,
     'well',
