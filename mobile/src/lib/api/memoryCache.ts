@@ -37,6 +37,8 @@ const NEVER: RegExp[] = [
   /^\/payouts/,
   /^\/refunds/,
   /^\/payments/,
+  // Q40's kill switch: off must reach the next checkout, not one 10 minutes on.
+  /^\/config\/checkout/,
   /^\/leaderboard/,
   // Hackathon teams, rooms and the in-app feed change with other curators'
   // edits and incoming pushes, not only this device's writes.

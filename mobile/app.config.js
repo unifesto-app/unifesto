@@ -63,6 +63,14 @@ module.exports = () => {
         NSPhotoLibraryAddUsageDescription: "Unifesto needs permission to save event tickets and QR codes to your photo library.",
         // Push goes through OneSignal, so Firebase must not swizzle the app delegate.
         FirebaseAppDelegateProxyEnabled: false,
+        // Q40: Razorpay Custom UI checks these to list the UPI apps installed
+        // at checkout (Razorpay's iOS list). Android's upi:// <queries> come
+        // from Razorpay's own SDK manifest.
+        LSApplicationQueriesSchemes: [
+          "tez", "phonepe", "paytmmp", "credpay", "mobikwik", "in.fampay.app", "bhim", "amazonpay",
+          "navi", "kiwi", "payzapp", "jupiter", "omnicard", "icici", "popclubapp", "sbiyono", "myjio",
+          "slice-upi", "bobupi", "shriramone", "indusmobile", "whatsapp", "kotakbank",
+        ],
       },
       associatedDomains: [
         "applinks:unifesto.app",

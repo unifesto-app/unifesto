@@ -76,6 +76,7 @@
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-android-widget": "^0.22.1",
+    "react-native-customui": "^2.3.1",
     "react-native-image-colors": "^2.6.0",
     "react-native-maps": "1.27.2",
     "react-native-onesignal": "^5.5.15",
@@ -100,7 +101,8 @@
     "doctor": {
       "reactNativeDirectoryCheck": {
         "exclude": [
-          "react-native-razorpay"
+          "react-native-razorpay",
+          "react-native-customui"
         ]
       }
     }

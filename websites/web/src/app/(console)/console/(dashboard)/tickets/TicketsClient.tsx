@@ -19,7 +19,7 @@ import {
   type WaitlistEntry,
 } from "@/lib/api/tickets";
 import { clearSession, useWebSession } from "@/lib/auth";
-import { CHECKOUT_JS, checkout } from "@/lib/razorpay";
+import { CHECKOUT_JS, checkout, lastPayMethod } from "@/lib/razorpay";
 import { IST } from "@/lib/site";
 
 type Tab = "upcoming" | "waitlist" | "past" | "cancelled";
@@ -145,6 +145,7 @@ export default function TicketsClient({ nonce }: { nonce?: string }) {
         description: w.event.title,
         prefill: { name: session.fullName || "", email: session.email, contact: "" },
         color: "#3491ff",
+        upi: lastPayMethod() === "upi",
       });
       await verifyPayment(w.event.id, token, {
         registrationId: w.registrationId,

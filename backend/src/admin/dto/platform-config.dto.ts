@@ -22,6 +22,19 @@ export class UpdatePlatformConfigDto {
   @IsBoolean()
   customSendingDomainsEnabled?: boolean;
 
+  // Q40: our UPI-first checkout, per platform (off = Razorpay Standard Checkout).
+  @IsOptional()
+  @IsBoolean()
+  upiCheckoutIos?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  upiCheckoutAndroid?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  upiCheckoutWeb?: boolean;
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()

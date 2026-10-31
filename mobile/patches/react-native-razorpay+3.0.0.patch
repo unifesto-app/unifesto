@@ -1,0 +1,30 @@
+diff --git a/node_modules/react-native-razorpay/android/src/newarch/java/com/razorpay/rn/RazorpayModule.java b/node_modules/react-native-razorpay/android/src/newarch/java/com/razorpay/rn/RazorpayModule.java
+index 835fbcd..666014e 100644
+--- a/node_modules/react-native-razorpay/android/src/newarch/java/com/razorpay/rn/RazorpayModule.java
++++ b/node_modules/react-native-razorpay/android/src/newarch/java/com/razorpay/rn/RazorpayModule.java
+@@ -49,6 +49,10 @@ public class RazorpayModule extends NativeRazorpayCheckoutSpec implements Activi
+     }
+ 
+     public void onActivityResult(int requestCode, int resultCode, Intent data) {
++        // Unifesto Q40: react-native-customui's payment screen shares request code 62442
++        // and answers with 62443. That result is Custom UI's; handling it here would emit
++        // a bogus Razorpay::PAYMENT_ERROR that Custom UI's JS listener takes as its own.
++        if (resultCode == 62443) return;
+         Checkout.handleActivityResult(getCurrentActivity(), requestCode, resultCode, data, this, this);
+     }
+ 
+diff --git a/node_modules/react-native-razorpay/android/src/oldarch/java/com/razorpay/rn/RazorpayModule.java b/node_modules/react-native-razorpay/android/src/oldarch/java/com/razorpay/rn/RazorpayModule.java
+index 5edd7d0..f4be29d 100644
+--- a/node_modules/react-native-razorpay/android/src/oldarch/java/com/razorpay/rn/RazorpayModule.java
++++ b/node_modules/react-native-razorpay/android/src/oldarch/java/com/razorpay/rn/RazorpayModule.java
+@@ -49,6 +49,10 @@ public class RazorpayModule extends ReactContextBaseJavaModule implements Activi
+     }
+ 
+     public void onActivityResult(int requestCode, int resultCode, Intent data) {
++        // Unifesto Q40: react-native-customui's payment screen shares request code 62442
++        // and answers with 62443. That result is Custom UI's; handling it here would emit
++        // a bogus Razorpay::PAYMENT_ERROR that Custom UI's JS listener takes as its own.
++        if (resultCode == 62443) return;
+         Checkout.handleActivityResult(getCurrentActivity(), requestCode, resultCode, data, this, this);
+     }
+ 

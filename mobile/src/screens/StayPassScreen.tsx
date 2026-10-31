@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
-import RazorpayCheckout from 'react-native-razorpay';
 import {
   Bed,
   CalendarBlank,
@@ -21,6 +20,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import { isPaymentCancelled, pay as payOrder } from '../lib/pay';
 import { useAuth } from '../context/AuthContext';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -107,17 +107,12 @@ export default function StayPassScreen() {
         AppAlert.alert("Couldn't start payment", order.message);
         return;
       }
-      const payment: any = await RazorpayCheckout.open({
-        key: order.data.razorpayKeyId,
-        order_id: order.data.razorpayOrderId,
-        amount: order.data.amount,
-        currency: order.data.currency || 'INR',
+      const payment = await payOrder(order.data, {
         name: 'Unifesto Stay',
         description: `${b.stay.name} · ${b.event.title}`,
         image: b.stay.coverImageUrl || b.event.coverImageUrl || 'https://unifesto.app/logo.png',
         prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
-        theme: { color: '#111113' },
-      } as any);
+      });
       const verified = await verifyStayPayment(b.id, {
         razorpayOrderId: payment.razorpay_order_id,
         razorpayPaymentId: payment.razorpay_payment_id,
@@ -130,9 +125,7 @@ export default function StayPassScreen() {
         AppAlert.alert('Stay confirmed', 'Your Stay Pass is ready.');
       }
     } catch (err: any) {
-      // Razorpay reports a dismissed sheet as an error; nothing to alarm anyone about.
-      const cancelled = err?.code === 0 || err?.description === 'Payment Cancelled';
-      if (!cancelled) AppAlert.alert('Payment failed', err?.description || err?.message || 'Please try again');
+      if (!isPaymentCancelled(err)) AppAlert.alert('Payment failed', err?.description || err?.message || 'Please try again');
     } finally {
       setPaying(false);
       void load();

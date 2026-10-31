@@ -33,6 +33,15 @@ export function normalizeStatsRecipient(input: string): string | null {
   return null;
 }
 
+/** Q40's per-platform switches, as stored (see schema). */
+export interface UpiCheckoutSwitches {
+  upiCheckoutIos: boolean;
+  upiCheckoutAndroid: boolean;
+  upiCheckoutWeb: boolean;
+}
+
+const UPI_CHECKOUT_SELECT = { upiCheckoutIos: true, upiCheckoutAndroid: true, upiCheckoutWeb: true } as const;
+
 /**
  * Version policy for one platform, driving the in-app update prompt.
  * `latestVersion` empty = soft prompt off.
@@ -220,10 +229,10 @@ export class PlatformConfigService implements OnModuleInit {
     customSendingDomainsEnabled: boolean;
     aiFeatures: AiFeature[];
     aiEnabledFeatures: string[];
-  }> {
+  } & UpiCheckoutSwitches> {
     const row = await this.prisma.platformConfig.findUnique({
       where: { id: CONFIG_ID },
-      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true, aiEnabledFeatures: true },
+      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true, aiEnabledFeatures: true, ...UPI_CHECKOUT_SELECT },
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
@@ -235,7 +244,29 @@ export class PlatformConfigService implements OnModuleInit {
       customSendingDomainsEnabled: row?.customSendingDomainsEnabled ?? false,
       aiFeatures: AI_FEATURE_KEYS,
       aiEnabledFeatures: row?.aiEnabledFeatures ?? [],
+      upiCheckoutIos: row?.upiCheckoutIos ?? false,
+      upiCheckoutAndroid: row?.upiCheckoutAndroid ?? false,
+      upiCheckoutWeb: row?.upiCheckoutWeb ?? false,
     };
+  }
+
+  /**
+   * Q40: where our UPI-first checkout is on. Read straight from the database
+   * so the kill switch flipped through one replica holds on all of them.
+   */
+  async getUpiCheckout(): Promise<{ ios: boolean; android: boolean; web: boolean }> {
+    const row = await this.prisma.platformConfig.findUnique({ where: { id: CONFIG_ID }, select: UPI_CHECKOUT_SELECT });
+    return { ios: row?.upiCheckoutIos ?? false, android: row?.upiCheckoutAndroid ?? false, web: row?.upiCheckoutWeb ?? false };
+  }
+
+  /** Admin switch for Q40, per platform. Off = Razorpay Standard Checkout only. */
+  async setUpiCheckout(switches: Partial<UpiCheckoutSwitches>): Promise<void> {
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...switches },
+      update: switches,
+    });
+    this.logger.warn(`UPI checkout switched: ${JSON.stringify(switches)}`);
   }
 
   /** Admin switch for which AI features may run (the kill switch AiService reads). */

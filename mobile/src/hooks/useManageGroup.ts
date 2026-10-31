@@ -4,7 +4,6 @@ import {} from 'react-native';
 import { profileGenderToAttendeeOption } from '../utils/profile';
 import { firstFormProblem } from '../utils/formQuestions';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
-import RazorpayCheckout from 'react-native-razorpay';
 import {
   addSeatsAsLead,
   cancelLeadTransfer,
@@ -34,6 +33,7 @@ import {
   type GroupMemberInput,
 } from '../lib/api/registrations';
 import { AppAlert } from '../components/ui/AppAlert';
+import { isPaymentCancelled, pay } from '../lib/pay';
 import { isIosDigitalPurchaseBlocked } from '../lib/iosPurchasePolicy';
 
 /**
@@ -418,16 +418,10 @@ export function useManageGroup(registrationId: string) {
         AppAlert.alert("Couldn't start payment", order.message);
         return;
       }
-      const payment: any = await RazorpayCheckout.open({
-        key: order.data.razorpayKeyId,
-        order_id: order.data.razorpayOrderId,
-        amount: order.data.amount,
-        currency: order.data.currency || 'INR',
-        name: 'Unifesto',
+      const payment = await pay(order.data, {
         description: `${addCount} extra seat${addCount > 1 ? 's' : ''} · ${order.data.eventTitle}`,
         prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
-        theme: { color: '#111113' },
-      } as any);
+      });
       const verified = await verifyAddSeats(order.data.purchaseId, {
         razorpayOrderId: payment.razorpay_order_id,
         razorpayPaymentId: payment.razorpay_payment_id,
@@ -439,9 +433,7 @@ export function useManageGroup(registrationId: string) {
         AppAlert.alert("Seats couldn't be added", "They're no longer available, so your payment is being refunded.");
       }
     } catch (err: any) {
-      // Razorpay reports a dismissed sheet as an error; nothing to alarm anyone about.
-      const cancelled = err?.code === 0 || err?.description === 'Payment Cancelled';
-      if (!cancelled) AppAlert.alert('Payment failed', err?.description || err?.message || 'Please try again');
+      if (!isPaymentCancelled(err)) AppAlert.alert('Payment failed', err?.description || err?.message || 'Please try again');
     } finally {
       setAdding(false);
       setAddCount(1);

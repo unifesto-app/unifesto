@@ -56,7 +56,8 @@ function csp(nonce: string | null, isConsole: boolean): string {
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    // Q40: razorpay.js runs in the page (UPI without the sheet) and may post to Razorpay.
+    "form-action 'self' https://api.razorpay.com",
     "frame-ancestors 'none'",
   ].join('; ');
 }

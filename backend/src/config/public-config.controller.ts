@@ -23,6 +23,16 @@ export class PublicConfigController {
   }
 
   /**
+   * Q40: where the app and site may show their own UPI-first checkout. Off
+   * means Razorpay Standard Checkout only (the kill switch). Clients fall back
+   * to Standard Checkout when this can't be read.
+   */
+  @Get('checkout')
+  getCheckout() {
+    return this.platformConfig.getUpiCheckout();
+  }
+
+  /**
    * The public rate card (A9, D10, T10): each plan's price, platform fee per
    * paid ticket, limits, feature flags and tagline, the full feature catalog,
    * plus the buyer's processing fee. The marketing site's /pricing reads this, so it always
