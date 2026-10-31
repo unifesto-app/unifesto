@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { CardBackdrop } from '../ui/CardSurface';
 
 interface ChipPickerProps<V extends string> {
@@ -84,6 +84,6 @@ export function MultiChipPicker({ options, value, onChange, max }: MultiChipPick
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: 999 },
+  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: cosmosRadius },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

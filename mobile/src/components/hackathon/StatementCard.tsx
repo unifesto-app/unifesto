@@ -2,9 +2,10 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../ui/CardSurface';
-import { borderRadius, spacing } from '../../theme/spacing';
+import ShadeCard from '../ui/ShadeCard';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface StatementCardProps {
   code: string | null;
@@ -20,6 +21,8 @@ interface StatementCardProps {
   onPress?: () => void;
   /** Show the whole description instead of the first few lines. */
   expanded?: boolean;
+  /** The screen's hero (the team's locked statement): drawn on the hackathon's blue shade. Read-only. */
+  hero?: boolean;
 }
 
 /**
@@ -37,6 +40,7 @@ export default function StatementCard({
   disabled,
   onPress,
   expanded,
+  hero,
 }: StatementCardProps) {
   const c = useCosmos();
   const selectable = !!onPress;
@@ -44,9 +48,9 @@ export default function StatementCard({
 
   const body = (
     <>
-      <CardBackdrop shape={styles.card} />
+      {hero ? null : <CardBackdrop shape={styles.card} />}
       <View style={styles.top}>
-        {code ? <Text style={[styles.code, { color: c.primary }]}>{code}</Text> : null}
+        {code ? <Text style={[styles.code, { color: c.text }]}>{code}</Text> : null}
         {theme ? (
           <Text style={[styles.theme, { color: c.muted }]} numberOfLines={1}>
             {code ? '· ' : ''}
@@ -55,10 +59,10 @@ export default function StatementCard({
         ) : null}
         <View style={{ flex: 1 }} />
         {note ? (
-          <Text style={[styles.note, { color: note === 'Full' ? c.danger : c.muted }]}>{note}</Text>
+          <Text style={[styles.note, { color: note === 'Full' ? c.warn : c.muted }]}>{note}</Text>
         ) : null}
         {selectable ? (
-          <Radio size={22} color={selected ? c.primary : c.muted} weight={selected ? 'fill' : 'regular'} />
+          <Radio size={24} color={selected ? c.text : c.muted} weight={selected ? 'fill' : 'regular'} />
         ) : null}
       </View>
       <Text style={[styles.title, { color: disabled ? c.muted : c.text }]}>{title}</Text>
@@ -73,6 +77,7 @@ export default function StatementCard({
     </>
   );
 
+  if (hero) return <ShadeCard tone="blue" style={{ marginTop: spacing[3] }}>{body}</ShadeCard>;
   if (!selectable) return <View style={styles.card}>{body}</View>;
   return (
     <Pressable
@@ -83,8 +88,8 @@ export default function StatementCard({
       accessibilityLabel={[code, title, note].filter(Boolean).join(', ')}
       style={({ pressed }) => [
         styles.card,
-        // Scale, not opacity: opacity breaks the Liquid Glass backdrop.
-        { borderColor: selected ? c.primary : 'transparent', transform: [{ scale: pressed ? 0.98 : 1 }] },
+        // Scale, not opacity: opacity breaks the Liquid Glass backdrop. The radio marks the pick; no outline.
+        { transform: [{ scale: pressed ? 0.98 : 1 }] },
       ]}
     >
       {body}
@@ -95,14 +100,12 @@ export default function StatementCard({
 const styles = StyleSheet.create({
   card: {
     marginTop: spacing[3],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderRadius: cosmosCardRadius,
     overflow: 'hidden',
-    padding: spacing[4],
+    padding: spacing[5],
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
-  code: { fontSize: typography.fontSize.sm, letterSpacing: 0.5, ...cosmosFont.strong },
+  code: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   theme: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { fontSize: typography.fontSize.xs, marginRight: spacing[2], ...cosmosFont.strong },
   title: { marginTop: spacing[2], fontSize: typography.fontSize.lg, ...cosmosFont.strong },

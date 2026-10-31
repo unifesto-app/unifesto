@@ -78,7 +78,8 @@ export default function HackathonSubmissionScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -112,7 +113,8 @@ export default function HackathonSubmissionScreen() {
   if (!data.rounds.length) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>The organisers haven’t set up rounds yet. You can add project links once they do.</Text>
         </View>
       </CosmosScreen>
@@ -216,7 +218,7 @@ export default function HackathonSubmissionScreen() {
               {round.links.map((l) => (
                 <SettingsRow
                   key={l.url}
-                  icon={<LinkSimple size={24} color={c.primary} weight="bold" />}
+                  icon={<LinkSimple size={24} color={c.text} />}
                   label={l.label}
                   external
                   onPress={() => void Linking.openURL(l.url)}
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  linkCard: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[3], marginTop: spacing[3], gap: spacing[2] },
+  linkCard: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginTop: spacing[3], gap: spacing[2] },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   input: { borderRadius: cosmosRadius, paddingHorizontal: spacing[3], paddingVertical: spacing[2], fontSize: typography.fontSize.base, ...cosmosFont.body },
   labelInput: { flex: 1, ...cosmosFont.strong },

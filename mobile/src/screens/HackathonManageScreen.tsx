@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -19,7 +20,7 @@ import {
 import { psModeSummary } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -102,7 +103,8 @@ export default function HackathonManageScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -131,7 +133,9 @@ export default function HackathonManageScreen() {
     >
       {!on ? (
         <View>
-          <Text style={[styles.title, { color: c.text }]}>{h ? 'Hackathon mode is off' : 'Run this event as a hackathon'}</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
+            {h ? 'Hackathon mode is off' : 'Run this event as a hackathon'}
+          </Text>
           <Text style={[styles.body, { color: c.soft }]}>
             {h
               ? 'Teams and judges can’t see the hackathon right now. Everything you set up is saved.'
@@ -169,7 +173,7 @@ export default function HackathonManageScreen() {
         <>
           <ManageStats
             stats={[
-              { label: 'Teams', value: data.counts.active },
+              { label: 'Teams', value: data.counts.active, tone: 'sky' },
               { label: 'PS locked', value: data.counts.psLocked },
               { label: 'No room', value: data.counts.unallocated },
               { label: 'Cancelled', value: data.counts.cancelled },
@@ -201,9 +205,6 @@ export default function HackathonManageScreen() {
               value={h?.nextTeamCode ? `Next ${h.nextTeamCode}` : undefined}
               onPress={() => runImportTeams(eventId!, data, () => void load())}
             />
-          </SettingsGroup>
-
-          <SettingsGroup title="Problem statements">
             <SettingsRow
               icon={icon(Lightbulb)}
               label="Problem statements"
@@ -248,15 +249,12 @@ export default function HackathonManageScreen() {
             />
           </SettingsGroup>
 
-          <SettingsGroup title="Announcements">
+          <SettingsGroup title="Announcements and help">
             <SettingsRow
               icon={icon(Megaphone)}
               label="Send an announcement"
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/announce`)}
             />
-          </SettingsGroup>
-
-          <SettingsGroup title="Help desk">
             <SettingsRow
               icon={icon(Lifebuoy)}
               label="Help topics and contacts"
@@ -294,7 +292,7 @@ export default function HackathonManageScreen() {
             />
           </SettingsGroup>
 
-          <SettingsGroup title="Venue and rooms">
+          <SettingsGroup title="Venue and setup">
             <SettingsRow
               icon={icon(DoorOpen)}
               label="Rooms"
@@ -308,9 +306,6 @@ export default function HackathonManageScreen() {
               external
               onPress={web('/settings')}
             />
-          </SettingsGroup>
-
-          <SettingsGroup title="Setup">
             <SettingsRow
               icon={icon(GearSix)}
               label="Hackathon settings"
@@ -338,7 +333,7 @@ export default function HackathonManageScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

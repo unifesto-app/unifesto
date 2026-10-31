@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CaretRight, Gavel, CalendarBlank, Broadcast, MapPin } from '@unifesto/unicon/react-native';
+import { CaretRight, Gavel, Broadcast, MapPin } from '@unifesto/unicon/react-native';
 import { getMyJudgingEvents, JudgingEvent } from '../lib/api/leaderboard';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER, Section } from '../components/home/Section';
@@ -58,12 +58,13 @@ export default function JudgingListScreen() {
   if (events.length === 0) {
     return (
       <CosmosScreen contentContainerStyle={styles.pad} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
-          <View style={[styles.emptyIconContainer, { backgroundColor: c.tint }]}>
-            <Gavel size={52} color={c.text} weight="duotone" />
-          </View>
-          <Text style={[styles.emptyTitle, { color: c.text }]}>No judging yet</Text>
-          <Text style={[styles.emptyText, { color: c.soft }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
+          <Gavel size={56} color={c.text} weight="duotone" style={styles.emptyIcon} />
+          <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
+            No judging yet
+          </Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>
             Events where you've been invited to judge or mentor will appear here.
           </Text>
         </View>
@@ -81,6 +82,8 @@ export default function JudgingListScreen() {
             key={ev.boardId}
             // Scale, not opacity: opacity breaks Liquid Glass.
             style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${ev.title}, ${ev.kind === 'JUDGE' ? 'judge' : 'mentor'}`}
             onPress={() =>
               router.push({
                 pathname: `/judging/${ev.eventId}`,
@@ -91,9 +94,6 @@ export default function JudgingListScreen() {
             <CardBackdrop shape={styles.card} />
             <View style={styles.cardContent}>
               <View style={styles.cardTop}>
-                <View style={[styles.iconChip, { backgroundColor: c.tint }]}>
-                  <CalendarBlank size={24} color={c.text} weight="duotone" />
-                </View>
                 <View style={styles.cardTextContent}>
                   <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
                     {ev.title}
@@ -116,15 +116,11 @@ export default function JudgingListScreen() {
 
               <View style={styles.cardFooter}>
                 <View style={styles.metaRow}>
-                  <View style={[styles.kindPill, { backgroundColor: c.tint }]}>
-                    <Text style={[styles.kindPillText, { color: c.soft }]}>
-                      {ev.kind === 'JUDGE' ? 'Judge' : 'Mentor'}
-                    </Text>
-                  </View>
+                  <Text style={[styles.kindText, { color: c.soft }]}>{ev.kind === 'JUDGE' ? 'Judge' : 'Mentor'}</Text>
                   {ev.activeRounds > 0 ? (
                     <View style={styles.liveRow}>
-                      <Broadcast size={14} color={c.success} weight="fill" />
-                      <Text style={[styles.liveText, { color: c.success }]}>
+                      <Broadcast size={14} color={c.mint} weight="fill" />
+                      <Text style={[styles.liveText, { color: c.mint }]}>
                         {ev.activeRounds} open {ev.activeRounds === 1 ? 'round' : 'rounds'}
                       </Text>
                     </View>
@@ -133,7 +129,7 @@ export default function JudgingListScreen() {
                   )}
                 </View>
                 <View style={styles.arrowIcon}>
-                  <CaretRight size={18} color={c.muted} weight="bold" />
+                  <CaretRight size={15} color={c.muted} />
                 </View>
               </View>
             </View>
@@ -148,9 +144,8 @@ export default function JudgingListScreen() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   card: { borderRadius: cosmosCardRadius, marginBottom: spacing[3], overflow: 'hidden' },
-  cardContent: { padding: spacing[4] },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], marginBottom: spacing[3] },
-  iconChip: { width: 48, height: 48, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
+  cardContent: { padding: spacing[5] },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
   cardTextContent: { flex: 1 },
   title: { fontSize: 17, marginBottom: spacing[1], lineHeight: 24, ...cosmosFont.strong },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
@@ -159,14 +154,13 @@ const styles = StyleSheet.create({
   cardDivider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[3] },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], flex: 1 },
-  kindPill: { paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  kindPillText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  kindText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
-  liveText: { fontSize: typography.fontSize.xs, ...cosmosFont.figure },
-  idleText: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  arrowIcon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  liveText: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  idleText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  arrowIcon: { width: 24, height: 24, alignItems: 'flex-end', justifyContent: 'center' },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyIconContainer: { width: 96, height: 96, borderRadius: cosmosCardRadius, alignItems: 'center', justifyContent: 'center', marginBottom: spacing[6] },
-  emptyTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyIcon: { marginBottom: spacing[5] },
+  emptyTitle: { fontSize: 22, lineHeight: 28, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

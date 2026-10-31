@@ -62,7 +62,8 @@ export default function HackathonAnnounceScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -156,7 +157,7 @@ export default function HackathonAnnounceScreen() {
             <View key={a.id} style={styles.card}>
               <CardBackdrop shape={styles.card} />
               <View style={styles.cardHead}>
-                <Megaphone size={18} color={c.primary} weight="fill" />
+                <Megaphone size={18} color={c.muted} weight="fill" />
                 <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>
                   {a.title}
                 </Text>
@@ -179,7 +180,7 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   cardTitle: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

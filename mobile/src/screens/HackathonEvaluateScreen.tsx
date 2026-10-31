@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Coffee, Gavel, MapPin, UsersThree, VideoCamera } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -22,7 +23,7 @@ import {
 import { evalStatusLabel, roundBlockedCopy, stageCopy, teamRequestCopy, waitLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -108,7 +109,8 @@ export default function HackathonEvaluateScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -148,26 +150,28 @@ export default function HackathonEvaluateScreen() {
         </View>
       ) : null}
 
+      {/* My place in the judging line: the screen's hero, on the hackathon's blue shade. */}
       {req && copy ? (
-        <View style={[styles.card, { marginTop: spacing[3] }]}>
-          <CardBackdrop shape={styles.card} />
-          <Text style={[styles.overline, { color: called ? c.primary : c.muted }]}>{req.roundName ?? 'Evaluation'}</Text>
-          <Text style={[styles.bigTitle, { color: c.text }]}>{copy.title}</Text>
+        <ShadeCard tone="blue" style={{ marginTop: spacing[3] }}>
+          <Text style={[styles.overline, { color: called ? c.text : c.soft }]}>{req.roundName ?? 'Evaluation'}</Text>
+          <Text style={[styles.bigTitle, { color: c.text }]} accessibilityRole="header">
+            {copy.title}
+          </Text>
           <Text style={[styles.body, { color: c.soft }]}>{copy.body}</Text>
           {req.evaluator ? (
             <View style={styles.metaRow}>
-              <UsersThree size={16} color={c.muted} />
+              <UsersThree size={16} color={c.soft} />
               <Text style={[styles.meta, { color: c.soft }]}>{req.evaluator.name}</Text>
               {req.evaluator.location ? (
                 <>
-                  <MapPin size={16} color={c.muted} />
+                  <MapPin size={16} color={c.soft} />
                   <Text style={[styles.meta, { color: c.soft }]}>{req.evaluator.location}</Text>
                 </>
               ) : null}
             </View>
           ) : null}
           {req.status === 'WAITING' && req.waitMinutes != null ? (
-            <Text style={[styles.meta, { color: c.muted, marginTop: spacing[2] }]}>{waitLabel(req.waitMinutes)}</Text>
+            <Text style={[styles.meta, { color: c.soft, marginTop: spacing[2] }]}>{waitLabel(req.waitMinutes)}</Text>
           ) : null}
           <View style={{ marginTop: spacing[3] }}>
             {called ? <SlotTimer until={req.graceEndsAt} label="to get there" doneLabel="Hurry, the judge is waiting" /> : null}
@@ -193,7 +197,7 @@ export default function HackathonEvaluateScreen() {
               style={{ marginTop: spacing[2] }}
             />
           ) : null}
-        </View>
+        </ShadeCard>
       ) : null}
 
       {data.rounds.length ? (
@@ -299,7 +303,7 @@ const styles = StyleSheet.create({
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  bigTitle: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], ...cosmosFont.strong },
+  bigTitle: { marginTop: spacing[2], fontSize: 28, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing[1] + 2, marginTop: spacing[3] },
   meta: { fontSize: typography.fontSize.sm, marginRight: spacing[2], ...cosmosFont.strong },

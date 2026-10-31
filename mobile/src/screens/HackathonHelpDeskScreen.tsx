@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Check } from '@unifesto/unicon/react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
@@ -97,16 +98,26 @@ export default function HackathonHelpDeskScreen() {
   const resolved = queries.filter((q) => q.status === 'RESOLVED');
 
   const card = (q: HelpInboxQuery) => {
-    const statusColor = q.status === 'OPEN' ? c.danger : q.status === 'ACKNOWLEDGED' ? c.warn : c.muted;
+    // Plain status text: waiting needs attention, resolved is done.
+    const statusColor = q.status === 'OPEN' ? c.warn : q.status === 'ACKNOWLEDGED' ? c.soft : c.success;
     return (
       <View key={q.id} style={styles.card}>
         <CardBackdrop shape={styles.card} />
         <View style={styles.cardHead}>
-          <Text style={[styles.topic, { color: c.text }]}>{q.topicName}</Text>
-          <Text style={[styles.status, { color: statusColor }]}>
-            {HELP_STATUS_LABEL[q.status]}
-            {q.handledByName && q.status !== 'OPEN' ? ` · ${q.handledByMe ? 'you' : q.handledByName}` : ''}
+          <Text style={[styles.topic, { color: c.text }]} numberOfLines={1}>
+            {q.topicName}
           </Text>
+          <View style={styles.statusRow}>
+            {q.status === 'RESOLVED' ? (
+              <Check size={13} color={statusColor} weight="bold" />
+            ) : q.status === 'OPEN' ? (
+              <View style={[styles.dot, { backgroundColor: statusColor }]} />
+            ) : null}
+            <Text style={[styles.status, { color: statusColor }]}>
+              {HELP_STATUS_LABEL[q.status]}
+              {q.handledByName && q.status !== 'OPEN' ? ` · ${q.handledByMe ? 'you' : q.handledByName}` : ''}
+            </Text>
+          </View>
         </View>
         <Text style={[styles.meta, { color: c.soft }]}>
           {[q.team.teamCode, q.team.name, q.roomName].filter(Boolean).join(' · ')}
@@ -160,7 +171,8 @@ export default function HackathonHelpDeskScreen() {
       }}
     >
       {!inbox ? (
-        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+        <View style={styles.emptyCard}>
+          <CardBackdrop shape={styles.emptyCard} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'This event isn’t running a hackathon.'}</Text>
           {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
         </View>
@@ -173,7 +185,8 @@ export default function HackathonHelpDeskScreen() {
           {active.length ? (
             active.map(card)
           ) : (
-            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+            <View style={styles.emptyCard}>
+              <CardBackdrop shape={styles.emptyCard} />
               <Text style={[styles.emptyText, { color: c.soft }]}>All clear. New queries show up here.</Text>
             </View>
           )}
@@ -192,12 +205,14 @@ export default function HackathonHelpDeskScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   lead: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  section: { marginTop: spacing[6], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
-  topic: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  topic: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   message: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },

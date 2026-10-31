@@ -4,6 +4,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { DownloadSimple } from '@unifesto/unicon/react-native';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
 import { Badge } from '../components/ui/Badge';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import ChipPicker from '../components/manage/ChipPicker';
 import SearchField from '../components/manage/SearchField';
@@ -120,9 +121,12 @@ export default function HackathonTeamsScreen() {
         }
         ListEmptyComponent={
           teams.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
-              <Text style={[styles.empty, { color: c.text }]}>No teams yet</Text>
-              <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>
+            <View style={styles.emptyCard}>
+              <CardBackdrop shape={styles.emptyCard} />
+              <Text style={[styles.empty, { color: c.text }]} accessibilityRole="header">
+                No teams yet
+              </Text>
+              <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
                 Import your confirmed group registrations. Each becomes a team with its own Team ID.
               </Text>
               <Button label="Import teams" onPress={startImport} disabled={!overview} style={{ marginTop: spacing[5] }} />
@@ -147,7 +151,7 @@ export default function HackathonTeamsScreen() {
 const TeamItem = React.memo(function TeamItem({ t, onOpen }: { t: TeamRow; onOpen: (id: string) => void }) {
   return (
     <SettingsRow
-      label={`${t.teamCode ?? '—'}  ${t.name}`}
+      label={`${t.teamCode ?? '–'}  ${t.name}`}
       value={
         t.stage === 'CANCELLED'
           ? undefined
@@ -162,6 +166,6 @@ const TeamItem = React.memo(function TeamItem({ t, onOpen }: { t: TeamRow; onOpe
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  empty: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  empty: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });
