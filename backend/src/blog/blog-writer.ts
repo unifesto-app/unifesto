@@ -9,6 +9,8 @@ export const BLOG_AUTHOR = 'Abhinavtej Reddy';
 export const MIN_WORDS = 900;
 export const DAILY_POST_CAP = 3;
 export const TOPIC_COOLDOWN_DAYS = 7;
+export const META_TITLE_MAX = 60;
+export const META_DESCRIPTION_MAX = 155;
 
 /** App pages a post may link to. Anything else relative and not /blog/<slug> fails the gate. */
 export const APP_PAGES = [
@@ -234,8 +236,10 @@ export function gate({ draft, sourceUrls, posts }: GateInput): string | null {
   if (n < MIN_WORDS) return `only ${n} words`;
   if (PLACEHOLDER.test(md) || PLACEHOLDER.test(draft.title)) return 'has a placeholder';
   if (BANNED.test(md)) return `banned phrase: ${md.match(BANNED)![0]}`;
-  if (!draft.metaTitle || draft.metaTitle.length > 60) return 'meta title missing or over 60';
-  if (!draft.metaDescription || draft.metaDescription.length > 155) return 'meta description missing or over 155';
+  if (!draft.metaTitle || draft.metaTitle.length > META_TITLE_MAX) return `meta title missing or over ${META_TITLE_MAX}`;
+  if (!draft.metaDescription || draft.metaDescription.length > META_DESCRIPTION_MAX) {
+    return `meta description missing or over ${META_DESCRIPTION_MAX}`;
+  }
   if (!draft.coverAlt) return 'no alt text';
 
   const faq = md.split(/^##\s+FAQ\b/m)[1]?.split(/^##\s/m)[0] ?? '';
@@ -273,6 +277,18 @@ export function gate({ draft, sourceUrls, posts }: GateInput): string | null {
 
 /** House style says no em dashes; fix them rather than burn a post on one. */
 export const stripEmDashes = (s: string) => s.replace(/\s*—\s*/g, ', ');
+
+/**
+ * Models can't count characters, and structured outputs ignore maxLength, so
+ * an over-long meta field is cut at the last whole word instead of failing the post.
+ */
+export function fit(s: string, max: number): string {
+  s = s.trim();
+  if (s.length <= max) return s;
+  const head = s.slice(0, max + 1);
+  const space = head.lastIndexOf(' ');
+  return (space > 0 ? head.slice(0, space) : s.slice(0, max)).replace(/[\s,;:–-]+$/, '');
+}
 
 /** Top blog URLs by clicks from a Search Console "Pages" CSV export. */
 export function topBlogPages(csv: string, limit = 5): { slug: string; clicks: number }[] {

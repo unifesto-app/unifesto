@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { Draft, cleanSuggestions, gate, normUrl, splitSources, stripEmDashes, topBlogPages, wordCount } from './blog-writer';
+import { Draft, cleanSuggestions, fit, gate, normUrl, splitSources, stripEmDashes, topBlogPages, wordCount } from './blog-writer';
 
 // The approved sample article: the gate must pass it, and each break must fail it.
 const SAMPLE = readFileSync(join(__dirname, '__fixtures__/sample-post.md'), 'utf8');
@@ -55,6 +55,16 @@ describe('auto-blog gate', () => {
     // An editor reply without the list still passes once the list is put back.
     expect(run({ markdown: `${body.trimEnd()}\n\n${sources}`.trim() })).toBeNull();
     expect(splitSources('no list here')).toEqual(['no list here', '']);
+  });
+
+  it('cuts an over-long meta field at the last whole word', () => {
+    expect(fit('  short  ', 155)).toBe('short');
+    expect(fit('Find sponsors, then pitch them', 15)).toBe('Find sponsors');
+    expect(fit('Find sponsors early', 13)).toBe('Find sponsors');
+    expect(fit('Supercalifragilistic', 5)).toBe('Super');
+    const long = 'A new club can land fest sponsors by pitching local businesses first, '.repeat(4);
+    expect(fit(long, 155).length).toBeLessThanOrEqual(155);
+    expect(long.startsWith(fit(long, 155))).toBe(true);
   });
 
   it('cleans up em dashes, Search Console CSVs and question suggestions', () => {
