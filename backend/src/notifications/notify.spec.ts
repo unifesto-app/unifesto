@@ -206,3 +206,16 @@ describe('NotifyBatch bus handler', () => {
     expect(notify.notify).toHaveBeenCalledWith('u2', 'event.updated', { x: 2 }, { dedupKey: undefined });
   });
 });
+
+describe('Q10: booking pushes open the pass', () => {
+  const booking = { eventId: 'e1', eventSlug: 'demo-day', eventTitle: 'Demo Day' } as never;
+
+  it.each(['registration.confirmed', 'payment.confirmed', 'waitlist.promoted', 'event.reminder.24h', 'event.reminder.1h'] as const)(
+    '%s opens the ticket',
+    (kind) => expect(NOTIFY_KINDS[kind].push(booking).deepLink).toBe('unifesto://ticket/e1'),
+  );
+
+  it('a waitlist offer opens the Pay card on the Waitlist tab', () => {
+    expect(NOTIFY_KINDS['waitlist.offer'].push(booking).deepLink).toBe('unifesto://tickets?tab=waitlist');
+  });
+});

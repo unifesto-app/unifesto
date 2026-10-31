@@ -6,6 +6,7 @@ import { RedisService } from '../redis/redis.service';
 import { PushCampaignService } from './push-campaign.service';
 import { NotificationsService } from './notifications.service';
 import { attendingUserIds } from '../common/attendance';
+import { ticketLink } from './notify.kinds';
 
 @Injectable()
 export class PushSchedulerService {
@@ -72,7 +73,7 @@ export class PushSchedulerService {
         category: 'eventReminders',
         title: `Tomorrow: ${event.title}`,
         body: `${event.title} starts in about 24 hours. See you there!`,
-        deepLink: `unifesto://event/${event.slug}`,
+        deepLink: ticketLink(event.id),
         data: { type: 'event_reminder', eventId: event.id },
       });
       this.logger.log(`Sent T-24h reminder for event ${event.id} to ${userIds.length} attendees`);

@@ -49,13 +49,16 @@ export function hostingRoleLabel(space: OperatorSpace): string | undefined {
   return best ? ROLE_LABEL[best] : undefined;
 }
 
-/** Events that haven't ended yet, soonest first. */
-export function activeEvents<T extends { startDateTime: string; endDateTime: string }>(
+/**
+ * Events that haven't ended yet, soonest first. A check-in event counts until
+ * check-in closes: a late-running event keeps it open past its end (Q26).
+ */
+export function activeEvents<T extends { startDateTime: string; endDateTime: string; checkinOpenUntil?: string }>(
   events: T[],
   now: Date,
 ): T[] {
   return events
-    .filter((e) => new Date(e.endDateTime).getTime() >= now.getTime())
+    .filter((e) => new Date(e.checkinOpenUntil ?? e.endDateTime).getTime() >= now.getTime())
     .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
 }
 

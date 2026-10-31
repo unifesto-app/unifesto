@@ -27,7 +27,7 @@ export const samples: Record<string, T.Email> = {
   eventCancelled: T.eventCancelledEmail({ ...event, cancellationReason: evil, refundInfo: 'Refunds go out in 5 to 7 days.' }),
   eventUpdated: T.eventUpdatedEmail({ ...event, changes: [{ field: 'Venue', oldValue: 'T-Hub', newValue: evil }] }),
   eventPublished: T.eventPublishedEmail({ ...event, spaceName: evil, registrationUrl: 'https://unifesto.app/event/x' }),
-  eventSummary: T.eventSummaryEmail({ ...event, attendeeCount: 1240, photosUrl: 'https://x.co' }),
+  eventSummary: T.eventSummaryEmail({ ...event, attendeeCount: 1240, photosUrl: 'https://x.co', feedbackEventId: 'ev-1', certificates: { needsFeedback: false } }),
   waitlist: T.waitlistConfirmationEmail({ ...event, waitlistPosition: 4 }),
   waitlistPaid: T.waitlistPromotedEmail({ ...event, registrationUrl: 'https://x.co', expiresInHours: 24, amountDue: 499 }),
   waitlistFree: T.waitlistPromotedEmail({ ...event, registrationUrl: 'https://x.co', expiresInHours: null, amountDue: 0 }),
@@ -59,6 +59,15 @@ describe('email templates', () => {
 
   it('never puts the ticket token in the html (J15)', () => {
     for (const { html } of Object.values(samples)) expect(html).not.toMatch(/qrserver|REG-123/);
+  });
+
+  it('Q14: the thanks email links the feedback form and My certificates', () => {
+    expect(samples.eventSummary.html).toContain('https://unifesto.app/console/feedback/ev-1');
+    expect(samples.eventSummary.html).toContain('https://unifesto.app/console/account/certificates');
+    const locked = T.eventSummaryEmail({ ...event, attendeeCount: 3, certificates: { needsFeedback: true } }).html;
+    expect(locked).toContain('Rate it to unlock your certificate');
+    const bare = T.eventSummaryEmail({ ...event, attendeeCount: 3 }).html;
+    expect(bare).not.toMatch(/console\/(feedback|account)/);
   });
 
   it('never asks for payment on a free waitlist spot', () => {

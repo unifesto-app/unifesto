@@ -60,8 +60,11 @@ export interface NotifyKindData {
   'stay.expired': StayNotice;
   /** approvedAt keys the dedup per approval, so approve, reject, approve tells them again. */
   'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string; approvedAt: Date };
-  /** Not deduped by default (a resubmitted space can be rejected again). */
-  'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
+  /**
+   * Not deduped by default (a resubmitted space can be rejected again). A
+   * rejected space request (Q19) has no space yet, only the request.
+   */
+  'space.rejected': MailData<T.SpaceRejectedData> & ({ spaceId: string } | { requestId: string });
   /** To each Space Admin: a note from the public space page. One per lead. */
   'space.inquiry': MailData<T.SpaceInquiryData> & { spaceId: string; leadId: string };
   /** F2: to checked-in attendees 2 h after the event ends. Push + inbox only. */
@@ -110,6 +113,13 @@ export interface KindDef<D> {
 }
 
 const eventLink = (d: { eventSlug?: string; eventId: string }) => `unifesto://event/${d.eventSlug || d.eventId}`;
+/**
+ * Q10: a booking's pushes open its pass. The app keys tickets by event id (an
+ * older app without the pass cached falls back to the Tickets tab).
+ */
+export const ticketLink = (eventId: string) => `unifesto://ticket/${eventId}`;
+/** Q10: a waitlist offer opens the Waitlist tab, where its Pay card is. */
+const WAITLIST_PAY = 'unifesto://tickets?tab=waitlist';
 
 /**
  * A stay notice: critical (push + email always, as C9 sent them), deduped per
@@ -155,7 +165,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: "You're in!",
       body: `Your spot for ${d.eventTitle} is confirmed.`,
-      deepLink: eventLink(d),
+      deepLink: ticketLink(d.eventId),
       data: { type: 'registration', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendRegistrationConfirmation({ ...d, email: to }, delivery),
@@ -185,7 +195,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: 'Payment received',
       body: `Your payment for ${d.eventTitle} went through. Your ticket is in the app.`,
-      deepLink: eventLink(d),
+      deepLink: ticketLink(d.eventId),
       data: { type: 'payment', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendPaymentConfirmation({ ...d, email: to }, delivery),
@@ -197,7 +207,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: `A spot opened up for ${d.eventTitle}`,
       body: `You're off the waitlist.${d.expiresInHours ? ` Claim it within ${d.expiresInHours} hours.` : ' Claim it before it goes.'}`,
-      deepLink: eventLink(d),
+      deepLink: WAITLIST_PAY,
       data: { type: 'waitlist_offer', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendWaitlistPromoted({ ...d, email: to }, delivery),
@@ -209,7 +219,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: "You're off the waitlist!",
       body: `Your spot for ${d.eventTitle} is confirmed.`,
-      deepLink: eventLink(d),
+      deepLink: ticketLink(d.eventId),
       data: { type: 'registration', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendWaitlistPromoted({ ...d, amountDue: 0, email: to }, delivery),
@@ -221,7 +231,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: `Tomorrow: ${d.eventTitle}`,
       body: `${d.eventTitle} starts in about 24 hours. See you there!`,
-      deepLink: eventLink(d),
+      deepLink: ticketLink(d.eventId),
       data: { type: 'event_reminder', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendEventReminder({ ...d, email: to }, delivery),
@@ -234,7 +244,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: `Starting soon: ${d.eventTitle}`,
       body: `${d.eventTitle} starts in ${d.startsInMinutes} minutes. Your ticket is in the app.`,
-      deepLink: eventLink(d),
+      deepLink: ticketLink(d.eventId),
       data: { type: 'event_reminder', eventId: d.eventId },
     }),
     email: (svc, to, d, delivery) => svc.sendEventStartingSoon({ ...d, email: to }, delivery),
@@ -283,7 +293,8 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     entity: (d) => `${d.spaceId}:${d.approvedAt.getTime()}`,
     push: (d) => ({
       title: `${d.spaceName} is approved`,
-      body: 'Your space is live. Open the Space app to create your first event.',
+      body: 'Your space is live. Tap to open it and set up your first event.',
+      deepLink: `unifesto://manage/space/${d.spaceId}`,
       data: { type: 'space_approved', spaceId: d.spaceId },
     }),
     email: (svc, to, d, delivery) => svc.sendSpaceApproved({ ...d, email: to }, delivery),
@@ -296,7 +307,10 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     push: (d) => ({
       title: `${d.spaceName} wasn't approved`,
       body: 'We emailed you the reason and what to change.',
-      data: { type: 'space_rejected', spaceId: d.spaceId },
+      // Q19: the app's space request screen shows the reviewer's reason.
+      ...('requestId' in d
+        ? { deepLink: 'unifesto://space-request', data: { type: 'space_rejected', requestId: d.requestId } }
+        : { data: { type: 'space_rejected', spaceId: d.spaceId } }),
     }),
     email: (svc, to, d, delivery) => svc.sendSpaceRejected({ ...d, email: to }, delivery),
   },

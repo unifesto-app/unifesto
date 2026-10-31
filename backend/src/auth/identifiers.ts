@@ -44,6 +44,13 @@ export function sameEmail(a: string | null | undefined, b: string | null | undef
   return !!a && !!b && normalizeEmail(a) === normalizeEmail(b);
 }
 
+/** "dhanush@wegobeyond.in" → "dh•••@wegobeyond.in": enough to recognise, not to harvest. */
+export function maskEmail(email: string): string {
+  const [user, domain] = email.trim().split('@');
+  if (!domain) return '•••';
+  return `${user.slice(0, 2)}•••@${domain}`;
+}
+
 type IdentityFinder = { userIdentity: { findMany(args: any): Promise<any[]> } };
 
 /**

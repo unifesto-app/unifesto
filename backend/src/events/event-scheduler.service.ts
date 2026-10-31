@@ -8,6 +8,7 @@ import { emailOptedOutUserIds } from '../email/email-preferences';
 import { forEachPage, inChunks } from '../common/batching';
 import { CLAIMED_MEMBER_SEAT, COUNTS_AS_ATTENDING } from '../common/attendance';
 import { emailInterestLeads } from '../sponsors/interest-fanout';
+import { END_GRACE_MS } from './event-dates';
 
 export const STARTING_SOON_CADENCE_MIN = 15;
 
@@ -300,7 +301,9 @@ export class EventSchedulerService {
   /**
    * Job 3: Mark completed events
    * Runs: Every hour
-   * Finds: Live events (PUBLISHED or ONGOING) whose endDateTime has passed.
+   * Finds: Live events (PUBLISHED or ONGOING) whose endDateTime passed more
+   * than END_GRACE_MS ago, so check-in stays open on an event that runs late
+   * (Q26). The organiser's End event completes one sooner.
    * ONGOING must be included too — an event that started but was never flipped
    * here would otherwise stay ONGOING forever and keep surfacing in check-in.
    */
@@ -314,11 +317,11 @@ export class EventSchedulerService {
   private async runMarkCompletedEvents(): Promise<void> {
     this.logger.log('Starting mark completed events job...');
 
-    const now = new Date();
+    const graceOver = new Date(Date.now() - END_GRACE_MS);
 
     const result = await this.prisma.event.updateMany({
       where: {
-        endDateTime: { lte: now },
+        endDateTime: { lte: graceOver },
         status: { in: ['PUBLISHED', 'ONGOING'] },
         // A series parent's dates are only its first slot (A29): completing it
         // would stop the series extending, and its occurrences complete on
@@ -338,15 +341,17 @@ export class EventSchedulerService {
   /**
    * Job 4: Send event summaries to attendees post-event
    * Runs: Every hour
-   * Finds: Events that completed in the last 1-2 hours
+   * Finds: COMPLETED events whose check-in grace (Q26) ran out 1-2 hours ago,
+   * so Job 3 has completed them by now. The window stays an hour wide:
+   * setNx fails open without Redis, and a wider one would resend each hour.
    */
   @Cron(CronExpression.EVERY_HOUR)
   async sendEventSummaries(): Promise<void> {
     this.logger.log('Starting event summary job...');
 
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const graceOver = Date.now() - END_GRACE_MS;
+    const oneHourAgo = new Date(graceOver - 60 * 60 * 1000);
+    const twoHoursAgo = new Date(graceOver - 2 * 60 * 60 * 1000);
 
     const completedEvents = await this.prisma.event.findMany({
       where: {
@@ -367,6 +372,17 @@ export class EventSchedulerService {
         3 * 24 * 60 * 60,
       );
       if (!first) continue; // already summarised (another replica / overlapping run)
+
+      // Q14: where to rate it, and where its certificate will be.
+      const hasCertificates = await this.prisma.certificateTemplate.count({
+        where: { eventId: event.id, deletedAt: null },
+      });
+      const links = {
+        feedbackEventId: event.feedbackEnabled ? event.id : undefined,
+        certificates: hasCertificates
+          ? { needsFeedback: event.feedbackEnabled && event.feedbackUnlocksCertificate }
+          : undefined,
+      };
 
       let sent = 0;
       await forEachPage(
@@ -408,6 +424,7 @@ export class EventSchedulerService {
                   userName: reg.user.fullName || reg.user.username || 'there',
                   eventTitle: event.title,
                   attendeeCount: event.registeredCount,
+                  ...links,
                 })
                 .catch((err) =>
                   this.logger.error('Event summary email failed', err),

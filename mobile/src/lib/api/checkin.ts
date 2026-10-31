@@ -36,6 +36,8 @@ export interface CheckinEvent {
   slug: string;
   startDateTime: string;
   endDateTime: string;
+  /** Q26: check-in stays open until here (the end plus a grace); absent from older servers. */
+  checkinOpenUntil?: string;
   coverImageUrl: string | null;
   venueName: string | null;
   city: string | null;

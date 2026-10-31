@@ -1,5 +1,6 @@
 import { GroupSeatStatus } from '@prisma/client';
 import { CheckinService } from './checkin.service';
+import { END_GRACE_MS } from '../events/event-dates';
 
 /**
  * G10: groups are checked in per member on every path, a mistaken check-in
@@ -198,9 +199,17 @@ describe('CheckinService G10', () => {
       expect(results[0]).toEqual(expect.objectContaining({ status: 'ok' }));
     });
 
-    it('rejects a scan made after the event ended', async () => {
+    it('accepts a scan in the grace after the end, when check-in was still open (Q26)', async () => {
       const { svc } = build(completed);
       const { results } = await svc.syncOfflineCheckins(USER, EVENT, [item(new Date(END.getTime() + 60_000))]);
+      expect(results[0]).toEqual(expect.objectContaining({ status: 'ok' }));
+    });
+
+    it('rejects a scan made after the grace ran out', async () => {
+      const longAgo = new Date(Date.now() - END_GRACE_MS - 2 * 60 * 60_000);
+      const { svc } = build({ ...completed, event: { ...completed.event, endDateTime: longAgo } });
+      const late = new Date(longAgo.getTime() + END_GRACE_MS + 60_000);
+      const { results } = await svc.syncOfflineCheckins(USER, EVENT, [item(late)]);
       expect(results[0]).toEqual(expect.objectContaining({ status: 'rejected', message: expect.stringMatching(/has ended/) }));
     });
 

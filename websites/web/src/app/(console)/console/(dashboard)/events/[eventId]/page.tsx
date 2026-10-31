@@ -12,8 +12,9 @@ import {
   Trash,
   CheckCircle,
   Megaphone,
+  Flag,
 } from "@unifesto/unicon/react";
-import { publishEvent, deleteEvent } from "@/console/lib/api/events-api";
+import { publishEvent, deleteEvent, endEvent } from "@/console/lib/api/events-api";
 import type { Event } from "@/console/lib/api/events-api";
 import { getCheckinStats, getAttendeeStats } from "@/console/lib/api/registrations-api";
 import type { CheckinStats, AttendeeStats } from "@/console/lib/api/registrations-api";
@@ -117,6 +118,17 @@ export default function EventOverviewPage() {
     setActionLoading(false);
   };
 
+  // Q26: check-in stays open for a few hours past the end time on its own; this
+  // closes it now and moves the event to Completed.
+  const handleEnd = async () => {
+    if (!window.confirm("End this event now? Check-in closes and it moves to Completed.")) return;
+    setActionLoading(true);
+    const { error } = await endEvent(eventId);
+    if (error) alert(error.message);
+    else await loadEvent();
+    setActionLoading(false);
+  };
+
   const handleDelete = async () => {
     if (!event || event.status !== "DRAFT") return;
     if (!window.confirm("Delete this draft event? This cannot be undone.")) return;
@@ -181,6 +193,15 @@ export default function EventOverviewPage() {
                 Announce
               </Button>
             )}
+            {(event.status === "PUBLISHED" || event.status === "ONGOING") &&
+              canPublish &&
+              !event.isRecurring &&
+              new Date(event.startDateTime) <= new Date() && (
+                <Button variant="outline" size="sm" onClick={handleEnd} disabled={actionLoading}>
+                  <Flag className="h-4 w-4" />
+                  End event
+                </Button>
+              )}
             <Button
               size="sm"
               onClick={() => router.push(`/console/events/${eventId}/edit`)}

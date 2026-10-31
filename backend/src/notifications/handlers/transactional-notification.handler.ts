@@ -18,6 +18,7 @@ import type {
   NotifyBatchEvent,
 } from '../notifications.events';
 import { NotifyService } from '../notify.service';
+import { ticketLink } from '../notify.kinds';
 
 /**
  * Push copy for a competition update. Elimination is the sensitive one: it
@@ -197,7 +198,7 @@ export class TransactionalNotificationHandler {
       category: 'registrationUpdates',
       title: "You're in!",
       body: `Your spot for ${e.eventTitle} is confirmed.`,
-      deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
+      deepLink: ticketLink(e.eventId),
       data: { type: 'registration', eventId: e.eventId },
     });
   }

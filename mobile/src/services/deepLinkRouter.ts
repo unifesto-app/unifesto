@@ -52,6 +52,7 @@ const ALLOWED_PREFIXES = new Set([
   'manage', // support case threads (Assist pushes); screens re-check access server-side
   'stay', // stay booking passes (booking-confirmed pushes: unifesto://stay/pass/:id)
   'feedback', // event feedback form (F2 request/reminder pushes: unifesto://feedback/:eventId)
+  'space-request', // my space requests and a rejection's reason (Q19 push: unifesto://space-request)
 ]);
 
 /**
@@ -73,6 +74,7 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'manage',
   'stay',
   'feedback',
+  'space-request',
 ]);
 
 /** First path segment, lowercased (e.g. "/ticket/123" -> "ticket"). */
