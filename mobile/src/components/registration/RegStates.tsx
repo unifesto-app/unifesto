@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 import AuthButton from '../auth/AuthButton';
 import { CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
@@ -67,6 +67,6 @@ const styles = StyleSheet.create({
   },
   action: { marginTop: spacing[8], alignSelf: 'stretch' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: spacing[8] },
-  card: { width: '100%', borderRadius: cosmosCardRadius, padding: spacing[8], alignItems: 'center', gap: spacing[3] },
+  card: { ...column, borderRadius: cosmosCardRadius, padding: spacing[8], alignItems: 'center', gap: spacing[3] },
   cardTitle: { marginTop: spacing[2], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
 });

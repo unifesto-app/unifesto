@@ -45,7 +45,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, CosmosWash, useCosmos } from '../theme/cosmos';
 
@@ -185,7 +185,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }]}
         refreshControl={
           <RefreshControl
             refreshing={t.refreshing}

@@ -6,6 +6,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 import { SheetBackdrop } from '../ui/CardSurface';
+import useContentWidth from '../../hooks/useContentWidth';
 
 interface SelectRowProps {
   label: string;
@@ -25,6 +26,7 @@ interface SelectRowProps {
 export default function SelectRow({ label, value, options, onChange, placeholder = 'Choose', clearable }: SelectRowProps) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { inset } = useContentWidth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -56,7 +58,7 @@ export default function SelectRow({ label, value, options, onChange, placeholder
 
       <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setOpen(false)}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} onPress={() => setOpen(false)} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
+        <View style={[styles.sheet, { left: inset, right: inset, paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
           <SheetBackdrop radius={cosmosCardRadius} />
           <Text style={[styles.title, { color: c.text }]}>{label}</Text>
           <View style={[styles.search, { backgroundColor: c.tint }]}>

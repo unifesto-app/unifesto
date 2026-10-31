@@ -14,7 +14,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -216,7 +216,7 @@ export default function AccountSettingsScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {profile?.deletionScheduledFor ? (

@@ -10,7 +10,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import {
@@ -298,7 +298,7 @@ export default function NotificationSettingsScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {pushOff ? (

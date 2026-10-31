@@ -33,7 +33,7 @@ import ManageEventRow, { ManageEventRowSkeleton } from '../components/manage/Man
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { openSpaceWeb } from '../lib/openOnWeb';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -96,7 +96,7 @@ export default function ManageSpaceScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing + spacing[2], paddingBottom: 120 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing + spacing[2], paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

@@ -17,7 +17,7 @@ import { getRegistrationWhatsappGroup, type TicketWhatsappGroup } from '../lib/a
 import OneSignalService from '../services/OneSignalService';
 import { googleCalendarUrl, icsDownloadUrl, outlookCalendarUrl } from '../lib/calendar';
 import { relativeWhen } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { markTicketsStale } from '../lib/ticketsRefresh';
@@ -144,7 +144,7 @@ export default function RegistrationSuccessScreen() {
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <SheetTop fill>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: spacing[10], paddingBottom: barSpace }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[column, styles.content, { paddingTop: spacing[10], paddingBottom: barSpace }]} showsVerticalScrollIndicator={false}>
         <Animated.View style={[styles.center, popStyle]}>
           <CheckCircle size={84} color={c.text} weight="duotone" />
         </Animated.View>

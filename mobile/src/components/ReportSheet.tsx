@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import { SheetBackdrop } from './ui/CardSurface';
 import { REPORT_REASONS, submitContentReport, type ReportTarget } from '../lib/api/contentReports';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
@@ -208,6 +208,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
+    ...column,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

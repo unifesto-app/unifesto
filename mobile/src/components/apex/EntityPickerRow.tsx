@@ -6,6 +6,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import useContentWidth from '../../hooks/useContentWidth';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 
@@ -37,6 +38,7 @@ interface EntityPickerRowProps {
 export default function EntityPickerRow({ label, value, placeholder = 'Choose', search, onPick, pickedIds, add }: EntityPickerRowProps) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { inset } = useContentWidth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<PickerItem[]>([]);
@@ -90,7 +92,7 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
 
       <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: OVERLAY }]} onPress={close} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
+        <View style={[styles.sheet, { left: inset, right: inset, paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
           <SheetBackdrop radius={borderRadius.xl} />
           <Text style={[styles.title, { color: c.text }]}>{label}</Text>
           <View style={[styles.search, { backgroundColor: c.tint }]}>

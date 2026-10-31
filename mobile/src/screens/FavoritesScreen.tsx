@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -17,10 +17,11 @@ import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { isEventOver } from '../lib/upcomingTickets';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
+import useContentWidth from '../hooks/useContentWidth';
 
 const reflow = LinearTransition.duration(220);
 
@@ -39,7 +40,7 @@ const SavedCard = (props: React.ComponentProps<typeof EventListCard>) => (
 export default function FavoritesScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const { width } = useWindowDimensions();
+  const { width } = useContentWidth();
   const defaults = useDefaultImages();
   const { isAuthenticated } = useAuth();
   const { favoriteIds, refresh } = useFavorites();
@@ -91,7 +92,7 @@ export default function FavoritesScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentContainerStyle={[column, styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           isAuthenticated ? (

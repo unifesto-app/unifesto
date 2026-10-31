@@ -8,6 +8,7 @@ import type { RegisterMode } from '../../hooks/useEventDetail';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import useContentWidth from '../../hooks/useContentWidth';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
@@ -90,6 +91,7 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
   const { tokens, isDark } = useTheme();
   const c = useCosmos();
   const bottomPad = useBarBottomPad();
+  const { inset } = useContentWidth();
   // iOS: glass (Liquid Glass on 26+, frosted below). Android can't live-blur what
   // scrolls under the bar, so it uses the frosted branch below.
   const glass = Platform.OS === 'ios';
@@ -97,7 +99,7 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
     <View
       style={[
         styles.bar,
-        { paddingBottom: bottomPad },
+        { left: inset, right: inset, paddingBottom: bottomPad },
       ]}
     >
       {Platform.OS === 'android' ? (

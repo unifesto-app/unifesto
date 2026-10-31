@@ -7,7 +7,7 @@ import { Button } from '../ui';
 import { Badge } from '../ui/Badge';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { Avatar } from './PersonRow';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
@@ -128,6 +128,7 @@ export default function GroupCheckinSheet({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.4)' },
   sheet: {
+    ...column,
     borderTopLeftRadius: cosmosCardRadius,
     borderTopRightRadius: cosmosCardRadius,
     paddingHorizontal: spacing[5],

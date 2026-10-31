@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '@unifesto/unicon/react-native';
@@ -17,9 +17,10 @@ import { PRESETS, useEventsBrowse, type Preset } from '../hooks/useEventsBrowse'
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import type { Event } from '../lib/api/events';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import useContentWidth from '../hooks/useContentWidth';
 
 const SEARCH_H = 52;
 
@@ -33,7 +34,7 @@ export default function EventsScreen() {
   const c = useCosmos();
   const router = useRouter();
   const defaults = useDefaultImages();
-  const { width } = useWindowDimensions();
+  const { width } = useContentWidth();
   const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{
     category?: string;
@@ -211,7 +212,7 @@ export default function EventsScreen() {
         ListEmptyComponent={empty}
         ListFooterComponent={b.loadingMore ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} /> : null}
         ItemSeparatorComponent={() => <View style={{ height: spacing[3] }} />}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }]}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}

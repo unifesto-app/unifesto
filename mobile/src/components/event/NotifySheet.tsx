@@ -9,7 +9,7 @@ import { SettingsGroup } from '../profile/SettingsGroup';
 import { CardSurfaceProvider, SheetBackdrop } from '../ui/CardSurface';
 import FormRow from '../profile/FormRow';
 import type { EventDetail } from '../../hooks/useEventDetail';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
+    ...column,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

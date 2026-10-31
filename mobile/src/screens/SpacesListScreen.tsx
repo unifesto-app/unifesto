@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UsersThree } from '@unifesto/unicon/react-native';
 import { CosmosList } from '../components/ui/CosmosScreen';
@@ -10,6 +10,7 @@ import { getAllSpaces, getSpaceById, Space } from '../lib/api/spaces';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import useContentWidth from '../hooks/useContentWidth';
 
 const GAP = spacing[3];
 /** Spaces fetched per page. */
@@ -23,7 +24,7 @@ const PAGE_SIZE = 12;
 export default function SpacesListScreen() {
   const c = useCosmos();
   const router = useRouter();
-  const { width: screenW } = useWindowDimensions();
+  const { width: screenW } = useContentWidth();
   const cardW = Math.floor((screenW - GUTTER * 2 - GAP) / 2);
 
   const { search: paramSearch } = useLocalSearchParams<{ search?: string }>();

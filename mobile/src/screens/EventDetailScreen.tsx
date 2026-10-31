@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
@@ -51,13 +50,14 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 import { useBrandFont } from '../lib/brandFont';
+import useContentWidth from '../hooks/useContentWidth';
 
 const ICON = 24;
 
@@ -108,7 +108,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const barSpace = useActionBarSpace();
-  const { width } = useWindowDimensions();
+  const { width } = useContentWidth();
   const scrollRef = useRef<ScrollView>(null);
   // Y of the "Events inside" rail, so an umbrella's CTA lands on it.
   const subEventsY = useRef<number | null>(null);
@@ -245,7 +245,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: barSpace }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: barSpace }]}
         refreshControl={
           <RefreshControl
             refreshing={d.refreshing}

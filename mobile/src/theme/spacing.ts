@@ -60,3 +60,9 @@ export const shadows = {
     elevation: 5,
   },
 };
+
+// Tablets and landscape: screen content sits in a centred column no wider than
+// UIKit's readable content width, so cards, posters and lines keep phone
+// proportions instead of stretching edge to edge. Backdrops stay full-bleed.
+export const CONTENT_MAX = 672;
+export const column = { width: '100%', maxWidth: CONTENT_MAX, alignSelf: 'center' } as const;

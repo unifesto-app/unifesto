@@ -13,6 +13,7 @@ import { RefreshControl } from './RefreshControl';
 import CosmosBackdrop from './CosmosBackdrop';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { useCosmos } from '../../theme/cosmos';
+import { column } from '../../theme/spacing';
 
 interface CosmosScreenProps extends Omit<ScrollViewProps, 'refreshControl'> {
   refreshing?: boolean;
@@ -30,7 +31,7 @@ function useCosmosScroll(refreshing: boolean, onRefresh: (() => void) | undefine
   const c = useCosmos();
   const topSpacing = useTopSpacing();
   return {
-    contentContainerStyle: [{ paddingTop: topSpacing, paddingBottom: bottom }, contentContainerStyle],
+    contentContainerStyle: [column, { paddingTop: topSpacing, paddingBottom: bottom }, contentContainerStyle],
     refreshControl: onRefresh ? (
       <RefreshControl
         refreshing={refreshing}

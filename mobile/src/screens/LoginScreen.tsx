@@ -39,6 +39,7 @@ import BrandWordmark from '../components/BrandWordmark';
 import OtpCodeInput from '../components/auth/OtpCodeInput';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
 import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { column } from '../theme/spacing';
 
 type LoginStep = 'email' | 'email-otp' | 'mobile' | 'mobile-otp';
 
@@ -685,7 +686,7 @@ export default function NewLoginScreen() {
     <View style={styles.container}>
       <CosmosBackdrop />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[column, styles.scroll]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"

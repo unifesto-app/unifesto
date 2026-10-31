@@ -18,7 +18,7 @@ import { activeEvents, adminSpaces, hostedSpaces, hostingRoleLabel } from '../li
 import type { CheckinEvent } from '../lib/api/checkin';
 import type { OperatorSpace } from '../lib/api/spaceAccess';
 import { relativeWhen } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -98,7 +98,7 @@ export default function SpaceScreen() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
