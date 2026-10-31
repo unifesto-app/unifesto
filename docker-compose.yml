@@ -49,13 +49,10 @@ services:
   # One-shot: apply DB migrations exactly once before the API replicas start,
   # so the replicas don't race to run `prisma migrate deploy` concurrently on
   # boot. Runs, migrates, exits. `restart: "no"` — it is not a long-lived svc.
+  # No `build:` here: only `backend` builds unifesto-backend. With a build on
+  # both, a full `docker compose build` built and exported the same 1.3G image
+  # twice in parallel and ran the 29G disk out of space (2026-10-31).
   backend-migrate:
-    build: &backend-build
-      context: ./backend
-      # Baked into the image as SENTRY_RELEASE, so a rollback image reports its
-      # own release. deploy.sh passes the git SHA; a manual build leaves it unset.
-      args:
-        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-backend:latest
     restart: "no"
     logging: *logging
@@ -64,7 +61,12 @@ services:
     entrypoint: ["npx", "prisma", "migrate", "deploy"]
 
   backend:
-    build: *backend-build
+    build:
+      context: ./backend
+      # Baked into the image as SENTRY_RELEASE, so a rollback image reports its
+      # own release. deploy.sh passes the git SHA; a manual build leaves it unset.
+      args:
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-backend:latest
     restart: unless-stopped
     logging: *logging
