@@ -481,7 +481,7 @@ export async function getListedEvents(
 export async function getEventById(id: string): Promise<Event | null> {
   try {
     // The backend `/events/:slug` route resolves both slugs and UUID ids.
-    const response = await fetchWithTimeout(`${API_URL}/events/${id}`, {
+    const response = await fetchWithTimeout(`${API_URL}/events/${encodeURIComponent(id)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -508,7 +508,7 @@ export async function getEventById(id: string): Promise<Event | null> {
 export class UnavailableError extends Error {}
 
 export async function getEventBySlug(slug: string): Promise<Event | null> {
-    const response = await fetchWithTimeout(`${API_URL}/events/${slug}`, {
+    const response = await fetchWithTimeout(`${API_URL}/events/${encodeURIComponent(slug)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

@@ -383,9 +383,9 @@ export class SupportService {
 
     // Priority support (T9): a Space Admin's "contact Unifesto" case from a
     // plan that includes it opens at HIGH, so its SLA clock runs shorter.
-    // Triage only re-rates NORMAL cases, so HIGH stays.
+    // Triage only re-rates NORMAL cases, so HIGH stays. A requester's own
+    // dto.priority is ignored (J1): anyone could open at URGENT (2h SLA).
     const prioritySupport =
-      !dto.priority &&
       !toSpace &&
       !eventSpaceId &&
       !!dto.spaceId &&
@@ -398,7 +398,7 @@ export class SupportService {
       data: {
         subject: dto.subject,
         category,
-        priority: dto.priority ?? (prioritySupport ? SupportTicketPriority.HIGH : SupportTicketPriority.NORMAL),
+        priority: prioritySupport ? SupportTicketPriority.HIGH : SupportTicketPriority.NORMAL,
         ...(opts.bot ? { status: SupportTicketStatus.BOT } : {}),
         requesterId,
         spaceId: toSpace ? targetSpaceId : dto.spaceId ?? null,

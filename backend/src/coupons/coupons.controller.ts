@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards';
@@ -60,8 +61,11 @@ export class CouponsController {
 
   // ---- Buyer-facing: check a code before paying (any signed-in user) ----
 
+  // J1: per signed-in user (UserAwareThrottlerGuard), so codes can't be guessed
+  // at the global 300/min; a real buyer checks one or two.
   @Post('validate')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   validate(
     @Param('eventId') eventId: string,
     @CurrentUser() user: User,

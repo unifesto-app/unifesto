@@ -191,7 +191,7 @@ export async function getAllSpaces(): Promise<Space[]> {
  */
 export async function getSpaceById(id: string): Promise<Space | null> {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/spaces/${id}`, {
+    const response = await fetchWithTimeout(`${API_URL}/spaces/${encodeURIComponent(id)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export async function getSpaceById(id: string): Promise<Space | null> {
  * Get space by slug
  */
 export async function getSpaceBySlug(slug: string): Promise<Space | null> {
-    const response = await fetchWithTimeout(`${API_URL}/spaces/slug/${slug}`, {
+    const response = await fetchWithTimeout(`${API_URL}/spaces/slug/${encodeURIComponent(slug)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -274,7 +274,7 @@ export async function getSpaceEvents(spaceId: string, page: number = 1, limit: n
       when: 'all',
     });
 
-    const response = await fetchWithTimeout(`${API_URL}/events/space/${spaceId}?${params.toString()}`, {
+    const response = await fetchWithTimeout(`${API_URL}/events/space/${encodeURIComponent(spaceId)}?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

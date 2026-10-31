@@ -80,5 +80,5 @@ export function outlookCalendarUrl(event: CalendarEvent): string {
 
 /** Backend `.ics` download (the timezone-authoritative option). */
 export function icsDownloadUrl(slug: string): string {
-  return `${API_URL}/events/${slug}/calendar.ics`;
+  return `${API_URL}/events/${encodeURIComponent(slug)}/calendar.ics`;
 }

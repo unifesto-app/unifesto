@@ -122,6 +122,12 @@ describe('SupportService (Assist case)', () => {
     expect(prisma.event.findUnique.mock.calls[0][0].where).toEqual({ id: 'ev-1' });
   });
 
+  it("ignores a requester's own priority, so nobody opens at URGENT (J1)", async () => {
+    const { service } = setup();
+    const data: any = await service.createTicket({ subject: 's', message: 'm', priority: 'URGENT' } as any, 'user-1');
+    expect(data.priority).toBe('NORMAL');
+  });
+
   it('D29: a repeat of an open case joins it instead of opening a copy', async () => {
     const { prisma, events, service } = setup();
     prisma.supportTicket.findFirst = jest

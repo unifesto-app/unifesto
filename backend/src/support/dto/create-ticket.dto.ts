@@ -45,7 +45,8 @@ export class CreateTicketDto {
   @IsEnum(SupportTicketCategory)
   category?: SupportTicketCategory;
 
-  @ApiPropertyOptional({ enum: SupportTicketPriority })
+  /** Accepted so older apps don't fail validation, but ignored (J1): priority is set by plan and triage. */
+  @ApiPropertyOptional({ enum: SupportTicketPriority, deprecated: true })
   @IsOptional()
   @IsEnum(SupportTicketPriority)
   priority?: SupportTicketPriority;
