@@ -13,6 +13,8 @@ import {
   FACTCHECK_SCHEMA,
   FACTCHECK_SYSTEM,
   HUMANIZE_SYSTEM,
+  META_DESCRIPTION_MAX,
+  META_TITLE_MAX,
   QUESTIONS_SCHEMA,
   QUESTIONS_SYSTEM,
   RESEARCH_SYSTEM,
@@ -20,6 +22,7 @@ import {
   TOPIC_COOLDOWN_DAYS,
   WRITER_SYSTEM,
   cleanSuggestions,
+  fit,
   gate,
   researchSources,
   slugify,
@@ -206,6 +209,8 @@ export class BlogWriterService {
     if (!edit.ok) throw new Error(`humanize: ${why(edit)}`);
     draft.markdown = stripEmDashes(`${edit.text.trimEnd()}\n\n${sourcesList}`.trim());
     draft.title = stripEmDashes(draft.title);
+    draft.metaTitle = fit(draft.metaTitle, META_TITLE_MAX);
+    draft.metaDescription = fit(draft.metaDescription, META_DESCRIPTION_MAX);
 
     // e is in the writer prompt; f. the gate checks it, then the numbers.
     const failed = gate({
