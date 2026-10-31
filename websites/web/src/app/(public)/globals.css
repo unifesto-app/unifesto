@@ -384,6 +384,45 @@ body {
   animation: pop-in var(--dur-2) var(--ease-out-quart) both;
 }
 
+/* ─── Navbar menus + mobile sheet ────────────────────────────────────── */
+/* Always in the DOM, shown with [data-open]. They enter from
+   @starting-style and leave by keeping display until the fade ends
+   (allow-discrete), so exits need no JS; older browsers just show/hide.
+   Longhands, so a browser without allow-discrete still gets the fades.
+   In @layer components so utilities (lg:hidden) still win. */
+@layer components {
+  .nav-menu, .nav-sheet {
+    display: none;
+    opacity: 0;
+    transition-property: opacity, transform, display;
+    transition-behavior: allow-discrete;
+    transition-timing-function: var(--ease-out-quart);
+  }
+  .nav-menu[data-open], .nav-sheet[data-open] {
+    display: block;
+    opacity: 1;
+    transform: none;
+    transition-timing-function: var(--ease-out-quart);
+  }
+  /* Menus pop from their trigger: 180ms in, faster out. */
+  .nav-menu { transform: translateY(4px) scale(0.98); transition-duration: var(--dur-1); }
+  .nav-menu[data-open] { transition-duration: var(--dur-2); }
+  /* The sheet drops from the bar: 240ms in, 140ms out. */
+  .nav-sheet { transform: translateY(-4px); transition-duration: 140ms; transition-timing-function: ease-out; }
+  .nav-sheet[data-open] { transition-duration: var(--dur-3); }
+  @starting-style {
+    .nav-menu[data-open] { opacity: 0; transform: translateY(8px) scale(0.96); }
+    .nav-sheet[data-open] { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  }
+  /* Sheet rows arrive as a list; the delay is inline. display:none → block
+     restarts them on every open. */
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-sheet li { animation: nav-row-in var(--dur-3) var(--ease-out-quart) both; }
+    .nav-sheet .nav-sheet-label { animation: fade-in 300ms cubic-bezier(0.25, 0.1, 0.35, 1) both; }
+  }
+}
+@keyframes nav-row-in { from { opacity: 0; transform: translateY(6px); } }
+
 /* ─── Blur surfaces ──────────────────────────────────────────────────── */
 /* No glass effects: where chrome floats over content (the scrolled navbar,
    menus, labels on images) it gets a tinted backdrop blur so text stays
