@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import sharp from 'sharp';
+import { isOwnS3Url } from '../storage/own-s3-url';
 
 export interface PaletteColor {
   hex: string;
@@ -95,17 +96,12 @@ export class BannerPaletteService {
     const hit = this.cache.get(url);
     if (hit) return hit;
 
-    // Only fetch our own S3 uploads, never an arbitrary (possibly internal) host.
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      return [];
-    }
-    if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.amazonaws.com')) return [];
+    // Only fetch our own bucket's uploads (J1): any *.amazonaws.com host let a
+    // banner URL point the server at someone else's bucket or an EC2 box.
+    if (!isOwnS3Url(url)) return [];
 
     try {
-      const res = await fetch(parsed, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return [];
       if (Number(res.headers.get('content-length') || 0) > MAX_BYTES) return [];
       const buf = Buffer.from(await res.arrayBuffer());
