@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
+import Grain from './Grain';
 import { cosmosFor, useCosmos } from '../../theme/cosmos';
 
 // Star field lifted from the app icon (marketing/brand-2026/svg/app-icon-dark.svg),
@@ -16,9 +17,6 @@ const STARS: [number, number, number, number][] = [
   [0.86, 0.5, 0.9, 0.3],
   [0.05, 0.6, 0.8, 0.25],
 ];
-
-const GRAIN = require('../../../assets/brand/grain-180.png');
-const GRAIN_INK = require('../../../assets/brand/grain-180-ink.png');
 
 /**
  * The Unifesto Horizon sky, without lines (the owner removed the orbits and the
@@ -46,7 +44,7 @@ export default function CosmosBackdrop({
   const sun = isDark ? 0.32 : 0.5;
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg, overflow: 'hidden' }]}>
       <Svg width={w} height={h}>
         <Defs>
           {hue ? (
@@ -69,11 +67,7 @@ export default function CosmosBackdrop({
         {horizon ? <Ellipse cx={w * 0.8} cy={h - w * 0.06} rx={w * 0.5} ry={w * 0.22} fill="url(#sun)" /> : null}
       </Svg>
       {/* Film grain, as on the site: 12% by night, 9% (ink) by day. */}
-      <Image
-        source={isDark ? GRAIN : GRAIN_INK}
-        resizeMode="repeat"
-        style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.12 : 0.09 }]}
-      />
+      <Grain dark={isDark} opacity={isDark ? 0.12 : 0.09} />
     </View>
   );
 }

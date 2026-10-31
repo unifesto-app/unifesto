@@ -1,11 +1,10 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { spacing } from '../../theme/spacing';
 import { SHADES, cosmosCardRadius, useCosmos, type ShadeTone } from '../../theme/cosmos';
 
-const GRAIN = require('../../../assets/brand/grain-180.png');
-const GRAIN_INK = require('../../../assets/brand/grain-180-ink.png');
+import Grain from './Grain';
 
 /**
  * A Horizon shade card (guidelines §08): soft shapes in one accent, blended into
@@ -85,11 +84,7 @@ export default function ShadeCard({
         )}
       </Svg>
       {/* Heavier grain than the page. */}
-      <Image
-        source={isDark ? GRAIN : GRAIN_INK}
-        resizeMode="repeat"
-        style={[StyleSheet.absoluteFill, { opacity: isDark ? 0.2 : 0.14 }]}
-      />
+      <Grain dark={isDark} opacity={isDark ? 0.2 : 0.14} />
     </View>
   );
 
