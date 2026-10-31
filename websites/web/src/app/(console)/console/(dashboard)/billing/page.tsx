@@ -1,6 +1,5 @@
 "use client";
 
-import { inr } from "@/console/lib/utils/money";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Check, Minus, Lock } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
@@ -9,12 +8,6 @@ import {
   getSpaceSubscription,
   getSpaceUsage,
   getPlanCatalog,
-  cancelSpaceSubscription,
-  createSpaceUpgradeOrder,
-  verifySpaceUpgrade,
-  billingSummary,
-  priceFor,
-  planRank,
   PLAN_LABEL,
   PLAN_ORDER,
   type Subscription,
@@ -23,44 +16,30 @@ import {
   type PlanCatalog,
   type CatalogRow,
   type OrgPlan,
-  type BillingCycle,
 } from "@/console/lib/api/subscriptions-api";
 import { PageHeader } from "@/console/components/shared/PageHeader";
-import { GO_LIVE, RATE } from "@/console/components/shell/FeeNoticeBanner";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
-import { confirmDialog } from "@/console/components/shared/ConfirmDialog";
 import { Button } from "@/console/components/ui/button";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { Card, CardContent } from "@/console/components/ui/card";
 import { cn } from "@/console/lib/utils/cn";
+import { PLANS, inr, planMinimum } from "@/lib/site";
 
-/** Best annual saving across plans, from the API's prices: "Save 17%". */
-function annualSaving(plans: PlanInfo[]): string | null {
-  const best = Math.max(
-    0,
-    ...plans.map((p) =>
-      p.monthlyPrice && p.annualPrice ? Math.round((1 - p.annualPrice / (p.monthlyPrice * 12)) * 100) : 0
-    )
-  );
-  return best > 0 ? `Save ${best}%` : null;
-}
-
-/** A plan's organiser fee, or the announced rate before go-live (the DB holds 0 until then). */
-function feePercent(plan: PlanInfo): number {
-  return new Date() < GO_LIVE && !plan.platformFeePercent ? RATE[plan.plan] ?? 0 : plan.platformFeePercent;
-}
-
-/** "1.5%", or Enterprise's negotiated range "0–0.5%". */
+/** "4.5%", or "Custom" for Enterprise (by contract). */
 function feeText(plan: PlanInfo): string {
-  const pct = feePercent(plan);
-  return plan.plan === "ENTERPRISE" && pct ? `0–${pct}%` : `${pct}%`;
+  return plan.plan === "ENTERPRISE" ? "Custom" : `${plan.platformFeePercent}%`;
 }
+
+/** The least fee per event on Growth and Pro (Z2), in rupees, from the site's plan list. */
+const minPerEvent = (plan: PlanInfo) => PLANS.find((p) => p.id === plan.plan.toLowerCase())?.minPerEvent;
+
+/** "At least ₹999 an event", or null. */
+const minimumText = (plan: PlanInfo) => planMinimum({ minPerEvent: minPerEvent(plan) });
 
 function feeLabel(plan: PlanInfo): string {
-  const pct = feePercent(plan);
-  if (!pct) return "No platform fee";
-  return `${feeText(plan)} fee per paid ticket${new Date() < GO_LIVE && !plan.platformFeePercent ? " from 2 Nov" : ""}`;
+  if (plan.plan === "ENTERPRISE") return "Fee by contract";
+  return `${feeText(plan)} fee per paid ticket`;
 }
 
 /** Human label for a plan limit; `null`/undefined means unlimited. */
@@ -68,8 +47,8 @@ function limitLabel(n: number | null | undefined): string {
   return n === null || n === undefined ? "Unlimited" : n.toLocaleString("en-IN");
 }
 
-const fmtDate = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
+/** Plans are priced by their fee, not bought here (Z2): a platform admin moves a space. */
+const moveUpHref = (plan: OrgPlan) => `mailto:support@unifesto.app?subject=${encodeURIComponent(`Move my Space to ${PLAN_LABEL[plan]}`)}`;
 
 export default function BillingPage() {
   const spaceId = useSpaceId();
@@ -79,12 +58,8 @@ export default function BillingPage() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
   const [cat, setCat] = useState<PlanCatalog | null>(null);
-  const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [busyPlan, setBusyPlan] = useState<OrgPlan | null>(null);
-  const [actionError, setActionError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     if (!spaceId) return;
@@ -100,81 +75,12 @@ export default function BillingPage() {
     if (usageRes.data) setUsage(usageRes.data);
     if (catRes.data) setCat(catRes.data);
     else if (catRes.error) setError(catRes.error.message);
-    // Default the toggle to whatever the space is already billed on.
-    if (subRes.data?.billingCycle) setCycle(subRes.data.billingCycle);
     setLoading(false);
   }, [spaceId]);
 
   useEffect(() => {
     if (allowed) void load();
   }, [allowed, load]);
-
-  async function handleCancel() {
-    const ok = await confirmDialog({
-      title: "Cancel this plan?",
-      description: "You keep it until the end of this period, then the space moves to General. Your data is kept.",
-      confirmLabel: "Cancel plan",
-      destructive: true,
-    });
-    if (!ok) return;
-    setBusyPlan(sub?.plan ?? "STARTER");
-    setActionError("");
-    const { error } = await cancelSpaceSubscription(spaceId);
-    if (error) setActionError(error.message);
-    else await load();
-    setBusyPlan(null);
-  }
-
-  async function handleChangePlan(plan: OrgPlan, targetCycle: BillingCycle) {
-    setActionError("");
-    setNotice("");
-    setBusyPlan(plan);
-    const { data: order, error } = await createSpaceUpgradeOrder(spaceId, { plan, billingCycle: targetCycle });
-    if (error || !order) {
-      setActionError(error?.message ?? "Could not start checkout");
-      setBusyPlan(null);
-      return;
-    }
-    // window.Razorpay is declared (optional) in @/lib/razorpay, shared with the public checkout.
-    if (!(await loadRazorpay()) || !window.Razorpay) {
-      setActionError("Could not load the payment window. Check your connection.");
-      setBusyPlan(null);
-      return;
-    }
-    new window.Razorpay({
-      key: order.razorpayKeyId,
-      order_id: order.orderId,
-      amount: Math.round(order.amount * 100),
-      currency: order.currency,
-      name: "Unifesto",
-      description: `${PLAN_LABEL[plan]} plan (${targetCycle.toLowerCase()})`,
-      notes: { spaceId },
-      handler: async (res: RazorpaySuccess) => {
-        const { error } = await verifySpaceUpgrade(spaceId, {
-          orderId: res.razorpay_order_id,
-          paymentId: res.razorpay_payment_id,
-          signature: res.razorpay_signature,
-        });
-        if (error) {
-          // Paid but not activated: the payment id lets support attach it.
-          setActionError(
-            `Payment received but the plan didn't activate (${error.message}). Reference ${res.razorpay_payment_id}.`
-          );
-        } else {
-          setNotice(
-            order.kind === "renew"
-              ? `${PLAN_LABEL[plan]} renewed.`
-              : order.kind === "downgrade"
-                ? `${PLAN_LABEL[plan]} (${targetCycle.toLowerCase()}) starts when this period ends.`
-                : `You're on ${PLAN_LABEL[plan]} now.`
-          );
-          await load();
-        }
-        setBusyPlan(null);
-      },
-      modal: { ondismiss: () => setBusyPlan(null) },
-    }).open();
-  }
 
   if (!allowed) {
     return (
@@ -183,7 +89,7 @@ export default function BillingPage() {
         <EmptyState
           icon={Lock}
           title="Billing is for Space Admins"
-          description="Only a Space Admin can view or change this space's plan."
+          description="Only a Space Admin can view this space's plan."
         />
       </div>
     );
@@ -191,13 +97,7 @@ export default function BillingPage() {
 
   const plans = [...(cat?.plans ?? [])].sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan));
   const currentPlan: OrgPlan = sub?.plan ?? "STARTER";
-  const currentRank = planRank(currentPlan);
-  const status = sub?.status ?? "ACTIVE";
-  // A paid plan Unifesto gave without a payment (comp): nothing to cancel or renew.
-  const comp = currentRank > 0 && !sub?.lastPaymentAt;
-  const canBuy = !comp && !sub?.pendingPlan;
-  const paidTimeLeft = currentRank > 0 && !!sub?.expiresAt && new Date(sub.expiresAt) > new Date();
-  const saving = annualSaving(plans);
+  const current = plans.find((p) => p.plan === currentPlan) ?? plans[0];
 
   return (
     <div className="space-y-4">
@@ -207,53 +107,25 @@ export default function BillingPage() {
       />
 
       {error && <ErrorNotice message={error} />}
-      {actionError && <ErrorNotice message={actionError} />}
-      {notice && (
-        <div className="rounded-2xl border border-border bg-primary-soft px-4 py-3 text-sm text-primary">{notice}</div>
-      )}
 
       {/* Current plan ------------------------------------------------------ */}
       <Card>
         <CardContent className="space-y-4 p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Your plan</p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-40" />
-              ) : (
-                <>
-                  <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-semibold text-foreground">
-                    {PLAN_LABEL[currentPlan]}
-                    <StatusPill sub={sub} comp={comp} />
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {sub ? (currentRank === 0 ? "Free" : comp ? "Set up by Unifesto" : billingSummary(sub)) : "No plan set"}
-                    {cat && ` · ${feeLabel(plans.find((p) => p.plan === currentPlan) ?? plans[0])}`}
-                  </p>
-                </>
-              )}
-            </div>
-            {!loading && currentRank > 0 && !comp && status !== "EXPIRED" && !sub?.cancelledAt && (
-              <Button variant="outline" size="sm" onClick={handleCancel} disabled={busyPlan !== null}>
-                Cancel plan
-              </Button>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Your plan</p>
+            {loading ? (
+              <Skeleton className="mt-2 h-8 w-40" />
+            ) : (
+              <>
+                <h2 className="mt-1 text-2xl font-semibold text-foreground">{PLAN_LABEL[currentPlan]}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No monthly fee
+                  {current && ` · ${feeLabel(current)}`}
+                  {current && minimumText(current) && ` · ${minimumText(current)}`}
+                </p>
+              </>
             )}
           </div>
-
-          {!loading && sub && currentRank > 0 && (
-            <dl className="grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
-              <Fact label={status !== "ACTIVE" ? "Expired on" : sub.cancelledAt ? "Ends" : "Renews"} value={fmtDate(sub.expiresAt)} />
-              <Fact label="Last payment" value={fmtDate(sub.lastPaymentAt)} />
-              <Fact label="Billed" value={sub.billingCycle === "ANNUAL" ? "Yearly" : "Monthly"} />
-              {sub.pendingPlan && (
-                <p className="col-span-full text-sm text-muted-foreground">
-                  Moves to {PLAN_LABEL[sub.pendingPlan]}
-                  {sub.pendingBillingCycle ? ` (${sub.pendingBillingCycle.toLowerCase()})` : ""} on{" "}
-                  {fmtDate(sub.expiresAt)}. Already paid.
-                </p>
-              )}
-            </dl>
-          )}
 
           {/* Usage against the plan's limits */}
           <div className="grid grid-cols-1 gap-4 border-t border-border pt-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -267,10 +139,9 @@ export default function BillingPage() {
             <Meter label="Ticket types per event" limit={usage?.limits.ticketTypes} loading={loading} />
             <Meter label="Co-curators per event" limit={usage?.limits.coCurators} loading={loading} />
           </div>
-          {!loading && status === "EXPIRED" && (
+          {!loading && sub?.status === "EXPIRED" && (
             <p className="text-sm text-muted-foreground">
-              Your {PLAN_LABEL[currentPlan]} plan expired, so General&apos;s limits apply. Your data is kept; renew to
-              get them back.
+              Your {PLAN_LABEL[currentPlan]} plan ended, so General&apos;s limits apply. Your data is kept.
             </p>
           )}
         </CardContent>
@@ -278,27 +149,14 @@ export default function BillingPage() {
 
       {/* Plans ------------------------------------------------------------- */}
       <section className="space-y-4" aria-labelledby="plans-heading">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
           <h2 id="plans-heading" className="text-lg font-semibold text-foreground">
             Plans
           </h2>
-          <div className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-sm" role="group" aria-label="Billing cycle">
-            {(["MONTHLY", "ANNUAL"] as BillingCycle[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={cycle === c}
-                onClick={() => setCycle(c)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 font-medium transition-colors",
-                  cycle === c ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {c === "MONTHLY" ? "Monthly" : "Yearly"}
-                {c === "ANNUAL" && saving && <span className="ml-1.5 text-xs text-success">{saving}</span>}
-              </button>
-            ))}
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            No plan has a monthly price. Each one is priced by its fee on paid tickets. To move your Space, write to us
+            and we switch it for you.
+          </p>
         </div>
 
         {loading ? (
@@ -311,15 +169,9 @@ export default function BillingPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             {plans.map((plan, i) => {
               const isCurrent = plan.plan === currentPlan;
-              const rank = planRank(plan.plan);
-              const price = priceFor(plan, cycle);
-              const isEnterprise = plan.plan === "ENTERPRISE";
-              // Same plan: yearly is "up" from monthly, monthly "down" from yearly.
-              const cycleRank = (c: BillingCycle) => (c === "ANNUAL" ? 1 : 0);
-              const diff = rank - currentRank || (sub ? cycleRank(cycle) - cycleRank(sub.billingCycle) : 0);
-              const direction = diff > 0 ? "up" : diff < 0 ? "down" : "same";
               const prev = plans[i - 1];
               const adds = prev ? newFeatures(cat?.catalog ?? [], plan, prev) : [];
+              const minimum = minimumText(plan);
 
               return (
                 <Card
@@ -340,17 +192,11 @@ export default function BillingPage() {
                     </div>
 
                     <div>
-                      {isEnterprise ? (
-                        <span className="text-2xl font-semibold text-foreground">Custom</span>
-                      ) : !price ? (
-                        <span className="text-2xl font-semibold text-foreground">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-2xl font-semibold tabular-nums text-foreground">{inr(price)}</span>
-                          <span className="text-sm text-muted-foreground">/{cycle === "MONTHLY" ? "mo" : "yr"}</span>
-                        </>
-                      )}
-                      <p className="mt-1 text-xs text-muted-foreground">{feeLabel(plan)}</p>
+                      <span className="text-2xl font-semibold tabular-nums text-foreground">{feeText(plan)}</span>
+                      {plan.plan !== "ENTERPRISE" && <span className="text-sm text-muted-foreground"> per paid ticket</span>}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {plan.plan === "ENTERPRISE" ? "Quoted per institution" : (minimum ?? "No monthly fee")}
+                      </p>
                     </div>
 
                     <ul className="flex-1 space-y-1.5 text-sm">
@@ -365,18 +211,15 @@ export default function BillingPage() {
                       {!prev && <Line>Tickets, check-in, email and polls</Line>}
                     </ul>
 
-                    <PlanAction
-                      isCurrent={isCurrent}
-                      isEnterprise={isEnterprise}
-                      direction={direction}
-                      canBuy={canBuy}
-                      price={price}
-                      pending={!!sub?.pendingPlan}
-                      busy={busyPlan === plan.plan}
-                      disabled={busyPlan !== null}
-                      paidTimeLeft={paidTimeLeft}
-                      onBuy={() => handleChangePlan(plan.plan, cycle)}
-                    />
+                    {isCurrent ? (
+                      <Button variant="outline" disabled className="w-full">
+                        Current plan
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="w-full" asChild>
+                        <a href={moveUpHref(plan.plan)}>Talk to us</a>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -414,14 +257,14 @@ export default function BillingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <CompareRow label="Price" plans={plans} current={currentPlan}>
-                    {(p) => {
-                      const price = priceFor(p, cycle);
-                      return p.plan === "ENTERPRISE" ? "Custom" : price ? `${inr(price)}/${cycle === "MONTHLY" ? "mo" : "yr"}` : "Free";
-                    }}
-                  </CompareRow>
                   <CompareRow label="Platform fee per paid ticket" plans={plans} current={currentPlan}>
                     {(p) => feeText(p)}
+                  </CompareRow>
+                  <CompareRow label="Least fee per event" plans={plans} current={currentPlan}>
+                    {(p) => {
+                      const min = minPerEvent(p);
+                      return min ? inr(min) : "None";
+                    }}
                   </CompareRow>
                   {cat.catalog.map((g) => (
                     <Fragment key={g.group}>
@@ -448,7 +291,7 @@ export default function BillingPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Buyers pay a {cat?.buyerProcessingFeePercent ?? 5}% processing fee on paid tickets
+        Buyers pay a {cat?.buyerProcessingFeePercent ?? 4}% processing fee on paid tickets
         {cat?.buyerProcessingFeeCapPerTicket ? `, capped at ₹${cat.buyerProcessingFeeCapPerTicket} per ticket,` : ""} on
         every plan. You can include it in your price from each event&apos;s Tickets page. Razorpay&apos;s charges come
         out of that fee. Free RSVP events carry no fees.
@@ -501,88 +344,6 @@ function CompareRow({
   );
 }
 
-function PlanAction({
-  isCurrent,
-  isEnterprise,
-  direction,
-  canBuy,
-  price,
-  pending,
-  busy,
-  disabled,
-  paidTimeLeft,
-  onBuy,
-}: {
-  isCurrent: boolean;
-  isEnterprise: boolean;
-  direction: "up" | "down" | "same";
-  canBuy: boolean;
-  price: number | null;
-  pending: boolean;
-  busy: boolean;
-  disabled: boolean;
-  paidTimeLeft: boolean;
-  onBuy: () => void;
-}) {
-  if (isCurrent && (direction === "same" || !canBuy || !price)) {
-    return direction === "same" && canBuy && price ? (
-      <Button className="w-full" disabled={disabled} onClick={onBuy}>
-        {busy ? "Working…" : "Renew"}
-      </Button>
-    ) : (
-      <Button variant="outline" disabled className="w-full">
-        Current plan
-      </Button>
-    );
-  }
-  if (isEnterprise) {
-    return (
-      <Button variant="outline" className="w-full" asChild>
-        <a href="mailto:sales@unifesto.app?subject=Enterprise%20plan">Talk to us</a>
-      </Button>
-    );
-  }
-  if (!canBuy) {
-    return (
-      <p className="text-center text-xs text-muted-foreground">
-        {pending ? "A plan change is already scheduled." : "Your plan is set up by Unifesto. Contact support to change it."}
-      </p>
-    );
-  }
-  if (direction === "down" && !price) {
-    return (
-      <p className="text-center text-xs text-muted-foreground">
-        To move down, cancel your plan. It ends at the close of this period.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <Button className="w-full" variant={direction === "down" ? "outline" : "default"} disabled={disabled || !price} onClick={onBuy}>
-        {busy ? "Working…" : direction === "down" && paidTimeLeft ? "Switch at period end" : "Upgrade"}
-      </Button>
-      {direction === "up" && paidTimeLeft && !!price && (
-        <p className="text-center text-xs text-muted-foreground">Starts now. Unused days come off the price.</p>
-      )}
-    </div>
-  );
-}
-
-function StatusPill({ sub, comp }: { sub: Subscription | null; comp: boolean }) {
-  if (!sub) return null;
-  const [label, cls] =
-    sub.status === "GRACE"
-      ? ["Grace period", "bg-warning-soft text-warning"]
-      : sub.status === "EXPIRED"
-        ? ["Expired", "bg-destructive/10 text-destructive"]
-        : sub.cancelledAt
-          ? ["Cancelled", "bg-warning-soft text-warning"]
-          : comp
-            ? ["Comp", "bg-muted text-muted-foreground"]
-            : ["Active", "bg-success-soft text-success"];
-  return <span className={cn("rounded-lg px-2 py-0.5 text-xs font-medium", cls)}>{label}</span>;
-}
-
 function Meter({
   label,
   used,
@@ -614,15 +375,6 @@ function Meter({
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-foreground">{value}</dd>
-    </div>
-  );
-}
-
 function Line({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2 text-muted-foreground">
@@ -630,22 +382,4 @@ function Line({ children }: { children: React.ReactNode }) {
       <span>{children}</span>
     </li>
   );
-}
-
-type RazorpaySuccess = {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-};
-
-/** Inject Razorpay's checkout.js once; resolves false if it can't load. */
-function loadRazorpay(): Promise<boolean> {
-  if (window.Razorpay) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
 }

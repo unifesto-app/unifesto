@@ -7,12 +7,11 @@ import {
   FAQ_ORBIT, ORBIT_STEPS, ORBIT_TIERS,
   STAY_STEPS,
   HACKATHON_STAGES,
-  LAUNCH_OFFER_ENDS,
   PILLARS,
   PLANS,
   PROOF,
   SITE,
-  inr,
+  planFeesText,
 } from "@/lib/site";
 import { getPosts } from "@/lib/api/blog";
 import { getRateCard } from "@/lib/api/rate-card";
@@ -23,8 +22,8 @@ import { getRateCard } from "@/lib/api/rate-card";
    posts come from the API, so this regenerates hourly. */
 export const revalidate = 3600;
 
-const plan = (p: (typeof PLANS)[number], feeFrom: string | null) =>
-  `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; organiser platform fee ${p.fee}% per paid ticket${feeFrom ? ` from ${feeFrom}` : ""} (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
+const plan = (p: (typeof PLANS)[number]) =>
+  `- ${p.name} (${p.forWho}): ${planFeesText([p])}. Includes: ${p.includes.join("; ")}.`;
 
 export async function GET() {
   const [posts, rates] = await Promise.all([getPosts(), getRateCard()]);
@@ -46,7 +45,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
 - [Unifesto Orbit](${SITE.url}/orbit): the campus programme; one Orbit Lead per campus helps every club run its events on Unifesto
-- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
+- [Pricing](${SITE.url}/pricing): plans and platform fees, no monthly fee; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
 - [Request a Space](${SITE.url}/request-space): how organisers get started
@@ -88,11 +87,11 @@ Free on the App Store (${SITE.appStore}) and Google Play (${SITE.playStore}).
 
 ${APP_FEATURES.map((f) => `- ${f.title}: ${f.body}`).join("\n")}
 
-## Pricing (launch pricing for Spaces joining before ${LAUNCH_OFFER_ENDS})
+## Pricing (no monthly fee; each plan is priced by its platform fee per paid ticket)
 
-${rates.plans.map((p) => plan(p, rates.feeFrom)).join("\n")}
+${rates.plans.map(plan).join("\n")}
 
-${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap, rates.feeFrom).map((f) => `- ${f.q} ${f.a}`).join("\n")}
+${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap).map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## Common questions
 

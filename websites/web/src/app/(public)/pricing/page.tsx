@@ -11,17 +11,17 @@ import ShadeCard, { SHADES, type Shade } from "@/components/site/ShadeCard";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { LAUNCH_OFFER_ENDS, SITE, type Catalog, type CatalogRow, type Plan, buyerFeeText, inr, passExample, planFee, planFeesText, pricingFaq } from "@/lib/site";
+import { SITE, type Catalog, type CatalogRow, type Plan, buyerFeeText, passExample, planFee, planFeesText, planMinimum, pricingFaq } from "@/lib/site";
 import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { plans, buyerFee, buyerFeeCap, feeFrom } = await getRateCard();
+  const { plans, buyerFee, buyerFeeCap } = await getRateCard();
   return withSocial({
     title: "Pricing: free RSVP events, clear fees on paid tickets",
-    description: `Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket${feeFrom ? ` from ${feeFrom}` : ""}: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap, feeFrom)}`,
+    description: `No monthly fee. Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
     alternates: { canonical: "/pricing" },
   }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
@@ -35,10 +35,11 @@ const productLd = (plans: Plan[]) => ({
   name: "Unifesto event platform",
   brand: { "@type": "Brand", name: SITE.name },
   description: SITE.description,
-  offers: plans.filter((p) => p.price !== null).map((p) => ({
+  // No plan has a monthly price (Z2): General is the one free-to-start offer.
+  offers: plans.filter((p) => p.id === "starter").map((p) => ({
     "@type": "Offer",
     name: `${p.name} plan`,
-    price: p.price,
+    price: 0,
     priceCurrency: "INR",
     url: `${SITE.url}/pricing`,
     availability: "https://schema.org/InStock",
@@ -46,8 +47,8 @@ const productLd = (plans: Plan[]) => ({
 });
 
 export default async function PricingPage() {
-  const { plans, buyerFee, buyerFeeCap, feeFrom, catalog } = await getRateCard();
-  const free = plans.find((p) => p.price === 0);
+  const { plans, buyerFee, buyerFeeCap, catalog } = await getRateCard();
+  const free = plans.find((p) => p.id === "starter");
   const paid = plans.filter((p) => p !== free);
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
@@ -57,26 +58,25 @@ export default async function PricingPage() {
       <PageHero
         lines={["Free events stay free.", "Paid ones cost less."]}
         accentFrom={1}
-        lede={`Launch pricing: Spaces that join before ${LAUNCH_OFFER_ENDS} keep these prices. Every plan includes the Unifesto app for attendees and Crew.`}
+        lede="No monthly fee on any plan. You pay a platform fee only on tickets you sell. Every plan includes the Unifesto app for attendees and Crew."
         size="md"
       />
 
       <Section pad="tight" id="plans">
-        {/* Each paid card spans 7 rows of one shared grid (subgrid, through
-            every layer of the card), so name, price, fee and button line up
+        {/* Each paid card spans 6 rows of one shared grid (subgrid, through
+            every layer of the card), so name, fee and button line up
             across cards however their text wraps. Plans sit as glass on their
             shade; the featured one stays solid. The free plan lies across the
             width below them: where every Space starts, not one of the tiers. */}
         <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 xl:grid-cols-4" data-stagger="rise">
           {paid.map((plan, i) => {
             const featured = plan.id === "growth";
-            const rows = "row-span-7 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid";
+            const rows = "row-span-6 grid grid-cols-[minmax(0,1fr)] grid-rows-subgrid";
             const card = (
               <article className={`${rows} gap-y-0 rounded-xl p-6 ${featured ? "" : "bg-night-2"}`}>
                 <h2 className="font-display text-lg text-paper">{plan.name}</h2>
                 <p className="mt-1.5 text-sm text-paper/70">{plan.forWho}</p>
                 <PlanPrice plan={plan} />
-                <PlanFee plan={plan} feeFrom={feeFrom} className="mt-5" />
                 <PlanCta plan={plan} featured={featured} />
                 <PlanIncludes items={plan.includes} />
               </article>
@@ -101,7 +101,6 @@ export default async function PricingPage() {
                 <PlanPrice plan={free} />
               </div>
               <div>
-                <PlanFee plan={free} feeFrom={feeFrom} />
                 <PlanCta plan={free} featured={false} />
               </div>
               <PlanIncludes items={free.includes} across />
@@ -110,7 +109,7 @@ export default async function PricingPage() {
         )}
         <p className="mt-8 text-center text-sm text-paper/55">
           {/* TODO(A6): GST wording waits for GST registration and the CA. */}
-          Prices exclude GST. Buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay&apos;s charges come out of that fee. Free RSVP events carry no fees on any plan.
+          Fees exclude GST. Buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay&apos;s charges come out of that fee. Free RSVP events carry no fees on any plan.
         </p>
       </Section>
 
@@ -118,21 +117,20 @@ export default async function PricingPage() {
 
       <Section surface="paper" aria-labelledby="compare-heading">
         <PassPaysYou
-          plans={plans.map((p) => ({ id: p.id, name: p.name, fee: p.fee, feeText: planFee(p) }))}
+          plans={plans.filter((p) => !p.feeText).map((p) => ({ id: p.id, name: p.name, fee: p.fee, feeText: planFee(p) }))}
           buyerFee={buyerFee}
           buyerFeeCap={buyerFeeCap}
-          feeFrom={feeFrom}
         />
       </Section>
 
-      <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap, feeFrom)} />
+      <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap)} />
 
       <Section width="text" innerClassName="text-center">
         <h2 data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper [text-wrap:balance]">
           Not sure which plan fits?
         </h2>
         <p data-reveal="blur" className="mx-auto mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-paper/65">
-          Start on General. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
+          Start on General. When you need certificates, sponsors or hackathon judging, write to us and we move your Space up.
         </p>
         <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href="/request-space" className="btn btn-lg btn-primary">
@@ -148,41 +146,19 @@ export default async function PricingPage() {
 }
 
 /* A plan card's parts, shared by the paid columns and the free plan laid
-   across. The price is two rows (amount, then the note under it) so the
-   paid cards' subgrid lines them up. */
+   across. The fee is two rows (rate, then the note under it) so the paid
+   cards' subgrid lines them up. */
 function PlanPrice({ plan }: { plan: Plan }) {
-  const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
   return (
     <>
       <div className="mt-5 flex flex-wrap items-baseline gap-x-2">
-        {plan.price === null ? (
-          <span className="font-display text-3xl text-paper">Custom</span>
-        ) : (
-          <>
-            <span className="tabular font-display text-3xl text-paper">{inr(plan.price)}</span>
-            <span className="text-sm text-paper/60">/ month</span>
-          </>
-        )}
+        <span className="tabular font-display text-3xl text-paper">{planFee(plan)}</span>
+        {!plan.feeText && <span className="text-sm text-paper/60">per paid ticket</span>}
       </div>
       <p className="mt-1.5 text-xs text-paper/55">
-        {off > 0 && (
-          <>
-            <s className="tabular">{inr(plan.standardPrice!)}</s> {off}% off at launch ·{" "}
-          </>
-        )}
-        {plan.annualMonthly ? `${inr(plan.annualMonthly)}/mo billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
+        {plan.feeText ? "Quoted per institution" : (planMinimum(plan) ?? "No monthly fee")}
       </p>
     </>
-  );
-}
-
-function PlanFee({ plan, feeFrom, className = "" }: { plan: Plan; feeFrom: string | null; className?: string }) {
-  return (
-    <p className={`border-y border-border py-2.5 text-sm text-paper ${className}`}>
-      <span className="tabular font-display">{planFee(plan)}</span>{" "}
-      <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
-      <span className="block text-xs text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
-    </p>
   );
 }
 

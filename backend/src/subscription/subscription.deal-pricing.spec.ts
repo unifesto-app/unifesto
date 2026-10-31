@@ -1,11 +1,11 @@
 import { BillingCycle, OrgPlan } from '@prisma/client';
-import { PlanConfigService } from './plan-config.service';
 import { addBillingCycle, prorationCreditPaise, SubscriptionService } from './subscription.service';
 import { planPriceFor, TermsService } from './terms.service';
+import { pricedPlanConfig } from './terms.testing';
 
 /** T6: plan pricing reads the space deal; without one nothing changes. */
 const DAY = 86400000;
-const planConfig = new PlanConfigService({} as any);
+const planConfig = pricedPlanConfig();
 
 /** A deals table that honours the validity window the way Postgres would. */
 const termsWith = (deals: any[]) =>

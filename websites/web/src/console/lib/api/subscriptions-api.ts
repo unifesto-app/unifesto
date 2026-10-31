@@ -2,9 +2,9 @@
  * Subscriptions / billing API — space surface.
  *
  * Billing is per-Space (the P0.2 pivot): a Space is on a plan (General,
- * Club, Growth, Pro or Enterprise) billed to its accountable admin. Space
- * Admins view and change their own Space's plan here; the platform-admin/all-spaces
- * views live in Apex. Backed by the NestJS `/subscription/space/:spaceId`
+ * Club, Growth, Pro or Enterprise), priced by its platform fee per paid ticket
+ * (Z2). Space Admins view their own Space's plan here; only a platform admin
+ * moves a Space between plans, in Apex. Backed by the NestJS `/subscription/space/:spaceId`
  * endpoints, each gated by `@Can(space:manage-billing)`.
  *
  * Note: `amount` is a Decimal and arrives as a string — coerce with Number()
@@ -109,32 +109,6 @@ export interface SubscriptionUsage {
   };
 }
 
-export interface UpgradeInput {
-  plan: OrgPlan;
-  billingCycle: BillingCycle;
-}
-
-/** What `POST …/upgrade` returns — the Razorpay order to check out against. */
-export interface UpgradeOrder {
-  orderId: string;
-  amount: number;
-  currency: string;
-  plan: OrgPlan;
-  billingCycle: BillingCycle;
-  /** renew extends; upgrade starts now; downgrade starts at period end. */
-  kind?: "renew" | "upgrade" | "downgrade";
-  /** ₹ of unused time taken off an upgrade. */
-  credit?: number;
-  /** Public key for the checkout modal (served by the backend, not env). */
-  razorpayKeyId: string;
-}
-
-export interface VerifyUpgradeInput {
-  orderId: string;
-  paymentId: string;
-  signature: string;
-}
-
 type Result<T> = { data: T | null; error: ApiError | null };
 
 /* ------------------------------- Space ------------------------------- */
@@ -187,42 +161,6 @@ export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
   return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));
 }
 
-/**
- * `POST /subscription/space/:spaceId/upgrade` — create a Razorpay order for a
- * plan change. Returns the order to open Razorpay checkout against; the change
- * only takes effect after {@link verifySpaceUpgrade}.
- */
-export async function createSpaceUpgradeOrder(
-  spaceId: string,
-  input: UpgradeInput
-): Promise<Result<UpgradeOrder>> {
-  return apiCall<UpgradeOrder>(
-    backendClient.post(`/subscription/space/${spaceId}/upgrade`, input)
-  );
-}
-
-/**
- * `POST /subscription/space/:spaceId/upgrade/verify` — hand back the signed
- * Razorpay result to activate the new plan.
- */
-export async function verifySpaceUpgrade(
-  spaceId: string,
-  input: VerifyUpgradeInput
-): Promise<Result<Subscription>> {
-  return apiCall<Subscription>(
-    backendClient.post(`/subscription/space/${spaceId}/upgrade/verify`, input)
-  );
-}
-
-/** `POST /subscription/space/:spaceId/cancel` — cancel and drop to STARTER. */
-export async function cancelSpaceSubscription(
-  spaceId: string
-): Promise<Result<Subscription>> {
-  return apiCall<Subscription>(
-    backendClient.post(`/subscription/space/${spaceId}/cancel`)
-  );
-}
-
 /* ------------------------------- Display --------------------------------- */
 
 export const PLAN_LABEL: Record<OrgPlan, string> = {
@@ -233,23 +171,5 @@ export const PLAN_LABEL: Record<OrgPlan, string> = {
   ENTERPRISE: "Enterprise",
 };
 
-/** High → low, for ordering the catalogue and deciding upgrade vs downgrade. */
+/** Ladder order, for sorting the catalogue. */
 export const PLAN_ORDER: OrgPlan[] = ["STARTER", "CLUB", "GROWTH", "PRO", "ENTERPRISE"];
-
-/** Rank of a plan (index in {@link PLAN_ORDER}); -1 if unknown. */
-export function planRank(plan: OrgPlan | null | undefined): number {
-  return plan ? PLAN_ORDER.indexOf(plan) : -1;
-}
-
-/** "Pro · ₹2,999/mo" style label for a space's plan. */
-export function billingSummary(s: Subscription): string {
-  if (s.configured === false || !s.plan) return "No plan set";
-  const amt = Number(s.amount) || 0;
-  const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
-  return amt > 0 ? `${PLAN_LABEL[s.plan]} · ₹${amt.toLocaleString("en-IN")}/${cycle}` : PLAN_LABEL[s.plan];
-}
-
-/** The price for a plan on a given cycle (₹, or null when not purchasable). */
-export function priceFor(plan: PlanInfo, cycle: BillingCycle): number | null {
-  return cycle === "MONTHLY" ? plan.monthlyPrice : plan.annualPrice;
-}

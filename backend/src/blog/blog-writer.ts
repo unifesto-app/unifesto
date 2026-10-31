@@ -35,7 +35,7 @@ export const PRODUCT_FACTS = `Unifesto (unifesto.app) is an event platform for c
 - Unifesto Sprint (/sprint, Pro): hackathon teams, problem statements, rounds with weighted rubrics, judge panels, rooms with a help desk, in-app submissions, a live leaderboard and certificates.
 - Unifesto Stay (/stay): room options, approvals and a Stay Pass scanned at arrival. Unifesto Huddle (/huddle, Pro): online sessions inside the app. Unifesto Orbit (/orbit): one Orbit Lead per campus helps clubs run events.
 - Ticket transfer: the organiser moves a registration to another account by email.
-- Plans: Starter (free RSVP events with no platform fee), Pro, Enterprise. Never quote prices; link /pricing.
+- Plans: General, Club, Growth, Pro, Enterprise. No monthly fee; each plan has a platform fee per paid ticket, and free RSVP events cost nothing. Never quote rates; link /pricing.
 - Unifesto does NOT offer quizzes, polls, live Q&A or currencies other than INR. Never claim a feature not listed here.`;
 
 const HOUSE_RULES = `House style: Indian English spelling (organise, programme). No em dashes. Never use "delve", "testament to", "in conclusion", "in today's fast-paced world", "tapestry", "game-changer", "navigate the landscape", "unlock", "elevate". No fake friendliness ("Great question!", "Happy organising!"). Do not restate the thesis at the end.`;

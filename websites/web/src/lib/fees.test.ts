@@ -1,16 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLANS, buyerFeeOn, includedFeeOn, passExample, planIncludes, platformFeeFrom } from "@/lib/site";
+import { PLANS, buyerFeeOn, includedFeeOn, passExample, planFeesText, planIncludes } from "@/lib/site";
 
-test("the ₹500 pass example: students pay ₹520, General keeps ₹487.50", () => {
+test("the ₹500 pass example: students pay ₹520, General keeps ₹485", () => {
   assert.equal(
-    passExample(PLANS[0], 4, 99, null),
-    "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep ₹487.50 on General.",
+    passExample(PLANS[0], 4, 99),
+    "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep ₹485 on General.",
   );
 });
 
-test("before go-live the keep line is dated", () => {
-  assert.match(passExample(PLANS[0], 4, 99, "2 Nov 2026"), /From 2 Nov 2026 you keep ₹487.50/);
+test("every plan's fee, with the per-event minimums and Enterprise by contract (Z2)", () => {
+  assert.equal(
+    planFeesText(),
+    "3% on General, 3.5% on Club, 4% on Growth (at least ₹999 an event), 4.5% on Pro (at least ₹2,999 an event), Enterprise by contract",
+  );
 });
 
 test("an included fee comes out of the price: a ₹500 ticket gets you ₹480.77", () => {
@@ -21,11 +24,6 @@ test("an included fee comes out of the price: a ₹500 ticket gets you ₹480.77
 test("the buyer fee caps at ₹99 per ticket", () => {
   assert.equal(buyerFeeOn(3000, 4, 99), 99);
   assert.equal(buyerFeeOn(3000, 4, null), 120);
-});
-
-test("platform fee is dated only until 2 Nov 2026 IST", () => {
-  assert.equal(platformFeeFrom(new Date("2026-11-01T18:29:00Z")), "2 Nov 2026");
-  assert.equal(platformFeeFrom(new Date("2026-11-01T18:30:00Z")), null);
 });
 
 test("plan lists come from plan_configs: limits, then only the features the previous plan lacks", () => {
