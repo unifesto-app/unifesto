@@ -36,7 +36,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** One open role, or null when it doesn't exist or is closed; other failures throw. */
 export async function getRole(id: string): Promise<Career | null> {
   if (!UUID.test(id)) return null;
-  const res = await fetch(`${API_URL}/careers/${id}`, withInternal({ next: { revalidate: 300 } }));
+  const res = await fetch(`${API_URL}/careers/${encodeURIComponent(id)}`, withInternal({ next: { revalidate: 300 } }));
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Error fetching role: ${res.status}`);
   return ((await res.json()).data ?? null) as Career | null;

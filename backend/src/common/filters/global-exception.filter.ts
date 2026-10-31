@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { reportError } from '../observability';
 
@@ -24,13 +25,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
+    // J1: a malformed id in a path (e.g. /careers/abc) reaches Prisma as an
+    // invalid UUID (P2023). That is the caller's mistake, not a 500 that feeds
+    // the API-down alarm.
+    const badId =
+      exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2023';
     const status = isHttpException
       ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+      : badId
+        ? HttpStatus.BAD_REQUEST
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message = isHttpException
       ? exception.getResponse()
-      : 'Internal server error';
+      : badId
+        ? 'Invalid id'
+        : 'Internal server error';
 
     const error = exception instanceof Error ? exception : undefined;
     const logContext = `${request.method} ${request.url}`;
