@@ -102,6 +102,19 @@ export const removeIdentity = (token: string, id: string) => call("DELETE", `/us
 /** Revokes every access and refresh token of mine, this browser's included. */
 export const signOutEverywhere = (token: string) => call("POST", "/auth/logout-all", undefined, token);
 
+/** A phone or browser signed in to my account. `current` is this browser. */
+export interface LinkedDevice {
+  id: string;
+  name: string;
+  kind: "app" | "browser";
+  current: boolean;
+  signedInAt: string;
+  lastActiveAt: string;
+}
+export const getLinkedDevices = (token: string) => call<LinkedDevice[]>("GET", "/auth/sessions", undefined, token);
+/** Signs that device out; a phone also stops getting my notifications. */
+export const signOutDevice = (token: string, id: string) => call("DELETE", `/auth/sessions/${id}`, undefined, token);
+
 /** One row per role I hold in a space (`GET /users/me/spaces`). */
 export interface MySpace {
   id: string;

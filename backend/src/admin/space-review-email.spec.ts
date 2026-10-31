@@ -21,7 +21,7 @@ describe('AdminService space review notices', () => {
     };
     const notify = { notify: jest.fn(async () => ({})) };
     const config = { get: () => 'ap-south-1' };
-    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, email as any, notify as any);
+    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, email as any, notify as any, {} as any);
     return { svc, email, notify, prisma };
   };
 

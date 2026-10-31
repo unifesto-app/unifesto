@@ -177,6 +177,9 @@ export class JwtAuthGuard implements CanActivate {
       // Use existing AuthService validation (unchanged)
       const user = await this.authService.validateAccessToken(token);
       request.user = user;
+      // The linked device this request comes from (absent on older tokens).
+      const sid = (jwt.decode(token) as { sid?: unknown } | null)?.sid;
+      request.sessionId = typeof sid === 'string' ? sid : undefined;
       this.authService.touchLastSeen(user);
       return true;
     } catch (error) {

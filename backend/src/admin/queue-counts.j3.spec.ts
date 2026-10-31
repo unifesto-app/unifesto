@@ -11,7 +11,7 @@ describe('AdminService.getQueueCounts', () => {
     const prisma: Record<string, { count: jest.Mock; findMany: jest.Mock }> = {};
     models.forEach((m, i) => (prisma[m] = { count: jest.fn().mockResolvedValue(i + 1), findMany: jest.fn() }));
     const config = { get: () => 'ap-south-1' };
-    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, {} as any, {} as any);
+    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, {} as any, {} as any, {} as any);
 
     const res = await svc.getQueueCounts();
 

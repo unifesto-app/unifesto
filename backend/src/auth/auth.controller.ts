@@ -2,7 +2,11 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
+  Headers,
+  Param,
+  ParseUUIDPipe,
   UseGuards,
   Request,
   HttpCode,
@@ -34,8 +38,11 @@ export class AuthController {
    */
   @Post('apple')
   @HttpCode(HttpStatus.OK)
-  async loginWithApple(@Body() dto: AppleLoginDto): Promise<AuthResponseDto> {
-    return this.authService.loginWithApple(dto);
+  async loginWithApple(
+    @Body() dto: AppleLoginDto,
+    @Headers('user-agent') ua?: string,
+  ): Promise<AuthResponseDto> {
+    return this.authService.loginWithApple(dto, ua);
   }
 
   /**
@@ -45,8 +52,11 @@ export class AuthController {
   @Post('cognito')
   @ApiOperation({ summary: 'Login with Cognito ID token (Google/Apple via Cognito)' })
   @ApiResponse({ status: 200 })
-  async loginWithCognito(@Body() body: CognitoLoginDto): Promise<AuthResponseDto> {
-    return this.authService.loginWithCognito(body.idToken);
+  async loginWithCognito(
+    @Body() body: CognitoLoginDto,
+    @Headers('user-agent') ua?: string,
+  ): Promise<AuthResponseDto> {
+    return this.authService.loginWithCognito(body.idToken, ua);
   }
 
   @Post('email')
@@ -72,8 +82,9 @@ export class AuthController {
   async verifyEmailOtp(
     @Body() body: VerifyEmailOtpDto,
     @Ip() ip: string,
+    @Headers('user-agent') ua?: string,
   ): Promise<AuthResponseDto> {
-    return this.authService.verifyEmailOtp(body.email, body.otp, ip);
+    return this.authService.verifyEmailOtp(body.email, body.otp, ip, ua);
   }
 
   /**
@@ -100,8 +111,9 @@ export class AuthController {
   async verifyMobile(
     @Body() dto: VerifyMobileDto,
     @Ip() ip: string,
+    @Headers('user-agent') ua?: string,
   ): Promise<AuthResponseDto> {
-    return this.authService.verifyMobile(dto, ip);
+    return this.authService.verifyMobile(dto, ip, ua);
   }
 
   /**
@@ -128,8 +140,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Body() body: RefreshTokenDto,
+    @Headers('user-agent') ua?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    return this.authService.refreshSession(body?.refreshToken);
+    return this.authService.refreshSession(body?.refreshToken, ua);
   }
 
   /**
@@ -159,5 +172,25 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logoutAll(@Request() req): Promise<{ message: string }> {
     return this.authService.logout(req.user.id, { allDevices: true });
+  }
+
+  /**
+   * My linked devices: every phone and browser signed in to my account.
+   * GET /auth/sessions
+   */
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  listSessions(@Request() req) {
+    return this.authService.listSessions(req.user.id, req.sessionId);
+  }
+
+  /**
+   * Sign one device out, and stop its pushes.
+   * DELETE /auth/sessions/:id
+   */
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  revokeSession(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+    return this.authService.revokeSession(req.user.id, id);
   }
 }

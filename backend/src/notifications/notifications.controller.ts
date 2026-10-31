@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { RoleCode } from '@prisma/client';
@@ -110,8 +111,12 @@ export class PushDeviceController {
   constructor(private readonly devices: PushDeviceService) {}
 
   @Put()
-  register(@CurrentUser() user: User, @Body() dto: RegisterPushDeviceDto) {
-    return this.devices.register(user.id, dto);
+  register(
+    @CurrentUser() user: User,
+    @Body() dto: RegisterPushDeviceDto,
+    @Req() req: { sessionId?: string },
+  ) {
+    return this.devices.register(user.id, dto, req.sessionId);
   }
 
   @Get()

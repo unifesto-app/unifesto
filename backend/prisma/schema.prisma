@@ -499,7 +499,8 @@ model User {
   emailTemplatesCreated        EmailTemplate[]               @relation("EmailTemplatesCreated")
   adminDevices                 AdminDevice[]
   pushDevices                  UserPushDevice[]
-  bankAccounts                 PayoutBankAccount[]
+  authSessions                 AuthSession[]
+  bankAccounts                PayoutBankAccount[]
   payoutsReceived              Payout[]                      @relation("PayoutUser")
   refundRequests               RefundRequest[]               @relation("RefundRequestedBy")
   spaceStatusRequests          SpaceStatusRequest[]          @relation("SpaceStatusRequestUser")
@@ -5169,6 +5170,11 @@ model UserPushDevice {
   appVersion     String? @map("app_version") @db.VarChar(20)
   optedIn        Boolean @default(false) @map("opted_in")
 
+  // The sign-in that registered this install. Signing that session out (or
+  // out everywhere) deletes the row by cascade and detaches it at OneSignal.
+  sessionId String?      @map("session_id") @db.Uuid
+  session   AuthSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   linkedAt   DateTime? @map("linked_at") @db.Timestamptz(6)
   linkError  String?   @map("link_error") @db.Text
   lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
@@ -5176,7 +5182,30 @@ model UserPushDevice {
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([userId])
+  @@index([sessionId])
   @@map("user_push_devices")
+}
+
+// One sign-in on one device: a "linked device" (the app on a phone, a
+// browser). Every access and refresh token carries its id (`sid`); deleting
+// the row signs that device out. Made at sign-in, or on the first refresh of
+// a token from before sessions existed.
+model AuthSession {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // From the sign-in request; web's server forwards the browser's.
+  userAgent  String?  @map("user_agent") @db.VarChar(400)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Stamped on refresh and, at most every 5 minutes, on authenticated requests.
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  pushDevices UserPushDevice[]
+
+  @@index([userId])
+  @@map("auth_sessions")
 }
 
 // =====================================================

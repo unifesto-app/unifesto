@@ -49,7 +49,11 @@ export function sameOrigin(req: NextRequest): boolean {
   return !site || site === "same-origin";
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown; token?: string } = {}): Promise<{ status: number; data: T }> {
+/** `userAgent`: the browser's, on calls that sign in, so my linked devices say "Chrome on macOS" and not Node. */
+export async function api<T>(
+  path: string,
+  init: { method?: string; body?: unknown; token?: string; userAgent?: string | null } = {},
+): Promise<{ status: number; data: T }> {
   const res = await fetch(
     `${API}${path}`,
     withInternal({
@@ -57,6 +61,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
       headers: {
         "Content-Type": "application/json",
         ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}),
+        ...(init.userAgent ? { "User-Agent": init.userAgent } : {}),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",
@@ -71,8 +76,8 @@ export interface Tokens {
 }
 
 /** Rotate a refresh token. null when the backend refuses it (expired, revoked, reused). */
-export async function rotate(refreshToken: string): Promise<Tokens | null> {
-  const { status, data } = await api<Tokens>("/auth/refresh", { method: "POST", body: { refreshToken } });
+export async function rotate(refreshToken: string, userAgent?: string | null): Promise<Tokens | null> {
+  const { status, data } = await api<Tokens>("/auth/refresh", { method: "POST", body: { refreshToken }, userAgent });
   return status === 200 && data.accessToken && data.refreshToken ? data : null;
 }
 
