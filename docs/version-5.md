@@ -1043,3 +1043,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · J1 banner palette fetches only our own S3 bucket (any *.amazonaws.com host was accepted) (#484)
 - **2026-10-31** · Web: /events and /blog prerendered and cached at the edge; /public files cached for a day; deploy purges Cloudflare's www cache (#485)
 - **2026-10-31** · J1 tail: malformed ids 400 not 500, coupon validate throttled per user, requesters can't self-set URGENT, web API paths encode route params (#486)
+- **2026-10-31** · Track Q backend: terms accepted at app sign-up, sign-in errors with a fix button, booking pushes open the ticket or Pay card, feedback and certificate links in the thanks email, space request decisions notified, End event + 3 h check-in grace (Q2, Q4, Q10, Q14, Q19, Q26) (#490)
