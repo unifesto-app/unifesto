@@ -488,7 +488,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 
 | # | Item | Status |
 |---|---|---|
-| J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
+| J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | done (#486) |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | done (#380) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
@@ -1042,3 +1042,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Auto-blog cuts an over-long meta title or description at a word instead of failing the post (#483)
 - **2026-10-31** · J1 banner palette fetches only our own S3 bucket (any *.amazonaws.com host was accepted) (#484)
 - **2026-10-31** · Web: /events and /blog prerendered and cached at the edge; /public files cached for a day; deploy purges Cloudflare's www cache (#485)
+- **2026-10-31** · J1 tail: malformed ids 400 not 500, coupon validate throttled per user, requesters can't self-set URGENT, web API paths encode route params (#486)
