@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -8,9 +8,10 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import { SheetBackdrop } from './ui/CardSurface';
 import { REPORT_REASONS, submitContentReport, type ReportTarget } from '../lib/api/contentReports';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import Modal from './ui/Modal';
 
 const TITLES: Record<ReportTarget, string> = {
   EVENT: 'Report event',
@@ -208,6 +209,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
+    ...column,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

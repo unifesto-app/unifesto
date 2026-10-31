@@ -9,7 +9,7 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 const PAGE_SIZE = 30;
@@ -97,7 +97,7 @@ export default function RefundsScreen() {
       <FlatList
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         data={data}
         keyExtractor={(r) => r.id}
         ListHeaderComponent={

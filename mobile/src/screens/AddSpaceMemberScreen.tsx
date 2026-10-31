@@ -6,7 +6,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import MemberRow from '../components/manage/MemberRow';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SPACE_ROLE_LABEL, addSpaceMember, searchAddableUsers, type MemberUser, type SpaceMemberRole } from '../lib/api/spaceMembers';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
@@ -97,7 +97,7 @@ export default function AddSpaceMemberScreen() {
       <FlatList
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentContainerStyle={[column, styles.content, { paddingTop: topSpacing }]}
         data={results}
         keyExtractor={(u) => u.id}
         keyboardShouldPersistTaps="handled"

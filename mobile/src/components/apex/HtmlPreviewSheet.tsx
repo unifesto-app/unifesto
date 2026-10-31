@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '@unifesto/unicon/react-native';
@@ -7,6 +7,8 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import useContentWidth from '../../hooks/useContentWidth';
+import Modal from '../ui/Modal';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 
@@ -18,10 +20,11 @@ const wrap = (html: string) =>
 export default function HtmlPreviewSheet({ html, title, onClose }: { html: string | null; title: string; onClose: () => void }) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { inset } = useContentWidth();
   return (
     <Modal visible={html !== null} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: OVERLAY }]} onPress={onClose} accessibilityLabel="Close" />
-      <View style={[styles.sheet, { top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
+      <View style={[styles.sheet, { left: inset, right: inset, top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
         <SheetBackdrop radius={borderRadius.xl} />
         <View style={styles.head}>
           <Text style={[styles.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">

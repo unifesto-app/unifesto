@@ -22,7 +22,7 @@ import PromptCard from '../components/home/PromptCard';
 import IdentityCard, { IdentityCardSkeleton } from '../components/profile/IdentityCard';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
-        <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={styles.content}>
+        <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={[column, styles.content]}>
           {header}
           <View style={styles.guest}>
             <CardBackdrop shape={styles.guest} />
@@ -204,7 +204,7 @@ export default function ProfileScreen() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topInset} />
         }

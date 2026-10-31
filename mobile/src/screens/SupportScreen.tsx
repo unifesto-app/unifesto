@@ -16,7 +16,7 @@ import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -108,7 +108,7 @@ export default function SupportScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           user ? (

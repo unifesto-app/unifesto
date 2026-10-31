@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CheckCircle, Circle } from '@unifesto/unicon/react-native';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
@@ -8,9 +8,10 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { APP_ICONS, appIconsSupported, currentAppIcon, setAppIcon, type AppIconName } from '../lib/appIcon';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFor, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import useContentWidth from '../hooks/useContentWidth';
 
 const OPTIONS: { key: ThemePreference; label: string }[] = [
   { key: 'system', label: 'System' },
@@ -37,7 +38,7 @@ export default function AppearanceScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         <Section title="Theme" subtitle="How Unifesto looks on this phone" style={styles.firstSection}>
@@ -92,7 +93,7 @@ export default function AppearanceScreen() {
 /** Grid of home-screen icons; the current one wears the silver selection frame. */
 function AppIconPicker() {
   const c = useCosmos();
-  const { width } = useWindowDimensions();
+  const { width } = useContentWidth();
   const [current, setCurrent] = useState<AppIconName>(currentAppIcon);
   const gap = spacing[4];
   const tile = Math.floor((width - GUTTER * 2 - gap * (ICON_COLUMNS - 1)) / ICON_COLUMNS);

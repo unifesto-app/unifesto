@@ -7,6 +7,7 @@ import AuthButton from '../auth/AuthButton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import useContentWidth from '../../hooks/useContentWidth';
 
 interface SaveBarProps {
   /** Slides in when true (something changed, saving, or an error to show). */
@@ -27,6 +28,7 @@ interface SaveBarProps {
 export default function SaveBar({ visible, label, onPress, loading, disabled, error }: SaveBarProps) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { inset } = useContentWidth();
   const shown = visible || !!loading || !!error;
 
   const style = useAnimatedStyle(() => ({
@@ -36,7 +38,7 @@ export default function SaveBar({ visible, label, onPress, loading, disabled, er
 
   return (
     <Animated.View
-      style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]), pointerEvents: shown ? 'auto' : 'none' }, style]}
+      style={[styles.bar, { left: inset, right: inset, paddingBottom: Math.max(insets.bottom, spacing[4]), pointerEvents: shown ? 'auto' : 'none' }, style]}
     >
       <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
