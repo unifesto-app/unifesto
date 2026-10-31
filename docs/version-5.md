@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | in progress (#473) |
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | done (#367) |
-| J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | in progress (#489) |
+| J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | in progress (#488) |
 | J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#357) |
 
 ### K · Growth and discovery
@@ -1045,3 +1045,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · J1 tail: malformed ids 400 not 500, coupon validate throttled per user, requesters can't self-set URGENT, web API paths encode route params (#486)
 - **2026-10-31** · Track Q backend: terms accepted at app sign-up, sign-in errors with a fix button, booking pushes open the ticket or Pay card, feedback and certificate links in the thanks email, space request decisions notified, End event + 3 h check-in grace (Q2, Q4, Q10, Q14, Q19, Q26) (#490)
 - **2026-10-31** · J18 DB checks: 18 CHECK constraints keep money, counts and capacities non-negative and fee % in 0-100 (self-validating, can't fail a deploy); backend image runs as node, not root (#489)
+- **2026-10-31** · J18 origin accepts only Cloudflare: Caddy requires the authenticated-origin-pull client cert (global AOP on 31 Oct) (#488)
