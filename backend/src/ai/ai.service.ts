@@ -45,7 +45,12 @@ export type AiResult =
       /** With `tools`: true when the reply asks for tool calls. */
       toolUse?: boolean;
     }
-  | { ok: false; reason: 'disabled' | 'capped' | 'refused' | 'error' };
+  | {
+      ok: false;
+      reason: 'disabled' | 'capped' | 'refused' | 'error';
+      /** With 'error': why, e.g. "stop_reason max_tokens" or the API error, for logs and queues. */
+      detail?: string;
+    };
 
 /** One feature's calls over a window (GET /admin/ai-usage). */
 export interface AiUsage {
@@ -141,6 +146,7 @@ export class AiService {
 
     const started = Date.now();
     let response: Anthropic.Message | null = null;
+    let failure: string | undefined;
     try {
       response = await this.client.messages.create({
         model: AI_MODEL,
@@ -160,7 +166,8 @@ export class AiService {
         ...(input.outputConfig ? { output_config: input.outputConfig } : {}),
       }, input.timeoutMs ? { timeout: input.timeoutMs } : undefined);
     } catch (err) {
-      this.logger.warn(`AI ${feature} call failed: ${(err as Error).message}`);
+      failure = (err as Error).message.slice(0, 200);
+      this.logger.warn(`AI ${feature} call failed: ${failure}`);
     }
 
     const text =
@@ -186,6 +193,7 @@ export class AiService {
         json = JSON.parse(text);
       } catch {
         outcome = AiRunOutcome.ERROR;
+        failure = 'invalid JSON';
       }
     }
 
@@ -201,10 +209,13 @@ export class AiService {
       if (input.tools) return { ok: true, text, content: response!.content, toolUse };
       return input.outputConfig?.format ? { ok: true, text, json } : { ok: true, text };
     }
-    return {
-      ok: false,
-      reason: outcome === AiRunOutcome.REFUSED ? 'refused' : 'error',
-    };
+    if (outcome === AiRunOutcome.REFUSED) return { ok: false, reason: 'refused' };
+    failure ??= !response
+      ? 'no response'
+      : response.stop_reason === 'end_turn' || response.stop_reason === 'stop_sequence'
+        ? 'empty reply'
+        : `stop_reason ${response.stop_reason}`;
+    return { ok: false, reason: 'error', detail: failure };
   }
 
   /**

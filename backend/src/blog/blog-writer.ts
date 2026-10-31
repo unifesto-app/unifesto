@@ -77,7 +77,7 @@ export const HUMANIZE_SYSTEM = `You are an editor. Rewrite the Markdown draft yo
 - Vary sentence length. Prefer plain verbs. Cut filler and hedging.
 - Remove fake friendliness and hype.
 ${HOUSE_RULES}
-Never change facts, numbers, [n] citation markers, links or link targets, headings named "## FAQ" and "## Sources", or the Sources list. Never add new facts. Keep the "Our view:" opinion and the limitation section. Keep at least as many words as you were given.`;
+Never change facts, numbers, [n] citation markers, links or link targets, or the heading "## FAQ". Never add new facts. Keep the "Our view:" opinion and the limitation section. Keep at least as many words as you were given.`;
 
 export const FACTCHECK_SYSTEM = `You check a blog post against its research notes. List every number, statistic, date or named rule in the post that is NOT stated in the research notes and is not simple arithmetic on numbers that are. Ignore numbers inside URLs, FAQ question wording and the Sources list. Return an empty list if everything is supported.`;
 
@@ -185,6 +185,15 @@ export const normUrl = (u: string) => u.trim().replace(/#.*$/, '').replace(/\/+$
 
 export const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 200);
+
+/**
+ * The post split before its "## Sources" heading: [body, sources]. Only the body
+ * goes through the humanize editor, which dropped the list ("fewer than 2 sources").
+ */
+export function splitSources(markdown: string): [string, string] {
+  const at = markdown.search(/^##\s+Sources\b/m);
+  return at < 0 ? [markdown, ''] : [markdown.slice(0, at), markdown.slice(at)];
+}
 
 /** Words in the body, Sources excluded. */
 export function wordCount(markdown: string): number {

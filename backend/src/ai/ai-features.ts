@@ -9,7 +9,9 @@ export const AI_FEATURES = {
   desk: { maxTokens: 2048, dailyCapPerUser: 200 }, // D15
   event_draft: { maxTokens: 4096, dailyCapPerUser: 20 }, // M1
   report_summary: { maxTokens: 1024, dailyCapPerUser: 20 }, // M3
-  blog_writer: { maxTokens: 8192, dailyCapPerUser: 0 }, // auto-blog; system calls, no user
+  // Haiku 5.5 thinks by default and thinking counts toward max_tokens: a 1,000-word
+  // post as JSON ran out at 8192. 16k stays under the SDK's non-streaming limit.
+  blog_writer: { maxTokens: 16_000, dailyCapPerUser: 0 }, // auto-blog; system calls, no user
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 
