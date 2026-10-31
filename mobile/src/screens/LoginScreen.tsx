@@ -166,11 +166,14 @@ export default function NewLoginScreen() {
   // Signed in: back to the screen that asked for sign-in (a Save waits there),
   // or the redirect. Once only: a second back() would pop that screen too.
   const leftRef = useRef(false);
-  useEffect(() => {
-    if (leftRef.current || !(user && token && isAuthenticated && user.mobileVerified)) return;
+  const leave = () => {
+    if (leftRef.current) return;
     leftRef.current = true;
     if (home === '/(tabs)' && router.canGoBack()) router.back();
     else router.replace(home);
+  };
+  useEffect(() => {
+    if (user && token && isAuthenticated && user.mobileVerified) leave();
   }, [user, token, isAuthenticated]);
 
   useEffect(() => {
@@ -281,9 +284,7 @@ export default function NewLoginScreen() {
     setError('');
     try {
       const result = await verifyMobileOtp('+91' + mobileNumber, code);
-      if (result?.isNewUser) {
-        router.replace(home);
-      }
+      if (result?.isNewUser) leave();
     } catch (err: any) {
       setError(err.message || 'That code didn\'t work');
       setMobileOtp('');
