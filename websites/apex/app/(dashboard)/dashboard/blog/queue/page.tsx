@@ -15,6 +15,7 @@ import {
   learnFromSearchConsole,
   retryBlogQuestion,
   startBlogQuestion,
+  stopBlogQuestion,
   type BlogQuestion,
   type BlogQuestionStatus,
 } from "@/lib/api/blog-api";
@@ -26,6 +27,8 @@ const BADGE: Record<BlogQuestionStatus, "neutral" | "brand" | "success" | "destr
   FAILED: "destructive",
 };
 const SOURCE = { SEED: "Seed", REFILL: "Refill", SEARCH_CONSOLE: "Search Console" } as const;
+const ACTIONS = { retry: retryBlogQuestion, start: startBlogQuestion, stop: stopBlogQuestion };
+type Action = keyof typeof ACTIONS;
 
 /** The auto-blog queue: what the writer will take next, what it published, what it rejected and why. */
 export default function BlogQueuePage() {
@@ -35,7 +38,7 @@ export default function BlogQueuePage() {
   const [notice, setNotice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [writerOn, setWriterOn] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState<{ id: string; action: "retry" | "start" } | null>(null);
+  const [busy, setBusy] = useState<{ id: string; action: Action } | null>(null);
   const file = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -56,16 +59,18 @@ export default function BlogQueuePage() {
     });
   }, [load]);
 
-  const act = async (q: BlogQuestion, action: "retry" | "start") => {
+  const act = async (q: BlogQuestion, action: Action) => {
     setBusy({ id: q.id, action });
-    const { error: err } = await (action === "retry" ? retryBlogQuestion : startBlogQuestion)(q.id);
+    const { error: err } = await ACTIONS[action](q.id);
     setBusy(null);
     if (err) return setError(err.message);
     setError("");
     setNotice(
       action === "retry"
         ? `Back in the queue: "${q.question}".`
-        : `Writing "${q.question}" now. It takes a few minutes; reload to see it publish or fail.`
+        : action === "stop"
+          ? `Stopped "${q.question}". Nothing will publish; press Start to write it again.`
+          : `Writing "${q.question}" now. It takes a few minutes; reload to see it publish or fail.`
     );
     void load();
   };
@@ -176,6 +181,11 @@ export default function BlogQueuePage() {
               {q.status === "FAILED" && (
                 <Button size="sm" variant="outline" onClick={() => void act(q, "retry")} disabled={busy !== null}>
                   {busy?.id === q.id && busy.action === "retry" ? "Retrying…" : "Retry"}
+                </Button>
+              )}
+              {q.status === "WRITING" && (
+                <Button size="sm" variant="outline" onClick={() => void act(q, "stop")} disabled={busy !== null}>
+                  {busy?.id === q.id && busy.action === "stop" ? "Stopping…" : "Stop writing"}
                 </Button>
               )}
               {q.post && (

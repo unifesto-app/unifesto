@@ -113,6 +113,11 @@ export async function startBlogQuestion(id: string): Result<BlogQuestion> {
   return apiCall<BlogQuestion>(backendClient.post(`/blog/questions/${id}/start`));
 }
 
+/** `POST /blog/questions/:id/stop` — stop a WRITING question; it turns FAILED ("stopped") and nothing publishes. */
+export async function stopBlogQuestion(id: string): Result<BlogQuestion> {
+  return apiCall<BlogQuestion>(backendClient.post(`/blog/questions/${id}/stop`));
+}
+
 /** `POST /blog/questions/search-console` — queue 10 questions from a Pages CSV. */
 export async function learnFromSearchConsole(
   csv: string
