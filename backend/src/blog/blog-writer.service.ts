@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { BlogQuestion, BlogQuestionSource, BlogQuestionStatus, BlogStatus } from '@prisma/client';
-import { AiService } from '../ai/ai.service';
+import { AiResult, AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlogService } from './blog.service';
 import {
@@ -23,6 +23,7 @@ import {
   gate,
   researchSources,
   slugify,
+  splitSources,
   stripEmDashes,
   topBlogPages,
   wordCount,
@@ -33,6 +34,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const STALE_MS = 60 * 60 * 1000;
 const REFILL_COUNT = 20;
 const LEARN_COUNT = 10;
+
+/** A failed step's reason for the queue, e.g. "error (stop_reason max_tokens)". */
+const why = (r: Extract<AiResult, { ok: false }>) => (r.detail ? `${r.reason} (${r.detail})` : r.reason);
 
 export type GenerateResult =
   | { status: 'published'; slug: string }
@@ -129,7 +133,7 @@ export class BlogWriterService {
       timeoutMs: 180_000,
       subject,
     });
-    if (!research.ok) throw new Error(`research: ${research.reason}`);
+    if (!research.ok) throw new Error(`research: ${why(research)}`);
     const sources = researchSources(research.content ?? []);
     if (sources.length < 2) throw new Error(`research found ${sources.length} sources`);
     const notes = research.text;
@@ -164,18 +168,20 @@ export class BlogWriterService {
       timeoutMs: 180_000,
       subject,
     });
-    if (!draftRun.ok) throw new Error(`draft: ${draftRun.reason}`);
+    if (!draftRun.ok) throw new Error(`draft: ${why(draftRun)}`);
     const draft = draftRun.json as Draft;
 
-    // d. Humanize: a separate editor prompt that only rewrites prose.
+    // d. Humanize: a separate editor prompt that only rewrites prose. The
+    //    Sources list skips it and goes back on unchanged.
+    const [body, sourcesList] = splitSources(draft.markdown);
     const edit = await this.ai.run('blog_writer', {
       system: HUMANIZE_SYSTEM,
-      messages: [{ role: 'user', content: draft.markdown }],
+      messages: [{ role: 'user', content: body }],
       timeoutMs: 180_000,
       subject,
     });
-    if (!edit.ok) throw new Error(`humanize: ${edit.reason}`);
-    draft.markdown = stripEmDashes(edit.text);
+    if (!edit.ok) throw new Error(`humanize: ${why(edit)}`);
+    draft.markdown = stripEmDashes(`${edit.text.trimEnd()}\n\n${sourcesList}`.trim());
     draft.title = stripEmDashes(draft.title);
 
     // e is in the writer prompt; f. the gate checks it, then the numbers.
@@ -192,7 +198,7 @@ export class BlogWriterService {
       timeoutMs: 120_000,
       subject,
     });
-    if (!check.ok) throw new Error(`fact check: ${check.reason}`);
+    if (!check.ok) throw new Error(`fact check: ${why(check)}`);
     const unsupported = (check.json as { unsupported: string[] }).unsupported;
     if (unsupported.length) throw new Error(`gate: unsupported numbers: ${unsupported.slice(0, 5).join('; ')}`);
 

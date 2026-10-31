@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { Draft, cleanSuggestions, gate, normUrl, stripEmDashes, topBlogPages, wordCount } from './blog-writer';
+import { Draft, cleanSuggestions, gate, normUrl, splitSources, stripEmDashes, topBlogPages, wordCount } from './blog-writer';
 
 // The approved sample article: the gate must pass it, and each break must fail it.
 const SAMPLE = readFileSync(join(__dirname, '__fixtures__/sample-post.md'), 'utf8');
@@ -44,6 +44,17 @@ describe('auto-blog gate', () => {
     expect(run({ slug: 'unifesto-orbit' })).toMatch(/already exists/);
     const five = [...posts, { slug: 'a', title: 'Alpha' }, { slug: 'b', title: 'Beta' }];
     expect(run({}, five)).toMatch(/post links/);
+  });
+
+  it('splits the Sources list off so the humanize editor never sees it', () => {
+    const [body, sources] = splitSources(SAMPLE);
+    expect(body + sources).toBe(SAMPLE);
+    expect(body).not.toMatch(/^##\s+Sources\b/m);
+    expect(sources).toMatch(/^## Sources/);
+    expect([...sources.matchAll(/https?:\/\//g)].length).toBeGreaterThanOrEqual(2);
+    // An editor reply without the list still passes once the list is put back.
+    expect(run({ markdown: `${body.trimEnd()}\n\n${sources}`.trim() })).toBeNull();
+    expect(splitSources('no list here')).toEqual(['no list here', '']);
   });
 
   it('cleans up em dashes, Search Console CSVs and question suggestions', () => {

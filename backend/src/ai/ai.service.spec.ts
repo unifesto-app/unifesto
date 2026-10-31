@@ -110,6 +110,7 @@ describe('AiService', () => {
     await expect(svc.run('triage', { ...input, outputConfig })).resolves.toEqual({
       ok: false,
       reason: 'error',
+      detail: 'invalid JSON',
     });
     expect(logged().outcome).toBe(AiRunOutcome.OK);
     const second = prisma.aiRun.create.mock.calls[1] as [{ data: { outcome: AiRunOutcome } }];
@@ -154,6 +155,7 @@ describe('AiService', () => {
     await expect(svc.run('triage', input)).resolves.toEqual({
       ok: false,
       reason: 'error',
+      detail: 'stop_reason max_tokens',
     });
   });
 
@@ -163,6 +165,7 @@ describe('AiService', () => {
     await expect(svc.run('triage', input)).resolves.toEqual({
       ok: false,
       reason: 'error',
+      detail: '529 overloaded',
     });
     expect(logged()).toMatchObject({
       outcome: AiRunOutcome.ERROR,
