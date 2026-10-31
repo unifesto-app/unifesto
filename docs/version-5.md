@@ -1046,3 +1046,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Track Q backend: terms accepted at app sign-up, sign-in errors with a fix button, booking pushes open the ticket or Pay card, feedback and certificate links in the thanks email, space request decisions notified, End event + 3 h check-in grace (Q2, Q4, Q10, Q14, Q19, Q26) (#490)
 - **2026-10-31** · J18 DB checks: 18 CHECK constraints keep money, counts and capacities non-negative and fee % in 0-100 (self-validating, can't fail a deploy); backend image runs as node, not root (#489)
 - **2026-10-31** · J18 origin accepts only Cloudflare: Caddy requires the authenticated-origin-pull client cert (global AOP on 31 Oct) (#488)
+- **2026-10-31** · deploy.sh no longer rsyncs content-bank/ to the server (#492)
