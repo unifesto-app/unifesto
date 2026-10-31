@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { House, ShieldCheck, SquaresFour, Ticket, User, type Icon } from '@unifesto/unicon/react-native';
@@ -31,7 +32,8 @@ export default function FloatingTabBar({
   state,
   navigation,
   hiddenRoutes = [],
-}: BottomTabBarProps & { hiddenRoutes?: string[] }) {
+  avatarUrl,
+}: BottomTabBarProps & { hiddenRoutes?: string[]; avatarUrl?: string | null }) {
   const c = useCosmos();
   const rippleColor = c.tint;
   const insets = useSafeAreaInsets();
@@ -63,6 +65,7 @@ export default function FloatingTabBar({
               key={route.key}
               label={meta.label}
               Icon={meta.icon}
+              avatarUrl={route.name === 'profile' ? avatarUrl : null}
               focused={focused}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
@@ -83,6 +86,7 @@ export default function FloatingTabBar({
 function TabItem({
   label,
   Icon,
+  avatarUrl,
   focused,
   onPress,
   onLongPress,
@@ -91,6 +95,8 @@ function TabItem({
 }: {
   label: string;
   Icon: Icon;
+  /** My photo in place of the Profile glyph, ringed while selected. */
+  avatarUrl?: string | null;
   focused: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -113,7 +119,11 @@ function TabItem({
     >
       {/* Icon-only; the label stays as the accessibility name. */}
       <Animated.View style={iconStyle}>
-        <Icon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} style={[styles.avatar, { borderColor: focused ? color : 'transparent' }]} />
+        ) : (
+          <Icon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
+        )}
       </Animated.View>
     </Pressable>
   );
@@ -132,6 +142,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   item: { width: ITEM_W, height: 40, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5 },
   indicator: {
     position: 'absolute',
     bottom: spacing[2],

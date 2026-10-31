@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket, UserCircle } from '@unifesto/unicon/react-native';
+import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
 import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
@@ -15,7 +15,7 @@ import PressableScale from '../ui/PressableScale';
 // Brand wordmark PNG is 2400×551.
 const MARK_W = 112;
 const MARK_H = Math.round((MARK_W * 551) / 2400);
-const AVATAR = 36;
+const BELL = 36;
 const SEARCH_H = 52;
 
 const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
@@ -27,13 +27,11 @@ const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
 export const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
 
 interface HomeHeaderProps {
-  /** First name when signed in ('' if none yet); null for guests (no avatar). */
-  firstName: string | null;
-  avatarUrl?: string | null;
+  /** Guests get no bell. */
+  signedIn: boolean;
   city: string | null;
   locationStatus: LocationStatus;
   onEnableLocation: () => void;
-  onPressAvatar: () => void;
   /** Unread in-app notifications; the bell shows only when signed in. */
   unread?: number;
   onPressBell?: () => void;
@@ -44,17 +42,15 @@ interface HomeHeaderProps {
 
 /**
  * Home masthead in the web's layout: wordmark left with place + me on the
- * right (like the site's navbar), then a DM Sans headline and the search
+ * right (like the site's navbar; my avatar lives in the tab bar), then a DM Sans headline and the search
  * field. Scrolls inline with the page (not sticky), so it's content layer:
  * solid fills, no Liquid Glass (glass is for floating chrome only).
  */
 export default function HomeHeader({
-  firstName,
-  avatarUrl,
+  signedIn,
   city,
   locationStatus,
   onEnableLocation,
-  onPressAvatar,
   unread = 0,
   onPressBell,
   onPressSearch,
@@ -96,7 +92,7 @@ export default function HomeHeader({
             </PressableScale>
           ) : null}
 
-          {firstName !== null && onPressBell ? (
+          {signedIn && onPressBell ? (
             <PressableScale
               onPress={onPressBell}
               hitSlop={8}
@@ -113,23 +109,6 @@ export default function HomeHeader({
             </PressableScale>
           ) : null}
 
-          {firstName !== null ? (
-            <PressableScale
-              onPress={onPressAvatar}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel="Open profile"
-              style={[styles.avatar, { borderColor: c.outline, backgroundColor: c.card }]}
-            >
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
-              ) : firstName ? (
-                <Text style={[styles.avatarText, { color: c.text }]}>{firstName.charAt(0).toUpperCase()}</Text>
-              ) : (
-                <UserCircle size={22} color={c.text} />
-              )}
-            </PressableScale>
-          ) : null}
         </View>
       </View>
 
@@ -178,17 +157,7 @@ const styles = StyleSheet.create({
   },
   place: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 150, flexShrink: 1 },
   chipText: { fontSize: typography.fontSize.sm, flexShrink: 1, ...cosmosFont.strong },
-  avatar: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: AVATAR / 2,
-    borderWidth: 1,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 15, ...cosmosFont.strong },
-  bell: { width: AVATAR, height: AVATAR, alignItems: 'center', justifyContent: 'center' },
+  bell: { width: BELL, height: BELL, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
     top: 2,
