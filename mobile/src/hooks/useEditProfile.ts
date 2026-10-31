@@ -56,7 +56,7 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export function useEditProfile() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
@@ -201,6 +201,7 @@ export function useEditProfile() {
       // Re-sync form + baseline to the server's canonical values so the screen
       // reads as clean immediately after saving.
       applyServer(updated);
+      updateUser({ avatarUrl: updated.avatarUrl }); // the Profile tab shows it
       setUsernameAvailable(null);
       setSaveStatus('saved');
     } catch (error: any) {

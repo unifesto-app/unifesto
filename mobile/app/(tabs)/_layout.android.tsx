@@ -6,6 +6,7 @@ import { useTheme } from '../../src/context/ThemeContext';
 import FloatingTabBar, { TAB_META } from '../../src/navigation/FloatingTabBar';
 import { useSpaceAccess } from '../../src/context/SpaceAccessContext';
 import usePlatformAdmin from '../../src/hooks/usePlatformAdmin';
+import { useAuth } from '../../src/context/AuthContext';
 
 // Android: a custom floating capsule (iOS uses the native Liquid Glass bar in
 // _layout.ios.tsx). The bar is absolutely positioned, so tab screens scroll
@@ -16,6 +17,7 @@ export default function TabsLayout() {
   const { sections } = useSpaceAccess();
   // Unifesto platform staff only.
   const isPlatformAdmin = usePlatformAdmin();
+  const { user } = useAuth();
   const hiddenRoutes = [...(sections.length === 0 ? ['space'] : []), ...(isPlatformAdmin ? [] : ['apex'])];
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <FloatingTabBar {...props} hiddenRoutes={hiddenRoutes} />}
+      tabBar={(props) => <FloatingTabBar {...props} hiddenRoutes={hiddenRoutes} avatarUrl={user?.avatarUrl} />}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: tokens.bg } }}
     >
       {Object.entries(TAB_META).map(([name, meta]) => (

@@ -45,11 +45,6 @@ export default function HomeTab() {
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
 
-  // '' when signed in without a name yet: icon avatar (never "T").
-  const firstName = user
-    ? (profile?.fullName || user.fullName || profile?.username || user.username || '').split(' ')[0]
-    : null;
-
   // ── Navigation ──────────────────────────────────────────────────────────
   // Stable, so the memoised hero carousel doesn't re-render on every Home update.
   const openEvent = React.useCallback(
@@ -124,12 +119,10 @@ export default function HomeTab() {
         }
       >
         <HomeHeader
-          firstName={firstName}
-          avatarUrl={profile?.avatarUrl}
+          signedIn={!!user}
           city={data.detectedCity}
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
-          onPressAvatar={() => router.navigate('/profile')}
           unread={unread}
           onPressBell={() => router.push('/notifications')}
           onPressPreset={(preset) => router.push({ pathname: '/events', params: { preset } })}
