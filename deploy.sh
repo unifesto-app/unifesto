@@ -59,8 +59,9 @@ SSH_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=2
 # Keys the backend needs in the server's backend/.env (edited on the server only).
 # INTERNAL_API_KEY must also be in websites/web/.env.local with the same value
 # (SSR skips the shared throttle bucket); SENTRY_DSN + LOG_FORMAT=json turn on
-# S35's error reporting and structured logs.
-REQUIRED_BACKEND_ENV="INTERNAL_API_KEY SENTRY_DSN LOG_FORMAT JWT_SECRET DIRECT_URL"
+# S35's error reporting and structured logs. CLOUDFLARE_ZONE_ID is also where
+# purge_www sends its purge.
+REQUIRED_BACKEND_ENV="INTERNAL_API_KEY SENTRY_DSN LOG_FORMAT JWT_SECRET DIRECT_URL CLOUDFLARE_ZONE_ID"
 
 MODE=deploy
 case "${1:-}" in
@@ -186,6 +187,11 @@ elif [ "${web_key}" != "$(env_val backend/.env INTERNAL_API_KEY)" ]; then
   fail "INTERNAL_API_KEY in the server's websites/web/.env.local differs from backend/.env"
 else
   ok "server websites/web/.env.local has the backend's INTERNAL_API_KEY"
+fi
+if [ -n "$(env_val .env CLOUDFLARE_PURGE_TOKEN)" ]; then
+  ok "server .env has CLOUDFLARE_PURGE_TOKEN"
+else
+  fail "server .env is missing: CLOUDFLARE_PURGE_TOKEN (a Cloudflare token with Zone > Cache Purge, for purge_www)"
 fi
 exit "${FAILED}"
 ENVGATE
@@ -356,6 +362,26 @@ start_others() {
   ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && docker compose ps"
 }
 
+# Cloudflare caches the prerendered www pages (websites/web/src/lib/cached-pages.ts).
+# They name the old build's /_next/static files, which the new web container
+# doesn't have, so drop www from the cache once the new web is up. The token is
+# in the server's .env (Zone > Cache Purge on this zone only, IP-locked to the
+# server); it goes to curl on stdin so it never shows in ps. A failed purge
+# doesn't fail the deploy: the stack is already up.
+purge_www() {
+  case " ${SERVICES:-web} " in *" web "*) ;; *) return 0 ;; esac
+  echo "==> Purging www.unifesto.app from Cloudflare's cache"
+  if ! { declare -f env_val; cat <<'PURGE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}"; then
+set -uo pipefail
+cd "$1" || exit 1
+printf 'Authorization: Bearer %s\n' "$(env_val .env CLOUDFLARE_PURGE_TOKEN)" \
+  | curl -fsS -X POST -H @- -H 'Content-Type: application/json' --data '{"hosts":["www.unifesto.app"]}' \
+    "https://api.cloudflare.com/client/v4/zones/$(env_val backend/.env CLOUDFLARE_ZONE_ID)/purge_cache" >/dev/null
+PURGE
+    echo "!! The Cloudflare purge failed. Purge by hand: Caching > Configuration > Custom Purge > Hostname www.unifesto.app" >&2
+  fi
+}
+
 if [ "${MODE}" = rollback ]; then
   echo ""
   echo "!! Rollback does NOT run migrations backwards: the database keeps its current"
@@ -386,6 +412,7 @@ RETAG
     roll_backend
   fi
   start_others
+  purge_www
   ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && echo '${ROLLED_SHA:-unknown}' > DEPLOYED_SHA && echo \"\$(date -u +%Y-%m-%dT%H:%M:%SZ) rollback [${SERVICES}] to ${ROLLBACK_TO:-previous} = ${ROLLED_SHA:-unknown}\" >> DEPLOY_LOG"
   echo "==> Rolled back ${SERVICES} to ${ROLLED_SHA:-an untagged pre-J13 image}. Migrations were not touched."
   exit 0
@@ -503,6 +530,8 @@ if [ "${CADDY_LOCAL}" != "${CADDY_REMOTE}" ]; then
 else
   echo "==> Caddyfile unchanged — leaving caddy running"
 fi
+
+purge_www
 
 ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && echo '${SHA}' > DEPLOYED_SHA && echo \"\$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy [${SERVICES:-all}] ${SHA}\" >> DEPLOY_LOG"
 
