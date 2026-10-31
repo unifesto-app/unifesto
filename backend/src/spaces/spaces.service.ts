@@ -628,7 +628,7 @@ export class SpacesService {
     // Payments, refunds and payouts under the space are kept: refused while any exist.
     await deleteWithoutMoney(
       this.prisma,
-      { event: { spaceId: id }, session: { spaceId: id } },
+      { spaceId: id },
       'This space has payment, refund or payout records and cannot be deleted.',
       (tx) => tx.space.delete({ where: { id } }),
     );

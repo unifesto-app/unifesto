@@ -54,20 +54,3 @@ export async function takeSeats(
             WHERE s.space_id = e.space_id) IS NOT FALSE`;
   if (took !== 1) throw new SoldOutError(PLAN_FULL);
 }
-
-/**
- * Take one seat on a session, atomically against its capacity and only while
- * it is still open (PUBLISHED): two payers racing for the last seat, or a
- * payment landing after the host cancelled, can't both win. Throws SoldOutError.
- */
-export async function takeSessionSeat(
-  tx: Prisma.TransactionClient,
-  sessionId: string,
-  message = 'Session is full',
-): Promise<void> {
-  const took = await tx.$executeRaw`
-    UPDATE sessions SET registered_count = registered_count + 1
-    WHERE id = ${sessionId}::uuid AND status = 'PUBLISHED'
-      AND (capacity IS NULL OR registered_count < capacity)`;
-  if (took !== 1) throw new SoldOutError(message);
-}

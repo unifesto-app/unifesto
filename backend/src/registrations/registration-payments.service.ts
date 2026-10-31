@@ -629,7 +629,7 @@ export class RegistrationPaymentsService {
     const n = refund.notes ?? {};
     const rupees = Number(refund.amount) / 100;
     if (!n.refundRequestId) {
-      // ponytail: auto refunds (sold out, late stay, session/seat/stay cancel)
+      // ponytail: auto refunds (sold out, late stay, seat/stay cancel)
       // have no request to re-drive; their rows already read REFUNDED (so no
       // payout counts them). The desk re-issues from the Razorpay dashboard.
       this.logger.error(
@@ -726,10 +726,8 @@ export class RegistrationPaymentsService {
           ? await this.prisma.eventRegistration.findUnique({ where: { id: n.registrationId }, select: { userId: true, event: { select: { title: true } } } })
           : n.stayBookingId
             ? await this.prisma.stayBooking.findUnique({ where: { id: n.stayBookingId }, select: { userId: true, event: { select: { title: true } } } })
-            : n.sessionRegistrationId
-              ? await this.prisma.sessionRegistration.findUnique({ where: { id: n.sessionRegistrationId }, select: { userId: true, session: { select: { title: true } } } })
-              : null;
-      const title = (owner && 'session' in owner ? owner.session?.title : owner?.event?.title) ?? 'your booking';
+            : null;
+      const title = owner?.event?.title ?? 'your booking';
       const identity = owner?.userId
         ? await this.prisma.userIdentity.findFirst({
             where: { userId: owner.userId, email: { not: null }, isPrimary: true },

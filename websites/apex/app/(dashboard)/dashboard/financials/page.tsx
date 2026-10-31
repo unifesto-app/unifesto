@@ -414,7 +414,6 @@ function EventRow({ event }: { event: EventFinancials }) {
           </span>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <CalendarBlank className="h-3 w-3" />
-            {event.kind === "session" ? "Huddle session · " : ""}
             {eventDate(event.startDateTime)}
           </div>
         </div>

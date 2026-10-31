@@ -47,7 +47,6 @@ describe('RegistrationsService payment replay guards', () => {
         updateMany: jest.fn(async () => ({ count: 1 })),
       },
       eventTicket: { findMany: jest.fn(async () => []) },
-      sessionRegistration: { findFirst: jest.fn(async () => null) },
       event: {
         findUnique: jest.fn(async () => ({
           id: EVENT,

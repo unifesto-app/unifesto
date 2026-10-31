@@ -7,7 +7,6 @@
  *   whatsapp-inbox/…          → private/whatsapp-inbox/…            (whatsapp_messages.media_url)
  *   whatsapp-outbound/…       → private/whatsapp-outbound/…         (whatsapp_messages.media_url)
  *   career-resumes/…          → private/career-resumes/…            (career_applications.resume_url)
- *   sessions/…                → private/sessions/…                  (sessions.recording_url)
  *
  * Every object under those prefixes moves, referenced or not, except a report
  * PDF whose row is gone (the organiser deleted it): that one is deleted. Each
@@ -30,7 +29,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { PrismaClient } from '@prisma/client';
 
-const PREFIXES = ['reports/', 'whatsapp-inbox/', 'whatsapp-outbound/', 'career-resumes/', 'sessions/'];
+const PREFIXES = ['reports/', 'whatsapp-inbox/', 'whatsapp-outbound/', 'career-resumes/'];
 
 const apply = process.argv.includes('--apply');
 const bucket = process.env.S3_BUCKET_NAME;
@@ -57,7 +56,6 @@ async function repoint(url: string, key: string): Promise<number> {
     prisma.eventReport.updateMany({ where: { fileUrl: url }, data: { fileUrl: key } }),
     prisma.whatsappMessage.updateMany({ where: { mediaUrl: url }, data: { mediaUrl: key } }),
     prisma.careerApplication.updateMany({ where: { resumeUrl: url }, data: { resumeUrl: key } }),
-    prisma.session.updateMany({ where: { recordingUrl: url }, data: { recordingUrl: key } }),
   ]);
   return counts.reduce((n, c) => n + c.count, 0);
 }

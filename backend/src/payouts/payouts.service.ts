@@ -8,7 +8,7 @@ import { feeAtFrozenRates, SETTLE_SELECT, settle, settleRow, type Settlement } f
 import { EmailService } from '../email/email.service';
 import { ACCOUNT_NUMBER_RE, AddBankAccountDto, CreatePayoutDto, IFSC_RE, MarkPayoutPaidDto, UPI_RE, UpdateBankAccountStatusDto } from './dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, EventStatus, OrgPlan, SessionStatus, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
+import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, EventStatus, OrgPlan, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, details, esc, greet, h1, inr, note as callout, p, SPACE_APP, strong } from '../email/layout';
@@ -46,14 +46,8 @@ function round2(n: number): number {
 /** The root client or an interactive transaction's: balance reads run in either. */
 type Db = Prisma.TransactionClient;
 
-/** What a payout draws from (T6): an event, or a Huddle session. */
-export type PayoutSource = { eventId: string } | { sessionId: string };
-
-/** Exactly one of eventId / sessionId from a request body. */
-export function payoutSource(b: { eventId?: string; sessionId?: string }): PayoutSource {
-  if (!b.eventId === !b.sessionId) throw new BadRequestException('Send exactly one of eventId or sessionId');
-  return b.eventId ? { eventId: b.eventId } : { sessionId: b.sessionId! };
-}
+/** What a payout draws from: an event. */
+export type PayoutSource = { eventId: string };
 
 @Injectable()
 export class PayoutsService {
@@ -121,18 +115,16 @@ export class PayoutsService {
         where: { id: payoutId },
         include: {
           event: { select: { title: true, createdBy: true, spaceId: true } },
-          session: { select: { title: true, createdBy: true, spaceId: true } },
           bankAccount: { select: { accountHolderName: true, bankName: true, accountNumber: true, upiId: true } },
         },
       });
-      const source = payout?.event ?? payout?.session;
+      const source = payout?.event;
       if (!payout || !source) return;
       const recipients = await this.getEligibleAccountUserIds(source);
       const amount = inr(Number(payout.netAmount));
       const title = source.title;
-      const noun = payout.event ? 'event' : 'session';
       const facts = details([
-        [payout.event ? 'Event' : 'Session', esc(title)],
+        ['Event', esc(title)],
         ['Amount', esc(amount)],
         ['Pay to', esc(accountLabel(payout.bankAccount))],
         ['UTR', step === 'paid' && payout.utr ? esc(payout.utr) : null],
@@ -152,7 +144,7 @@ export class PayoutsService {
         cancelled: {
           subject: `Payout cancelled for ${title}`,
           head: 'Payout cancelled',
-          line: `The payout of ${strong(amount)} for ${strong(title)} was cancelled and not paid. The amount is back in the ${noun} balance, so you can request it again.`,
+          line: `The payout of ${strong(amount)} for ${strong(title)} was cancelled and not paid. The amount is back in the event balance, so you can request it again.`,
         },
       }[step];
       await this.emailUsers([...recipients], copy.subject, (name) => h1(copy.head) + greet(name) + p(copy.line) + facts + cta);
@@ -446,10 +438,7 @@ export class PayoutsService {
     PayoutStatus.COMPLETED,
   ];
 
-  /**
-   * A payout source as the money code needs it (T6). Sessions have no
-   * persisted payout account, so theirs falls back to the creator's primary.
-   */
+  /** A payout source as the money code needs it. */
   private async loadSource(src: PayoutSource, db: Db = this.prisma) {
     const select = {
       title: true,
@@ -458,16 +447,6 @@ export class PayoutsService {
       status: true,
       space: { select: { subscription: true } },
     } as const;
-    if ('sessionId' in src) {
-      const session = await db.session.findUnique({ where: { id: src.sessionId }, select });
-      if (!session) throw new NotFoundException('Session not found');
-      return {
-        ...session,
-        noun: 'session',
-        payoutBankAccountId: null,
-        cancelled: session.status === SessionStatus.CANCELLED,
-      };
-    }
     const event = await db.event.findUnique({
       where: { id: src.eventId },
       select: { ...select, payoutBankAccountId: true },
@@ -478,12 +457,6 @@ export class PayoutsService {
 
   /** The source's sales still held for the organiser. */
   private heldSales(src: PayoutSource, db: Db) {
-    if ('sessionId' in src) {
-      return db.sessionRegistration.findMany({
-        where: { sessionId: src.sessionId, ...this.HELD },
-        select: this.HELD_SELECT,
-      });
-    }
     return Promise.all([
       db.eventRegistration.findMany({ where: { eventId: src.eventId, ...this.HELD }, select: this.HELD_SELECT }),
       this.paidStayBookings(src.eventId, db),
@@ -521,8 +494,7 @@ export class PayoutsService {
 
     // Open refund requests are owed to attendees: hold them back from what can
     // be withdrawn (A25). An unsized request holds the booking's whole base.
-    // Sessions have none: they refund only automatically (refundDueAt).
-    const openRefunds = 'sessionId' in src ? [] : await db.refundRequest.findMany({
+    const openRefunds = await db.refundRequest.findMany({
       where: { eventId: src.eventId, status: { in: OPEN_REFUND_STATUSES } },
       select: {
         requestedAmount: true,
@@ -574,16 +546,8 @@ export class PayoutsService {
     }
   }
 
-  /** Event money capability (or the space's) for an event; the space's for a session. */
-  private async assertSourceMoney(userId: string, src: PayoutSource, spaceId: string, what: string) {
-    if ('eventId' in src) return this.assertEventMoney(userId, src.eventId, spaceId, what);
-    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId }))) {
-      throw new ForbiddenException(`You do not have permission to ${what}`);
-    }
-  }
-
   /**
-   * A20: what the space's other events and sessions owe after refunds landed
+   * A20: what the space's other events owe after refunds landed
    * past their payouts (`debt`), and how much of it this source must cover
    * (`shortfall`): the part their own unpaid balances can't. The space as a
    * whole then never pays out more than Space Financials says remains. Only a
@@ -591,30 +555,20 @@ export class PayoutsService {
    * only on a debt.
    */
   private async spaceShortfall(spaceId: string, except: PayoutSource, db: Db) {
-    const isExcept = (s: PayoutSource) =>
-      'eventId' in s ? 'eventId' in except && s.eventId === except.eventId
-        : 'sessionId' in except && s.sessionId === except.sessionId;
+    const isExcept = (s: PayoutSource) => s.eventId === except.eventId;
     const balanceOf = (s: PayoutSource) => this.computeBalance(s, db);
     const paidOut = await db.payout.findMany({
-      where: { OR: [{ event: { spaceId } }, { session: { spaceId } }], status: { in: this.COMMITTING_STATUSES } },
-      select: { eventId: true, sessionId: true },
-      distinct: ['eventId', 'sessionId'],
+      where: { event: { spaceId }, status: { in: this.COMMITTING_STATUSES } },
+      select: { eventId: true },
+      distinct: ['eventId'],
     });
-    const sources = paidOut
-      .map((p): PayoutSource => (p.eventId ? { eventId: p.eventId } : { sessionId: p.sessionId! }))
-      .filter((s) => !isExcept(s));
+    const sources = paidOut.filter((s) => !isExcept(s));
     let debt = 0;
     for (const s of sources) debt += (await balanceOf(s)).overdrawn;
     if (debt <= 0) return { debt: 0, shortfall: 0 };
-    // ponytail: one computeBalance per event and session in the space, only while a debt exists.
-    const [events, sessions] = await Promise.all([
-      db.event.findMany({ where: { spaceId }, select: { id: true } }),
-      db.session.findMany({ where: { spaceId }, select: { id: true } }),
-    ]);
-    const others: PayoutSource[] = [
-      ...events.map((e) => ({ eventId: e.id })),
-      ...sessions.map((x) => ({ sessionId: x.id })),
-    ].filter((s) => !isExcept(s));
+    // ponytail: one computeBalance per event in the space, only while a debt exists.
+    const events = await db.event.findMany({ where: { spaceId }, select: { id: true } });
+    const others = events.map((e): PayoutSource => ({ eventId: e.id })).filter((s) => !isExcept(s));
     let cover = 0;
     for (const s of others) cover += (await balanceOf(s)).available;
     return { debt: round2(debt), shortfall: round2(Math.max(0, debt - cover)) };
@@ -627,14 +581,14 @@ export class PayoutsService {
 
   /**
    * `userId` set = operator request (must hold the money capability for the
-   * event or session); omitted = platform-admin route, already role-gated.
+   * event); omitted = platform-admin route, already role-gated.
    * The old `createdBy` filter only zeroed gross revenue for outsiders while
    * still returning the balance + latest payout for any event id.
    */
   async getPayoutSummary(src: PayoutSource, userId?: string) {
     const source = await this.loadSource(src);
     if (userId) {
-      await this.assertSourceMoney(userId, src, source.spaceId, `view this ${source.noun}’s payouts`);
+      await this.assertEventMoney(userId, src.eventId, source.spaceId, `view this ${source.noun}’s payouts`);
     }
 
     const sales = await this.heldSales(src, this.prisma);
@@ -801,10 +755,10 @@ export class PayoutsService {
     return out;
   }
 
-  /** Sum payout money for a set of events and sessions. */
-  private async aggregatePayouts(eventIds: string[], sessionIds: string[] = []) {
-    if (eventIds.length === 0 && sessionIds.length === 0) return { settled: 0, pending: 0 };
-    const eventFilter = { OR: [{ eventId: { in: eventIds } }, { sessionId: { in: sessionIds } }] };
+  /** Sum payout money for a set of events. */
+  private async aggregatePayouts(eventIds: string[]) {
+    if (eventIds.length === 0) return { settled: 0, pending: 0 };
+    const eventFilter = { eventId: { in: eventIds } };
     const [completed, pending] = await Promise.all([
       this.prisma.payout.aggregate({
         where: { ...eventFilter, status: PayoutStatus.COMPLETED },
@@ -859,54 +813,6 @@ export class PayoutsService {
     );
   }
 
-  /**
-   * Huddle session money per session (T6): settle() over every session sale
-   * ever paid, at each sale's frozen fee (`fallback` only without one).
-   * ponytail: loads the rows; move to groupBy sums once session sales grow.
-   */
-  private async sessionMoney(sessionIds: string[], fallback: (sessionId: string) => number) {
-    const rows = sessionIds.length
-      ? await this.prisma.sessionRegistration.findMany({
-          where: { sessionId: { in: sessionIds }, paymentStatus: { in: this.EVER_PAID } },
-          select: { ...SETTLE_SELECT, refundDueAt: true, sessionId: true },
-        })
-      : [];
-    const bySession = new Map<string, typeof rows>();
-    for (const r of rows) bySession.set(r.sessionId, [...(bySession.get(r.sessionId) ?? []), r]);
-    return new Map([...bySession].map(([id, list]) => [id, settle(list, fallback(id))]));
-  }
-
-  /** Session settlements in the financials' shape, summed. */
-  private sessionFigures(settlements: Iterable<Settlement>) {
-    const f = { reg: { collectedOverall: 0, processingFees: 0, currentGross: 0 }, refunded: 0, platformFee: 0 };
-    for (const x of settlements) {
-      f.reg.collectedOverall += x.collected;
-      f.reg.processingFees += x.buyerFees;
-      f.reg.currentGross += x.gross;
-      f.refunded += x.refunded;
-      f.platformFee += x.platformFee;
-    }
-    return f;
-  }
-
-  /** Event figures plus session figures. */
-  private withSessions(
-    reg: { collectedOverall: number; processingFees: number; currentGross: number },
-    refunded: number,
-    platformFee: number,
-    sessions: ReturnType<PayoutsService['sessionFigures']>,
-  ) {
-    return {
-      reg: {
-        collectedOverall: reg.collectedOverall + sessions.reg.collectedOverall,
-        processingFees: reg.processingFees + sessions.reg.processingFees,
-        currentGross: reg.currentGross + sessions.reg.currentGross,
-      },
-      refunded: refunded + sessions.refunded,
-      platformFee: round2(platformFee + sessions.platformFee),
-    };
-  }
-
   /** Assemble the summary from the three aggregates + a platform-fee figure. */
   private buildFinancials(
     reg: { collectedOverall: number; processingFees: number; currentGross: number },
@@ -956,10 +862,9 @@ export class PayoutsService {
   async getSpacePayouts(userId: string, spaceId: string) {
     await this.assertSpaceAdmin(userId, spaceId, 'view this space’s payouts');
     const payouts = await this.prisma.payout.findMany({
-      where: { OR: [{ event: { spaceId } }, { session: { spaceId } }] },
+      where: { event: { spaceId } },
       include: {
         event: { select: { id: true, title: true, slug: true, startDateTime: true } },
-        session: { select: { id: true, title: true, slug: true, startDateTime: true } },
         bankAccount: {
           select: {
             methodType: true,
@@ -986,24 +891,18 @@ export class PayoutsService {
     });
     if (!space) throw new NotFoundException('Space not found');
 
-    const [events, sessions] = await Promise.all([
-      this.prisma.event.findMany({ where: { spaceId }, select: { id: true } }),
-      this.prisma.session.findMany({ where: { spaceId }, select: { id: true } }),
-    ]);
+    const events = await this.prisma.event.findMany({ where: { spaceId }, select: { id: true } });
     const eventIds = events.map((e) => e.id);
-    const sessionIds = sessions.map((x) => x.id);
     const feePercent = this.resolvePlatformFeePercent(space.subscription);
 
-    const [reg, payouts, refunded, sessionMoney] = await Promise.all([
+    const [reg, payouts, refunded] = await Promise.all([
       this.aggregateRegistrations(eventIds),
-      this.aggregatePayouts(eventIds, sessionIds),
+      this.aggregatePayouts(eventIds),
       this.aggregateRefunds(eventIds),
-      this.sessionMoney(sessionIds, () => feePercent),
     ]);
     const feeByEvent = await this.heldFeeByEvent(eventIds, () => feePercent);
     const platformFee = round2([...feeByEvent.values()].reduce((a, b) => a + b, 0));
-    const all = this.withSessions(reg, refunded, platformFee, this.sessionFigures(sessionMoney.values()));
-    return this.buildFinancials(all.reg, payouts, all.refunded, all.platformFee);
+    return this.buildFinancials(reg, payouts, refunded, platformFee);
   }
 
   /**
@@ -1013,33 +912,29 @@ export class PayoutsService {
    */
   async getPlatformFinancials() {
     // The demo space's money is left out (P23): aggregate over every other event.
-    const [spaces, events, sessions] = await Promise.all([
+    const [spaces, events] = await Promise.all([
       this.prisma.space.findMany({ where: NOT_DEMO_SPACE, select: { id: true, subscription: true } }),
       this.prisma.event.findMany({ where: NOT_DEMO_EVENT, select: { id: true, spaceId: true } }),
-      this.prisma.session.findMany({ where: { space: NOT_DEMO_SPACE }, select: { id: true, spaceId: true } }),
     ]);
     const eventIds = events.map((e) => e.id);
-    const sessionIds = sessions.map((x) => x.id);
     // Each sale is charged at the rate frozen on it (A21); today's space rate
     // only for a sale without one. Fixed number of queries for any size.
     const pctBySpace = new Map(spaces.map((s) => [s.id, this.resolvePlatformFeePercent(s.subscription)]));
-    const spaceOf = new Map([...events, ...sessions].map((e) => [e.id, e.spaceId]));
+    const spaceOf = new Map(events.map((e) => [e.id, e.spaceId]));
     const pctOf = (id: string) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0;
-    const [reg, payouts, refunded, sessionMoney] = await Promise.all([
+    const [reg, payouts, refunded] = await Promise.all([
       this.aggregateRegistrations(eventIds),
-      this.aggregatePayouts(eventIds, sessionIds),
+      this.aggregatePayouts(eventIds),
       this.aggregateRefunds(eventIds),
-      this.sessionMoney(sessionIds, pctOf),
     ]);
     const feeByEvent = await this.heldFeeByEvent(eventIds, pctOf);
-    const eventFee = round2([...feeByEvent.values()].reduce((x, y) => x + y, 0));
-    const all = this.withSessions(reg, refunded, eventFee, this.sessionFigures(sessionMoney.values()));
+    const platformFee = round2([...feeByEvent.values()].reduce((x, y) => x + y, 0));
 
     return {
-      ...this.buildFinancials(all.reg, payouts, all.refunded, all.platformFee),
+      ...this.buildFinancials(reg, payouts, refunded, platformFee),
       // Platform take-home: the app fee it always keeps plus the revenue-share
       // cut. Surfaced only on the platform view, not the space view.
-      platformEarnings: round2(all.reg.processingFees + all.platformFee),
+      platformEarnings: round2(reg.processingFees + platformFee),
     };
   }
 
@@ -1142,21 +1037,6 @@ export class PayoutsService {
     const spaceOf = new Map(events.map((e) => [e.id, e.spaceId]));
     const feeByEvent = await this.heldFeeByEvent(undefined, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
 
-    // Huddle sessions are rows beside events (T6).
-    const [sessions, payoutBySession] = await Promise.all([
-      this.prisma.session.findMany({ select: { id: true, title: true, slug: true, spaceId: true, startDateTime: true } }),
-      this.prisma.payout.groupBy({
-        by: ['sessionId', 'status'],
-        where: { sessionId: { not: null } },
-        _sum: { netAmount: true },
-      }),
-    ]);
-    const sessionSpace = new Map(sessions.map((x) => [x.id, x.spaceId]));
-    const sessionMoney = await this.sessionMoney(
-      sessions.map((x) => x.id),
-      (id) => pctBySpace.get(sessionSpace.get(id) ?? '') ?? 0,
-    );
-
     // Index every aggregate by eventId for O(1) lookup during assembly.
     const addTo = (
       map: Map<string, { total: number; fee: number }>,
@@ -1184,10 +1064,8 @@ export class PayoutsService {
     addTo(current, addonCurrentByEvent);
     const settledByEvent = new Map<string, number>();
     const pendingByEvent = new Map<string, number>();
-    // Keyed by event id or session id: both are uuids, so they never collide.
-    for (const r of [...payoutByEvent, ...payoutBySession]) {
-      const id = 'eventId' in r ? r.eventId : r.sessionId;
-      if (!id) continue;
+    for (const r of payoutByEvent) {
+      const id = r.eventId;
       const amt = Number(r._sum.netAmount ?? 0);
       if (r.status === PayoutStatus.COMPLETED) {
         settledByEvent.set(id, (settledByEvent.get(id) ?? 0) + amt);
@@ -1265,28 +1143,6 @@ export class PayoutsService {
         };
       });
 
-      const sessionRows = sessions
-        .filter((x) => x.spaceId === space.id)
-        .map((x) => {
-          const f = this.sessionFigures(sessionMoney.has(x.id) ? [sessionMoney.get(x.id)!] : []);
-          const payouts = { settled: settledByEvent.get(x.id) ?? 0, pending: pendingByEvent.get(x.id) ?? 0 };
-          spaceFee += f.platformFee;
-          spaceAcc.collectedOverall += f.reg.collectedOverall;
-          spaceAcc.processingFees += f.reg.processingFees;
-          spaceAcc.currentGross += f.reg.currentGross;
-          spaceSettled += payouts.settled;
-          spacePending += payouts.pending;
-          spaceRefunded += f.refunded;
-          return {
-            kind: 'session' as const,
-            eventId: x.id,
-            title: x.title,
-            slug: x.slug,
-            startDateTime: x.startDateTime,
-            ...this.buildFinancials(f.reg, payouts, f.refunded, f.platformFee),
-          };
-        });
-
       spaceFee = round2(spaceFee);
 
       // Fold this space's raw figures into the platform accumulator.
@@ -1312,7 +1168,7 @@ export class PayoutsService {
           spaceFee,
         ),
         platformEarnings: round2(spaceAcc.processingFees + spaceFee),
-        events: [...eventRows, ...sessionRows],
+        events: eventRows,
       };
     });
 
@@ -1330,7 +1186,7 @@ export class PayoutsService {
   }
 
   /**
-   * Create a payout for an event or session as a withdrawal from its available balance.
+   * Create a payout for an event as a withdrawal from its available balance.
    *
    * `netAmount` (optional) is the exact amount to transfer — the custom-amount
    * option. It is the FINAL net figure (the platform fee is already reflected
@@ -1343,7 +1199,7 @@ export class PayoutsService {
     dto: PayoutSource & { bankAccountId: string; netAmount?: number; notes?: string },
     adminId: string,
   ) {
-    const src: PayoutSource = 'sessionId' in dto ? { sessionId: dto.sessionId } : { eventId: dto.eventId };
+    const src: PayoutSource = { eventId: dto.eventId };
     const event = await this.loadSource(src);
 
     // `!(x > 0)` also rejects NaN, which slips past `x <= 0` (S29).
@@ -1359,8 +1215,7 @@ export class PayoutsService {
     // per-space one stops two events of a space both paying out past what the
     // space nets to (A20). Always event, then space, so they can't deadlock.
     return this.prisma.$transaction(async (tx) => {
-      const key = 'eventId' in src ? src.eventId : `session:${src.sessionId}`;
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout:' + key}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout:' + src.eventId}))`;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout-space:' + event.spaceId}))`;
       const balance = await this.computeBalance(src, tx);
       if (balance.cancelledWithPaid) {
@@ -1421,7 +1276,6 @@ export class PayoutsService {
         },
         include: {
           event: { select: { title: true } },
-          session: { select: { title: true } },
           user: { select: { fullName: true, username: true } },
           bankAccount: true,
         },
@@ -1456,7 +1310,7 @@ export class PayoutsService {
    */
   async getEligibleAccounts(src: PayoutSource, userId: string) {
     const event = await this.loadSource(src);
-    await this.assertSourceMoney(userId, src, event.spaceId, `view this ${event.noun}’s payout accounts`);
+    await this.assertEventMoney(userId, src.eventId, event.spaceId, `view this ${event.noun}’s payout accounts`);
     const eligibleUserIds = await this.getEligibleAccountUserIds(event);
 
     const userIds = [...eligibleUserIds];
@@ -1626,7 +1480,7 @@ export class PayoutsService {
   }
 
   /**
-   * Create a payout for an event or session, resolving the destination account
+   * Create a payout for an event, resolving the destination account
    * (explicit override → event default → creator's primary). Shared by the
    * admin on-demand create and the organiser payout request.
    */
@@ -1655,7 +1509,7 @@ export class PayoutsService {
     bankAccountId?: string | null,
   ) {
     const event = await this.loadSource(src);
-    await this.assertSourceMoney(userId, src, event.spaceId, `request this ${event.noun}’s payout`);
+    await this.assertEventMoney(userId, src.eventId, event.spaceId, `request this ${event.noun}’s payout`);
     await assertSpaceLive(this.prisma, { id: event.spaceId });
     const payout = await this.createPayoutFor(src, userId, netAmount, bankAccountId);
     // D22: the request is a Platform case, which alerts platform admins.
@@ -1775,7 +1629,6 @@ export class PayoutsService {
         where,
         include: {
           event: { select: { id: true, title: true, slug: true } },
-          session: { select: { id: true, title: true, slug: true } },
           user: { select: { id: true, fullName: true, username: true } },
           // IFSC too: admins pay these by hand (manual bank transfer).
           bankAccount: { select: { methodType: true, bankName: true, accountNumber: true, ifscCode: true, upiId: true, accountHolderName: true } },
@@ -1795,7 +1648,6 @@ export class PayoutsService {
         where: { userId },
         include: {
           event: { select: { id: true, title: true, slug: true, startDateTime: true } },
-          session: { select: { id: true, title: true, slug: true, startDateTime: true } },
           bankAccount: { select: { methodType: true, bankName: true, accountNumber: true, upiId: true, accountHolderName: true } },
         },
         orderBy: { createdAt: 'desc' },

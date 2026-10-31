@@ -4,23 +4,21 @@ import { EventsService } from '../events/events.service';
 import { SpacesService } from '../spaces/spaces.service';
 
 /**
- * S14: deleting a cancelled event / session, or a space, cascades over paid
+ * S14: deleting a cancelled event, or a space, cascades over paid
  * registrations, refund requests and stay bookings. Refuse while any exist.
  */
 
-function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'session' | 'addon', number>> = {}) {
+function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'addon', number>> = {}) {
   const prisma = {
     eventRegistration: { count: jest.fn(async () => counts.reg ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     refundRequest: { count: jest.fn(async () => counts.refund ?? 0) },
     stayBooking: { count: jest.fn(async () => counts.stay ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     payout: { count: jest.fn(async () => counts.payout ?? 0) },
-    sessionRegistration: { count: jest.fn(async () => counts.session ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     groupSeatPurchase: { count: jest.fn(async () => counts.addon ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     event: {
       findUnique: jest.fn(async () => ({ id: 'ev-1', slug: 'ev', spaceId: 'sp-1', status: EventStatus.CANCELLED })),
       delete: jest.fn(async () => ({ id: 'ev-1' })),
     },
-    session: { delete: jest.fn(async () => ({})) },
     spaceDomain: { findMany: jest.fn(async () => []) },
     space: {
       findUnique: jest.fn(async () => ({ id: 'sp-1', _count: { childSpaces: 0 } })),
@@ -100,13 +98,12 @@ describe('money rows RESTRICT their parents, one guard clears the rest (A29)', (
     expect(order(prisma.eventRegistration.deleteMany)).toBeLessThan(order(prisma.event.delete));
   });
 
-  it('a space delete clears both its events\' and its sessions\' unpaid rows', async () => {
+  it('a space delete clears its events\' unpaid rows', async () => {
     const prisma = db();
     const s = Object.create(SpacesService.prototype);
     Object.assign(s, { prisma });
     await s.deleteSpace('sp-1');
     expect(prisma.eventRegistration.deleteMany).toHaveBeenCalledWith({ where: { event: { spaceId: 'sp-1' }, ...unpaid } });
-    expect(prisma.sessionRegistration.deleteMany).toHaveBeenCalledWith({ where: { session: { spaceId: 'sp-1' }, ...unpaid } });
     expect(prisma.space.delete).toHaveBeenCalled();
   });
 

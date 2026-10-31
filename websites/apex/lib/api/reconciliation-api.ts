@@ -95,7 +95,7 @@ export interface ReconPaymentRow {
   contact: string | null;
   createdAt: string | null;
   platform: {
-    source: "EVENT" | "SESSION";
+    source: "EVENT";
     registrationId: string;
     title: string;
     paymentStatus: string;

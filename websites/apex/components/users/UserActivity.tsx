@@ -21,7 +21,7 @@ interface Activity {
     event: { id: string; title: string; startDateTime: string; space: { id: string; name: string } | null };
   }[];
   payments: {
-    kind: "TICKET" | "SEATS" | "SESSION" | "STAY";
+    kind: "TICKET" | "SEATS" | "STAY";
     id: string;
     title: string;
     eventId: string | null;
@@ -36,7 +36,6 @@ interface Activity {
 const KIND_LABEL: Record<Activity["payments"][number]["kind"], string> = {
   TICKET: "Ticket",
   SEATS: "Extra seats",
-  SESSION: "Session",
   STAY: "Stay",
 };
 
