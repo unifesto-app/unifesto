@@ -25,15 +25,16 @@ import type { GroupMemberInput } from '../../src/lib/api/registrations';
 import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
+import ShadeCard from '../../src/components/ui/ShadeCard';
 import { Button } from '../../src/components/ui';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../../src/theme/cosmos';
 
 const AVATAR = 40;
 
 /**
- * "Manage group" — one page for both group models (pay-first seats and the
- * shared-ticket roster): a progress summary, one row per person, an inline
- * invite field, and an inline member editor. No modals, by design.
+ * "Manage group": one page for both group models (pay-first seats and the
+ * shared-ticket roster): seats filled on the sky shade, one row per person, an
+ * inline invite field, and an inline member editor. No modals, by design.
  */
 export default function ManageGroupRoute() {
   const c = useCosmos();
@@ -58,7 +59,8 @@ export default function ManageGroupRoute() {
     return (
       <CosmosScreen contentContainerStyle={styles.pad}>
         {header}
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <UsersThree size={40} color={c.muted} weight="duotone" />
           <Text style={[styles.body, { color: c.soft, textAlign: 'center', marginTop: spacing[3] }]}>{g.error}</Text>
         </View>
@@ -116,12 +118,12 @@ export default function ManageGroupRoute() {
                   ) : (
                     <>
                       <SettingsGroup>
-                        {has.name ? <SettingsRow icon={<User size={24} color={c.primary} weight="duotone" />} label={saved!.name} /> : null}
-                        {has.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.primary} weight="duotone" />} label={saved!.email} /> : null}
-                        {has.mobile ? <SettingsRow icon={<Phone size={24} color={c.primary} weight="duotone" />} label={`+91 ${saved!.mobile}`} /> : null}
+                        {has.name ? <SettingsRow icon={<User size={24} color={c.text} />} label={saved!.name} /> : null}
+                        {has.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={saved!.email} /> : null}
+                        {has.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${saved!.mobile}`} /> : null}
                         {has.gender ? (
                           <SettingsRow
-                            icon={<GenderIntersex size={24} color={c.primary} weight="duotone" />}
+                            icon={<GenderIntersex size={24} color={c.text} />}
                             label={profileGenderToAttendeeOption(saved!.gender) || saved!.gender}
                           />
                         ) : null}
@@ -197,7 +199,8 @@ export default function ManageGroupRoute() {
       <CosmosScreen bottom={spacing[10] + insets.bottom} contentContainerStyle={styles.pad}>
           {header}
           <View style={styles.editHead}>
-            <Text style={[styles.title, { color: c.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
+            {/* A person's name (or the seat's label): Hanken, never display. */}
+            <Text style={[styles.nameTitle, { color: c.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
               {title}
             </Text>
             <Pressable onPress={g.closeSeat} hitSlop={10}>
@@ -206,12 +209,10 @@ export default function ManageGroupRoute() {
           </View>
           <Text style={[styles.body, { color: c.muted, marginTop: 4 }]}>{status}</Text>
           {row.kind === 'filled' && (md.email || md.mobile) ? (
-            <View style={{ marginTop: spacing[5] }}>
-              <SettingsGroup>
-                {md.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.primary} weight="duotone" />} label={md.email} /> : null}
-                {md.mobile ? <SettingsRow icon={<Phone size={24} color={c.primary} weight="duotone" />} label={`+91 ${md.mobile}`} /> : null}
-              </SettingsGroup>
-            </View>
+            <SettingsGroup style={{ marginTop: spacing[5] }}>
+              {md.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={md.email} /> : null}
+              {md.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${md.mobile}`} /> : null}
+            </SettingsGroup>
           ) : null}
           <SeatActions actions={row.actions} />
           {row.kind === 'filled' && !row.isLead && g.team?.isLead && !g.team.open ? (
@@ -239,17 +240,19 @@ export default function ManageGroupRoute() {
           ListHeaderComponent={
             <>
               <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">My group</Text>
+              {/* Seats filled: the page's hero, on the ticket's sky shade. */}
               {g.totalCount > 0 ? (
-                <>
-                  <Text style={[styles.body, { color: c.soft, marginTop: 4 }]}>
-                    {allFilled
-                      ? 'Everyone is in. Nice.'
-                      : `${g.filledCount} of ${g.totalCount} ${g.usesSeats ? 'seats filled' : 'members added'}`}
+                <ShadeCard tone="sky" style={{ marginTop: spacing[5] }}>
+                  <Text style={[styles.cardLabel, { color: c.soft }]}>{g.usesSeats ? 'Seats filled' : 'Members added'}</Text>
+                  <Text style={[styles.big, { color: c.sky }]} accessibilityLabel={`${g.filledCount} of ${g.totalCount} ${g.usesSeats ? 'seats filled' : 'members added'}`}>
+                    {g.filledCount}
+                    <Text style={[styles.of, { color: c.muted }]}>{` of ${g.totalCount}`}</Text>
                   </Text>
-                  <View style={[styles.track, { backgroundColor: c.raised }]}>
-                    <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: allFilled ? c.success : c.primary }]} />
+                  <View style={[styles.track, { backgroundColor: c.tint }]}>
+                    <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: c.sky }]} />
                   </View>
-                </>
+                  {allFilled ? <Text style={[styles.body, { color: c.soft, marginTop: spacing[2] }]}>Everyone is in. Nice.</Text> : null}
+                </ShadeCard>
               ) : null}
 
               {/* Lead handover: asked of me (member), or waiting on someone (lead). */}
@@ -257,7 +260,7 @@ export default function ManageGroupRoute() {
                 <View style={[styles.card, { marginTop: spacing[5] }]}>
                   <CardBackdrop shape={styles.card} />
                   <View style={styles.nameRow}>
-                    <Crown size={20} color={c.primary} weight="duotone" />
+                    <Crown size={20} color={c.text} weight="duotone" />
                     <Text style={[styles.cardTitle, { color: c.text, marginBottom: 0 }]}>
                       {g.team.leadTransfer.toMe ? 'Lead your team?' : `Waiting for ${g.team.leadTransfer.toName}`}
                     </Text>
@@ -292,9 +295,9 @@ export default function ManageGroupRoute() {
               ) : null}
 
               {g.isMember ? (
-                <View style={{ marginTop: spacing[6] }}>
-                  <SettingsGroup>
-                    <SettingsRow icon={<User size={24} color={c.primary} weight="duotone" />} label={g.details?.member?.name || 'Me'} />
+                <View>
+                  <SettingsGroup style={{ marginTop: spacing[6] }}>
+                    <SettingsRow icon={<User size={24} color={c.text} />} label={g.details?.member?.name || 'Me'} />
                   </SettingsGroup>
                   <Text style={[styles.body, { color: c.muted, marginTop: spacing[2] }]}>
                     Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
@@ -305,7 +308,8 @@ export default function ManageGroupRoute() {
           }
           ListEmptyComponent={
             g.isMember ? null : (
-              <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[6] }]}>
+              <View style={[styles.empty, { marginTop: spacing[6] }]}>
+                <CardBackdrop shape={styles.empty} />
                 <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>There's nothing to manage for this ticket.</Text>
               </View>
             )
@@ -455,20 +459,18 @@ export default function ManageGroupRoute() {
 function SeatActions({ actions }: { actions: SeatAction[] }) {
   if (actions.length === 0) return null;
   return (
-    <View style={{ marginTop: spacing[6] }}>
-      <SettingsGroup title="Actions">
-        {actions.map((a) => (
-          <SettingsRow key={a.key} label={a.label} danger={a.danger} onPress={a.onPress} />
-        ))}
-      </SettingsGroup>
-    </View>
+    <SettingsGroup title="Actions" style={{ marginTop: spacing[6] }}>
+      {actions.map((a) => (
+        <SettingsRow key={a.key} label={a.label} danger={a.danger} onPress={a.onPress} />
+      ))}
+    </SettingsGroup>
   );
 }
 
 /** One person-slot: who it is (or the seat's state). Tap to open its page. */
 const Row = React.memo(function Row({ row }: { row: GroupRow }) {
   const c = useCosmos();
-  const leadMark = row.isLead ? <Star size={12} color={c.primary} weight="fill" /> : null;
+  const leadMark = row.isLead ? <Star size={12} color={c.text} weight="fill" /> : null;
 
   const mark =
     row.kind === 'filled' ? (
@@ -478,11 +480,11 @@ const Row = React.memo(function Row({ row }: { row: GroupRow }) {
     ) : (
       <View style={styles.avatar}>
         {row.kind === 'invited' ? (
-          <EnvelopeSimple size={24} color={c.primary} />
+          <EnvelopeSimple size={24} color={c.text} />
         ) : row.kind === 'released' ? (
           <ArrowCounterClockwise size={22} color={c.muted} />
         ) : (
-          <Plus size={24} color={c.primary} weight="bold" />
+          <Plus size={24} color={c.text} weight="bold" />
         )}
       </View>
     );
@@ -491,14 +493,16 @@ const Row = React.memo(function Row({ row }: { row: GroupRow }) {
     row.kind === 'filled'
       ? [row.name, row.appStatus ?? row.sub, c.text, c.muted]
       : row.kind === 'invited'
-        ? [row.email || row.label, 'Invited, waiting to claim', c.text, c.primary]
+        ? [row.email || row.label, 'Invited, waiting to claim', c.text, c.warn]
         : row.kind === 'released'
           ? [row.label, 'Released', c.soft, c.muted]
-          : ['Invite by email', row.label, c.primary, c.muted];
+          : ['Invite by email', row.label, c.text, c.muted];
 
   return (
     <Pressable
       onPress={row.onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={sub ? `${title}, ${sub}` : title}
       style={({ pressed }) => [styles.row, row.kind === 'released' && { opacity: 0.6 }, pressed && { backgroundColor: c.tint }]}
     >
       {mark}
@@ -525,7 +529,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
   empty: { alignItems: 'center', borderRadius: cosmosCardRadius, padding: spacing[6] },
-  title: { flexShrink: 1, fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
+  title: { flexShrink: 1, fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  nameTitle: { flexShrink: 1, fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.strong },
+  cardLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  big: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
+  of: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

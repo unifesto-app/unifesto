@@ -2,11 +2,12 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, QrCode, UsersThree, XCircle } from '@unifesto/unicon/react-native';
+import { Check, QrCode, UsersThree } from '@unifesto/unicon/react-native';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';
 import PressableScale from '../ui/PressableScale';
+import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { countdownLabel, dateChip, formatTime } from '../../utils/eventFormat';
@@ -35,8 +36,9 @@ function statusOf(ticket: MyTicket): Status {
 
 /**
  * A pass: 4:3 event thumb and details on the left, a perforated tear line,
- * and a date stub on the right. Past and cancelled passes fade back so the
- * live ones stand out.
+ * and a date stub on the right. A plain card: the tier and date carry the
+ * ticket's sky, the status is plain text. Past and cancelled passes fade back
+ * so the live ones stand out.
  */
 export default function TicketCard({
   ticket,
@@ -55,16 +57,20 @@ export default function TicketCard({
   const venue = ticket.venueName || ticket.city || (ticket.type === 'ONLINE' ? 'Online' : 'Venue TBA');
   const typeName = typeof ticket.ticketType === 'string' ? ticket.ticketType : ticket.ticketType?.name;
 
+  // Statuses are plain text: a live dot in mint, the countdown in sky, a tick for done.
   const badge = (() => {
     switch (status.kind) {
-      case 'countdown':
-        return { text: status.label, color: c.primary, bg: c.tint, icon: <View style={[styles.dot, { backgroundColor: c.primary }]} /> };
+      case 'countdown': {
+        const now = status.label === 'Happening now';
+        const color = now ? c.mint : c.sky;
+        return { text: status.label, color, icon: now ? <View style={[styles.dot, { backgroundColor: color }]} /> : null };
+      }
       case 'checkedIn':
-        return { text: 'Checked in', color: c.success, bg: 'rgba(16,185,129,0.14)', icon: <CheckCircle size={12} color={c.success} weight="fill" /> };
+        return { text: 'Checked in', color: c.mint, icon: <Check size={12} color={c.mint} weight="bold" /> };
       case 'cancelled':
-        return { text: 'Cancelled', color: c.danger, bg: 'rgba(239,68,68,0.14)', icon: <XCircle size={12} color={c.danger} weight="fill" /> };
+        return { text: 'Cancelled', color: c.danger, icon: null };
       default:
-        return { text: 'Ended', color: c.muted, bg: c.tint, icon: null };
+        return { text: 'Ended', color: c.muted, icon: null };
     }
   })();
 
@@ -78,8 +84,9 @@ export default function TicketCard({
       // VoiceOver can't long-press; offer delete in the actions rotor instead.
       accessibilityActions={onLongPress ? [{ name: 'delete', label: 'Delete ticket' }] : undefined}
       onAccessibilityAction={(e) => e.nativeEvent.actionName === 'delete' && onLongPress?.()}
-      style={[styles.card, { backgroundColor: c.raised }]}
+      style={styles.card}
     >
+      <CardBackdrop shape={styles.card} />
       <View style={styles.main}>
         {/* Finished passes recede through the cover only; text keeps full contrast. */}
         <View style={[styles.thumb, { backgroundColor: c.card }, !live && { opacity: 0.45 }]}>
@@ -91,7 +98,7 @@ export default function TicketCard({
         </View>
 
         <View style={styles.info}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <View style={styles.badge}>
             {badge.icon}
             <Text style={[styles.badgeText, { color: badge.color }]} numberOfLines={1}>{badge.text}</Text>
           </View>
@@ -107,7 +114,7 @@ export default function TicketCard({
               </Text>
             </View>
           ) : typeName ? (
-            <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{typeName}</Text>
+            <Text style={[styles.tier, { color: live ? c.sky : c.muted }]} numberOfLines={1}>{typeName}</Text>
           ) : null}
         </View>
       </View>
@@ -120,18 +127,18 @@ export default function TicketCard({
       </View>
 
       <View style={styles.stub}>
-        <Text style={[styles.stubDay, { color: live ? c.text : c.soft }]}>{chip.day}</Text>
+        <Text style={[styles.stubDay, { color: live ? c.sky : c.soft }]}>{chip.day}</Text>
         <Text style={[styles.stubMonth, { color: live ? c.soft : c.muted }]}>{chip.month}</Text>
-        {live ? <QrCode size={18} color={c.soft} style={{ marginTop: 8 }} /> : null}
+        {live ? <QrCode size={18} color={c.muted} style={{ marginTop: 8 }} /> : null}
       </View>
     </PressableScale>
   );
 }
 
 export function TicketCardSkeleton() {
-  const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <View style={styles.main}>
         <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
         <View style={[styles.info, { gap: 8 }]}>
@@ -152,20 +159,12 @@ const styles = StyleSheet.create({
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   info: { flex: 1, gap: 3 },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
-    marginBottom: 2,
-  },
-  dot: { width: 5, height: 5, borderRadius: 3 },
+  badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 12, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  tier: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   perfColumn: { width: 1, alignItems: 'center' },
   perf: { flex: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginVertical: NOTCH / 2 + 2 },

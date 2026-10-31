@@ -12,9 +12,10 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -100,9 +101,10 @@ export default function CertificatesScreen() {
       ))}
     </View>
   ) : !latest && !locked.length ? (
-    <View style={[styles.prompt, { backgroundColor: c.raised }]}>
-      <CertificateIcon size={40} color={c.soft} weight="duotone" />
-      <Text style={[styles.promptTitle, { color: c.text }]}>No certificates yet</Text>
+    <View style={styles.prompt}>
+      <CardBackdrop shape={styles.prompt} />
+      <CertificateIcon size={40} color={c.muted} weight="duotone" />
+      <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">No certificates yet</Text>
       <Text style={[styles.promptBody, { color: c.soft }]}>
         When an organiser issues a certificate for an event you attended, it lands here, ready to share.
       </Text>
@@ -112,7 +114,7 @@ export default function CertificatesScreen() {
     <>
       {locked.length ? (
         <View style={styles.pad}>
-          <SettingsGroup title="Waiting for my feedback" surface={c.raised}>
+          <SettingsGroup title="Waiting for my feedback">
             {locked.map((cert) => (
               <SettingsRow
                 key={cert.id}
@@ -128,7 +130,7 @@ export default function CertificatesScreen() {
       {latest ? (
         <View style={styles.pad}>
           <Text style={[styles.eyebrow, { color: c.muted }]}>
-            {certificates.length === 1 ? 'Your certificate' : `Latest of ${certificates.length - locked.length}`}
+            {certificates.length === 1 ? 'My certificate' : `Latest of ${certificates.length - locked.length}`}
           </Text>
           <LatestCard cert={latest} onOpenEvent={() => router.push(`/event/${latest.event.slug || latest.event.id}`)} />
         </View>
@@ -175,7 +177,8 @@ function LatestCard({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: (
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <Pressable
         onPress={() => cert.imageUrl && WebBrowser.openBrowserAsync(cert.imageUrl)}
         disabled={!cert.imageUrl}
@@ -234,8 +237,9 @@ function CertificateRow({ cert }: { cert: MyCertificate }) {
       disabled={!cert.pdfUrl && !cert.imageUrl}
       accessibilityRole="button"
       accessibilityLabel={`Certificate for ${cert.event.title}, issued ${formatDate(cert.issuedAt)}`}
-      style={({ pressed }) => [styles.row, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
+      <CardBackdrop shape={styles.row} />
       <View style={[styles.thumb, { height: THUMB_W / ratio, backgroundColor: c.card }]}>
         {cert.imageUrl ? (
           <Image source={{ uri: cert.imageUrl }} style={StyleSheet.absoluteFill} contentFit="contain" />
@@ -264,7 +268,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   preview: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cardBody: { padding: spacing[5] },
-  title: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  title: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   meta: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   action: { flex: 1, height: 46, paddingHorizontal: spacing[3] },
@@ -277,10 +281,10 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   codeLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  codeValue: { marginTop: 2, fontSize: typography.fontSize.base, letterSpacing: 0.5, ...cosmosFont.strong },
+  codeValue: { marginTop: 2, fontSize: typography.fontSize.base, letterSpacing: 0.5, ...cosmosFont.figure },
   copy: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[3], paddingRight: spacing[4], borderRadius: cosmosCardRadius },
-  thumb: { width: THUMB_W, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  thumb: { width: THUMB_W, borderRadius: borderRadius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 2 },
   rowTitle: { fontSize: typography.fontSize.base, lineHeight: 21, ...cosmosFont.strong },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },

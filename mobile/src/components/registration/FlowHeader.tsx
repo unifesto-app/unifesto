@@ -73,8 +73,8 @@ export function FlowHeader({
               accessible
               accessibilityLabel={`Seat held for ${Math.ceil(secondsLeft / 60)} more minute${secondsLeft > 60 ? 's' : ''}`}
             >
-              <Timer size={16} color={urgent ? c.danger : c.muted} weight="bold" />
-              <Text style={[styles.timerText, { color: urgent ? c.danger : c.soft }]}>{mmss(secondsLeft)}</Text>
+              <Timer size={16} color={urgent ? c.warn : c.muted} weight="bold" />
+              <Text style={[styles.timerText, { color: urgent ? c.warn : c.soft }]}>{mmss(secondsLeft)}</Text>
             </View>
           ) : null}
         </View>
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   right: { alignItems: 'flex-end' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, ...cosmosFont.strong },
   timer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timerText: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  timerText: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   progress: { flexDirection: 'row', gap: 6, marginTop: spacing[3], paddingBottom: spacing[3] },
   stepCol: { flex: 1, gap: spacing[2] },
   segment: { height: 4, borderRadius: 2, overflow: 'hidden' },

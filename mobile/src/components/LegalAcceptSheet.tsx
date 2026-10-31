@@ -54,7 +54,7 @@ export default function LegalAcceptSheet() {
         <View style={[StyleSheet.absoluteFill, styles.backdrop]} />
         <View style={[styles.card, { paddingBottom: insets.bottom + spacing[4] }]} accessibilityViewIsModal>
           <SheetBackdrop radius={28} />
-          <Text style={[styles.title, { color: c.text }]}>We have updated our terms</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">We have updated our terms</Text>
           <Text style={[styles.body, { color: c.soft }]}>Please read what changed and agree to continue.</Text>
           <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: spacing[4], paddingVertical: spacing[4] }}>
             {pending.map((d) => (
@@ -66,7 +66,7 @@ export default function LegalAcceptSheet() {
                   accessibilityRole="link"
                   hitSlop={8}
                 >
-                  <Text style={[styles.link, { color: c.primary }]}>Read the full text</Text>
+                  <Text style={[styles.link, { color: c.text }]}>Read the full text</Text>
                 </Pressable>
               </View>
             ))}
@@ -89,9 +89,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingTop: spacing[6],
   },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  title: { fontSize: 22, lineHeight: 28, marginBottom: spacing[2], ...cosmosFont.display },
   docTitle: { fontSize: typography.fontSize.base, marginBottom: spacing[1], ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
-  link: { marginTop: spacing[1], fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  link: { marginTop: spacing[1], fontSize: typography.fontSize.base, textDecorationLine: 'underline', ...cosmosFont.strong },
   button: { marginTop: spacing[3], alignSelf: 'stretch' },
 });
