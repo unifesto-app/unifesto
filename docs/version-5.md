@@ -493,7 +493,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | done (#380) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | done (#386) |
-| J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
+| J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | in progress (#493) |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
 | J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | IN_REVIEW (#308) |
 | J9 | **Keep private event and session fields out of public APIs.** - Anonymous GET /events, GET /events/space/:id and favourites return every Event column through include with no select (backend/src/events/events.service.ts:1554-1593, getSpaceEvents ~:2675), exposing whatsappAttendeeGroupUrl, onl | IN_REVIEW (#311) |
@@ -1049,3 +1049,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · deploy.sh no longer rsyncs content-bank/ to the server (#492)
 - **2026-10-31** · Console flows: Request a space on the no-role home, /login says where new emails go, the event wizard checks plan limits before creating, a share sheet with WhatsApp and a QR poster after publishing, 4:3 banner previews, plan-locked event sections shown locked (Q20, Q21, Q23, Q24, Q25) (#491)
 - **2026-10-31** · Track Q attendee flows on mobile and web: return to the event after sign-in, push asked after booking, two-tap free tickets, calm verify copy, ticket delivery + WhatsApp group on success, View my ticket and fee note (Q1, Q3, Q9, Q11, Q12, Q13) (#487)
+- **2026-10-31** · J6 restore drill + k6 load tests ready: runbook, five staging-only k6 peaks, restore-check and loadtest-seed scripts, SCHEDULER=off switch (#493)
