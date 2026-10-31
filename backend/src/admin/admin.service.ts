@@ -13,6 +13,7 @@ import { RECORDING_KEY_PREFIX, RECORDING_LINK_SECONDS } from '../sessions/liveki
 import { EmailService } from '../email/email.service';
 import { SPACE_APP } from '../email/layout';
 import { NotifyService } from '../notifications/notify.service';
+import { AuthService } from '../auth/auth.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
 import { Action, ACTION_SCOPE } from '../auth/authorization';
@@ -58,6 +59,7 @@ export class AdminService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly notify: NotifyService,
+    private readonly auth: AuthService,
   ) {
     this.startTime = Date.now();
     const region = this.configService.get<string>('AWS_REGION');
@@ -1711,7 +1713,7 @@ export class AdminService {
 
   // ---------------------------------------------------------------------------
   // F4 user IAM: suspend / ban, force logout, per-user capability overrides.
-  // Bumping tokenVersion kills every access and refresh token at once.
+  // revokeAllSessions kills every token and linked device at once.
   // ---------------------------------------------------------------------------
 
   /** Suspend until `until`, or ban when it is empty. Ends every session. */
@@ -1727,9 +1729,9 @@ export class AdminService {
         suspendedUntil: end,
         suspensionReason: reason.trim(),
         suspendedBy: adminId,
-        tokenVersion: { increment: 1 },
       },
     });
+    await this.auth.revokeAllSessions(userId);
     return { userId, suspendedUntil: end, banned: !end };
   }
 
@@ -1746,7 +1748,7 @@ export class AdminService {
   /** Sign the user out everywhere. */
   async forceLogout(userId: string) {
     await this.requireUser(userId);
-    await this.prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+    await this.auth.revokeAllSessions(userId);
     return { userId, loggedOut: true };
   }
 

@@ -1,7 +1,7 @@
 /// <reference types="jest" />
-import { ConflictException, HttpException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
-import { AuthService } from './auth.service';
+import { AuthService, PUSH_INSTALLS_SIGNED_OUT } from './auth.service';
 import { OtpService } from './otp.service';
 
 /**
@@ -125,6 +125,11 @@ function setup(env: Record<string, string> = {}) {
       ].map((m) => [m, { count: jest.fn().mockResolvedValue(0) }]),
     ),
     platformConfig: { findUnique: jest.fn().mockResolvedValue(null) },
+    authSession: fakeSessions(),
+    userPushDevice: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     $transaction: jest.fn((fn: any) => fn(prisma)),
   };
   const config: any = {
@@ -141,8 +146,35 @@ function setup(env: Record<string, string> = {}) {
   const cognito: any = { verifyCognitoToken: jest.fn() };
   const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined), sendSignInMethodAdded: jest.fn().mockResolvedValue(undefined) };
   const whatsapp: any = { sendOtp: jest.fn().mockResolvedValue(true) };
-  const service = new AuthService(prisma, config, email, whatsapp, otp, redis as any, cognito);
-  return { service, prisma, otp, redis, cognito, email, whatsapp };
+  const events: any = { emit: jest.fn() };
+  const service = new AuthService(prisma, config, email, whatsapp, otp, redis as any, cognito, undefined, events);
+  return { service, prisma, otp, redis, cognito, email, whatsapp, events };
+}
+
+/** In-memory auth_sessions: enough of the Prisma delegate for linked devices. */
+function fakeSessions() {
+  const rows = new Map<string, { id: string; userId: string; lastSeenAt: Date }>();
+  let n = 0;
+  const matches = (r: { id: string; userId: string }, where: any) =>
+    (where.id === undefined || (typeof where.id === 'string' ? r.id === where.id : where.id.in.includes(r.id))) &&
+    (where.userId === undefined || r.userId === where.userId);
+  const find = (where: any) => [...rows.values()].filter((r) => matches(r, where));
+  return {
+    rows,
+    create: jest.fn(async ({ data }: any) => {
+      const id = `sess-${++n}`;
+      rows.set(id, { id, userId: data.userId, lastSeenAt: new Date() });
+      return { id };
+    }),
+    findUnique: jest.fn(async ({ where }: any) => rows.get(where.id) ?? null),
+    count: jest.fn(async ({ where }: any) => find(where).length),
+    updateMany: jest.fn(async ({ where }: any) => ({ count: find(where).length })),
+    deleteMany: jest.fn(async ({ where }: any) => {
+      const gone = find(where);
+      gone.forEach((r) => rows.delete(r.id));
+      return { count: gone.length };
+    }),
+  };
 }
 
 const sign = (payload: object, expiresIn: any = '1h') =>
@@ -513,6 +545,75 @@ describe('S6: token types, tokenVersion and refresh revocation', () => {
     await expect(
       service.refreshSession(sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j4' })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
+
+describe('Linked devices: one session per sign-in', () => {
+  const sidOf = (token: string) => (jwt.decode(token) as { sid: string }).sid;
+  const rt = (jti: string, over: object = {}) => sign({ userId: 'user-1', type: 'refresh', tv: 0, jti, ...over });
+
+  it('a token from before sessions gets one on refresh, dated to its sign-in, then keeps it', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const at = Math.floor(Date.now() / 1000) - 86400;
+
+    const first = await service.refreshSession(rt('l1', { at }), 'okhttp/4.12.0');
+    expect(prisma.authSession.create).toHaveBeenCalledWith({
+      data: { userId: 'user-1', userAgent: 'okhttp/4.12.0', createdAt: new Date(at * 1000) },
+      select: { id: true },
+    });
+    expect(jwt.decode(first.refreshToken)).toMatchObject({ sid: sidOf(first.accessToken) });
+
+    const next = await service.refreshSession(first.refreshToken);
+    expect(sidOf(next.accessToken)).toBe(sidOf(first.accessToken));
+    expect(prisma.authSession.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("signing one device out kills its tokens and its pushes, not the other device's", async () => {
+    const { service, prisma, events } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const phone = await service.refreshSession(rt('p'));
+    const laptop = await service.refreshSession(rt('l'));
+    prisma.userPushDevice.findMany.mockResolvedValue([{ subscriptionId: 'onesignal-phone' }]);
+
+    await service.revokeSession('user-1', sidOf(phone.accessToken));
+
+    expect(prisma.userPushDevice.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', sessionId: { in: [sidOf(phone.accessToken)] } },
+    });
+    expect(events.emit).toHaveBeenCalledWith(PUSH_INSTALLS_SIGNED_OUT, ['onesignal-phone']);
+    await expect(service.validateAccessToken(phone.accessToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.refreshSession(phone.refreshToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.validateAccessToken(laptop.accessToken)).resolves.toMatchObject({ id: 'user-1' });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("can't sign out someone else's device", async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user({ id: 'victim' }));
+    const victim = await service.refreshSession(sign({ userId: 'victim', type: 'refresh', tv: 0, jti: 'v' }));
+
+    await expect(service.revokeSession('attacker', sidOf(victim.accessToken))).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    await expect(service.validateAccessToken(victim.accessToken)).resolves.toMatchObject({ id: 'victim' });
+  });
+
+  it('logout ends only this device; sign out everywhere ends all and detaches every phone', async () => {
+    const { service, prisma, events } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const a = await service.refreshSession(rt('a'));
+    const b = await service.refreshSession(rt('b'));
+
+    await service.logout('user-1', { refreshToken: a.refreshToken });
+    expect([...prisma.authSession.rows.keys()]).toEqual([sidOf(b.accessToken)]);
+    expect(events.emit).not.toHaveBeenCalled();
+
+    prisma.userPushDevice.findMany.mockResolvedValue([{ subscriptionId: 'x' }, { subscriptionId: 'y' }]);
+    await service.logout('user-1', { allDevices: true });
+    expect(prisma.authSession.rows.size).toBe(0);
+    expect(prisma.userPushDevice.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+    expect(events.emit).toHaveBeenCalledWith(PUSH_INSTALLS_SIGNED_OUT, ['x', 'y']);
   });
 });
 

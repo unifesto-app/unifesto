@@ -6,9 +6,11 @@ import {
   ConflictException,
   HttpException,
   BadGatewayException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -22,6 +24,7 @@ import { CognitoJwtService } from './cognito-jwt.service';
 import { AppleSignInService } from './apple-sign-in.service';
 import { assertNotSuspended, isSuspended, type SuspensionFields } from './suspension';
 import { findIdentityByEmail, normalizeEmail, normalizeMobile } from './identifiers';
+import { describeDevice } from './device-label';
 import {
   AppleLoginDto,
   EmailLoginDto,
@@ -83,6 +86,8 @@ interface SessionTokenPayload {
   type?: unknown;
   tv?: unknown;
   jti?: unknown;
+  /** The AuthSession (linked device) the token belongs to. Absent before sessions. */
+  sid?: unknown;
   /** Refresh only (J17): when the user signed in, carried across rotations. */
   at?: unknown;
   iat?: number;
@@ -116,8 +121,15 @@ interface AppleTokenPayload {
   email_verified?: boolean | string;
 }
 
-/** Minimum gap between `users.last_seen_at` writes for one user. */
+/** Minimum gap between `users.last_seen_at` (and `auth_sessions.last_seen_at`) writes. */
 const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
+
+/**
+ * Emitted with the OneSignal subscription ids of app installs signed out from
+ * elsewhere. NotificationsModule deletes them at OneSignal, so the phone stops
+ * getting this user's pushes now instead of when the app next opens.
+ */
+export const PUSH_INSTALLS_SIGNED_OUT = 'auth.push-installs.signed-out';
 
 /**
  * AuthService handles multi-provider authentication for Unifesto.
@@ -162,6 +174,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly cognitoJwtService?: CognitoJwtService, // Optional injection for future Cognito flows
     @Optional() private readonly appleSignIn?: AppleSignInService,
+    @Optional() private readonly events?: EventEmitter2,
   ) {
     this.jwtSecret = this.configService.get<string>('JWT_SECRET')!;
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '7d');
@@ -188,7 +201,7 @@ export class AuthService {
   // =====================================================
   // APPLE LOGIN
   // =====================================================
-  async loginWithApple(dto: AppleLoginDto): Promise<AuthResponseDto> {
+  async loginWithApple(dto: AppleLoginDto, userAgent?: string): Promise<AuthResponseDto> {
     try {
       // Verify Apple identity token
       const decoded = await this.verifyAppleToken(dto.identityToken);
@@ -199,6 +212,7 @@ export class AuthService {
         decoded.sub,
         decoded.email ? normalizeEmail(decoded.email) : undefined,
         isVerified(decoded.email_verified),
+        userAgent,
       );
     } catch (error) {
       this.logger.error('Apple login failed', error);
@@ -310,7 +324,12 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOtp(rawEmail: string, otp: string, ip?: string): Promise<AuthResponseDto> {
+  async verifyEmailOtp(
+    rawEmail: string,
+    otp: string,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<AuthResponseDto> {
     const email = normalizeEmail(rawEmail);
     try {
       // App Review bypass: static test account, only while a platform admin
@@ -331,6 +350,7 @@ export class AuthService {
           email,
           email,
           true,
+          userAgent,
         );
       }
 
@@ -343,6 +363,7 @@ export class AuthService {
         email, // Use email as provider user ID for email auth
         email,
         true,
+        userAgent,
       );
     } catch (error) {
       this.logger.error('Email OTP verification failed', error);
@@ -373,7 +394,7 @@ export class AuthService {
     }
   }
 
-  async verifyMobile(dto: VerifyMobileDto, ip?: string): Promise<AuthResponseDto> {
+  async verifyMobile(dto: VerifyMobileDto, ip?: string, userAgent?: string): Promise<AuthResponseDto> {
     try {
       // Verify temp token
       const decoded = this.verifyTempToken(dto.tempToken);
@@ -447,7 +468,7 @@ export class AuthService {
             include: { role: { select: { code: true, name: true } } },
           });
           return {
-            ...this.tokensFor(existingMobileUser),
+            ...(await this.startSession(existingMobileUser, userAgent)),
             user: UserProfileDto.fromUser(existingMobileUser, userRoles),
             requiresMobileVerification: false,
             isNewUser: false,
@@ -463,7 +484,7 @@ export class AuthService {
           },
         });
         return {
-          ...this.tokensFor(updatedUser),
+          ...(await this.startSession(updatedUser, userAgent)),
           user: UserProfileDto.fromUser(updatedUser),
           requiresMobileVerification: false,
         };
@@ -485,7 +506,7 @@ export class AuthService {
         );
 
         return {
-          ...this.tokensFor(existingUser),
+          ...(await this.startSession(existingUser, userAgent)),
           user: UserProfileDto.fromUser(existingUser),
           requiresMobileVerification: false,
           isNewUser: false,
@@ -501,7 +522,7 @@ export class AuthService {
         );
 
         return {
-          ...this.tokensFor(newUser),
+          ...(await this.startSession(newUser, userAgent)),
           user: UserProfileDto.fromUser(newUser),
           requiresMobileVerification: false,
           isNewUser: true,
@@ -524,7 +545,7 @@ export class AuthService {
     providerUserId: string,
     email?: string,
     emailVerified?: boolean,
-    fullName?: string,
+    userAgent?: string,
   ): Promise<AuthResponseDto> {
     // Check if identity already exists. Email-OTP identities written before
     // J17 may be mixed-case, so those also match in any case.
@@ -577,7 +598,7 @@ export class AuthService {
         include: { role: { select: { code: true, name: true } } },
       });
       return {
-        ...this.tokensFor(user),
+        ...(await this.startSession(user, userAgent)),
         user: UserProfileDto.fromUser(user, userRoles),
         requiresMobileVerification: false,
       };
@@ -614,7 +635,7 @@ export class AuthService {
           include: { role: { select: { code: true, name: true } } },
         });
         return {
-          ...this.tokensFor(user),
+          ...(await this.startSession(user, userAgent)),
           user: UserProfileDto.fromUser(user, userRoles),
           requiresMobileVerification: false,
         };
@@ -753,10 +774,12 @@ export class AuthService {
    * Issue an access + refresh pair. Both carry `type` (so neither can stand in
    * for the other) and `tv`, the user's tokenVersion: bumping it revokes every
    * token issued before. The refresh token also carries a `jti` so it can be
-   * revoked on its own (one-time use on rotate, and on logout).
+   * revoked on its own (one-time use on rotate, and on logout). Both carry
+   * `sid`, the linked device they belong to.
    */
   private tokensFor(
     user: TokenUser,
+    sid: string,
     authTime = Math.floor(Date.now() / 1000),
   ): { accessToken: string; refreshToken: string } {
     // F4: no new session for a suspended or banned account (login and refresh).
@@ -764,16 +787,30 @@ export class AuthService {
     const tv = user.tokenVersion ?? 0;
     return {
       accessToken: jwt.sign(
-        { userId: user.id, type: 'access', tv },
+        { userId: user.id, type: 'access', tv, sid },
         this.jwtSecret,
         { expiresIn: this.jwtExpiresIn } as jwt.SignOptions,
       ),
       refreshToken: jwt.sign(
-        { userId: user.id, type: 'refresh', tv, jti: randomUUID(), at: authTime },
+        { userId: user.id, type: 'refresh', tv, sid, jti: randomUUID(), at: authTime },
         this.jwtSecret,
         { expiresIn: this.refreshExpiresIn } as jwt.SignOptions,
       ),
     };
+  }
+
+  private async newSession(userId: string, userAgent?: string, createdAt?: Date): Promise<string> {
+    const { id } = await this.prisma.authSession.create({
+      data: { userId, userAgent: userAgent?.slice(0, 400) || null, ...(createdAt ? { createdAt } : {}) },
+      select: { id: true },
+    });
+    return id;
+  }
+
+  /** A sign-in: a new linked device, then its tokens. */
+  private async startSession(user: TokenUser, userAgent?: string) {
+    assertNotSuspended(user);
+    return this.tokensFor(user, await this.newSession(user.id, userAgent));
   }
 
   /**
@@ -818,11 +855,72 @@ export class AuthService {
     }
   }
 
-  private async bumpTokenVersion(userId: string): Promise<void> {
+  /**
+   * Sign the user out everywhere: the tokenVersion bump kills every token, the
+   * rows leave the linked devices list, and every phone stops getting their
+   * pushes. Logout-all, refresh-token reuse, and Apex's force logout / suspend.
+   */
+  async revokeAllSessions(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    await this.endSessions(userId, 'all');
+  }
+
+  /**
+   * Drop sessions signed out from elsewhere, and the push installs they
+   * registered ('all': every install of the user, older ones without a
+   * session too), then detach those installs at OneSignal.
+   */
+  private async endSessions(userId: string, ids: string[] | 'all'): Promise<void> {
+    const pushWhere = ids === 'all' ? { userId } : { userId, sessionId: { in: ids } };
+    const installs = await this.prisma.userPushDevice.findMany({
+      where: pushWhere,
+      select: { subscriptionId: true },
+    });
+    await this.prisma.userPushDevice.deleteMany({ where: pushWhere });
+    await this.prisma.authSession.deleteMany({
+      where: ids === 'all' ? { userId } : { userId, id: { in: ids } },
+    });
+    if (installs.length) {
+      this.events?.emit(PUSH_INSTALLS_SIGNED_OUT, installs.map((i) => i.subscriptionId));
+    }
+  }
+
+  /**
+   * My linked devices, most recently active first.
+   * ponytail: a session idle past REFRESH_EXPIRES_IN (180d) stays listed until
+   * the absolute cap; add a sweep if stale rows start to confuse people.
+   */
+  async listSessions(userId: string, currentSid?: string) {
+    const rows = await this.prisma.authSession.findMany({
+      where: { userId, createdAt: { gt: new Date(Date.now() - this.refreshMaxAgeSec * 1000) } },
+      orderBy: { lastSeenAt: 'desc' },
+      select: {
+        id: true,
+        userAgent: true,
+        createdAt: true,
+        lastSeenAt: true,
+        pushDevices: { select: { platform: true, deviceModel: true }, take: 1 },
+      },
+    });
+    return rows.map((s) => ({
+      id: s.id,
+      ...describeDevice(s.userAgent, s.pushDevices[0]),
+      current: s.id === currentSid,
+      signedInAt: s.createdAt,
+      lastActiveAt: s.lastSeenAt,
+    }));
+  }
+
+  /** Sign one of my devices out. Its tokens fail on their next request. */
+  async revokeSession(userId: string, sid: string): Promise<{ revoked: true }> {
+    if (!(await this.prisma.authSession.count({ where: { id: sid, userId } }))) {
+      throw new NotFoundException('That device is already signed out');
+    }
+    await this.endSessions(userId, [sid]);
+    return { revoked: true };
   }
 
   /**
@@ -832,6 +930,7 @@ export class AuthService {
    */
   async refreshSession(
     refreshToken: string,
+    userAgent?: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     let decoded: SessionTokenPayload;
     try {
@@ -857,6 +956,15 @@ export class AuthService {
     if (Math.floor(Date.now() / 1000) - authTime > this.refreshMaxAgeSec) {
       throw new UnauthorizedException('Session expired, please sign in again');
     }
+    // Signed out on that device, or from another one: its row is gone.
+    let sid = typeof decoded.sid === 'string' ? decoded.sid : null;
+    if (sid) {
+      const { count } = await this.prisma.authSession.updateMany({
+        where: { id: sid, userId: user.id },
+        data: { lastSeenAt: new Date() },
+      });
+      if (!count) throw new UnauthorizedException('Session revoked');
+    }
     const spent = await this.spendRefreshToken(decoded, refreshToken, String(Date.now()));
     if (!spent) {
       // Already rotated. Inside the grace window this is a client retrying a
@@ -871,11 +979,16 @@ export class AuthService {
       const spentAt = Number(marker);
       if (!spentAt || Date.now() - spentAt > REFRESH_REUSE_GRACE_MS) {
         this.logger.warn(`Spent refresh token reused for user ${user.id}; revoking all sessions`);
-        await this.bumpTokenVersion(user.id);
+        await this.revokeAllSessions(user.id);
         throw new UnauthorizedException('Refresh token already used');
       }
     }
-    return this.tokensFor(user, authTime);
+    // Tokens from before linked devices get their row now, dated to the sign-in.
+    if (!sid) {
+      assertNotSuspended(user);
+      sid = await this.newSession(user.id, userAgent, new Date(authTime * 1000));
+    }
+    return this.tokensFor(user, sid, authTime);
   }
 
   private generateTempToken(
@@ -941,9 +1054,13 @@ export class AuthService {
         throw new UnauthorizedException('Invalid token');
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: decoded.userId },
-      });
+      const sid = typeof decoded.sid === 'string' ? decoded.sid : null;
+      const [user, session] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: decoded.userId } }),
+        sid
+          ? this.prisma.authSession.findUnique({ where: { id: sid }, select: { userId: true, lastSeenAt: true } })
+          : null,
+      ]);
 
       if (!user || user.deletedAt || isSuspended(user)) {
         throw new UnauthorizedException('Invalid token');
@@ -951,11 +1068,16 @@ export class AuthService {
       if ((decoded.tv ?? 0) !== user.tokenVersion) {
         throw new UnauthorizedException('Session revoked');
       }
+      // Signed out on that device, or from another one.
+      if (sid && session?.userId !== user.id) {
+        throw new UnauthorizedException('Session revoked');
+      }
       // J17: logged out on this device. Fails open if Redis is down.
       if (await this.redis.get(this.revokedAccessKey(token)).catch(() => null)) {
         throw new UnauthorizedException('Session revoked');
       }
 
+      if (sid && session) this.touchSession(sid, session.lastSeenAt);
       return user;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
@@ -986,19 +1108,29 @@ export class AuthService {
     );
   }
 
+  /** Same throttle for the linked device's "last active". Matching the old stamp keeps replicas to one write. */
+  private touchSession(id: string, lastSeenAt: Date): void {
+    if (Date.now() - lastSeenAt.getTime() < LAST_SEEN_THROTTLE_MS) return;
+    this.prisma.authSession
+      .updateMany({ where: { id, lastSeenAt }, data: { lastSeenAt: new Date() } })
+      .catch((err) => this.logger.warn(`touchSession failed for ${id}: ${err?.message ?? err}`));
+  }
+
   /**
    * Revoke the caller's refresh token when they send it (4.0.5 clients don't,
-   * for them this stays a no-op as before). `allDevices` bumps tokenVersion,
-   * which kills every access and refresh token of the user at once.
+   * for them this stays a no-op as before), and end this device's session.
+   * `allDevices` signs out everywhere (revokeAllSessions).
    */
   async logout(
     userId: string,
     opts: { refreshToken?: unknown; allDevices?: unknown; accessToken?: unknown } = {},
   ): Promise<{ message: string }> {
+    let sid: unknown;
     if (typeof opts.refreshToken === 'string' && opts.refreshToken) {
       try {
         const decoded = jwt.verify(opts.refreshToken, this.jwtSecret) as SessionTokenPayload;
         if (decoded.type === 'refresh' && decoded.userId === userId) {
+          sid = decoded.sid;
           // Overwrite (not NX) so a token inside its rotate grace window dies too.
           await this.redis.set(
             this.spentRefreshKey(decoded, opts.refreshToken),
@@ -1010,15 +1142,13 @@ export class AuthService {
         // Expired or forged: nothing to revoke.
       }
     }
-    if (opts.allDevices === true) {
-      await this.bumpTokenVersion(userId);
-    }
     // J17: kill the access token the logout came with, so a copied one
     // (operator tokens are JS-readable) stops working now, not at its expiry.
     if (typeof opts.accessToken === 'string' && opts.accessToken) {
       try {
         const decoded = jwt.verify(opts.accessToken, this.jwtSecret) as SessionTokenPayload;
         if (decoded.userId === userId) {
+          sid ??= decoded.sid;
           await this.redis.set(
             this.revokedAccessKey(opts.accessToken),
             '1',
@@ -1030,6 +1160,13 @@ export class AuthService {
           this.logger.warn(`access revocation failed: ${(err as Error)?.message ?? err}`);
         }
       }
+    }
+    if (opts.allDevices === true) {
+      await this.revokeAllSessions(userId);
+    } else if (typeof sid === 'string') {
+      // This device leaves the list (its other access tokens die with the row).
+      // The app signs its own push install out of OneSignal.
+      await this.prisma.authSession.deleteMany({ where: { id: sid, userId } });
     }
     return { message: 'Logged out successfully' };
   }
@@ -1069,7 +1206,7 @@ export class AuthService {
    * 4. If found + mobile not verified → return temp token for mobile OTP
    * 5. If not found → create placeholder user → return temp token for mobile OTP
    */
-  async loginWithCognito(idToken: string): Promise<AuthResponseDto> {
+  async loginWithCognito(idToken: string, userAgent?: string): Promise<AuthResponseDto> {
     if (!this.cognitoJwtService) {
       throw new UnauthorizedException('Cognito authentication not configured');
     }
@@ -1131,7 +1268,7 @@ export class AuthService {
     // Step 4: User found + mobile verified → login directly
     if (user && user.mobileVerified) {
       return {
-        ...this.tokensFor(user),
+        ...(await this.startSession(user, userAgent)),
         user: UserProfileDto.fromUser(user, user.roles),
         requiresMobileVerification: false,
       };

@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '../common/on-event';
+import { PUSH_INSTALLS_SIGNED_OUT } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OneSignalService } from './onesignal.service';
 import { RegisterPushDeviceDto } from './dto/push-device.dto';
@@ -18,10 +20,12 @@ export class PushDeviceService {
     private readonly oneSignal: OneSignalService,
   ) {}
 
-  async register(userId: string, dto: RegisterPushDeviceDto) {
+  async register(userId: string, dto: RegisterPushDeviceDto, sessionId?: string) {
     const now = new Date();
     const fields = {
       userId,
+      // The sign-in on this phone: signing it out elsewhere stops this install's pushes.
+      sessionId: sessionId ?? null,
       oneSignalId: dto.oneSignalId ?? null,
       platform: dto.platform,
       deviceModel: dto.deviceModel ?? null,
@@ -67,6 +71,16 @@ export class PushDeviceService {
       where: { subscriptionId, userId },
     });
     return { removed: count > 0 };
+  }
+
+  /**
+   * Their rows are already gone with the session. Deleting the subscription is
+   * what stops the phone getting the user's pushes before the app reopens and
+   * finds itself signed out.
+   */
+  @OnEvent(PUSH_INSTALLS_SIGNED_OUT, { async: true })
+  async onSignedOut(subscriptionIds: string[]) {
+    for (const id of subscriptionIds) await this.oneSignal.deleteSubscription(id);
   }
 
   /** The caller's own registered devices (for "is my phone reachable?" checks). */
