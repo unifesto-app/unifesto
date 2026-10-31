@@ -1052,3 +1052,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · J6 restore drill + k6 load tests ready: runbook, five staging-only k6 peaks, restore-check and loadtest-seed scripts, SCHEDULER=off switch (#493)
 - **2026-10-31** · deploy.sh recovers from a failed build: backend image built once, :latest restored on build failure, Caddy reload tracked in CADDY_LOADED (#494)
 - **2026-10-31** · U4–U6 built: CompanyItem + CompanyActivity, `company/` module (restricted rows hidden server-side, owners edit status/filing/notes, company:manage the rest), DONE on a recurring item creates the next one, Apex Company Overview + Obligations pages. Migration 20261126090000. (#496)
+- **2026-10-31** · Auto-blog builds its Sources list in code (no lost lists, no URLs cut at ")" or lower-cased) and the fact check knows Unifesto's features and allows hypothetical worked examples (#495)
