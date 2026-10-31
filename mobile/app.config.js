@@ -253,12 +253,12 @@ module.exports = () => {
       // Names must match APP_ICONS in src/lib/appIcon.ts. Needs a native rebuild.
       [
         "expo-alternate-app-icons",
-        ["Night", "Day", "Aurora", "Nebula", "Ember", "Ocean", "Mono"].map((name) => ({
+        ["Night", "Day", "Mint", "Sky", "Ivory", "Blue", "Dark", "Light"].map((name) => ({
           name,
           ios: `./assets/app-icons/${name.toLowerCase()}.png`,
           android: {
             foregroundImage: `./assets/app-icons/${name.toLowerCase()}-android.png`,
-            backgroundColor: name === "Day" ? "#ffffff" : "#000000",
+            backgroundColor: name === "Day" || name === "Light" ? "#ffffff" : "#000000",
           },
         })),
       ],

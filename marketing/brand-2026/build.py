@@ -39,48 +39,6 @@ def u_path(cx, cy, width, fill, rim=None):
     return f'<path d="{U}" transform="{t}" fill="{fill}"{stroke}/>'
 
 
-# Alternate app-icon colourways: the night scene lit by one nebula colour
-# (the same idea as the app's banner-lit pages). (sky core, nebula, rim light)
-HUES = {
-    "aurora": ("#06241f", "#2dd4bf", "#99f6e4"),
-    "nebula": ("#170d2b", "#8b5cf6", "#c4b5fd"),
-    "ember": ("#2a1005", "#f97316", "#fdba74"),
-    "ocean": ("#07152e", "#3b82f6", "#93c5fd"),
-}
-
-
-def scene(theme, u_width=495, u_cy=500, horizon_top=842, stars=True, uid="a", hue=None):
-    """Full-bleed 1024 artwork: ground, starlight, horizon, the u.
-    `hue` (a HUES key, dark only) tints the sky core, halo and horizon light."""
-    dark = theme == "dark"
-    core, glow, rim_light = HUES[hue] if hue else ("#131316", "#fff", "#fff")
-    R = 1500
-    defs = (SILVER if dark else INK).format(id=f"u{uid}")
-    defs += (f'<radialGradient id="sky{uid}" cx=".5" cy=".42" r=".7">'
-             f'<stop offset="0" stop-color="{core if dark else "#ffffff"}"/>'
-             f'<stop offset="1" stop-color="{"#000" if dark else "#f1f1f3"}"/></radialGradient>'
-             f'<radialGradient id="halo{uid}" cx=".5" cy=".5" r=".5">'
-             f'<stop offset="0" stop-color="{glow if dark else "#111113"}" stop-opacity="{(.34 if hue else .13) if dark else .06}"/>'
-             f'<stop offset="1" stop-color="{glow if dark else "#111113"}" stop-opacity="0"/></radialGradient>'
-             f'<linearGradient id="planet{uid}" x1="0" y1="0" x2="0" y2="1">'
-             f'<stop offset="0" stop-color="{"#1c1c20" if dark else "#e6e6ea"}"/>'
-             f'<stop offset=".18" stop-color="{"#050506" if dark else "#f7f7f8"}"/></linearGradient>'
-             f'<filter id="blur{uid}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>')
-    sky = f'<rect width="1024" height="1024" fill="url(#sky{uid})"/>'
-    star = "".join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{"#fff" if dark else "#111113"}" opacity="{o * (1 if dark else .45)}"/>'
-                   for x, y, r, o in STARS) if stars else ""
-    halo = f'<ellipse cx="512" cy="{u_cy + 20}" rx="{u_width * .95:.0f}" ry="{u_width * .8:.0f}" fill="url(#halo{uid})"/>'
-    cy = horizon_top + R
-    rim_glow = (f'<ellipse cx="512" cy="{horizon_top + 6}" rx="420" ry="34" fill="{rim_light if dark else "#111113"}" '
-                f'opacity="{(.3 if hue else .16) if dark else .06}" filter="url(#blur{uid})"/>')
-    planet = (f'<circle cx="512" cy="{cy}" r="{R}" fill="url(#planet{uid})"/>'
-              f'<circle cx="512" cy="{cy}" r="{R}" fill="none" stroke="{rim_light if dark else "#111113"}" '
-              f'stroke-opacity="{(.6 if hue else .42) if dark else .22}" stroke-width="2.5"/>')
-    rim = "rgba(255,255,255,.55)" if dark else None
-    mark = u_path(512, u_cy, u_width, f"url(#u{uid})", rim)
-    return defs, sky + star + halo + rim_glow + planet + mark
-
-
 def svg(body, defs="", vb="0 0 1024 1024", size=None):
     wh = f' width="{size}" height="{size}"' if size else ""
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb}"{wh}><defs>{defs}</defs>{body}</svg>'
@@ -112,28 +70,71 @@ def horizon_scene(theme, u_width=470, u_cy=512, uid="a"):
     return defs, body
 
 
-def app_icon(theme, rounded=False, hue=None, **kw):
-    # The main Night and Day icons are the Horizon scene; the hued alternates
-    # (Aurora, Nebula, Ember, Ocean) keep the older planet scene for now.
-    defs, body = scene(theme, hue=hue, **kw) if hue else horizon_scene(theme, **kw)
+def app_icon(theme, rounded=False, **kw):
+    defs, body = horizon_scene(theme, **kw)
     if rounded:  # for previews / web PWA; iOS and Android apply their own masks
         defs += '<clipPath id="sq"><rect width="1024" height="1024" rx="228"/></clipPath>'
         body = f'<g clip-path="url(#sq)">{body}</g>'
     return svg(body, defs)
 
 
-def mono_icon(u_width=495, u_cy=500):
-    """Alternate icon: no sky, no horizon, just a flat white u on black."""
-    return svg(f'<rect width="1024" height="1024" fill="#000"/>' + u_path(512, u_cy, u_width, "#ffffff"))
+# Shade colours by night (guidelines §08): accent, its deep partner, the base.
+SHADES = {
+    "sky": ("#90d5ff", "#2f6bff", "#070d1c"),
+    "mint": ("#90e4c1", "#1f7a5c", "#061410"),
+    "ivory": ("#f7f0e0", "#9a7444", "#140f08"),
+    "blue": ("#8fb4ff", "#0062ff", "#050a1f"),
+}
+
+# Each shade's soft shapes, in the 0..100 coordinates of the site's shapes
+# layer (inset -15% around the card): sky two orbs, mint a horizon from below,
+# ivory a diagonal beam, blue a fan of light from a corner.
+SHADE_SHAPES = {
+    "sky": '<ellipse cx="80" cy="22" rx="42" ry="42" fill="url(#sa)"/><ellipse cx="22" cy="80" rx="40" ry="40" fill="url(#sb)"/>',
+    "mint": '<ellipse cx="50" cy="100" rx="85" ry="38" fill="url(#sa)"/><ellipse cx="18" cy="22" rx="30" ry="30" fill="url(#sb)"/>',
+    "ivory": '<rect width="100" height="100" fill="url(#beam)"/><ellipse cx="86" cy="86" rx="34" ry="34" fill="url(#sb)"/>',
+    "blue": ('<ellipse cx="58" cy="78" rx="38" ry="22" fill="url(#fan)" transform="rotate(23 58 78)"/>'
+             '<ellipse cx="18" cy="18" rx="26" ry="26" fill="url(#sb)"/>'),
+}
+
+
+def shade_icon(tone, u_width=470, u_cy=512):
+    """Alternate icon, product on a shade (approved 31 Oct 2026): the silver u
+    centred on the tone's shade, its shapes blurred into the base, heavier grain."""
+    s1, s2, s3 = SHADES[tone]
+    # As on the site (blue held back), but ivory's beam crosses the u, so it's softer here.
+    opacity = {"blue": .45, "ivory": .5}.get(tone, .7)
+    defs = (SILVER.format(id="u")
+            + f'<radialGradient id="sa"><stop offset="0" stop-color="{s1}"/><stop offset=".72" stop-color="{s1}" stop-opacity="0"/></radialGradient>'
+            f'<radialGradient id="sb"><stop offset="0" stop-color="{s2}"/><stop offset=".72" stop-color="{s2}" stop-opacity="0"/></radialGradient>'
+            f'<linearGradient id="beam" x1=".09" y1=".21" x2=".91" y2=".79"><stop offset=".22" stop-color="{s1}" stop-opacity="0"/>'
+            f'<stop offset=".48" stop-color="{s1}"/><stop offset=".74" stop-color="{s1}" stop-opacity="0"/></linearGradient>'
+            f'<radialGradient id="fan" fx=".92" fy=".5"><stop offset="0" stop-color="{s1}"/>'
+            f'<stop offset=".45" stop-color="{s2}" stop-opacity=".8"/><stop offset="1" stop-color="{s2}" stop-opacity="0"/></radialGradient>'
+            '<filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="48"/></filter>'
+            + GRAIN.format(uid="s", c=1))
+    body = (f'<rect width="1024" height="1024" fill="{s3}"/>'
+            f'<g filter="url(#soft)" opacity="{opacity}"><g transform="translate(-153.6,-153.6) scale(13.312)">{SHADE_SHAPES[tone]}</g></g>'
+            '<rect width="1024" height="1024" filter="url(#grains)" opacity=".18"/>'
+            + u_path(512, u_cy, u_width, "url(#u)", "rgba(255,255,255,.5)"))
+    return svg(body, defs)
+
+
+def plain_icon(theme, u_width=470, u_cy=512):
+    """Alternate icon, plain: the u alone, silver on black or ink on paper. No shade, glow, stars or grain."""
+    dark = theme == "dark"
+    body = (f'<rect width="1024" height="1024" fill="{"#000" if dark else "#f2f2f5"}"/>'
+            + u_path(512, u_cy, u_width, "url(#u)", "rgba(255,255,255,.5)" if dark else None))
+    return svg(body, (SILVER if dark else INK).format(id="u"))
 
 
 # Alternate app icons (expo-alternate-app-icons). name → (iOS 1024 svg, Android foreground svg)
 ALT_ICONS = {
     "night": (lambda: app_icon("dark"), lambda: app_icon("dark", u_width=330)),
     "day": (lambda: app_icon("light"), lambda: app_icon("light", u_width=330)),
-    **{h: ((lambda h=h: app_icon("dark", hue=h)),
-           (lambda h=h: app_icon("dark", hue=h, u_width=330, u_cy=505, horizon_top=760))) for h in HUES},
-    "mono": (lambda: mono_icon(), lambda: mono_icon(u_width=330, u_cy=512)),
+    **{t: ((lambda t=t: shade_icon(t)), (lambda t=t: shade_icon(t, u_width=330))) for t in ("mint", "sky", "ivory", "blue")},
+    "dark": (lambda: plain_icon("dark"), lambda: plain_icon("dark", u_width=330)),
+    "light": (lambda: plain_icon("light"), lambda: plain_icon("light", u_width=330)),
 }
 
 
