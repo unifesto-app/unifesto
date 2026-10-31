@@ -1048,3 +1048,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · J18 origin accepts only Cloudflare: Caddy requires the authenticated-origin-pull client cert (global AOP on 31 Oct) (#488)
 - **2026-10-31** · deploy.sh no longer rsyncs content-bank/ to the server (#492)
 - **2026-10-31** · Console flows: Request a space on the no-role home, /login says where new emails go, the event wizard checks plan limits before creating, a share sheet with WhatsApp and a QR poster after publishing, 4:3 banner previews, plan-locked event sections shown locked (Q20, Q21, Q23, Q24, Q25) (#491)
+- **2026-10-31** · Track Q attendee flows on mobile and web: return to the event after sign-in, push asked after booking, two-tap free tickets, calm verify copy, ticket delivery + WhatsApp group on success, View my ticket and fee note (Q1, Q3, Q9, Q11, Q12, Q13) (#487)
