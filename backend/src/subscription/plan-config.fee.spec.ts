@@ -14,9 +14,9 @@ describe('PlanConfigService.resolvePlatformFeePercent', () => {
     expect(svc.resolvePlatformFeePercent({ plan: null })).toBe(2.5));
   it('no subscription pays none', () => expect(svc.resolvePlatformFeePercent(null)).toBe(0));
 
-  it('ships at 0: the compiled default for every plan is 0', () => {
+  it('the compiled defaults are the live rates (Z2)', () => {
     const fresh = new PlanConfigService({} as any);
-    for (const plan of Object.values(OrgPlan)) expect(fresh.getLimits(plan).platformFeePercent).toBe(0);
+    expect(Object.values(OrgPlan).map((p) => fresh.getLimits(p).platformFeePercent)).toEqual([3, 3.5, 4, 4.5, 0]);
   });
 
   it('plan limits report the same fee', () => {

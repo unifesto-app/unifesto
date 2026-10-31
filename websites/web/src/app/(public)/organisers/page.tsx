@@ -36,10 +36,11 @@ const appLd = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web, iOS, Android",
   description: SITE.description,
-  offers: PLANS.filter((p) => p.price !== null).map((p) => ({
+  // No plan has a monthly price (Z2): General is the one free-to-start offer.
+  offers: PLANS.filter((p) => p.id === "starter").map((p) => ({
     "@type": "Offer",
     name: p.name,
-    price: p.price,
+    price: 0,
     priceCurrency: "INR",
   })),
 };

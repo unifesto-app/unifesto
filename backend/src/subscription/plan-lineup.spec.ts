@@ -22,7 +22,7 @@ describe('plan lineup', () => {
     expect(card.buyerProcessingFeePercent).toBe(5);
     expect(card.buyerProcessingFeeCapPerTicket).toBe(99);
     expect(card.plans.map((p) => p.plan)).toEqual(LINEUP);
-    expect(card.plans.every((p) => p.platformFeePercent === 0)).toBe(true); // ships at 0
+    expect(card.plans.map((p) => p.platformFeePercent)).toEqual([3, 3.5, 4, 4.5, 0]);
   });
 });
 

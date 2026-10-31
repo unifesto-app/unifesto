@@ -16,7 +16,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SupportGroup, SupportRow, supportMailto, whatsappHref } from "@/components/support";
 import { HeroSky } from "@/components/site/CosmicBackdrop";
-import { PLATFORM_FEE_STARTS_LABEL, SITE, buyerFeeText, planFeesText } from "@/lib/site";
+import { SITE, buyerFeeText, planFeesText } from "@/lib/site";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -111,7 +111,7 @@ const faqs = [
     category: "Pricing & Billing",
     question: "How does billing work for organisers?",
     answer:
-      `Free RSVP events cost nothing. From ${PLATFORM_FEE_STARTS_LABEL}, organisers pay a platform fee per paid ticket by plan: ${planFeesText()}. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. See Pricing for plans.`,
+      `There is no monthly fee and free RSVP events cost nothing. Organisers pay a platform fee per paid ticket by plan: ${planFeesText()}. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. See Pricing for plans.`,
   },
   {
     id: "vf-1",

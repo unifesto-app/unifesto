@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 import { addBillingCycle, prorationCreditPaise, SubscriptionService } from './subscription.service';
 import { PlanConfigService, subscriptionStatus } from './plan-config.service';
 import { SubscriptionSchedulerService } from './subscription-scheduler.service';
-import { rateCardTerms } from './terms.testing';
+import { pricedPlanConfig, rateCardTerms } from './terms.testing';
 
 const DAY = 86400000;
 
@@ -129,7 +129,7 @@ describe('SubscriptionService lifecycle', () => {
       prisma,
       cache as any,
       email as any,
-      new PlanConfigService({} as any),
+      pricedPlanConfig(),
       rateCardTerms(),
     );
     (svc as any).razorpay = {

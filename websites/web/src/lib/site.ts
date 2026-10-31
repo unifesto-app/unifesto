@@ -397,31 +397,23 @@ export const APP_FEATURES = [
 
 /* ── Pricing ────────────────────────────────────────────────────────── */
 
-/* Launch pricing, shown as a discount off the standard price. The fees here
-   are only a fallback: /pricing shows the live platform fee per plan from the
-   backend rate card (GET /config/plan-fees, lib/api/rate-card.ts). Prices and
-   copy stay here. Copy says what students pay and what organisers keep,
-   never "lowest fee" (D11). */
-export const LAUNCH_OFFER_ENDS = "31 March 2027";
-
-/** The organiser platform fee starts on this date (D10, A10's notice). Until
-   then copy says "from 2 Nov 2026" and never claims the fee is charged. */
-export const PLATFORM_FEE_STARTS = new Date("2026-11-02T00:00:00+05:30");
-export const PLATFORM_FEE_STARTS_LABEL = "2 Nov 2026";
+/* No monthly prices (Z2): each plan is priced by its platform fee per paid
+   ticket, live since 31 Oct 2026. The fees here are only a fallback: /pricing
+   shows the live fee per plan from the backend rate card (GET
+   /config/plan-fees, lib/api/rate-card.ts). Copy says what students pay and
+   what organisers keep, never "lowest fee" (D11). */
 
 export type Plan = {
   /** The plan code lowercased (STARTER is shown as General). */
   id: "starter" | "club" | "growth" | "pro" | "enterprise";
   name: string;
   forWho: string;
-  /** Monthly price in rupees; null = custom quote. */
-  price: number | null;
-  standardPrice: number | null;
-  annualMonthly: number | null;
   /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
-  standardFee: number;
-  /** How the fee reads when it isn't one number (Enterprise: "0–0.5%"). */
+  /** Least the platform fee comes to per event, in rupees (Growth, Pro).
+     ponytail: applied by hand when an admin moves a space up; code it once plans are per event. */
+  minPerEvent?: number;
+  /** How the fee reads when it isn't one number (Enterprise: "Custom"). */
   feeText?: string;
   /** Fallback list. Live: built by planIncludes() from the plan_configs row (T10). */
   includes: string[];
@@ -449,13 +441,9 @@ export const PLANS: Plan[] = [
     id: "starter",
     name: "General",
     forWho: "Clubs getting started",
-    price: 0,
-    standardPrice: 0,
-    annualMonthly: 0,
-    fee: 2.5,
-    standardFee: 4,
+    fee: 3,
     includes: [
-      "1 event a month, up to 100 attendees each",
+      "Unlimited events a month, up to 300 attendees each",
       "Free RSVP events, no fees",
       "Paid and group tickets with Razorpay",
       "Multi-point QR check-in from the app",
@@ -463,6 +451,7 @@ export const PLANS: Plan[] = [
       "Email, push and WhatsApp confirmations",
       "Live polls, Q&A and quizzes",
       "Payouts, refunds and financials",
+      "Waiting list with pay-to-claim offers",
     ],
     extras: [
       "Free RSVP events, no fees",
@@ -479,72 +468,57 @@ export const PLANS: Plan[] = [
     id: "club",
     name: "Club",
     forWho: "Clubs running regular events",
-    price: 499,
-    standardPrice: 999,
-    annualMonthly: 416, // ₹4,990 a year
-    fee: 2,
-    standardFee: 3.5,
+    fee: 3.5,
     includes: [
       "Everything in General",
-      "4 events a month, up to 300 attendees each",
-      "Waiting list with pay-to-claim offers",
+      "Unlimited events a month, up to 1,000 attendees each",
       "Bulk export (CSV, Excel, PDF)",
       "Analytics and PDF event reports",
       "Certificates: design, issue and verify",
+      "Recurring event series",
     ],
     extras: [],
-    cta: { label: "Get Club", href: "/request-space" },
+    cta: { label: "Get Club", href: "mailto:support@unifesto.app?subject=Unifesto%20Club" },
   },
   {
     id: "growth",
     name: "Growth",
     forWho: "Fest teams, hackathons and communities",
-    price: 1999,
-    standardPrice: 3999,
-    annualMonthly: 1666, // ₹19,990 a year
-    fee: 1.5,
-    standardFee: 3,
+    fee: 4,
+    minPerEvent: 999,
     includes: [
       "Everything in Club",
-      "Unlimited events a month, up to 1,000 attendees each",
+      "Unlimited events a month, up to 5,000 attendees each",
       "WhatsApp blasts",
-      "Recurring event series",
       "Huddle live sessions, paid and recorded",
       "Sponsors, booth lead scans and leads",
       "Hackathons: teams, judging and leaderboards",
       "Priority support",
     ],
     extras: [],
-    cta: { label: "Get Growth", href: "/request-space" },
+    cta: { label: "Get Growth", href: "mailto:support@unifesto.app?subject=Unifesto%20Growth" },
   },
   {
     id: "pro",
     name: "Pro",
     forWho: "Big fests on their own brand",
-    price: 2999,
-    standardPrice: 5999,
-    annualMonthly: 2499, // ₹29,990 a year
-    fee: 1,
-    standardFee: 2,
+    fee: 4.5,
+    minPerEvent: 2999,
     includes: [
       "Everything in Growth",
-      "Unlimited events a month, up to 5,000 attendees each",
-      "10 spaces and 10 co-curators per event",
+      "Unlimited events a month, unlimited attendees each",
+      "10 spaces and unlimited co-curators",
       "White-label: colours, logo, favicon, own email and domain",
     ],
     extras: [],
-    cta: { label: "Get Pro", href: "/request-space" },
+    cta: { label: "Get Pro", href: "mailto:support@unifesto.app?subject=Unifesto%20Pro" },
   },
   {
     id: "enterprise",
     name: "Enterprise",
     forWho: "Universities running many spaces",
-    price: null,
-    standardPrice: null,
-    annualMonthly: null,
-    fee: 0.5,
-    standardFee: 1,
-    feeText: "0–0.5%",
+    fee: 0,
+    feeText: "Custom",
     includes: [
       "Everything in Pro",
       "Unlimited events, attendees and spaces",
@@ -623,24 +597,26 @@ export const buyerFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE
 export const includedFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
   Math.min(Math.round((price * percent * 100) / (100 + percent)) / 100, cap ?? Infinity);
 
-/** "1.5%", or the range a plan quotes ("0–0.5%"). */
+/** "4.5%", or "Custom" (Enterprise). */
 export const planFee = (p: Plan) => p.feeText ?? `${p.fee}%`;
 
-/** "2.5% on General, 2% on Club, 1.5% on Growth, 1% on Pro, 0–0.5% on Enterprise". */
-export const planFeesText = (plans: Plan[] = PLANS) => plans.map((p) => `${planFee(p)} on ${p.name}`).join(", ");
+/** "At least ₹999 an event" for a plan with a minimum. */
+export const planMinimum = (p: Pick<Plan, "minPerEvent">) => (p.minPerEvent ? `At least ${inr(p.minPerEvent)} an event` : null);
 
-/** "from 2 Nov 2026" until the platform fee starts, then nothing. */
-export const platformFeeFrom = (now = new Date()) => (now < PLATFORM_FEE_STARTS ? PLATFORM_FEE_STARTS_LABEL : null);
+/** "3% on General, 3.5% on Club, 4% on Growth (at least ₹999 an event), …, Enterprise by contract". */
+export const planFeesText = (plans: Plan[] = PLANS) =>
+  plans
+    .map((p) => (p.feeText ? `${p.name} by contract` : `${p.fee}% on ${p.name}${p.minPerEvent ? ` (at least ${inr(p.minPerEvent)} an event)` : ""}`))
+    .join(", ");
 
-/** "A ₹500 pass: students pay ₹525, or ₹500 if you include the fee. You keep
-   ₹487.50 on General." Computed from the rate card it is given. */
+/** "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep
+   ₹485 on General." Computed from the rate card it is given. */
 export const passExample = (
   plan: Plan = PLANS[0],
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
-  from: string | null = platformFeeFrom(),
 ) =>
-  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if you include the fee. ${from ? `From ${from} you` : "You"} keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
+  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if you include the fee. You keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -651,7 +627,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: `Yes. Free RSVP events cost nothing on any plan. On paid tickets, buyers pay a ${buyerFeeText()}, or you include it in your price. From ${PLATFORM_FEE_STARTS_LABEL}, organisers also pay a platform fee per paid ticket: ${planFeesText()}. ${passExample(PLANS[0], BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLATFORM_FEE_STARTS_LABEL)}`,
+    a: `Yes. There is no monthly fee and free RSVP events cost nothing. On paid tickets, buyers pay a ${buyerFeeText()}, or you include it in your price, and organisers pay a platform fee per paid ticket: ${planFeesText()}. ${passExample()}`,
   },
   {
     q: "How does check-in work?",
@@ -729,11 +705,10 @@ export const pricingFaq = (
   plans: Plan[] = PLANS,
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
-  from: string | null = platformFeeFrom(),
 ): Faq[] => [
   {
-    q: "What does launch pricing mean?",
-    a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price and platform fee shown on this page.`,
+    q: "Is there a monthly fee?",
+    a: "No. No plan has a monthly price. Unifesto earns a platform fee on each paid ticket, so you pay only when you sell.",
   },
   {
     q: "Are free events really free?",
@@ -741,15 +716,15 @@ export const pricingFaq = (
   },
   {
     q: "What do students pay, and what do I keep?",
-    a: `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or you include it in your ticket price per event and it comes out of your share. It is not refundable. ${from ? `From ${from}, you` : "You"} also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap, from)}`,
+    a: `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or you include it in your ticket price per event and it comes out of your share. It is not refundable. You also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
   },
   {
     // TODO(A6): GST wording waits for GST registration and the CA.
     q: "Are payment gateway charges included?",
-    a: "Yes. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. Prices exclude GST.",
+    a: "Yes. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. Fees exclude GST.",
   },
   {
     q: "Can I switch plans later?",
-    a: "Yes. Plans are set per Space and you can move up or down at any time from Billing in the Space console.",
+    a: "Yes. Every Space starts on General. Write to us to move up and we switch your Space for you. Growth and Pro carry a minimum per event, which we agree with you first.",
   },
 ];

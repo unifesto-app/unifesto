@@ -16,9 +16,9 @@ const migration = (name: string) =>
 
 const num = (v: string) => (v === 'NULL' ? null : Number(v));
 
-/** The lineup rows of 20261117100000_plan_lineup, by plan. */
+/** The plan rows of 20261123090000_fee_live (Z2), by plan. */
 function seedRows() {
-  const sql = migration('20261117100000_plan_lineup');
+  const sql = migration('20261123090000_fee_live');
   const rows = new Map<string, string[]>();
   for (const m of sql.matchAll(/\('(STARTER|CLUB|GROWTH|PRO|ENTERPRISE)',([^)]*)\)/g)) {
     rows.set(m[1], m[2].split(',').map((v) => v.trim()));
@@ -38,7 +38,7 @@ describe('PLAN_LIMITS matches the plan_configs lineup', () => {
     const v = rows.get(plan)!;
     expect(v).toBeDefined();
     const l = PLAN_LIMITS[plan];
-    // Column order of the lineup INSERT: 5 limits, 11 flags, 2 prices.
+    // Column order of the INSERT: 5 limits, 11 flags, 2 prices, the fee.
     expect({
       spaces: l.spaces,
       eventsPerMonth: l.eventsPerMonth,
@@ -48,6 +48,7 @@ describe('PLAN_LIMITS matches the plan_configs lineup', () => {
       ...Object.fromEntries(FLAGS.map((f) => [f, l[f]])),
       monthlyPrice: l.monthlyPrice,
       annualPrice: l.annualPrice,
+      platformFeePercent: l.platformFeePercent,
     }).toEqual({
       spaces: num(v[0]),
       eventsPerMonth: num(v[1]),
@@ -57,13 +58,16 @@ describe('PLAN_LIMITS matches the plan_configs lineup', () => {
       ...Object.fromEntries(FLAGS.map((f, i) => [f, v[5 + i] === 'true'])),
       monthlyPrice: num(v[16]),
       annualPrice: num(v[17]),
+      platformFeePercent: num(v[18]),
     });
   });
 
-  it('platform fees ship at 0 (A9 migration), and the lineup leaves them alone', () => {
-    expect(migration('20261023100000_organiser_platform_fee')).toMatch(/SET "platform_fee_percent" = 0/);
-    expect(migration('20261117100000_plan_lineup')).not.toMatch(/"platform_fee_percent" =/);
-    expect(Object.values(PLAN_LIMITS).every((l) => l.platformFeePercent === 0)).toBe(true);
+  it('Z2 sets the fees and moves every space to General', () => {
+    const sql = migration('20261123090000_fee_live');
+    expect(sql).toMatch(/SET "plan" = 'STARTER'/);
+    expect(Object.fromEntries(Object.entries(PLAN_LIMITS).map(([p, l]) => [p, l.platformFeePercent]))).toEqual({
+      STARTER: 3, CLUB: 3.5, GROWTH: 4, PRO: 4.5, ENTERPRISE: 0,
+    });
   });
 });
 

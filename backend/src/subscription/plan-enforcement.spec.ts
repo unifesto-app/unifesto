@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { OrgPlan, SupportTicketPriority } from '@prisma/client';
 import { PlanConfigService } from './plan-config.service';
+import { PLAN_LIMITS, PlanLimits } from './plan-limits.config';
 import { PLAN_FULL, SoldOutError, takeSeats } from '../registrations/capacity.util';
 import { EventsService } from '../events/events.service';
 import { LeadsService } from '../sponsors/leads.service';
@@ -24,17 +25,17 @@ describe('plan enforcement (T9)', () => {
 
     it('assertFeature names the cheapest plan that has it', async () => {
       const svc = new PlanConfigService(onPlan(OrgPlan.STARTER) as any);
-      await expect(svc.assertFeature('sp-1', 'hasWaitlist')).rejects.toThrow(
-        'Not on the General plan: Waiting list. It comes with Club and up.',
+      await expect(svc.assertFeature('sp-1', 'hasCertificates')).rejects.toThrow(
+        'Not on the General plan: Certificates. It comes with Club and up.',
       );
       await expect(svc.assertFeature('sp-1', 'hasLeaderboard')).rejects.toThrow('It comes with Growth and up.');
-      await expect(new PlanConfigService(onPlan(OrgPlan.CLUB) as any).assertFeature('sp-1', 'hasWaitlist')).resolves.toBeUndefined();
+      await expect(new PlanConfigService(onPlan(OrgPlan.CLUB) as any).assertFeature('sp-1', 'hasCertificates')).resolves.toBeUndefined();
     });
 
     it('assertLimit passes up to the limit, and null is unlimited', async () => {
       const club = new PlanConfigService(onPlan(OrgPlan.CLUB) as any);
-      await expect(club.assertLimit('sp-1', 'coCurators', 0, ['x', 'xs'])).resolves.toBeUndefined();
-      await expect(club.assertLimit('sp-1', 'coCurators', 1, ['x', 'xs'])).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(club.assertLimit('sp-1', 'coCurators', 4, ['x', 'xs'])).resolves.toBeUndefined();
+      await expect(club.assertLimit('sp-1', 'coCurators', 5, ['x', 'xs'])).rejects.toBeInstanceOf(ForbiddenException);
       const enterprise = new PlanConfigService(onPlan(OrgPlan.ENTERPRISE) as any);
       await expect(enterprise.assertLimit('sp-1', 'coCurators', 999, ['x', 'xs'])).resolves.toBeUndefined();
     });
@@ -61,25 +62,27 @@ describe('plan enforcement (T9)', () => {
   });
 
   describe('events', () => {
-    const events = (plan: OrgPlan) => {
+    /** Events on `plan`; `limits` overrides its flags (to gate a switch every plan now has). */
+    const events = (plan: OrgPlan, limits: Partial<PlanLimits> = {}) => {
       const prisma: any = onPlan(plan, {
         space: { findUnique: jest.fn(async () => ({ id: 'sp-1', status: 'ACTIVE' })) },
         event: { findUnique: jest.fn(async () => ({ id: 'ev-1', spaceId: 'sp-1', status: 'PUBLISHED', waitlistEnabled: false, space: { subscription: { plan } }, ticketTypes: [] })) },
         eventTicketType: { findUnique: jest.fn(async () => ({ id: 'tt-1', eventId: 'ev-1', kind: 'INDIVIDUAL', waitlistEnabled: false, totalQuantity: 10 })) },
       });
       const planConfig = new PlanConfigService(prisma);
+      jest.spyOn(planConfig, 'getLimits').mockImplementation((p) => ({ ...PLAN_LIMITS[p], ...limits }));
       const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, planConfig, {} as any, {} as any, {} as any);
       jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
       return svc;
     };
 
-    it('a recurring series needs Growth', async () => {
-      await expect(events(OrgPlan.CLUB).createEvent('u', { spaceId: 'sp-1', recurrenceRule: 'FREQ=WEEKLY' } as any))
-        .rejects.toThrow('Not on the Club plan: Recurring events.');
+    it('a recurring series needs Club', async () => {
+      await expect(events(OrgPlan.STARTER).createEvent('u', { spaceId: 'sp-1', recurrenceRule: 'FREQ=WEEKLY' } as any))
+        .rejects.toThrow('Not on the General plan: Recurring events.');
     });
 
-    it('a waiting list needs Club: on a new event, a new ticket, or switched on later', async () => {
-      const svc = events(OrgPlan.STARTER);
+    it('a waiting list is gated on a new event, a new ticket, or switched on later', async () => {
+      const svc = events(OrgPlan.STARTER, { hasWaitlist: false });
       await expect(svc.createEvent('u', { spaceId: 'sp-1', waitlistEnabled: true } as any)).rejects.toBeInstanceOf(ForbiddenException);
       await expect(svc.createTicketType('u', 'ev-1', { kind: 'INDIVIDUAL', price: 0, totalQuantity: 10, waitlistEnabled: true } as any))
         .rejects.toBeInstanceOf(ForbiddenException);

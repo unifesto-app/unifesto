@@ -12,13 +12,11 @@ export default function PassPaysYou({
   plans,
   buyerFee,
   buyerFeeCap,
-  feeFrom,
 }: {
-  /** `fee` drives the maths; `feeText` is how it reads (Enterprise: "0–0.5%"). */
+  /** `fee` drives the maths; `feeText` is how it reads ("4.5%"). */
   plans: { id: string; name: string; fee: number; feeText: string }[];
   buyerFee: number;
   buyerFeeCap: number | null;
-  feeFrom: string | null;
 }) {
   const [included, setIncluded] = useState(false);
   const onTop = buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap);
@@ -33,8 +31,7 @@ export default function PassPaysYou({
           What a {inr(EXAMPLE_PASS)} pass pays you.
         </h2>
         <p data-reveal="blur" className="mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-ink/70">
-          Razorpay&apos;s charges come out of the buyer fee, so this is what reaches you
-          {feeFrom ? ` from ${feeFrom}` : ""}. Free events cost nothing.
+          Razorpay&apos;s charges come out of the buyer fee, so this is what reaches you. Free events cost nothing.
         </p>
 
         <button
