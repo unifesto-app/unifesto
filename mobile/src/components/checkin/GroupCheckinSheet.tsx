@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
 import type { GroupScanResult } from '../../lib/api/checkin';
@@ -10,6 +10,7 @@ import { Avatar } from './PersonRow';
 import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import Modal from '../ui/Modal';
 
 interface GroupCheckinSheetProps {
   group: GroupScanResult | null;

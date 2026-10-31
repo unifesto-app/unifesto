@@ -64,13 +64,14 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const barSpace = useActionBarSpace();
-  const { width } = useContentWidth();
+  const { width, hero } = useContentWidth();
   const [reportOpen, setReportOpen] = useState(false);
   const { space } = s;
   const brandFont = useBrandFont(space?.branding?.font);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const bannerW = width - GUTTER * 2;
+  // Short of the column on a landscape phone, so the name still shows under it.
+  const bannerW = Math.min(width - GUTTER * 2, hero);
   const bannerH = Math.round((bannerW * 3) / 4); // space banners are 4:3
 
   useLayoutEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ import { acceptLegal, getPendingLegal, type PendingLegalDoc } from '../lib/api/l
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
+import Modal from './ui/Modal';
 
 /**
  * I2: blocks the app until the signed-in user accepts every legal document with

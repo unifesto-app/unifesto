@@ -66,3 +66,5 @@ export const shadows = {
 // proportions instead of stretching edge to edge. Backdrops stay full-bleed.
 export const CONTENT_MAX = 672;
 export const column = { width: '100%', maxWidth: CONTENT_MAX, alignSelf: 'center' } as const;
+// Card grids (events, saved, spaces) may run wider and take more columns.
+export const GRID_MAX = 1200;

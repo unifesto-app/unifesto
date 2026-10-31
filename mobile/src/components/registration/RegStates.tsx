@@ -1,10 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import AuthButton from '../auth/AuthButton';
 import { CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import Modal from '../ui/Modal';
 
 /** Centered icon + title + body + one action. Used for expired / no tickets / not found. */
 export function StateView({

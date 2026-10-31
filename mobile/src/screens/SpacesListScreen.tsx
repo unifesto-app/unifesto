@@ -7,25 +7,28 @@ import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { SpaceCard, SpaceCardSkeleton } from '../components/home/SpaceCards';
 import { getAllSpaces, getSpaceById, Space } from '../lib/api/spaces';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
-import useContentWidth from '../hooks/useContentWidth';
+import useGrid, { rows } from '../hooks/useGrid';
 
 const GAP = spacing[3];
+/** Narrowest a space card gets before the grid drops a column (never below two). */
+const CARD_MIN = 200;
 /** Spaces fetched per page. */
 const PAGE_SIZE = 12;
 
 /**
  * The catalogue: every public space, searched and paged by the server, as a
- * 2-column grid that loads more as you scroll. My circles (`?mine=true`) is
+ * grid (two columns on phones, more on tablets and wide windows) that loads
+ * more as you scroll. My circles (`?mine=true`) is
  * its own screen, MyCirclesScreen.
  */
 export default function SpacesListScreen() {
   const c = useCosmos();
   const router = useRouter();
-  const { width: screenW } = useContentWidth();
-  const cardW = Math.floor((screenW - GUTTER * 2 - GAP) / 2);
+  const grid = useGrid(CARD_MIN, GAP, 2);
+  const cardW = grid.itemWidth;
 
   const { search: paramSearch } = useLocalSearchParams<{ search?: string }>();
 
@@ -127,28 +130,31 @@ export default function SpacesListScreen() {
 
   return (
     <CosmosList
-      data={loading ? [] : spaces}
-      keyExtractor={(item) => item.id}
-      numColumns={2}
-      columnWrapperStyle={{ gap: GAP }}
-      contentContainerStyle={styles.content}
+      data={loading ? [] : rows(spaces, grid.columns)}
+      keyExtractor={(row) => row[0].id}
+      contentContainerStyle={[styles.content, { maxWidth: grid.maxWidth }]}
       keyboardDismissMode="on-drag"
       refreshing={refreshing}
       onRefresh={() => loadSpaces(1, 'refresh')}
       ListHeaderComponent={header}
       ListHeaderComponentStyle={{ marginBottom: spacing[5] }}
-      renderItem={({ item }) => (
-        <SpaceCard
-          space={item}
-          width={cardW}
-          context={item.parentSpaceId && parentSpaceNames[item.parentSpaceId] ? `Part of ${parentSpaceNames[item.parentSpaceId]}` : null}
-          onPress={() => router.push(`/space/${item.id}`)}
-        />
+      renderItem={({ item: row }) => (
+        <View style={styles.row}>
+          {row.map((item) => (
+            <SpaceCard
+              key={item.id}
+              space={item}
+              width={cardW}
+              context={item.parentSpaceId && parentSpaceNames[item.parentSpaceId] ? `Part of ${parentSpaceNames[item.parentSpaceId]}` : null}
+              onPress={() => router.push(`/space/${item.id}`)}
+            />
+          ))}
+        </View>
       )}
       ListEmptyComponent={
         loading ? (
           <View style={styles.skeletonGrid}>
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+            {Array.from({ length: grid.columns * 3 }, (_, i) => (
               <SpaceCardSkeleton key={i} width={cardW} />
             ))}
           </View>
@@ -165,8 +171,9 @@ export default function SpacesListScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: GAP },
+  row: { flexDirection: 'row', gap: GAP },
   skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-  empty: { alignItems: 'center', padding: spacing[6], borderRadius: cosmosCardRadius },
+  empty: { ...column, alignItems: 'center', padding: spacing[6], borderRadius: cosmosCardRadius },
   emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   emptyBody: {
     marginTop: 6,

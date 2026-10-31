@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform, StatusBar, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, Platform, StatusBar, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { MapPin } from '@unifesto/unicon/react-native';
@@ -18,9 +18,14 @@ export const HEADER_CONTENT_HEIGHT = 80;
 // content relative to the CustomHeader.
 export function useStableTopInset(): number {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  // The launch value only while the window keeps its launch shape: a landscape
+  // iPhone hides the status bar, so its real top inset is 0.
+  const launch = initialWindowMetrics;
+  const sameShape = !!launch && (launch.frame.width > launch.frame.height) === (width > height);
   return Math.max(
     insets.top,
-    initialWindowMetrics?.insets.top ?? 0,
+    sameShape ? launch.insets.top : 0,
     Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0,
   );
 }

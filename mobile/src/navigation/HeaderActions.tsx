@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { MenuView, type MenuAction } from '@react-native-menu/menu';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
@@ -20,6 +20,7 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import Modal from '../components/ui/Modal';
 
 /**
  * Right-side header actions, shared by every pushed screen so spacing is the

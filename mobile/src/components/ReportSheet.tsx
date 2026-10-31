@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { REPORT_REASONS, submitContentReport, type ReportTarget } from '../lib/a
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import Modal from './ui/Modal';
 
 const TITLES: Record<ReportTarget, string> = {
   EVENT: 'Report event',

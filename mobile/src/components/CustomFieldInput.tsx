@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Platform,
   Pressable,
   StatusBar,
@@ -28,6 +27,7 @@ import {
   isFileAnswer,
   numberDraft,
 } from '../utils/formQuestions';
+import Modal from './ui/Modal';
 
 interface CustomFieldInputProps {
   field: CustomField;

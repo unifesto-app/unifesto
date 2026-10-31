@@ -47,8 +47,8 @@ interface HeroCarouselProps {
  */
 function HeroCarousel({ events, loading, failed, onRetry, onPressEvent }: HeroCarouselProps) {
   const c = useCosmos();
-  const { width: screenW } = useContentWidth();
-  const cardW = Math.round(screenW * CARD_RATIO);
+  const { width: screenW, hero } = useContentWidth();
+  const cardW = Math.min(Math.round(screenW * CARD_RATIO), hero);
   const coverH = Math.round((cardW * 3) / 4);
   const snap = cardW + GAP;
   // Room after the last card so it can scroll to the same resting spot as the

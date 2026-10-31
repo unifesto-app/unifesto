@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDown, Check, MagnifyingGlass, Plus } from '@unifesto/unicon/react-native';
 import { borderRadius, spacing } from '../../theme/spacing';
@@ -7,6 +7,7 @@ import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import useContentWidth from '../../hooks/useContentWidth';
+import Modal from '../ui/Modal';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 

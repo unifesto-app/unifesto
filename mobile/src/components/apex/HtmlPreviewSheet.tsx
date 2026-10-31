@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '@unifesto/unicon/react-native';
@@ -8,6 +8,7 @@ import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import useContentWidth from '../../hooks/useContentWidth';
+import Modal from '../ui/Modal';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
 

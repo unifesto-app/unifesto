@@ -73,6 +73,12 @@ export default function TicketsScreen() {
     pager.current?.scrollTo({ x: index * width, animated: true });
   }, [t.tab, width, pager]);
 
+  // Rotation or a window resize (Split View, floating window): the page in view
+  // stays lined up at the new width instead of showing half of two.
+  useEffect(() => {
+    pager.current?.scrollTo({ x: shownIndex.current * width, animated: false });
+  }, [width, pager]);
+
   // Runs on the JS thread only when the nearest page changes, not per frame.
   const onPageChange = useRef((_index: number) => {});
   onPageChange.current = (index: number) => {

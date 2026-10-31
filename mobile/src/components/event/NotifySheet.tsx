@@ -1,6 +1,6 @@
 import { EMAIL_RE } from '../../lib/constants';
 import React, { useEffect } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { BellRinging, CheckCircle, EnvelopeSimple, User, X } from '@unifesto/unicon/react-native';
@@ -12,6 +12,7 @@ import type { EventDetail } from '../../hooks/useEventDetail';
 import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import Modal from '../ui/Modal';
 
 
 /**

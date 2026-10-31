@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDown, Check, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { spacing } from '../../theme/spacing';
@@ -7,6 +7,7 @@ import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 import { SheetBackdrop } from '../ui/CardSurface';
 import useContentWidth from '../../hooks/useContentWidth';
+import Modal from '../ui/Modal';
 
 interface SelectRowProps {
   label: string;

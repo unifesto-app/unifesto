@@ -108,7 +108,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const barSpace = useActionBarSpace();
-  const { width } = useContentWidth();
+  const { width, hero } = useContentWidth();
   const scrollRef = useRef<ScrollView>(null);
   // Y of the "Events inside" rail, so an umbrella's CTA lands on it.
   const subEventsY = useRef<number | null>(null);
@@ -120,7 +120,8 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   // Unifesto Stay: shown to signed-in viewers when the event offers stays.
   const stay = useEventStays(event?.id, !!d.user && !!event && event.type !== 'ONLINE');
 
-  const bannerW = width - GUTTER * 2;
+  // Short of the column on a landscape phone, so the name still shows under it.
+  const bannerW = Math.min(width - GUTTER * 2, hero);
   const bannerH = Math.round((bannerW * 3) / 4); // event banners are 4:3
 
   // A case about this event; the backend sends it to the organiser's desk (D2).
