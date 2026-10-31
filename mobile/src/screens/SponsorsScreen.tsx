@@ -7,6 +7,7 @@ import { getUsage } from '../lib/api/billing';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -80,15 +81,17 @@ export default function SponsorsScreen() {
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
       {locked ? (
-        <View style={[styles.notice, { backgroundColor: c.raised }]}>
-          <Text style={[styles.noticeTitle, { color: c.text }]}>Not on this space's plan</Text>
+        <View style={styles.notice}>
+          <CardBackdrop shape={styles.notice} />
+          <Text style={[styles.noticeTitle, { color: c.warn }]}>Not on this space's plan</Text>
           <Text style={[styles.noticeBody, { color: c.soft }]}>
             You can look through what's here, but adding or changing sponsors needs a plan that includes Sponsors and leads.
           </Text>
         </View>
       ) : null}
       {error ? (
-        <View style={[styles.notice, { backgroundColor: c.raised }]}>
+        <View style={styles.notice}>
+          <CardBackdrop shape={styles.notice} />
           <Text style={[styles.noticeBody, { color: c.danger }]}>{error}</Text>
         </View>
       ) : null}

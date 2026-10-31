@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { createEventRequest } from '../lib/api/spaces';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthField from '../components/auth/AuthField';
 import AuthButton from '../components/auth/AuthButton';
 import DateTimeRow from '../components/manage/DateTimeRow';
@@ -13,7 +14,7 @@ import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const FORMATS = [
@@ -88,16 +89,18 @@ export default function EventRequestScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-            <Text style={[styles.title, { color: c.text }]}>Host an event, no space needed</Text>
+          {/* The screen's own title and one line under it: no box around them. */}
+          <View style={styles.head}>
+            <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
+              Host an event, no space needed
+            </Text>
             <Text style={[styles.lead, { color: c.soft }]}>
               Tell us the basics. Once we approve it, we set up a space for you with the event inside as a draft, ready
               for tickets.
             </Text>
           </View>
 
-          <Section title="Your event" style={styles.tightSection}>
+          <Section title="My event" style={styles.tightSection}>
             <View style={styles.fields}>
               <AuthField label="Name" value={title} onChangeText={setTitle} placeholder="e.g. Robotics night" maxLength={500} />
               <AuthField
@@ -132,9 +135,10 @@ export default function EventRequestScreen() {
                     accessibilityState={{ selected: active }}
                     style={({ pressed }) => [
                       styles.chip,
-                      { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                      { backgroundColor: active ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                     ]}
                   >
+                    {!active ? <CardBackdrop shape={styles.chip} /> : null}
                     <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{f.label}</Text>
                   </Pressable>
                 );
@@ -164,13 +168,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
   tightSection: { marginTop: spacing[10] },
-  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
-  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  head: { paddingHorizontal: GUTTER, marginTop: spacing[4] },
+  title: { fontSize: 28, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   lead: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   fields: { paddingHorizontal: GUTTER, gap: spacing[5] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: 999, justifyContent: 'center' },
+  chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: cosmosRadius, justifyContent: 'center' },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
   hint: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },

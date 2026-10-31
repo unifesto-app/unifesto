@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { openApexWeb } from '../../lib/openOnWeb';
 import { Cards, Plus } from '@unifesto/unicon/react-native';
 import { CosmosList } from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
@@ -27,7 +28,7 @@ export const EMAIL_TARGET_LABEL: Record<EmailTargetType, string> = {
   SINGLE_USER: 'One person',
 };
 
-export const pct = (part: number, whole: number) => (whole ? `${Math.round((part / whole) * 100)}%` : '—');
+export const pct = (part: number, whole: number) => (whole ? `${Math.round((part / whole) * 100)}%` : '–');
 
 /** Platform email campaigns with open / click rates; + composes, cards icon opens templates. */
 export default function EmailCampaignsScreen() {
@@ -94,7 +95,8 @@ export default function EmailCampaignsScreen() {
           loading ? (
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'No campaigns yet. Tap + to compose one.'}</Text>
             </View>
           )

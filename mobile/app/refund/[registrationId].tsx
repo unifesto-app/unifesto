@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { CheckCircle, CircleDashed, Info, XCircle } from '@unifesto/unicon/react-native';
+import { Check, CheckCircle, CircleDashed, Info, XCircle } from '@unifesto/unicon/react-native';
 import Skeleton from '../../src/components/Skeleton';
 import CosmosScreen from '../../src/components/ui/CosmosScreen';
+import ShadeCard from '../../src/components/ui/ShadeCard';
 import { GUTTER } from '../../src/components/home/Section';
 import { Button } from '../../src/components/ui';
 import { borderRadius, spacing } from '../../src/theme/spacing';
@@ -18,7 +19,7 @@ import {
   type RefundStatus,
 } from '../../src/lib/api/refunds';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../../src/theme/cosmos';
 
 /** Visual state a single timeline step can be in. */
 type StepState = 'done' | 'current' | 'rejected' | 'skipped' | 'pending';
@@ -69,7 +70,7 @@ function deriveSteps(req: RefundRequest): ProgressStep[] {
   ];
 }
 
-/** Short headline + tone for the status chip. */
+/** Short headline + tone for the status line. */
 function statusSummary(status: RefundStatus): { label: string; tone: 'info' | 'success' | 'error' } {
   switch (status) {
     case 'APPROVED':
@@ -164,16 +165,32 @@ export default function RefundRoute() {
         <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={spacing[10] + insets.bottom} contentContainerStyle={styles.pad}>
             <Text style={[styles.eventTitle, { color: c.text }]} accessibilityRole="header">{latest?.event?.title || eventTitle}</Text>
 
-            {/* ── Progress of the latest request ── */}
+            {/* ── Progress of the latest request: the page's hero, on the money's ivory shade ── */}
             {latest ? (() => {
               const summary = statusSummary(latest.status);
               const tone = toneColor(summary.tone);
               return (
-                <View style={[styles.card]}>
-                  <CardBackdrop shape={styles.card} />
-                  <View style={[styles.chip, { backgroundColor: `${tone}26` }]}>
-                    <Text style={[styles.chipText, { color: tone }]}>{summary.label}</Text>
+                <ShadeCard tone="ivory">
+                  <View style={styles.status}>
+                    {summary.tone === 'success' ? (
+                      <Check size={14} color={tone} weight="bold" />
+                    ) : (
+                      <View style={[styles.statusDot, { backgroundColor: tone }]} />
+                    )}
+                    <Text style={[styles.statusText, { color: tone }]}>{summary.label}</Text>
                   </View>
+
+                  {latest.status === 'APPROVED' ? (
+                    <View style={styles.amountBlock}>
+                      <Text style={[styles.amountLabel, { color: c.soft }]}>Amount refunded</Text>
+                      <Text style={[styles.amount, { color: c.ivory }]}>
+                        ₹{toNumber(latest.approvedAmount ?? latest.cashRefunded).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                      <Text style={[styles.small, { color: c.soft }]}>
+                        Back to your original payment method in 5 to 7 business days.
+                      </Text>
+                    </View>
+                  ) : null}
 
                   <View style={{ marginTop: spacing[5] }}>
                     {deriveSteps(latest).map((step, i, arr) => (
@@ -181,22 +198,10 @@ export default function RefundRoute() {
                     ))}
                   </View>
 
-                  {latest.status === 'APPROVED' ? (
-                    <View style={[styles.amountBox, { backgroundColor: c.tint }]}>
-                      <Text style={[styles.amountLabel, { color: c.soft }]}>Amount refunded</Text>
-                      <Text style={[styles.amount, { color: c.success }]}>
-                        ₹{toNumber(latest.approvedAmount ?? latest.cashRefunded).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </Text>
-                      <Text style={[styles.small, { color: c.muted }]}>
-                        Back to your original payment method in 5 to 7 business days.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  <Text style={[styles.small, { color: c.muted, marginTop: spacing[4] }]}>
+                  <Text style={[styles.small, { color: c.soft, marginTop: spacing[4] }]}>
                     Your reason: “{latest.reason}”
                   </Text>
-                </View>
+                </ShadeCard>
               );
             })() : null}
 
@@ -291,7 +296,7 @@ export default function RefundRoute() {
                             </Text>
                           </View>
                           {r.status === 'APPROVED' ? (
-                            <Text style={[styles.earlierAmount, { color: c.success }]}>
+                            <Text style={[styles.earlierAmount, { color: c.ivory }]}>
                               ₹{toNumber(r.approvedAmount ?? r.cashRefunded).toLocaleString('en-IN')}
                             </Text>
                           ) : null}
@@ -337,7 +342,7 @@ function StepRow({ step, isLast }: { step: ProgressStep; isLast: boolean }) {
     ) : step.state === 'rejected' ? (
       <XCircle size={24} color={c.danger} weight="fill" />
     ) : step.state === 'current' ? (
-      <LiveDot color={c.primary} />
+      <LiveDot color={c.warn} />
     ) : (
       <CircleDashed size={24} color={c.muted} />
     );
@@ -347,14 +352,14 @@ function StepRow({ step, isLast }: { step: ProgressStep; isLast: boolean }) {
       <View style={styles.rail}>
         {mark}
         {!isLast ? (
-          <View style={[styles.connector, { backgroundColor: step.state === 'done' ? c.success : c.border }]} />
+          <View style={[styles.connector, { backgroundColor: step.state === 'done' ? c.soft : c.border }]} />
         ) : null}
       </View>
       <View style={{ flex: 1, paddingBottom: isLast ? 0 : spacing[5] }}>
         <Text style={[styles.stepLabel, { color: muted ? c.muted : c.text }]}>
           {step.label}
           {step.state === 'skipped' ? ' (not reached)' : ''}
-          {step.state === 'current' ? <Text style={{ color: c.primary }}>{'  In progress'}</Text> : null}
+          {step.state === 'current' ? <Text style={{ color: c.warn }}>{'  In progress'}</Text> : null}
         </Text>
         {step.at ? <Text style={[styles.small, { color: c.muted, marginTop: 2 }]}>{formatWhen(step.at)}</Text> : null}
         {step.note ? <Text style={[styles.stepNote, { color: c.soft }]}>“{step.note}”</Text> : null}
@@ -366,14 +371,16 @@ function StepRow({ step, isLast }: { step: ProgressStep; isLast: boolean }) {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   eventTitle: {
-    fontSize: typography.fontSize.xl,
-    lineHeight: typography.fontSize.xl * 1.4,
+    fontSize: typography.fontSize['2xl'],
+    lineHeight: 30,
     marginBottom: spacing[5],
     ...cosmosFont.display,
+    letterSpacing: displayTracking(24),
   },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
-  chip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: borderRadius.full },
-  chipText: { fontSize: 12, ...cosmosFont.strong },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   stepRow: { flexDirection: 'row', gap: spacing[3] },
   rail: { alignItems: 'center', width: 24 },
   connector: { width: 2, flex: 1, minHeight: 18, marginTop: 4, borderRadius: 1 },
@@ -382,9 +389,9 @@ const styles = StyleSheet.create({
   liveWrap: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
   liveDot: { width: 12, height: 12, borderRadius: 6 },
-  amountBox: { marginTop: spacing[5], padding: spacing[4], borderRadius: cosmosRadius, gap: 2 },
-  amountLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  amount: { fontSize: typography.fontSize['3xl'], lineHeight: 38, ...cosmosFont.figure },
+  amountBlock: { marginTop: spacing[4], gap: 2 },
+  amountLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   cardTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   body: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

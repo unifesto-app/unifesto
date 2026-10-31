@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, Sparkle } from '@unifesto/unicon/react-native';
 import AuthField from './auth/AuthField';
+import { CardBackdrop } from './ui/CardSurface';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
@@ -46,7 +47,8 @@ export default function AttendeeForm({
   const set = (field: keyof AttendeeInfo) => (v: string) => onChange(index, field, v);
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       {showTitle || fill ? (
         <View style={styles.head}>
           {showTitle ? (
@@ -157,7 +159,7 @@ const styles = StyleSheet.create({
   fill: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
   fillText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   fields: { gap: spacing[5] },
-  label: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
+  label: { fontSize: typography.fontSize.sm, marginBottom: 8, ...cosmosFont.strong },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: spacing[4], borderRadius: 999 },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

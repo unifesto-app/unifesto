@@ -4,6 +4,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { UserPlus } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { useAuth } from '../context/AuthContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
@@ -142,7 +143,8 @@ export default function SpaceMembersScreen() {
   const empty = m.loading ? (
     <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
   ) : (
-    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+    <View style={styles.empty}>
+      <CardBackdrop shape={styles.empty} />
       <Text style={[styles.emptyText, { color: c.soft }]}>
         {m.denied ? 'Only Space admins can manage members.' : m.error || (m.query ? 'No one matches that search.' : 'No one here yet.')}
       </Text>

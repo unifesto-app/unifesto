@@ -10,10 +10,11 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 const STATUSES: RequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
@@ -106,7 +107,8 @@ export default function QueueReviewScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error || !def ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error || 'Unknown queue.'}</Text>
             {def ? (
               <Button
@@ -133,16 +135,19 @@ export default function QueueReviewScreen() {
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
       <Stack.Screen options={{ title: def.label }} />
-        <Text style={[styles.title, { color: c.text }]}>{item.title}</Text>
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{item.title}</Text>
         {item.subtitle ? <Text style={[styles.muted, { color: c.muted }]}>{item.subtitle}</Text> : null}
-        <View style={[styles.chip, { backgroundColor: `${statusColor}26` }]}>
+        {/* The status as plain text with a dot, never a pill. */}
+        <View style={styles.statusRow}>
+          <View style={[styles.dot, { backgroundColor: statusColor }]} />
           <Text style={[styles.status, { color: statusColor }]}>
             {item.status === 'PENDING' ? 'Waiting for review' : titleCase(item.status)}
           </Text>
         </View>
 
         {item.reason ? (
-          <View style={[styles.quote, { backgroundColor: c.raised }]}>
+          <View style={styles.quote}>
+            <CardBackdrop shape={styles.quote} />
             <Text style={[styles.quoteText, { color: c.text }]}>“{item.reason}”</Text>
           </View>
         ) : null}
@@ -156,7 +161,7 @@ export default function QueueReviewScreen() {
         ) : null}
 
         <SettingsGroup title="Asked by" plain>
-          <SettingsRow label="Name" value={who?.label ?? '—'} />
+          <SettingsRow label="Name" value={who?.label ?? '–'} />
           {who?.phone ? <SettingsRow label="Phone" value={who.phone} onPress={() => void Linking.openURL(`tel:${who.phone}`)} /> : null}
           {who?.email ? <SettingsRow label="Email" value={who.email} onPress={() => void Linking.openURL(`mailto:${who.email}`)} /> : null}
           <SettingsRow label="Asked on" value={longDate(item.createdAt)} />
@@ -213,10 +218,11 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
-  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
-  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  quote: { marginTop: spacing[5], padding: spacing[4], borderRadius: cosmosCardRadius },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  quote: { marginTop: spacing[5], padding: spacing[5], borderRadius: cosmosCardRadius },
   quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

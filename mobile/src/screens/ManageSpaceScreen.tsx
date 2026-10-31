@@ -23,6 +23,8 @@ import { hostingRoleLabel } from '../lib/spaceSections';
 import type { ManagedEvent } from '../lib/api/manageSpace';
 import { getSpaceDeskUnread } from '../lib/api/support';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import ShadeCard from '../components/ui/ShadeCard';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -31,7 +33,7 @@ import ManageEventRow, { ManageEventRowSkeleton } from '../components/manage/Man
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { openSpaceWeb } from '../lib/openOnWeb';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -106,14 +108,15 @@ export default function ManageSpaceScreen() {
           />
         }
       >
-        {/* Identity: logo, name, my role, the numbers, the two everyday actions. */}
+        {/* Identity: logo, name, my role, the numbers, the two everyday actions.
+            The screen's hero, on the Space's blue shade. */}
         <View style={styles.pad}>
-          <View style={[styles.hero, { backgroundColor: c.raised }]}>
+          <ShadeCard tone="blue">
             <View style={styles.top}>
               {m.space?.logo_url ? (
                 <Image source={{ uri: m.space.logo_url }} style={[styles.logo, { backgroundColor: c.card }]} contentFit="cover" />
               ) : (
-                <Monogram name={name} size={LOGO} radius={14} />
+                <Monogram name={name} size={LOGO} radius={borderRadius.md} />
               )}
               <View style={{ flex: 1 }}>
                 <Text accessibilityRole="header" style={[styles.name, { color: c.text }]} numberOfLines={2}>
@@ -124,10 +127,10 @@ export default function ManageSpaceScreen() {
             </View>
 
             <View style={[styles.stats, { borderTopColor: c.border }]}>
-              {stats.map((s) => (
+              {stats.map((s, i) => (
                 <View
                   key={s.label}
-                  style={styles.stat}
+                  style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}
                   accessible
                   accessibilityLabel={m.loading ? `${s.label}, loading` : `${s.label}, ${s.value}`}
                 >
@@ -164,7 +167,7 @@ export default function ManageSpaceScreen() {
                 ) : null}
               </View>
             ) : null}
-          </View>
+          </ShadeCard>
         </View>
 
         {/* Events */}
@@ -175,12 +178,14 @@ export default function ManageSpaceScreen() {
               {m.loading ? (
                 [0, 1, 2].map((i) => <ManageEventRowSkeleton key={i} />)
               ) : m.error ? (
-                <View style={[styles.empty, { backgroundColor: c.raised }]}>
+                <View style={styles.empty}>
+                  <CardBackdrop shape={styles.empty} />
                   <Text style={[styles.emptyText, { color: c.soft }]}>{m.error}</Text>
                   <AuthButton label="Try again" variant="secondary" onPress={() => void m.retry()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
                 </View>
               ) : list.length === 0 ? (
-                <View style={[styles.empty, { backgroundColor: c.raised }]}>
+                <View style={styles.empty}>
+                  <CardBackdrop shape={styles.empty} />
                   <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[m.tab]}</Text>
                 </View>
               ) : (
@@ -289,9 +294,8 @@ export default function ManageSpaceScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
-  hero: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  logo: { width: LOGO, height: LOGO, borderRadius: 14, overflow: 'hidden' },
+  logo: { width: LOGO, height: LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
   name: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { flexDirection: 'row', marginTop: spacing[5], paddingTop: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },

@@ -22,11 +22,12 @@ import { INDIAN_STATES } from '../lib/indianStates';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -159,7 +160,8 @@ export default function SpaceSettingsScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {loadError ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={[styles.card, { alignItems: 'center' }]}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
               <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
             </View>
@@ -183,7 +185,8 @@ export default function SpaceSettingsScreen() {
     >
       {/* Logo 1:1 + compact 4:3 banner, each uploads on pick */}
       <View style={styles.pad}>
-        <View style={[styles.card, styles.images, { backgroundColor: c.raised }]}>
+        <View style={[styles.card, styles.images]}>
+          <CardBackdrop shape={styles.card} />
           <ImageSlot
             label="Logo"
             url={profile.logoUrl}
@@ -245,7 +248,7 @@ export default function SpaceSettingsScreen() {
 
       <Section title="Who can see it">
         <View style={styles.pad}>
-          <SegmentedTabs tabs={VIS_TABS} value={form.visibility} onChange={(v) => set({ visibility: v })} />
+          <SegmentedTabs tabs={VIS_TABS} value={form.visibility} onChange={(v) => set({ visibility: v })} glass={false} />
           <Text style={[styles.note, { color: c.muted }]}>
             {form.visibility === 'PUBLIC' ? 'Anyone can find and view this space.' : 'Only members can view it. Add people from Members.'}
           </Text>
@@ -295,7 +298,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   images: { flexDirection: 'row', gap: spacing[5], alignItems: 'flex-start' },
-  slot: { height: IMG_H, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  slot: { height: IMG_H, borderRadius: borderRadius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   slotLabel: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   slotAction: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   firstSection: { marginTop: spacing[10] },

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { House, ShieldCheck, SquaresFour, Ticket, User, type Icon } from '@unifesto/unicon/react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useCosmos } from '../theme/cosmos';
+import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
 import { borderRadius, spacing } from '../theme/spacing';
 
 export const TAB_META: Record<string, { label: string; icon: Icon }> = {
@@ -22,8 +23,9 @@ const SPRING = { damping: 18, stiffness: 240 };
 
 /**
  * Floating tab bar for Android (iOS uses the native Liquid Glass bar).
- * An opaque cosmos capsule off the bottom edge; the active tab is a silver,
- * filled glyph with a short bar that slides between tabs — nothing behind icons.
+ * A glass capsule (solid base + veil, untinted) off the bottom edge, monochrome:
+ * the active tab is a silver (ink by day), filled glyph with a short bar that
+ * slides between tabs; inactive glyphs are muted. Nothing behind icons.
  */
 export default function FloatingTabBar({
   state,
@@ -45,7 +47,10 @@ export default function FloatingTabBar({
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) + 4 }]}>
-      <View style={[styles.bar, { backgroundColor: c.raised }]}>
+      <View style={[styles.bar, { borderColor: c.border }]}>
+        <CardSurfaceProvider kind="glass">
+          <CardBackdrop shape={styles.bar} opaque />
+        </CardSurfaceProvider>
         {visible.map((route) => {
           const meta = TAB_META[route.name];
           const focused = route.key === state.routes[state.index]?.key;
@@ -123,12 +128,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
     paddingBottom: spacing[3],
     gap: GAP,
-    // Tonal elevation: opaque, lifted off content scrolling beneath it.
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 18,
+    // No shadow (Horizon); the glass veil lifts it by night, a hairline marks it by day.
+    borderWidth: StyleSheet.hairlineWidth,
   },
   item: { width: ITEM_W, height: 40, alignItems: 'center', justifyContent: 'center' },
   indicator: {

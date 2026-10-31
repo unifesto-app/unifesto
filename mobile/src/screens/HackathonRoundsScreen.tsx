@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleDashed, PlayCircle, Plus } from '@unifesto/unicon/react-native';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { openSpaceWeb } from '../lib/openOnWeb';
@@ -52,7 +53,8 @@ export default function HackathonRoundsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -77,16 +79,17 @@ export default function HackathonRoundsScreen() {
       }}
     >
       <SettingsGroup>
+        {rounds.length === 0 ? <SettingsRow label="No rounds yet" /> : null}
         {rounds.map((r) => (
           <SettingsRow
             key={r.id}
             icon={
               r.status === 'ACTIVE' ? (
-                <PlayCircle size={ICON} color={c.success} weight="fill" />
+                <PlayCircle size={ICON} color={c.mint} weight="fill" />
               ) : r.status === 'CLOSED' ? (
                 <CheckCircle size={ICON} color={c.muted} weight="fill" />
               ) : (
-                <CircleDashed size={ICON} color={c.primary} weight="bold" />
+                <CircleDashed size={ICON} color={c.muted} />
               )
             }
             label={r.name}

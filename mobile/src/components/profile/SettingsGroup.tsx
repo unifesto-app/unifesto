@@ -34,7 +34,11 @@ interface SettingsGroupProps {
   children: React.ReactNode;
 }
 
-/** Inset-grouped list: title, rows on one rounded surface. */
+/**
+ * Inset-grouped list (Horizon): a muted Hanken SemiBold title in sentence case,
+ * then rows on one borderless card divided by hairlines. Monochrome: labels in
+ * text, values and chevrons muted, crimson only for destructive rows.
+ */
 export function SettingsGroup({ title, action, plain, surface, style, children }: SettingsGroupProps) {
   const c = useCosmos();
   const rows = React.Children.toArray(children).filter(Boolean);
@@ -61,10 +65,16 @@ function GroupTitle({ title, action }: Pick<SettingsGroupProps, 'title' | 'actio
   if (!title && !action) return null;
   return (
     <View style={styles.titleRow}>
-      {title ? <Text style={[styles.title, { color: c.muted }]}>{title}</Text> : <View />}
+      {title ? (
+        <Text style={[styles.title, { color: c.muted }]} accessibilityRole="header" numberOfLines={1}>
+          {title}
+        </Text>
+      ) : (
+        <View />
+      )}
       {action ? (
         <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
-          <Text style={[styles.action, { color: c.primary }]}>{action.label}</Text>
+          <Text style={[styles.action, { color: c.text }]}>{action.label}</Text>
         </Pressable>
       ) : null}
     </View>

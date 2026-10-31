@@ -23,7 +23,8 @@ export default function SponsorMark({ name, logoUrl, size = 28 }: { name: string
 }
 
 const styles = StyleSheet.create({
+  // Brand marks are drawn for white, like the QR panel: the one fixed white.
   logo: { backgroundColor: '#ffffff' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  initials: { ...cosmosFont.display },
+  initials: { ...cosmosFont.strong },
 });

@@ -86,8 +86,7 @@ export default function EventRegistrationScreen() {
           <ScrollView contentContainerStyle={[styles.content, { paddingBottom: barSpace }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <ProfileGate r={r} />
           </ScrollView>
-          <ActionBar info={null} label="Save and continue" loading={r.gate.saving} tone="neutral"
-          accent={c.primary} onPress={r.gate.save} />
+          <ActionBar info={null} label="Save and continue" loading={r.gate.saving} tone="neutral" accent={c.primary} onPress={r.gate.save} />
         </KeyboardAvoidingView>
       </View>
     );
@@ -123,7 +122,7 @@ export default function EventRegistrationScreen() {
 
   return (
     <View style={styles.flex}>
-        <CosmosBackdrop horizon={false} />
+      <CosmosBackdrop horizon={false} />
       <FlowHeader
         title={r.event.title}
         step={r.step}

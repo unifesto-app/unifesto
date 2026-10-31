@@ -117,8 +117,16 @@ export default function PollsScreen() {
       {polls.map((p) => {
         const total = p.totalVotes ?? 0;
         return (
-          <SettingsGroup key={p.id} title={`${STATUS_LABEL[p.status]} · ${total} vote${total === 1 ? '' : 's'}`}>
+          <SettingsGroup key={p.id}>
             <View style={styles.poll}>
+              {/* Status as plain text: live in mint with its dot, the rest muted. */}
+              <View style={styles.statusRow}>
+                {p.status === 'LIVE' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
+                <Text style={[styles.status, { color: p.status === 'LIVE' ? c.mint : c.muted }]}>
+                  {STATUS_LABEL[p.status]}
+                  <Text style={{ color: c.muted }}>{` · ${total} vote${total === 1 ? '' : 's'}`}</Text>
+                </Text>
+              </View>
               <Text style={[styles.question, { color: c.text }]}>{p.question}</Text>
               {p.options.map((o, i) => {
                 const n = p.results?.[i] ?? 0;
@@ -128,11 +136,11 @@ export default function PollsScreen() {
                     <View style={styles.resultRow}>
                       <Text style={[styles.option, { color: c.text }]}>{o}</Text>
                       <Text style={[styles.count, { color: c.muted }]}>
-                        {n} · {pct}%
+                        {n} · <Text style={{ color: c.text }}>{pct}%</Text>
                       </Text>
                     </View>
                     <View style={[styles.track, { backgroundColor: c.tint }]}>
-                      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.primary }]} />
+                      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.mint }]} />
                     </View>
                   </View>
                 );
@@ -181,7 +189,7 @@ export default function PollsScreen() {
         />
       ) : null}
       <Text style={[styles.label, { color: c.soft }]}>Attendees see results</Text>
-      <SegmentedTabs tabs={VISIBILITY} value={visibility} onChange={setVisibility} />
+      <SegmentedTabs tabs={VISIBILITY} value={visibility} onChange={setVisibility} glass={false} />
       <Button
         label="Save as draft"
         fullWidth
@@ -198,11 +206,14 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing[4] },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   label: { marginLeft: spacing[1], marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  poll: { padding: spacing[4], gap: spacing[3] },
-  question: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  poll: { padding: spacing[5], gap: spacing[3] },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  question: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.35, ...cosmosFont.strong },
   result: { gap: spacing[1] },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[3] },
-  option: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  option: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   count: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   track: { height: 6, borderRadius: borderRadius.full, overflow: 'hidden' },
   fill: { height: 6, borderRadius: borderRadius.full },

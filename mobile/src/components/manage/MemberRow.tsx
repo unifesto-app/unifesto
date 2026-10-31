@@ -30,7 +30,7 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
       disabled={!onPress || busy}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={[name, ...tags, trailing].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
     >
       {user.avatarUrl ? (
         <Image source={{ uri: user.avatarUrl }} style={[styles.avatar, { backgroundColor: c.card }]} />
@@ -42,11 +42,11 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
           <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
             {name}
           </Text>
-          {tags.map((t) => (
-            <View key={t} style={[styles.tag, { backgroundColor: c.tint }]}>
-              <Text style={[styles.tagText, { color: c.text }]}>{t}</Text>
-            </View>
-          ))}
+          {tags.length ? (
+            <Text style={[styles.tagText, { color: c.muted }]} numberOfLines={1}>
+              {tags.join(' · ')}
+            </Text>
+          ) : null}
         </View>
         {sub ? (
           <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
@@ -57,7 +57,7 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
       {busy ? (
         <ActivityIndicator size="small" color={c.text} />
       ) : trailing ? (
-        <Text style={[styles.trailing, { color: c.soft }]}>{trailing}</Text>
+        <Text style={[styles.trailing, { color: c.muted }]}>{trailing}</Text>
       ) : null}
     </Pressable>
   );
@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 2 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  tagText: { fontSize: 11, ...cosmosFont.strong },
+  // Tags are plain muted text, never pills.
+  tagText: { flexShrink: 0, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   trailing: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

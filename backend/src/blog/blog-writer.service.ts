@@ -90,7 +90,30 @@ export class BlogWriterService {
       data: { status: BlogQuestionStatus.WRITING },
     });
     if (!claimed.count) return { status: 'skipped', reason: 'another run took it' };
+    return this.run(q);
+  }
 
+  /**
+   * ADMIN "Start": write this queued or failed question now, ignoring the daily
+   * cap and topic cooldown. Returns once it's claimed; the write runs in the
+   * background (minutes, longer than a request should wait).
+   */
+  async start(id: string) {
+    const { count } = await this.prisma.blogQuestion.updateMany({
+      where: { id, status: { in: [BlogQuestionStatus.QUEUED, BlogQuestionStatus.FAILED] } },
+      data: { status: BlogQuestionStatus.WRITING, failReason: null },
+    });
+    if (!count) throw new NotFoundException('No queued or failed question with that id');
+    const q = await this.prisma.blogQuestion.findUniqueOrThrow({ where: { id } });
+    this.run(q).then(
+      (r) => this.logger.log(`Auto-blog start: ${JSON.stringify(r)}`),
+      (err) => this.logger.error(`Auto-blog start ${id} crashed: ${(err as Error).message}`),
+    );
+    return q;
+  }
+
+  /** Write a claimed (WRITING) question; a failure marks it FAILED with the reason. */
+  private async run(q: BlogQuestion): Promise<GenerateResult> {
     try {
       const slug = await this.write(q);
       return { status: 'published', slug };

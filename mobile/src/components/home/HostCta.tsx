@@ -5,6 +5,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
+import { CardBackdrop } from '../ui/CardSurface';
 
 /**
  * Closing band for people who only attend (the web's FinalCTASection): the
@@ -14,9 +15,9 @@ export default function HostCta({ onPress }: { onPress: () => void }) {
   const c = useCosmos();
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
-      <View style={[styles.card, { backgroundColor: c.raised }]}>
-        <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-        <Text style={[styles.title, { color: c.text }]}>Run your own event</Text>
+      <View style={styles.card}>
+        <CardBackdrop shape={styles.card} />
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">Run your own event</Text>
         <Text style={[styles.body, { color: c.soft }]}>
           Tickets, QR check-in and payouts for your club or community. Free for RSVP events.
         </Text>
@@ -27,9 +28,8 @@ export default function HostCta({ onPress }: { onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
-  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  title: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   body: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   button: { marginTop: spacing[6], alignSelf: 'flex-start' },
 });

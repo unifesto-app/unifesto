@@ -3,6 +3,7 @@ import { StatusService } from './status.service';
 import { StatusController } from './status.controller';
 import { HealthController } from './health.controller';
 import { UptimeRobotService } from './uptime-robot.service';
+import { SentryIssuesService } from './sentry-issues.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -14,7 +15,7 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [AdminModule, AuthModule],
   controllers: [StatusController, HealthController],
-  providers: [StatusService, UptimeRobotService],
+  providers: [StatusService, UptimeRobotService, SentryIssuesService],
   exports: [StatusService],
 })
 export class StatusModule {}

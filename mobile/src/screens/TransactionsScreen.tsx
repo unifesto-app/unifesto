@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Export } from '@unifesto/unicon/react-native';
+import { Check, Export } from '@unifesto/unicon/react-native';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import {
   downloadTransactionsExport,
   getTransactions,
@@ -33,7 +34,7 @@ const STATUS: { value: Exclude<StatusFilter, 'all'>; label: string }[] = [
 ];
 
 const statusColor = (s: string, c: Cosmos) =>
-  s === 'PAID' ? c.success : s === 'FAILED' || s === 'REFUNDED' ? c.danger : s === 'PARTIALLY_REFUNDED' ? c.warn : c.muted;
+  s === 'PAID' ? c.success : s === 'FAILED' ? c.danger : s === 'REFUNDED' || s === 'PARTIALLY_REFUNDED' ? c.warn : c.muted;
 
 const statusLabel = (s: string) => (s === 'PARTIALLY_REFUNDED' ? 'Part refunded' : s.charAt(0) + s.slice(1).toLowerCase());
 
@@ -144,8 +145,8 @@ export default function TransactionsScreen() {
     <View>
       <ManageStats
         stats={[
-          { label: 'Collected', value: summary ? inrShort(summary.collected) : '…' },
-          { label: 'Net', value: summary ? inrShort(summary.net) : '…' },
+          { label: 'Collected', value: summary ? inrShort(summary.collected) : '…', tone: 'ivory' },
+          { label: 'Net', value: summary ? inrShort(summary.net) : '…', tone: 'ivory' },
           { label: 'Refunded', value: summary ? inrShort(summary.refunded) : '…' },
         ]}
       />
@@ -187,7 +188,8 @@ export default function TransactionsScreen() {
       }}
       ListEmptyComponent={
         error ? null : (
-          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+          <View style={styles.emptyCard}>
+            <CardBackdrop shape={styles.emptyCard} />
             <Text style={[styles.empty, { color: c.soft }]}>
               {rows.length === 0 ? 'Paid registrations show up here once tickets sell.' : 'Nothing matches these filters.'}
             </Text>
@@ -213,6 +215,8 @@ export default function TransactionsScreen() {
           {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
           <Pressable
             onPress={() => router.push(`/manage/event/${eventId}/attendee/${r.id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`${r.user.fullName || r.user.username || 'Unknown'}, ${inr(Number(r.totalAmount) || 0)}, ${statusLabel(r.paymentStatus)}`}
             style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
           >
             <View style={{ flex: 1 }}>
@@ -225,7 +229,10 @@ export default function TransactionsScreen() {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.amount, { color: c.text }]}>{inr(Number(r.totalAmount) || 0)}</Text>
-              <Text style={[styles.status, { color: statusColor(r.paymentStatus, c) }]}>{statusLabel(r.paymentStatus)}</Text>
+              <View style={styles.statusRow}>
+                {r.paymentStatus === 'PAID' ? <Check size={11} color={c.success} weight="bold" /> : null}
+                <Text style={[styles.status, { color: statusColor(r.paymentStatus, c) }]}>{statusLabel(r.paymentStatus)}</Text>
+              </View>
             </View>
           </Pressable>
         </View>
@@ -242,7 +249,8 @@ const styles = StyleSheet.create({
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   amount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
-  status: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

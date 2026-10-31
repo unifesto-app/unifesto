@@ -14,6 +14,7 @@ import { CosmosList } from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { GroupCell } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { attendeeName } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -241,10 +242,11 @@ const ResultRow = React.memo(function ResultRow({ item, busy, canUndo, onCheckIn
 function Empty({ title, body }: { title: string; body: string }) {
   const c = useCosmos();
   return (
-    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+    <View style={styles.empty}>
+      <CardBackdrop shape={styles.empty} />
       <UserFocus size={40} color={c.muted} />
-      <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
-      <Text style={[styles.emptyBody, { color: c.soft }]}>{body}</Text>
+      <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
+      <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
     </View>
   );
 }
@@ -256,6 +258,6 @@ const styles = StyleSheet.create({
   cell: { marginHorizontal: GUTTER },
   divider: { marginLeft: spacing[4] + 40 + spacing[3] },
   empty: { alignItems: 'center', marginHorizontal: GUTTER, padding: spacing[6], borderRadius: cosmosCardRadius, gap: spacing[2] },
-  emptyTitle: { fontSize: typography.fontSize.base, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.display },
   emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

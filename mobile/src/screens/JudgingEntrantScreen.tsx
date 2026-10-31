@@ -205,10 +205,13 @@ export default function JudgingEntrantScreen() {
   if (locked) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={[styles.lockCard, { backgroundColor: c.raised }]}>
+        <View style={styles.lockCard}>
+          <CardBackdrop shape={styles.lockCard} />
           <Lock size={52} color={c.muted} weight="duotone" style={styles.lockIcon} />
-          <Text style={[styles.lockTitle, { color: c.text }]}>Round closed</Text>
-          <Text style={[styles.lockText, { color: c.soft }]}>{lockedMessage}</Text>
+          <Text style={[styles.lockTitle, { color: c.text }]} accessibilityRole="header">
+            Round closed
+          </Text>
+          <Text style={[styles.lockText, { color: c.muted }]}>{lockedMessage}</Text>
         </View>
       </CosmosScreen>
     );
@@ -217,7 +220,9 @@ export default function JudgingEntrantScreen() {
   return (
     <CosmosScreen keyboard contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.entrantName, { color: c.text }]}>{entrantName ?? 'Entrant'}</Text>
+        <Text style={[styles.entrantName, { color: c.text }]} accessibilityRole="header">
+          {entrantName ?? 'Entrant'}
+        </Text>
         {roundName && <Text style={[styles.roundName, { color: c.muted }]}>{roundName}</Text>}
         {hack?.statement ? (
           <Text style={[styles.contextText, { color: c.text }]}>
@@ -234,7 +239,7 @@ export default function JudgingEntrantScreen() {
         {hack?.links?.length ? (
           <View style={{ marginTop: spacing[2] }}>
             {hack.links.map((l) => (
-              <Text key={l.url} style={[styles.contextText, { color: c.primary, marginTop: spacing[1] }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+              <Text key={l.url} style={[styles.contextText, { color: c.text, marginTop: spacing[1] }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
                 {l.label} ↗
               </Text>
             ))}
@@ -249,25 +254,31 @@ export default function JudgingEntrantScreen() {
         {hack?.slot?.status === 'AWAITING_MARKS' ? (
           <Text style={[styles.contextText, { color: c.warn }]}>Time’s up. Submit your marks to call the next team.</Text>
         ) : null}
+        {/* Statuses are plain text with a glyph, never pills. */}
         {submittedAt && !readOnly && (
-          <View style={[styles.pill, { backgroundColor: `${c.success}26` }]}>
-            <SealCheck size={14} color={c.success} weight="fill" />
-            <Text style={[styles.pillText, { color: c.success }]}>
+          <View style={styles.status}>
+            <SealCheck size={16} color={c.success} weight="fill" />
+            <Text style={[styles.statusText, { color: c.success }]}>
               {isMentor ? 'Review submitted' : 'Submitted'}
-              {hack && editLeft != null ? ` — you can change it for ${formatClock(Math.max(0, editLeft))}` : ' — you can still edit'}
+              <Text style={{ color: c.muted }}>
+                {hack && editLeft != null ? ` · you can change it for ${formatClock(Math.max(0, editLeft))}` : ' · you can still edit'}
+              </Text>
             </Text>
           </View>
         )}
         {readOnly ? (
-          <View style={[styles.pill, { backgroundColor: c.tint }]}>
-            <LockSimple size={14} color={c.muted} weight="fill" />
-            <Text style={[styles.pillText, { color: c.muted }]}>Locked. Ask the organisers if something needs fixing.</Text>
+          <View style={styles.status}>
+            <LockSimple size={16} color={c.success} weight="fill" />
+            <Text style={[styles.statusText, { color: c.success }]}>
+              Locked
+              <Text style={{ color: c.muted }}>. Ask the organisers if something needs fixing.</Text>
+            </Text>
           </View>
         ) : null}
         {noSlot ? (
-          <View style={[styles.pill, { backgroundColor: `${c.warn}26` }]}>
-            <Lock size={14} color={c.warn} weight="fill" />
-            <Text style={[styles.pillText, { color: c.warn }]}>Call this team from your queue to give marks.</Text>
+          <View style={styles.status}>
+            <Lock size={16} color={c.warn} weight="fill" />
+            <Text style={[styles.statusText, { color: c.warn }]}>Call this team from my queue to give marks.</Text>
           </View>
         ) : null}
       </View>
@@ -282,9 +293,9 @@ export default function JudgingEntrantScreen() {
                 <Text style={[styles.metricLabel, { color: c.text }]}>{m.label}</Text>
                 <TextInput
                   accessibilityLabel={`${m.label} score`}
-                  style={[styles.scoreInput, { color: c.text, backgroundColor: c.tint, borderColor: c.border }]}
+                  style={[styles.scoreInput, { color: c.text, backgroundColor: c.tint }]}
                   keyboardType="decimal-pad"
-                  placeholder="—"
+                  placeholder="–"
                   placeholderTextColor={c.muted}
                   selectionColor={c.text}
                   value={scores[m.id] ?? ''}
@@ -366,18 +377,9 @@ const styles = StyleSheet.create({
   // Usually "T-042 · Team name": the Team ID is a code, so it stays in the text face.
   entrantName: { fontSize: 22, lineHeight: 30, ...cosmosFont.strong },
   roundName: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.strong },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    alignSelf: 'flex-start',
-    marginTop: spacing[3],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: 999,
-  },
+  status: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   // Carries the edit countdown: figures.
-  pillText: { fontSize: typography.fontSize.xs, flexShrink: 1, ...cosmosFont.figure },
+  statusText: { fontSize: typography.fontSize.sm, flexShrink: 1, ...cosmosFont.figure },
   contextText: { fontSize: 15, marginTop: spacing[3], lineHeight: 21, ...cosmosFont.strong },
   contextMuted: { fontSize: 13, marginTop: spacing[2], lineHeight: 19, ...cosmosFont.body },
   sectionLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginTop: spacing[2], marginLeft: spacing[1], ...cosmosFont.strong },
@@ -390,7 +392,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     borderRadius: cosmosRadius,
     paddingVertical: spacing[2],
-    borderWidth: 1,
     ...cosmosFont.figure,
   },
   rangeHint: { fontSize: typography.fontSize.xs, marginTop: spacing[2], ...cosmosFont.figure },
@@ -408,6 +409,6 @@ const styles = StyleSheet.create({
   actions: { gap: spacing[3] },
   lockCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
   lockIcon: { marginBottom: spacing[5] },
-  lockTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  lockTitle: { fontSize: 22, lineHeight: 28, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display },
   lockText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

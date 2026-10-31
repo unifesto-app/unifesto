@@ -10,6 +10,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import { listMyTickets, type SupportTicket } from '../lib/api/support';
 import TicketRow from '../components/support/TicketRow';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -115,9 +116,9 @@ export default function SupportScreen() {
           ) : undefined
         }
       >
-        <View style={[styles.card, { backgroundColor: c.raised }]}>
-          <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-          <Text style={[styles.title, { color: c.text }]}>How can we help?</Text>
+        <View style={styles.card}>
+          <CardBackdrop shape={styles.card} />
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">How can we help?</Text>
           <Text style={[styles.body, { color: c.soft }]}>
             {user
               ? 'Tell us what’s up and we’ll reply right here in the app. We see which version you’re on, so no need to explain.'
@@ -131,7 +132,7 @@ export default function SupportScreen() {
         </View>
 
         {user && (tickets === null || tickets.length > 0) ? (
-          <Section title="My help" subtitle="Everything I've raised, newest first">
+          <Section title="My help" subtitle="Everything I've raised, newest first" style={styles.section}>
             <View style={[styles.list, styles.pad]}>
               {tickets === null
                 ? [0, 1].map((i) => <Skeleton key={i} width="100%" height={76} borderRadius={cosmosCardRadius} />)
@@ -140,7 +141,7 @@ export default function SupportScreen() {
           </Section>
         ) : null}
 
-        <Section title="Talk to us" subtitle="For a quick word">
+        <Section title="Talk to us" subtitle="For a quick word" style={styles.section}>
           <SettingsGroup style={styles.group}>
             <SettingsRow
               icon={<EnvelopeSimple size={26} color={c.text} />}
@@ -159,7 +160,7 @@ export default function SupportScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Policies" subtitle="The terms Unifesto runs on">
+        <Section title="Policies" subtitle="The terms Unifesto runs on" style={styles.section}>
           <SettingsGroup plain style={styles.group}>
             {POLICIES.map((p) => (
               <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
@@ -167,7 +168,7 @@ export default function SupportScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Your data" subtitle="What we hold and how to ask about it">
+        <Section title="My data" subtitle="What we hold and how to ask about it" style={styles.section}>
           <SettingsGroup plain style={styles.group}>
             {YOUR_DATA.map((p) => (
               <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
@@ -185,7 +186,9 @@ const styles = StyleSheet.create({
   // SettingsGroup's own top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },
   card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
+  // A settings page steps by spacing[8] between sections (Home's are looser).
+  section: { marginTop: spacing[8] },
+  // The page's hero headline.
   title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   body: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   list: { gap: spacing[3] },

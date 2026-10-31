@@ -10,6 +10,7 @@ import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import {
   assignTeamStatement,
@@ -29,7 +30,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Source = 'LIST' | 'OWN';
 const SOURCES: { value: Source; label: string }[] = [
-  { value: 'LIST', label: 'From your list' },
+  { value: 'LIST', label: 'From my list' },
   { value: 'OWN', label: 'Write one' },
 ];
 
@@ -80,7 +81,8 @@ export default function HackathonTeamStatementScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -162,7 +164,7 @@ export default function HackathonTeamStatementScreen() {
   return (
     <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={120 + insets.bottom} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: team.teamCode ?? 'Problem statement' }} />
-      <Text style={[styles.heading, { color: c.text }]} numberOfLines={2}>
+      <Text style={[styles.heading, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
         {team.name}
       </Text>
 
@@ -175,7 +177,7 @@ export default function HackathonTeamStatementScreen() {
               {cur.lockedAt ? ` · ${formatWhen(cur.lockedAt)}` : ''}
             </Text>
           </View>
-          <StatementCard code={cur.code} title={cur.title} description={cur.description} theme={cur.themeLabel} />
+          <StatementCard code={cur.code} title={cur.title} description={cur.description} theme={cur.themeLabel} hero />
           {cur.changedAfterEvalAt ? (
             <View style={styles.status}>
               <WarningCircle size={16} color={c.warn} weight="fill" />
@@ -186,7 +188,8 @@ export default function HackathonTeamStatementScreen() {
           ) : null}
         </>
       ) : (
-        <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[4] }]}>
+        <View style={[styles.empty, { marginTop: spacing[4] }]}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No problem statement yet.</Text>
         </View>
       )}
@@ -204,7 +207,8 @@ export default function HackathonTeamStatementScreen() {
 
           {source === 'LIST' ? (
             list.statements.length === 0 ? (
-              <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[4] }]}>
+              <View style={[styles.empty, { marginTop: spacing[4] }]}>
+                <CardBackdrop shape={styles.empty} />
                 <Text style={[styles.emptyText, { color: c.soft }]}>Your list is empty. Add statements first, or write one.</Text>
               </View>
             ) : (
@@ -291,7 +295,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  heading: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  // A team's name: Hanken, never display.
+  heading: { fontSize: typography.fontSize['2xl'], lineHeight: 28, ...cosmosFont.strong },
   status: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], marginHorizontal: spacing[1] },
   statusText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

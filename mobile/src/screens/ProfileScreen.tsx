@@ -18,13 +18,14 @@ import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import BrandWordmark from '../components/BrandWordmark';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import PromptCard from '../components/home/PromptCard';
 import IdentityCard, { IdentityCardSkeleton } from '../components/profile/IdentityCard';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import PressableScale from '../components/ui/PressableScale';
 import { openWhatsNew } from '../components/WhatsNewSheet';
@@ -152,18 +153,16 @@ export default function ProfileScreen() {
 
   // Help is the same signed in or out.
   const help = (
-    <Section title="Help and more">
-      <SettingsGroup style={styles.group}>
-        <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
-        <SettingsRow icon={icon('sparkle')} label="What’s new" onPress={openWhatsNew} />
-        <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
-        <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
-        <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
-        <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/unifestoapp', 'X')} />
-        <SettingsRow icon={icon('linkedin-logo')} label="LinkedIn" external onPress={() => openExternal('https://www.linkedin.com/company/unifesto', 'LinkedIn')} />
-        <SettingsRow icon={icon('play-circle')} label="YouTube" external onPress={() => openExternal('https://www.youtube.com/@unifesto-app', 'YouTube')} />
-      </SettingsGroup>
-    </Section>
+    <SettingsGroup title="Help and more" style={styles.group}>
+      <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
+      <SettingsRow icon={icon('sparkle')} label="What’s new" onPress={openWhatsNew} />
+      <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
+      <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
+      <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
+      <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/unifestoapp', 'X')} />
+      <SettingsRow icon={icon('linkedin-logo')} label="LinkedIn" external onPress={() => openExternal('https://www.linkedin.com/company/unifesto', 'LinkedIn')} />
+      <SettingsRow icon={icon('play-circle')} label="YouTube" external onPress={() => openExternal('https://www.youtube.com/@unifesto-app', 'YouTube')} />
+    </SettingsGroup>
   );
 
   const footer = (
@@ -181,8 +180,8 @@ export default function ProfileScreen() {
         <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={styles.content}>
           {header}
-          <View style={[styles.guest, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+          <View style={styles.guest}>
+            <CardBackdrop shape={styles.guest} />
             <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Make it yours</Text>
             <Text style={[styles.guestBody, { color: c.soft }]}>
               Sign in to keep your tickets, save events, collect certificates and join the circles you care about.
@@ -249,51 +248,45 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <Section title="My stuff">
-          <SettingsGroup style={styles.group}>
-            <SettingsRow icon={icon('qr-code')} label="Tickets" onPress={() => router.navigate('/tickets')} />
-            <SettingsRow icon={icon('tag')} label="Saved" onPress={() => router.push('/favorites')} />
-            <SettingsRow icon={icon('file-text')} label="Certificates" onPress={() => router.push('/certificates')} />
-            <SettingsRow icon={icon('users-three')} label="My circles" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup title="My stuff" style={styles.group}>
+          <SettingsRow icon={icon('qr-code')} label="Tickets" onPress={() => router.navigate('/tickets')} />
+          <SettingsRow icon={icon('tag')} label="Saved" onPress={() => router.push('/favorites')} />
+          <SettingsRow icon={icon('file-text')} label="Certificates" onPress={() => router.push('/certificates')} />
+          <SettingsRow icon={icon('users-three')} label="My circles" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
+        </SettingsGroup>
 
-        <Section title="Settings">
-          <SettingsGroup style={styles.group}>
-            <SettingsRow icon={icon('user-circle')} label="Account" onPress={() => router.push('/account')} />
-            <SettingsRow icon={icon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
-            <SettingsRow icon={icon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
-            <SettingsRow
-              icon={icon('circle-half')}
-              label="Appearance"
-              value={theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
-              onPress={() => router.push('/appearance')}
-            />
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup title="Settings" style={styles.group}>
+          <SettingsRow icon={icon('user-circle')} label="Account" onPress={() => router.push('/account')} />
+          <SettingsRow icon={icon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
+          <SettingsRow icon={icon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
+          <SettingsRow
+            icon={icon('circle-half')}
+            label="Appearance"
+            value={theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
+            onPress={() => router.push('/appearance')}
+          />
+        </SettingsGroup>
 
         {/* Hosts get a door into their Space tab. Requesting stays for everyone:
             people who already run a space can still ask for another. */}
-        <Section title="Hosting">
-          <SettingsGroup style={styles.group}>
-            {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
-            <SettingsRow
-              icon={icon('plus-circle')}
-              label={hosts ? 'Request another space' : 'Request a space'}
-              onPress={() => router.push('/space-request')}
-            />
-            {/* D7: no space yet? One event is enough to start. */}
-            {!hosts ? (
-              <SettingsRow icon={icon('calendar-plus')} label="Host one event" onPress={() => router.push('/event-request')} />
-            ) : null}
-            {isPartner ? <SettingsRow icon={icon('megaphone')} label="Partner stats" onPress={() => router.push('/partner')} /> : null}
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup title="Hosting" style={styles.group}>
+          {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
+          <SettingsRow
+            icon={icon('plus-circle')}
+            label={hosts ? 'Request another space' : 'Request a space'}
+            onPress={() => router.push('/space-request')}
+          />
+          {/* D7: no space yet? One event is enough to start. */}
+          {!hosts ? (
+            <SettingsRow icon={icon('calendar-plus')} label="Host one event" onPress={() => router.push('/event-request')} />
+          ) : null}
+          {isPartner ? <SettingsRow icon={icon('megaphone')} label="Partner stats" onPress={() => router.push('/partner')} /> : null}
+        </SettingsGroup>
 
         {help}
 
         <View style={styles.pad}>
-          <PressableScale onPress={handleLogout} accessibilityRole="button" style={[styles.signOut, { borderColor: c.border }]}>
+          <PressableScale onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Sign out" style={[styles.signOut, { borderColor: c.border }]}>
             <UnGlyph name="sign-out" size={22} color={c.danger} />
             <Text style={[styles.signOutText, { color: c.danger }]}>Sign out</Text>
           </PressableScale>
@@ -310,15 +303,14 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 140, flexGrow: 1 },
   pad: { paddingHorizontal: GUTTER },
   header: { paddingHorizontal: GUTTER, marginBottom: spacing[6] },
-  pageTitle: { fontSize: 26, lineHeight: 34, ...cosmosFont.display },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
+  pageTitle: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   guest: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },
   guestTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   signOut: {
-    marginTop: spacing[10],
+    marginTop: spacing[8],
     minHeight: 52,
     borderRadius: cosmosRadius,
     borderWidth: 1,

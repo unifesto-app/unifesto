@@ -33,13 +33,13 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
-import { Image } from 'expo-image';
 import AuthButton from '../components/auth/AuthButton';
 import AuthField from '../components/auth/AuthField';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import BrandWordmark from '../components/BrandWordmark';
 import OtpCodeInput from '../components/auth/OtpCodeInput';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type LoginStep = 'email' | 'email-otp' | 'mobile' | 'mobile-otp';
 
@@ -396,18 +396,12 @@ export default function NewLoginScreen() {
       alignItems: 'flex-start',
       justifyContent: 'center',
     },
-    stepPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: c.outline,
-    },
-    stepPillText: { fontSize: 12, color: c.text, ...cosmosFont.strong },
+    // A status, so plain muted text (Horizon: never a pill).
+    stepText: { fontSize: 13, color: c.muted, ...cosmosFont.strong },
 
     hero: { marginBottom: 32 },
-    wordmark: { width: 116, height: 27, marginBottom: 40 },
-    display: { fontSize: 28, lineHeight: 36, color: c.text, ...cosmosFont.display },
+    wordmark: { marginBottom: 40 },
+    display: { fontSize: 28, lineHeight: 36, color: c.text, ...cosmosFont.display, letterSpacing: displayTracking(28) },
     displayMuted: { color: c.muted },
     title: { fontSize: 22, lineHeight: 30, color: c.text, ...cosmosFont.display },
     lead: { marginTop: 14, fontSize: 16, lineHeight: 24, color: c.muted, ...cosmosFont.body },
@@ -420,14 +414,7 @@ export default function NewLoginScreen() {
       marginTop: 10,
       gap: 10,
     },
-    editLink: {
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: c.outline,
-    },
-    editLinkText: { fontSize: 13, color: c.text, ...cosmosFont.strong },
+    editLinkText: { fontSize: 14, color: c.text, textDecorationLine: 'underline', ...cosmosFont.strong },
 
     stack: { gap: 12 },
     divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
@@ -500,16 +487,9 @@ export default function NewLoginScreen() {
   const renderEmailStep = () => (
     <>
       <View style={styles.hero}>
-        <Image
-          source={
-            c.scheme === 'dark'
-              ? require('../../assets/brand/wordmark-silver.png')
-              : require('../../assets/brand/wordmark-ink.png')
-          }
-          style={styles.wordmark}
-          contentFit="contain"
-          accessibilityLabel="Unifesto"
-        />
+        <View style={styles.wordmark}>
+          <BrandWordmark width={116} />
+        </View>
         <Text style={styles.display}>
           Every fest.{'\n'}
           <Text style={styles.displayMuted}>One app.</Text>
@@ -586,7 +566,7 @@ export default function NewLoginScreen() {
             <Text style={[styles.lead, styles.leadStrong, { marginTop: 0 }]} numberOfLines={1}>
               {isEmail ? email : `+91 ${formatMobile(mobileNumber)}`}
             </Text>
-            <Pressable onPress={handleBack} hitSlop={8} style={styles.editLink} accessibilityRole="button">
+            <Pressable onPress={handleBack} hitSlop={14} accessibilityRole="button" accessibilityLabel="Edit">
               <Text style={styles.editLinkText}>Edit</Text>
             </Pressable>
           </View>
@@ -702,11 +682,7 @@ export default function NewLoginScreen() {
           ) : (
             <View />
           )}
-          {(step === 'mobile' || step === 'mobile-otp') && (
-            <View style={styles.stepPill}>
-              <Text style={styles.stepPillText}>Last step</Text>
-            </View>
-          )}
+          {(step === 'mobile' || step === 'mobile-otp') && <Text style={styles.stepText}>Last step</Text>}
         </View>
 
         <Animated.View key={step} entering={FadeInDown.duration(320)}>
@@ -724,7 +700,7 @@ export default function NewLoginScreen() {
             </Text>{' '}
             and{' '}
             <Text style={styles.legalLink} onPress={() => Linking.openURL('https://unifesto.app/privacy')}>
-              Privacy Policy
+              Privacy policy
             </Text>
             .
           </Text>

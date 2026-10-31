@@ -10,20 +10,22 @@ export interface ManageStat {
   label: string;
   /** Numbers get Indian grouping; strings (e.g. "₹12.4K") show as given. */
   value: number | string;
+  /** The figure's card accent, by its job: mint check-in, sky tickets, ivory money. */
+  tone?: 'mint' | 'sky' | 'ivory';
 }
 
-/** A row of borderless stat tiles (elevated fill lifts them off the black). */
+/** A row of stats on one borderless card: figure over label, divided by hairlines. */
 export default function ManageStats({ stats, loading }: { stats: ManageStat[]; loading?: boolean }) {
   const c = useCosmos();
   return (
-    <View style={styles.row}>
-      {stats.map((s) => (
-        <View key={s.label} style={[styles.tile]}>
-          <CardBackdrop shape={styles.tile} />
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
+      {stats.map((s, i) => (
+        <View key={s.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
           {loading ? (
             <Skeleton width={36} height={26} />
           ) : (
-            <Text style={[styles.value, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.value, { color: s.tone ? c[s.tone] : c.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {typeof s.value === 'number' ? s.value.toLocaleString('en-IN') : s.value}
             </Text>
           )}
@@ -37,8 +39,8 @@ export default function ManageStats({ stats, loading }: { stats: ManageStat[]; l
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing[3] },
-  tile: { flex: 1, borderRadius: cosmosCardRadius, paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: 4 },
+  card: { flexDirection: 'row', borderRadius: cosmosCardRadius, paddingVertical: spacing[4] },
+  stat: { flex: 1, paddingHorizontal: spacing[4], gap: 4 },
   value: { fontSize: 20, lineHeight: 28, ...cosmosFont.figure },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

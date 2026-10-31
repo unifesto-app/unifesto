@@ -16,6 +16,8 @@ import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';
 import PressableScale from '../ui/PressableScale';
+import ShadeCard from '../ui/ShadeCard';
+import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
@@ -50,15 +52,20 @@ function Label({ children }: { children: string }) {
 
 /** Borderless solid card: lifts off the black (dark) or grey (light) ground. */
 function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  const c = useCosmos();
-  return <View style={[styles.card, { backgroundColor: c.raised }, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, style]}>
+      <CardBackdrop shape={styles.card} />
+      {children}
+    </View>
+  );
 }
 
+/** A label/value line. `tone` colours the value (the card's accent); the label stays quiet. */
 function Line({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
   const c = useCosmos();
   return (
     <View style={styles.line}>
-      <Text style={[styles.lineLabel, { color: tone ?? (strong ? c.text : c.soft) }, strong && cosmosFont.strong]}>{label}</Text>
+      <Text style={[styles.lineLabel, { color: strong ? c.text : c.soft }, strong && cosmosFont.strong]}>{label}</Text>
       <Text style={[styles.lineValue, { color: tone ?? c.text }, strong && styles.lineTotal]}>{value}</Text>
     </View>
   );
@@ -143,18 +150,19 @@ export function TicketStep({ r }: { r: EventRegistration }) {
 function TicketOption({ s, selected, onPress }: { s: TicketState; selected: boolean; onPress: () => void }) {
   const c = useCosmos();
   const t = s.ticket;
-  const status = s.owned
-    ? { text: 'You already have this ticket', color: c.success }
+  // Plain-text statuses: seats left in the ticket's sky, sold out muted, a tick when it's mine.
+  const status: { text: string; color: string; tick?: boolean } | null = s.owned
+    ? { text: 'You already have this ticket', color: c.success, tick: true }
     : s.blocked
       ? { text: 'Not available with your current ticket', color: c.muted }
       : s.iosBlocked
         ? { text: "Paid tickets for online events aren't available in the iOS app", color: c.muted }
         : s.waitlistOnly
-          ? { text: 'Sold out · join the waiting list', color: c.warn }
+          ? { text: 'Sold out · join the waiting list', color: c.muted }
           : !s.available
             ? { text: s.spotsLeft <= 0 ? 'Sold out' : 'Not on sale right now', color: c.muted }
             : s.spotsLeft <= 10
-              ? { text: `Only ${s.spotsLeft} left`, color: c.warn }
+              ? { text: `Only ${s.spotsLeft} left`, color: c.sky }
               : null;
   const team = t.type === 'group' ? (t.max_purchase > t.min_purchase ? `Team of ${t.min_purchase} to ${t.max_purchase}` : `Team of ${t.min_purchase}`) : null;
   const per = t.price > 0 && t.price_type === 'per_person' ? 'per person' : t.price > 0 && t.price_type === 'per_group' ? 'per team' : null;
@@ -170,17 +178,18 @@ function TicketOption({ s, selected, onPress }: { s: TicketState; selected: bool
       style={[
         styles.ticket,
         {
-          backgroundColor: c.raised,
           // Always 1.5pt so selecting never shifts the layout; only the colour changes.
-          borderColor: selected ? c.primary : 'transparent',
+          // Unselected, the border wears the card fill so no ring shows around it.
+          borderColor: selected ? c.primary : c.raised,
           opacity: s.selectable ? 1 : 0.55,
         },
       ]}
     >
+      <CardBackdrop shape={styles.ticket} />
       <View style={styles.ticketTop}>
         <Text style={[styles.ticketName, { color: c.text }]}>{t.name}</Text>
         <View style={styles.priceCol}>
-          <Text style={[styles.ticketPrice, { color: c.text }]}>{price}</Text>
+          <Text style={[styles.ticketPrice, { color: s.selectable ? c.sky : c.muted }]}>{price}</Text>
           {per ? <Text style={[styles.per, { color: c.muted }]}>{per}</Text> : null}
         </View>
       </View>
@@ -191,7 +200,12 @@ function TicketOption({ s, selected, onPress }: { s: TicketState; selected: bool
         <View style={styles.ticketFoot}>
           <View style={{ flex: 1, gap: 2 }}>
             {team ? <Text style={[styles.meta, { color: c.soft }]}>{team}</Text> : null}
-            {status ? <Text style={[styles.meta, { color: status.color }, cosmosFont.strong]}>{status.text}</Text> : null}
+            {status ? (
+              <View style={styles.statusRow}>
+                {status.tick ? <Check size={13} color={status.color} weight="bold" /> : null}
+                <Text style={[styles.meta, { color: status.color, flexShrink: 1 }, cosmosFont.strong]}>{status.text}</Text>
+              </View>
+            ) : null}
           </View>
           {selected ? <CheckCircle size={24} color={c.primary} weight="fill" /> : null}
         </View>
@@ -337,8 +351,8 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
     <View>
       <Heading sub="Make sure everything looks right before you confirm.">Almost there</Heading>
 
-      {/* A preview of the pass they're about to get: same stub as the Tickets tab. */}
-      <View style={[styles.pass, { backgroundColor: c.raised }]}>
+      {/* A preview of the pass they're about to get, on the pass's sky shade. */}
+      <ShadeCard tone="sky" style={styles.pass}>
         <View style={styles.passBody}>
           <Text style={[styles.passTitle, { color: c.text }]} numberOfLines={3}>{event.title}</Text>
           <Text style={[styles.meta, { color: c.soft, marginTop: spacing[2] }]} numberOfLines={2}>
@@ -349,9 +363,9 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
         <View style={styles.passStub}>
           <Line label="Ticket" value={t.name} />
           <Line label={r.isGroup ? 'Team size' : 'People'} value={`${r.quantity}`} />
-          <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong />
+          <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong tone={c.sky} />
         </View>
-      </View>
+      </ShadeCard>
 
       <View style={styles.block}>
         <Label>{r.attendees.length > 1 ? 'People' : 'Attendee'}</Label>
@@ -424,7 +438,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
   if (waitlist) {
     return (
       <CenterNote
-        icon={<Sparkle size={56} color={c.warn} weight="duotone" />}
+        icon={<Sparkle size={56} color={c.text} weight="duotone" />}
         title="Join the waiting list"
         body={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
       />
@@ -434,7 +448,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
   if (r.total === 0) {
     return (
       <CenterNote
-        icon={<CheckCircle size={56} color={c.success} weight="duotone" />}
+        icon={<CheckCircle size={56} color={c.text} weight="duotone" />}
         title="Nothing to pay"
         body="This one's free. Confirm and your ticket is ready right away."
       />
@@ -448,7 +462,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 
       <Card style={{ gap: spacing[3] }}>
         <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
-        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.success} /> : null}
+        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
         {r.feePercent > 0 && r.fee > 0 ? (
           <Line
             label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
@@ -456,12 +470,12 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
           />
         ) : null}
         <View style={[styles.divider, { backgroundColor: c.border }]} />
-        <Line label="Total" value={money(r.symbol, r.total)} strong />
+        <Line label="Total" value={money(r.symbol, r.total)} strong tone={c.ivory} />
       </Card>
 
       <View style={styles.block}>
         {r.appliedCoupon ? (
-          <View style={[styles.coupon, { backgroundColor: c.tint, borderColor: c.primary }]} accessible accessibilityLabel={`Code ${r.appliedCoupon.code} applied`}>
+          <View style={[styles.coupon, { backgroundColor: c.card, borderColor: c.input }]} accessible accessibilityLabel={`Code ${r.appliedCoupon.code} applied`}>
             <CheckCircle size={22} color={c.success} weight="fill" />
             <Text style={[styles.couponCode, { color: c.text }]}>{r.appliedCoupon.code} applied</Text>
             <Pressable
@@ -644,7 +658,7 @@ const styles = StyleSheet.create({
   h1: { fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   sub: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   label: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...cosmosFont.strong },
-  fieldLabel: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
+  fieldLabel: { fontSize: typography.fontSize.sm, marginBottom: 8, ...cosmosFont.strong },
   linkText: { fontSize: typography.fontSize.base, textDecorationLine: 'underline', ...cosmosFont.strong },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
@@ -662,23 +676,24 @@ const styles = StyleSheet.create({
   ticketTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
   ticketName: { flex: 1, fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.3, ...cosmosFont.strong },
   priceCol: { alignItems: 'flex-end' },
-  ticketPrice: { fontSize: typography.fontSize.lg, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  ticketPrice: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   per: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   ticketDesc: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   ticketFoot: { flexDirection: 'row', alignItems: 'flex-end', marginTop: spacing[3], gap: spacing[3] },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   // details
   stepperCard: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing[2] },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   stepperBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  stepperValue: { minWidth: 32, textAlign: 'center', fontSize: typography.fontSize.xl, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  stepperValue: { minWidth: 32, textAlign: 'center', fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   block: { marginTop: spacing[8] },
   inviteNote: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   questions: { marginTop: spacing[5] },
   fields: { gap: spacing[5] },
   // review (pass preview)
-  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  pass: { padding: 0 },
   passBody: { padding: spacing[5], paddingBottom: spacing[2] },
-  passTitle: { fontSize: 17, lineHeight: 26, ...cosmosFont.display },
+  passTitle: { fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center', marginVertical: spacing[2] },
   perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
   notch: { position: 'absolute', width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2 },
@@ -690,7 +705,7 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[4], minHeight: 28 },
   lineLabel: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   lineValue: { flexShrink: 1, fontSize: typography.fontSize.base, textAlign: 'right', fontVariant: ['tabular-nums'], ...cosmosFont.strong },
-  lineTotal: { fontSize: typography.fontSize.xl },
+  lineTotal: { fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
   // pay
   center: { alignItems: 'center', paddingTop: spacing[10], paddingHorizontal: spacing[4] },
   centerText: { textAlign: 'center' },

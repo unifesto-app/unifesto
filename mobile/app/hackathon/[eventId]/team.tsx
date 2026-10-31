@@ -5,7 +5,7 @@ import HackathonMyTeamScreen from '../../../src/screens/HackathonMyTeamScreen';
 export default function Route() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Your team', headerShown: true }} />
+      <Stack.Screen options={{ title: 'My team', headerShown: true }} />
       <HackathonMyTeamScreen />
     </>
   );

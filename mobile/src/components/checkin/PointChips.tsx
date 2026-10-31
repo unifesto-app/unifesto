@@ -4,7 +4,10 @@ import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import type { CheckinPoint } from '../../lib/api/checkin';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosFor, useCosmos } from '../../theme/cosmos';
+
+// The camera stays dark in both themes: its chips take the night tokens.
+const night = cosmosFor('dark');
 
 interface PointChipsProps {
   points: CheckinPoint[];
@@ -34,14 +37,14 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
         const on = p.id === value;
         const bg = on
           ? onCamera
-            ? '#ffffff'
+            ? night.primary
             : c.text
           : onCamera
             ? LIQUID_GLASS
               ? undefined // GlassFill paints it
               : 'rgba(0, 0, 0, 0.5)'
             : c.tint;
-        const fg = on ? (onCamera ? '#000000' : c.bg) : onCamera ? 'rgba(255, 255, 255, 0.9)' : c.soft;
+        const fg = on ? (onCamera ? night.primaryFg : c.bg) : onCamera ? 'rgba(255, 255, 255, 0.9)' : c.soft;
         return (
           <Pressable
             key={p.id || 'all'}

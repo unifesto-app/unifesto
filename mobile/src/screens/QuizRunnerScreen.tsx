@@ -8,6 +8,7 @@ import { getManagedQuizzes, stepQuiz, type ManagedQuiz } from '../lib/api/quizze
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
@@ -105,13 +106,15 @@ export default function QuizRunnerScreen() {
         the leaderboard updates after each question.
       </Text>
       {error ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
         </View>
       ) : null}
       {!quizzes.length && !error ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No quizzes for this event yet.</Text>
         </View>
       ) : null}
@@ -122,19 +125,30 @@ export default function QuizRunnerScreen() {
         const opensIn = q ? Math.ceil((ms(q.openedAt) - serverNow) / 1000) : 0;
         const left = q ? Math.max(0, Math.ceil((ms(q.closesAt) - serverNow) / 1000)) : 0;
         return (
-          <SettingsGroup key={z.id} title={`${STATUS_LABEL[z.status]} · ${z.questions.length} questions`}>
+          <SettingsGroup key={z.id}>
             <View style={styles.quiz}>
+              {/* The status as plain text: a mint dot while it's live. */}
+              <View style={styles.statusRow}>
+                {z.status === 'LIVE' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
+                <Text style={[styles.status, { color: z.status === 'LIVE' ? c.mint : c.muted }]}>
+                  {STATUS_LABEL[z.status]}
+                  <Text style={{ color: c.muted }}>{` · ${z.questions.length} questions`}</Text>
+                </Text>
+              </View>
               <Text style={[styles.title, { color: c.text }]}>{z.title}</Text>
               {q ? (
                 <View style={styles.question}>
                   <Text style={[styles.meta, { color: c.muted }]}>
                     Question {q.position + 1} of {z.questions.length} ·{' '}
-                    {q.closed ? 'Closed' : opensIn > 0 ? `Starts in ${opensIn}s` : `${left}s left`} · {q.answered} answered
+                    <Text style={{ color: q.closed ? c.muted : c.mint }}>
+                      {q.closed ? 'Closed' : opensIn > 0 ? `Starts in ${opensIn}s` : `${left}s left`}
+                    </Text>{' '}
+                    · {q.answered} answered
                   </Text>
                   <Text style={[styles.prompt, { color: c.text }]}>{q.prompt}</Text>
                   {q.closed
                     ? q.options.map((o, i) => (
-                        <Text key={i} style={[styles.meta, { color: q.correctIndexes.includes(i) ? c.text : c.muted }]}>
+                        <Text key={i} style={[styles.meta, { color: q.correctIndexes.includes(i) ? c.success : c.muted }]}>
                           {q.correctIndexes.includes(i) ? 'Right: ' : ''}
                           {o} · {q.results[i] ?? 0}
                         </Text>
@@ -188,6 +202,9 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   quiz: { padding: spacing[4], gap: spacing[3] },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   question: { gap: spacing[1] },
   prompt: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

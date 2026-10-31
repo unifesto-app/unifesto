@@ -3,7 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import MultiChips from '../components/hackathon/MultiChips';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -116,16 +117,18 @@ export default function HackathonHelpTopicsScreen() {
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Points of contact" plain>
-        {data.staff.length ? (
-          <View style={styles.chips}>
-            <MultiChips options={data.staff.map((u) => ({ value: u.id, label: staffName(u) }))} value={pocs} onChange={setPocs} />
-          </View>
-        ) : (
+      {/* Chips are controls: they sit on the page, not inside a card. */}
+      {data.staff.length ? (
+        <>
+          <SettingsGroupHeader title="Points of contact" />
+          <MultiChips options={data.staff.map((u) => ({ value: u.id, label: staffName(u) }))} value={pocs} onChange={setPocs} />
+        </>
+      ) : (
+        <SettingsGroup title="Points of contact" plain>
           <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
-        )}
-      </SettingsGroup>
-      <Text style={[styles.note, { color: c.muted }]}>
+        </SettingsGroup>
+      )}
+      <Text style={[styles.note, { color: c.muted, marginTop: spacing[3] }]}>
         Queries under this topic go to these people and to the volunteers in the team’s room. With nobody picked, they go to the curators.
       </Text>
 
@@ -136,7 +139,8 @@ export default function HackathonHelpTopicsScreen() {
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       {data.topics.length === 0 ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No topics yet. Teams can still raise “Other” queries, which go to the curators.</Text>
         </View>
       ) : (
@@ -173,7 +177,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  chips: { paddingVertical: spacing[2] },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

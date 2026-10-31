@@ -10,6 +10,8 @@ import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import { SettingsGroup } from '../components/profile/SettingsGroup';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
@@ -128,6 +130,7 @@ export default function PermissionsScreen() {
   const pending = statuses ? PERMISSIONS.filter((p) => statuses[p.key] !== 'granted') : [];
   const allowed = statuses ? PERMISSIONS.filter((p) => statuses[p.key] === 'granted') : [];
 
+  // One row of a grouped card: same icon column as SettingsRow, so the hairlines line up.
   const card = (perm: Perm) => {
     const status = statuses?.[perm.key] ?? 'undetermined';
     const granted = status === 'granted';
@@ -138,15 +141,17 @@ export default function PermissionsScreen() {
         accessibilityRole="button"
         accessibilityLabel={`${perm.label}, ${granted ? 'allowed' : status === 'denied' ? 'not allowed' : 'not asked yet'}`}
         accessibilityHint={status === 'undetermined' ? 'Shows the permission prompt' : 'Opens Settings'}
-        style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+        style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
       >
-        <UnGlyph name={perm.icon} size={28} color={c.text} />
+        <View style={styles.icon}>
+          <UnGlyph name={perm.icon} size={28} color={c.text} />
+        </View>
         <View style={styles.info}>
           <Text style={[styles.label, { color: c.text }]}>{perm.label}</Text>
-          <Text style={[styles.why, { color: c.soft }]}>{perm.why}</Text>
+          <Text style={[styles.why, { color: c.muted }]}>{perm.why}</Text>
         </View>
         {granted ? (
-          <CheckCircle size={20} color={c.text} weight="fill" />
+          <CheckCircle size={20} color={c.success} weight="fill" />
         ) : (
           <Text style={[styles.action, { color: c.text }]}>{status === 'denied' ? 'Settings' : 'Allow'}</Text>
         )}
@@ -167,8 +172,8 @@ export default function PermissionsScreen() {
         }
       >
         {!statuses ? null : pending.length === 0 ? (
-          <View style={[styles.summary, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+          <View style={styles.summary}>
+            <CardBackdrop shape={styles.summary} />
             <Text style={[styles.summaryTitle, { color: c.text }]}>All set</Text>
             <Text style={[styles.summaryBody, { color: c.soft }]}>
               Everything Unifesto can use is allowed. Change any of it in Settings whenever you like.
@@ -176,18 +181,18 @@ export default function PermissionsScreen() {
           </View>
         ) : (
           <Section title="Needs a look" subtitle={`${pending.length} of ${PERMISSIONS.length} not allowed yet`} style={styles.firstSection}>
-            <View style={[styles.list, styles.pad]}>{pending.map(card)}</View>
+            <SettingsGroup style={styles.group}>{pending.map(card)}</SettingsGroup>
           </Section>
         )}
 
         {allowed.length > 0 ? (
-          <Section title="Allowed" subtitle="Tap one to change it in Settings">
-            <View style={[styles.list, styles.pad]}>{allowed.map(card)}</View>
+          <Section title="Allowed" subtitle="Tap one to change it in Settings" style={styles.section}>
+            <SettingsGroup style={styles.group}>{allowed.map(card)}</SettingsGroup>
           </Section>
         ) : null}
 
         {statuses ? (
-          <View style={[styles.pad, { marginTop: spacing[10] }]}>
+          <View style={[styles.pad, { marginTop: spacing[8] }]}>
             <AuthButton label="Open Settings" variant="secondary" onPress={() => Linking.openSettings()} />
             <Text style={[styles.note, { color: c.muted }]}>Changes you make there show here when you come back.</Text>
           </View>
@@ -202,21 +207,23 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   // Section's default top margin is sized for Home; tighter at the top of a page.
   firstSection: { marginTop: spacing[6] },
-  list: { gap: spacing[3] },
-  card: {
+  section: { marginTop: spacing[8] },
+  // SettingsGroup's own top margin doubles Section's; Section owns spacing.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[4],
-    paddingVertical: spacing[4],
-    paddingHorizontal: spacing[5],
-    borderRadius: cosmosCardRadius,
+    gap: spacing[3],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    minHeight: 64,
   },
+  icon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 2 },
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  why: { fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },
+  why: { fontSize: typography.fontSize.sm, lineHeight: 18, ...cosmosFont.body },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   summary: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
   summaryTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   summaryBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   note: { marginTop: spacing[3], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },

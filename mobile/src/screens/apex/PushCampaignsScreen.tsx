@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
 import { CosmosList } from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
@@ -127,7 +128,8 @@ export default function PushCampaignsScreen() {
           loading ? (
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <View style={styles.empty}>
+              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
             </View>
           )

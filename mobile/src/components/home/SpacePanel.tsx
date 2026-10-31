@@ -42,7 +42,7 @@ const plural = (n: number, one: string) => `${n.toLocaleString('en-IN')} ${one}$
  */
 export default function SpacePanel(p: SpacePanelProps) {
   const c = useCosmos();
-  const glyph = { size: 24, color: c.primary };
+  const glyph = { size: 24, color: c.text };
 
   return (
     <View style={styles.wrap}>
@@ -55,11 +55,11 @@ export default function SpacePanel(p: SpacePanelProps) {
           style={[styles.card, styles.row]}
         >
           <CardBackdrop shape={styles.card} />
-          <QrCode {...glyph} />
+          <QrCode size={24} color={c.mint} />
           <View style={{ flex: 1 }}>
             <View style={styles.liveRow}>
-              <View style={[styles.dot, { backgroundColor: c.success }]} />
-              <Text style={[styles.eyebrow, { color: c.success }]}>Check-in live</Text>
+              <View style={[styles.dot, { backgroundColor: c.mint }]} />
+              <Text style={[styles.eyebrow, { color: c.mint }]}>Check-in live</Text>
             </View>
             <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{e.title}</Text>
             <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
@@ -73,8 +73,7 @@ export default function SpacePanel(p: SpacePanelProps) {
       ))}
 
       {p.loadingUpcoming && p.upcoming.length === 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {[0, 1].map((i) => (
             <View key={i} style={styles.row}>
               <Skeleton width={64} height={48} borderRadius={borderRadius.md} />
@@ -84,21 +83,21 @@ export default function SpacePanel(p: SpacePanelProps) {
               </View>
             </View>
           ))}
-        </View>
+        </Rows>
       ) : p.upcoming.length > 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {p.upcoming.map((e) => (
             <EventRow key={e.id} event={e} onPress={() => p.onOpenEvent(e)} />
           ))}
           {p.canCreate ? (
-            <LinkRow icon={<Plus size={22} color={c.primary} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
+            <LinkRow icon={<Plus size={22} color={c.text} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
           ) : null}
-        </View>
+        </Rows>
       ) : p.hosting ? (
         <PressableScale
           onPress={p.onCreateEvent}
           accessibilityRole="button"
+          accessibilityLabel={p.canCreate ? 'No upcoming events. Create the next one' : 'No upcoming events'}
           style={[styles.card, styles.row]}
         >
           <CardBackdrop shape={styles.card} />
@@ -114,8 +113,7 @@ export default function SpacePanel(p: SpacePanelProps) {
       ) : null}
 
       {p.judging.length > 0 || p.sponsorships.length > 0 ? (
-        <View style={[styles.card, styles.list]}>
-          <CardBackdrop shape={styles.card} />
+        <Rows>
           {p.judging.map((j) => (
             <LinkRow
               key={j.boardId}
@@ -136,8 +134,25 @@ export default function SpacePanel(p: SpacePanelProps) {
               onPress={() => p.onOpenSponsor(s)}
             />
           ))}
-        </View>
+        </Rows>
       ) : null}
+    </View>
+  );
+}
+
+/** A list in the console style: rows straight on the page, a hairline between them, no card. */
+function Rows({ children }: { children: React.ReactNode }) {
+  const c = useCosmos();
+  return (
+    <View>
+      {React.Children.toArray(children).map((row, i) => (
+        <View
+          key={React.isValidElement(row) && row.key != null ? row.key : i}
+          style={[styles.rowPad, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
+        >
+          {row}
+        </View>
+      ))}
     </View>
   );
 }
@@ -157,7 +172,7 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
       {coverOr(defaults, e.id, e.coverImageUrl) ? (
         <Image source={{ uri: coverOr(defaults, e.id, e.coverImageUrl) ?? undefined }} style={styles.thumb} contentFit="cover" />
       ) : (
-        <View style={[styles.thumb, { backgroundColor: c.border }]} />
+        <View style={[styles.thumb, { backgroundColor: c.tint }]} />
       )}
       <View style={{ flex: 1, gap: 2 }}>
         <View style={styles.titleRow}>
@@ -169,11 +184,11 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
         </Text>
         <View style={styles.fillRow}>
           {fill !== null ? (
-            <View style={[styles.track, { backgroundColor: c.border }]}>
-              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? c.warn : c.primary }]} />
+            <View style={[styles.track, { backgroundColor: c.tint }]}>
+              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? c.warn : c.sky }]} />
             </View>
           ) : null}
-          <Text style={[styles.count, { color: c.soft }]}>
+          <Text style={[styles.count, { color: fill !== null && fill >= 1 ? c.warn : c.sky }]}>
             {e.capacity ? `${going.toLocaleString('en-IN')}/${e.capacity.toLocaleString('en-IN')}` : `${going.toLocaleString('en-IN')} going`}
           </Text>
         </View>
@@ -185,7 +200,7 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
 export function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode; title: string; meta: string; onPress: () => void }) {
   const c = useCosmos();
   return (
-    <PressableScale feedback="inline" onPress={onPress} accessibilityRole="button" style={styles.row}>
+    <PressableScale feedback="inline" onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}, ${meta}`} style={styles.row}>
       <View style={styles.icon}>{icon}</View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{title}</Text>
@@ -199,7 +214,7 @@ export function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode;
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: GUTTER, gap: spacing[3] },
   card: { borderRadius: cosmosCardRadius, padding: spacing[4] },
-  list: { gap: spacing[4] },
+  rowPad: { paddingVertical: spacing[3] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   icon: { width: 64, alignItems: 'center' },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
@@ -212,7 +227,7 @@ const styles = StyleSheet.create({
   fillRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 4 },
   track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
   bar: { height: 4, borderRadius: 2 },
-  count: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  count: { fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   cta: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: cosmosRadius },
   ctaText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

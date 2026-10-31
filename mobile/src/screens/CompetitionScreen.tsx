@@ -1,8 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, CircleDashed, Quotes, Trophy, XCircle } from '@unifesto/unicon/react-native';
+import { Check, CheckCircle, CircleDashed, Quotes, Trophy, XCircle } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { getParticipantView, type EntrantRoundStatus, type ParticipantView } from '../lib/api/leaderboard';
@@ -11,7 +12,7 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 24;
 
@@ -107,9 +108,12 @@ export default function CompetitionScreen() {
   if (!view) {
     return (
       <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
-          <Text style={[styles.emptyTitle, { color: c.text }]}>No competition yet</Text>
-          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
+          <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
+            No competition yet
+          </Text>
+          <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>
             {error || "The organiser hasn't opened the competition for this event. Pull to refresh later."}
           </Text>
         </View>
@@ -118,25 +122,29 @@ export default function CompetitionScreen() {
   }
 
   const head = headline(standing);
-  const headColor = standing.kind === 'in' ? c.success : c.text;
 
   return (
     <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
-      <View style={styles.hero}>
-        <CardBackdrop shape={styles.hero} />
-        {myName ? <Text style={[styles.team, { color: c.muted }]}>{myName}</Text> : null}
-        <Text style={[styles.headTitle, { color: headColor }]}>{head.title}</Text>
+      {/* Where my team stands: the screen's hero, on the hackathon's blue shade. */}
+      <ShadeCard tone="blue" style={styles.hero}>
+        {myName ? <Text style={[styles.team, { color: c.soft }]}>{myName}</Text> : null}
+        <View style={styles.headRow}>
+          {standing.kind === 'in' ? <Check size={22} color={c.text} weight="bold" /> : null}
+          <Text style={[styles.headTitle, { color: c.text }]} accessibilityRole="header">
+            {head.title}
+          </Text>
+        </View>
         <Text style={[styles.headBody, { color: c.soft }]}>{head.body}</Text>
-      </View>
+      </ShadeCard>
 
       {view.awards.length ? (
         <SettingsGroup title="Winners">
           {view.awards.map((a) => (
             <SettingsRow
               key={a.id}
-              icon={<Trophy size={ICON} color={a.isMine ? c.primary : c.muted} weight="fill" />}
+              icon={<Trophy size={ICON} color={c.ivory} weight="fill" />}
               label={a.title}
-              value={`${[a.teamCode, a.entrantName ?? (a.isMine ? 'Your team' : '')].filter(Boolean).join(' ')}${a.isMine ? ' · You' : ''}`}
+              value={`${[a.teamCode, a.entrantName ?? (a.isMine ? 'My team' : '')].filter(Boolean).join(' ')}${a.isMine ? ' · You' : ''}`}
             />
           ))}
         </SettingsGroup>
@@ -170,7 +178,7 @@ export default function CompetitionScreen() {
             .map((f, i) => (
               <View key={`${f.roundId}-${i}`} style={styles.quoteCard}>
                 <CardBackdrop shape={styles.quoteCard} />
-                <Quotes size={20} color={c.primary} weight="fill" />
+                <Quotes size={20} color={c.muted} weight="fill" />
                 <Text style={[styles.quote, { color: c.text }]}>{f.overallReview}</Text>
                 {view.rounds.length > 1 ? (
                   <Text style={[styles.quoteMeta, { color: c.muted }]}>{roundName(f.roundId)}</Text>
@@ -196,11 +204,25 @@ export default function CompetitionScreen() {
             {!bracket || bracket.entrants.length === 0 ? <SettingsRow label="No teams yet" /> : null}
             {bracket
               ? sortBracket(bracket.entrants).map((e) => (
-                  <SettingsRow
+                  // My team is marked by weight, never colour.
+                  <View
                     key={e.id}
-                    label={`${e.teamCode ? `${e.teamCode}  ` : ''}${e.name}${e.isMine ? ' (you)' : ''}`}
-                    value={STATUS_LABEL[e.status]}
-                  />
+                    style={styles.entrantRow}
+                    accessible
+                    accessibilityLabel={`${[e.teamCode, e.name].filter(Boolean).join(' ')}${e.isMine ? ', you' : ''}, ${STATUS_LABEL[e.status]}`}
+                  >
+                    {e.teamCode ? <Text style={[styles.code, { color: c.muted }]}>{e.teamCode}</Text> : null}
+                    <Text style={[styles.entrant, e.isMine && cosmosFont.strong, { color: c.text }]} numberOfLines={1}>
+                      {e.name}
+                      {e.isMine ? ' (you)' : ''}
+                    </Text>
+                    <View style={styles.status}>
+                      {e.status === 'ADVANCED' ? <Check size={13} color={c.success} weight="bold" /> : null}
+                      <Text style={[styles.statusText, { color: e.status === 'ADVANCED' ? c.success : c.muted }]}>
+                        {STATUS_LABEL[e.status]}
+                      </Text>
+                    </View>
+                  </View>
                 ))
               : null}
           </SettingsGroup>
@@ -217,16 +239,22 @@ export default function CompetitionScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  hero: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginTop: spacing[2] },
-  team: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[1] },
-  headTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  hero: { marginTop: spacing[2] },
+  team: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[2] },
+  headRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  headTitle: { flexShrink: 1, fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   headBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   section: { marginTop: spacing[8] },
   sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[3] },
   quoteCard: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3], gap: spacing[2] },
   quote: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   quoteMeta: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong, marginBottom: spacing[2] },
+  emptyTitle: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display, marginBottom: spacing[2] },
+  entrantRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 52, paddingVertical: spacing[2] },
+  code: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  entrant: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statusText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   note: { marginTop: spacing[6], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

@@ -6,6 +6,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { GUTTER } from '../components/home/Section';
 import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
@@ -32,7 +33,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
-const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? '—'}  ${t.name}` : 'Team');
+const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? '–'}  ${t.name}` : 'Team');
 
 /** One titled card of rows. Rows are built up front (cheap) and only mounted when scrolled near. */
 type Group = { key: string; title: string; action?: { label: string; onPress: () => void }; data: { key: string; row: React.ReactElement }[] };
@@ -76,7 +77,8 @@ export default function HackathonQueuesScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -177,7 +179,7 @@ export default function HackathonQueuesScreen() {
               key: 'current',
               row: (
                 <SettingsRow
-                  icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? c.warn : c.success} weight="fill" />}
+                  icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? c.warn : c.mint} weight="fill" />}
                   label={teamLabel(q.current.team)}
                   value={evalStatusLabel(q.current.status)}
                   trailing={q.current.status === 'IN_PROGRESS' ? <SlotTimer until={q.current.slotEndsAt} label="" doneLabel="Time’s up" /> : undefined}
@@ -275,14 +277,17 @@ export default function HackathonQueuesScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.liveRow}>
-              {live ? <Broadcast size={16} color={c.success} weight="fill" /> : <WifiSlash size={16} color={c.muted} />}
-              <Text style={[styles.note, { color: live ? c.success : c.muted, marginTop: 0 }]}>
+              {live ? <Broadcast size={16} color={c.mint} weight="fill" /> : <WifiSlash size={16} color={c.muted} />}
+              <Text style={[styles.live, { color: live ? c.mint : c.muted }]}>
                 {live ? 'Live' : 'Refreshing every 10 seconds'}
-                {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
+                <Text style={{ color: c.muted }}>
+                  {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
+                </Text>
               </Text>
             </View>
             {!active.length ? (
-              <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[5] }]}>
+              <View style={[styles.empty, { marginTop: spacing[5] }]}>
+                <CardBackdrop shape={styles.empty} />
                 <Text style={[styles.emptyText, { color: c.soft }]}>Nobody is in a queue right now.</Text>
               </View>
             ) : null}
@@ -310,5 +315,6 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
+  live: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

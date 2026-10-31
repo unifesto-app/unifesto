@@ -5,9 +5,9 @@ import { rateTicket, type SupportTicket } from '../../lib/api/support';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';
 import { CardBackdrop } from '../ui/CardSurface';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** D20: the requester rates a resolved case 1-5, with an optional comment. */
 export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: () => void }) {
@@ -45,7 +45,7 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
             accessibilityState={{ checked: rating === n }}
             accessibilityLabel={`${n} of 5`}
           >
-            <Star size={32} color={n <= rating ? c.warn : c.muted} weight={n <= rating ? 'fill' : 'regular'} />
+            <Star size={32} color={n <= rating ? c.text : c.muted} weight={n <= rating ? 'fill' : 'regular'} />
           </Pressable>
         ))}
       </View>
@@ -61,6 +61,7 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
               selectionColor={c.primary}
               maxLength={1000}
               multiline
+              accessibilityLabel="Anything to add? (optional)"
               style={[styles.input, { color: c.text }]}
             />
           </View>
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
   wrap: { marginTop: spacing[6], alignItems: 'center', gap: spacing[3] },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   stars: { flexDirection: 'row', gap: spacing[2] },
-  inputWrap: { alignSelf: 'stretch', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
+  inputWrap: { alignSelf: 'stretch', borderRadius: cosmosRadius, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
   input: { fontSize: typography.fontSize.base, maxHeight: 120, ...cosmosFont.body },
   done: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -4,9 +4,10 @@ import { Image } from 'expo-image';
 import Skeleton from '../Skeleton';
 import AuthButton from '../auth/AuthButton';
 import PressableScale from '../ui/PressableScale';
+import { CardBackdrop } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 export interface IdentityStat {
   label: string;
@@ -40,8 +41,9 @@ const initials = (name: string) =>
     .toUpperCase();
 
 /**
- * The Profile tab's top card in the web's cosmos voice: silver-ringed avatar
- * beside a DM Sans name, bio, two actions, then a hairline and my numbers.
+ * The Profile tab's top card, a plain borderless card: avatar beside my name
+ * (Hanken SemiBold; names are never display), bio, two actions, then a hairline
+ * and my numbers.
  */
 export default function IdentityCard({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityCardProps) {
   const c = useCosmos();
@@ -51,16 +53,19 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
     : null;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
       <View style={[styles.top, large && styles.stack]}>
-        <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={[styles.ring, { borderColor: c.outline }]}>
-          <View style={[styles.avatar, { backgroundColor: c.card }]}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
-            ) : (
-              <Text style={[styles.initials, { color: c.text }]}>{initials(name) || '·'}</Text>
-            )}
-          </View>
+        <View
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+          style={[styles.avatar, { backgroundColor: c.tint }]}
+        >
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
+          ) : (
+            <Text style={[styles.initials, { color: c.text }]}>{initials(name) || '·'}</Text>
+          )}
         </View>
         <View style={large ? null : styles.who}>
           <Text style={[styles.name, { color: c.text }]} numberOfLines={large ? undefined : 2}>{name}</Text>
@@ -104,15 +109,16 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
 export function IdentityCardSkeleton() {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]} accessible accessibilityLabel="Loading profile">
+    <View style={styles.card} accessible accessibilityLabel="Loading profile">
+      <CardBackdrop shape={styles.card} />
       <View style={styles.top}>
-        <Skeleton width={AVATAR + 8} height={AVATAR + 8} borderRadius={(AVATAR + 8) / 2} />
+        <Skeleton width={AVATAR} height={AVATAR} borderRadius={AVATAR / 2} />
         <View style={[styles.who, { gap: 10 }]}>
           <Skeleton width={160} height={20} borderRadius={6} />
           <Skeleton width={120} height={14} borderRadius={6} />
         </View>
       </View>
-      <Skeleton width="100%" height={52} borderRadius={14} style={{ marginTop: spacing[5] }} />
+      <Skeleton width="100%" height={46} borderRadius={cosmosRadius} style={{ marginTop: spacing[5] }} />
     </View>
   );
 }
@@ -120,14 +126,6 @@ export function IdentityCardSkeleton() {
 const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  ring: {
-    width: AVATAR + 8,
-    height: AVATAR + 8,
-    borderRadius: (AVATAR + 8) / 2,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -136,10 +134,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 22, ...cosmosFont.display },
+  initials: { fontSize: 22, ...cosmosFont.strong },
   who: { flex: 1 },
   stack: { flexDirection: 'column', alignItems: 'flex-start' },
-  name: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
+  name: { fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.strong },
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bio: {
     marginTop: spacing[4],

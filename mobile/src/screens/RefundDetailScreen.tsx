@@ -8,6 +8,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import ShadeCard from '../components/ui/ShadeCard';
 import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
@@ -84,7 +85,8 @@ export default function RefundDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
           </View>
         ) : (
@@ -110,11 +112,30 @@ export default function RefundDetailScreen() {
 
   return (
     <CosmosScreen keyboard keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
-      <Text style={[styles.who, { color: c.text }]}>{who}</Text>
-      <Text style={[styles.muted, { color: c.muted }]} numberOfLines={2}>
+      <Text style={[styles.who, { color: c.text }]} accessibilityRole="header">{who}</Text>
+      <Text style={[styles.muted, styles.meta, { color: c.muted }]} numberOfLines={2}>
         {[refund.event?.title, reg?.ticketType?.name].filter(Boolean).join('  ·  ')}
       </Text>
-      <Text style={[styles.status, { color: status.color, backgroundColor: `${status.color}26` }]}>{status.text}</Text>
+      <View style={styles.statusRow}>
+        <View style={[styles.dot, { backgroundColor: status.color }]} />
+        <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
+      </View>
+
+      {/* The money: the screen's hero, on the ivory shade. */}
+      <ShadeCard tone="ivory" style={{ marginTop: spacing[6] }}>
+        <Text style={[styles.heroLabel, { color: c.soft }]}>They asked for</Text>
+        <Text style={[styles.heroValue, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+          {refund.requestedAmount ? inr(refund.requestedAmount) : 'Full refund'}
+        </Text>
+        <View style={{ marginTop: spacing[4] }}>
+          <Line label="They paid" value={inr(paid)} />
+          {fee > 0 ? <Line label="App fee (not refundable)" value={`− ${inr(fee)}`} /> : null}
+          {already > 0 ? <Line label="Already refunded" value={`− ${inr(already)}`} /> : null}
+          <Line label="Most they can get" value={inr(refundable)} />
+          {refund.approvedAmount ? <Line label="Approved" value={inr(refund.approvedAmount)} /> : null}
+          {Number(refund.cashRefunded) > 0 ? <Line label="Sent back" value={inr(refund.cashRefunded)} /> : null}
+        </View>
+      </ShadeCard>
 
       <View style={[styles.quote]}>
         <CardBackdrop shape={styles.quote} />
@@ -123,16 +144,6 @@ export default function RefundDetailScreen() {
           {refund.requesterRole === 'ATTENDEE' ? 'Asked by the attendee' : `Raised by ${refund.requestedBy?.fullName ?? 'an organiser'}`} · {when(refund.createdAt)}
         </Text>
       </View>
-
-      <SettingsGroup title="Money" plain>
-        <SettingsRow label="They paid" value={inr(paid)} />
-        {fee > 0 ? <SettingsRow label="App fee (not refundable)" value={`− ${inr(fee)}`} /> : null}
-        {already > 0 ? <SettingsRow label="Already refunded" value={`− ${inr(already)}`} /> : null}
-        <SettingsRow label="Most they can get" value={inr(refundable)} />
-        <SettingsRow label="They asked for" value={refund.requestedAmount ? inr(refund.requestedAmount) : 'Full refund'} />
-        {refund.approvedAmount ? <SettingsRow label="Approved" value={inr(refund.approvedAmount)} /> : null}
-        {Number(refund.cashRefunded) > 0 ? <SettingsRow label="Sent back" value={inr(refund.cashRefunded)} /> : null}
-      </SettingsGroup>
 
       {refund.curatorActionAt || refund.adminActionAt ? (
         <SettingsGroup title="What happened" plain>
@@ -183,13 +194,40 @@ export default function RefundDetailScreen() {
   );
 }
 
+/** One line of the money breakdown on the shade card, under a hairline. */
+function Line({ label, value }: { label: string; value: string }) {
+  const c = useCosmos();
+  return (
+    <View style={[styles.line, { borderTopColor: c.border }]}>
+      <Text style={[styles.lineLabel, { color: c.soft }]}>{label}</Text>
+      <Text style={[styles.lineValue, { color: c.text }]}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  who: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
-  status: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999, overflow: 'hidden', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  quote: { marginTop: spacing[5], padding: spacing[4], borderRadius: cosmosCardRadius, gap: spacing[2] },
+  meta: { marginTop: spacing[1] },
+  // A person's name: Hanken, never display.
+  who: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.strong },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
+  line: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingVertical: spacing[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  lineLabel: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  lineValue: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
+  quote: { marginTop: spacing[4], padding: spacing[5], borderRadius: cosmosCardRadius, gap: spacing[2] },
   quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
   quoteBy: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },

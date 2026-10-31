@@ -10,9 +10,9 @@ import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { shortLinkLabel } from './ShortLinksScreen';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const DEVICE_LABEL: Record<string, string> = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Computer' };
 
@@ -79,7 +79,9 @@ export default function ShortLinkStatsScreen() {
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
       {data ? (
         <>
-          <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{shortLinkLabel(data)}</Text>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
+            {shortLinkLabel(data)}
+          </Text>
           <TrafficSummary
             stats={[
               { label: 'Clicks', value: fmt(data.clicks) },
@@ -156,9 +158,10 @@ export default function ShortLinkStatsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[2], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   qr: { alignItems: 'center', padding: spacing[4] },
-  qrTile: { padding: spacing[3], borderRadius: cosmosRadius, backgroundColor: '#ffffff' },
+  // The pass rule (DESIGN §8): a plain white panel with its quiet zone, whatever the theme.
+  qrTile: { padding: spacing[3], borderRadius: borderRadius.md, backgroundColor: '#ffffff' },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

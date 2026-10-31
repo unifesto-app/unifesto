@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import { useRouter } from 'expo-router';
@@ -56,20 +57,14 @@ export default function TrafficScreen() {
       contentContainerStyle={styles.content}
     >
       {error ? (
-        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+        <View style={styles.empty}>
+          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.error, { color: c.soft }]}>{error}</Text>
           <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
         </View>
       ) : null}
 
-      <SettingsGroup title="Links">
-        <SettingsRow
-          icon={<Scissors size={ICON} color={c.text} weight="bold" />}
-          label="Short links"
-          onPress={() => router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'admin' }), title: '' } })}
-        />
-      </SettingsGroup>
-
+      {/* The numbers first (TrafficSummary is the screen's sky hero), the short links last. */}
       {data ? (
         <>
           <TrafficSummary
@@ -108,17 +103,23 @@ export default function TrafficScreen() {
           </Section>
         </>
       ) : null}
+
+      <SettingsGroup title="Links">
+        <SettingsRow
+          icon={<Scissors size={ICON} color={c.text} weight="bold" />}
+          label="Short links"
+          onPress={() => router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'admin' }), title: '' } })}
+        />
+      </SettingsGroup>
     </CosmosScreen>
   );
 }
 
 function Section({ title, empty, children }: { title: string; empty: string; children: React.ReactNode[] }) {
   return (
-    <View style={{ marginTop: spacing[8] }}>
-      <SettingsGroup title={title} plain>
-        {children.length === 0 ? <SettingsRow label={empty} /> : children}
-      </SettingsGroup>
-    </View>
+    <SettingsGroup title={title} plain>
+      {children.length === 0 ? <SettingsRow label={empty} /> : children}
+    </SettingsGroup>
   );
 }
 

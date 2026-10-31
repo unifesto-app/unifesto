@@ -24,6 +24,7 @@ import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -213,7 +214,8 @@ export default function SponsorEditorScreen() {
         <Stack.Screen options={{ title }} />
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={styles.card}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             </View>
           ) : (
@@ -248,7 +250,8 @@ export default function SponsorEditorScreen() {
       <Stack.Screen options={{ title }} />
 
       {/* Logo + live name: what attendees see on event pages */}
-      <View style={[styles.card, styles.identity, { backgroundColor: c.raised }]}>
+      <View style={[styles.card, styles.identity]}>
+        <CardBackdrop shape={styles.card} />
         <Pressable
           onPress={() => void pickLogo()}
           disabled={uploading}
@@ -258,8 +261,8 @@ export default function SponsorEditorScreen() {
         >
           <SponsorMark name={draft.name || '?'} logoUrl={draft.logoUrl || null} size={LOGO} />
           {uploading ? (
-            <View style={styles.logoBusy}>
-              <ActivityIndicator color="#ffffff" />
+            <View style={[styles.logoBusy, { backgroundColor: c.raised }]}>
+              <ActivityIndicator color={c.text} />
             </View>
           ) : null}
         </Pressable>
@@ -398,7 +401,7 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
   body: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  name: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   logoBusy: {
     position: 'absolute',
     top: 0,
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    opacity: 0.85,
     borderRadius: LOGO / 4,
   },
   logoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[2] },

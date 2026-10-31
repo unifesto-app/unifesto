@@ -4,11 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
 import type { GroupScanResult } from '../../lib/api/checkin';
 import { Button } from '../ui';
+import { Badge } from '../ui/Badge';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { Avatar } from './PersonRow';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface GroupCheckinSheetProps {
   group: GroupScanResult | null;
@@ -46,7 +47,7 @@ export default function GroupCheckinSheet({
         <View
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing[5]) }]}
         >
-          <SheetBackdrop radius={borderRadius['3xl']} />
+          <SheetBackdrop radius={cosmosCardRadius} />
           <View style={[styles.handle, { backgroundColor: c.input }]} />
 
           <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
@@ -100,7 +101,7 @@ export default function GroupCheckinSheet({
                       </Text>
                     ) : null}
                   </View>
-                  {m.checkedInAtPoint ? <Text style={[styles.in, { color: c.success }]}>In</Text> : null}
+                  {m.checkedInAtPoint ? <Badge label="In" tone="success" style={{ alignSelf: 'center' }} /> : null}
                 </Pressable>
               );
             })}
@@ -127,13 +128,14 @@ export default function GroupCheckinSheet({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.4)' },
   sheet: {
-    borderTopLeftRadius: borderRadius['3xl'],
-    borderTopRightRadius: borderRadius['3xl'],
+    borderTopLeftRadius: cosmosCardRadius,
+    borderTopRightRadius: cosmosCardRadius,
     paddingHorizontal: spacing[5],
     paddingTop: spacing[3],
   },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, marginBottom: spacing[4] },
-  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  // Leads with a person's name ("Asha's group"): Hanken, never display.
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
   sub: { fontSize: typography.fontSize.sm, marginTop: 2, ...cosmosFont.body },
   toolbar: {
     flexDirection: 'row',
@@ -148,6 +150,5 @@ const styles = StyleSheet.create({
   member: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   email: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  in: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
 });

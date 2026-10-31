@@ -49,8 +49,8 @@ export function EndedStub({ checkedIn }: { checkedIn: boolean }) {
   const c = useCosmos();
   return (
     <View style={styles.stub}>
-      <Confetti size={40} color={c.primary} weight="fill" />
-      <Text style={[styles.stubTitle, { color: c.text }]}>This event has ended</Text>
+      <Confetti size={40} color={c.text} weight="fill" />
+      <Text style={[styles.stubTitle, { color: c.text }]} accessibilityRole="header">This event has ended</Text>
       <Text style={[styles.stubBody, { color: c.muted }]}>
         {checkedIn ? 'Thanks for coming.' : 'Your ticket stays here for your records.'}
       </Text>
@@ -114,6 +114,6 @@ export function AfterEventGroup({
 
 const styles = StyleSheet.create({
   stub: { alignItems: 'center', paddingVertical: spacing[6], gap: spacing[2] },
-  stubTitle: { marginTop: spacing[2], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  stubTitle: { marginTop: spacing[2], fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   stubBody: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
 });

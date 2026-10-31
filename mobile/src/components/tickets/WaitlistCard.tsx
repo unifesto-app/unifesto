@@ -7,6 +7,7 @@ import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../the
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import AuthButton from '../auth/AuthButton';
 import PressableScale from '../ui/PressableScale';
+import { CardBackdrop } from '../ui/CardSurface';
 import { isIosDigitalPurchaseBlocked } from '../../lib/iosPurchasePolicy';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -33,8 +34,9 @@ interface WaitlistCardProps {
 }
 
 /**
- * Same pass shape as a ticket, but the stub holds your place in the queue.
- * When the organiser offers a spot the card lights up and grows a Pay action.
+ * Same pass shape as a ticket, but the stub holds your place in the queue
+ * (in sky, the ticket's accent). When the organiser offers a spot the stub
+ * turns to "You're in" and the card grows a Pay action.
  */
 export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCardProps) {
   const c = useCosmos();
@@ -45,15 +47,8 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
   const place = entry.event.venueName || entry.event.city;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      {offered ? (
-        <LinearGradient
-          colors={[`rgba(${c.glow}, 0.14)`, `rgba(${c.glow}, 0)`]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
+    <View style={styles.card}>
+      <CardBackdrop shape={styles.card} />
 
       <View style={styles.row}>
         <View style={[styles.thumb, { backgroundColor: c.card }]}>
@@ -69,18 +64,19 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
             {relativeWhen(entry.event.startDateTime)}
           </Text>
           <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
-            {[entry.ticketType?.name ?? 'Ticket', place].filter(Boolean).join(' · ')}
+            <Text style={[styles.tier, { color: c.sky }]}>{entry.ticketType?.name ?? 'Ticket'}</Text>
+            {place ? ` · ${place}` : ''}
           </Text>
         </View>
         <View style={[styles.stub, { borderLeftColor: c.border }]}>
           {offered ? (
             <>
-              <Confetti size={22} color={c.text} weight="fill" />
-              <Text style={[styles.stubLabel, { color: c.text }]}>You're in</Text>
+              <Confetti size={24} color={c.sky} weight="fill" />
+              <Text style={[styles.stubLabel, { color: c.sky }]}>You're in</Text>
             </>
           ) : (
             <>
-              <Text style={[styles.stubNumber, { color: c.text }]}>#{entry.position ?? '–'}</Text>
+              <Text style={[styles.stubNumber, { color: c.sky }]}>#{entry.position ?? '–'}</Text>
               <Text style={[styles.stubLabel, { color: c.muted }]}>in line</Text>
             </>
           )}
@@ -146,6 +142,7 @@ const styles = StyleSheet.create({
   thumb: { width: 84, height: 63, borderRadius: borderRadius.md, overflow: 'hidden', marginVertical: spacing[3] },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  tier: cosmosFont.strong,
   stub: {
     width: 72,
     alignSelf: 'stretch',

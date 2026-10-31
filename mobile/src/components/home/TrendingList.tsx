@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { Event } from '../../lib/api/events';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
@@ -48,7 +48,8 @@ export default function TrendingList({ events, onPress }: { events: Event[]; onP
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{e.title}</Text>
               <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
-                {`${relativeWhen(e.startDateTime)}  ·  ${shortPrice(e)}`}
+                {relativeWhen(e.startDateTime)}
+                <Text style={styles.price}>{`  ·  ${shortPrice(e)}`}</Text>
               </Text>
             </View>
           </PressableScale>
@@ -62,7 +63,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
   rank: { width: 30, fontSize: 15, ...cosmosFont.figure },
   // Event covers are 4:3.
-  thumb: { width: 76, height: 57, borderRadius: 12, overflow: 'hidden' },
+  thumb: { width: 76, height: 57, borderRadius: borderRadius.md, overflow: 'hidden' },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  price: { ...cosmosFont.figure },
 });

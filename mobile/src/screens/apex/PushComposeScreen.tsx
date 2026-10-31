@@ -124,7 +124,8 @@ export default function PushComposeScreen() {
         <BlockTitle>Who gets it</BlockTitle>
         <ChipPicker options={AUDIENCES} value={target} onChange={(v) => v && setTarget(v)} />
 
-        <SettingsGroup plain>
+        {/* The audience's picker sits right under its chips: one block, not a new section. */}
+        <SettingsGroup plain style={styles.audience}>
           {target === 'users' ? (
             <>
               {users.map((u) => (
@@ -179,6 +180,7 @@ export default function PushComposeScreen() {
 }
 
 const styles = StyleSheet.create({
+  audience: { marginTop: spacing[3] },
   block: { marginTop: spacing[8] },
   hint: { marginTop: spacing[2], marginBottom: spacing[2], marginLeft: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

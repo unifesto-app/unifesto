@@ -1,13 +1,11 @@
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
+import Grain from './Grain';
 import { cosmosFor, useCosmos } from '../../theme/cosmos';
 
 // Star field lifted from the app icon (marketing/brand-2026/svg/app-icon-dark.svg),
-// as fractions of the screen: [x, y, radius, opacity].
-/** How far the horizon glow reaches above the rim. */
-const GLOW = 28;
-
+// as fractions of the screen: [x, y, radius, opacity]. Night only.
 const STARS: [number, number, number, number][] = [
   [0.18, 0.1, 1.4, 0.75],
   [0.82, 0.07, 1.2, 0.6],
@@ -21,12 +19,13 @@ const STARS: [number, number, number, number][] = [
 ];
 
 /**
- * The brand's night sky behind the login flow: scattered starlight, a soft halo
- * up top, and a planet horizon with a silver rim along the bottom. Light mode
- * keeps only the horizon, drawn in ink. Decorative, never touchable.
- * `horizon={false}` keeps just the sky, for scrolling screens like Home.
- * `hue` fuses a page colour in (the event banner's): the halo becomes a wide
- * nebula of that colour behind the stars, fading to the plain ground below.
+ * The Unifesto Horizon sky, without lines (the owner removed the orbits and the
+ * horizon line from the app on 31 Oct 2026). Behind every screen: starlight by
+ * night and film grain. `horizon` (default) adds the hero light for the login
+ * and splash: the Horizon-blue glow rising from the bottom-right corner,
+ * measured in screen widths like the web's cqw units. `hue` lights the page
+ * with a colour (the event banner's): a wide nebula behind the stars, fading to
+ * the plain ground. Decorative, never touchable.
  */
 export default function CosmosBackdrop({
   horizon = true,
@@ -40,63 +39,35 @@ export default function CosmosBackdrop({
 }) {
   const appCosmos = useCosmos();
   const c = scheme ? cosmosFor(scheme) : appCosmos;
-  const { width, height } = useWindowDimensions();
+  const { width: w, height: h } = useWindowDimensions();
   const isDark = c.scheme === 'dark';
-  const haloCore = hue ? (isDark ? 0.42 : 0.22) : isDark ? 0.09 : 0;
-
-  // A huge circle whose top edge peeks ~18% up from the bottom of the screen.
-  const r = width * 1.6;
-  const cy = height * 0.82 + r;
+  const sun = isDark ? 0.32 : 0.5;
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]}>
-      <Svg width={width} height={height}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg, overflow: 'hidden' }]}>
+      <Svg width={w} height={h}>
         <Defs>
-          <RadialGradient id="halo" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor={hue ?? '#ffffff'} stopOpacity={haloCore} />
-            {/* Plain sky: the midpoint of a straight fade. Nebula: a longer tail. */}
-            <Stop offset="0.55" stopColor={hue ?? '#ffffff'} stopOpacity={hue ? (isDark ? 0.14 : 0.08) : haloCore * 0.45} />
-            <Stop offset="1" stopColor={hue ?? '#ffffff'} stopOpacity={0} />
+          {hue ? (
+            <RadialGradient id="nebula" cx="50%" cy="50%" rx="50%" ry="50%">
+              <Stop offset="0" stopColor={hue} stopOpacity={isDark ? 0.42 : 0.22} />
+              <Stop offset="0.55" stopColor={hue} stopOpacity={isDark ? 0.14 : 0.08} />
+              <Stop offset="1" stopColor={hue} stopOpacity={0} />
+            </RadialGradient>
+          ) : null}
+          <RadialGradient id="sun" cx="50%" cy="50%" rx="50%" ry="50%">
+            <Stop offset="0" stopColor={c.horizon} stopOpacity={sun} />
+            <Stop offset="0.5" stopColor={c.horizon} stopOpacity={sun * 0.44} />
+            <Stop offset="1" stopColor={c.horizon} stopOpacity={0} />
           </RadialGradient>
-          {/* Centred on the planet, so the glow follows the curve: clear inside the
-              rim, brightest at it, fading out GLOW pt above. */}
-          <RadialGradient id="rimGlow" cx={width * 0.5} cy={cy} r={r + GLOW} gradientUnits="userSpaceOnUse">
-            <Stop offset={r / (r + GLOW)} stopColor={`rgb(${c.glow})`} stopOpacity={isDark ? 0.16 : 0.06} />
-            <Stop offset="1" stopColor={`rgb(${c.glow})`} stopOpacity={0} />
-          </RadialGradient>
-          <LinearGradient id="planet" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={isDark ? '#1c1c20' : '#f4f4f5'} />
-            <Stop offset="0.08" stopColor={c.bg} />
-          </LinearGradient>
         </Defs>
 
-        {/* A hue nebula reaches further down: behind the banner, title and facts. */}
-        <Ellipse
-          cx={width * 0.5}
-          cy={height * (hue ? 0.12 : 0.18)}
-          rx={width * (hue ? 1.3 : 0.9)}
-          ry={height * (hue ? 0.55 : 0.28)}
-          fill="url(#halo)"
-        />
+        {hue ? <Ellipse cx={w * 0.5} cy={h * 0.12} rx={w * 1.3} ry={h * 0.55} fill="url(#nebula)" /> : null}
         {isDark &&
-          STARS.map(([x, y, sr, o], i) => (
-            <Circle key={i} cx={x * width} cy={y * height} r={sr} fill="#ffffff" opacity={o} />
-          ))}
-        {horizon && (
-          <>
-            <Circle cx={width * 0.5} cy={cy} r={r + GLOW} fill="url(#rimGlow)" />
-            <Circle
-              cx={width * 0.5}
-              cy={cy}
-              r={r}
-              fill="url(#planet)"
-              stroke={`rgb(${c.glow})`}
-              strokeOpacity={isDark ? 0.42 : 0.18}
-              strokeWidth={1.25}
-            />
-          </>
-        )}
+          STARS.map(([x, sy, r, o], i) => <Circle key={i} cx={x * w} cy={sy * h} r={r} fill="#ffffff" opacity={o} />)}
+        {horizon ? <Ellipse cx={w * 0.8} cy={h - w * 0.06} rx={w * 0.5} ry={w * 0.22} fill="url(#sun)" /> : null}
       </Svg>
+      {/* Film grain, as on the site: 12% by night, 9% (ink) by day. */}
+      <Grain dark={isDark} opacity={isDark ? 0.12 : 0.09} />
     </View>
   );
 }

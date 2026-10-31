@@ -110,6 +110,37 @@ export interface ExternalStatus {
 
 export const getExternalStatus = (): Result<ExternalStatus> => apiCall(backendClient.get("/admin/status/external"));
 
+// ── Errors (Sentry, read-only token on the server) ───────────────────────────
+
+export interface SentryIssue {
+  id: string;
+  shortId: string;
+  title: string;
+  culprit: string | null;
+  /** backend, web, apex or mobile. */
+  project: string;
+  level: string;
+  count: number;
+  users: number;
+  firstSeen: string;
+  lastSeen: string;
+  url: string;
+}
+
+export interface SentryIssues {
+  configured: boolean;
+  fetchedAt: string | null;
+  error: string | null;
+  total: number | null;
+  issues: SentryIssue[];
+}
+
+export const getSentryIssues = (): Result<SentryIssues> => apiCall(backendClient.get("/admin/status/errors"));
+
+/** Mark resolved in Sentry; it reopens on its own if the error comes back. */
+export const resolveSentryIssue = (id: string): Result<{ id: string; status: "resolved" }> =>
+  apiCall(backendClient.post(`/admin/status/errors/${id}/resolve`, {}));
+
 // ── Maintenance ──────────────────────────────────────────────────────────────
 
 /** Recount event and ticket seat counters (groups count as groupSize). Idempotent. */

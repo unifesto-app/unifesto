@@ -7,11 +7,13 @@ import { PayoutRow } from '../components/manage/FinanceRows';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { relativeWhen } from '../utils/eventFormat';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import ShadeCard from '../components/ui/ShadeCard';
+import { inr } from '../utils/money';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 /**
  * Any event that has earned money can be drawn down, ended or not. Paid is
@@ -61,7 +63,7 @@ export default function PayoutsScreen() {
     return (
       <CosmosScreen>
         <View style={styles.pad}>
-          <Skeleton width="100%" height={40} borderRadius={8} />
+          <Skeleton width="100%" height={40} borderRadius={cosmosRadius} />
           <Skeleton width="100%" height={168} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
           <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
         </View>
@@ -70,10 +72,29 @@ export default function PayoutsScreen() {
   }
 
   const now = new Date();
+  // The hero's figures, read off the history already on screen.
+  const sum = (ok: (p: Payout) => boolean) => payouts.filter(ok).reduce((s, p) => s + (Number(p.netAmount) || 0), 0);
+  const paidOut = sum((p) => p.status === 'COMPLETED');
+  const onTheWay = sum((p) => p.status === 'PENDING' || p.status === 'PROCESSING');
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
-      <Text style={[styles.intro, { color: c.soft }]}>
+      {!error && payouts.length > 0 ? (
+        <View style={styles.pad}>
+          <ShadeCard tone="ivory" style={styles.hero}>
+            <Text style={[styles.heroLabel, { color: c.soft }]}>Paid out</Text>
+            <Text style={[styles.heroValue, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
+              {inr(paidOut)}
+            </Text>
+            <Text style={[styles.heroMeta, { color: c.soft }]}>
+              {payouts.length} payout{payouts.length === 1 ? '' : 's'}
+              {onTheWay > 0 ? `  ·  ${inr(onTheWay)} on the way` : ''}
+            </Text>
+          </ShadeCard>
+        </View>
+      ) : null}
+
+      <Text style={[styles.intro, { color: c.muted }]}>
         Pick an event to pay out what it has earned so far. Unifesto sends the money by bank transfer and records the reference here.
       </Text>
 
@@ -118,6 +139,10 @@ export default function PayoutsScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
+  hero: { marginBottom: spacing[5] },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
+  heroMeta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   intro: { paddingHorizontal: GUTTER, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   firstSection: { marginTop: spacing[8] },
   // Section owns the top spacing and the title; the card just needs the gutter.

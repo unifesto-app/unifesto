@@ -385,7 +385,7 @@ function OptionPicker({
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
         <View style={[styles.sheet, { backgroundColor: k.bg }]}>
           <View style={styles.sheetHead}>
-            <Text style={[styles.sectionTitle, { color: k.text, flex: 1 }]} numberOfLines={2}>
+            <Text style={[styles.sectionTitle, { color: k.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
               {title}
             </Text>
             <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
@@ -511,7 +511,7 @@ const boxOf = (k: Cosmos, error: boolean) => ({ backgroundColor: k.card, borderC
 
 const styles = StyleSheet.create({
   container: { marginBottom: spacing[5] },
-  label: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
+  label: { fontSize: typography.fontSize.sm, marginBottom: 8, ...cosmosFont.strong },
   help: { fontSize: typography.fontSize.sm, marginTop: -2, marginBottom: spacing[2], ...cosmosFont.body },
   input: {
     minHeight: 54,
@@ -543,7 +543,8 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   ratingCell: { width: 48, height: 48, borderWidth: 1, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   section: { marginTop: spacing[2], marginBottom: spacing[4] },
-  sectionTitle: { fontSize: 16, lineHeight: 24, ...cosmosFont.display },
+  // A form's section heading: under 17pt, so Hanken SemiBold, not display.
+  sectionTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   // Android shows the sheet full screen, so clear the status bar there.
   sheet: {
     flex: 1,

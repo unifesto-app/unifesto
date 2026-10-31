@@ -1,11 +1,11 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CheckCircle } from '@unifesto/unicon/react-native';
+import { Check } from '@unifesto/unicon/react-native';
 import { initials } from '../../utils/checkinFormat';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const AVATAR = 40;
 
@@ -38,8 +38,8 @@ interface PersonRowProps {
 
 /**
  * A person in a check-in list: avatar (or initials), name, one line of detail,
- * and either a timestamp or an inline "Check in" pill that flips to a green
- * "Checked in" once done.
+ * and either a timestamp or an inline "Check in" button that flips to a mint
+ * "✓ Checked in" once done.
  */
 export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }: PersonRowProps) {
   const c = useCosmos();
@@ -48,7 +48,7 @@ export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }:
   if (action?.state === 'done') {
     trailing = (
       <View style={styles.done}>
-        <CheckCircle size={18} color={c.success} weight="fill" />
+        <Check size={15} color={c.success} weight="bold" />
         <Text style={[styles.doneText, { color: c.success }]}>Checked in</Text>
       </View>
     );
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     minWidth: 88,
     height: 34,
     paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosRadius,
     alignItems: 'center',
     justifyContent: 'center',
   },

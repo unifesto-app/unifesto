@@ -83,8 +83,8 @@ export default function StaysManageScreen() {
           <ManageStats
             stats={[
               { label: 'Requests', value: data.pendingRequests },
-              { label: 'Guests confirmed', value: totals.guests },
-              { label: 'Checked in', value: totals.checkedIn },
+              { label: 'Guests confirmed', value: totals.guests, tone: 'sky' },
+              { label: 'Checked in', value: totals.checkedIn, tone: 'mint' },
             ]}
           />
         </View>

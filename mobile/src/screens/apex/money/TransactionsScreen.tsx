@@ -65,7 +65,7 @@ export default function TransactionsScreen() {
           <ManageStats
             loading={!summary}
             stats={[
-              { label: 'Gross volume', value: inrShort(summary?.grossVolume ?? 0) },
+              { label: 'Gross volume', value: inrShort(summary?.grossVolume ?? 0), tone: 'ivory' },
               { label: 'Successful', value: summary?.successful ?? 0 },
               { label: 'Failed', value: summary?.failed ?? 0 },
             ]}
@@ -82,7 +82,7 @@ export default function TransactionsScreen() {
               .filter(Boolean)
               .join('  ·  ')}
             value={inr(t.totalAmount)}
-            valueColor={t.paymentStatus === 'PAID' ? c.text : s.color}
+            valueColor={t.paymentStatus === 'PAID' ? c.ivory : s.color}
             onPress={() => router.push(`/apex/money/transactions/${t.id}`)}
           />
         );

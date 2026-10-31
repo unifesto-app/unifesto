@@ -9,20 +9,15 @@ import { useCosmos } from '../../src/theme/cosmos';
 // contentInsetAdjustmentBehavior="never" suppress the safe-area top inset. A
 // transparent root here made the host re-apply that inset on top of
 // CustomHeader's own notch spacer — the extra top space Profile used to show.
-// ProfileScreen paints its own screenGradient over this background.
+// ProfileScreen paints the Horizon sky (CosmosBackdrop) over this ground.
 export default function ProfileTab() {
   const c = useCosmos();
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: c.bg,
-    },
-  });
-
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       <ProfileScreen />
     </View>
   );
 }
+
+const styles = StyleSheet.create({ container: { flex: 1 } });

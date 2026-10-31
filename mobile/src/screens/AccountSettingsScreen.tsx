@@ -10,6 +10,7 @@ import { cancelAccountDeletion, deleteAccount } from '../lib/api/profile';
 import Skeleton from '../components/Skeleton';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -219,7 +220,8 @@ export default function AccountSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {profile?.deletionScheduledFor ? (
-          <View style={[styles.card, styles.alert, { backgroundColor: c.raised }]}>
+          <View style={[styles.card, styles.alert]}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.cardTitle, { color: c.danger }]}>Deleting on {formatDeletionDate(profile.deletionScheduledFor)}</Text>
             <Text style={[styles.cardBody, { color: c.soft }]}>
               Until then everything is still here. Keep your account and nothing is lost.
@@ -228,7 +230,7 @@ export default function AccountSettingsScreen() {
           </View>
         ) : null}
 
-        <Section title="Your details" subtitle="Change these in Edit profile" style={styles.firstSection}>
+        <Section title="My details" subtitle="Change these in Edit profile" style={styles.firstSection}>
           <SettingsGroup style={styles.group}>
             <SettingsRow icon={unicon('user')} label="Name" value={profile?.fullName || 'Not set'} onPress={() => router.push('/edit-profile')} />
             <SettingsRow
@@ -242,7 +244,7 @@ export default function AccountSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Sign-in methods" subtitle="Ways you can get into Unifesto">
+        <Section title="Sign-in methods" subtitle="Ways you can get into Unifesto" style={styles.section}>
           <SettingsGroup
             style={styles.group}
             action={groups.length > 0 ? { label: managing ? 'Done' : 'Manage', onPress: () => setManaging((v) => !v) } : undefined}
@@ -286,7 +288,9 @@ export default function AccountSettingsScreen() {
                 ) : (
                   <View style={styles.trailing}>
                     {isPrimary ? <Text style={[styles.tag, { color: c.soft }]}>Primary</Text> : null}
-                    {isVerified ? <CheckCircle size={18} color={c.text} weight="fill" /> : null}
+                    {isVerified ? (
+                      <CheckCircle size={18} color={c.success} weight="fill" accessibilityLabel="Verified" />
+                    ) : null}
                   </View>
                 );
 
@@ -329,20 +333,20 @@ export default function AccountSettingsScreen() {
         ) : null}
 
         {profile?.deletionScheduledFor ? null : (
-          <Section title="Delete account">
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <Section title="Delete account" style={styles.section}>
+            <View style={styles.card}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.cardBody, { color: c.soft, marginTop: 0 }]}>
                 You get 30 days to change your mind: sign in before then and cancel. After that your profile and
                 sign-ins are gone for good.
               </Text>
-              <Pressable
+              <AuthButton
+                label="Delete my account"
+                variant="danger"
+                icon={<Trash size={18} color={c.danger} />}
                 onPress={handleDeleteAccount}
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.danger, { borderColor: c.danger, opacity: pressed ? 0.6 : 1 }]}
-              >
-                <Trash size={18} color={c.danger} />
-                <Text style={[styles.dangerText, { color: c.danger }]}>Delete my account</Text>
-              </Pressable>
+                style={{ marginTop: spacing[5] }}
+              />
             </View>
           </Section>
         )}
@@ -355,26 +359,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   // Section's default top margin is sized for Home; tighter at the top of a page.
   firstSection: { marginTop: spacing[6] },
+  // A settings page steps by spacing[8] between sections (Home's are looser).
+  section: { marginTop: spacing[8] },
   // SettingsGroup's own top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
   alert: { marginTop: spacing[4] },
-  cardTitle: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  cardTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: GUTTER, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   iconPair: { flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
   trailing: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   tag: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   inlineAction: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  danger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-    height: 48,
-    marginTop: spacing[5],
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  dangerText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

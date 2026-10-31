@@ -18,6 +18,7 @@ import {
 } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
@@ -37,7 +38,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -78,7 +79,8 @@ export default function StayPassScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.pad}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
@@ -93,8 +95,9 @@ export default function StayPassScreen() {
   const closed = b.status === 'REJECTED' || b.status === 'CANCELLED' || b.status === 'EXPIRED';
   const paidOnline = b.paymentMode === 'ONLINE' && b.paymentStatus === 'PAID';
   const canCancel = (b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT' || b.status === 'CONFIRMED') && !paidOnline;
-  const badgeColor = closed ? c.danger : b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT' ? c.warn : c.success;
-  const badge = { color: badgeColor, bg: `${badgeColor}26` };
+  // The status as plain text: a tick once it's confirmed, a dot while it waits or after it closes.
+  const pending = b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT';
+  const badge = { color: closed ? c.danger : pending ? c.warn : c.success, tick: !closed && !pending };
 
   const pay = async () => {
     setPaying(true);
@@ -179,12 +182,16 @@ export default function StayPassScreen() {
         setRefreshing(false);
       }}
     >
-      {/* ── The pass ── */}
-      <View style={styles.pass}>
-        <CardBackdrop shape={styles.pass} />
+      {/* ── The pass: the screen's hero, on the pass's sky shade. The QR's white panel sits above the grain. ── */}
+      <ShadeCard tone="sky" style={styles.pass}>
         <View style={styles.passTop}>
-          <Text style={[styles.kicker, { color: c.muted }]}>Unifesto Stay Pass</Text>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.kicker, { color: c.soft }]}>Unifesto Stay Pass</Text>
+          <View style={styles.badge}>
+            {badge.tick ? (
+              <CheckCircle size={14} color={badge.color} weight="fill" />
+            ) : (
+              <View style={[styles.badgeDot, { backgroundColor: badge.color }]} />
+            )}
             <Text style={[styles.badgeText, { color: badge.color }]}>{STATUS_LABELS[b.status]}</Text>
           </View>
           <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{b.stay.name}</Text>
@@ -196,7 +203,7 @@ export default function StayPassScreen() {
           </View>
           <View style={styles.facts}>
             <Fact label="Guests" value={String(b.guestCount)} />
-            <Fact label="Room / bed" value={b.allocation || (b.passCode ? 'At check-in' : '—')} />
+            <Fact label="Room / bed" value={b.allocation || (b.passCode ? 'At check-in' : '–')} />
           </View>
         </View>
 
@@ -206,8 +213,8 @@ export default function StayPassScreen() {
               <View style={[styles.qr, (b.status === 'CHECKED_OUT') && { opacity: 0.2 }]}>
                 <QRCode value={b.passCode} size={qrSize} color="#000000" backgroundColor="#ffffff" />
               </View>
-              <Text style={[styles.code, { color: c.text }]}>{b.passCode}</Text>
-              <Text style={[styles.hint, { color: c.muted }]}>
+              <Text style={[styles.code, { color: c.sky }]}>{b.passCode}</Text>
+              <Text style={[styles.hint, { color: c.soft }]}>
                 {b.status === 'CHECKED_IN'
                   ? `Checked in ${b.checkedInAt ? when(b.checkedInAt) : ''}. Enjoy your stay.`
                   : b.status === 'CHECKED_OUT'
@@ -220,7 +227,7 @@ export default function StayPassScreen() {
               They review each request. Your pass appears here once they confirm.
             </StubMessage>
           ) : b.status === 'AWAITING_PAYMENT' ? (
-            <StubMessage icon={<CurrencyInr size={40} color={c.primary} weight="duotone" />} title={`Pay ${rupees(b.totalAmount)} to confirm`}>
+            <StubMessage icon={<CurrencyInr size={40} color={c.text} weight="duotone" />} title={`Pay ${rupees(b.totalAmount)} to confirm`}>
               {b.paymentDueAt ? `Your bed is held until ${when(b.paymentDueAt)}.` : 'Your bed is held for a short while.'}
             </StubMessage>
           ) : (
@@ -233,7 +240,7 @@ export default function StayPassScreen() {
             </StubMessage>
           )}
         </View>
-      </View>
+      </ShadeCard>
 
       {b.status === 'AWAITING_PAYMENT' ? (
         <Button
@@ -250,7 +257,7 @@ export default function StayPassScreen() {
       <SettingsGroup title="Property">
         {b.stay.address ? (
           <SettingsRow
-            icon={<MapPin size={24} color={c.primary} />}
+            icon={<MapPin size={24} color={c.text} />}
             label={b.stay.address}
             external={!!b.stay.mapUrl}
             onPress={b.stay.mapUrl ? () => void Linking.openURL(b.stay.mapUrl!) : undefined}
@@ -258,7 +265,7 @@ export default function StayPassScreen() {
         ) : null}
         {b.stay.checkInTime || b.stay.checkOutTime ? (
           <SettingsRow
-            icon={<Clock size={24} color={c.primary} />}
+            icon={<Clock size={24} color={c.text} />}
             label={[b.stay.checkInTime && `Check-in ${b.stay.checkInTime}`, b.stay.checkOutTime && `check-out ${b.stay.checkOutTime}`]
               .filter(Boolean)
               .join(' · ')}
@@ -266,14 +273,14 @@ export default function StayPassScreen() {
         ) : null}
         {b.stay.contactPhone && !closed ? (
           <SettingsRow
-            icon={<Phone size={24} color={c.primary} />}
+            icon={<Phone size={24} color={c.text} />}
             label={b.stay.contactName ? `Call ${b.stay.contactName}` : 'Call the property'}
             value={b.stay.contactPhone}
             onPress={() => void Linking.openURL(`tel:${b.stay.contactPhone}`)}
           />
         ) : null}
         <SettingsRow
-          icon={<Ticket size={24} color={c.primary} />}
+          icon={<Ticket size={24} color={c.text} />}
           label="View event"
           onPress={() => router.push(`/event/${b.event.slug || b.event.id}`)}
         />
@@ -289,19 +296,19 @@ export default function StayPassScreen() {
         {b.guests.map((g) => (
           <SettingsRow
             key={g.id ?? g.name}
-            icon={<UsersThree size={24} color={c.primary} />}
+            icon={<UsersThree size={24} color={c.text} />}
             label={g.isBooker ? `${g.name} (you)` : g.name}
             value={GUEST_GENDER_LABELS[g.gender]}
           />
         ))}
         {b.arrivalAt ? (
-          <SettingsRow icon={<CalendarBlank size={24} color={c.primary} />} label="Arriving" value={when(b.arrivalAt)} />
+          <SettingsRow icon={<CalendarBlank size={24} color={c.text} />} label="Arriving" value={when(b.arrivalAt)} />
         ) : null}
       </SettingsGroup>
 
       <SettingsGroup title="Payment">
         <SettingsRow
-          icon={<Bed size={24} color={c.primary} />}
+          icon={<Bed size={24} color={c.text} />}
           label={b.totalAmount ? PAYMENT_LABELS[b.paymentMode] : 'Free stay'}
           value={b.totalAmount ? rupees(b.totalAmount) : undefined}
         />
@@ -341,7 +348,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.fact}>
       <Text style={[styles.factLabel, { color: c.muted }]}>{label}</Text>
-      <Text style={[styles.factValue, { color: c.text }]} numberOfLines={2}>
+      <Text style={[styles.factValue, { color: c.sky }]} numberOfLines={2}>
         {value}
       </Text>
     </View>
@@ -354,7 +361,7 @@ function StubMessage({ icon, title, children }: { icon: React.ReactNode; title: 
     <View style={styles.stubMsg}>
       {icon}
       <Text style={[styles.stubTitle, { color: c.text }]}>{title}</Text>
-      <Text style={[styles.hint, { color: c.muted, textAlign: 'center' }]}>{children}</Text>
+      <Text style={[styles.hint, { color: c.soft, textAlign: 'center' }]}>{children}</Text>
     </View>
   );
 }
@@ -363,12 +370,13 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  pass: { padding: 0 },
   passTop: { padding: spacing[5], gap: spacing[2] },
   kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: borderRadius.full },
-  badgeText: { fontSize: 12, ...cosmosFont.strong },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.4, ...cosmosFont.display },
+  badge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   sub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   facts: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   fact: { flex: 1, gap: 3 },
@@ -382,8 +390,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1.5,
     borderStyle: 'dashed',
   },
-  qr: { padding: 14, borderRadius: cosmosRadius, backgroundColor: '#ffffff' },
-  code: { marginTop: spacing[4], fontSize: typography.fontSize.xl, ...cosmosFont.figure },
+  // The QR keeps its plain white field and quiet zone: scanners need the contrast.
+  qr: { padding: 14, borderRadius: borderRadius.md, backgroundColor: '#ffffff' },
+  code: { marginTop: spacing[4], fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   stubMsg: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
   stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },

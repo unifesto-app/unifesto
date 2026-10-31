@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretRight } from '@unifesto/unicon/react-native';
 import { getSubSpaceAnalytics, treeOrder, type SubSpaceAnalytics } from '../lib/api/subSpaces';
-import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
+import ShadeCard from '../components/ui/ShadeCard';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -50,14 +51,14 @@ export default function SubSpacesScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={[styles.card, { alignItems: 'center' }]}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.note, { color: c.soft }]}>{error}</Text>
               <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
             </View>
           ) : (
             <>
-              <Skeleton width="100%" height={84} borderRadius={cosmosCardRadius} />
-              <Skeleton width="100%" height={84} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[3] }} />
+              <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} />
               <Skeleton width="100%" height={200} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
             </>
           )}
@@ -71,23 +72,32 @@ export default function SubSpacesScreen() {
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
+      {/* The roll-up is the screen's hero, on the Space's blue shade (figures in text). */}
       <View style={styles.pad}>
-        <ManageStats
-          stats={[
-            { label: 'Sub-spaces', value: t.subSpaces },
-            { label: 'Members', value: t.members },
-            { label: 'Events', value: t.events },
-          ]}
-        />
-        <View style={{ marginTop: spacing[3] }}>
-          <ManageStats
-            stats={[
-              { label: 'Upcoming', value: t.upcomingEvents },
-              { label: 'Registrations', value: t.registrations },
+        <ShadeCard tone="blue">
+          <Text style={[styles.heroLabel, { color: c.soft }]}>Registrations</Text>
+          <Text style={[styles.big, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            {t.registrations.toLocaleString('en-IN')}
+          </Text>
+          <View style={styles.grid}>
+            {[
+              { label: 'Sub-spaces', value: t.subSpaces.toLocaleString('en-IN') },
+              { label: 'Members', value: t.members.toLocaleString('en-IN') },
+              { label: 'Events', value: t.events.toLocaleString('en-IN') },
+              { label: 'Upcoming', value: t.upcomingEvents.toLocaleString('en-IN') },
               { label: 'Revenue', value: inrShort(t.revenue) },
-            ]}
-          />
-        </View>
+            ].map((s) => (
+              <View key={s.label} style={styles.cell} accessible accessibilityLabel={`${s.label} ${s.value}`}>
+                <Text style={[styles.value, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {s.value}
+                </Text>
+                <Text style={[styles.label, { color: c.muted }]} numberOfLines={1}>
+                  {s.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ShadeCard>
       </View>
 
       <Section title="Sub-spaces" subtitle="Each one under its parent. Tap to open its page" style={styles.firstSection}>
@@ -99,7 +109,7 @@ export default function SubSpacesScreen() {
               onPress={() => router.push(`/space/${r.slug}`)}
               accessibilityRole="button"
               accessibilityLabel={`${r.name}, ${r.members} members, ${r.events} events`}
-              style={({ pressed }) => [styles.row, { paddingLeft: spacing[4] + (r.depth - 1) * spacing[5], opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [styles.row, { paddingLeft: spacing[4] + (r.depth - 1) * spacing[5] }, pressed && { backgroundColor: c.tint }]}
             >
               {r.depth > 1 ? <View style={[styles.branch, { backgroundColor: c.outline }]} /> : null}
               <View style={{ flex: 1 }}>
@@ -124,6 +134,12 @@ export default function SubSpacesScreen() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  big: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[4], marginTop: spacing[5] },
+  cell: { width: '33.33%', paddingRight: spacing[2] },
+  value: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.figure },
+  label: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   firstSection: { marginTop: spacing[10] },
   // Section owns the top spacing and the title; the card just needs the gutter.

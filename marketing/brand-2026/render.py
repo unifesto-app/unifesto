@@ -34,8 +34,8 @@ JOBS = [
     ("symbol-black.svg", "symbol-black-1024.png", 1024, 1024, None),
 ]
 # Alternate app icons: iOS 1024, Android adaptive foreground 1024, in-app preview 180.
-for n in ("night", "day", "aurora", "nebula", "ember", "ocean", "mono"):
-    bg = "#fff" if n == "day" else "#000"
+for n in ("night", "day", "mint", "sky", "ivory", "blue", "dark", "light"):
+    bg = "#fff" if n in ("day", "light") else "#000"
     JOBS.append((f"alt-icon-{n}.svg", f"alt-icon-{n}-1024.png", 1024, 1024, bg))
     JOBS.append((f"alt-icon-{n}-android.svg", f"alt-icon-{n}-android-1024.png", 1024, 1024, bg))
     JOBS.append((f"alt-icon-{n}.svg", f"alt-icon-{n}-180.png", 180, 180, bg))

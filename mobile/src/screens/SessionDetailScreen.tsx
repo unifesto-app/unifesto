@@ -19,14 +19,13 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import { googleCalendarUrl, outlookCalendarUrl } from '../lib/calendar';
 import { countdownLabel } from '../utils/eventFormat';
 import { getSessionBySlug, getMySessions, joinSession, PLATFORM_LABELS, type Session } from '../lib/api/sessions';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, CosmosWash, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const ICON = 24;
 const STUB = 56;
-const LIVE_RED = '#ef4444';
 
 /** Date and time parts in the session's own time zone. */
 function whenParts(iso: string, timeZone: string) {
@@ -196,7 +195,7 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <VideoCamera size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>Session not found</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">Session not found</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
@@ -250,12 +249,14 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
 
           {live ? (
             <View style={styles.liveRow}>
-              <LiveDot color={LIVE_RED} />
-              <Text style={[styles.liveText, { color: LIVE_RED }]}>Live now</Text>
+              <LiveDot color={c.mint} />
+              <Text style={[styles.liveText, { color: c.mint }]}>Live now</Text>
             </View>
           ) : null}
 
-          <Text style={[styles.title, { color: c.text }, !live && { marginTop: spacing[6] }]}>{session.title}</Text>
+          <Text style={[styles.title, { color: c.text }, !live && { marginTop: spacing[6] }]} accessibilityRole="header">
+            {session.title}
+          </Text>
 
           {session.space ? (
             <Pressable
@@ -297,9 +298,9 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
               accessibilityLabel={`${when.weekday}, ${when.time}${upcoming ? '. Add to calendar' : ''}`}
               style={({ pressed }) => [styles.whenRow, pressed && { backgroundColor: c.tint }]}
             >
-              <View style={[styles.stub, { borderColor: c.border }]}>
+              <View style={styles.stub}>
                 <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
-                <Text style={[styles.stubDay, { color: c.text }]}>{when.day}</Text>
+                <Text style={[styles.stubDay, { color: c.sky }]}>{when.day}</Text>
               </View>
               <View style={styles.flex}>
                 <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
@@ -319,6 +320,7 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
                   icon={<UsersThree size={ICON} color={spotsLeft === 0 ? c.danger : c.text} />}
                   title={spotsLeft === 0 ? 'Fully booked' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
                   danger={spotsLeft === 0}
+                  color={c.sky}
                 />
               </>
             ) : null}
@@ -334,7 +336,7 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
             ) : isCompleted ? (
               <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This session has ended" />
             ) : (
-              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLabel} />
+              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLabel} color={c.sky} />
             )}
           </View>
         </View>
@@ -360,8 +362,6 @@ function SessionDetailView({ data, hue }: { data: SessionData; hue: string | nul
           info={registered ? null : { label: 'Price', value: priceLabel }}
           label={bar.label}
           loading={registering || joining}
-          // Silver, the cosmos primary, like the event and space pages.
-          tone="neutral"
           accent={c.primary}
           onPress={bar.onPress}
           backdropImage={session.coverImageUrl}
@@ -377,14 +377,14 @@ function Divider() {
   return <View style={[styles.divider, { backgroundColor: c.border }]} />;
 }
 
-/** One line of the facts card: bare icon, title, optional quieter line under it. */
-function Fact({ icon, title, sub, danger }: { icon: React.ReactNode; title: string; sub?: string | null; danger?: boolean }) {
+/** One line of the facts card: bare icon, title (sky for seats and price), optional quieter line under it. */
+function Fact({ icon, title, sub, danger, color }: { icon: React.ReactNode; title: string; sub?: string | null; danger?: boolean; color?: string }) {
   const c = useCosmos();
   return (
     <View style={styles.factRow}>
       <View style={styles.factIcon}>{icon}</View>
       <View style={styles.flex}>
-        <Text style={[styles.factTitle, { color: danger ? c.danger : c.text }]} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.factTitle, { color: danger ? c.danger : color ?? c.text }]} numberOfLines={1}>{title}</Text>
         {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={3}>{sub}</Text> : null}
       </View>
     </View>
@@ -412,11 +412,11 @@ const styles = StyleSheet.create({
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing[6] },
   liveText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   liveWrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
-  liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
-  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  liveRing: { position: 'absolute', width: 6, height: 6, borderRadius: 3 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
   title: { marginTop: spacing[2], fontSize: 30, lineHeight: 36, ...cosmosFont.display, letterSpacing: displayTracking(30) },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
-  hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
+  hostLogo: { width: 26, height: 26, borderRadius: borderRadius.sm, overflow: 'hidden' },
   hostInitial: { fontSize: 11, ...cosmosFont.strong },
   hostText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
@@ -424,9 +424,10 @@ const styles = StyleSheet.create({
   blockedNote: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
-  stub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
+  // The date as a bare figure over its month: no box inside the card.
+  stub: { width: STUB, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 26, lineHeight: 30, ...cosmosFont.figure },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
@@ -435,5 +436,5 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
   link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], paddingHorizontal: GUTTER, fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
 });

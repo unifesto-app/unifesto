@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import ManageStats from '../../components/manage/ManageStats';
@@ -14,7 +15,7 @@ import { cancelEmailCampaign, getEmailCampaign, previewEmailBody, type EmailCamp
 import { EMAIL_TARGET_LABEL, pct } from './EmailCampaignsScreen';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 /** One email campaign: delivery + engagement, A/B split, recipient log, cancel if scheduled. */
 export default function EmailCampaignDetailScreen() {
@@ -71,7 +72,8 @@ export default function EmailCampaignDetailScreen() {
       <CosmosScreen contentContainerStyle={styles.pad}>
         <Stack.Screen options={{ title: 'Campaign' }} />
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -89,10 +91,13 @@ export default function EmailCampaignDetailScreen() {
     <>
       <Stack.Screen options={{ title: 'Campaign' }} />
       <CosmosScreen refreshing={refreshing} onRefresh={refresh} contentContainerStyle={styles.pad}>
-        <Text style={[styles.title, { color: c.text }]}>{campaign.subject}</Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
-          <Text style={{ color: s.color }}>{s.label}</Text> · {EMAIL_TARGET_LABEL[campaign.targetType] ?? campaign.targetType} · {when}
-        </Text>
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{campaign.subject}</Text>
+        <View style={styles.metaRow}>
+          <View style={[styles.dot, { backgroundColor: s.color }]} />
+          <Text style={[styles.meta, { color: c.muted }]}>
+            <Text style={[cosmosFont.strong, { color: s.color }]}>{s.label}</Text> · {EMAIL_TARGET_LABEL[campaign.targetType] ?? campaign.targetType} · {when}
+          </Text>
+        </View>
 
         <View style={styles.stats}>
           <ManageStats
@@ -137,12 +142,14 @@ export default function EmailCampaignDetailScreen() {
 
         <Text style={[styles.section, { color: c.muted }]}>Recipients ({campaign.logs.length} shown)</Text>
         {campaign.logs.length === 0 ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>Nobody yet.</Text>
           </View>
         ) : null}
         {campaign.logs.length > 0 ? (
-          <View style={[styles.list, { backgroundColor: c.raised }]}>
+          <View style={styles.list}>
+          <CardBackdrop shape={styles.list} />
           {campaign.logs.map((l, i) => {
             const engaged = l.firstClickedAt ? `clicked ${shortDate(l.firstClickedAt)}` : l.openedAt ? `opened ${shortDate(l.openedAt)}` : 'not opened';
             const statusColor = l.status === 'SENT' ? c.success : l.status === 'BOUNCED' ? c.warn : c.danger;
@@ -171,7 +178,10 @@ const styles = StyleSheet.create({
   empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   list: { borderRadius: cosmosCardRadius, paddingHorizontal: spacing[4] },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { marginTop: spacing[5], gap: spacing[3] },
   variant: { paddingHorizontal: spacing[4], paddingVertical: spacing[4] },

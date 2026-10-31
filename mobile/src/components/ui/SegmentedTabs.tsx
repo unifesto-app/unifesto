@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { GlassFill, LIQUID_GLASS } from './CardSurface';
-import { borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const PAD = 4;
 
@@ -21,7 +20,7 @@ export interface SegmentedTabsProps<K extends string> {
   glass?: boolean;
 }
 
-/** Segmented control with a pill that springs between tabs. */
+/** Segmented control (radius 14) with a silver thumb that springs between tabs. Monochrome. */
 export default function SegmentedTabs<K extends string>({ tabs, value, onChange, position, glass = true }: SegmentedTabsProps<K>) {
   const c = useCosmos();
   const useGlass = glass && LIQUID_GLASS;
@@ -41,13 +40,13 @@ export default function SegmentedTabs<K extends string>({ tabs, value, onChange,
 
   return (
     <View
-      style={[styles.track, useGlass ? { borderWidth: 0 } : { backgroundColor: c.card, borderColor: c.border }]}
+      style={[styles.track, useGlass ? null : { backgroundColor: c.tint }]}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       accessibilityRole="tablist"
     >
-      {useGlass ? <GlassFill interactive /> : null}
+      {useGlass ? <GlassFill radius={cosmosRadius} interactive /> : null}
       {segW > 0 ? (
-        <Animated.View style={[styles.pill, { width: segW, backgroundColor: c.text }, pill]} />
+        <Animated.View style={[styles.pill, { width: segW, backgroundColor: c.primary }, pill]} />
       ) : null}
       {tabs.map((t) => {
         const active = t.key === value;
@@ -59,7 +58,7 @@ export default function SegmentedTabs<K extends string>({ tabs, value, onChange,
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
           >
-            <Text style={[styles.label, { color: active ? c.bg : c.soft }]} numberOfLines={1}>
+            <Text style={[styles.label, { color: active ? c.primaryFg : c.muted }]} numberOfLines={1}>
               {t.label}
             </Text>
           </Pressable>
@@ -70,8 +69,9 @@ export default function SegmentedTabs<K extends string>({ tabs, value, onChange,
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', padding: PAD, borderRadius: borderRadius.full, borderWidth: 1 },
-  pill: { position: 'absolute', top: PAD, bottom: PAD, left: PAD, borderRadius: borderRadius.full },
+  track: { flexDirection: 'row', padding: PAD, borderRadius: cosmosRadius },
+  // Concentric with the track: 14 minus the inset.
+  pill: { position: 'absolute', top: PAD, bottom: PAD, left: PAD, borderRadius: cosmosRadius - PAD },
   segment: { flex: 1, minHeight: 44, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

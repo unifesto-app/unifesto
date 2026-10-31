@@ -14,6 +14,8 @@ import {
 import { PayoutRow } from '../components/manage/FinanceRows';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import ShadeCard from '../components/ui/ShadeCard';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -86,7 +88,8 @@ export default function FinanceScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={styles.card}>
+              <CardBackdrop shape={styles.card} />
               <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
               <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
             </View>
@@ -108,11 +111,11 @@ export default function FinanceScreen() {
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
-      {/* What can move now */}
+      {/* What can move now: the screen's hero, on the money's ivory shade. */}
       <View style={styles.pad}>
-        <View style={[styles.card, { backgroundColor: c.raised }]}>
-          <Text style={[styles.eyebrow, { color: c.muted }]}>Available to pay out</Text>
-          <Text style={[styles.heroValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+        <ShadeCard tone="ivory">
+          <Text style={[styles.eyebrow, { color: c.soft }]}>Available to pay out</Text>
+          <Text style={[styles.heroValue, { color: c.ivory }]} numberOfLines={1} adjustsFontSizeToFit>
             {inr(fin.available)}
           </Text>
           <Text style={[styles.body, { color: c.soft }]}>
@@ -125,10 +128,11 @@ export default function FinanceScreen() {
             onPress={() => router.push(`/manage/space/${spaceId}/payouts`)}
             style={{ marginTop: spacing[5] }}
           />
-        </View>
+        </ShadeCard>
 
         {!hasVerified ? (
-          <View style={[styles.warn, { backgroundColor: c.raised }]}>
+          <View style={styles.warn}>
+            <CardBackdrop shape={styles.warn} />
             <Warning size={22} color={c.warn} weight="fill" />
             <Text style={[styles.warnText, { color: c.soft }]}>
               No verified payout account yet. Add one in Unifesto Space on the web; Unifesto verifies it before money can be sent.
@@ -158,7 +162,7 @@ export default function FinanceScreen() {
           <SettingsRow label="Platform fee" value={`− ${inr(fin.platformFee)}`} />
           <View style={styles.total}>
             <Text style={[styles.totalLabel, { color: c.text }]}>My earnings</Text>
-            <Text style={[styles.totalValue, { color: c.text }]}>{inr(fin.netEntitlement)}</Text>
+            <Text style={[styles.totalValue, { color: c.ivory }]}>{inr(fin.netEntitlement)}</Text>
           </View>
         </SettingsGroup>
         <Text style={[styles.note, { color: c.muted }]}>App fees are charged to buyers and kept by Unifesto.</Text>
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  heroValue: { marginTop: spacing[2], fontSize: 32, lineHeight: 42, ...cosmosFont.figure },
+  heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
   warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },

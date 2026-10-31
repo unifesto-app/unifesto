@@ -22,7 +22,8 @@ import { relativeWhen } from '../utils/eventFormat';
 import { checkinPhase, timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 /**
  * One event's door: live progress, the two ways to check people in, and the
@@ -100,21 +101,17 @@ export default function EventCheckinScreen() {
     <CosmosScreen refreshing={hub.refreshing} onRefresh={hub.refresh}>
       {/* Identity */}
       <View style={styles.gutter}>
-        {live ? (
-          <View style={styles.liveRow}>
-            <View style={[styles.liveDot, { backgroundColor: c.success }]} />
-            <Text style={[styles.eyebrow, { color: c.success }]}>Live now</Text>
-          </View>
-        ) : start ? (
-          <Text style={[styles.eyebrow, { color: c.primary }]}>{relativeWhen(start)}</Text>
-        ) : null}
         <Text style={[styles.title, { color: c.text }]} numberOfLines={3} accessibilityRole="header">
           {title}
         </Text>
-        {venue ? (
-          <Text style={[styles.venue, { color: c.muted }]} numberOfLines={1}>
-            {venue}
-          </Text>
+        {live || start || venue ? (
+          <View style={styles.metaRow}>
+            {live ? <View style={[styles.liveDot, { backgroundColor: c.mint }]} /> : null}
+            <Text style={[styles.meta, { color: live ? c.mint : c.muted }]} numberOfLines={1}>
+              {live ? 'Live now' : start ? relativeWhen(start) : ''}
+              <Text style={{ color: c.muted }}>{venue ? `${live || start ? ' · ' : ''}${venue}` : ''}</Text>
+            </Text>
+          </View>
         ) : null}
       </View>
 
@@ -127,7 +124,8 @@ export default function EventCheckinScreen() {
       {/* Progress */}
       <View style={[styles.gutter, { marginTop: spacing[5] }]}>
         {hub.error && !stats ? (
-          <View style={[styles.errorBox, { backgroundColor: c.raised }]}>
+          <View style={styles.errorBox}>
+            <CardBackdrop shape={styles.errorBox} />
             <Text style={[styles.errorText, { color: c.soft }]}>{hub.error}</Text>
             <Button label="Try again" variant="secondary" onPress={hub.retry} style={{ alignSelf: 'center' }} />
           </View>
@@ -203,11 +201,10 @@ export default function EventCheckinScreen() {
 
 const styles = StyleSheet.create({
   gutter: { paddingHorizontal: GUTTER },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
-  eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  title: { fontSize: typography.fontSize['2xl'], lineHeight: 32, marginTop: spacing[1], ...cosmosFont.display },
-  venue: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.body },
+  title: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   chips: { marginTop: spacing[5] },
   errorBox: { gap: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
   errorText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },

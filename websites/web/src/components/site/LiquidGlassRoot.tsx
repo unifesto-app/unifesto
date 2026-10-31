@@ -4,8 +4,11 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 /* Liquid glass (vendored liquidglass, WebGL): direct children marked
    `data-glass` refract the root's other children behind them. Until the
-   effect is running (and with no WebGL, or reduced transparency) the cards
-   keep their solid fill; `lg-live` on the root hands the fill to the glass.
+   effect is running (and with no WebGL, reduced transparency, or a touch
+   screen) the cards keep their solid fill; `lg-live` on the root hands the
+   fill to the glass. Touch screens skip it: each card is a WebGL context
+   drawing every frame plus a main-thread photo of the page, which on a phone
+   holds up first taps and scrolling.
    The glass can't see the root's own background or anything outside the
    root: what it refracts starts from the section's ground colour
    (--stage-ground), with the root's children drawn on top. */
@@ -14,7 +17,7 @@ export default function LiquidGlassRoot({ className, children }: { className?: s
 
   useEffect(() => {
     const root = ref.current;
-    if (!root || matchMedia("(prefers-reduced-transparency: reduce)").matches) return;
+    if (!root || matchMedia("(prefers-reduced-transparency: reduce), (pointer: coarse)").matches) return;
     let instance: { destroy(): void } | undefined;
     let run = 0; // bumping it cancels any start still in flight
     let started = false;

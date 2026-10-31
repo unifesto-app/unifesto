@@ -14,7 +14,7 @@ import { withUtm } from '../services/utm';
 import { eventUrl } from '../hooks/useEventDetail';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -90,7 +90,11 @@ export default function EventTrackingScreen() {
         setRefreshing(false);
       }}
     >
-      {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.event, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
+          {title}
+        </Text>
+      ) : null}
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
 
       {traffic ? (
@@ -169,7 +173,7 @@ export default function EventTrackingScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  event: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...cosmosFont.display },
+  event: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[2], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

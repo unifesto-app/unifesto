@@ -9,6 +9,7 @@ import SelectRow from '../components/manage/SelectRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Badge } from '../components/ui/Badge';
 import CosmosScreen from '../components/ui/CosmosScreen';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
@@ -84,7 +85,8 @@ export default function HackathonTeamEditorScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -153,7 +155,7 @@ export default function HackathonTeamEditorScreen() {
 
       {!cancelled ? (
         <>
-          <SettingsGroup title="Room" plain>
+          <SettingsGroup plain>
             <SelectRow
               label="Room"
               value={draft.roomName}
@@ -177,7 +179,7 @@ export default function HackathonTeamEditorScreen() {
             <SettingsRow
               icon={
                 team.statement ? (
-                  <LockSimple size={26} color={c.text} />
+                  <LockSimple size={26} color={c.success} weight="fill" />
                 ) : (
                   <Lightbulb size={26} color={c.text} />
                 )

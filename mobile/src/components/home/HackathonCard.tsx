@@ -1,22 +1,17 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   FadeInDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
   withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { CaretRight, Trophy } from '@unifesto/unicon/react-native';
 import { getMyHackathon, type HackathonHub } from '../../lib/api/hackathon';
 import type { UpcomingTicket } from '../../hooks/useHomeData';
-import { useBannerAccent } from '../../hooks/useBannerPalette';
-import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -101,26 +96,17 @@ function LiveDot({ color }: { color: string }) {
   );
 }
 
-/** Elapsed share of the hackathon, filling in on mount, with a light sweep across it. */
-function TimeBar({ progress, color }: { progress: number; color: string }) {
+/** Elapsed share of the hackathon, filling in on mount. */
+function TimeBar({ progress, color, track }: { progress: number; color: string; track: string }) {
   const reduced = useReducedMotion();
   const fill = useSharedValue(reduced ? progress : 0);
-  const sweep = useSharedValue(0);
-  const [w, setW] = React.useState(0);
   React.useEffect(() => {
     fill.value = withTiming(progress, { duration: reduced ? 0 : 700, easing: EASE_OUT });
   }, [progress, reduced, fill]);
-  React.useEffect(() => {
-    if (!reduced) sweep.value = withRepeat(withSequence(withTiming(1, { duration: 1600, easing: Easing.linear }), withDelay(900, withTiming(0, { duration: 0 }))), -1, false);
-  }, [reduced, sweep]);
   const fillStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: fill.value }] }));
-  const sweepStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -60 + (w + 60) * sweep.value * fill.value }] }));
   return (
-    <View style={styles.track} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+    <View style={[styles.track, { backgroundColor: track }]}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color, transformOrigin: 'left' }, fillStyle]} />
-      <Animated.View style={[styles.sweep, sweepStyle]}>
-        <LinearGradient colors={['transparent', 'rgba(255,255,255,0.7)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-      </Animated.View>
     </View>
   );
 }
@@ -131,17 +117,13 @@ interface HackathonCardProps {
 }
 
 /**
- * Home hero for my hackathon, on the standard card surface (no banner): elements take the
- * event banner's colour, with a live countdown, elapsed-time bar and what the
+ * My hackathon on Home, on a plain card (Up next holds the screen's shade):
+ * a live countdown, the elapsed-time bar in mint while it runs, and what the
  * team should do next.
  */
 export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
   const c = useCosmos();
-  const defaults = useDefaultImages();
   const team = hub.team!;
-  const cover = coverOr(defaults, hub.eventId, hub.event.coverImageUrl);
-  // Same banner colour the space / event pages wash with, used only on elements.
-  const accent = useBannerAccent(cover, { event: hub.eventId }) ?? c.primary;
 
   const now = useNow();
   const start = new Date(hub.event.startDateTime).getTime();
@@ -162,11 +144,11 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
       >
         <CardBackdrop shape={styles.card} />
         <View style={styles.topRow}>
-          <Trophy size={26} color={accent} weight="fill" />
+          <Trophy size={26} color={c.text} weight="fill" />
           <View style={{ flex: 1 }}>
-            <View style={styles.pill}>
-              {live ? <LiveDot color={accent} /> : null}
-              <Text style={[styles.pillText, { color: live ? accent : c.muted }]} numberOfLines={1}>
+            <View style={styles.liveRow}>
+              {live ? <LiveDot color={c.mint} /> : null}
+              <Text style={[styles.liveText, { color: live ? c.mint : c.muted }]} numberOfLines={1}>
                 {live ? 'Live' : 'Unifesto Sprint'} · {hub.event.title}
               </Text>
             </View>
@@ -177,10 +159,10 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
             <Text style={[styles.clockLabel, { color: c.muted }]}>{live ? 'left' : 'to kickoff'}</Text>
           </View>
         </View>
-        {live ? <TimeBar progress={progress} color={accent} /> : null}
+        {live ? <TimeBar progress={progress} color={c.mint} track={c.tint} /> : null}
         <View style={styles.bottomRow}>
           <Text style={[styles.status, { color: c.soft }]} numberOfLines={1}>{statusLine(team, hub.unreadCount)}</Text>
-          <CaretRight size={14} color={accent} weight="bold" />
+          <CaretRight size={14} color={c.muted} weight="bold" />
         </View>
       </PressableScale>
     </Animated.View>
@@ -190,16 +172,15 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
 const styles = StyleSheet.create({
   card: { padding: spacing[4], borderRadius: cosmosCardRadius },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pillText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  dotWrap: { width: 8, height: 8, alignItems: 'center', justifyContent: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  liveText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  dotWrap: { width: 6, height: 6, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   team: { fontSize: typography.fontSize.lg, marginTop: 2, ...cosmosFont.strong },
   clockCol: { alignItems: 'flex-end' },
   clock: { fontSize: typography.fontSize.base, lineHeight: 24, ...cosmosFont.figure },
   clockLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  track: { height: 3, borderRadius: 2, marginTop: spacing[3], overflow: 'hidden', backgroundColor: 'rgba(127,127,127,0.25)' },
-  sweep: { position: 'absolute', top: 0, bottom: 0, width: 60 },
+  track: { height: 3, borderRadius: 2, marginTop: spacing[3], overflow: 'hidden' },
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   status: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
