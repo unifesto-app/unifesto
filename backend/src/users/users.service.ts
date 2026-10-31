@@ -396,14 +396,6 @@ export class UsersService {
       }
     }
 
-    // Z11: keep the first confirmation time; re-confirming is a no-op.
-    if (dto.ageConfirmed) {
-      await this.prisma.user.updateMany({
-        where: { id: userId, ageConfirmedAt: null },
-        data: { ageConfirmedAt: new Date() },
-      });
-    }
-
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -492,6 +484,14 @@ export class UsersService {
       if (!isAvailable) {
         throw new ConflictException('Username is already taken');
       }
+    }
+
+    // Z11: keep the first confirmation time; re-confirming is a no-op.
+    if (dto.ageConfirmed) {
+      await this.prisma.user.updateMany({
+        where: { id: userId, ageConfirmedAt: null },
+        data: { ageConfirmedAt: new Date() },
+      });
     }
 
     const user = await this.prisma.user.update({
