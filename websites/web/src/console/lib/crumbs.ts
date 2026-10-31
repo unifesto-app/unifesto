@@ -30,7 +30,6 @@ const ACCOUNT: Record<string, string> = {
   support: "Support",
   saved: "Saved events",
   certificates: "My certificates",
-  partner: "Partner stats",
   notifications: "Notifications",
   "sign-in": "Security",
   delete: "Delete account",

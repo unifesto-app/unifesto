@@ -8,8 +8,7 @@ import { Ticket } from "@unifesto/unicon/react";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
 import { Skeleton } from "@/console/components/ui/skeleton";
-import { PartnersPanel } from "@/console/components/tracking/PartnersPanel";
-import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
+import { TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/console/lib/api/tracking";
 import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/console/lib/api/traffic";
 import { getEventById } from "@/console/lib/api/events-api";
@@ -19,8 +18,8 @@ const WEB_URL = "https://www.unifesto.app";
 
 /**
  * Tracking for one event (port of mobile EventTrackingScreen): page traffic,
- * where confirmed attendees came from (drill into a source), short links,
- * partner links and tagged channel links.
+ * where confirmed attendees came from (drill into a source) and tagged
+ * channel links.
  */
 export default function EventTrackingPage() {
   const eventId = useParams().eventId as string;
@@ -102,8 +101,6 @@ export default function EventTrackingPage() {
             )}
           </ListGroup>
 
-          <ShortLinksPanel scope={scope} canEdit={can("event:edit")} destination="this event" />
-          <PartnersPanel eventId={eventId} />
           {slug && <TrackingLinks url={`${WEB_URL}/event/${slug}`} campaign={slug} />}
         </>
       )}

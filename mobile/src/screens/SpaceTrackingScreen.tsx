@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretDown, CaretRight, Link as LinkIcon, Scissors } from '@unifesto/unicon/react-native';
+import { CaretDown, CaretRight, Link as LinkIcon } from '@unifesto/unicon/react-native';
 import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from '../lib/api/tracking';
-import { conversion, getTraffic, scopeParams, type SpaceTrafficStats } from '../lib/api/traffic';
+import { conversion, getTraffic, type SpaceTrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -168,27 +168,17 @@ export default function SpaceTrackingScreen() {
         </Section>
       ) : null}
 
-      {spaceId ? (
+      {spaceUrl ? (
         <Section title="Space page links">
           <SettingsGroup style={styles.group}>
             <SettingsRow
-              icon={<Scissors size={ICON} color={c.text} weight="bold" />}
-              label="Short links"
-              onPress={() =>
-                router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'space', id: spaceId }), title: name ?? '' } })
-              }
+              icon={<LinkIcon size={ICON} color={c.text} weight="bold" />}
+              label="Build a tracking link"
+              onPress={() => router.push({ pathname: '/utm-link', params: { url: spaceUrl, title: name ?? '', campaign: slug } })}
             />
-            {spaceUrl ? (
-              <SettingsRow
-                icon={<LinkIcon size={ICON} color={c.text} weight="bold" />}
-                label="Build a tracking link"
-                onPress={() => router.push({ pathname: '/utm-link', params: { url: spaceUrl, title: name ?? '', campaign: slug } })}
-              />
-            ) : null}
           </SettingsGroup>
           <Text style={[styles.note, { color: c.muted }]}>
-            A registration for any of this space's events counts for a space link opened within 7 days before it. Short links also list
-            every link made for this space's events.
+            A registration for any of this space's events counts for a space link opened within 7 days before it.
           </Text>
         </Section>
       ) : null}

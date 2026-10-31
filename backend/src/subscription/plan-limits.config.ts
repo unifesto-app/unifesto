@@ -120,7 +120,7 @@ export const PLAN_CATALOG: { group: string; rows: PlanCatalogRow[] }[] = [
     group: 'Insights',
     rows: [
       { label: 'Event stats, page traffic and registration sources' },
-      { label: 'Short links, QR codes, UTM and partner links' },
+      { label: 'UTM tracking links' },
       { label: 'Analytics and PDF event reports', flag: 'hasAnalytics' },
     ],
   },

@@ -81,17 +81,9 @@ const sameTarget = (a: UtmTouch['target'], b: UtmTouch['target']) =>
   a.kind === b.kind && a.slug === b.slug;
 
 /**
- * Partner links (utm_medium=partner) are handed out by curators, often on a
- * per-registration deal, so they keep their credit: a later casual share never
- * displaces one. Only a newer partner link can.
- */
-const isPartner = (t: Utm) => t.medium?.toLowerCase() === 'partner';
-
-/**
  * Remember a tagged event/space link. One touch is kept per event/space (the
- * latest link for it wins, unless a partner link already holds it), so
- * opening a link for another event never wipes the credit a partner earned
- * for this one. Expired touches are pruned. Never throws.
+ * latest link for it wins), so opening a link for another event never wipes
+ * the credit for this one. Expired touches are pruned. Never throws.
  */
 export async function captureUtmFromLink(pathOrUrl: string | null | undefined): Promise<void> {
   if (!pathOrUrl) return;
@@ -100,8 +92,6 @@ export async function captureUtmFromLink(pathOrUrl: string | null | undefined): 
   if (!utm || !target) return;
   const now = Date.now();
   const fresh = (await readTouches()).filter((t) => now - t.at <= ATTRIBUTION_WINDOW_MS);
-  const held = fresh.find((t) => sameTarget(t.target, target));
-  if (held && isPartner(held) && !isPartner(utm)) return;
   const touch: UtmTouch = { ...utm, target, at: now };
   const kept = fresh.filter((t) => !sameTarget(t.target, target));
   try {
@@ -113,9 +103,9 @@ export async function captureUtmFromLink(pathOrUrl: string | null | undefined): 
  * Which remembered link, if any, gets credit for a registration on this event.
  *
  * Strict match within a 7-day window: only links that pointed at this event
- * (by slug or id) or at the space hosting it count. Priority: a partner link
- * (event or space) first, then an event link (the more specific signal), then
- * a space link; within a tier the most recently opened wins.
+ * (by slug or id) or at the space hosting it count. Priority: an event link
+ * (the more specific signal), then a space link; within a tier the most
+ * recently opened wins.
  */
 export function pickAttribution(
   touches: UtmTouch[],
@@ -129,10 +119,7 @@ export function pickAttribution(
       ((t.target.kind === 'event' && (t.target.slug === event.slug || t.target.slug === event.id)) ||
         (t.target.kind === 'space' && !!event.spaceSlug && t.target.slug === event.spaceSlug)),
   );
-  const best =
-    newest(matching.filter(isPartner)) ??
-    newest(matching.filter((t) => t.target.kind === 'event')) ??
-    newest(matching);
+  const best = newest(matching.filter((t) => t.target.kind === 'event')) ?? newest(matching);
   return best ? { source: best.source, medium: best.medium, campaign: best.campaign } : null;
 }
 

@@ -9,7 +9,7 @@ import { ERASED_NAME } from '../common/account-deletion';
  * How long each append-only table keeps rows, in days. Override one with
  * RETENTION_DAYS_<TABLE> (e.g. RETENTION_DAYS_PUSH_LOGS=30).
  *
- * page_views/short_link_clicks outlive the longest traffic window (365d).
+ * page_views outlive the longest traffic window (365d).
  * email_campaign_logs feed the per-campaign A/B tallies; the campaign row
  * keeps its own open/click counters after its logs go.
  */
@@ -23,7 +23,6 @@ export const RETENTION: ReadonlyArray<{
   // (Caddyfile, also 180 days); this table is the API-side view of it.
   { table: 'api_logs', column: 'created_at', days: 180 },
   { table: 'page_views', column: 'created_at', days: 400 },
-  { table: 'short_link_clicks', column: 'created_at', days: 400 },
   { table: 'push_logs', column: 'created_at', days: 90 },
   { table: 'user_notifications', column: 'created_at', days: 180 },
   { table: 'email_campaign_logs', column: 'sent_at', days: 365 },

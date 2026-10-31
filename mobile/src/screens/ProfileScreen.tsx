@@ -11,7 +11,6 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import * as AuthAPI from '../lib/api/auth';
 import { getMyRegisteredEvents } from '../lib/api/events';
 import { getUserSpaces } from '../lib/api/spaces';
-import { getMyPartnerLinks } from '../lib/api/tracking';
 import { getMyUnreadCount } from '../lib/api/support';
 import { openStoreReview } from '../utils/storeReview';
 import { useStableTopInset } from '../components/CustomHeader';
@@ -73,15 +72,12 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  // Only partners (an event curator added them) get the Partner stats row.
-  const [isPartner, setIsPartner] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
 
   const load = useCallback(async () => {
     if (!token) return;
-    const [user, partner, regs, spaces, unread] = await Promise.allSettled([
+    const [user, regs, spaces, unread] = await Promise.allSettled([
       AuthAPI.getCurrentUser(),
-      getMyPartnerLinks(),
       getMyRegisteredEvents(1, 50),
       getUserSpaces(),
       getMyUnreadCount(),
@@ -89,7 +85,6 @@ export default function ProfileScreen() {
     if (unread.status === 'fulfilled') setSupportUnread(unread.value);
     if (user.status === 'fulfilled') setProfile(user.value);
     else if (__DEV__) console.error('Failed to load profile:', user.reason);
-    if (partner.status === 'fulfilled') setIsPartner(partner.value.ok && partner.value.data.length > 0);
 
     // Same counting as the public profile: one per event, split at now.
     const rows: any[] = regs.status === 'fulfilled' ? regs.value?.data || regs.value?.events || [] : [];
@@ -280,7 +275,6 @@ export default function ProfileScreen() {
           {!hosts ? (
             <SettingsRow icon={icon('calendar-plus')} label="Host one event" onPress={() => router.push('/event-request')} />
           ) : null}
-          {isPartner ? <SettingsRow icon={icon('megaphone')} label="Partner stats" onPress={() => router.push('/partner')} /> : null}
         </SettingsGroup>
 
         {help}

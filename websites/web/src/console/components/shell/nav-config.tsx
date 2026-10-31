@@ -84,7 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/email", label: "Email", icon: EnvelopeSimple, requires: "space:manage-email", keywords: "campaigns templates marketing" },
       { href: "/sponsors", label: "Sponsors", icon: Handshake, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "sponsors partners tiers" },
       { href: "/leads", label: "Leads", icon: Funnel, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "leads funnel interest inquiry notify crm" },
-      { href: "/tracking", label: "Tracking", icon: ChartLineUp, keywords: "traffic utm short links sources analytics views" },
+      { href: "/tracking", label: "Tracking", icon: ChartLineUp, keywords: "traffic utm sources analytics views" },
     ],
   },
   {
@@ -148,9 +148,6 @@ export const ME_GROUP: NavGroup = {
   ],
 };
 
-/** Only for people an organiser gave a tracking link. */
-export const PARTNER_ITEM: NavItem = { href: "/account/partner", label: "Partner stats", icon: ChartLineUp, keywords: "partner tracking link registrations" };
-
 /** How I'm reached and how I sign in. */
 export const SETTINGS_GROUP: NavGroup = {
   label: "Settings",
@@ -160,11 +157,8 @@ export const SETTINGS_GROUP: NavGroup = {
   ],
 };
 
-/** My own menus: everyone's pages (Partner stats when I have links), then Settings. */
-export const accountGroups = (partner = false): NavGroup[] => [
-  { ...ME_GROUP, items: [...ME_GROUP.items, ...(partner ? [PARTNER_ITEM] : [])] },
-  SETTINGS_GROUP,
-];
+/** My own menus: everyone's pages, then Settings. */
+export const accountGroups = (): NavGroup[] => [ME_GROUP, SETTINGS_GROUP];
 
 /** The item this page belongs to: the longest href that matches, so Inbox (not My account) on /console/account/inbox. */
 export function currentItem(items: NavItem[], pathname: string): NavItem | undefined {

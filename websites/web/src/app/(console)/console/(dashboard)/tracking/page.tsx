@@ -7,7 +7,7 @@ import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
 import { Skeleton } from "@/console/components/ui/skeleton";
-import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
+import { TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
 import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from "@/console/lib/api/tracking";
 import { conversion, getTraffic, type SpaceTrafficStats, type TrafficScope } from "@/console/lib/api/traffic";
 import { useSession } from "@/console/lib/context/SessionContext";
@@ -17,10 +17,10 @@ const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campa
 /**
  * Tracking across the whole space (port of SpaceTrackingScreen): traffic to the
  * space page and its events, which sources bring people in (expand for the
- * per-event split, then drill into who), plus space-level short links.
+ * per-event split, then drill into who), plus tagged links to the space page.
  */
 export default function SpaceTrackingPage() {
-  const { currentSpace, can } = useSession();
+  const { currentSpace } = useSession();
   const spaceId = currentSpace?.id ?? "";
   const scope = useMemo<TrafficScope>(() => ({ kind: "space", id: spaceId }), [spaceId]);
   const [data, setData] = useState<{ total: number; tagged: number; sources: SpaceRegistrationSource[] } | null>(null);
@@ -117,9 +117,6 @@ export default function SpaceTrackingPage() {
             </ListGroup>
           )}
 
-          {spaceId && (
-            <ShortLinksPanel scope={scope} canEdit={can("space:manage-members")} destination="the space page" />
-          )}
           {slug && <TrackingLinks url={`https://www.unifesto.app/space/${slug}`} campaign={slug} />}
         </>
       )}

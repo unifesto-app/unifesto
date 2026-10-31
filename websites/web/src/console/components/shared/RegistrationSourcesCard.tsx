@@ -35,8 +35,7 @@ const CHANNELS = [
 function sourceLabel(s: RegistrationSource): string {
   if (!s.source) return "Direct";
   if (s.source === "unifesto_app") return "Shared from the app";
-  const name = s.source.charAt(0).toUpperCase() + s.source.slice(1);
-  return s.medium === "partner" ? `${name} (partner)` : name;
+  return s.source.charAt(0).toUpperCase() + s.source.slice(1);
 }
 
 function taggedLink(slug: string, source: string, medium: string): string {

@@ -7,7 +7,7 @@ import { WarningCircle } from "@unifesto/unicon/react";
 import { SignInPrompt } from "@/console/components/shared/SignInPrompt";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 
-import { getMe, getMyPartnerLinks, getMySpaces, type Me, type MySpace, type PartnerLink } from "@/lib/api/account";
+import { getMe, getMySpaces, type Me, type MySpace } from "@/lib/api/account";
 import { myTickets, type MyTicket } from "@/lib/api/registration";
 import { useWebSession } from "@/lib/auth";
 import { IST } from "@/lib/site";
@@ -18,7 +18,6 @@ interface Account {
   /** One row per role I hold, as the API sends it. */
   spaces: MySpace[];
   setSpaces: (spaces: MySpace[]) => void;
-  partnerLinks: PartnerLink[];
   /** Events I'm going to and have been to, one per event, as the app counts them. */
   counts: { going: number; been: number };
 }
@@ -40,25 +39,18 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const [me, setMe] = useState<Me | null>(null);
   const [spaces, setSpaces] = useState<MySpace[]>([]);
   const [counts, setCounts] = useState({ going: 0, been: 0 });
-  const [partnerLinks, setPartnerLinks] = useState<PartnerLink[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!token) return;
     let live = true;
     // Only the profile is required; the counts and lists it feeds just stay empty.
-    Promise.allSettled([
-      getMe(token),
-      myTickets(token),
-      getMySpaces(token),
-      getMyPartnerLinks(token),
-    ]).then(([m, t, s, p]) => {
+    Promise.allSettled([getMe(token), myTickets(token), getMySpaces(token)]).then(([m, t, s]) => {
       if (!live) return;
       if (m.status === "fulfilled") setMe(m.value);
       else setError(m.reason instanceof Error ? m.reason.message : "Couldn't load My account.");
       if (t.status === "fulfilled") setCounts(eventCounts(t.value));
       if (s.status === "fulfilled") setSpaces(s.value);
-      if (p.status === "fulfilled") setPartnerLinks(p.value);
     });
     return () => {
       live = false;
@@ -76,7 +68,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     body = error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Loading…</p>;
   else
     body = (
-      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, partnerLinks, counts }}>{children}</AccountContext.Provider>
+      <AccountContext.Provider value={{ me, setMe, spaces, setSpaces, counts }}>{children}</AccountContext.Provider>
     );
 
   return (
@@ -112,7 +104,6 @@ const PAGES: Record<string, string> = {
   support: "Support",
   saved: "Saved events",
   certificates: "My certificates",
-  partner: "Partner stats",
   notifications: "Notifications",
   "sign-in": "Security",
   delete: "Delete account",
