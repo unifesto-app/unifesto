@@ -97,8 +97,10 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     // Enable scheduled jobs and cron tasks. The cert-worker container
     // (CERT_WORKER=true) runs the same image only to drain the render queue, so
     // it skips every @Cron/@Interval/@Timeout and leaves them to the API replicas.
+    // SCHEDULER=off does the same for a staging copy of prod data (J6), so
+    // reminders, digests and retention sweeps never reach real users from it.
     ScheduleModule.forRoot(
-      process.env.CERT_WORKER === 'true'
+      process.env.CERT_WORKER === 'true' || process.env.SCHEDULER === 'off'
         ? { cronJobs: false, intervals: false, timeouts: false }
         : {},
     ),
