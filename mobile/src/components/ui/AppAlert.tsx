@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { WarningCircle } from '@unifesto/unicon/react-native';
-import { cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../../theme/cosmos';
 import { spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { TopLayer } from './TopLayer';
@@ -66,9 +66,9 @@ interface LaidOutButton {
 }
 
 /**
- * Orders and styles the buttons. Destructive actions are red; otherwise the
- * preferred action (else the last one) gets the silver fill; the rest are
- * hairline outlines. Two short buttons sit side by side (cancel on the left,
+ * Orders and styles the buttons. Destructive actions get a crimson label on a
+ * hairline outline (the Button `danger` look); otherwise the preferred action
+ * (else the last one) gets the silver fill; the rest are hairline outlines. Two short buttons sit side by side (cancel on the left,
  * action on the right); anything else stacks with the action on top.
  */
 function layoutButtons(buttons: AppAlertButton[]): { items: LaidOutButton[]; inRow: boolean } {
@@ -194,7 +194,7 @@ export function AppAlertHost() {
 
 // ── Button ──────────────────────────────────────────────────────────────
 
-/** Silver fill (the web's .btn-primary), red fill, or hairline outline. */
+/** Silver fill (the web's .btn-primary), or a hairline outline with a text or crimson label. */
 function AlertButton({ label, variant, flex, c, onPress }: {
   label: string;
   variant: Variant;
@@ -202,8 +202,7 @@ function AlertButton({ label, variant, flex, c, onPress }: {
   c: Cosmos;
   onPress: () => void;
 }) {
-  const bg = variant === 'primary' ? c.primary : variant === 'danger' ? c.danger : 'transparent';
-  const fg = variant === 'primary' ? c.primaryFg : variant === 'danger' ? '#ffffff' : c.text;
+  const fg = variant === 'primary' ? c.primaryFg : variant === 'danger' ? c.danger : c.text;
   return (
     <Pressable
       onPress={onPress}
@@ -211,9 +210,9 @@ function AlertButton({ label, variant, flex, c, onPress }: {
       style={({ pressed }) => [
         styles.button,
         flex && styles.flex,
-        variant === 'quiet'
-          ? { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.border : 'transparent' }
-          : { backgroundColor: bg, opacity: pressed ? 0.88 : 1 },
+        variant === 'primary'
+          ? { backgroundColor: c.primary, opacity: pressed ? 0.88 : 1 }
+          : { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.tint : 'transparent' },
         { transform: [{ scale: pressed ? 0.97 : 1 }] },
       ]}
     >
@@ -231,13 +230,13 @@ const styles = StyleSheet.create({
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
   card: {
     marginHorizontal: spacing[3],
-    borderRadius: 28,
+    borderRadius: cosmosCardRadius,
     paddingHorizontal: spacing[6],
     paddingTop: spacing[6],
     paddingBottom: spacing[5],
   },
   glyph: { marginBottom: spacing[3] },
-  title: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  title: { fontSize: 18, lineHeight: 26, ...cosmosFont.strong },
   message: { marginTop: spacing[2], fontSize: 15, lineHeight: 22, ...cosmosFont.body },
   actions: { marginTop: spacing[6], gap: spacing[2] },
   actionsRow: { flexDirection: 'row' },

@@ -103,6 +103,7 @@ export default function NewSupportTicketScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  about: { fontSize: typography.fontSize.lg, lineHeight: 26, marginBottom: spacing[2], ...cosmosFont.display },
+  // The event's name as the page's hero title.
+  about: { fontSize: 20, lineHeight: 26, marginBottom: spacing[2], ...cosmosFont.display },
   hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

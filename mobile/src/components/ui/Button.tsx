@@ -26,11 +26,11 @@ export interface ButtonProps {
 }
 
 /**
- * The cosmos button, same look as AuthButton (the web's .btn-primary):
- *   primary   — silver fill, the one main action on a screen
- *   secondary — hairline outline: alternatives like "Try again"
- *   ghost     — no fill, plain text: low-emphasis actions like "Not now"
- *   danger    — hairline outline, red label
+ * The Horizon button, same look as AuthButton (the web's .btn-primary). Never an accent colour.
+ *   primary   silver fill (ink by day): the one main action on a screen
+ *   secondary hairline outline: alternatives like "Try again"
+ *   ghost     no fill, plain text: low-emphasis actions like "Not now"
+ *   danger    hairline outline, crimson label
  */
 export function Button({
   label,
@@ -64,7 +64,7 @@ export function Button({
           gap: spacing[2],
           borderRadius: cosmosRadius,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          backgroundColor: primary ? c.primary : pressed && variant !== 'ghost' ? c.border : 'transparent',
+          backgroundColor: primary ? c.primary : pressed && variant !== 'ghost' ? c.tint : 'transparent',
           borderWidth: outline ? 1 : 0,
           borderColor: outline,
           opacity: disabled ? 0.45 : pressed && (primary || variant === 'ghost') ? 0.85 : 1,

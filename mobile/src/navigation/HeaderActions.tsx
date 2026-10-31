@@ -19,7 +19,7 @@ import {
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Right-side header actions, shared by every pushed screen so spacing is the
@@ -174,7 +174,7 @@ function AndroidMenu({
           <Animated.View
             style={[
               styles.menu,
-              { top: anchor.top, right: anchor.right, transformOrigin: 'top right' },
+              { top: anchor.top, right: anchor.right, transformOrigin: 'top right', borderColor: c.border },
               cardStyle,
             ]}
           >
@@ -238,20 +238,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     minWidth: 220,
     maxWidth: 300,
-    borderRadius: 12,
+    borderRadius: cosmosCardRadius,
     paddingVertical: spacing[2],
     overflow: 'hidden',
-    elevation: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
+    // Frosted glass, no shadow; a hairline keeps the edge over a white page.
+    borderWidth: StyleSheet.hairlineWidth,
   },
   menuTitle: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[1],
     paddingBottom: spacing[2],
-    fontSize: 12,
+    fontSize: typography.fontSize.sm,
     ...cosmosFont.strong,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 48, paddingHorizontal: spacing[4] },

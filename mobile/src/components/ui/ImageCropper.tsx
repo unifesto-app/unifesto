@@ -3,7 +3,7 @@ import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View, useWi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont } from '../../theme/cosmos';
+import { cosmosFor, cosmosFont } from '../../theme/cosmos';
 import { TopLayer } from './TopLayer';
 
 /**
@@ -44,7 +44,8 @@ export function openImageCropper(uri: string, width: number, height: number, asp
 }
 
 const MAX_ZOOM = 5;
-const BG = '#000';
+// Always night, whatever the app theme: a photo is framed on black, like a camera.
+const night = cosmosFor('dark');
 const DIM = 'rgba(0,0,0,0.62)';
 
 export function ImageCropHost() {
@@ -179,10 +180,10 @@ function Cropper({ req, onDone }: { req: CropRequest; onDone: (rect: CropRect | 
       </Text>
 
       <View style={[styles.bar, { paddingBottom: insets.bottom + spacing[4] }]}>
-        <Pressable hitSlop={12} onPress={() => onDone(null)}>
+        <Pressable hitSlop={12} onPress={() => onDone(null)} accessibilityRole="button" accessibilityLabel="Cancel">
           <Text style={styles.action}>Cancel</Text>
         </Pressable>
-        <Pressable hitSlop={12} onPress={done}>
+        <Pressable hitSlop={12} onPress={done} accessibilityRole="button" accessibilityLabel="Done">
           <Text style={[styles.action, styles.primary]}>Done</Text>
         </Pressable>
       </View>
@@ -191,12 +192,12 @@ function Cropper({ req, onDone }: { req: CropRequest; onDone: (rect: CropRect | 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG, overflow: 'hidden' },
+  root: { flex: 1, backgroundColor: night.bg, overflow: 'hidden' },
   dim: { position: 'absolute', backgroundColor: DIM },
   frame: { position: 'absolute', borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)' },
   guideV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)' },
   guideH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.35)' },
-  hint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.7)', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  hint: { position: 'absolute', left: 0, right: 0, textAlign: 'center', color: night.soft, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bar: {
     position: 'absolute',
     left: 0,
@@ -207,6 +208,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingTop: spacing[4],
   },
-  action: { color: '#fff', fontSize: typography.fontSize.lg, ...cosmosFont.body },
-  primary: { ...cosmosFont.strong },
+  action: { color: night.soft, fontSize: typography.fontSize.lg, ...cosmosFont.body },
+  primary: { color: night.text, ...cosmosFont.strong },
 });

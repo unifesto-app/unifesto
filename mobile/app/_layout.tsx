@@ -29,6 +29,7 @@ import { tagCrashReports } from '../src/lib/appBuild';
 import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { darkTokens, lightTokens } from '../src/theme/tokens';
+import { cosmosRadius } from '../src/theme/cosmos';
 
 // Dev-only noise filter. On the New Architecture every native-driven core
 // Animated animation (TouchableOpacity presses, React Navigation transitions)
@@ -123,8 +124,9 @@ const crashStyles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   title: { fontSize: 20, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 21, textAlign: 'center', marginBottom: 24 },
-  button: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999 },
-  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  // System fonts on purpose: this can render before the brand fonts load.
+  button: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: cosmosRadius },
+  buttonText: { fontSize: 16, fontWeight: '600' },
 });
 
 // Runs the deep-link wiring inside AuthProvider (useDeepLinks needs useAuth).

@@ -7,6 +7,7 @@ import { cancelAccountDeletion } from '../lib/api/profile';
 import useTopSpacing from '../hooks/useTopSpacing';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import {
   assistStep,
   closeTicket,
@@ -139,7 +140,8 @@ export default function SupportThreadScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {missing ? (
-          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <View style={styles.empty}>
+            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>This request couldn't be opened.</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>

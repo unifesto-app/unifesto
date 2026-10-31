@@ -165,7 +165,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
       <Animated.Text
         style={[styles.footer, { color: c.muted, bottom: insets.bottom + 28 }, taglineStyle]}
       >
-        Built by Organisers Who Lived the Chaos
+        Built by organisers who lived the chaos
       </Animated.Text>
     </Animated.View>
   );

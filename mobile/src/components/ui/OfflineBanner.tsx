@@ -6,12 +6,12 @@ import { CheckCircle, WarningCircle, WifiSlash } from '@unifesto/unicon/react-na
 import { useNetworkNotice } from '../../lib/offline/connectivity';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
-import { useCosmos } from '../../theme/cosmos';
+import { cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const BACK_ONLINE_MS = 2_000;
 
 /**
- * Floating status pill mounted once at the root, the one network notice for
+ * Floating glass notice mounted once at the root, the one network notice for
  * every screen. Shows while offline or while the server is failing and screens
  * are showing their last good copy, then briefly confirms when the connection
  * returns. Never blocks touches — the app stays usable underneath.
@@ -43,7 +43,7 @@ export function OfflineBanner() {
     <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>
       <Animated.View
         key={notice ?? 'online'}
-        // Slides, never fades: opacity < 1 on the pill breaks Liquid Glass.
+        // Slides, never fades: opacity < 1 on the notice breaks Liquid Glass.
         entering={SlideInUp.duration(220)}
         exiting={SlideOutUp.duration(180)}
         style={styles.pill}
@@ -86,12 +86,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    paddingVertical: 10,
+    // Frosted glass at control radius; no shadow.
+    borderRadius: cosmosRadius,
   },
 });

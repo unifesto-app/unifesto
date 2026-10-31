@@ -6,6 +6,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
@@ -219,7 +220,8 @@ export default function NotificationSettingsScreen() {
       onValueChange={onToggle}
       disabled={disabled}
       trackColor={{ false: c.input, true: c.primary }}
-      thumbColor={value ? c.primaryFg : '#ffffff'}
+      // Monochrome: an ink thumb on the silver track when on; off, a light thumb.
+      thumbColor={value ? c.primaryFg : c.scheme === 'dark' ? c.text : c.raised}
       ios_backgroundColor={c.input}
       accessibilityLabel={label}
     />
@@ -300,8 +302,8 @@ export default function NotificationSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {pushOff ? (
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
-            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+          <View style={styles.card}>
+            <CardBackdrop shape={styles.card} />
             <Text style={[styles.cardTitle, { color: c.text }]}>Push is off</Text>
             <Text style={[styles.cardBody, { color: c.soft }]}>
               You won’t hear about waitlist spots, reminders before your events or changes from hosts.
@@ -318,6 +320,7 @@ export default function NotificationSettingsScreen() {
 
         <Section
           title="Updates about my tickets"
+          style={styles.section}
           subtitle="Tickets, receipts, refunds, support replies and sign-in codes always arrive by email."
         >
           {gridHeader}
@@ -326,7 +329,7 @@ export default function NotificationSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Events and spaces">
+        <Section title="Events and spaces" style={styles.section}>
           {gridHeader}
           <SettingsGroup style={styles.group}>
             {gridRow('calendar-blank', 'Reminders', 'eventReminders', 'emailEventReminders')}
@@ -339,6 +342,7 @@ export default function NotificationSettingsScreen() {
 
         <Section
           title="Promotions"
+          style={styles.section}
           subtitle="Offers from Unifesto need the first switch. Email and WhatsApp cover all marketing, from Unifesto and from spaces I joined."
         >
           <SettingsGroup style={styles.group}>
@@ -358,8 +362,8 @@ export default function NotificationSettingsScreen() {
                   key={sp.spaceId}
                   label={sp.spaceName}
                   trailing={
-                    <Pressable onPress={() => resubscribe(sp.spaceId)} hitSlop={10} accessibilityRole="button">
-                      <Text style={[styles.action, { color: c.primary }]}>Re-subscribe</Text>
+                    <Pressable onPress={() => resubscribe(sp.spaceId)} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Re-subscribe to ${sp.spaceName}`}>
+                      <Text style={[styles.action, { color: c.text }]}>Re-subscribe</Text>
                     </Pressable>
                   }
                 />
@@ -368,7 +372,7 @@ export default function NotificationSettingsScreen() {
           ) : null}
         </Section>
 
-        <Section title="Quiet hours" subtitle="Pushes that can wait arrive when quiet hours end. Tickets and payments still come through. Times are IST.">
+        <Section title="Quiet hours" style={styles.section} subtitle="Pushes that can wait arrive when quiet hours end. Tickets and payments still come through. Times are IST.">
           <SettingsGroup style={styles.group}>
             {row('moon', 'Quiet hours', quietOn, () =>
               commit(quietOn ? { quietHoursStart: null, quietHoursEnd: null } : QUIET_DEFAULT),
@@ -392,7 +396,7 @@ export default function NotificationSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Email" subtitle="Turns off all optional email. Tickets, receipts and sign-in codes still arrive.">
+        <Section title="Email" style={styles.section} subtitle="Turns off all optional email. Tickets, receipts and sign-in codes still arrive.">
           <SettingsGroup style={styles.group}>
             {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
           </SettingsGroup>
@@ -406,6 +410,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   // SettingsGroup's own top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },
+  // A settings page steps by spacing[8] between sections (Home's are looser).
+  section: { marginTop: spacing[8] },
   firstGroup: { marginTop: spacing[4] },
   dim: { opacity: 0.45 },
   // Grid: fixed-width channel columns so switches line up under the header.
@@ -413,9 +419,8 @@ const styles = StyleSheet.create({
   cell: { width: 64, alignItems: 'center', textAlign: 'center' },
   note: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER, paddingRight: spacing[4], marginBottom: spacing[2] },
-  action: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
-  cardTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[5] },
+  cardTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   cardBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

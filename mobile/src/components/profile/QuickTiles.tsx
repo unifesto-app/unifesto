@@ -1,9 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { CardBackdrop } from '../ui/CardSurface';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface QuickTile {
   key: string;
@@ -12,7 +12,7 @@ export interface QuickTile {
   onPress: () => void;
 }
 
-/** Row of equal tiles for the things you open most (saved, certificates, circles). */
+/** Row of equal borderless cards for the things I open most (saved, certificates, circles); bare glyphs. */
 export default function QuickTiles({ tiles }: { tiles: QuickTile[] }) {
   const c = useCosmos();
   return (
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing[3] },
   tile: {
     flex: 1,
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
     paddingVertical: spacing[4],
     alignItems: 'center',
     gap: spacing[2],

@@ -4,9 +4,9 @@ import { PaperPlaneRight } from '@unifesto/unicon/react-native';
 import type { SupportMessage, SupportMessageSide } from '../../lib/api/support';
 import ChipPicker from '../manage/ChipPicker';
 import { CardBackdrop } from '../ui/CardSurface';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 export const GUTTER = spacing[6];
 
@@ -20,8 +20,8 @@ export const personName = (p?: { fullName: string | null; username: string | nul
 export const sideOf = (m: SupportMessage): SupportMessageSide => m.side ?? (m.isStaffReply ? 'DESK' : 'REQUESTER');
 
 /**
- * A case's messages, oldest first. The viewer's own side sits on the right in
- * the accent colour; SYSTEM lines (sent to the organiser, refund approved…)
+ * A case's messages, oldest first. The viewer's own side sits on the right on
+ * the silver fill (ink by day); the other side on a borderless card; SYSTEM lines (sent to the organiser, refund approved…)
  * read as timeline text; internal notes stay on the right but unfilled.
  * `nameOf` labels a message; return '' to show the time alone.
  */
@@ -108,14 +108,15 @@ export function Composer({
             placeholderTextColor={c.muted}
             selectionColor={c.primary}
             multiline
+            accessibilityLabel={note?.on ? 'Note for the desk only' : placeholder}
             style={[styles.input, { color: c.text }]}
           />
         </View>
-        <Pressable onPress={onSend} disabled={sending || !value.trim()} hitSlop={8} accessibilityLabel={note?.on ? 'Save note' : 'Send reply'}>
+        <Pressable onPress={onSend} disabled={sending || !value.trim()} hitSlop={8} accessibilityRole="button" accessibilityLabel={note?.on ? 'Save note' : 'Send reply'}>
           {sending ? (
             <ActivityIndicator color={c.text} />
           ) : (
-            <PaperPlaneRight size={28} color={value.trim() ? c.primary : c.muted} weight="fill" />
+            <PaperPlaneRight size={28} color={value.trim() ? c.text : c.muted} weight="fill" />
           )}
         </Pressable>
       </View>
@@ -125,13 +126,13 @@ export function Composer({
 
 const styles = StyleSheet.create({
   system: { alignSelf: 'center', textAlign: 'center', maxWidth: '85%', fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  bubble: { maxWidth: '85%', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
+  bubble: { maxWidth: '85%', borderRadius: cosmosCardRadius, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
   left: { alignSelf: 'flex-start' },
   right: { alignSelf: 'flex-end' },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   composerWrap: { paddingHorizontal: GUTTER, paddingTop: spacing[3], gap: spacing[2] },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[3] },
-  inputWrap: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
+  inputWrap: { flex: 1, borderRadius: cosmosRadius, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
   input: { fontSize: typography.fontSize.base, maxHeight: 120, ...cosmosFont.body },
 });

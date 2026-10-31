@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BellRinging } from '@unifesto/unicon/react-native';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
-import { useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 
 const SHOW_MS = 6_000;
 
@@ -73,7 +73,7 @@ export function InAppNoticeHost() {
             notice.onPress?.();
           }}
         >
-          <BellRinging size={22} color={c.primary} weight="fill" />
+          <BellRinging size={22} color={c.text} weight="fill" />
           <View style={{ flex: 1 }}>
             <Text variant="label" numberOfLines={1} style={{ color: c.text }}>
               {notice.title}
@@ -97,14 +97,7 @@ const styles = StyleSheet.create({
     right: 12,
     zIndex: 1001,
   },
-  card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
+  // Frosted glass, no shadow (Horizon: no shadows).
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
 });

@@ -111,7 +111,7 @@ function AppIconPicker() {
   };
 
   return (
-    <Section title="App icon" subtitle="Pick the one on your home screen">
+    <Section title="App icon" subtitle="Pick the one on your home screen" style={styles.section}>
       <View style={[styles.icons, { gap }]} accessibilityRole="radiogroup">
         {APP_ICONS.map((icon) => {
           const selected = current === icon.name;
@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   // Section's default top margin is sized for Home; tighter at the top of a page.
   firstSection: { marginTop: spacing[6] },
+  section: { marginTop: spacing[8] },
   options: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: GUTTER, gap: spacing[3] },
   option: { flex: 1, alignItems: 'center' },
   // The selection ring: a silver frame around the preview (a radio state, not a card border).

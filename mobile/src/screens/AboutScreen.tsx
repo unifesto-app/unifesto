@@ -14,6 +14,7 @@ import { currentAppIconPreview } from '../lib/appIcon';
 import { openStoreReview } from '../utils/storeReview';
 import BrandWordmark from '../components/BrandWordmark';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -132,15 +133,15 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: c.raised }]}>
-          <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+        <View style={styles.card}>
+          <CardBackdrop shape={styles.card} />
           <Text style={[styles.cardTitle, { color: c.text }]}>{card.title}</Text>
           <Text style={[styles.cardBody, { color: c.soft }]}>{card.body}</Text>
-          <View style={{ marginTop: spacing[6] }}>{card.action}</View>
+          <View style={{ marginTop: spacing[5] }}>{card.action}</View>
         </View>
 
         {WHATS_NEW.length ? (
-          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].version}`}>
+          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].version}`} style={styles.section}>
             <View style={styles.notes}>
               {(showEarlier ? WHATS_NEW : WHATS_NEW.slice(0, 1)).map((entry, i) => (
                 <View key={entry.version} style={[styles.release, i === 0 ? { paddingTop: 0 } : { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
@@ -173,7 +174,7 @@ export default function AboutScreen() {
           </Section>
         ) : null}
 
-        <Section title="Spread the word" subtitle="Know someone who’d like this?">
+        <Section title="Spread the word" subtitle="Know someone who’d like this?" style={styles.section}>
           <SettingsGroup plain style={styles.group}>
             <SettingsRow
               label="Share Unifesto"
@@ -184,7 +185,7 @@ export default function AboutScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="For support" subtitle="Share these if something isn’t working.">
+        <Section title="For support" subtitle="Share these if something isn’t working." style={styles.section}>
           <SettingsGroup plain style={styles.group} action={{ label: 'Copy all', onPress: () => void copyDetails() }}>
             <SettingsRow label="Version" value={buildLabel(info)} />
             <SettingsRow label="Platform" value={info.platform} />
@@ -208,10 +209,11 @@ const styles = StyleSheet.create({
   icon: { width: ICON, height: ICON, borderRadius: ICON * 0.22, marginBottom: spacing[5] },
   version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.figure },
   build: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },
-  rule: { width: 40, height: 1, marginBottom: spacing[5] },
-  cardTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  cardBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  cardTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
+  cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  // A settings page steps by spacing[8] between sections (Home's are looser).
+  section: { marginTop: spacing[8] },
   notes: { paddingHorizontal: GUTTER },
   release: { paddingVertical: spacing[5] },
   releaseId: { fontSize: 15, lineHeight: 22, marginBottom: spacing[3], ...cosmosFont.figure },

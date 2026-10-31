@@ -45,7 +45,7 @@ export default function AuthButton({
         styles.button,
         isPrimary
           ? { backgroundColor: c.primary }
-          : { borderWidth: 1, borderColor: variant === 'danger' ? c.border : c.outline, backgroundColor: pressed ? c.border : 'transparent' },
+          : { borderWidth: 1, borderColor: variant === 'danger' ? c.border : c.outline, backgroundColor: pressed ? c.tint : 'transparent' },
         { opacity: disabled ? 0.45 : pressed && isPrimary ? 0.88 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
         style,
       ]}
