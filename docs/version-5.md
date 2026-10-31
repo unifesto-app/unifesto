@@ -1034,3 +1034,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-10-31** · Mobile in Unifesto Horizon: every screen and component redesigned; a quiet sky (stars, blue glow, grain, no lines); shade cards on each screen's hero; mint, sky and ivory accents inside cards; plain-text statuses; console-style lists on Home. New app icon set: Auto, Night, Day, four product-on-a-shade icons (Mint, Sky, Ivory, Blue) and Dark/Light plains; the planet-era icons are gone. Native: icons need a store build. (#475)
 - **2026-10-31** · Mobile web: first taps work again (no location prompt on load, no liquid glass on touch screens) (#478)
 - **2026-10-31** · Blog queue rows get a Start button that writes that question now, in the background (#476)
+- **2026-10-31** · J4 Apex › Status lists unresolved Sentry issues (last 24h, all projects) and resolves them, via a server-side SENTRY_API_TOKEN; resolves are audited (#477)
