@@ -1,4 +1,5 @@
 import { PlanConfigService } from '../subscription/plan-config.service';
+import { PLAN_LIMITS } from '../subscription/plan-limits.config';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RoleCode, RoleScope } from '@prisma/client';
 import { AuthorizationService, CAPABILITIES } from '../auth/authorization';
@@ -74,7 +75,7 @@ function build(opts: { event?: Record<string, unknown>; plan?: string } = {}) {
     eventCheckinAccess: { deleteMany: jest.fn(async () => ({ count: 0 })) },
     role: { findFirst: jest.fn(async () => ({ id: 'role-id' })) },
     eventCoHost: { findMany: jest.fn(async () => [{ spaceId: 'sp-2' }]) },
-    // Co-curators per event come from the space's plan (T9); Growth allows 3.
+    // Co-curators per event come from the space's plan (T9); Growth allows 10.
     orgSubscription: { findUnique: jest.fn(async () => ({ plan: opts.plan ?? 'GROWTH' })) },
     $transaction: jest.fn(async (ops: unknown[]) => ops),
   };
@@ -174,10 +175,13 @@ describe('team edits (T1)', () => {
     });
 
     it("is held to the plan's co-curators per event (T9)", async () => {
-      // Club allows 1 and 'cocur' already holds it.
-      const { svc, prisma } = build({ plan: 'CLUB' });
+      // A General plan set to 1 co-curator, and 'cocur' already holds it.
+      const { svc, prisma } = build({ plan: 'STARTER' });
+      const planConfig: PlanConfigService = (svc as any).planConfig;
+      const limits = planConfig.getLimits('STARTER');
+      jest.spyOn(planConfig, 'getLimits').mockImplementation((p) => (p === 'STARTER' ? { ...limits, coCurators: 1 } : PLAN_LIMITS[p]));
       await expect(add(svc, 'curator', 'member', EventTeamRole.CO_CURATOR)).rejects.toThrow(
-        'The Club plan allows 1 co-curator per event. Growth allows more.',
+        'The General plan allows 1 co-curator per event. Club allows more.',
       );
       expect(prisma.userRole.create).not.toHaveBeenCalled();
     });
