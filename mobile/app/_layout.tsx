@@ -30,6 +30,13 @@ import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { darkTokens, lightTokens } from '../src/theme/tokens';
 import { cosmosRadius } from '../src/theme/cosmos';
+import { requireOptionalNativeModule } from 'expo';
+
+// Dev builds only: expo-dev-menu 57 floats a tools button over every screen by
+// default. Hide it; the dev menu still opens with a shake or `m` in Metro.
+if (__DEV__) {
+  void requireOptionalNativeModule('DevMenuPreferences')?.setPreferencesAsync({ showFloatingActionButton: false });
+}
 
 // Dev-only noise filter. On the New Architecture every native-driven core
 // Animated animation (TouchableOpacity presses, React Navigation transitions)
