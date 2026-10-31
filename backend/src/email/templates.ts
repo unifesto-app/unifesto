@@ -430,18 +430,25 @@ export function eventPublishedEmail(d: EventPublishedData): Email {
 export interface EventSummaryData {
   email: string;
   userName: string;
+  /** Q14: set when the event takes feedback; the form also works on the web. */
+  feedbackEventId?: string;
+  /** Q14: the event gives certificates; `true` when they wait for feedback. */
+  certificates?: { needsFeedback: boolean };
   eventTitle: string;
   attendeeCount: number;
   photosUrl?: string;
 }
 
 export function eventSummaryEmail(d: EventSummaryData): Email {
+  const certs = link('My certificates', `${SPACE_APP}/account/certificates`);
   return {
     subject: `Thanks for coming to ${d.eventTitle}`,
     html: layout(
       `${h1('Thanks for coming')}
       ${greet(d.userName)}
       ${p(`You were one of ${strong(d.attendeeCount.toLocaleString('en-IN'))} people at ${strong(d.eventTitle)}. We hope it was worth it.`)}
+      ${d.feedbackEventId ? button('Rate the event', `${SPACE_APP}/feedback/${encodeURIComponent(d.feedbackEventId)}`) : ''}
+      ${d.certificates ? p(d.certificates.needsFeedback ? `Rate it to unlock your certificate in ${certs}.` : `Your certificate will be in ${certs} once the organisers issue it.`) : ''}
       ${d.photosUrl ? button('See the photos', d.photosUrl) : ''}
       ${p(`Find what's next on ${link('Unifesto', `${WEB}/events`)}.`)}`,
     ),

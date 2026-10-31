@@ -257,6 +257,15 @@ export class EventsController {
     return this.eventsService.publishEvent(req.user.id, id);
   }
 
+  @Patch(':id/end')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'End a live event now (Q26): completes it and closes check-in' })
+  @ApiResponse({ status: 200 })
+  async endEvent(@Request() req, @Param('id') id: string) {
+    return this.eventsService.endEvent(req.user.id, id);
+  }
+
   @Patch(':id/cancel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

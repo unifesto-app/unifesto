@@ -509,6 +509,16 @@ export async function detachOccurrence(
 }
 
 /**
+ * End a live event now (Q26): completes it and closes check-in, instead of
+ * waiting for the grace after its end time. Backed by `PATCH /events/:id/end`.
+ */
+export async function endEvent(
+  id: string
+): Promise<{ data: Event | null; error: ApiError | null }> {
+  return apiCall<Event>(backendClient.patch(`/events/${id}/end`));
+}
+
+/**
  * Cancel an event.
  * Backed by `PATCH /events/:id/cancel`.
  */

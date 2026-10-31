@@ -7,6 +7,25 @@ export const OPERATOR_ONLY = new Set(['organiser-agreement']);
 /** Documents only live Unifesto Orbit Leads are asked to accept. */
 export const ORBIT_ONLY = new Set(['orbit-terms']);
 
+/**
+ * Q2: the app's sign-in says "By continuing you agree to our Terms and Privacy
+ * policy", so a new app account accepts their latest published versions and
+ * isn't met by the "We have updated our terms" sheet straight after signing up.
+ * A plain function on prisma: AuthModule can't inject LegalService (cycle).
+ */
+export async function acceptAtSignUp(prisma: PrismaService, userId: string, client: LegalClient) {
+  const docs = await prisma.legalDocument.findMany({
+    where: { slug: { in: ['terms', 'privacy'] }, publishedAt: { not: null } },
+    orderBy: { version: 'desc' },
+    distinct: ['slug'],
+    select: { id: true, version: true },
+  });
+  await prisma.legalAcceptance.createMany({
+    data: docs.map((d) => ({ userId, documentId: d.id, version: d.version, client })),
+    skipDuplicates: true,
+  });
+}
+
 const SUMMARY = {
   id: true,
   slug: true,

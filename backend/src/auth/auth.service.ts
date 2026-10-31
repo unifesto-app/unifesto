@@ -24,8 +24,9 @@ import { OtpService, OtpVerifyResult } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
 import { AppleSignInService } from './apple-sign-in.service';
 import { assertNotSuspended, isSuspended, type SuspensionFields } from './suspension';
-import { findIdentityByEmail, normalizeEmail, normalizeMobile } from './identifiers';
+import { findIdentityByEmail, maskEmail, normalizeEmail, normalizeMobile } from './identifiers';
 import { describeDevice } from './device-label';
+import { acceptAtSignUp } from '../legal/legal.service';
 import {
   AppleLoginDto,
   EmailLoginDto,
@@ -70,6 +71,37 @@ function isEmptyCognitoPlaceholder(u: any, provider: Provider): boolean {
   if (u.identities.length !== 1 || u.identities[0].provider !== provider) return false;
   if (Object.values(u._count).some((n) => n !== 0)) return false;
   return USER_RELATIONS.filter((f) => !f.isList).every((f) => u[f.name] == null);
+}
+
+/** Q4: the 15-minute temp token ran out (or never was one). The fix is to start over. */
+const SIGN_IN_TIMED_OUT = {
+  statusCode: 401,
+  code: 'SIGN_IN_TIMED_OUT',
+  message: 'Your sign-in timed out. Start again.',
+};
+
+const METHOD_NAMES: Partial<Record<Provider, string>> = {
+  [Provider.GOOGLE]: 'Google',
+  [Provider.APPLE]: 'Apple',
+  [Provider.EMAIL]: 'an email code',
+};
+
+/**
+ * Q4: the 409 for a phone already on another account says how that account
+ * signs in, with its email masked. Only thrown after the caller passed this
+ * phone's code, so it reveals nothing about a number they don't hold.
+ */
+async function phoneOnOtherAccount(db: Prisma.TransactionClient, userId: string) {
+  const ids = await db.userIdentity.findMany({ where: { userId }, select: { provider: true, email: true } });
+  const id = [Provider.GOOGLE, Provider.APPLE, Provider.EMAIL]
+    .map((p) => ids.find((i) => i.provider === p))
+    .find(Boolean);
+  const email = id?.email ?? ids.find((i) => i.email)?.email;
+  const masked = email ? maskEmail(email) : null;
+  const message = id
+    ? `This number is on another Unifesto account, which signs in with ${METHOD_NAMES[id.provider]}${masked ? ` (${masked})` : ''}. Sign in that way instead, or use a different number.`
+    : 'This number is on another Unifesto account. Sign in to that account instead, or use a different number.';
+  return { statusCode: 409, code: 'PHONE_ON_OTHER_ACCOUNT', message, method: id?.provider ?? null, email: masked };
 }
 
 /** Mobile-verification temp token (`type: 'temp'`). */
@@ -399,7 +431,7 @@ export class AuthService {
         message: 'OTP sent to your WhatsApp',
       };
     } catch (error) {
-      if (error instanceof HttpException && [400, 429, 502, 503].includes(error.getStatus())) throw error;
+      if (error instanceof HttpException && [400, 401, 429, 502, 503].includes(error.getStatus())) throw error;
       this.logger.error('Mobile OTP send failed', error);
       throw new BadRequestException('Failed to send mobile OTP');
     }
@@ -464,9 +496,7 @@ export class AuthService {
               !isEmptyCognitoPlaceholder(from, decoded.provider) ||
               unlinkedRefs.some((n) => n > 0)
             ) {
-              throw new ConflictException(
-                'This mobile number belongs to another Unifesto account. Sign in to that account instead, or use a different number.',
-              );
+              throw new ConflictException(await phoneOnOtherAccount(tx, existingMobileUser.id));
             }
             await tx.userIdentity.update({
               where: identityKey,
@@ -494,6 +524,7 @@ export class AuthService {
             mobileVerified: true,
           },
         });
+        await this.recordSignUpConsent(updatedUser.id, userAgent);
         return {
           ...(await this.startSession(updatedUser, userAgent)),
           user: UserProfileDto.fromUser(updatedUser),
@@ -531,6 +562,7 @@ export class AuthService {
           decoded.email,
           decoded.emailVerified === true,
         );
+        await this.recordSignUpConsent(newUser.id, userAgent);
 
         return {
           ...(await this.startSession(newUser, userAgent)),
@@ -707,6 +739,18 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  /**
+   * Q2: an account finished on the app agreed to Terms and Privacy on its
+   * sign-in screen. Web sign-up records its own after the register form's tick
+   * box (K12), so only the app's requests count here. Never blocks sign-in.
+   */
+  private async recordSignUpConsent(userId: string, userAgent?: string): Promise<void> {
+    if (describeDevice(userAgent ?? null).kind !== 'app') return;
+    await acceptAtSignUp(this.prisma, userId, 'mobile').catch((err) =>
+      this.logger.error(`Sign-up consent not recorded for ${userId}`, err),
+    );
   }
 
   private async linkIdentityToUser(
@@ -1097,7 +1141,7 @@ export class AuthService {
     try {
       decoded = jwt.verify(token, this.jwtSecret) as typeof decoded;
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException(SIGN_IN_TIMED_OUT);
     }
     if (
       decoded?.type !== 'temp' ||
@@ -1106,7 +1150,7 @@ export class AuthService {
       typeof decoded.providerUserId !== 'string' ||
       !decoded.providerUserId
     ) {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException(SIGN_IN_TIMED_OUT);
     }
     return {
       type: 'temp',

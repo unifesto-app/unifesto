@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
@@ -44,6 +44,16 @@ export default function TicketsScreen() {
   const topInset = useStableTopInset();
   const router = useRouter();
   const t = useMyTickets();
+  // Q10: a waitlist-offer push lands with ?tab=waitlist: open that tab with the
+  // offer's Pay card fresh, then drop the param so the next push works too.
+  const { tab: linkedTab } = useLocalSearchParams<{ tab?: string }>();
+  useEffect(() => {
+    if (!linkedTab || !ALL_TABS.includes(linkedTab as TicketTab)) return;
+    t.setTab(linkedTab as TicketTab);
+    void t.onRefresh(linkedTab as TicketTab);
+    router.setParams({ tab: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedTab]);
   const { width } = useWindowDimensions();
   const pager = useAnimatedRef<Animated.ScrollView>();
   // Fractional page index, written on the UI thread as the pager scrolls; the

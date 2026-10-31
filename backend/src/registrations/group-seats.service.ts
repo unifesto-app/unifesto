@@ -16,7 +16,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { emailFilter, findIdentityByEmail, idsByEmail, sameEmail } from '../auth/identifiers';
+import { emailFilter, findIdentityByEmail, idsByEmail, maskEmail, sameEmail } from '../auth/identifiers';
 import { enforceFormAnswers } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -73,13 +73,6 @@ const TYPED_IN = {
 
 const isTypedIn = (seat: { status: GroupSeatStatus; claimedByUserId: string | null; seatIndex: number }) =>
   seat.status === GroupSeatStatus.CLAIMED && !seat.claimedByUserId && seat.seatIndex !== 1;
-
-/** "dhanush@wegobeyond.in" → "dh•••@wegobeyond.in": enough to recognise, not to harvest. */
-function maskEmail(email: string): string {
-  const [user, domain] = email.trim().split('@');
-  if (!domain) return '•••';
-  return `${user.slice(0, 2)}•••@${domain}`;
-}
 
 @Injectable()
 export class GroupSeatsService {

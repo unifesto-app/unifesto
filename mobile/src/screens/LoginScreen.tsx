@@ -61,6 +61,16 @@ GoogleSignin.configure({
 const formatCountdown = (s: number) => `0:${String(s).padStart(2, '0')}`;
 const formatMobile = (n: string) => (n.length === 10 ? `${n.slice(0, 5)} ${n.slice(5)}` : n);
 
+/**
+ * Q4: server error codes that name their fix, and the button for it. Both are a
+ * fresh sign-in: the session ran out, or the number's account signs in another
+ * way (the message names it).
+ */
+const FIXES: Record<string, string> = {
+  SIGN_IN_TIMED_OUT: 'Start again',
+  PHONE_ON_OTHER_ACCOUNT: 'Sign in another way',
+};
+
 export default function NewLoginScreen() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
@@ -97,6 +107,8 @@ export default function NewLoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // Q4: a server error that names its fix gets a button for it, shown while that error is.
+  const [fix, setFix] = useState<{ error: string; label: string } | null>(null);
   const [canResend, setCanResend] = useState(false);
   const [resendTimer, setResendTimer] = useState(RESEND_SECONDS);
   // Auto-verify fires from the OTP input before isLoading re-renders; this ref
@@ -243,6 +255,18 @@ export default function NewLoginScreen() {
   };
 
   // ── Mobile ─────────────────────────────────────────────────────────────────
+  const showError = (err: any, fallback: string) => {
+    const message = err?.message || fallback;
+    setError(message);
+    const label = FIXES[err?.code];
+    setFix(label ? { error: message, label } : null);
+  };
+  const startOver = () => {
+    setMobileNumber('');
+    setMobileOtp('');
+    goTo('email');
+  };
+
   const handleSendMobileOtp = async () => {
     if (!mobileNumber) {
       setError('Enter your mobile number');
@@ -260,7 +284,7 @@ export default function NewLoginScreen() {
       setStep('mobile-otp');
       startResendCountdown();
     } catch (err: any) {
-      setError(err.message || 'Couldn\'t send the code');
+      showError(err, 'Couldn\'t send the code');
     } finally {
       setIsLoading(false);
     }
@@ -281,7 +305,7 @@ export default function NewLoginScreen() {
         router.replace(home);
       }
     } catch (err: any) {
-      setError(err.message || 'That code didn\'t work');
+      showError(err, 'That code didn\'t work');
       setMobileOtp('');
     } finally {
       submittingRef.current = false;
@@ -302,7 +326,7 @@ export default function NewLoginScreen() {
         setNotice('New code sent on WhatsApp');
       }
     } catch (err: any) {
-      setError(err.message || 'Couldn\'t resend the code');
+      showError(err, 'Couldn\'t resend the code');
       setCanResend(true);
     }
   };
@@ -451,6 +475,11 @@ export default function NewLoginScreen() {
         <Animated.View entering={FadeIn.duration(160)} style={styles.message} accessibilityLiveRegion="polite">
           <WarningCircle size={16} color={c.danger} weight="fill" />
           <Text style={[styles.messageText, { color: c.danger }]}>{error}</Text>
+          {fix?.error === error ? (
+            <Pressable onPress={startOver} hitSlop={8} accessibilityRole="button">
+              <Text style={styles.editLinkText}>{fix.label}</Text>
+            </Pressable>
+          ) : null}
         </Animated.View>
       );
     }
