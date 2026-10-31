@@ -14,6 +14,8 @@ const planName = (code: string) => PLAN_NAMES[code as keyof typeof PLAN_NAMES] ?
 export interface Email {
   subject: string;
   html: string;
+  /** Check-in QR payload; EmailService attaches it as the image `qr()` shows. */
+  qr?: string;
 }
 
 type EventWhere = {
@@ -137,12 +139,13 @@ export interface RegistrationConfirmationData extends EventWhere {
 export function registrationConfirmationEmail(d: RegistrationConfirmationData): Email {
   return {
     subject: `You're registered for ${d.eventTitle}`,
+    qr: d.qrCode,
     html: layout(
       `${h1("You're registered")}
       ${greet(d.userName)}
       ${p(`Your spot at ${strong(d.eventTitle)} is confirmed.`)}
       ${eventCard(d)}
-      ${qr(d.qrCode, d.ticketCode)}
+      ${qr(d.ticketCode)}
       ${d.eventSlug ? button('View event', `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
       ${appLine('ticket', d.brand)}`,
       `${d.eventDate}, ${d.eventTime}. Your ticket is inside.`,
@@ -171,6 +174,7 @@ export interface PaymentConfirmationData extends EventWhere {
 export function paymentConfirmationEmail(d: PaymentConfirmationData): Email {
   return {
     subject: `Payment received for ${d.eventTitle}`,
+    qr: d.qrCode,
     html: layout(
       `${h1('Payment received')}
       ${greet(d.userName)}
@@ -181,7 +185,7 @@ export function paymentConfirmationEmail(d: PaymentConfirmationData): Email {
         ['Processing fee', d.processingFee ? inr(d.processingFee) : null],
         ['Payment ID', esc(d.razorpayPaymentId)],
       ])}
-      ${qr(d.qrCode, d.ticketCode)}`,
+      ${qr(d.ticketCode)}`,
       `${inr(d.amount)} paid. Your ticket is inside.`,
       d.brand,
     ),
@@ -238,12 +242,13 @@ export interface EventReminderData extends EventWhere {
 export function eventReminderEmail(d: EventReminderData): Email {
   return {
     subject: `Tomorrow: ${d.eventTitle}`,
+    qr: d.qrCode,
     html: layout(
       `${h1("It's tomorrow")}
       ${greet(d.userName)}
       ${p(`A quick reminder that ${strong(d.eventTitle)} is coming up.`)}
       ${eventCard(d)}
-      ${qr(d.qrCode, d.ticketCode)}`,
+      ${qr(d.ticketCode)}`,
       `${d.eventTime}. Have your QR ready.`,
       d.brand,
     ),
@@ -272,14 +277,16 @@ function inTime(minutes: number): string {
 
 export function eventStartingSoonEmail(d: EventStartingSoonData): Email {
   const soon = inTime(d.startsInMinutes);
+  const joinUrl = d.isOnline && d.onlineUrl;
   return {
     subject: `Starting in ${soon}: ${d.eventTitle}`,
+    qr: joinUrl ? undefined : d.qrCode,
     html: layout(
       `${h1(`Starting in ${soon}`)}
       ${greet(d.userName)}
       ${p(`${strong(d.eventTitle)} starts soon.`)}
       ${details([[d.isOnline ? 'Where' : 'Venue', where(d)]])}
-      ${d.isOnline && d.onlineUrl ? button('Join now', d.onlineUrl) : qr(d.qrCode)}`,
+      ${joinUrl ? button('Join now', joinUrl) : qr()}`,
       '',
       d.brand,
     ),

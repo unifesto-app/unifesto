@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { randomUUID } from 'crypto';
+import * as QRCode from 'qrcode';
 import { MessageChannel, MessageDeliveryStatus } from '@prisma/client';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
 import {
@@ -38,7 +39,8 @@ interface CustomCampaignData {
   unsubscribeUrl?: string;
 }
 
-type Attachment = { filename: string; content: Buffer };
+// contentId makes it inline, shown where the html says `cid:<contentId>`.
+type Attachment = { filename: string; content: Buffer; contentId?: string };
 // fromAddress: a space's verified sending address (Resend only; SES ignores it).
 type Sender = { fromName?: string | null; replyTo?: string | null; fromAddress?: string | null };
 
@@ -289,10 +291,21 @@ export class EmailService {
   private async deliver(
     via: 'resend' | 'ses',
     to: string | null | undefined,
-    { subject, html }: T.Email,
+    { subject, html, qr }: T.Email,
     opts?: { attachments?: Attachment[]; sender?: Sender; delivery?: DeliveryOpts; label?: string },
   ): Promise<boolean> {
     if (!to) return false;
+    let attachments = opts?.attachments;
+    if (qr) {
+      // J15: the check-in QR is rendered here and sent inline, so the ticket
+      // token never leaves our infra. A failed render sends without it.
+      try {
+        const content = await QRCode.toBuffer(qr, { width: 360, margin: 0 });
+        attachments = [...(attachments ?? []), { filename: 'checkin-qr.png', content, contentId: 'checkin-qr' }];
+      } catch (error) {
+        this.logger.warn(`Failed to render check-in QR: ${error.message}`);
+      }
+    }
     try {
       const res = await this.track(
         via,
@@ -301,7 +314,7 @@ export class EmailService {
         (key) =>
           via === 'ses'
             ? this.sendViaSES(to, subject, html, opts?.sender)
-            : this.sendViaResend(to, subject, html, opts?.attachments, opts?.sender, key),
+            : this.sendViaResend(to, subject, html, attachments, opts?.sender, key),
         opts?.delivery,
       );
       if (res.deduped) this.logger.log(`Skipped "${opts?.label ?? subject}" to ${to}: already sent`);
