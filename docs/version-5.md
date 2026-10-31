@@ -1060,3 +1060,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Unifesto Huddle sessions removed (backend, web, Apex, mobile, LiveKit); tables and payouts read side kept (#501)
 - **2026-11-01** · Q29 instant spaces: space and event requests go live at once under the Unverified badge (payouts still need a verified bank account); PENDING spaces migrated to ACTIVE, waiting requests go live by a one-shot launch sweep that resolves their Assist cases; "Request a Space" is now "Start a Space" on web and mobile (#503)
 - **2026-11-01** · Huddle lockup and posters removed from the brand kit, guidelines PDF and press zip rebuilt (#502)
+- **2026-11-01** · Huddle session tables dropped (sessions, registrations, co-hosts, payouts.session_id, has_sessions); payouts are events-only again (#504)
