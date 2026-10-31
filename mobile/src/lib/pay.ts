@@ -171,7 +171,8 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
     payment = await customUi.open({
       key_id: order.razorpayKeyId,
       order_id: order.razorpayOrderId,
-      amount: order.amount,
+      // Razorpay's sample sends paise as a string; the Android bridge turns numbers into doubles.
+      amount: String(order.amount),
       currency,
       description: details.description,
       email: prefill.email,
