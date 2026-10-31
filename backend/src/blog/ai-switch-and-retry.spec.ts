@@ -1,6 +1,9 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { NotFoundException } from '@nestjs/common';
 import { BlogQuestionStatus } from '@prisma/client';
 import { PlatformConfigService } from '../subscription/platform-config.service';
+import { FACTCHECK_SYSTEM, HUMANIZE_SYSTEM, RESEARCH_SYSTEM, WRITER_SYSTEM, splitSources } from './blog-writer';
 import { BlogWriterService } from './blog-writer.service';
 
 describe('AI feature switch', () => {
@@ -59,5 +62,73 @@ describe('Blog question start', () => {
     const { svc, run } = build(0);
     await expect(svc.start('q1')).rejects.toBeInstanceOf(NotFoundException);
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe('Blog writer fix rounds', () => {
+  const SAMPLE = readFileSync(join(__dirname, '__fixtures__/sample-post.md'), 'utf8');
+  const urls = [...splitSources(SAMPLE)[1].matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
+  const draft = (sources: string[]) => ({
+    ok: true,
+    text: '{"draft":"json"}',
+    json: {
+      intent: 'how-to',
+      title: 'How to Organise a Hackathon in College',
+      slug: 'how-to-organise-a-hackathon-in-college',
+      metaTitle: 'How to Organise a College Hackathon',
+      metaDescription: 'Book the venue early and plan for half your sign-ups to show.',
+      excerpt: 'A timeline.',
+      coverAlt: 'Blog card',
+      markdown: SAMPLE,
+      sources,
+    },
+  });
+
+  /** Writer replies in order; the fact check flags `flagged` every time. */
+  const build = (drafts: unknown[], flagged: string[] = []) => {
+    const writerTurns: string[][] = [];
+    const run = jest.fn(async (_f: string, input: any) => {
+      if (input.system === RESEARCH_SYSTEM) {
+        return { ok: true, text: 'notes', content: [{ type: 'web_search_tool_result', content: urls.map((url) => ({ url, title: url })) }] };
+      }
+      if (input.system === WRITER_SYSTEM) {
+        writerTurns.push(input.messages.map((m: any) => m.content));
+        return drafts.shift() ?? { ok: false, reason: 'error' };
+      }
+      if (input.system === HUMANIZE_SYSTEM) return { ok: true, text: input.messages[0].content };
+      if (input.system === FACTCHECK_SYSTEM) return { ok: true, text: '', json: { unsupported: flagged } };
+      throw new Error('unexpected call');
+    });
+    const prisma: any = {
+      blogPost: {
+        findMany: jest.fn(async () => [
+          { slug: 'how-to-organize-a-college-fest', title: 'How to Organize a College Fest', excerpt: '8 weeks.' },
+          { slug: 'unifesto-vs-google-forms', title: 'Unifesto vs Google Forms', excerpt: '' },
+        ]),
+      },
+      blogQuestion: { update: jest.fn(async () => ({})) },
+    };
+    const blog: any = { create: jest.fn(async (d: any) => ({ id: 'p1', slug: d.slug })) };
+    const svc = new BlogWriterService(prisma, { run } as any, blog);
+    const q = { id: 'q1', question: 'How do I run a hackathon?', intent: 'how-to', angle: null, appLink: '/sprint' };
+    return { writerTurns, go: () => (svc as any).run(q) };
+  };
+
+  it('retries a cut-off draft, sends a failed gate back to the writer and publishes the fix', async () => {
+    const { go, writerTurns } = build([
+      { ok: false, reason: 'error', detail: 'stop_reason max_tokens' },
+      draft(urls.slice(0, 1)),
+      draft(urls),
+    ]);
+    await expect(go()).resolves.toEqual({ status: 'published', slug: 'how-to-organise-a-hackathon-in-college' });
+    expect(writerTurns.map((t) => t.length)).toEqual([1, 1, 3]);
+    expect(writerTurns[2][2]).toMatch(/fewer than 2 sources/);
+  });
+
+  it('gives up after the fix rounds with the last reason', async () => {
+    const { go, writerTurns } = build([draft(urls), draft(urls), draft(urls)], ['the 8-week checklist']);
+    await expect(go()).resolves.toMatchObject({ status: 'failed', reason: 'gate: unsupported numbers: the 8-week checklist' });
+    expect(writerTurns).toHaveLength(3);
+    expect(writerTurns[2][4]).toMatch(/not in the research, <internal_links>/);
   });
 });

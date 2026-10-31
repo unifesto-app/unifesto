@@ -60,9 +60,9 @@ The post:
 - Has a "## FAQ" section with 3 to 5 questions as "### " headings, each answered in 1 to 3 sentences.
 - Has no Sources section; it is added from the sources you return.
 - Is at least 1,000 words.
-- Has 3 to 5 internal links in Markdown, using only paths from <internal_links>, placed where a reader would want them. Link /blog/ posts first.
+- Has up to 5 internal links in Markdown, using only paths from <internal_links>, placed where a reader would want them: at least one /blog/ post, and at least three once <internal_links> lists five or more posts. Never force an unrelated link.
 - Links the Unifesto app page given in <app_link> at most once, only where it truly helps the reader. If <app_link> is "none", do not link or pitch Unifesto at all.
-- Describes Unifesto only with facts from <product_facts>.
+- Describes Unifesto only with facts from <product_facts>, and a linked post only with what its title and excerpt in <internal_links> say.
 - Does not start with an H1; the title is separate.
 
 ${HOUSE_RULES}
@@ -81,7 +81,7 @@ export const HUMANIZE_SYSTEM = `You are an editor. Rewrite the Markdown draft yo
 ${HOUSE_RULES}
 Never change facts, numbers, [n] citation markers, links or link targets, or the heading "## FAQ". Never add new facts. Keep the "Our view:" opinion and the limitation section. Keep at least as many words as you were given.`;
 
-export const FACTCHECK_SYSTEM = `You check a blog post against its research notes and the product facts below. List every number, statistic, date or named rule in the post that is NOT stated in either and is not simple arithmetic on numbers that are. Ignore numbers inside URLs, FAQ question wording, the Sources list, and worked examples framed as hypothetical ("say 300 people buy a Rs 300 ticket"). Return an empty list if everything is supported.
+export const FACTCHECK_SYSTEM = `You check a blog post against its research notes, the titles and excerpts of the posts it may link (<internal_links>) and the product facts below. List every number, statistic, date or named rule in the post that is NOT stated in any of them and is not simple arithmetic on numbers that are. Ignore numbers inside URLs, FAQ question wording, the Sources list, and worked examples framed as hypothetical ("say 300 people buy a Rs 300 ticket"). Return an empty list if everything is supported.
 
 <product_facts>
 ${PRODUCT_FACTS}
@@ -285,8 +285,9 @@ export function gate({ draft, sourceUrls, posts }: GateInput): string | null {
     } else if ((APP_PAGES as readonly string[]).includes(l)) app++;
     else return `link to unknown page ${l}`;
   }
-  // 3-5 links to posts plus one app link. Until there are 5 posts, app pages make up the 3.
-  if (blog + app < 3 || blog + app > 6) return `${blog + app} internal links`;
+  // Up to 5 post links plus one app link. Until there are 5 posts, one post link is
+  // enough: a question with no app link may only fit one of three posts.
+  if (blog + app > 6) return `${blog + app} internal links`;
   if (posts.length >= 5 ? blog < 3 || app > 1 : blog < Math.min(1, posts.length)) {
     return `${blog} post links and ${app} app links`;
   }

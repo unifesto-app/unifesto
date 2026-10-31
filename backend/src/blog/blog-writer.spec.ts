@@ -62,6 +62,16 @@ describe('auto-blog gate', () => {
     expect(run({}, five)).toMatch(/post links/);
   });
 
+  it('passes one fitting post link when there is no app link and few posts', () => {
+    // "How many volunteers..." fit only the fest checklist and failed as "2 internal links".
+    const one = SAMPLE.replace('[Unifesto Sprint](/sprint)', 'Unifesto Sprint').replace(
+      "[here's where that setup starts to break](/blog/unifesto-vs-google-forms)",
+      "here's where that setup starts to break",
+    );
+    expect(run({ markdown: one })).toBeNull();
+    expect(run({ markdown: one.replace('(/blog/how-to-organize-a-college-fest)', '') })).toMatch(/0 post links/);
+  });
+
   it('splits the Sources list off so the humanize editor never sees it', () => {
     const [body, sources] = splitSources(SAMPLE);
     expect(body + sources).toBe(SAMPLE);
