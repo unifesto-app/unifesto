@@ -14,6 +14,7 @@ import {
   getBlogQuestions,
   learnFromSearchConsole,
   retryBlogQuestion,
+  startBlogQuestion,
   type BlogQuestion,
   type BlogQuestionStatus,
 } from "@/lib/api/blog-api";
@@ -34,7 +35,7 @@ export default function BlogQueuePage() {
   const [notice, setNotice] = useState("");
   const [uploading, setUploading] = useState(false);
   const [writerOn, setWriterOn] = useState<boolean | null>(null);
-  const [retrying, setRetrying] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; action: "retry" | "start" } | null>(null);
   const file = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -55,13 +56,17 @@ export default function BlogQueuePage() {
     });
   }, [load]);
 
-  const retry = async (q: BlogQuestion) => {
-    setRetrying(q.id);
-    const { error: err } = await retryBlogQuestion(q.id);
-    setRetrying(null);
+  const act = async (q: BlogQuestion, action: "retry" | "start") => {
+    setBusy({ id: q.id, action });
+    const { error: err } = await (action === "retry" ? retryBlogQuestion : startBlogQuestion)(q.id);
+    setBusy(null);
     if (err) return setError(err.message);
     setError("");
-    setNotice(`Back in the queue: "${q.question}".`);
+    setNotice(
+      action === "retry"
+        ? `Back in the queue: "${q.question}".`
+        : `Writing "${q.question}" now. It takes a few minutes; reload to see it publish or fail.`
+    );
     void load();
   };
 
@@ -163,9 +168,14 @@ export default function BlogQueuePage() {
                 </p>
                 {q.failReason && <p className="mt-1 text-xs text-destructive">{q.failReason}</p>}
               </div>
+              {(q.status === "QUEUED" || q.status === "FAILED") && (
+                <Button size="sm" onClick={() => void act(q, "start")} disabled={busy !== null}>
+                  {busy?.id === q.id && busy.action === "start" ? "Starting…" : "Start"}
+                </Button>
+              )}
               {q.status === "FAILED" && (
-                <Button size="sm" variant="outline" onClick={() => void retry(q)} disabled={retrying !== null}>
-                  {retrying === q.id ? "Retrying…" : "Retry"}
+                <Button size="sm" variant="outline" onClick={() => void act(q, "retry")} disabled={busy !== null}>
+                  {busy?.id === q.id && busy.action === "retry" ? "Retrying…" : "Retry"}
                 </Button>
               )}
               {q.post && (

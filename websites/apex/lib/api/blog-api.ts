@@ -108,6 +108,11 @@ export async function retryBlogQuestion(id: string): Result<BlogQuestion> {
   return apiCall<BlogQuestion>(backendClient.post(`/blog/questions/${id}/retry`));
 }
 
+/** `POST /blog/questions/:id/start` — write a QUEUED or FAILED question now; returns once it's WRITING. */
+export async function startBlogQuestion(id: string): Result<BlogQuestion> {
+  return apiCall<BlogQuestion>(backendClient.post(`/blog/questions/${id}/start`));
+}
+
 /** `POST /blog/questions/search-console` — queue 10 questions from a Pages CSV. */
 export async function learnFromSearchConsole(
   csv: string
