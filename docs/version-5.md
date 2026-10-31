@@ -65,7 +65,7 @@ Worked back from the date, with room for one store rejection. Moved from Wed 2 D
 | J, A, T, F, S | **Safety and money fixes.** J14 prod secrets off the laptop and A36 Razorpay webhooks (31 Oct, before the fee goes live); deploy J20 + J21 (2 Nov); T2, T11, A35, F8 (10 Nov); T12, A30, J15, S62 (12 Nov); A6 GST invoices (13 Nov) | next |
 | S | **Removals and fixes before the freeze.** S61 dead code (3 Nov); S58 recurring series, S60 partner and short links, S64 the 11 known bugs (4 Nov); S59 Stays (5 Nov); S65 smoke tests (9 Nov) | next |
 | V | **Space into Web, un-parked 29 Oct (user).** V1 now (V5 done #441); V6 once the S58–S61 space parts merge; then V7, V2, V3 alongside V8, V9, V4. One sign-in for everyone, `/console` is every signed-in user's home. See [Track V](#v--space-into-web-2026-10-29) | next |
-| P, U, … | **Parked until after 15 Nov.** All marketing (track P, Z9), U4–U9 (company section), F1–F6, E10/E11, K18/K19, J6/J18, T7/T9 and the rest outside Z8. The reason is on each board task | parked |
+| P, U, … | **Parked until after 15 Nov.** All marketing (track P, Z9), U7–U9 (company documents, KPIs, MCP), F1–F6, E10/E11, K18/K19, J6/J18, T7/T9 and the rest outside Z8. The reason is on each board task | parked |
 
 ## Suggested order
 
