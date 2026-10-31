@@ -30,14 +30,21 @@ export default function FavoriteButton({
   const router = useRouter();
   const c = useCosmos();
   const { isAuthenticated } = useAuth();
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { isFavorite, toggleFavorite, saveAfterSignIn } = useFavorites();
   const favorited = isFavorite(eventId);
 
   const handlePress = () => {
     if (!isAuthenticated) {
       AppAlert.alert('Sign in to save events', 'Your saved events follow you to any device.', [
         { text: 'Not now', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push('/login') },
+        {
+          text: 'Sign in',
+          // Sign-in returns here and the event is already saved.
+          onPress: () => {
+            saveAfterSignIn(eventId);
+            router.push('/login');
+          },
+        },
       ]);
       return;
     }

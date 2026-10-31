@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt } from '@unifesto/unicon/react-native';
+import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt, WhatsappLogo } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import ShadeCard from '../components/ui/ShadeCard';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
@@ -13,6 +13,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SheetTop, GUTTER } from '../components/registration/FlowHeader';
 import { money } from '../components/registration/Steps';
 import { getEventById, getMyRegistrationForEvent } from '../lib/api/events';
+import { getRegistrationWhatsappGroup, type TicketWhatsappGroup } from '../lib/api/registrations';
+import OneSignalService from '../services/OneSignalService';
 import { googleCalendarUrl, icsDownloadUrl, outlookCalendarUrl } from '../lib/calendar';
 import { relativeWhen } from '../utils/eventFormat';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -39,6 +41,7 @@ export default function RegistrationSuccessScreen() {
 
   const [event, setEvent] = useState<any>(null);
   const [registration, setRegistration] = useState<any>(null);
+  const [waGroup, setWaGroup] = useState<TicketWhatsappGroup | null>(null);
   const [loaded, setLoaded] = useState(!eventId);
 
   // A new ticket: the Tickets list and the home-screen widgets pick it up.
@@ -52,9 +55,30 @@ export default function RegistrationSuccessScreen() {
       .then(([e, reg]) => {
         setEvent(e);
         setRegistration(reg);
+        if (reg?.id) getRegistrationWhatsappGroup(reg.id).then(setWaGroup).catch(() => {});
       })
       .finally(() => setLoaded(true));
   }, [eventId]);
+
+  // Push permission is asked here, not at sign-in, so the prompt comes with a
+  // reason. Only while the OS prompt is still unanswered; after the check pops.
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if ((await OneSignalService.hasPermission()) || !(await OneSignalService.canRequestPermission())) return;
+      AppAlert.alert('Get gate updates for this event?', "We'll tell you when entry opens and if the time or venue changes.", [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Turn on',
+          onPress: async () => {
+            if (!(await OneSignalService.requestPermission())) return;
+            OneSignalService.optInToPush();
+            OneSignalService.setTags({ push_notifications: 'true' });
+          },
+        },
+      ]);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, []);
 
   // Terminal screen: hardware back does nothing.
   useFocusEffect(
@@ -128,7 +152,7 @@ export default function RegistrationSuccessScreen() {
         <Animated.View style={riseStyle}>
           <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">You're going</Text>
           <Text style={[styles.sub, { color: c.soft }]}>
-            Your spot at {title} is confirmed.
+            Your spot at {title} is confirmed. Ticket sent to your email and WhatsApp.
           </Text>
 
           {/* The pass: the screen's hero, on the ticket's sky shade. */}
@@ -188,9 +212,17 @@ export default function RegistrationSuccessScreen() {
             </Pressable>
           ) : null}
 
-          {event ? (
+          {event || waGroup?.inviteUrl ? (
             <SettingsGroup>
-              <SettingsRow icon={<CalendarPlus size={24} color={c.text} />} label="Add to calendar" onPress={addToCalendar} />
+              {waGroup?.inviteUrl ? (
+                <SettingsRow
+                  icon={<WhatsappLogo size={24} color={c.text} weight="fill" />}
+                  label={`Join the WhatsApp ${waGroup.isCommunity ? 'community' : 'group'}`}
+                  external
+                  onPress={() => Linking.openURL(waGroup.inviteUrl!).catch(() => {})}
+                />
+              ) : null}
+              {event ? <SettingsRow icon={<CalendarPlus size={24} color={c.text} />} label="Add to calendar" onPress={addToCalendar} /> : null}
             </SettingsGroup>
           ) : null}
 

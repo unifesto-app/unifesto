@@ -35,6 +35,8 @@ import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { storedUtm, withStoredUtm } from "@/lib/utm";
 import { CHECKOUT_JS, checkout } from "@/lib/razorpay";
 import { CHOICE, FIELD, Question } from "@/components/FormQuestion";
+import { getWhatsappGroup, type WhatsappGroup } from "@/lib/api/tickets";
+import { WhatsappLogo } from "@unifesto/unicon/react";
 
 const NOT_OPEN = { upcoming: "Registration opens soon", sold_out: "Sold out", closed: "Registration closed", open: "" } as const;
 
@@ -104,6 +106,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   const [couponMsg, setCouponMsg] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [resent, setResent] = useState("");
+  const [waGroup, setWaGroup] = useState<WhatsappGroup | null>(null);
 
   const ticket = individual.find((t) => t.id === ticketId);
   const paid = !!ticket && ticket.price > 0;
@@ -132,6 +135,18 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   }, [paid, event.id, basePaise, discountPaise]);
   // Only a quote for what is on screen right now.
   const shown = paid && quote?.basePaise === basePaise && quote.couponDiscountPaise === discountPaise ? quote : null;
+
+  // Done: the event's WhatsApp group, when it has one, is the next step.
+  const doneId = done?.registrationId;
+  const token = session?.token;
+  useEffect(() => {
+    if (!doneId || !token) return;
+    let live = true;
+    getWhatsappGroup(token, doneId).then((w) => live && setWaGroup(w), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [doneId, token]);
 
   // A returning visitor who already holds a ticket sees it, not the form.
   // Runs once, when the page learns whether it's signed in.
@@ -193,7 +208,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
       }
       // Z11: the 18+ box is required on the form; record it before registering.
       await confirmAge(s.token);
-      // K12: so is the Terms box. Record it the way the app does (I2).
+      // K12: continuing past the Terms line accepts them. Record it the way the app does (I2).
       for (const d of await pendingLegal(s.token)) await acceptLegal(d.slug, d.version, s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
       const res = await createOrder(event.id, s.token, {
@@ -343,7 +358,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   } else if (step === "done" && done) {
     const ticketText = "Your ticket and QR code are in your email and in the Unifesto app under My tickets.";
     const { title, text } = {
-      in: { title: "You're in", text: ticketText },
+      in: { title: "You're in", text: "Ticket sent to your email and WhatsApp. It's in My tickets in the app too." },
       already: { title: "You're already in", text: ticketText },
       waitlisted: { title: "You're on the waiting list", text: "We'll let you know by email if a spot opens up. Nothing has been charged." },
       confirming: {
@@ -362,6 +377,12 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         >
           Open My tickets in the app
         </button>
+        {waGroup?.inviteUrl && (
+          <a href={waGroup.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-lg btn-secondary mt-3 w-full">
+            <WhatsappLogo weight="fill" className="h-5 w-5" aria-hidden />
+            Join the WhatsApp {waGroup.isCommunity ? "community" : "group"}
+          </a>
+        )}
         {done.kind === "already" && done.registrationId && session && (
           <div className="mt-5">
             <button
@@ -573,27 +594,25 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           </p>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
-          <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
-          <span>
-            I agree to the{" "}
-            <Link href="/terms" target="_blank" className="underline">
-              Terms
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" target="_blank" className="underline">
-              Privacy Policy
-            </Link>
-            {paid && (
-              <>
-                , and the{" "}
-                <Link href="/refund" target="_blank" className="underline">
-                  Refund Policy
-                </Link>
-              </>
-            )}
-          </span>
-        </label>
+        <p className="text-sm text-paper/65">
+          By continuing you agree to the{" "}
+          <Link href="/terms" target="_blank" className="underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" target="_blank" className="underline">
+            Privacy Policy
+          </Link>
+          {paid && (
+            <>
+              , and the{" "}
+              <Link href="/refund" target="_blank" className="underline">
+                Refund Policy
+              </Link>
+            </>
+          )}
+          .
+        </p>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-lg btn-primary w-full">

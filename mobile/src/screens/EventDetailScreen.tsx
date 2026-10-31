@@ -358,7 +358,13 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             ) : d.isOver ? (
               <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This event has ended" />
             ) : (
-              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLine} color={c.sky} />
+              <Fact
+                icon={<Ticket size={ICON} color={c.text} />}
+                title={priceLine}
+                color={c.sky}
+                sub={d.canAddTicket ? 'Add another ticket' : d.feeNote}
+                onPress={d.canAddTicket ? d.addTicket : undefined}
+              />
             )}
 
             {stay && !isCancelled ? (

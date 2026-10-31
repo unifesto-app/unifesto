@@ -19,13 +19,13 @@ import { eventSections, AgendaItem, Speaker, Prize, Faq, Contact } from '../lib/
 import { getMySponsorOptIns, optInToSponsor, withdrawSponsorOptIn } from '../lib/api/sponsors';
 import { registerEventInterest } from '../lib/api/leads';
 import { getProfile } from '../lib/api/profile';
-import { Ticket, formatEventPrice } from '../lib/api/tickets';
+import { Ticket, formatEventPrice, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
 import { AppAlert } from '../components/ui/AppAlert';
 import { trackPageView } from '../services/pageViews';
 
 export const eventUrl = (e: Pick<Event, 'slug' | 'id'>) => `https://www.unifesto.app/event/${e.slug || e.id}`;
 
-export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'addTicket' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
+export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
 
 /**
  * Everything the event page needs: the event + tickets + additional-info
@@ -189,7 +189,6 @@ export function useEventDetail(eventId: string | undefined) {
       !ownedTicketTypeIds.has(t.id) &&
       !(t.blockedByTicketTypeIds ?? []).some((id: string) => ownedTicketTypeIds.has(id)),
   );
-  const registrationComplete = ownsAnyTicket && !canRegisterMore;
 
   // Nothing left to buy: every ticket I could still take is sold out (no
   // waiting list) or outside its sale window.
@@ -210,22 +209,35 @@ export function useEventDetail(eventId: string | undefined) {
           ? 'notOpen'
           : 'closed';
 
+  // A ticket holder always gets "View my ticket", even once the rest sell out.
   const registerMode: RegisterMode =
     bigEventMode === 'umbrella'
       ? 'umbrella'
-      : unavailable && !ownsAnyTicket
-        ? unavailable
-        : !user
-        ? 'signIn'
-        : registrationComplete
-          ? 'registered'
-          : ownsAnyTicket
-            ? unavailable ?? 'addTicket'
+      : ownsAnyTicket
+        ? 'registered'
+        : unavailable
+          ? unavailable
+          : !user
+            ? 'signIn'
             : tickets.length > 1
               ? 'choose'
               : isFree
                 ? 'free'
                 : 'paid';
+  // A holder can still add another ticket type that's on sale.
+  const canAddTicket = ownsAnyTicket && canRegisterMore && !unavailable;
+
+  // "Plus 5% processing fee, capped at ₹99 per ticket", as the web event page says (A11).
+  const [feeTerms, setFeeTerms] = useState(NO_FEE);
+  useEffect(() => {
+    void getProcessingFeeTerms().then(setFeeTerms);
+  }, []);
+  const feeNote =
+    isFree || feeTerms.percent <= 0
+      ? null
+      : event?.absorbProcessingFee
+        ? 'Processing fee included'
+        : `Plus ${feeTerms.percent}% processing fee${feeTerms.capPerTicket ? `, capped at ₹${feeTerms.capPerTicket} per ticket` : ''}`;
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleRegister = async () => {
@@ -233,10 +245,14 @@ export function useEventDetail(eventId: string | undefined) {
     if (!user) {
       AppAlert.alert('Sign in required', 'Please sign in to register for this event.', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign in', onPress: () => router.push('/login') },
+        {
+          text: 'Sign in',
+          // After sign-in, straight on to this event's ticket form.
+          onPress: () => router.push({ pathname: '/login', params: { redirect: `/event-registration?eventId=${event.id}` } }),
+        },
       ]);
-    } else if (registrationComplete) {
-      // Owns every ticket type — open the existing ticket instead.
+    } else if (ownsAnyTicket) {
+      // Holds a ticket: open it (another type is added from the Entry row).
       try {
         const registration = await getMyRegistrationForEvent(event.id);
         if (registration) {
@@ -270,8 +286,12 @@ export function useEventDetail(eventId: string | undefined) {
     } else if (tickets.length === 0) {
       AppAlert.alert('Registration not open', "The organiser hasn't set up any tickets or RSVP options for this event yet.");
     } else {
-      router.push({ pathname: '/event-registration', params: { eventId: event.id } });
+      addTicket();
     }
+  };
+
+  const addTicket = () => {
+    if (event) router.push({ pathname: '/event-registration', params: { eventId: event.id } });
   };
 
   const share = useCallback(async () => {
@@ -430,6 +450,9 @@ export function useEventDetail(eventId: string | undefined) {
     ownsAnyTicket,
     registerMode,
     handleRegister,
+    canAddTicket,
+    addTicket,
+    feeNote,
     share,
     copyLink,
     addToCalendar,

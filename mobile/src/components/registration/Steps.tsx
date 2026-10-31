@@ -129,19 +129,17 @@ export function TicketStep({ r }: { r: EventRegistration }) {
       </View>
       {none ? <Text style={[styles.hint, { color: c.muted }]}>None of these tickets can be booked right now.</Text> : null}
       {r.selectedTicket ? (
-        <View style={styles.confirm}>
-          <Checkbox checked={r.confirmed} onToggle={() => r.setConfirmed(!r.confirmed)}>
-            I confirm this is the ticket I want and agree to the Terms, including the organiser's refund rules.
-          </Checkbox>
-          <Pressable
+        <Text style={[styles.body, styles.confirm, { color: c.soft }]}>
+          By {r.quickConfirm ? 'confirming' : 'continuing'} you agree to the{' '}
+          <Text
             onPress={() => Linking.openURL('https://unifesto.app/terms').catch(() => {})}
             accessibilityRole="link"
-            hitSlop={8}
-            style={({ pressed }) => [styles.termsLink, { opacity: pressed ? 0.6 : 1 }]}
+            style={[styles.linkText, { color: c.text }]}
           >
-            <Text style={[styles.linkText, { color: c.text }]}>Read the Terms</Text>
-          </Pressable>
-        </View>
+            Terms
+          </Text>
+          , including the organiser's refund rules.
+        </Text>
       ) : null}
     </View>
   );
@@ -667,7 +665,6 @@ const styles = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], minHeight: 44, paddingVertical: spacing[1] },
   box: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   confirm: { marginTop: spacing[6] },
-  termsLink: { alignSelf: 'flex-start', marginLeft: 24 + spacing[3], minHeight: 32, justifyContent: 'center' },
   hint: { marginTop: spacing[6], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', ...cosmosFont.body },
   error: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[2] },

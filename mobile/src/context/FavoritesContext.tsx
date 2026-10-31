@@ -22,6 +22,8 @@ interface FavoritesContextType {
   toggleFavorite: (eventId: string) => Promise<void>;
   /** Re-pull the id set from the server (e.g. after opening the favourites screen). */
   refresh: () => Promise<void>;
+  /** A Save tapped while signed out: saved as soon as the person signs in. */
+  saveAfterSignIn: (eventId: string) => void;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(
@@ -33,15 +35,23 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   // Guards against overlapping toggles on the same id (double-tap).
   const inFlight = useRef<Set<string>>(new Set());
+  const pendingSave = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) {
       setFavoriteIds(new Set());
       return;
     }
-    const ids = await getFavoriteIds();
-    setFavoriteIds(new Set(ids));
+    const ids = new Set(await getFavoriteIds());
+    const id = pendingSave.current;
+    pendingSave.current = null;
+    if (id && !ids.has(id) && (await addFavorite(id))) ids.add(id);
+    setFavoriteIds(ids);
   }, [isAuthenticated]);
+
+  const saveAfterSignIn = useCallback((eventId: string) => {
+    pendingSave.current = eventId;
+  }, []);
 
   // Load on auth change; clear on logout.
   useEffect(() => {
@@ -86,8 +96,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ favoriteIds, isFavorite, toggleFavorite, refresh }),
-    [favoriteIds, isFavorite, toggleFavorite, refresh],
+    () => ({ favoriteIds, isFavorite, toggleFavorite, refresh, saveAfterSignIn }),
+    [favoriteIds, isFavorite, toggleFavorite, refresh, saveAfterSignIn],
   );
 
   return (
