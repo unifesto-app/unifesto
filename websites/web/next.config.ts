@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
@@ -112,6 +113,19 @@ const nextConfig: NextConfig = {
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
         ],
       },
+      // /public files keep their names across deploys (no content hash), so a
+      // day in browsers and at Cloudflare instead of Next's max-age=0, which
+      // re-checked the origin on every view. deploy.sh purges Cloudflare's copy.
+      // One rule per file, so a 404 under /press/ isn't cached for a day; dot
+      // folders (.well-known) keep their own headers below.
+      ...readdirSync('public', { recursive: true, withFileTypes: true })
+        .filter((f) => f.isFile())
+        .map((f) => `${f.parentPath.slice('public'.length)}/${f.name}`)
+        .filter((path) => !path.startsWith('/.'))
+        .map((source) => ({
+          source,
+          headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }],
+        })),
       {
         // Serve apple-app-site-association with correct content type for iOS Universal Links
         source: '/.well-known/apple-app-site-association',

@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
-import Section from "@/components/site/Section";
-import ShadeCard, { SHADES, type Shade } from "@/components/site/ShadeCard";
 import { getPosts, postMeta, type BlogPostSummary as BlogPost } from "@/lib/api/blog";
+import { CategoryPills, Posts, type PostRow } from "./BlogIndex";
+
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export const metadata: Metadata = withSocial({
   alternates: { canonical: "/blog", types: { "application/rss+xml": "/blog/rss.xml" } },
@@ -69,88 +70,56 @@ function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
 
 function FeaturedCard({ post }: { post: BlogPost }) {
   return (
-    <ShadeCard shade="blue" glass className="p-3" glassClassName="w-full">
-      <Link href={`/blog/${post.slug}`} className="group grid overflow-hidden rounded-xl bg-night-2 md:grid-cols-2">
-        <CardImage post={post} large />
-        <div className="flex flex-col justify-center gap-4 p-8 md:p-10">
-          <h2 className="font-display text-2xl font-bold leading-snug text-paper md:text-3xl" style={{ letterSpacing: "-0.03em" }}>
-            {post.title}
-          </h2>
-          <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
-            {post.excerpt}
-          </p>
-          <div className="border-t border-border pt-4">
-            <Meta post={post} />
-          </div>
-          <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
-            Read article
-            <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
-          </span>
+    <Link href={`/blog/${post.slug}`} className="group grid overflow-hidden rounded-xl bg-night-2 md:grid-cols-2">
+      <CardImage post={post} large />
+      <div className="flex flex-col justify-center gap-4 p-8 md:p-10">
+        <h2 className="font-display text-2xl font-bold leading-snug text-paper md:text-3xl" style={{ letterSpacing: "-0.03em" }}>
+          {post.title}
+        </h2>
+        <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
+          {post.excerpt}
+        </p>
+        <div className="border-t border-border pt-4">
+          <Meta post={post} />
         </div>
-      </Link>
-    </ShadeCard>
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+          Read article
+          <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+        </span>
+      </div>
+    </Link>
   );
 }
 
-function PostCard({ post, shade }: { post: BlogPost; shade: Shade }) {
+function PostCard({ post }: { post: BlogPost }) {
   return (
-    <ShadeCard shade={shade} glass className="p-3" glassClassName="h-full">
-      <Link href={`/blog/${post.slug}`} className="group flex h-full flex-col overflow-hidden rounded-xl bg-night-2">
-        <CardImage post={post} />
-        <div className="flex flex-1 flex-col gap-4 p-6">
-          <h3 className="text-lg font-semibold leading-snug text-paper">
-            {post.title}
-          </h3>
-          <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
-          <div className="mt-auto border-t border-border pt-4">
-            <Meta post={post} />
-          </div>
+    <Link href={`/blog/${post.slug}`} className="group flex h-full flex-col overflow-hidden rounded-xl bg-night-2">
+      <CardImage post={post} />
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        <h3 className="text-lg font-semibold leading-snug text-paper">
+          {post.title}
+        </h3>
+        <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
+        <div className="mt-auto border-t border-border pt-4">
+          <Meta post={post} />
         </div>
-      </Link>
-    </ShadeCard>
+      </div>
+    </Link>
   );
 }
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ category?: string }>;
-}) {
-  const { category } = await searchParams;
-  const selected = category ?? "all";
-
+export default async function BlogPage() {
   const allPosts = await getPosts();
   // K11: an empty blog is a 404 (not indexed), and Navbar/Footer hide its link.
   if (!allPosts.length) notFound();
   const categories = ["all", ...Array.from(new Set(allPosts.map((p) => p.category)))];
-  const posts =
-    selected === "all"
-      ? allPosts
-      : allPosts.filter((p) => p.category === selected);
-
-  const featuredPost = posts.find((p) => p.featured);
-  const regularPosts = posts.filter((p) => p !== featuredPost);
-
-  const pills =
-    categories.length > 1 ? (
-      <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => {
-          const active = cat === selected;
-          return (
-            <Link
-              key={cat}
-              href={cat === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat)}`}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
-                active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
-              }`}
-            >
-              {cat === "all" ? "All" : cat}
-            </Link>
-          );
-        })}
-      </div>
-    ) : undefined;
+  const rows: PostRow[] = allPosts.map((post) => ({
+    id: post.id,
+    category: post.category,
+    featured: post.featured,
+    featuredCard: <FeaturedCard post={post} />,
+    card: <PostCard post={post} />,
+  }));
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
@@ -161,43 +130,10 @@ export default async function BlogPage({
         accentFrom={1}
         size="md"
         lede="Product updates, event tips and community stories from the team building Unifesto."
-        actions={pills}
+        actions={categories.length > 1 ? <CategoryPills categories={categories} /> : undefined}
       />
 
-      {posts.length === 0 ? (
-        <Section surface="night" pad="tight">
-          <div className="rounded-3xl bg-night-2 p-12 text-center">
-            <h2 className="text-xl font-semibold text-paper">No posts yet</h2>
-            <p className="mt-2 text-paper/65">Check back soon for stories and updates from the team.</p>
-          </div>
-        </Section>
-      ) : (
-        <>
-          {featuredPost && (
-            <Section surface="night" pad="tight">
-              <div data-reveal="scale">
-                <FeaturedCard post={featuredPost} />
-              </div>
-            </Section>
-          )}
-          {regularPosts.length > 0 && (
-            <Section surface="paper">
-              <h2
-                data-reveal="clip"
-                className="font-display text-[clamp(1.6rem,3vw,2.2rem)] font-bold text-ink"
-                style={{ letterSpacing: "-0.03em" }}
-              >
-                Latest posts
-              </h2>
-              <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
-                {regularPosts.map((post, i) => (
-                  <PostCard key={post.id} post={post} shade={SHADES[i % SHADES.length]} />
-                ))}
-              </div>
-            </Section>
-          )}
-        </>
-      )}
+      <Posts rows={rows} />
 
       <Footer />
     </main>

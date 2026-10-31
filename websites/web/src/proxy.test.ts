@@ -61,10 +61,10 @@ test("only the console's CSP lets in LiveKit, the API socket and Maps", async ()
 
 test("prerendered pages get a CSP without a nonce; everything else keeps K14's", async () => {
   const csp = async (url: string) => (await run(url)).headers.get("content-security-policy") ?? "";
-  for (const path of ["/", "/pricing", "/blog/a-post", "/help/a-guide"]) {
+  for (const path of ["/", "/pricing", "/blog", "/blog/a-post", "/events", "/help/a-guide"]) {
     assert.match(await csp(`https://www.unifesto.app${path}`), /script-src 'self' 'unsafe-inline';/, path);
   }
-  for (const path of ["/blog", "/help/contact", "/blog/a-post/opengraph-image", "/event/hack-26", "/login", "/console/present/ev1"]) {
+  for (const path of ["/help/contact", "/event/hack-26/register", "/blog/a-post/opengraph-image", "/event/hack-26", "/login", "/console/present/ev1"]) {
     assert.match(await csp(`https://www.unifesto.app${path}`), /'nonce-[^']+' 'strict-dynamic'/, path);
   }
   // A custom domain's / is its space page, never the cached home page.

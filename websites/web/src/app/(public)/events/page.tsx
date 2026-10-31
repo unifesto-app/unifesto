@@ -6,6 +6,9 @@ import EventsClient from "./EventsClient";
 // Fetch the list on the server (cached 10 min) so the grid renders without
 // waiting on a client-side API round trip; that wait was the page's LCP.
 export const revalidate = 600;
+// Filters (?city=, ?category=) are read on the client after mount, so the HTML
+// is the same for every visitor.
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
 
 export default async function EventsPage() {
   // getEvents returns [] on API errors, so treat empty as "no seed" and let
