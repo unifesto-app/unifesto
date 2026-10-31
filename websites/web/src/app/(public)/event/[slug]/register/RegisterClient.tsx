@@ -33,7 +33,8 @@ import { clearSession, getSession, setSession, startSession, useWebSession, type
 import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { storedUtm, withStoredUtm } from "@/lib/utm";
-import { CHECKOUT_JS, checkout } from "@/lib/razorpay";
+import { CHECKOUT_JS, checkout, lastPayMethod, payByUpi, rememberPayMethod, upiWay, type UpiWay } from "@/lib/razorpay";
+import UpiWait from "@/components/UpiWait";
 import { CHOICE, FIELD, Question } from "@/components/FormQuestion";
 import { getWhatsappGroup, type WhatsappGroup } from "@/lib/api/tickets";
 import { WhatsappLogo } from "@unifesto/unicon/react";
@@ -107,6 +108,21 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   const [quote, setQuote] = useState<Quote | null>(null);
   const [resent, setResent] = useState("");
   const [waGroup, setWaGroup] = useState<WhatsappGroup | null>(null);
+  // Q40: UPI without the sheet where this browser can (null = the sheet only), the pick, and the wait.
+  const [upi, setUpi] = useState<UpiWay | null>(null);
+  const [payMethod, setPayMethod] = useState<"upi" | "more">("upi");
+  const [upiWait, setUpiWait] = useState<{ qr: string | null; amount: string; cancel: () => void } | null>(null);
+  const sellsPaid = individual.some((t) => t.price > 0);
+  useEffect(() => {
+    if (!sellsPaid) return;
+    upiWay().then(
+      (way) => {
+        setPayMethod(lastPayMethod() ?? "upi");
+        setUpi(way);
+      },
+      () => undefined,
+    );
+  }, [sellsPaid]);
 
   const ticket = individual.find((t) => t.id === ticketId);
   const paid = !!ticket && ticket.price > 0;
@@ -248,8 +264,8 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     }
   };
 
-  const pay = (key: string, orderId: string, amount: number, currency: string, s: WebSession) =>
-    checkout({
+  const pay = async (key: string, orderId: string, amount: number, currency: string, s: WebSession) => {
+    const o = {
       key,
       orderId,
       amount,
@@ -258,7 +274,17 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
       description: event.title,
       prefill: { name: s.fullName || "", email: s.email, contact: phone ? mobileNumber : "" },
       color: event.branding?.color || "#3491ff",
-    });
+    };
+    // Nothing to pick here: the sheet, on UPI for someone who paid by UPI last time.
+    if (!upi) return checkout({ ...o, upi: lastPayMethod() === "upi" });
+    const stop = new AbortController();
+    const payment =
+      payMethod === "upi" && currency === "INR"
+        ? await payByUpi(o, upi, s.token, (w) => setUpiWait(w && { ...w, amount: inr(amount), cancel: () => stop.abort() }), stop.signal)
+        : await checkout(o);
+    rememberPayMethod(payMethod);
+    return payment;
+  };
 
   const applyCoupon = run(async () => {
     const code = couponInput.trim();
@@ -581,6 +607,25 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
               {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}
               <PriceLine label="Total" value={shown ? inr(shown.totalPaise) : "…"} strong />
             </dl>
+            {upi && (
+              <fieldset className="space-y-2">
+                <legend className="mb-2 text-sm font-semibold text-paper">Pay with</legend>
+                {(
+                  [
+                    ["upi", upi === "qr" ? "UPI QR code" : "UPI app", upi === "qr" ? "Scan with any UPI app on your phone" : "Google Pay, PhonePe, Paytm or any UPI app"],
+                    ["more", "Cards, netbanking and more", null],
+                  ] as const
+                ).map(([m, label, hint]) => (
+                  <label key={m} className={`${CHOICE} ${payMethod === m ? "border-primary bg-primary/10" : "border-paper/10"}`}>
+                    <input type="radio" name="pay-with" checked={payMethod === m} onChange={() => setPayMethod(m)} className="sr-only" />
+                    <span className="flex-1">
+                      <span className="block font-semibold text-paper">{label}</span>
+                      {hint && <span className="block text-paper/60">{hint}</span>}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
           </div>
         )}
 
@@ -647,6 +692,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         </div>
       </section>
       <Footer />
+      {upi && upiWait && <UpiWait way={upi} qr={upiWait.qr} amount={upiWait.amount} onCancel={upiWait.cancel} />}
     </main>
   );
 }

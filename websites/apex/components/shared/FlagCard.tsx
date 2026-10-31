@@ -14,7 +14,13 @@ export function FlagCard({
   children,
   risky,
 }: {
-  field: "appReviewLoginEnabled" | "requireAgeConfirmation" | "customSendingDomainsEnabled";
+  field:
+    | "appReviewLoginEnabled"
+    | "requireAgeConfirmation"
+    | "customSendingDomainsEnabled"
+    | "upiCheckoutIos"
+    | "upiCheckoutAndroid"
+    | "upiCheckoutWeb";
   title: string;
   children: ReactNode;
   /** Colour "On" as the dangerous state (otherwise "Off" is). */

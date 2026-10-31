@@ -286,6 +286,21 @@ export default function AppVersionPage() {
         Organiser manual add and import are never blocked.
       </FlagCard>
 
+      <FlagCard field="upiCheckoutAndroid" title="UPI checkout: Android app" risky={false}>
+        Lists the phone&apos;s UPI apps on the order summary and opens the picked one straight away,
+        with no Razorpay sheet. Turn it off to send every payment back to Razorpay&apos;s sheet
+        (UPI first) at the next checkout, no release needed. Needs app 5.0.0 or later.
+      </FlagCard>
+
+      <FlagCard field="upiCheckoutIos" title="UPI checkout: iOS app" risky={false}>
+        The same on iPhone. Off sends every payment to Razorpay&apos;s sheet. Needs app 5.0.0 or later.
+      </FlagCard>
+
+      <FlagCard field="upiCheckoutWeb" title="UPI checkout: website" risky={false}>
+        Registration on the website: a UPI app on Android phones, a UPI QR code on computers.
+        iPhones always get Razorpay&apos;s sheet. Off sends everyone to the sheet.
+      </FlagCard>
+
       <AiFeaturesCard />
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">

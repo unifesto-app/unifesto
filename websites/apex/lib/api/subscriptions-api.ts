@@ -269,6 +269,10 @@ export interface PlatformConfig {
   requireAgeConfirmation: boolean;
   /** H20: spaces may add their own email sending domain. */
   customSendingDomainsEnabled: boolean;
+  /** Q40: our UPI-first checkout, per platform. Off = Razorpay Standard Checkout only. */
+  upiCheckoutIos: boolean;
+  upiCheckoutAndroid: boolean;
+  upiCheckoutWeb: boolean;
   /** Every AI feature the backend knows (read-only). */
   aiFeatures?: string[];
   /** The AI features allowed to run; the rest are off. */
