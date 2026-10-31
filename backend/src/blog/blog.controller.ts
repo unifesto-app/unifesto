@@ -82,6 +82,14 @@ export class BlogController {
     return this.writer.retryQuestion(id);
   }
 
+  /** ADMIN — write a queued or failed question now, in the background. */
+  @Post('questions/:id/start')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  startQuestion(@Param('id') id: string) {
+    return this.writer.start(id);
+  }
+
   /** ADMIN — weekly Search Console Pages CSV; queues 10 questions related to posts that get clicks. */
   @Post('questions/search-console')
   @UseGuards(JwtAuthGuard, RolesGuard)
