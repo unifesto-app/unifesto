@@ -43,8 +43,6 @@ export interface EventDetailsPayload {
   longitude?: number | null;
   onlineUrl?: string;
   onlinePlatform?: string;
-  /** RRULE for a series (create, or edit of a series parent). */
-  recurrenceRule?: string;
   /** Create only: make it a sub-event of this big event. */
   parentEventId?: string;
 }

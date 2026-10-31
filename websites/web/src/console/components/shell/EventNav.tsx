@@ -19,7 +19,6 @@ import {
   ChartBar,
   Hourglass,
   Stack,
-  ArrowsClockwise,
   Tag,
   WhatsappLogo,
   ChartLineUp,
@@ -124,7 +123,6 @@ export const EVENT_NAV_GROUPS: EventNavGroup[] = [
     label: "Advanced",
     advanced: true,
     items: [
-      { href: "/occurrences", label: "Occurrences", icon: ArrowsClockwise, requires: "event:edit" },
       { href: "/sub-events", label: "Sub-events", icon: Stack, requires: "event:edit" },
       { href: "/co-hosting", label: "Co-Hosting", icon: ShareNetwork, requires: "event:assign-crew" },
     ],

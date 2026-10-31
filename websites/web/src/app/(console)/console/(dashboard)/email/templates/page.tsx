@@ -159,7 +159,7 @@ export default function SpaceEmailTemplatesPage() {
               icon={Cards}
               tone="positive"
               title="No templates yet"
-              description="Create a reusable template you can start campaigns from — great for recurring reminders and announcements."
+              description="Save a template and start campaigns from it. Good for reminders and announcements you send often."
               action={
                 <Button onClick={openNew}>
                   <Plus className="mr-1.5 h-4 w-4" weight="bold" /> New template

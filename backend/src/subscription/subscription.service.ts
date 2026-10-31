@@ -168,7 +168,6 @@ export class SubscriptionService {
         hasBulkExport: limits.hasBulkExport,
         hasAnalytics: limits.hasAnalytics,
         hasWhatsappBlast: limits.hasWhatsappBlast,
-        hasRecurringEvents: limits.hasRecurringEvents,
         hasRemoveBranding: limits.hasRemoveBranding,
         hasPrioritySupport: limits.hasPrioritySupport,
         hasSessions: limits.hasSessions,

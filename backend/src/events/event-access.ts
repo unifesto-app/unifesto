@@ -155,8 +155,6 @@ export const PUBLIC_EVENT_CARD_SELECT = {
   whiteLabelEnabled: true,
   brandColor: true,
   brandLogoUrl: true,
-  isRecurring: true,
-  seriesParentId: true,
   parentEventId: true,
   spaceId: true,
   publishedAt: true,

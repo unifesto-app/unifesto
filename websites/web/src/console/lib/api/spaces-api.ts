@@ -94,7 +94,6 @@ export interface PlanFeatures {
   hasBulkExport: boolean;
   hasAnalytics: boolean;
   hasWhatsappBlast: boolean;
-  hasRecurringEvents: boolean;
   hasRemoveBranding: boolean;
   hasPrioritySupport: boolean;
   hasSessions: boolean;

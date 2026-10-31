@@ -103,11 +103,6 @@ export interface Event {
    */
   parentEvent?: SubEvent | null;
   parentEventId?: string | null;
-  /** A recurring series parent (its RRULE drives the occurrences). */
-  isRecurring?: boolean;
-  recurringRule?: string | null;
-  /** Set on an occurrence of a series. */
-  seriesParentId?: string | null;
   /**
    * Published sub-events, when this event is itself a "big event" parent.
    * Empty/undefined for an ordinary event.

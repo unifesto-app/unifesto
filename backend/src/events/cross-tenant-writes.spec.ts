@@ -11,7 +11,7 @@ import { SpacesService } from '../spaces/spaces.service';
 function eventsSvc(prisma: any) {
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
   const authz: any = { can: jest.fn(async () => true), canAny: jest.fn(async () => false) };
-  return new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz, {} as any);
+  return new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz);
 }
 
 describe('deleteTicketType (J10)', () => {

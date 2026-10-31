@@ -21,13 +21,14 @@ function seedRows() {
   const sql = migration('20261123090000_fee_live');
   const rows = new Map<string, string[]>();
   for (const m of sql.matchAll(/\('(STARTER|CLUB|GROWTH|PRO|ENTERPRISE)',([^)]*)\)/g)) {
-    rows.set(m[1], m[2].split(',').map((v) => v.trim()));
+    // Column 9 is a retired flag (S58) the code no longer reads.
+    rows.set(m[1], m[2].split(',').map((v) => v.trim()).filter((_, i) => i !== 9));
   }
   return rows;
 }
 
 const FLAGS = [
-  'hasWaitlist', 'hasBulkExport', 'hasAnalytics', 'hasWhatsappBlast', 'hasRecurringEvents',
+  'hasWaitlist', 'hasBulkExport', 'hasAnalytics', 'hasWhatsappBlast',
   'hasRemoveBranding', 'hasPrioritySupport', 'hasSessions', 'hasLeaderboard', 'hasCertificates', 'hasSponsors',
 ] as const;
 
@@ -38,7 +39,7 @@ describe('PLAN_LIMITS matches the plan_configs lineup', () => {
     const v = rows.get(plan)!;
     expect(v).toBeDefined();
     const l = PLAN_LIMITS[plan];
-    // Column order of the INSERT: 5 limits, 11 flags, 2 prices, the fee.
+    // Column order of the INSERT: 5 limits, 10 flags, 2 prices, the fee.
     expect({
       spaces: l.spaces,
       eventsPerMonth: l.eventsPerMonth,
@@ -56,9 +57,9 @@ describe('PLAN_LIMITS matches the plan_configs lineup', () => {
       ticketTypes: num(v[3]),
       coCurators: num(v[4]),
       ...Object.fromEntries(FLAGS.map((f, i) => [f, v[5 + i] === 'true'])),
-      monthlyPrice: num(v[16]),
-      annualPrice: num(v[17]),
-      platformFeePercent: num(v[18]),
+      monthlyPrice: num(v[15]),
+      annualPrice: num(v[16]),
+      platformFeePercent: num(v[17]),
     });
   });
 

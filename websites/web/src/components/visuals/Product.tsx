@@ -42,7 +42,6 @@ export function TicketsVisual() {
     [0, "Nav Nirman 4.0", "Fest · 3 days"],
     [1, "Hackathon", "Group · 4 seats"],
     [1, "Keynote night", "Free RSVP"],
-    [1, "Workshop series", "Recurring"],
   ];
   const tickets: [string, string, string][] = [
     ["Early bird", "₹199", "Sold out"],

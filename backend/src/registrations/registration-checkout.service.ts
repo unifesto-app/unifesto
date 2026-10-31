@@ -345,13 +345,6 @@ export class RegistrationCheckoutService {
       throw new BadRequestException('Event is not open for registration');
     }
 
-    // A recurring series parent is a non-registerable template.
-    if (event.isRecurring) {
-      throw new BadRequestException(
-        'This is a recurring series; register for a specific occurrence instead.',
-      );
-    }
-
     // Organiser-configured restriction: reject if the user already holds a
     // ticket that blocks the requested one.
     await this.assertTicketNotBlocked(userId, eventId, dto.ticketTypeId);

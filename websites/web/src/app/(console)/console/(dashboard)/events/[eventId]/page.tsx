@@ -205,7 +205,6 @@ export default function EventOverviewPage() {
             )}
             {(event.status === "PUBLISHED" || event.status === "ONGOING") &&
               canPublish &&
-              !event.isRecurring &&
               new Date(event.startDateTime) <= new Date() && (
                 <Button variant="outline" size="sm" onClick={handleEnd} disabled={actionLoading}>
                   <Flag className="h-4 w-4" />

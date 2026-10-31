@@ -725,7 +725,7 @@ export class SessionsService {
     );
   }
 
-  /** Duplicate a session as a fresh DRAFT (the v1 stand-in for recurrence). */
+  /** Duplicate a session as a fresh DRAFT. */
   async duplicateSession(userId: string, sessionId: string) {
     const source = await this.loadManagedSession(userId, sessionId);
     await this.assertPlanAllowsSessions(source.spaceId);

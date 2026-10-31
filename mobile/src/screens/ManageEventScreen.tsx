@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bed,
-  CalendarDots,
   ChartBar,
   ChatsCircle,
   Eye,
@@ -209,13 +208,13 @@ export default function ManageEventScreen() {
             />
           ) : null}
           {/* Adding people and the waiting list need event:manage-attendees; the server re-checks. */}
-          {h.access.hosts && !e.isRecurring ? (
+          {h.access.hosts ? (
             <SettingsRow icon={icon(UserPlus)} label="Add attendee" onPress={() => router.push(`/manage/event/${e.id}/add-attendee`)} />
           ) : null}
-          {h.access.hosts && !e.isRecurring ? (
+          {h.access.hosts ? (
             <SettingsRow icon={icon(FileCsv)} label="Import from CSV" external onPress={web('/attendees/import')} />
           ) : null}
-          {h.access.hosts && !e.isRecurring ? (
+          {h.access.hosts ? (
             <SettingsRow icon={icon(HourglassMedium)} label="Waiting list" onPress={() => router.push(`/manage/event/${e.id}/waitlist`)} />
           ) : null}
           {h.access.canViewAttendees && h.access.hosts ? (
@@ -227,7 +226,7 @@ export default function ManageEventScreen() {
               }
             />
           ) : null}
-          {h.access.hosts && !e.isRecurring ? (
+          {h.access.hosts ? (
             <SettingsRow
               icon={icon(Bed)}
               label="Unifesto Stay"
@@ -336,12 +335,7 @@ export default function ManageEventScreen() {
                 onPress={() => router.push({ pathname: `/manage/event/${e.id}/sponsors`, params: { spaceId: e.spaceId, title: e.title } })}
               />
             ) : null}
-            {/* A series parent has dates; anything else can group sub-events (a series can't be both). */}
-            {e.isRecurring ? (
-              <SettingsRow icon={icon(CalendarDots)} label="Series dates" external onPress={web('/occurrences')} />
-            ) : !e.seriesParentId ? (
-              <SettingsRow icon={icon(TreeStructure)} label="Sub-events" external onPress={web('/sub-events')} />
-            ) : null}
+            <SettingsRow icon={icon(TreeStructure)} label="Sub-events" external onPress={web('/sub-events')} />
             {h.access.canPayout ? (
               <SettingsRow
                 icon={icon(Wallet)}

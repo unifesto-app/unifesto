@@ -15,7 +15,6 @@ import {
   ShareNetwork,
   Stack,
   UsersThree,
-  ArrowsClockwise,
   Check,
   X,
 } from "@unifesto/unicon/react";
@@ -27,7 +26,6 @@ import {
   removeCoHost,
 } from "@/console/lib/api/events-api";
 import type { CoHostInvite, Event, EventStatus } from "@/console/lib/api/events-api";
-import { parseRRuleToState, describeRecurrence } from "@/console/lib/recurrence";
 import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 import { EmptyState } from "@/console/components/shared/EmptyState";
@@ -407,15 +405,8 @@ export default function SpaceEventsPage() {
                     {/* Relationship badges */}
                     {(event.isCoHost ||
                       (event._count?.childEvents ?? 0) > 0 ||
-                      event.parentEvent ||
-                      event.isRecurring) && (
+                      event.parentEvent) && (
                       <div className="flex flex-wrap gap-1.5">
-                        {event.isRecurring && (
-                          <Badge variant="brand">
-                            <ArrowsClockwise className="mr-1 h-3 w-3" weight="fill" />
-                            Series
-                          </Badge>
-                        )}
                         {event.isCoHost && (
                           <Badge variant="brand">
                             <ShareNetwork className="mr-1 h-3 w-3" />
@@ -443,21 +434,8 @@ export default function SpaceEventsPage() {
 
                     <div className="space-y-1.5 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        {event.isRecurring ? (
-                          <>
-                            <ArrowsClockwise className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">
-                              {describeRecurrence(
-                                parseRRuleToState(event.recurringRule)
-                              )}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <CalendarBlank className="h-4 w-4 flex-shrink-0" />
-                            <span>{formatDate(event.startDateTime)}</span>
-                          </>
-                        )}
+                        <CalendarBlank className="h-4 w-4 flex-shrink-0" />
+                        <span>{formatDate(event.startDateTime)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {event.type === "ONLINE" ? (
@@ -475,13 +453,7 @@ export default function SpaceEventsPage() {
                       <span className="text-sm font-medium text-foreground">
                         {priceLabel(event)}
                       </span>
-                      {event.isRecurring ? (
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Manage dates →
-                        </span>
-                      ) : (
-                        <AttendeeCount event={event} />
-                      )}
+                      <AttendeeCount event={event} />
                     </div>
                   </CardContent>
                 </Card>

@@ -135,6 +135,7 @@ export class CreateEventDto {
   @IsString()
   whatsappAttendeeGroupUrl?: string;
 
+  // accepted for old clients, ignored
   @IsOptional()
   @IsString()
   recurrenceRule?: string;
@@ -262,6 +263,7 @@ export class UpdateEventDto {
   @IsString()
   whatsappAttendeeGroupUrl?: string;
 
+  // accepted for old clients, ignored
   @IsOptional()
   @IsString()
   recurrenceRule?: string;

@@ -18,7 +18,7 @@ function build(opts: { claimed?: number; allowed?: boolean } = {}) {
   };
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
   const authz: any = { can: jest.fn(async () => opts.allowed ?? true) };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz, {} as any);
+  const svc = new EventsService(prisma, {} as any, {} as any, cache, {} as any, {} as any, { emit: jest.fn() } as any, authz);
   return { svc, prisma, cache, authz };
 }
 
@@ -31,7 +31,6 @@ describe('End event (Q26)', () => {
     expect(where).toMatchObject({
       id: 'ev-1',
       status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] },
-      isRecurring: false,
     });
     expect(where.startDateTime.lte.getTime()).toBeLessThanOrEqual(Date.now());
     expect(data).toEqual({ status: EventStatus.COMPLETED });

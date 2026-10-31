@@ -71,15 +71,10 @@ describe('plan enforcement (T9)', () => {
       });
       const planConfig = new PlanConfigService(prisma);
       jest.spyOn(planConfig, 'getLimits').mockImplementation((p) => ({ ...PLAN_LIMITS[p], ...limits }));
-      const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, planConfig, {} as any, {} as any, {} as any);
+      const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, planConfig, {} as any, {} as any);
       jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
       return svc;
     };
-
-    it('a recurring series needs Club', async () => {
-      await expect(events(OrgPlan.STARTER).createEvent('u', { spaceId: 'sp-1', recurrenceRule: 'FREQ=WEEKLY' } as any))
-        .rejects.toThrow('Not on the General plan: Recurring events.');
-    });
 
     it('a waiting list is gated on a new event, a new ticket, or switched on later', async () => {
       const svc = events(OrgPlan.STARTER, { hasWaitlist: false });

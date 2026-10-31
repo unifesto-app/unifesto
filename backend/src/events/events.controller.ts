@@ -1,4 +1,3 @@
-import { SeriesSetupSyncInterceptor } from './recurrence/series-setup-sync.interceptor';
 import {
   Controller,
   Get,
@@ -55,7 +54,6 @@ import { toPage } from '../common/pagination';
 import { Audit } from '../audit/audit';
 
 @Controller('events')
-@UseInterceptors(SeriesSetupSyncInterceptor)
 export class EventsController {
   constructor(
     private readonly eventsService: EventsService,
@@ -135,20 +133,6 @@ export class EventsController {
       'Cache-Control': 'public, max-age=300',
     });
     res.send(ics);
-  }
-
-  // Recurring-series management (event-calendar P2). Two-segment paths, so they
-  // never collide with the single-segment `:slug`/`:id` routes.
-  @Get(':id/occurrences')
-  @UseGuards(JwtAuthGuard)
-  async getSeriesOccurrences(@Request() req, @Param('id') id: string) {
-    return this.eventsService.getSeriesOccurrences(req.user.id, id);
-  }
-
-  @Post(':id/detach-from-series')
-  @UseGuards(JwtAuthGuard)
-  async detachOccurrence(@Request() req, @Param('id') id: string) {
-    return this.eventsService.detachOccurrenceFromSeries(req.user.id, id);
   }
 
   @Get(':id/whatsapp')

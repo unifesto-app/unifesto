@@ -228,7 +228,6 @@ describe('free RSVP (S10)', () => {
     prisma.event.findUnique = jest.fn(async () => ({
       id: 'event-1',
       status: 'PUBLISHED',
-      isRecurring: false,
       registrations: [],
       ticketTypes: [
         { id: 'tt-1', kind: 'INDIVIDUAL', price: 0, isActive: true, isVisible: true, totalQuantity: null, soldCount: 0, perUserLimit: 5 },
@@ -434,7 +433,6 @@ describe('coupon cap at checkout (S45)', () => {
       spaceId: 'space-1',
       visibility: 'PUBLIC',
       status: 'PUBLISHED',
-      isRecurring: false,
       registrations: [],
       ticketTypes: [
         { id: 'tt-1', kind: 'INDIVIDUAL', price: 500, isActive: true, isVisible: true, totalQuantity: 10, soldCount: 0, perUserLimit: 5 },
