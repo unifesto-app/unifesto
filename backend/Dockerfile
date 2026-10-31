@@ -60,6 +60,11 @@ COPY package.json ./
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# J18: run as the image's unprivileged `node` user (uid 1000), not root. The
+# app writes nothing under /app; the mounted backend/.env must be readable by
+# uid 1000 (it is when the server's ubuntu user, also uid 1000, owns it).
+USER node
+
 # Matches PORT in your .env (the app logs "running on http://localhost:8080").
 EXPOSE 8080
 
