@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'rea
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { spacing } from '../../theme/spacing';
 import { SHADES, cosmosCardRadius, useCosmos, type ShadeTone } from '../../theme/cosmos';
-
 import Grain from './Grain';
 
 /**
