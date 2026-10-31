@@ -30,9 +30,11 @@ import {
 import { cn } from "@/lib/utils/cn";
 import {
   getExternalStatus,
+  getSentryIssues,
   reconcileSeatCounts,
   type ExternalMonitor,
   type ExternalStatus,
+  type SentryIssues,
 } from "@/lib/api/platform-tools-api";
 import {
   getStatusSummary,
@@ -213,6 +215,8 @@ export default function StatusPage() {
             </CardContent>
           </Card>
 
+          <ErrorsView />
+
           <OutsideView />
 
           {/* Past incidents */}
@@ -241,6 +245,105 @@ export default function StatusPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* --------------------------------- errors ---------------------------------- */
+
+const SENTRY_ISSUES_URL = "https://unifesto.sentry.io/issues/";
+const LEVEL_TONE: Record<string, string> = {
+  fatal: "text-destructive",
+  error: "text-destructive",
+  warning: "text-warning",
+};
+
+/**
+ * Unresolved Sentry issues across backend, web, apex and mobile that fired in
+ * the last 24 hours, busiest first. Each row opens the issue in Sentry.
+ */
+function ErrorsView() {
+  const [data, setData] = useState<SentryIssues | null>(null);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    void getSentryIssues().then(({ data, error }) => {
+      setData(data);
+      setLoadError(error?.message ?? "");
+    });
+  }, []);
+
+  const more = data?.total != null ? data.total - data.issues.length : 0;
+
+  return (
+    <div>
+      <div className="mb-3 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="mb-1 text-base font-semibold text-foreground">Errors</h2>
+          <p className="text-xs text-muted-foreground">
+            Sentry · unresolved, last 24 hours
+            {data?.fetchedAt ? ` · checked ${new Date(data.fetchedAt).toLocaleTimeString("en-IN")}` : ""}
+          </p>
+        </div>
+        <a
+          href={SENTRY_ISSUES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Open Sentry
+        </a>
+      </div>
+      <Card>
+        <CardContent className="divide-y divide-border p-0">
+          {loadError || data?.error ? (
+            <p className="p-4 text-sm text-destructive">{loadError || data?.error}</p>
+          ) : !data ? (
+            <div className="p-4">
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : !data.configured ? (
+            <p className="p-4 text-sm text-muted-foreground">
+              Sentry isn&apos;t connected on the server. Add a token with event:read as SENTRY_READ_TOKEN in the
+              backend&apos;s .env.
+            </p>
+          ) : data.issues.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No unresolved errors in the last 24 hours.</p>
+          ) : (
+            <>
+              {data.issues.map((i) => (
+                <a
+                  key={i.id}
+                  href={i.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{i.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {i.project} · {i.shortId}
+                      {i.culprit ? ` · ${i.culprit}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {i.count} event{i.count === 1 ? "" : "s"} · {i.users} user{i.users === 1 ? "" : "s"} · last{" "}
+                      {new Date(i.lastSeen).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                  <span className={cn("shrink-0 text-xs font-medium", LEVEL_TONE[i.level] ?? "text-muted-foreground")}>
+                    {i.level}
+                  </span>
+                </a>
+              ))}
+              {more > 0 && (
+                <p className="p-4 text-xs text-muted-foreground">
+                  {more} more in Sentry.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

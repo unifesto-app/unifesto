@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StatusService } from './status.service';
 import { UptimeRobotService } from './uptime-robot.service';
+import { SentryIssuesService } from './sentry-issues.service';
 import { CreateIncidentDto, UpdateIncidentDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -27,6 +28,7 @@ export class StatusController {
   constructor(
     private readonly statusService: StatusService,
     private readonly uptimeRobot: UptimeRobotService,
+    private readonly sentry: SentryIssuesService,
   ) {}
 
   @Get()
@@ -39,6 +41,12 @@ export class StatusController {
   @ApiOperation({ summary: 'External monitors from UptimeRobot (admin)' })
   getExternal() {
     return this.uptimeRobot.getStatus();
+  }
+
+  @Get('errors')
+  @ApiOperation({ summary: 'Unresolved Sentry issues from the last 24h (admin)' })
+  getErrors() {
+    return this.sentry.getIssues();
   }
 
   @Get('incidents')
