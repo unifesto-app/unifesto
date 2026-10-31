@@ -48,13 +48,13 @@ describe('SentryIssuesService', () => {
   });
 
   it('reports not configured without a token, and never calls out', async () => {
-    delete process.env.SENTRY_READ_TOKEN;
+    delete process.env.SENTRY_API_TOKEN;
     await expect(new SentryIssuesService().getIssues()).resolves.toMatchObject({ configured: false, issues: [] });
     expect(mocked.get).not.toHaveBeenCalled();
   });
 
   it('reads the total from X-Hits, caches for a minute, and keeps the last reading when Sentry is down', async () => {
-    process.env.SENTRY_READ_TOKEN = 'sntryu_x';
+    process.env.SENTRY_API_TOKEN = 'sntryu_x';
     const svc = new SentryIssuesService();
     mocked.get.mockResolvedValueOnce({ data: [raw], headers: { 'x-hits': '17' } });
     const first = await svc.getIssues();
@@ -71,12 +71,46 @@ describe('SentryIssuesService', () => {
   });
 
   it('names a rejected token instead of showing a stale list', async () => {
-    process.env.SENTRY_READ_TOKEN = 'bad';
+    process.env.SENTRY_API_TOKEN = 'bad';
     mocked.get.mockRejectedValueOnce({ response: { status: 401 } });
     await expect(new SentryIssuesService().getIssues()).resolves.toMatchObject({
       configured: true,
       error: expect.stringMatching(/event:read/),
       issues: [],
+    });
+  });
+
+  describe('resolve', () => {
+    it('PUTs status resolved and drops the cache so the next read refetches', async () => {
+      process.env.SENTRY_API_TOKEN = 'sntryu_x';
+      const svc = new SentryIssuesService();
+      mocked.get.mockResolvedValue({ data: [raw], headers: {} });
+      await svc.getIssues();
+      mocked.put.mockResolvedValueOnce({ data: { status: 'resolved' } });
+
+      await expect(svc.resolve('6123')).resolves.toEqual({ id: '6123', status: 'resolved' });
+      expect(mocked.put).toHaveBeenCalledWith(
+        'https://us.sentry.io/api/0/organizations/unifesto/issues/6123/',
+        { status: 'resolved' },
+        expect.objectContaining({ headers: { Authorization: 'Bearer sntryu_x' } }),
+      );
+      await svc.getIssues();
+      expect(mocked.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('refuses anything but a numeric id, without calling Sentry', async () => {
+      process.env.SENTRY_API_TOKEN = 'sntryu_x';
+      await expect(new SentryIssuesService().resolve('../../projects')).rejects.toThrow('Not a Sentry issue id');
+      expect(mocked.put).not.toHaveBeenCalled();
+    });
+
+    it('throws when not connected, and names a token without event:write', async () => {
+      delete process.env.SENTRY_API_TOKEN;
+      await expect(new SentryIssuesService().resolve('1')).rejects.toThrow('Sentry isn’t connected');
+
+      process.env.SENTRY_API_TOKEN = 'read-only';
+      mocked.put.mockRejectedValueOnce({ response: { status: 403 } });
+      await expect(new SentryIssuesService().resolve('1')).rejects.toThrow(/event:write/);
     });
   });
 });

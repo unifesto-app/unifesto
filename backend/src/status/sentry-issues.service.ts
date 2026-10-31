@@ -1,4 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import axios from 'axios';
 
 export interface SentryIssue {
@@ -50,9 +57,10 @@ const CACHE_MS = 60_000;
 /**
  * Sentry for Apex › Status: unresolved issues across backend, web, apex and
  * mobile that fired in the last 24 hours, so an admin sees errors next to
- * uptime without opening Sentry. Reads with SENTRY_READ_TOKEN (needs
- * event:read; the source-map SENTRY_AUTH_TOKEN can't list issues). Cached for
- * a minute. Never throws: problems come back in `error`.
+ * uptime without opening Sentry, and can resolve them. Uses SENTRY_API_TOKEN
+ * (event:read + event:write; the source-map SENTRY_AUTH_TOKEN can't touch
+ * issues). Reads are cached for a minute and never throw: problems come back
+ * in `error`.
  */
 @Injectable()
 export class SentryIssuesService {
@@ -60,7 +68,7 @@ export class SentryIssuesService {
   private cache: { at: number; value: SentryIssues } | null = null;
 
   async getIssues(): Promise<SentryIssues> {
-    const token = process.env.SENTRY_READ_TOKEN;
+    const token = process.env.SENTRY_API_TOKEN;
     if (!token) return { configured: false, fetchedAt: null, error: null, total: null, issues: [] };
     if (this.cache && Date.now() - this.cache.at < CACHE_MS) return this.cache.value;
 
@@ -85,7 +93,7 @@ export class SentryIssuesService {
       this.logger.warn(`Sentry issues fetch failed: ${status ?? err?.message ?? err}`);
       // 401/403 is a token problem, not an outage: say so instead of a stale list.
       if (status === 401 || status === 403) {
-        return { configured: true, fetchedAt: null, error: 'Sentry rejected SENTRY_READ_TOKEN (it needs event:read)', total: null, issues: [] };
+        return { configured: true, fetchedAt: null, error: 'Sentry rejected SENTRY_API_TOKEN (it needs event:read)', total: null, issues: [] };
       }
       // Keep showing the last good answer rather than blanking the screen.
       if (this.cache) return { ...this.cache.value, error: 'Couldn’t reach Sentry; showing the last reading' };
@@ -93,5 +101,31 @@ export class SentryIssuesService {
     }
     this.cache = { at: Date.now(), value };
     return value;
+  }
+
+  /** Mark one issue resolved. Unlike reads this throws, so the admin sees a failed click. */
+  async resolve(id: string): Promise<{ id: string; status: 'resolved' }> {
+    const token = process.env.SENTRY_API_TOKEN;
+    if (!token) throw new ServiceUnavailableException('Sentry isn’t connected');
+    // It goes into the URL path: digits only, so it can't aim the token at another endpoint.
+    if (!/^\d+$/.test(id)) throw new BadRequestException('Not a Sentry issue id');
+    try {
+      await axios.put(
+        `${ISSUES_URL}${id}/`,
+        { status: 'resolved' },
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 },
+      );
+    } catch (err: any) {
+      const status = err?.response?.status;
+      this.logger.warn(`Sentry resolve ${id} failed: ${status ?? err?.message ?? err}`);
+      if (status === 404) throw new NotFoundException('That issue no longer exists in Sentry');
+      throw new BadGatewayException(
+        status === 401 || status === 403
+          ? 'Sentry rejected SENTRY_API_TOKEN (it needs event:write)'
+          : 'Couldn’t reach Sentry',
+      );
+    }
+    this.cache = null; // the next read drops the resolved issue
+    return { id, status: 'resolved' };
   }
 }

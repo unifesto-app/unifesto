@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils/cn";
 import {
   getExternalStatus,
   getSentryIssues,
+  resolveSentryIssue,
   reconcileSeatCounts,
   type ExternalMonitor,
   type ExternalStatus,
@@ -260,11 +261,28 @@ const LEVEL_TONE: Record<string, string> = {
 
 /**
  * Unresolved Sentry issues across backend, web, apex and mobile that fired in
- * the last 24 hours, busiest first. Each row opens the issue in Sentry.
+ * the last 24 hours, busiest first. Each row opens the issue in Sentry and can
+ * resolve it there.
  */
 function ErrorsView() {
   const [data, setData] = useState<SentryIssues | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState("");
+
+  const resolve = async (id: string) => {
+    setResolving(id);
+    setResolveError("");
+    const { error } = await resolveSentryIssue(id);
+    setResolving(null);
+    if (error) {
+      setResolveError(error.message || "Couldn’t resolve the issue.");
+      return;
+    }
+    setData((d) =>
+      d && { ...d, total: d.total == null ? null : d.total - 1, issues: d.issues.filter((i) => i.id !== id) },
+    );
+  };
 
   useEffect(() => {
     void getSentryIssues().then(({ data, error }) => {
@@ -304,23 +322,18 @@ function ErrorsView() {
             </div>
           ) : !data.configured ? (
             <p className="p-4 text-sm text-muted-foreground">
-              Sentry isn&apos;t connected on the server. Add a token with event:read as SENTRY_READ_TOKEN in the
-              backend&apos;s .env.
+              Sentry isn&apos;t connected on the server. Add a token with event:read and event:write as
+              SENTRY_API_TOKEN in the backend&apos;s .env.
             </p>
           ) : data.issues.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">No unresolved errors in the last 24 hours.</p>
           ) : (
             <>
+              {resolveError && <p className="p-4 text-sm text-destructive">{resolveError}</p>}
               {data.issues.map((i) => (
-                <a
-                  key={i.id}
-                  href={i.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-4 p-4 hover:bg-muted/50"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{i.title}</p>
+                <div key={i.id} className="flex items-center justify-between gap-4 p-4">
+                  <a href={i.url} target="_blank" rel="noopener noreferrer" className="group min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground group-hover:underline">{i.title}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {i.project} · {i.shortId}
                       {i.culprit ? ` · ${i.culprit}` : ""}
@@ -329,11 +342,22 @@ function ErrorsView() {
                       {i.count} event{i.count === 1 ? "" : "s"} · {i.users} user{i.users === 1 ? "" : "s"} · last{" "}
                       {new Date(i.lastSeen).toLocaleString("en-IN")}
                     </p>
+                  </a>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className={cn("text-xs font-medium", LEVEL_TONE[i.level] ?? "text-muted-foreground")}>
+                      {i.level}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={resolving === i.id}
+                      onClick={() => resolve(i.id)}
+                      aria-label={`Resolve ${i.shortId}`}
+                    >
+                      <CheckCircle className="h-4 w-4" /> {resolving === i.id ? "Resolving…" : "Resolve"}
+                    </Button>
                   </div>
-                  <span className={cn("shrink-0 text-xs font-medium", LEVEL_TONE[i.level] ?? "text-muted-foreground")}>
-                    {i.level}
-                  </span>
-                </a>
+                </div>
               ))}
               {more > 0 && (
                 <p className="p-4 text-xs text-muted-foreground">

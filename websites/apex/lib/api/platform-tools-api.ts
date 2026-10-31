@@ -137,6 +137,10 @@ export interface SentryIssues {
 
 export const getSentryIssues = (): Result<SentryIssues> => apiCall(backendClient.get("/admin/status/errors"));
 
+/** Mark resolved in Sentry; it reopens on its own if the error comes back. */
+export const resolveSentryIssue = (id: string): Result<{ id: string; status: "resolved" }> =>
+  apiCall(backendClient.post(`/admin/status/errors/${id}/resolve`, {}));
+
 // ── Maintenance ──────────────────────────────────────────────────────────────
 
 /** Recount event and ticket seat counters (groups count as groupSize). Idempotent. */

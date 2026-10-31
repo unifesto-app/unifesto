@@ -17,6 +17,7 @@ import { CreateIncidentDto, UpdateIncidentDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Audit } from '../audit/audit';
 import { RoleCode } from '@prisma/client';
 
 @ApiTags('Status')
@@ -47,6 +48,14 @@ export class StatusController {
   @ApiOperation({ summary: 'Unresolved Sentry issues from the last 24h (admin)' })
   getErrors() {
     return this.sentry.getIssues();
+  }
+
+  // Sentry credits the integration, not the person, so audit_logs keeps who clicked.
+  @Post('errors/:id/resolve')
+  @Audit('sentry.issue.resolve')
+  @ApiOperation({ summary: 'Mark a Sentry issue resolved (admin)' })
+  resolveError(@Param('id') id: string) {
+    return this.sentry.resolve(id);
   }
 
   @Get('incidents')
