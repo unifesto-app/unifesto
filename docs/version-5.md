@@ -1064,3 +1064,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q40 UPI-first checkout: Pay with UPI apps in the app (Razorpay Custom UI), UPI app or QR on the web, the sheet lists UPI first; per-platform kill switch in Apex (ships off) (#505)
 - **2026-11-01** · Z11 fix: the 18+ confirmation now saves from PATCH /users/me, so the mobile \"One quick step\" gate and web age confirm stop doing nothing (#506)
 - **2026-11-01** · Mobile: my avatar moved from the Home header into the tab bar as the Profile tab icon (#507)
+- **2026-11-01** · Mobile: tablet, landscape and multi-window layouts (centred column, card grids for Events, Saved and Spaces, sheets rotate) (#508)
