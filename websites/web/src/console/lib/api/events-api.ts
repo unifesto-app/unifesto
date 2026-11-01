@@ -741,11 +741,26 @@ export async function deleteFormField(
 
 // --- AI draft (M1) -----------------------------------------------------------
 
+/** AI2: a new event's own details as the source states them. Dates are IST. */
+export interface EventDraftBasics {
+  title?: string;
+  /** "YYYY-MM-DDTHH:MM", or "YYYY-MM-DD" when the source gave no time. */
+  start?: string;
+  end?: string;
+  venue?: string;
+  city?: string;
+  onlineUrl?: string;
+  /** Whole rupees; one at 0 means free entry. */
+  tickets: { name: string; price: number }[];
+}
+
 export interface EventDraft {
   description: string;
   /** `day` 1 = the event's first day; times are "HH:MM" in IST when known. */
   agenda: { day: number; start?: string; end?: string; title: string; detail?: string }[];
   faqs: { question: string; answer: string }[];
+  /** Only when drafting a new event. */
+  basics?: EventDraftBasics;
 }
 
 export type EventDraftResult =
@@ -753,13 +768,23 @@ export type EventDraftResult =
   | { ok: true; draft: EventDraft; dropped?: string[] }
   | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" | "held"; why?: string };
 
-/** Draft description, agenda and FAQs from notes or a link. Saves nothing. `POST /events/:id/ai-draft`. */
+/**
+ * Draft from notes, a link or a poster (AI2). Saves nothing.
+ * `POST /events/:id/ai-draft`, or `POST /events/ai-draft` for a new event in a space.
+ */
 export async function draftEventContent(
-  eventId: string,
-  payload: { notes?: string; url?: string }
+  target: { eventId: string } | { spaceId: string },
+  payload: { notes?: string; url?: string; poster?: File | null }
 ): Promise<{ data: EventDraftResult | null; error: ApiError | null }> {
+  const form = new FormData();
+  if ("spaceId" in target) form.append("spaceId", target.spaceId);
+  if (payload.notes) form.append("notes", payload.notes);
+  if (payload.url) form.append("url", payload.url);
+  if (payload.poster) form.append("poster", payload.poster);
   return apiCall<EventDraftResult>(
-    backendClient.post(`/events/${eventId}/ai-draft`, payload)
+    backendClient.post("eventId" in target ? `/events/${target.eventId}/ai-draft` : "/events/ai-draft", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
   );
 }
 

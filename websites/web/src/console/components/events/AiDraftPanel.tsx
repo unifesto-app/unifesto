@@ -8,9 +8,11 @@ import {
   createFaq,
   draftEventContent,
   type EventDraft,
+  type EventDraftBasics,
   type EventDraftResult,
 } from "@/console/lib/api/events-api";
 import { toIso, toLocalDatetime } from "@/console/lib/constants/event-form";
+import { inr } from "@/console/lib/utils/money";
 import { Button } from "@/console/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/ui/card";
 import { Input } from "@/console/components/ui/input";
@@ -23,17 +25,23 @@ const FAILED: Record<Extract<EventDraftResult, { ok: false }>["reason"], string>
   refused: "AI could not draft from that. Try different notes.",
   error: "AI could not draft this one. Try again, or write it yourself.",
   empty: "There wasn't enough about an event to draft from. Add a few more details.",
-  held: "The draft quoted a price, date or contact your notes don't have. Add it to your notes and try again.",
+  held: "The draft quoted a price, date or contact your notes or poster don't have. Add it to your notes and try again.",
 };
 
-interface AgendaRow {
+/** The backend's limit (AI10 image checks), said before the upload. */
+const MAX_POSTER_BYTES = 5 * 1024 * 1024;
+
+export interface AgendaRow {
   title: string;
   detail: string;
   /** datetime-local values, browser time. */
   start: string;
   end: string;
 }
-type FaqRow = EventDraft["faqs"][number];
+export type FaqRow = EventDraft["faqs"][number];
+
+/** AI2: drafted basics with start and end as datetime-local values, browser time. */
+export type UsedBasics = Omit<EventDraftBasics, "start" | "end"> & { start: string; end: string };
 
 /** A draft time ("HH:MM" IST on event day N) as a datetime-local value. */
 function slot(eventStart: string, day: number, hhmm: string): string {
@@ -45,6 +53,21 @@ function slot(eventStart: string, day: number, hhmm: string): string {
 
 const plusHour = (local: string) =>
   toLocalDatetime(new Date(new Date(local).getTime() + 3_600_000).toISOString());
+
+/** An IST "YYYY-MM-DD[THH:MM]" as a datetime-local value; `hhmm` when it has no time. */
+const istLocal = (v: string, hhmm: string) =>
+  toLocalDatetime(new Date(`${v.slice(0, 10)}T${v.slice(11, 16) || hhmm}:00+05:30`).toISOString());
+
+/** Times the source left out are guesses (the wizard's 10:00 start, an evening or two-hour end) for the curator to fix. */
+function toUsedBasics(b: EventDraftBasics): UsedBasics {
+  const start = b.start ? istLocal(b.start, "10:00") : "";
+  let end = start && b.end ? istLocal(b.end, "18:00") : "";
+  if (start && (!end || end <= start)) end = plusHour(plusHour(start));
+  return { ...b, start, end };
+}
+
+const showLocal = (local: string) =>
+  new Date(local).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 
 /**
  * The agenda model needs real start and end times, so untimed draft items get
@@ -63,29 +86,47 @@ function toRows(agenda: EventDraft["agenda"], eventStart: string): AgendaRow[] {
 }
 
 interface AiDraftPanelProps {
-  eventId: string;
+  /** The saved event. The new-event wizard (AI2) has none: it passes spaceId and the onUse* handlers. */
+  eventId?: string;
+  spaceId?: string;
+  /** The event's start; in the wizard, its current value until the draft gives one. */
   eventStart: string;
   /** Existing counts, so applied items go after what's there. */
   agendaCount: number;
   faqCount: number;
   onUseDescription: (text: string) => void;
+  /** Wizard only: applied parts go into the form and are saved with the event. */
+  onUseBasics?: (basics: UsedBasics, cover: File | null) => void;
+  onUseAgenda?: (rows: AgendaRow[]) => void;
+  onUseFaqs?: (rows: FaqRow[]) => void;
   onClose: () => void;
 }
 
 /**
- * M1: drafts description, agenda and FAQs from notes or a link. Everything is
- * an editable suggestion (D7); each section is applied only on its own click.
+ * M1: drafts description, agenda and FAQs from notes, a link or a poster
+ * (AI2); in the new-event wizard, the event's basics too. Everything is an
+ * editable suggestion (D7); each section is applied only on its own click.
  */
 export function AiDraftPanel({
   eventId,
+  spaceId,
   eventStart,
   agendaCount,
   faqCount,
   onUseDescription,
+  onUseBasics,
+  onUseAgenda,
+  onUseFaqs,
   onClose,
 }: AiDraftPanelProps) {
   const [notes, setNotes] = useState("");
   const [url, setUrl] = useState("");
+  const [poster, setPoster] = useState<File | null>(null);
+  const [basics, setBasics] = useState<UsedBasics | null>(null);
+  /** The poster behind the current draft, offered as the cover. */
+  const [draftPoster, setDraftPoster] = useState<File | null>(null);
+  const [useAsCover, setUseAsCover] = useState(true);
+  const [basicsUsed, setBasicsUsed] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
@@ -96,21 +137,27 @@ export function AiDraftPanel({
   const [applyError, setApplyError] = useState<string | null>(null);
 
   const draft = async () => {
+    if (poster && poster.size > MAX_POSTER_BYTES) return setNote("Images can be 5 MB at most.");
     setDrafting(true);
     setNote(null);
-    const { data, error } = await draftEventContent(eventId, {
+    const { data, error } = await draftEventContent(eventId ? { eventId } : { spaceId: spaceId! }, {
       ...(notes.trim() ? { notes: notes.trim() } : {}),
       ...(url.trim() ? { url: url.trim() } : {}),
+      poster,
     });
     setDrafting(false);
     if (!data) return setNote(error?.message || FAILED.error);
     if (!data.ok) return setNote(FAILED[data.reason]);
+    const used = onUseBasics && data.draft.basics ? toUsedBasics(data.draft.basics) : null;
+    setBasics(used);
+    setDraftPoster(poster);
+    setBasicsUsed(false);
     setDescription(data.draft.description || null);
-    setAgenda(toRows(data.draft.agenda, eventStart));
+    setAgenda(toRows(data.draft.agenda, used?.start ? toIso(used.start) : eventStart));
     setFaqs(data.draft.faqs);
     setApplied({ description: false, agenda: 0, faqs: 0 });
     setApplyError(null);
-    if (data.dropped?.length) setNote(`Left out what your notes don't back up: ${data.dropped.join("; ")}`);
+    if (data.dropped?.length) setNote(`Left out what your notes or poster don't back up: ${data.dropped.join("; ")}`);
   };
 
   const editAgenda = (i: number, patch: Partial<AgendaRow>) =>
@@ -143,9 +190,17 @@ export function AiDraftPanel({
     setApplying(null);
   };
 
+  // Wizard: hand the rows over; nothing to save until the event exists.
+  const handOver = <T,>(key: "agenda" | "faqs", rows: T[], setRows: (rows: T[]) => void, give: (rows: T[]) => void) => {
+    give(rows);
+    setApplied((a) => ({ ...a, [key]: a[key] + rows.length }));
+    setRows([]);
+  };
+
   const applyAgenda = () => {
     const bad = agenda.findIndex((r) => !r.title.trim() || !r.start || !r.end || r.end <= r.start);
     if (bad >= 0) return setApplyError(`Agenda item ${bad + 1} needs a title and an end after its start.`);
+    if (!eventId) return handOver("agenda", agenda, setAgenda, onUseAgenda!);
     void applyAll("agenda", agenda, setAgenda, (r, order) =>
       createAgenda(eventId, {
         title: r.title.trim(),
@@ -159,11 +214,20 @@ export function AiDraftPanel({
   const applyFaqs = () => {
     const bad = faqs.findIndex((f) => !f.question.trim() || !f.answer.trim());
     if (bad >= 0) return setApplyError(`FAQ ${bad + 1} needs a question and an answer.`);
+    if (!eventId) return handOver("faqs", faqs, setFaqs, onUseFaqs!);
     void applyAll("faqs", faqs, setFaqs, (f, order) =>
       createFaq(eventId, { question: f.question.trim(), answer: f.answer.trim(), order }), faqCount);
   };
 
-  const hasDraft = description !== null || agenda.length > 0 || faqs.length > 0 || applied.agenda > 0 || applied.faqs > 0;
+  const hasDraft = basics !== null || description !== null || agenda.length > 0 || faqs.length > 0 || applied.agenda > 0 || applied.faqs > 0;
+  // The edit page links to Content for applied rows; the wizard saves them with the event.
+  const appliedLink = eventId ? (
+    <Link href={`/console/events/${eventId}/content`} className="text-primary hover:underline">
+      Edit in Content
+    </Link>
+  ) : (
+    "Saved when you create the event."
+  );
 
   return (
     <Card>
@@ -189,6 +253,15 @@ export function AiDraftPanel({
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="ai-poster">Or the event poster</Label>
+            <Input
+              id="ai-poster"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setPoster(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="ai-url">Or a link to an existing event page</Label>
             <Input
               id="ai-url"
@@ -200,17 +273,71 @@ export function AiDraftPanel({
             />
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <Button type="button" onClick={draft} disabled={drafting || (!notes.trim() && !url.trim())}>
+            <Button type="button" onClick={draft} disabled={drafting || (!notes.trim() && !url.trim() && !poster)}>
               {drafting ? "Drafting…" : hasDraft ? "Draft again" : "Draft"}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Nothing is saved until you apply it. Check every detail first.
+              Nothing is saved until you {eventId ? "apply it" : "create the event"}. Check every detail first.
             </span>
           </div>
           {note && <p className="text-muted-foreground">{note}</p>}
         </div>
 
         {applyError && <p className="text-destructive">{applyError}</p>}
+
+        {basics && (
+          <section className="space-y-2 border-t border-border pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">Event details</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onUseBasics?.(basics, draftPoster && useAsCover ? draftPoster : null);
+                  setBasicsUsed(true);
+                }}
+              >
+                {basicsUsed ? "Filled in" : "Fill in my event"}
+              </Button>
+            </div>
+            <dl className="divide-y divide-border">
+              {(
+                [
+                  ["Name", basics.title],
+                  ["Starts", basics.start && showLocal(basics.start)],
+                  ["Ends", basics.end && showLocal(basics.end)],
+                  ["Venue", [basics.venue, basics.city].filter(Boolean).join(", ")],
+                  ["Joining link", basics.onlineUrl],
+                  ["Tickets", basics.tickets.map((t) => `${t.name} ${t.price ? inr(t.price) : "free"}`).join(" · ")],
+                ] as const
+              )
+                .filter(([, v]) => v)
+                .map(([label, v]) => (
+                  <div key={label} className="flex justify-between gap-4 py-2">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="min-w-0 break-words text-right">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+            {draftPoster && (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={useAsCover}
+                  onChange={(e) => setUseAsCover(e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                Use the poster as my cover
+              </label>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {basicsUsed
+                ? "Filled in. Check each step before you create the event."
+                : "Times the source didn't give are guesses. You can edit everything in the next steps."}
+            </p>
+          </section>
+        )}
 
         {description !== null && (
           <section className="space-y-2 border-t border-border pt-4">
@@ -231,7 +358,9 @@ export function AiDraftPanel({
             </div>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={8} />
             {applied.description && (
-              <p className="text-xs text-muted-foreground">Copied into the description field below. Save changes to keep it.</p>
+              <p className="text-xs text-muted-foreground">
+                Copied into the description field below. {eventId ? "Save changes to keep it." : "Saved when you create the event."}
+              </p>
             )}
           </section>
         )}
@@ -277,10 +406,7 @@ export function AiDraftPanel({
             )}
             {applied.agenda > 0 && (
               <p className="text-xs text-muted-foreground">
-                Added {applied.agenda} to the agenda.{" "}
-                <Link href={`/console/events/${eventId}/content`} className="text-primary hover:underline">
-                  Edit in Content
-                </Link>
+                Added {applied.agenda} to the agenda. {appliedLink}
               </p>
             )}
           </section>
@@ -315,10 +441,7 @@ export function AiDraftPanel({
             ))}
             {applied.faqs > 0 && (
               <p className="text-xs text-muted-foreground">
-                Added {applied.faqs} FAQs.{" "}
-                <Link href={`/console/events/${eventId}/content`} className="text-primary hover:underline">
-                  Edit in Content
-                </Link>
+                Added {applied.faqs} FAQs. {appliedLink}
               </p>
             )}
           </section>

@@ -10,13 +10,17 @@ import {
   Lock,
   Check,
   Plus,
+  Sparkle,
   Trash,
 } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { useSession } from "@/console/lib/context/SessionContext";
 import {
+  createAgenda,
   createEvent,
+  createFaq,
   createTicketType,
+  uploadEventCover,
   type CreateEventPayload,
   type TicketTypePayload,
   type EventType,
@@ -34,6 +38,12 @@ import {
 } from "@/console/lib/constants/event-form";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 import { PlaceSearch } from "@/console/components/events/PlaceSearch";
+import {
+  AiDraftPanel,
+  type AgendaRow,
+  type FaqRow,
+  type UsedBasics,
+} from "@/console/components/events/AiDraftPanel";
 import type { PickedPlace } from "@/console/lib/googlePlaces";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
@@ -235,6 +245,11 @@ function CreateEventInner() {
   // never gets a half-made event. Null (no plan yet, or no billing access) skips
   // the pre-check; the backend enforces both either way.
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);
+  // AI2: what the poster draft adds beyond the form, saved once the event exists.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [agenda, setAgenda] = useState<AgendaRow[]>([]);
+  const [faqs, setFaqs] = useState<FaqRow[]>([]);
+  const [cover, setCover] = useState<File | null>(null);
 
   useEffect(() => {
     if (spaceId) void getSpaceUsage(spaceId).then(({ data }) => setUsage(data));
@@ -282,6 +297,32 @@ function CreateEventInner() {
   // (Renaming the venue keeps the pin.)
   const setLocationField = (key: "venueAddress" | "city" | "state", value: string) =>
     setForm((f) => ({ ...f, [key]: value, latitude: null, longitude: null }));
+
+  // Fills only what the draft found; the curator checks each step after.
+  function fillFromDraft(b: UsedBasics, poster: File | null) {
+    setForm((f) => {
+      const paid = b.tickets.some((t) => t.price > 0);
+      const type: EventType = b.venue && b.onlineUrl ? "HYBRID" : b.onlineUrl ? "ONLINE" : b.venue ? "IN_PERSON" : f.type;
+      return {
+        ...f,
+        type,
+        title: b.title || f.title,
+        ...(b.start ? { startDateTime: b.start, endDateTime: b.end } : {}),
+        ...(b.venue ? { venueName: b.venue, venueAddress: "", latitude: null, longitude: null } : {}),
+        ...(b.city ? { city: b.city } : {}),
+        ...(b.onlineUrl ? { onlineUrl: b.onlineUrl } : {}),
+        ...(b.tickets.length
+          ? {
+              registrationType: paid ? "TICKETED" : "RSVP",
+              tickets: paid
+                ? b.tickets.map((t) => ({ key: newTicketKey(), name: t.name, price: String(t.price), capacity: "" }))
+                : defaultTickets("RSVP"),
+            }
+          : {}),
+      };
+    });
+    if (poster) setCover(poster);
+  }
 
   function setRegistrationType(rt: RegistrationType) {
     setForm((f) => {
@@ -459,12 +500,31 @@ function CreateEventInner() {
       setBusy(false);
       return;
     }
-    // Tickets are best-effort against the new event. If any is rejected we
-    // don't roll back — we surface which ones failed.
+    // Tickets, the cover and the drafted agenda and FAQs are best-effort
+    // against the new event. If any is rejected we don't roll back — we
+    // surface which ones failed.
     const failed: string[] = [];
     for (const payload of ticketPayloads()) {
       const { error: ticketError } = await createTicketType(data.id, payload);
       if (ticketError) failed.push(`${payload.name} (${ticketError.message})`);
+    }
+    if (cover) {
+      const { error: coverError } = await uploadEventCover(data.id, cover);
+      if (coverError) failed.push(`the cover (${coverError.message})`);
+    }
+    for (const [order, r] of agenda.entries()) {
+      const { error: agendaError } = await createAgenda(data.id, {
+        title: r.title.trim(),
+        ...(r.detail.trim() ? { description: r.detail.trim() } : {}),
+        startTime: toIso(r.start),
+        endTime: toIso(r.end),
+        order,
+      });
+      if (agendaError) failed.push(`agenda "${r.title.trim()}" (${agendaError.message})`);
+    }
+    for (const [order, f] of faqs.entries()) {
+      const { error: faqError } = await createFaq(data.id, { question: f.question.trim(), answer: f.answer.trim(), order });
+      if (faqError) failed.push(`FAQ "${f.question.trim()}" (${faqError.message})`);
     }
     if (failed.length > 0) {
       setCreatedEventId(data.id);
@@ -591,6 +651,30 @@ function CreateEventInner() {
             {stepBlurb[step.id]}
           </p>
         </div>
+
+        {/* AI2: kept mounted across steps so going back doesn't lose the draft. Hidden once the plan's month is full. */}
+        {!monthFull && spaceId && (
+          <div className={step.id === "basics" ? "" : "hidden"}>
+            {aiOpen ? (
+              <AiDraftPanel
+                spaceId={spaceId}
+                eventStart={toIso(form.startDateTime)}
+                agendaCount={0}
+                faqCount={0}
+                onUseDescription={(text) => set("description", text)}
+                onUseBasics={fillFromDraft}
+                onUseAgenda={(rows) => setAgenda((a) => [...a, ...rows])}
+                onUseFaqs={(rows) => setFaqs((f) => [...f, ...rows])}
+                onClose={() => setAiOpen(false)}
+              />
+            ) : (
+              <Button type="button" variant="outline" onClick={() => setAiOpen(true)}>
+                <Sparkle className="h-4 w-4" weight="fill" />
+                Start from a poster
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* --- Basics --- */}
         {step.id === "basics" && (
@@ -919,6 +1003,13 @@ function CreateEventInner() {
               />
               {form.category && (
                 <ReviewRow label="Category" value={form.category} />
+              )}
+              {cover && <ReviewRow label="Cover" value={cover.name} />}
+              {agenda.length > 0 && (
+                <ReviewRow label="Agenda" value={`${agenda.length} item${agenda.length === 1 ? "" : "s"}`} />
+              )}
+              {faqs.length > 0 && (
+                <ReviewRow label="FAQs" value={String(faqs.length)} />
               )}
             </dl>
 
