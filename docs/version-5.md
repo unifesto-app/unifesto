@@ -1070,3 +1070,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q5 registration gate asks only what the event needs: a missing name and the 18+ confirmation once; username generated; gender only as an organiser question; web hides the 18+ box once confirmed (#511)
 - **2026-11-01** · Q16 group-seat claims show the organiser's per-member questions for events in private spaces (web and app) (#512)
 - **2026-11-01** · AI3 + AI19: risk screen for new spaces and first events (opens an Apex REPORT case, never blocks) and a broadcast check that holds flagged emails, push and hackathon announcements from Unverified spaces for staff to release or block; both off until switched on (#513)
+- **2026-11-01** · Mobile film grain removed from every screen and card except the splash (owner ask, 1 Nov). (#514)
