@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { CapabilityConfigService } from '../auth/authorization/capability-config.service';
 import { PlanConfigModule } from '../subscription/plan-config.module';
+import { BroadcastCheck } from '../ai/broadcast-check';
 import { EmailCampaignsModule } from './email-campaigns.module';
 import { EmailCampaignsService } from './email-campaigns.service';
 import { EmailTemplatesService } from './email-templates.service';
@@ -38,6 +39,8 @@ describe('EmailCampaignsModule (DI graph)', () => {
       .compile();
 
     expect(moduleRef.get(EmailCampaignsService)).toBeInstanceOf(EmailCampaignsService);
+    // AI19: injected @Optional, so a missing AiModule import would pass silently.
+    expect((moduleRef.get(EmailCampaignsService) as unknown as { broadcastCheck: unknown }).broadcastCheck).toBeInstanceOf(BroadcastCheck);
     expect(moduleRef.get(EmailTemplatesService)).toBeInstanceOf(EmailTemplatesService);
     expect(moduleRef.get(SpaceEmailController)).toBeInstanceOf(SpaceEmailController);
     expect(moduleRef.get(EmailTrackingController)).toBeInstanceOf(EmailTrackingController);

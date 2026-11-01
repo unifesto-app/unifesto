@@ -1,5 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { BroadcastKind, type Prisma } from '@prisma/client';
+import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
+import { OnEvent } from '../common/on-event';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { HackathonAnnouncementEvent } from '../notifications/notifications.events';
@@ -16,11 +19,14 @@ import type { SendAnnouncementDto } from './dto/hackathon.dto';
  */
 @Injectable()
 export class HackathonAnnouncementsService {
+  private readonly logger = new Logger(HackathonAnnouncementsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly leaderboard: LeaderboardService,
     private readonly teams: HackathonTeamsService,
     private readonly events: EventEmitter2,
+    @Optional() private readonly broadcastCheck?: BroadcastCheck,
   ) {}
 
   async send(userId: string, eventId: string, dto: SendAnnouncementDto) {
@@ -61,7 +67,7 @@ export class HackathonAnnouncementsService {
       );
     }
 
-    await this.prisma.hackathonAnnouncement.create({
+    const row = await this.prisma.hackathonAnnouncement.create({
       data: {
         leaderboardId: board.id,
         audience: dto.audience,
@@ -73,15 +79,43 @@ export class HackathonAnnouncementsService {
         createdBy: userId,
       },
     });
-    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } });
-    this.events.emit(NotificationEvents.HackathonAnnouncement, {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true, spaceId: true } });
+    const notice: HackathonAnnouncementEvent = {
       userIds: [...recipients],
       eventId,
       eventTitle: event?.title ?? 'Hackathon',
       title,
       body,
-    } satisfies HackathonAnnouncementEvent);
+    };
+    // Checked after the curator's request returns (AI19), so sending never waits on the model.
+    void this.deliver(row.id, event?.spaceId ?? null, userId, notice).catch((err) =>
+      this.logger.error(`Hackathon announcement ${row.id} not delivered: ${(err as Error).message}`),
+    );
     return this.list(userId, eventId);
+  }
+
+  /** AI19: out now, or held for staff with the notice kept to send on release. */
+  private async deliver(id: string, spaceId: string | null, senderId: string, notice: HackathonAnnouncementEvent) {
+    const ok =
+      !this.broadcastCheck ||
+      (await this.broadcastCheck.clear({
+        kind: BroadcastKind.HACKATHON,
+        refId: id,
+        spaceId,
+        eventId: notice.eventId,
+        senderId,
+        text: `${notice.title}\n\n${notice.body}`,
+        payload: notice as unknown as Prisma.InputJsonValue,
+      }));
+    if (ok) this.events.emit(NotificationEvents.HackathonAnnouncement, notice);
+    else this.logger.warn(`Hackathon announcement ${id} held for staff review (AI19)`);
+  }
+
+  /** Staff released a held announcement: send the notice it was held with. */
+  @OnEvent(BROADCAST_DECIDED, { async: true })
+  onBroadcastDecided(e: BroadcastDecided): void {
+    if (e.kind !== BroadcastKind.HACKATHON || !e.release || !e.payload) return;
+    this.events.emit(NotificationEvents.HackathonAnnouncement, e.payload as unknown as HackathonAnnouncementEvent);
   }
 
   /** Sent announcements, newest first. */

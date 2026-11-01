@@ -6,6 +6,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { RISK_SCREEN, type RiskScreenRequest } from '../ai/risk-screen.events';
 import { PrismaService } from '../prisma/prisma.service';
 import { deleteWithoutMoney } from '../common/money-records';
 import { StorageService } from '../storage/storage.service';
@@ -2650,6 +2651,8 @@ export class EventsService {
 
     // "New event" email to space members: a queued job (J5), never in the request.
     await this.publishFanout?.enqueue(eventId);
+    // AI3: a space's first published event is screened after the request, never delaying it.
+    this.events.emit(RISK_SCREEN, { eventId, actorId: userId } satisfies RiskScreenRequest);
 
     // Push audience: the space's members, minus the publisher.
     const spaceMembers = await this.prisma.userRole.findMany({

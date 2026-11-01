@@ -1,3 +1,4 @@
+import { AiModule } from '../ai/ai.module';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { EventsModule } from '../events/events.module';
@@ -29,7 +30,7 @@ import {
  * that does, so it's cycle-free too.
  */
 @Module({
-  imports: [AuthModule, EventsModule, EmailModule],
+  imports: [AuthModule, EventsModule, EmailModule, AiModule],
   controllers: [
     AdminPushController,
     OrganiserAnnouncementController,

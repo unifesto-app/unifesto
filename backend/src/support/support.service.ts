@@ -144,6 +144,10 @@ const SUBJECT_MODELS = {
   PayoutBankAccount: 'payoutBankAccount',
   Payout: 'payout',
   StayBooking: 'stayBooking',
+  // AI3 risk screen and AI19 broadcast holds (staff-only cases).
+  Space: 'space',
+  Event: 'event',
+  BroadcastHold: 'broadcastHold',
 } as const;
 export type CaseSubject = { type: string; data: Record<string, unknown> };
 

@@ -264,6 +264,28 @@ describe('EmailCampaignsService', () => {
       expect(email.sendCustomCampaignEmail).not.toHaveBeenCalled();
     });
 
+    it("holds a space's campaign the broadcast check flags, before anyone is mailed (AI19)", async () => {
+      const prisma = prismaFor([]);
+      prisma.emailCampaign.findUnique.mockResolvedValue({ ...campaignRow, spaceId: 's1', sentBy: 'org', body: '<p>Pay on <a href="https://bit.ly/x">this</a></p>' });
+      prisma.emailCampaignLog.count.mockResolvedValue(0);
+      const check = { clear: jest.fn().mockResolvedValue(false) };
+      const svc = new EmailCampaignsService(prisma as any, email as any, config as any, queue as any, check as any);
+      await runAll(svc.runCampaign('c1', { lastAttempt: true }));
+      expect(check.clear).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'EMAIL', refId: 'c1', spaceId: 's1', senderId: 'org', text: expect.stringContaining('https://bit.ly/x') }),
+      );
+      expect(email.sendCustomCampaignEmail).not.toHaveBeenCalled();
+      expect(prisma.emailCampaign.updateMany).toHaveBeenCalledWith({ where: { id: 'c1', status: 'SENDING' }, data: { status: 'HELD' } });
+
+      // Staff release: back to PENDING, then claimed and queued like a send-now.
+      await svc.onBroadcastDecided({ kind: 'EMAIL', refId: 'c1', release: true, payload: null });
+      expect(prisma.emailCampaign.updateMany).toHaveBeenCalledWith({ where: { id: 'c1', status: 'HELD' }, data: { status: 'PENDING' } });
+      expect(queue.add).toHaveBeenCalledWith('c1');
+      // Block: cancelled, never sent.
+      await svc.onBroadcastDecided({ kind: 'EMAIL', refId: 'c1', release: false, payload: null });
+      expect(prisma.emailCampaign.updateMany).toHaveBeenLastCalledWith({ where: { id: 'c1', status: 'HELD' }, data: { status: 'CANCELLED' } });
+    });
+
     it('stale sweep fails day-old SENDING rows and re-queues recent stalls', async () => {
       const prisma = prismaFor([]);
       prisma.emailCampaign.findMany.mockResolvedValue([{ id: 'c1' }]);

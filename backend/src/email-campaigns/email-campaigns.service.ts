@@ -6,9 +6,11 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  BroadcastKind,
   EmailCampaign,
   EmailCampaignStatus,
   EmailLogStatus,
@@ -37,6 +39,9 @@ import {
   TestCampaignDto,
 } from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
+import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
+import { emailText } from '../ai/risk';
+import { OnEvent } from '../common/on-event';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { findIdentityByEmail } from '../auth/identifiers';
 
@@ -91,6 +96,7 @@ export class EmailCampaignsService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly queue: EmailCampaignQueue,
+    @Optional() private readonly broadcastCheck?: BroadcastCheck,
   ) {
     // Public host that serves the tracking endpoints (must be reachable by
     // recipients' mail clients, so it is the API's public URL, not localhost).
@@ -416,6 +422,7 @@ export class EmailCampaignsService {
         where: { id: campaignId },
       });
       if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
+      if (!(await this.cleared(campaign))) return;
 
       const allowed = await this.withConsent(
         campaign,
@@ -484,6 +491,41 @@ export class EmailCampaignsService {
         .catch(() => undefined);
       throw error;
     }
+  }
+
+  /**
+   * AI19: a space's campaign is checked once, before anyone is mailed; a held
+   * one waits as HELD until staff release or block it (onBroadcastDecided).
+   */
+  private async cleared(campaign: EmailCampaign): Promise<boolean> {
+    if (!campaign.spaceId || !this.broadcastCheck) return true;
+    if (await this.prisma.emailCampaignLog.count({ where: { campaignId: campaign.id } })) return true;
+    const ok = await this.broadcastCheck.clear({
+      kind: BroadcastKind.EMAIL,
+      refId: campaign.id,
+      spaceId: campaign.spaceId,
+      senderId: campaign.sentBy,
+      text: emailText(campaign.subject, campaign.body, campaign.subjectB),
+    });
+    if (!ok) {
+      await this.prisma.emailCampaign.updateMany({
+        where: { id: campaign.id, status: EmailCampaignStatus.SENDING },
+        data: { status: EmailCampaignStatus.HELD },
+      });
+      this.logger.warn(`Campaign ${campaign.id} held for staff review (AI19)`);
+    }
+    return ok;
+  }
+
+  /** Staff released (back to PENDING, then sent) or blocked (CANCELLED) a held campaign. */
+  @OnEvent(BROADCAST_DECIDED, { async: true })
+  async onBroadcastDecided(e: BroadcastDecided): Promise<void> {
+    if (e.kind !== BroadcastKind.EMAIL) return;
+    const moved = await this.prisma.emailCampaign.updateMany({
+      where: { id: e.refId, status: EmailCampaignStatus.HELD },
+      data: { status: e.release ? EmailCampaignStatus.PENDING : EmailCampaignStatus.CANCELLED },
+    });
+    if (moved.count && e.release) await this.startCampaign(e.refId);
   }
 
   private async sendBatch(

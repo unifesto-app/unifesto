@@ -37,6 +37,7 @@ const STATUS_BADGE: Record<
   SENT: { label: "Sent", variant: "success" },
   FAILED: { label: "Failed", variant: "destructive" },
   CANCELLED: { label: "Cancelled", variant: "neutral" },
+  HELD: { label: "Held for review", variant: "warning" },
 };
 
 const TARGET_LABEL: Record<string, string> = {

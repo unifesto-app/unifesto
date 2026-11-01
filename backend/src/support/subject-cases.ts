@@ -43,6 +43,8 @@ export interface SubjectCaseOpen {
   category?: SupportTicketCategory;
   /** Tell the desk through D3 (staff push on Platform). */
   notify?: boolean;
+  /** Whose action raised it, when not the requester's (AI3/AI19: the organiser), so every admin hears. */
+  actorId?: string;
 }
 
 export interface SubjectCaseUpdate {
@@ -150,7 +152,7 @@ export class SubjectCases {
         },
         select: { id: true },
       });
-      if (e.notify) this.tell({ ticketId: t.id, kind: 'CREATED', to: 'DESK', actorId: e.requesterId });
+      if (e.notify) this.tell({ ticketId: t.id, kind: 'CREATED', to: 'DESK', actorId: e.actorId ?? e.requesterId });
       return t.id;
     } catch (err) {
       this.logger.error(`open ${e.subjectType} ${e.subjectId}: ${err instanceof Error ? err.message : String(err)}`);

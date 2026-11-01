@@ -21,7 +21,9 @@ export type EmailCampaignStatus =
   | "SENT"
   | "FAILED"
   | "SCHEDULED"
-  | "CANCELLED";
+  | "CANCELLED"
+  /** AI19: Unifesto is checking it before it goes out. */
+  | "HELD";
 
 export type EmailLogStatus = "SENT" | "FAILED" | "BOUNCED";
 

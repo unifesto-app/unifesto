@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import slugify from 'slugify';
 import { Timeout } from '@nestjs/schedule';
+import { RISK_SCREEN, type RiskScreenRequest } from '../ai/risk-screen.events';
 import { PrismaService } from '../prisma/prisma.service';
 import { deleteWithoutMoney } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
@@ -1290,6 +1291,8 @@ export class SpacesService {
       return { request, space };
     });
     await this.tellSpaceLive(userId, space);
+    // AI3: screened after the request, never holding the space back.
+    this.events?.emit(RISK_SCREEN, { spaceId: space.id, actorId: userId } satisfies RiskScreenRequest);
     return { ...request, space: { id: space.id, slug: space.slug, name: space.name } };
   }
 

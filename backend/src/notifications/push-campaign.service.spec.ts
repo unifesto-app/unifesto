@@ -79,6 +79,31 @@ describe('PushCampaignService confirm step', () => {
     expect(prisma.pushCampaign.update.mock.calls[0][0].data).toMatchObject({ status: 'FAILED', sentAt: null });
   });
 
+  it("holds an organiser announcement the broadcast check flags; staff release sends it (AI19)", async () => {
+    const prisma = {
+      pushCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'c3', scope: 'EVENT', eventId: 'e1', createdById: 'org', title: 'Confirm seat', body: 'Pay ₹500 on UPI to 98xxxx', data: { deepLink: 'unifesto://event/x' }, targetSegment: { type: 'event', eventId: 'e1' },
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      event: { findUnique: jest.fn().mockResolvedValue({ spaceId: 's1' }) },
+    };
+    const notifications = { send: jest.fn() };
+    const check = { clear: jest.fn().mockResolvedValue(false) };
+    const svc = new PushCampaignService(prisma as any, notifications as any, {} as any, {} as any, check as any);
+    await svc.dispatch('c3');
+    expect(check.clear).toHaveBeenCalledWith(expect.objectContaining({ kind: 'PUSH', refId: 'c3', spaceId: 's1', eventId: 'e1', senderId: 'org' }));
+    expect(notifications.send).not.toHaveBeenCalled();
+    expect(prisma.pushCampaign.update).toHaveBeenCalledWith({ where: { id: 'c3' }, data: { status: 'HELD' } });
+
+    await svc.onBroadcastDecided({ kind: 'PUSH' as any, refId: 'c3', release: true, payload: null });
+    expect(prisma.pushCampaign.updateMany).toHaveBeenCalledWith({ where: { id: 'c3', status: 'HELD' }, data: { status: 'DRAFT' } });
+    // The re-dispatch claims DRAFT → SENDING again.
+    expect(prisma.pushCampaign.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: { status: 'SENDING' } }));
+  });
+
   it('a staff test run is marked [Test], kept out of the inbox and sent as a staff alert', async () => {
     const prisma = {
       pushCampaign: {
