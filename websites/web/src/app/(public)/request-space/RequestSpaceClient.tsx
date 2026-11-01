@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { verifyPhoneCode } from "@/lib/api/registration";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -210,12 +211,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
   });
 
   const verifyPhone = run(async () => {
-    const res = await call<AuthResponse>("POST", "/auth/verify-mobile", {
-      mobileNumber,
-      otp: otp.trim(),
-      tempToken,
-    });
-    await submit(res);
+    await submit(await verifyPhoneCode(mobileNumber, otp.trim(), tempToken));
   });
 
   const resendPhoneCode = run(() => sendPhoneCode(tempToken).then(() => undefined));

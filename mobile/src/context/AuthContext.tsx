@@ -41,7 +41,7 @@ interface AuthContextType {
   tempToken: string | null;
   // OTP Auth
   sendMobileOtp: (mobileNumber: string) => Promise<void>;
-  verifyMobileOtp: (mobileNumber: string, otp: string) => Promise<{ isNewUser: boolean }>;
+  verifyMobileOtp: (mobileNumber: string, otp: string, linkToken?: string) => Promise<{ isNewUser: boolean }>;
   sendEmailOtp: (email: string) => Promise<void>;
   verifyEmailOtp: (email: string, otp: string) => Promise<void>;
   // Social Auth
@@ -199,10 +199,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!response?.ok) throw await errorFrom(response, 'Failed to send OTP');
   };
 
-  const verifyMobileOtp = async (mobileNumber: string, otp: string) => {
+  const verifyMobileOtp = async (mobileNumber: string, otp: string, linkToken?: string) => {
     const response = await makePublicRequest('/auth/verify-mobile', {
       method: 'POST',
-      body: JSON.stringify({ mobileNumber, otp, tempToken }),
+      // Q33: the link token (my yes to "add this to that account") stands in for the code.
+      body: JSON.stringify(linkToken ? { mobileNumber, linkToken, tempToken } : { mobileNumber, otp, tempToken }),
     });
 
     if (!response?.ok) throw await errorFrom(response, 'Invalid OTP');

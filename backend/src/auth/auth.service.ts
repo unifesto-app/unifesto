@@ -104,6 +104,18 @@ async function phoneOnOtherAccount(db: Prisma.TransactionClient, userId: string)
   return { statusCode: 409, code: 'PHONE_ON_OTHER_ACCOUNT', message, method: id?.provider ?? null, email: masked };
 }
 
+/**
+ * Q33: proof that this sign-in passed the code for this number. The 409 above
+ * hands it out; sending it back instead of a code is the person's yes to adding
+ * the sign-in to the number's account. Bound to both, so it opens nothing else.
+ */
+interface LinkTokenPayload {
+  type: 'link';
+  provider: Provider;
+  providerUserId: string;
+  mobileNumber: string;
+}
+
 /** Mobile-verification temp token (`type: 'temp'`). */
 interface TempTokenPayload {
   type: 'temp';
@@ -444,9 +456,17 @@ export class AuthService {
       const mobileNumber = normalizeMobile(dto.mobileNumber);
       if (!mobileNumber) throw new UnauthorizedException('Invalid or expired OTP');
 
-      this.assertOtpOk(
-        await this.otpService.verifyOtp(mobileNumber, dto.otp, ip),
-      );
+      // Q33: a number on another account is linked only on the person's yes,
+      // which comes back as the link token from the 409 instead of a code.
+      const linkConfirmed = !!dto.linkToken && this.verifyLinkToken(dto.linkToken, decoded, mobileNumber);
+      if (!linkConfirmed) {
+        this.assertOtpOk(await this.otpService.verifyOtp(mobileNumber, dto.otp ?? '', ip));
+      }
+      const askToLink = async (db: Prisma.TransactionClient, ownerId: string) =>
+        new ConflictException({
+          ...(await phoneOnOtherAccount(db, ownerId)),
+          linkToken: this.generateLinkToken(decoded, mobileNumber),
+        });
 
       // verifyTempToken guarantees provider + providerUserId are non-empty, and
       // the unique-key lookups below make Prisma throw rather than drop an
@@ -471,10 +491,11 @@ export class AuthService {
         });
 
         if (existingMobileUser && existingMobileUser.id !== cognitoUser.user.id) {
-          // Mobile belongs to another account: move this login onto it, but
-          // only delete the account we came from if it's an empty Cognito
-          // placeholder (S48). Anything else may be a real account (manual
-          // add, judge invite, email-OTP user) and must never cascade-delete.
+          // Mobile belongs to another account: on the person's yes (Q33), move
+          // this login onto it, but only delete the account we came from if
+          // it's an empty Cognito placeholder (S48). Anything else may be a
+          // real account (manual add, judge invite, email-OTP user) and must
+          // never cascade-delete, so it can't be linked from here at all.
           await this.prisma.$transaction(async (tx) => {
             const from = await tx.user.findUnique({
               where: { id: cognitoUser.user.id },
@@ -498,12 +519,16 @@ export class AuthService {
             ) {
               throw new ConflictException(await phoneOnOtherAccount(tx, existingMobileUser.id));
             }
+            if (!linkConfirmed) throw await askToLink(tx, existingMobileUser.id);
             await tx.userIdentity.update({
               where: identityKey,
               data: { userId: existingMobileUser.id },
             });
             await tx.user.delete({ where: { id: cognitoUser.user.id } });
           });
+          this.notifySignInMethodAdded(existingMobileUser.id, decoded.provider).catch((err) =>
+            this.logger.error(`sign-in method notice failed for ${existingMobileUser.id}`, err),
+          );
           const userRoles = await this.prisma.userRole.findMany({
             where: { userId: existingMobileUser.id },
             include: { role: { select: { code: true, name: true } } },
@@ -538,7 +563,7 @@ export class AuthService {
       });
 
       if (existingUser) {
-        // Link identity to existing user
+        if (!linkConfirmed) throw await askToLink(this.prisma, existingUser.id);
         await this.linkIdentityToUser(
           existingUser.id,
           decoded.provider,
@@ -650,7 +675,8 @@ export class AuthService {
     // No exact identity match: link to an existing account by email, but only
     // when the IdP vouches for the email AND the existing identity's email was
     // verified (S5). Otherwise fall through to the new-user path: mobile OTP,
-    // which links to the existing account only if they prove its mobile.
+    // which links to the existing account only if they prove its mobile and
+    // then say yes (Q33).
     if (email && emailVerified) {
       const existingByEmail = await findIdentityByEmail(this.prisma, email, {
         where: { emailVerified: true },
@@ -1161,6 +1187,36 @@ export class AuthService {
     };
   }
 
+  /** Q33: only minted after the code for `mobileNumber` passed for this sign-in. */
+  private generateLinkToken(temp: TempTokenPayload, mobileNumber: string): string {
+    const payload: LinkTokenPayload = {
+      type: 'link',
+      provider: temp.provider,
+      providerUserId: temp.providerUserId,
+      mobileNumber,
+    };
+    return jwt.sign(payload, this.jwtSecret, { expiresIn: '10m' } as jwt.SignOptions);
+  }
+
+  /** The link token must be for this same sign-in and number; anything else starts over. */
+  private verifyLinkToken(token: string, temp: TempTokenPayload, mobileNumber: string): true {
+    let decoded: Partial<LinkTokenPayload> & { type?: unknown };
+    try {
+      decoded = jwt.verify(token, this.jwtSecret) as typeof decoded;
+    } catch {
+      throw new UnauthorizedException(SIGN_IN_TIMED_OUT);
+    }
+    if (
+      decoded?.type !== 'link' ||
+      decoded.provider !== temp.provider ||
+      decoded.providerUserId !== temp.providerUserId ||
+      decoded.mobileNumber !== mobileNumber
+    ) {
+      throw new UnauthorizedException(SIGN_IN_TIMED_OUT);
+    }
+    return true;
+  }
+
   /**
    * Accepts access tokens only. Tokens issued before S6 have no `type`/`tv`
    * and stay valid; refresh and temp tokens are refused. `tv` must match the
@@ -1340,7 +1396,7 @@ export class AuthService {
     // Steps 2-3 link by email, only when Cognito says the email is verified
     // (S5). Unverified: a new placeholder user is created below and the mobile
     // OTP step moves the identity onto the existing account if they prove its
-    // mobile number.
+    // mobile number and say yes (Q33).
     // Step 2: Find user by verified email identity (any provider)
     if (!user && emailVerified) {
       const identityByEmail = await findIdentityByEmail(this.prisma, email, {

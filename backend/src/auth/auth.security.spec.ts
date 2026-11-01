@@ -224,12 +224,13 @@ describe('S4: temp token is required for mobile verification', () => {
     const { service, prisma } = setup();
     const placeholder = user({ id: 'placeholder', mobileVerified: false });
     prisma.userIdentity.findUnique.mockResolvedValue({ user: placeholder });
-    prisma.user.findUnique
-      .mockResolvedValueOnce(user({ id: 'owner' }))
-      .mockResolvedValueOnce(freshPlaceholder());
+    prisma.user.findUnique.mockImplementation(async ({ where }: any) =>
+      where.mobileNumber ? user({ id: 'owner' }) : freshPlaceholder(),
+    );
     const temp = sign({ type: 'temp', provider: 'GOOGLE', providerUserId: 'g-1' }, '15m');
+    const { linkToken } = (await service.verifyMobile(dto(temp)).catch((e) => e)).getResponse();
 
-    const res = await service.verifyMobile(dto(temp));
+    const res = await service.verifyMobile({ ...dto(temp), linkToken });
 
     expect(res.user.id).toBe('owner');
     expect(prisma.userIdentity.updateMany).not.toHaveBeenCalled();
@@ -265,15 +266,16 @@ describe('S48: verify-mobile never deletes a real account', () => {
     ctx.prisma.userIdentity.findUnique.mockResolvedValue({
       user: user({ id: 'from', mobileVerified: false }),
     });
-    ctx.prisma.user.findUnique
-      .mockResolvedValueOnce(user({ id: 'owner' }))
-      .mockResolvedValueOnce(probe);
+    ctx.prisma.user.findUnique.mockImplementation(async ({ where }: any) =>
+      where.mobileNumber ? user({ id: 'owner' }) : probe,
+    );
     return { ...ctx, call: () => ctx.service.verifyMobile(dto(provider)) };
   };
 
-  it('deletes an empty Cognito placeholder and signs into the mobile owner', async () => {
-    const { prisma, call } = arrange(freshPlaceholder());
-    const res = await call();
+  it('on yes (Q33), deletes an empty Cognito placeholder and signs into the mobile owner', async () => {
+    const { service, prisma, call } = arrange(freshPlaceholder());
+    const { linkToken } = (await call().catch((e) => e)).getResponse();
+    const res = await service.verifyMobile({ ...dto(), tempToken: temp(), linkToken });
     expect(res.user.id).toBe('owner');
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'from' } });
   });
@@ -344,6 +346,97 @@ describe('S48: verify-mobile never deletes a real account', () => {
     otp.verifyOtp.mockResolvedValue('invalid');
     await expect(call()).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.userIdentity.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('Q33: a number on another account is only linked when I say yes', () => {
+  const emailTemp = (email = 'new@x.com') =>
+    sign({ type: 'temp', provider: 'EMAIL', providerUserId: email, email, emailVerified: true }, '15m');
+  const arrange = () => {
+    const ctx = setup();
+    ctx.prisma.user.findUnique.mockResolvedValue(user({ id: 'owner' }));
+    ctx.prisma.userIdentity.findMany.mockResolvedValue([{ provider: 'GOOGLE', email: 'asha@gmail.com' }]);
+    return ctx;
+  };
+  const ask = async (service: AuthService, tempToken = emailTemp()) => {
+    const err: any = await service
+      .verifyMobile({ mobileNumber: '+919999999999', otp: '123456', tempToken })
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(ConflictException);
+    return err.getResponse();
+  };
+
+  it('an email sign-up is told and asked, not signed into the number’s account', async () => {
+    const { service, prisma } = arrange();
+    const body = await ask(service);
+    expect(body).toMatchObject({
+      code: 'PHONE_ON_OTHER_ACCOUNT',
+      method: 'GOOGLE',
+      email: 'as•••@gmail.com',
+      linkToken: expect.any(String),
+    });
+    expect(prisma.userIdentity.create).not.toHaveBeenCalled();
+    expect(prisma.authSession.create).not.toHaveBeenCalled();
+  });
+
+  it('yes (the link token, no new code) links the email and signs in', async () => {
+    const { service, prisma, otp } = arrange();
+    const temp = emailTemp();
+    const { linkToken } = await ask(service, temp);
+    otp.verifyOtp.mockClear();
+
+    const res = await service.verifyMobile({ mobileNumber: '+919999999999', linkToken, tempToken: temp } as any);
+
+    expect(otp.verifyOtp).not.toHaveBeenCalled();
+    expect(prisma.userIdentity.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'owner', provider: 'EMAIL', providerUserId: 'new@x.com' }),
+    });
+    expect(res.user.id).toBe('owner');
+    expect(res.accessToken).not.toBe('');
+  });
+
+  it.each([
+    ['another sign-in', (t: string) => ({ linkToken: t, tempToken: emailTemp('other@x.com'), mobileNumber: '+919999999999' })],
+    ['another number', (t: string) => ({ linkToken: t, tempToken: emailTemp(), mobileNumber: '+918888888888' })],
+    ['a made-up token', () => ({ linkToken: sign({ type: 'link' }), tempToken: emailTemp(), mobileNumber: '+919999999999' })],
+  ])("a link token can't be used for %s", async (_n, dto) => {
+    const { service, prisma } = arrange();
+    const { linkToken } = await ask(service);
+    await expect(service.verifyMobile(dto(linkToken) as any)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.userIdentity.create).not.toHaveBeenCalled();
+  });
+
+  it('knowing the number is not enough: no code, no token, no account', async () => {
+    const { service, prisma, otp } = arrange();
+    otp.verifyOtp.mockResolvedValue('invalid');
+    await expect(
+      service.verifyMobile({ mobileNumber: '+919999999999', otp: '000000', tempToken: emailTemp() }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.userIdentity.findMany).not.toHaveBeenCalled();
+    expect(prisma.userIdentity.create).not.toHaveBeenCalled();
+  });
+
+  it("a link token isn't a session", async () => {
+    const { service } = arrange();
+    const { linkToken } = await ask(service);
+    await expect(service.validateAccessToken(linkToken)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('a new Google sign-in asks too, and only moves (and drops its placeholder) on yes', async () => {
+    const ctx = setup();
+    ctx.prisma.userIdentity.findUnique.mockResolvedValue({ user: user({ id: 'from', mobileVerified: false }) });
+    ctx.prisma.user.findUnique.mockImplementation(async ({ where }: any) =>
+      where.mobileNumber ? user({ id: 'owner' }) : freshPlaceholder(),
+    );
+    const temp = sign({ type: 'temp', provider: 'GOOGLE', providerUserId: 'g-1' }, '15m');
+
+    const { linkToken } = await ask(ctx.service, temp);
+    expect(ctx.prisma.user.delete).not.toHaveBeenCalled();
+    expect(ctx.prisma.userIdentity.update).not.toHaveBeenCalled();
+
+    const res = await ctx.service.verifyMobile({ mobileNumber: '+919999999999', linkToken, tempToken: temp } as any);
+    expect(res.user.id).toBe('owner');
+    expect(ctx.prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'from' } });
   });
 });
 
@@ -1031,10 +1124,12 @@ describe('J17: identifiers, OTP delivery, provider audiences', () => {
   it('verify-mobile matches the account by the E.164 number', async () => {
     const { service, prisma, otp } = setup();
     prisma.user.findUnique.mockResolvedValue(user({ id: 'owner' }));
-    const res = await service.verifyMobile({ mobileNumber: '09999999999', otp: '123456', tempToken: temp() });
+    const call = service.verifyMobile({ mobileNumber: '09999999999', otp: '123456', tempToken: temp() });
+    // Found, so (Q33) it asks before linking.
+    await expect(call).rejects.toBeInstanceOf(ConflictException);
     expect(otp.verifyOtp).toHaveBeenCalledWith('+919999999999', '123456', undefined);
     expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { mobileNumber: '+919999999999' } });
-    expect(res.user.id).toBe('owner');
+    expect(prisma.userIdentity.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner' } }));
   });
 
   it('Apple login fails closed without APPLE_CLIENT_ID', async () => {

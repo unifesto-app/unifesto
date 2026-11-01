@@ -5,7 +5,13 @@
 
 /** A failed API call. `status` is the HTTP status, or 0 when the server couldn't be reached. */
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number, readonly code?: string) {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    /** The rest of the server's error body, for codes that carry more (Q33: `linkToken`). */
+    readonly data?: Record<string, unknown> | null,
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -42,7 +48,7 @@ export async function errorFrom(
   const body = await readJson<{ message?: unknown; code?: unknown }>(response);
   const message = Array.isArray(body?.message) ? body.message[0] : body?.message;
   const code = typeof body?.code === 'string' ? body.code : undefined;
-  return new ApiError(typeof message === 'string' && message ? message : fallback, response.status, code);
+  return new ApiError(typeof message === 'string' && message ? message : fallback, response.status, code, body);
 }
 
 /** The server's 403 for a public space (or its event) that is suspended or otherwise not live. */
