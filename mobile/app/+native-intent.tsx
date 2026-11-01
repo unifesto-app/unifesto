@@ -18,6 +18,10 @@ export async function redirectSystemPath({ path, initial }: { path: string; init
   // AASA + Android intent filters still hand /signup links to the app; the
   // signup route is gone, so send them to login.
   if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)signup(?:[/?#]|$)/i.test(path)) return '/login';
+  // Q34: the web's /event/<slug>/register has no app route of its own. Open the
+  // event, which presses Register once it knows who I am (useEventDetail).
+  const reg = /^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)event\/([^/?#]+)\/register\/?(?:\?([^#]*))?(?:#|$)/i.exec(path);
+  if (reg) return `/event/${reg[1]}?register=1${reg[2] ? `&${reg[2]}` : ''}`;
   // Huddle sessions were retired; a cached AASA can still hand their links over.
   if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)(?:session|huddle)(?:[/?#]|$)/i.test(path)) return '/';
   try {

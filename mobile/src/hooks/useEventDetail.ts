@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { useFocusEffect } from 'expo-router/react-navigation';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../context/AuthContext';
 import { shareLink } from '../lib/share';
@@ -33,7 +33,7 @@ export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'choose' | 'fr
  */
 export function useEventDetail(eventId: string | undefined) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -61,6 +61,9 @@ export function useEventDetail(eventId: string | undefined) {
   const [notifyDone, setNotifyDone] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
+  // Who the last finished load was for (null = signed out), so a load that
+  // began before my sign-in was restored doesn't count as "knows who I am".
+  const loadedFor = useRef<string | null | undefined>(undefined);
 
   /** `silent`: a pull-to-refresh keeps the page on screen while it reloads. */
   const loadEvent = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -138,6 +141,7 @@ export function useEventDetail(eventId: string | undefined) {
         setSpaceUnavailable(isSpaceUnavailable(error));
       }
     } finally {
+      loadedFor.current = user?.id ?? null;
       setLoading(false);
       setRefreshing(false);
     }
@@ -293,6 +297,20 @@ export function useEventDetail(eventId: string | undefined) {
   const addTicket = () => {
     if (event) router.push({ pathname: '/event-registration', params: { eventId: event.id } });
   };
+
+  // Q34: a web /event/<slug>/register link lands here with `register` (see
+  // +native-intent). Once the page knows the event and who I am, press Register
+  // for me, but only where the button would start registering; otherwise the
+  // page already says why not (registered, sold out, sub-events, over).
+  const { register } = useLocalSearchParams<{ register?: string }>();
+  const autoRegister = useRef(!!register);
+  useEffect(() => {
+    if (!autoRegister.current || authLoading || loading || !event || loadedFor.current !== (user?.id ?? null)) return;
+    autoRegister.current = false;
+    if (!isOver && (registerMode === 'signIn' || registerMode === 'choose' || registerMode === 'free' || registerMode === 'paid')) {
+      void handleRegister();
+    }
+  }, [authLoading, loading, event, user, isOver, registerMode]);
 
   const share = useCallback(async () => {
     if (!event) return;

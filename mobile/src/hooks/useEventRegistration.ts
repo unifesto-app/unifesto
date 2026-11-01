@@ -81,8 +81,7 @@ export function displayFieldValue(field: CustomField, value: any): string {
 
 /**
  * Everything behind the registration flow: event + tickets, the profile gate,
- * attendee details, coupon, the 15-minute hold, order creation, Razorpay and
- * verification. The screen only renders what this returns.
+ * attendee details, coupon, order creation, Razorpay and verification. The screen only renders what this returns.
  */
 /**
  * attendee[0] has everything needed to show as the read-only "You" summary.
