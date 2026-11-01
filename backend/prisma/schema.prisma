@@ -1147,6 +1147,15 @@ model Space {
   rejectedAt      DateTime?   @map("rejected_at") @db.Timestamptz(6)
   approvedBy      String?     @map("approved_by") @db.Uuid
   rejectionReason String?     @map("rejection_reason") @db.Text
+  // Q39: who last moved `status`, when and why (shown to the owner). By null
+  // with a time = the system (the abandoned-space archive); both null = an
+  // older change, treated as Platform's.
+  statusReason    String?     @map("status_reason") @db.Text
+  statusChangedAt DateTime?   @map("status_changed_at") @db.Timestamptz(6)
+  statusChangedBy String?     @map("status_changed_by") @db.Uuid
+  // When the owner was told an abandoned space will be archived in 14 days.
+  // Cleared by every status change.
+  archiveWarnedAt DateTime?   @map("archive_warned_at") @db.Timestamptz(6)
 
   // Verified = a platform admin confirmed this space is run by (or with the
   // permission of) the organisation it is named after. Unverified spaces show

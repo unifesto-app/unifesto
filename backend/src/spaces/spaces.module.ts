@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SpacesController } from './spaces.controller';
 import { SpacesService } from './spaces.service';
+import { SpaceLifecycleService } from './space-lifecycle';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
@@ -12,7 +13,7 @@ import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
 @Module({
   imports: [ConfigModule, PrismaModule, AuthModule, StorageModule, EmailModule, BannerPaletteModule],
   controllers: [SpacesController],
-  providers: [SpacesService, RolesGuard],
+  providers: [SpacesService, SpaceLifecycleService, RolesGuard],
   exports: [SpacesService],
 })
 export class SpacesModule {}

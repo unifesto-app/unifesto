@@ -8,7 +8,7 @@ import {
   Users,
   Stack,
 } from "@unifesto/unicon/react";
-import { getAllSpacesAdmin, type AdminSpace } from "@/lib/api/spaces-api";
+import { getAllSpacesAdmin, SPACE_STATUS_LABEL, type AdminSpace } from "@/lib/api/spaces-api";
 import type { SpaceStatus } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -36,14 +36,6 @@ const STATUS_VARIANT: Record<
   INACTIVE: "neutral",
   ARCHIVED: "neutral",
 };
-
-function roleLabel(code?: string) {
-  if (!code) return null;
-  return code
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 export default function SpacesPage() {
   const [spaces, setSpaces] = useState<AdminSpace[]>([]);
@@ -244,7 +236,7 @@ function SpaceRow({ space }: { space: AdminSpace }) {
       </td>
       <td className="py-3">
         <Badge variant={STATUS_VARIANT[space.status]}>
-          {roleLabel(space.status) ?? space.status}
+          {SPACE_STATUS_LABEL[space.status] ?? space.status}
         </Badge>
       </td>
     </tr>

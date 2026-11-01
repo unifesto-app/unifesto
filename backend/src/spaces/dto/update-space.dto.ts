@@ -1,7 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateSpaceDto } from './create-space.dto';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
-import { SpaceStatus } from '@prisma/client';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
+import type { OwnerStatus } from '../space-lifecycle';
 
 export class UpdateSpaceDto extends PartialType(CreateSpaceDto) {
   @IsOptional()
@@ -9,11 +9,8 @@ export class UpdateSpaceDto extends PartialType(CreateSpaceDto) {
   parentSpaceId?: string | null;
 }
 
-export class UpdateSpaceStatusDto {
-  @IsEnum(SpaceStatus)
-  status: SpaceStatus;
-
-  @IsOptional()
-  @IsString()
-  rejectionReason?: string;
+/** Q39: what an owner may set on their own space. */
+export class SetSpaceLifecycleDto {
+  @IsIn(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+  status: OwnerStatus;
 }

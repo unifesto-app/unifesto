@@ -298,31 +298,6 @@ export interface AdminSpaceActionResult {
 }
 
 /**
- * Approve a pending space (ADMIN only).
- * Backed by `PATCH /admin/spaces/:id/approve`.
- */
-export async function approveSpace(
-  id: string
-): Promise<{ data: AdminSpaceActionResult | null; error: ApiError | null }> {
-  return apiCall<AdminSpaceActionResult>(
-    backendClient.patch(`/admin/spaces/${id}/approve`)
-  );
-}
-
-/**
- * Reject a pending space (ADMIN only), with an optional reason.
- * Backed by `PATCH /admin/spaces/:id/reject`.
- */
-export async function rejectSpace(
-  id: string,
-  reason?: string
-): Promise<{ data: AdminSpaceActionResult | null; error: ApiError | null }> {
-  return apiCall<AdminSpaceActionResult>(
-    backendClient.patch(`/admin/spaces/${id}/reject`, { reason })
-  );
-}
-
-/**
  * Permanently delete a space (ADMIN only). Cascades to every event under the
  * space and their registrations, tickets, payments and payouts — irreversible.
  * The backend refuses a space that still has sub-spaces. Backed by
@@ -335,16 +310,47 @@ export async function deleteSpace(
 }
 
 /**
- * Change a space's lifecycle state (ADMIN only).
- * Backed by `PATCH /admin/spaces/:id/status`.
+ * Set a space's status (ADMIN only, Q39): ACTIVE, INACTIVE (paused),
+ * SUSPENDED or ARCHIVED. A reason is required to suspend; the owner gets a
+ * push and an email with it. Backed by `PATCH /admin/spaces/:id/status`.
  */
 export async function updateSpaceStatus(
   id: string,
-  status: SpaceStatus
+  status: SpaceStatus,
+  reason?: string
 ): Promise<{ data: AdminSpaceActionResult | null; error: ApiError | null }> {
   return apiCall<AdminSpaceActionResult>(
-    backendClient.patch(`/admin/spaces/${id}/status`, { status })
+    backendClient.patch(`/admin/spaces/${id}/status`, { status, reason })
   );
+}
+
+/** Q39: APPROVED is the old name for live; PENDING and REJECTED are history. */
+export const SPACE_STATUS_LABEL: Record<SpaceStatus, string> = {
+  PENDING: "Pending",
+  APPROVED: "Active",
+  ACTIVE: "Active",
+  REJECTED: "Rejected",
+  SUSPENDED: "Suspended",
+  INACTIVE: "Paused",
+  ARCHIVED: "Archived",
+};
+
+/** Who last changed a space's status, when and why, and what it touches (Q39). */
+export interface SpaceLifecycle {
+  status: SpaceStatus;
+  reason: string | null;
+  changedAt: string | null;
+  changedBy: "owner" | "platform" | "system" | null;
+  upcomingTicketsSold: number;
+  openPayouts: number;
+  openRefunds: number;
+}
+
+/** Backed by `GET /spaces/:id/lifecycle`. */
+export async function getSpaceLifecycle(
+  id: string
+): Promise<{ data: SpaceLifecycle | null; error: ApiError | null }> {
+  return apiCall<SpaceLifecycle>(backendClient.get(`/spaces/${id}/lifecycle`));
 }
 
 /**

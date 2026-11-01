@@ -19,7 +19,6 @@ import {
   MapPin,
   CalendarBlank,
   CheckCircle,
-  XCircle,
   TreeStructure,
   ArrowUp,
   ArrowDown,
@@ -37,9 +36,10 @@ import {
 import {
   getSpace,
   getSpaceChildren,
-  approveSpace,
-  rejectSpace,
   updateSpaceStatus,
+  getSpaceLifecycle,
+  SPACE_STATUS_LABEL,
+  type SpaceLifecycle,
   updateSpace,
   getAllSpacesAdmin,
   getSpaceMembers,
@@ -199,13 +199,19 @@ const STATUS_VARIANT: Record<
   ARCHIVED: "neutral",
 };
 
-/** Lifecycle states an admin can move a space into post-approval. */
+/** The four statuses Platform sets (Q39). */
 const MANAGEABLE_STATUSES: SpaceStatus[] = [
   "ACTIVE",
   "INACTIVE",
   "SUSPENDED",
   "ARCHIVED",
 ];
+
+const CHANGED_BY: Record<NonNullable<SpaceLifecycle["changedBy"]>, string> = {
+  owner: "the owner",
+  platform: "Unifesto",
+  system: "the system",
+};
 
 function SpaceManagement({
   space,
@@ -242,7 +248,7 @@ function SpaceManagement({
             )}
             {space.status && (
               <Badge variant={STATUS_VARIANT[space.status]}>
-                {roleLabel(space.status) ?? space.status}
+                {SPACE_STATUS_LABEL[space.status] ?? space.status}
               </Badge>
             )}
             {roleLabel(space.userRole?.code) && (
@@ -1349,11 +1355,16 @@ function AdminSpacePanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [nextStatus, setNextStatus] = useState<SpaceStatus | "">("");
+  const [life, setLife] = useState<SpaceLifecycle | null>(null);
 
-  const isPending = status === "PENDING";
+  const current = status === "APPROVED" ? "ACTIVE" : status;
+  const needsReason = nextStatus === "SUSPENDED";
+
+  useEffect(() => {
+    void getSpaceLifecycle(spaceId).then(({ data }) => setLife(data));
+  }, [spaceId, status]);
 
   async function run(fn: () => Promise<{ error: { message: string } | null }>) {
     setBusy(true);
@@ -1374,132 +1385,87 @@ function AdminSpacePanel({
       <CardHeader>
         <CardTitle>Admin controls</CardTitle>
         <CardDescription>
-          {isPending
-            ? "This space is awaiting review. Approve it to make it live, or reject it with a reason."
-            : "Manage this space's lifecycle state."}
+          Set this space&apos;s status. The owner gets a push and an email with your reason.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {actionError && <ErrorNotice message={actionError} />}
 
-        {isPending ? (
-          rejecting ? (
-            <div className="space-y-4">
-              <Input
-                placeholder="Reason for rejection (optional)"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                disabled={busy}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="destructive"
-                  disabled={busy}
-                  onClick={async () => {
-                    const ok = await run(() =>
-                      rejectSpace(spaceId, reason.trim() || undefined)
-                    );
-                    if (ok) {
-                      setRejecting(false);
-                      setReason("");
-                    }
-                  }}
-                >
-                  <XCircle className="h-4 w-4" />
-                  Confirm rejection
-                </Button>
-                <Button
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => {
-                    setRejecting(false);
-                    setReason("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  const ok = await confirmDialog({
-                    title: "Approve this space?",
-                    description: "It goes live: its owner can publish events and sell tickets.",
-                    confirmLabel: "Approve",
-                  });
-                  if (ok) await run(() => approveSpace(spaceId));
-                }}
-              >
-                <CheckCircle className="h-4 w-4" />
-                Approve
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => setRejecting(true)}
-              >
-                <XCircle className="h-4 w-4" />
-                Reject
-              </Button>
-            </div>
-          )
-        ) : (
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="min-w-[12rem] space-y-1.5">
-              <Label htmlFor="space-status">Lifecycle state</Label>
-              <Select
-                value={nextStatus || status || ""}
-                onValueChange={(v) => setNextStatus(v as SpaceStatus)}
-                disabled={busy}
-              >
-                <SelectTrigger id="space-status">
-                  <SelectValue placeholder="Select a state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MANAGEABLE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {roleLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              disabled={busy || !nextStatus || nextStatus === status}
-              onClick={async () => {
-                if (!nextStatus) return;
-                const leaving = nextStatus !== "ACTIVE";
-                const sure = await confirmDialog({
-                  title: `${leaving ? "Move" : "Restore"} this space to ${roleLabel(nextStatus)}?`,
-                  description: (
-                    <>
-                      <p>
-                        {roleLabel(status)} → {roleLabel(nextStatus)}.
-                      </p>
-                      <p>
-                        {leaving
-                          ? "It can't create or run events until it's active again. Its owner can ask to restore it."
-                          : "It can create and run events again."}
-                      </p>
-                    </>
-                  ),
-                  confirmLabel: `Set ${roleLabel(nextStatus)}`,
-                  destructive: leaving,
-                });
-                if (!sure) return;
-                const ok = await run(() =>
-                  updateSpaceStatus(spaceId, nextStatus)
-                );
-                if (ok) setNextStatus("");
-              }}
-            >
-              Update state
-            </Button>
-          </div>
+        {life?.changedAt && current && (
+          <p className="text-sm text-muted-foreground">
+            {SPACE_STATUS_LABEL[current]} since{" "}
+            {new Date(life.changedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}, set by{" "}
+            {life.changedBy ? CHANGED_BY[life.changedBy] : "Unifesto"}.
+            {life.reason && <> Reason: {life.reason}</>}
+          </p>
         )}
+
+        <div className="space-y-3">
+          <div className="min-w-[12rem] space-y-1.5">
+            <Label htmlFor="space-status">Status</Label>
+            <Select
+              value={nextStatus || current || ""}
+              onValueChange={(v) => setNextStatus(v as SpaceStatus)}
+              disabled={busy}
+            >
+              <SelectTrigger id="space-status">
+                <SelectValue placeholder="Select a status" />
+              </SelectTrigger>
+              <SelectContent>
+                {MANAGEABLE_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SPACE_STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {nextStatus && nextStatus !== current && (
+            <Input
+              placeholder={needsReason ? "Reason (required, the owner sees it)" : "Reason (optional, the owner sees it)"}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              disabled={busy}
+              maxLength={500}
+            />
+          )}
+          <Button
+            disabled={busy || !nextStatus || nextStatus === current || (needsReason && !reason.trim())}
+            onClick={async () => {
+              if (!nextStatus || !current) return;
+              const leaving = nextStatus !== "ACTIVE";
+              const sold = life?.upcomingTicketsSold ?? 0;
+              const sure = await confirmDialog({
+                title: `Set this space to ${SPACE_STATUS_LABEL[nextStatus]}?`,
+                description: (
+                  <>
+                    <p>
+                      {SPACE_STATUS_LABEL[current]} → {SPACE_STATUS_LABEL[nextStatus]}.
+                    </p>
+                    <p>
+                      {leaving
+                        ? "It is hidden, can't publish and can't sell tickets until it is active again."
+                        : "It can publish events and sell tickets again."}
+                      {leaving && sold > 0 && ` ${sold} tickets sold for upcoming events still check in.`}
+                    </p>
+                  </>
+                ),
+                confirmLabel: `Set ${SPACE_STATUS_LABEL[nextStatus]}`,
+                destructive: leaving,
+              });
+              if (!sure) return;
+              const ok = await run(() =>
+                updateSpaceStatus(spaceId, nextStatus, reason.trim() || undefined)
+              );
+              if (ok) {
+                setNextStatus("");
+                setReason("");
+              }
+            }}
+          >
+            Update status
+          </Button>
+        </div>
 
         {/* Verified = the badge on public pages. Only grant it once you have
             confirmed the team runs, or has permission from, the organisation

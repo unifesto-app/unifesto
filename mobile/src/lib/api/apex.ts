@@ -437,20 +437,33 @@ export interface AdminSpaceDetail {
   submittedAt: string | null;
   approvedAt: string | null;
   rejectedAt: string | null;
+  /** Q39: why and when the status last changed. */
+  statusReason?: string | null;
+  statusChangedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export const getSpaceDetail = (id: string) => call<AdminSpaceDetail>(`/spaces/${id}`);
 
-/** Lifecycle states an admin can move an approved space into. */
+/** The four statuses Platform sets (Q39). INACTIVE shows as "Paused". */
 export const MANAGEABLE_SPACE_STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'ARCHIVED'] as const;
 export type ManageableSpaceStatus = (typeof MANAGEABLE_SPACE_STATUSES)[number];
 
-export const approveSpace = (id: string) => call<unknown>(`/admin/spaces/${id}/approve`, { method: 'PATCH' });
-export const rejectSpace = (id: string, reason?: string) => call<unknown>(`/admin/spaces/${id}/reject`, patch({ reason }));
-export const updateSpaceStatus = (id: string, status: ManageableSpaceStatus) =>
-  call<unknown>(`/admin/spaces/${id}/status`, patch({ status }));
+/** APPROVED is the old name for live; PENDING and REJECTED are history. */
+export const SPACE_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Active',
+  APPROVED: 'Active',
+  INACTIVE: 'Paused',
+  SUSPENDED: 'Suspended',
+  ARCHIVED: 'Archived',
+  PENDING: 'Pending',
+  REJECTED: 'Rejected',
+};
+
+/** A reason is required to suspend; the owner gets a push and an email with it. */
+export const updateSpaceStatus = (id: string, status: ManageableSpaceStatus, reason?: string) =>
+  call<unknown>(`/admin/spaces/${id}/status`, patch({ status, reason }));
 /** Permanent: cascades to every event, registration, payment and payout under the space. */
 export const deleteSpace = (id: string) => call<unknown>(`/spaces/${id}`, { method: 'DELETE' });
 

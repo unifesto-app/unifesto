@@ -21,6 +21,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { uploadLimit } from '../common/upload-limits';
 import { SpacesService } from './spaces.service';
+import { SpaceLifecycleService } from './space-lifecycle';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
 import { JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Action, AuthorizationService, Can, CanGuard } from '../auth/authorization';
@@ -28,7 +29,7 @@ import { Roles, CurrentUser } from '../auth/decorators';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
-  UpdateSpaceStatusDto,
+  SetSpaceLifecycleDto,
   CreateSpaceStatusRequestDto,
   ReviewSpaceStatusRequestDto,
   CreateSpaceOwnershipRequestDto,
@@ -54,6 +55,7 @@ export class SpacesController {
     private readonly spacesService: SpacesService,
     private readonly bannerPalette: BannerPaletteService,
     private readonly authz: AuthorizationService,
+    private readonly lifecycle: SpaceLifecycleService,
   ) {}
 
   /**
@@ -471,19 +473,30 @@ export class SpacesController {
   }
 
   /**
-   * Update space status (ADMIN only)
-   * PATCH /spaces/:id/status
+   * The space's status card: who changed it, when and why, plus what pausing
+   * or archiving would touch (Q39). Members and platform admins.
+   * GET /spaces/:id/lifecycle
    */
-  @Patch(':id/status')
-  @Audit('space.status', (r) => ({ spaceId: r.params.id }))
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
-  async updateSpaceStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateSpaceStatusDto,
+  @Get(':id/lifecycle')
+  @UseGuards(JwtAuthGuard)
+  async getLifecycle(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.lifecycle.view(user.id, id);
+  }
+
+  /**
+   * The owner pauses (INACTIVE), resumes or restores (ACTIVE), or archives
+   * their space, with no review (Q39). Platform changes go through Apex.
+   * PATCH /spaces/:id/lifecycle { status }
+   */
+  @Patch(':id/lifecycle')
+  @Audit('space.status.owner', (r) => ({ spaceId: r.params.id }))
+  @UseGuards(JwtAuthGuard)
+  async setLifecycle(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetSpaceLifecycleDto,
     @CurrentUser() user: User,
   ) {
-    return this.spacesService.updateSpaceStatus(id, dto, user.id);
+    return this.lifecycle.setByOwner(user.id, id, dto.status);
   }
 
   /**

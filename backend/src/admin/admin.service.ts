@@ -6,13 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { LIVE_SPACE_WHERE } from '../spaces/space-access';
+import { isSpaceLive, LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { NotifyService } from '../notifications/notify.service';
 import { AuthService } from '../auth/auth.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
+import { PLATFORM_STATUSES, statusChange } from '../spaces/space-lifecycle';
 import { Action, ACTION_SCOPE } from '../auth/authorization';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
@@ -740,113 +741,44 @@ export class AdminService {
   }
 
   /**
-   * Approve a pending space (ADMIN only). Moves the space out of the review
-   * queue and makes it live.
+   * Platform sets a space's status from Apex (Q39): ACTIVE, INACTIVE (paused),
+   * SUSPENDED or ARCHIVED. Suspending needs a reason. The owner gets a push
+   * and an email saying what changed and why.
    */
-  async approveSpace(id: string, adminId: string) {
+  async updateSpaceStatus(id: string, status: SpaceStatus, adminId: string, reason?: string) {
+    if (!PLATFORM_STATUSES.includes(status)) {
+      throw new BadRequestException(`Choose one of ${PLATFORM_STATUSES.join(', ')}`);
+    }
+    const why = reason?.trim() || null;
+    if (status === SpaceStatus.SUSPENDED && !why) {
+      throw new BadRequestException('Give a reason for the suspension. The owner sees it.');
+    }
     const space = await this.prisma.space.findUnique({
       where: { id },
-      include: { creator: { select: { fullName: true, username: true } } },
+      select: { id: true, name: true, status: true, createdBy: true },
     });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
-    // Atomic claim: a double click approves (and tells the creator) once.
-    const claimed = await this.prisma.space.updateMany({
-      where: { id, status: { notIn: [SpaceStatus.APPROVED, SpaceStatus.ACTIVE] } },
-      data: {
-        status: SpaceStatus.APPROVED,
-        approvedAt: new Date(),
-        approvedBy: adminId,
-        rejectedAt: null,
-        rejectionReason: null,
-      },
-    });
-    if (!claimed.count) {
-      throw new BadRequestException('Space is already approved');
-    }
-    const updated = await this.prisma.space.findUniqueOrThrow({
-      where: { id },
-      select: { id: true, name: true, status: true, approvedAt: true, approvedBy: true },
-    });
-    this.logger.log(`Space ${id} approved by admin ${adminId}`);
-    // Push + email to the creator (critical). notify() never throws.
-    void this.notify.notify(space.createdBy, 'space.approved', {
-      spaceId: space.id,
-      approvedAt: updated.approvedAt!,
-      organizerName: space.creator?.fullName || space.creator?.username || 'there',
-      spaceName: space.name,
-      spaceSlug: space.slug,
-    });
-    return updated;
-  }
-
-  /**
-   * Reject a pending space (ADMIN only), recording the reason shown to the
-   * organiser.
-   */
-  async rejectSpace(id: string, adminId: string, reason?: string) {
-    const space = await this.prisma.space.findUnique({
-      where: { id },
-      include: { creator: { select: { fullName: true, username: true } } },
-    });
-    if (!space) {
-      throw new NotFoundException('Space not found');
+    const current = isSpaceLive(space.status) ? SpaceStatus.ACTIVE : space.status;
+    if (current === status) {
+      throw new BadRequestException(`This space is already ${status.toLowerCase()}`);
     }
 
-    // Atomic claim: a double click rejects (and tells the creator) once.
-    const claimed = await this.prisma.space.updateMany({
-      where: { id, status: { not: SpaceStatus.REJECTED } },
-      data: {
-        status: SpaceStatus.REJECTED,
-        rejectedAt: new Date(),
-        approvedBy: adminId,
-        rejectionReason: reason?.trim() || null,
-      },
-    });
-    if (!claimed.count) {
-      throw new BadRequestException('Space is already rejected');
-    }
-    const updated = await this.prisma.space.findUniqueOrThrow({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        rejectedAt: true,
-        rejectionReason: true,
-      },
-    });
-    this.logger.log(`Space ${id} rejected by admin ${adminId}`);
-    void this.notify.notify(space.createdBy, 'space.rejected', {
-      spaceId: space.id,
-      organizerName: space.creator?.fullName || space.creator?.username || 'there',
-      spaceName: space.name,
-      rejectionReason: reason?.trim() || 'Not given',
-    });
-    return updated;
-  }
-
-  /**
-   * Manage a space's lifecycle state (ADMIN only) — e.g. ACTIVE, INACTIVE,
-   * SUSPENDED, ARCHIVED. Approval/rejection have dedicated endpoints; this is
-   * for post-approval state management.
-   */
-  async updateSpaceStatus(id: string, status: SpaceStatus, adminId: string) {
-    const space = await this.prisma.space.findUnique({ where: { id } });
-    if (!space) {
-      throw new NotFoundException('Space not found');
-    }
-    if (!Object.values(SpaceStatus).includes(status)) {
-      throw new BadRequestException(`Invalid space status: ${status}`);
-    }
-
+    const change = statusChange(status, adminId, why);
     const updated = await this.prisma.space.update({
       where: { id },
-      data: { status },
-      select: { id: true, name: true, status: true },
+      data: change,
+      select: { id: true, name: true, status: true, statusReason: true, statusChangedAt: true },
     });
     this.logger.log(`Space ${id} status set to ${status} by admin ${adminId}`);
+    void this.notify.notify(space.createdBy, 'space.status', {
+      spaceId: space.id,
+      spaceName: space.name,
+      status: status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED',
+      reason: why,
+      changedAt: change.statusChangedAt,
+    });
     return updated;
   }
 

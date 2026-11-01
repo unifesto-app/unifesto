@@ -8,13 +8,13 @@ import { GUTTER } from '../../components/home/Section';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  approveSpace,
   getAdminEvent,
   getAdminUser,
   getChildSpaces,
   getSpaceDetail,
   MANAGEABLE_SPACE_STATUSES,
-  rejectSpace,
+  SPACE_STATUS_LABEL,
+  type ManageableSpaceStatus,
   updateSpaceStatus,
   type ChildSpace,
   type Result,
@@ -339,8 +339,8 @@ export function SpaceDetailAdminScreen() {
   const [events, setEvents] = useState<ManagedEvent[] | null>(null);
   const [children, setChildren] = useState<ChildSpace[]>([]);
   const [childPage, setChildPage] = useState({ page: 0, totalPages: 1, total: 0 });
-  const [busy, setBusy] = useState<'approve' | 'reject' | 'status' | null>(null);
-  const [rejecting, setRejecting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState<ManageableSpaceStatus | null>(null);
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -370,38 +370,28 @@ export function SpaceDetailAdminScreen() {
     <SettingsRow key={e.id} label={e.title} value={`${titleCase(e.status)} · ${shortDate(e.startDateTime)}`} onPress={() => router.push(`/apex/events/${e.id}`)} />
   );
 
-  const act = async (kind: 'approve' | 'reject' | 'status', run: () => Promise<Result<unknown>>) => {
-    setBusy(kind);
-    const res = await run();
-    setBusy(null);
-    if (!res.ok) return AppAlert.alert("Couldn't update", res.message);
-    setRejecting(false);
-    setNote('');
-    await refresh();
-  };
-
-  const confirmApprove = () =>
-    AppAlert.alert('Approve this space?', 'It goes live and its admins can start publishing events.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Approve', onPress: () => void act('approve', () => approveSpace(id!)) },
-    ]);
-
-  const confirmReject = () =>
-    AppAlert.alert('Reject this space?', 'The requester sees it was turned down, with your note.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () => void act('reject', () => rejectSpace(id!, note.trim() || undefined)) },
-    ]);
-
+  const current = s?.status === 'APPROVED' ? 'ACTIVE' : s?.status;
   const pickStatus = () => {
     if (!s) return;
-    AppAlert.alert('Lifecycle state', `Currently ${titleCase(s.status)}.`, [
-      ...MANAGEABLE_SPACE_STATUSES.filter((st) => st !== s.status).map((st) => ({
-        text: titleCase(st),
+    AppAlert.alert('Status', `Currently ${SPACE_STATUS_LABEL[s.status] ?? titleCase(s.status)}.`, [
+      ...MANAGEABLE_SPACE_STATUSES.filter((st) => st !== current).map((st) => ({
+        text: SPACE_STATUS_LABEL[st],
         style: st === 'SUSPENDED' || st === 'ARCHIVED' ? ('destructive' as const) : undefined,
-        onPress: () => void act('status', () => updateSpaceStatus(id!, st)),
+        onPress: () => setTarget(st),
       })),
       { text: 'Cancel', style: 'cancel' as const },
     ]);
+  };
+
+  const setStatus = async () => {
+    if (!target) return;
+    setBusy(true);
+    const res = await updateSpaceStatus(id!, target, note.trim() || undefined);
+    setBusy(false);
+    if (!res.ok) return AppAlert.alert("Couldn't update", res.message);
+    setTarget(null);
+    setNote('');
+    await refresh();
   };
 
   const statusColor = (st: string) =>
@@ -432,7 +422,7 @@ export function SpaceDetailAdminScreen() {
           <View style={styles.statusRow}>
             <View style={[styles.dot, { backgroundColor: statusColor(s.status) }]} />
             <Text style={[styles.status, { color: statusColor(s.status) }]}>
-              {titleCase(s.status)}
+              {SPACE_STATUS_LABEL[s.status] ?? titleCase(s.status)}
               <Text style={[cosmosFont.body, { color: c.muted }]}>
                 {` · ${s.type === 'SUPER' ? 'Parent space' : 'Regular space'} · ${titleCase(s.visibility)}`}
               </Text>
@@ -452,32 +442,57 @@ export function SpaceDetailAdminScreen() {
             </View>
           ) : null}
 
-          {/* Admin controls: review while pending, lifecycle after. */}
-          {s.status === 'PENDING' ? (
-            rejecting ? (
-              <>
-                <SettingsGroup title="Why are you rejecting it?" plain>
-                  <FieldRow stacked multiline label="Note (optional, they see this)" value={note} onChangeText={setNote} placeholder="e.g. We couldn't verify this organisation." autoFocus />
-                </SettingsGroup>
-                <Button label="Reject" variant="danger" size="lg" fullWidth loading={busy === 'reject'} onPress={confirmReject} style={{ marginTop: spacing[5] }} />
-                <Button label="Back" variant="ghost" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(false)} style={{ marginTop: spacing[2] }} />
-              </>
-            ) : (
-              <>
-                <Text style={[styles.groupHint, { color: c.muted }]}>Awaiting review. Approve to make it live, or reject with a reason.</Text>
-                <Button label="Approve" size="lg" fullWidth loading={busy === 'approve'} disabled={busy !== null} onPress={confirmApprove} style={{ marginTop: spacing[3] }} />
-                <Button label="Reject" variant="danger" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(true)} style={{ marginTop: spacing[3] }} />
-              </>
-            )
-          ) : (
-            <SettingsGroup title="Admin controls" plain>
-              <SettingsRow
-                label="Lifecycle state"
-                value={busy === 'status' ? 'Updating…' : titleCase(s.status)}
-                onPress={s.status === 'REJECTED' || busy ? undefined : pickStatus}
+          {/* Admin controls (Q39): four statuses, with a reason the owner sees. */}
+          <SettingsGroup title="Admin controls" plain>
+            <SettingsRow
+              label="Status"
+              value={busy ? 'Updating…' : SPACE_STATUS_LABEL[s.status] ?? titleCase(s.status)}
+              onPress={busy || target ? undefined : pickStatus}
+            />
+          </SettingsGroup>
+          {s.statusReason ? (
+            <Text style={[styles.groupHint, { color: c.muted }]}>
+              Reason: {s.statusReason}
+              {s.statusChangedAt ? ` (${shortDate(s.statusChangedAt)})` : ''}
+            </Text>
+          ) : null}
+          {target ? (
+            <>
+              <SettingsGroup title={`Set to ${SPACE_STATUS_LABEL[target]}`} plain>
+                <FieldRow
+                  stacked
+                  multiline
+                  label={target === 'SUSPENDED' ? 'Reason (required, the owner sees it)' : 'Reason (optional, the owner sees it)'}
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="e.g. Reported for fake tickets."
+                  autoFocus
+                />
+              </SettingsGroup>
+              <Button
+                label={`Set ${SPACE_STATUS_LABEL[target]}`}
+                variant={target === 'SUSPENDED' || target === 'ARCHIVED' ? 'danger' : 'primary'}
+                size="lg"
+                fullWidth
+                loading={busy}
+                disabled={target === 'SUSPENDED' && !note.trim()}
+                onPress={setStatus}
+                style={{ marginTop: spacing[5] }}
               />
-            </SettingsGroup>
-          )}
+              <Button
+                label="Cancel"
+                variant="ghost"
+                size="lg"
+                fullWidth
+                disabled={busy}
+                onPress={() => {
+                  setTarget(null);
+                  setNote('');
+                }}
+                style={{ marginTop: spacing[2] }}
+              />
+            </>
+          ) : null}
 
           <SettingsGroup title="Manage" plain>
             <SettingsRow label="Edit details and branding" onPress={() => router.push(`/manage/space/${id}/settings`)} />

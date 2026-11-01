@@ -214,6 +214,46 @@ export interface UpdateSpacePayload {
   visibility?: SpaceVisibility;
 }
 
+/** Q39: the space's status, who set it, when and why, and what a change touches. */
+export interface SpaceLifecycle {
+  spaceId: string;
+  status: SpaceStatus;
+  reason: string | null;
+  changedAt: string | null;
+  changedBy: "owner" | "platform" | "system" | null;
+  isOwner: boolean;
+  canRestore: boolean;
+  upcomingTicketsSold: number;
+  openPayouts: number;
+  openRefunds: number;
+  pendingRequest: { requestedStatus: string; createdAt: string } | null;
+}
+
+/** Backed by `GET /spaces/:id/lifecycle` (members only). */
+export async function getSpaceLifecycle(
+  id: string
+): Promise<{ data: SpaceLifecycle | null; error: ApiError | null }> {
+  return apiCall<SpaceLifecycle>(backendClient.get(`/spaces/${id}/lifecycle`));
+}
+
+/** The owner pauses (INACTIVE), resumes or restores (ACTIVE), or archives. `PATCH /spaces/:id/lifecycle`. */
+export async function setSpaceLifecycle(
+  id: string,
+  status: "ACTIVE" | "INACTIVE" | "ARCHIVED"
+): Promise<{ data: SpaceLifecycle | null; error: ApiError | null }> {
+  return apiCall<SpaceLifecycle>(backendClient.patch(`/spaces/${id}/lifecycle`, { status }));
+}
+
+/** Appeal a suspension, or ask to restore a space Unifesto archived. Opens an Assist case. */
+export async function askSpaceBack(
+  spaceId: string,
+  reason: string
+): Promise<{ data: unknown; error: ApiError | null }> {
+  return apiCall<unknown>(
+    backendClient.post("/spaces/status-requests", { spaceId, requestedStatus: "ACTIVE", reason })
+  );
+}
+
 /**
  * Update a space's editable profile fields. Backed by `PATCH /spaces/:id`,
  * which is guarded by `SpaceRoleGuard` — allowed for platform admins and the

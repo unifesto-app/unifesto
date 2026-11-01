@@ -65,3 +65,37 @@ export const uploadSpaceLogo = (spaceId: string, uri: string) =>
 /** 4:3 banner, 5 MB cap. */
 export const uploadSpaceBanner = (spaceId: string, uri: string) =>
   uploadImage<{ bannerUrl: string }>(`/spaces/${spaceId}/banner`, 'banner', uri);
+
+/*
+ * Q39: the owner pauses, resumes, archives or restores the space with no
+ * review. A suspension, or an archive by Unifesto, comes back through a request
+ * the team reviews in Assist.
+ */
+export interface SpaceLifecycle {
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'PENDING' | 'REJECTED';
+  reason: string | null;
+  changedAt: string | null;
+  changedBy: 'owner' | 'platform' | 'system' | null;
+  isOwner: boolean;
+  canRestore: boolean;
+  upcomingTicketsSold: number;
+  openPayouts: number;
+  openRefunds: number;
+  pendingRequest: { requestedStatus: string; createdAt: string } | null;
+}
+
+export const getSpaceLifecycle = (spaceId: string) => call<SpaceLifecycle>(`/spaces/${spaceId}/lifecycle`);
+
+export const setSpaceLifecycle = (spaceId: string, status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED') =>
+  call<SpaceLifecycle>(`/spaces/${spaceId}/lifecycle`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+
+export const askSpaceBack = (spaceId: string, reason: string) =>
+  call<unknown>('/spaces/status-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spaceId, requestedStatus: 'ACTIVE', reason }),
+  });
