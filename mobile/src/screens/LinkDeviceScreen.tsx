@@ -16,11 +16,34 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
 
-/** What web's "Sign in with the app" QR holds. Not a link, so only this scanner reads it. */
-const PREFIX = 'unifesto-link:';
+/** What web's "Sign in with the app" QR holds: a link the phone's own camera opens too (app/qr/[code]). */
+const QR_LINK = /^https:\/\/(?:www\.)?unifesto\.app\/qr\/([\w-]{16,64})\/?$/;
 // The camera stays dark in both themes, so the overlay takes the night tokens.
 const NIGHT = cosmosFor('dark');
 const WHITE = NIGHT.text;
+
+/**
+ * Which browser is asking, my yes, then the approval. True once that browser
+ * is signed in, false if I cancel; throws with what went wrong. Shared by the
+ * scanner and the link the phone's camera opens.
+ */
+export async function confirmDeviceLink(code: string): Promise<boolean> {
+  const { name } = await previewDeviceLink(code);
+  Vibration.vibrate(40);
+  const yes = await new Promise<boolean>((resolve) =>
+    AppAlert.alert(
+      `Sign in on ${name}?`,
+      "Only approve a computer you're using right now. It can use your account until you sign it out in Linked devices.",
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Sign in', onPress: () => resolve(true) },
+      ],
+      { cancelable: false },
+    ),
+  );
+  if (yes) await approveDeviceLink(code);
+  return yes;
+}
 
 /**
  * Link a device: scan the QR on unifesto.app/login to sign that computer in
@@ -56,43 +79,21 @@ export default function LinkDeviceScreen() {
   const handleScan = useCallback(
     async (raw: string) => {
       if (busyRef.current) return;
-      if (!raw.startsWith(PREFIX)) {
+      const code = QR_LINK.exec(raw)?.[1];
+      if (!code) {
         showError('Not a sign-in code', 'On the computer, open unifesto.app/login and choose Sign in with the app.');
         return;
       }
-      const code = raw.slice(PREFIX.length);
       busyRef.current = true;
       setBusy(true);
-      let name: string;
       try {
-        ({ name } = await previewDeviceLink(code));
+        if (await confirmDeviceLink(code)) return void router.back();
+        release();
       } catch (e: any) {
-        showError("Couldn't use that code", e.message);
+        showError("Couldn't sign that computer in", e.message);
         // A pause before the same expired code is read again.
         setTimeout(release, 2500);
-        return;
       }
-      Vibration.vibrate(40);
-      AppAlert.alert(
-        `Sign in on ${name}?`,
-        "Only approve a computer you're using right now. It can use your account until you sign it out in Linked devices.",
-        [
-          { text: 'Cancel', style: 'cancel', onPress: release },
-          {
-            text: 'Sign in',
-            onPress: async () => {
-              try {
-                await approveDeviceLink(code);
-                router.back();
-              } catch (e: any) {
-                showError("Couldn't sign that computer in", e.message);
-                release();
-              }
-            },
-          },
-        ],
-        { cancelable: false },
-      );
     },
     [release, router, showError],
   );
