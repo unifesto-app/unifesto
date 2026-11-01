@@ -1,17 +1,21 @@
-import { Injectable, BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GroupSeatStatus, Prisma, SupportCaseKind, SupportDesk } from '@prisma/client';
+import { EventStatus, GroupSeatStatus, PaymentStatus, Prisma, RegistrationStatus, SupportCaseKind, SupportDesk } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
 import { EmailService } from '../email/email.service';
-import { h1, p, strong } from '../email/layout';
+import { esc, h1, p, strong } from '../email/layout';
 import { GroupSeatsService } from './group-seats.service';
 import { generateQRCode, generateTicketCode } from './registration.util';
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
 import { findIdentityByEmail } from '../auth/identifiers';
 
-/** Moving a registration to another account: admin-direct, or a curator request an admin reviews. */
+/**
+ * Moving a registration to another account: admin-direct, a curator request an
+ * admin reviews, or (Q17) the holder themselves, for a free ticket on an event
+ * whose organiser turned transfers on.
+ */
 @Injectable()
 export class RegistrationTransfersService {
   private readonly logger = new Logger(RegistrationTransfersService.name);
@@ -163,10 +167,72 @@ export class RegistrationTransfersService {
   }
 
   /**
+   * Q17: the holder hands their own ticket to another account, no review.
+   * Only on an event with `allowSelfTransfer`, only a free (₹0) solo ticket
+   * that hasn't been used, before the event ends. Paid tickets keep the
+   * organiser request path. Their answers stay behind (they are the old
+   * holder's personal data); the new holder can fill them in if edits are on.
+   */
+  async selfTransfer(userId: string, registrationId: string, email: string) {
+    const reg = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: {
+        id: true,
+        eventId: true,
+        userId: true,
+        ticketTypeId: true,
+        totalAmount: true,
+        paymentStatus: true,
+        status: true,
+        isWaitlisted: true,
+        groupSize: true,
+        checkedInAt: true,
+        event: { select: { allowSelfTransfer: true, status: true, endDateTime: true, deletedAt: true } },
+      },
+    });
+    if (!reg || reg.userId !== userId) throw new NotFoundException('Ticket not found');
+    if (!reg.event.allowSelfTransfer) {
+      throw new ForbiddenException("The organiser hasn't turned on ticket transfers for this event. Ask them to move it.");
+    }
+    if (Number(reg.totalAmount) > 0) {
+      throw new BadRequestException('Only free tickets can be transferred here. Ask the organiser to move a paid ticket.');
+    }
+    if ((reg.groupSize ?? 1) > 1) {
+      throw new BadRequestException('A group booking hands over its lead from the group screen.');
+    }
+    const usable =
+      reg.status === RegistrationStatus.REGISTERED &&
+      reg.paymentStatus === PaymentStatus.PAID &&
+      !reg.isWaitlisted &&
+      !reg.checkedInAt;
+    if (!usable) throw new BadRequestException("This ticket can't be transferred.");
+    const over =
+      !!reg.event.deletedAt ||
+      reg.event.status === EventStatus.CANCELLED ||
+      reg.event.status === EventStatus.COMPLETED ||
+      reg.event.endDateTime <= new Date();
+    if (over) throw new BadRequestException('This event is over.');
+
+    const moved = await this.prisma.$transaction(async (tx) => {
+      const out = await this.performTransfer(reg, email, tx);
+      await tx.eventRegistration.update({ where: { id: reg.id }, data: { formResponses: Prisma.DbNull } });
+      return out;
+    });
+    this.logger.log(`Registration ${reg.id} transferred by its holder ${userId}`);
+    void this.notifyTransfer(userId, moved, 'holder');
+    // The new holder's details stay private: the old holder gets the email they typed.
+    return { registrationId: reg.id, eventId: reg.eventId, toEmail: email.trim() };
+  }
+
+  /**
    * Tell the old and the new holder the ticket moved, and send the new holder
    * their pass (the rotated QR). Best-effort.
    */
-  private async notifyTransfer(fromUserId: string, moved: { id: string; eventId: string; user: { id: string; email: string | null } }) {
+  private async notifyTransfer(
+    fromUserId: string,
+    moved: { id: string; eventId: string; user: { id: string; email: string | null } },
+    by: 'organiser' | 'holder' = 'organiser',
+  ) {
     const { eventId } = moved;
     const toEmail = moved.user.email;
     try {
@@ -174,19 +240,25 @@ export class RegistrationTransfersService {
         this.prisma.userIdentity.findFirst({
           where: { userId: fromUserId, email: { not: null } },
           orderBy: { isPrimary: 'desc' },
-          select: { email: true },
+          select: { email: true, user: { select: { fullName: true, username: true } } },
         }),
         this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } }),
       ]);
       const title = event?.title ?? 'your event';
       const send = (to: string, subject: string, html: string) =>
         this.email.sendRawEmail(to, subject, html).catch((err) => this.logger.error(`Transfer notice failed to ${to}`, err));
+      const self = by === 'holder';
+      const fromName = from?.user?.fullName || from?.user?.username || 'Someone';
       if (from?.email) {
         await send(
           from.email,
           `Your ticket for ${title} was transferred`,
           h1('Your ticket was transferred') +
-            p(`The organiser moved your ticket for ${strong(title)} to another account, so it's no longer valid for you. If you think this is a mistake, contact the organiser.`),
+            p(
+              self
+                ? `You sent your ticket for ${strong(title)} to ${esc(toEmail ?? 'another account')}. Your old QR no longer scans.`
+                : `The organiser moved your ticket for ${strong(title)} to another account, so it's no longer valid for you. If you think this is a mistake, contact the organiser.`,
+            ),
         );
       }
       if (toEmail) {
@@ -194,7 +266,11 @@ export class RegistrationTransfersService {
           toEmail,
           `You have a ticket for ${title}`,
           h1('A ticket is yours') +
-            p(`The organiser moved a ticket for ${strong(title)} to your account. Open it in the Unifesto app under Tickets.`),
+            p(
+              self
+                ? `${esc(fromName)} sent you their ticket for ${strong(title)}. Open it in the Unifesto app under Tickets.`
+                : `The organiser moved a ticket for ${strong(title)} to your account. Open it in the Unifesto app under Tickets.`,
+            ),
         );
       }
       await this.seats.resendConfirmation(moved.id, moved.user.id);

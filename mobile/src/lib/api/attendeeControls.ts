@@ -25,11 +25,15 @@ export interface AttendeeControls {
   attendeeEditsUntil: string | null;
   /** Whether attendees can edit right now (switch on, before deadline, event not over). */
   attendeeEditsOpen: boolean;
+  /** Q17: attendees may transfer their own free ticket. */
+  allowSelfTransfer: boolean;
 }
 
 export const setAttendeeControls = (
   eventId: string,
-  body: Partial<Pick<AttendeeControls, 'allowTeamChanges' | 'teamChangesUntil' | 'attendeeEditsEnabled' | 'attendeeEditsUntil'>>,
+  body: Partial<
+    Pick<AttendeeControls, 'allowTeamChanges' | 'teamChangesUntil' | 'attendeeEditsEnabled' | 'attendeeEditsUntil' | 'allowSelfTransfer'>
+  >,
 ) => call<AttendeeControls>(`/events/${eventId}/attendee-controls`, json('PATCH', body));
 
 // ── Attendee: my details ─────────────────────────────────────────────────────

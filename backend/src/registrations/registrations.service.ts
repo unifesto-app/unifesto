@@ -86,6 +86,10 @@ export class RegistrationsService {
   }
 
   // RegistrationTransfersService
+  selfTransfer(...args: Parameters<RegistrationTransfersService['selfTransfer']>) {
+    return this.transfers.selfTransfer(...args);
+  }
+
   adminTransferRegistration(
     ...args: Parameters<
       RegistrationTransfersService['adminTransferRegistration']

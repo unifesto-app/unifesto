@@ -194,6 +194,19 @@ export const cancelRegistration = async (eventId: string) => {
 
 /** Cancel my own free registration by id. Paid tickets are rejected by the
  *  backend — those go through the refund flow instead. */
+/**
+ * Q17: send my free ticket to another Unifesto account, when the organiser
+ * turned transfers on. My QR stops scanning; theirs is mailed to them.
+ */
+export const transferMyTicket = async (registrationId: string, email: string) => {
+  const response = await makeAuthenticatedRequest(`/registrations/${registrationId}/transfer`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+  if (!response?.ok) throw await errorFrom(response, 'Could not transfer your ticket');
+  return response.json() as Promise<{ registrationId: string; eventId: string; toEmail: string }>;
+};
+
 export const cancelMyRegistration = async (registrationId: string, reason?: string) => {
   const response = await makeAuthenticatedRequest(`/registrations/${registrationId}/cancel`, {
     method: 'POST',

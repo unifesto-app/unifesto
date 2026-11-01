@@ -297,6 +297,13 @@ export default function EventSettingsScreen() {
                 onChange={(d) => setControls('deadline', { attendeeEditsUntil: d.toISOString() })}
               />
             ) : null}
+            <SwitchRow
+              label="Attendees can transfer free tickets"
+              hint="People can send their own free ticket to someone with a Unifesto account, from their ticket. Paid tickets still go through you."
+              value={!!event.allowSelfTransfer}
+              disabled={busy === 'transfers'}
+              onValueChange={(v) => setControls('transfers', { allowSelfTransfer: v })}
+            />
           </SettingsGroup>
           <Text style={[styles.note, { color: c.muted }]}>
             {event.attendeeEditsEnabled && event.attendeeEditsUntil && new Date(event.attendeeEditsUntil).getTime() <= Date.now()

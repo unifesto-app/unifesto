@@ -122,6 +122,8 @@ export interface Event {
   attendeeEditsEnabled?: boolean;
   /** …until this time (null = no deadline). */
   attendeeEditsUntil?: string | null;
+  /** Q17: attendees may transfer their own free ticket (curator switch). */
+  allowSelfTransfer?: boolean;
 }
 
 /**
