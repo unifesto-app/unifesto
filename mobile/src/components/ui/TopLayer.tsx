@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Platform, StyleSheet, View, type ModalProps } from 'react-native';
+import { Platform, StyleSheet, View, type ModalProps } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
+import Modal from './Modal';
 
 /**
  * A full-screen layer that sits above everything, native modal routes included.

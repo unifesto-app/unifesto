@@ -10,7 +10,7 @@ import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays'
 import { FlowHeader, GUTTER } from '../components/registration/FlowHeader';
 import { StateView, VerifyingOverlay } from '../components/registration/RegStates';
 import { DetailsStep, PaymentStep, ProfileGate, ReviewStep, TicketStep, money } from '../components/registration/Steps';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { cosmosCardRadius, useCosmos } from '../theme/cosmos';
 
 /**
@@ -84,7 +84,7 @@ export default function EventRegistrationScreen() {
         <CosmosBackdrop horizon={false} />
         <FlowHeader title={r.event.title} step={null} secondsLeft={null} onBack={null} onClose={close} />
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={[styles.content, { paddingBottom: barSpace }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[column, styles.content, { paddingBottom: barSpace }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <ProfileGate r={r} />
           </ScrollView>
           <ActionBar info={null} label="Save and continue" loading={r.gate.saving} tone="neutral" accent={c.primary} onPress={r.gate.save} />
@@ -135,7 +135,7 @@ export default function EventRegistrationScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           ref={scroll}
-          contentContainerStyle={[styles.content, { paddingBottom: barSpace }]}
+          contentContainerStyle={[column, styles.content, { paddingBottom: barSpace }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}

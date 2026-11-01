@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
@@ -22,12 +22,13 @@ import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import type { Event } from '../lib/api/events';
 import { relativeWhen, shortPrice, spaceBanner, spaceLogo } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 import { useBrandFont } from '../lib/brandFont';
+import useContentWidth from '../hooks/useContentWidth';
 
 const LOGO = 76;
 const ICON = 24;
@@ -63,13 +64,14 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const barSpace = useActionBarSpace();
-  const { width } = useWindowDimensions();
+  const { width, hero } = useContentWidth();
   const [reportOpen, setReportOpen] = useState(false);
   const { space } = s;
   const brandFont = useBrandFont(space?.branding?.font);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const bannerW = width - GUTTER * 2;
+  // Short of the column on a landscape phone, so the name still shows under it.
+  const bannerW = Math.min(width - GUTTER * 2, hero);
   const bannerH = Math.round((bannerW * 3) / 4); // space banners are 4:3
 
   useLayoutEffect(() => {
@@ -171,7 +173,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
       <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: cta.hidden ? spacing[12] : barSpace }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: cta.hidden ? spacing[12] : barSpace }]}
         refreshControl={
           <RefreshControl
             refreshing={s.refreshing}

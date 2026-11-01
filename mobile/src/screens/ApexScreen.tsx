@@ -71,9 +71,10 @@ import { getTraffic, type PlatformTrafficStats } from '../lib/api/traffic';
 import { pendingCounts } from '../lib/apexQueues';
 import { overallLabel } from './apex/PlatformStatusScreen';
 import { inrShort } from '../utils/money';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import useContentWidth from '../hooks/useContentWidth';
 
 const GUTTER = spacing[6];
 const GAP = spacing[3];
@@ -215,7 +216,8 @@ export default function ApexScreen() {
   const router = useRouter();
   const c = useCosmos();
   const topInset = useStableTopInset();
-  const { width, fontScale } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
+  const { width } = useContentWidth();
   const [data, setData] = useState<PlatformOverview | null>(null);
   const [money, setMoney] = useState<FinancialPoint[] | null>(null);
   const [growth, setGrowth] = useState<GrowthPoint[] | null>(null);
@@ -432,7 +434,7 @@ export default function ApexScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.primary]} progressViewOffset={topInset} />
         }

@@ -27,7 +27,7 @@ import {
 } from '../../lib/api/apex';
 import { whenShort } from '../../components/apex/ApexRow';
 import { AppAlert } from '../../components/ui/AppAlert';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { borderRadius, column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
@@ -181,7 +181,7 @@ export default function WhatsappThreadScreen() {
           inverted
           data={messages}
           keyExtractor={(m) => m.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[column, styles.list]}
           ListFooterComponent={<View style={{ height: topSpacing }} />}
           extraData={picked}
           renderItem={({ item }) => (
@@ -198,7 +198,7 @@ export default function WhatsappThreadScreen() {
 
       {convo ? (
         windowOpen ? (
-          <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), borderTopColor: c.border }]}>
+          <View style={[column, styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), borderTopColor: c.border }]}>
             <View style={styles.inputWrap}>
               <CardBackdrop shape={styles.inputWrap} />
               <TextInput
@@ -223,7 +223,7 @@ export default function WhatsappThreadScreen() {
             </Pressable>
           </View>
         ) : (
-          <Text style={[styles.closed, { color: c.muted, paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
+          <Text style={[column, styles.closed, { color: c.muted, paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
             It's been over 24 hours since their last message, so WhatsApp only allows a template now. Send one from Apex on the web.
           </Text>
         )

@@ -1,7 +1,6 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +24,7 @@ import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from './ui/CardSurface';
 import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
+import Modal from './ui/Modal';
 
 /** Event fields the share card needs — resolved by the caller from whatever
  *  shape it has (event detail, ticket, etc.). */

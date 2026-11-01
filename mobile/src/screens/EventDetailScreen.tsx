@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
@@ -51,13 +50,14 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 import { useBrandFont } from '../lib/brandFont';
+import useContentWidth from '../hooks/useContentWidth';
 
 const ICON = 24;
 
@@ -108,7 +108,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const barSpace = useActionBarSpace();
-  const { width } = useWindowDimensions();
+  const { width, hero } = useContentWidth();
   const scrollRef = useRef<ScrollView>(null);
   // Y of the "Events inside" rail, so an umbrella's CTA lands on it.
   const subEventsY = useRef<number | null>(null);
@@ -120,7 +120,8 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   // Unifesto Stay: shown to signed-in viewers when the event offers stays.
   const stay = useEventStays(event?.id, !!d.user && !!event && event.type !== 'ONLINE');
 
-  const bannerW = width - GUTTER * 2;
+  // Short of the column on a landscape phone, so the name still shows under it.
+  const bannerW = Math.min(width - GUTTER * 2, hero);
   const bannerH = Math.round((bannerW * 3) / 4); // event banners are 4:3
 
   // A case about this event; the backend sends it to the organiser's desk (D2).
@@ -245,7 +246,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: barSpace }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: barSpace }]}
         refreshControl={
           <RefreshControl
             refreshing={d.refreshing}

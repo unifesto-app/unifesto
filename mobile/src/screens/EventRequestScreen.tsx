@@ -12,10 +12,11 @@ import DateTimeRow from '../components/manage/DateTimeRow';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
+import useContentWidth from '../hooks/useContentWidth';
 
 const FORMATS = [
   { value: 'IN_PERSON', label: 'In person' },
@@ -38,6 +39,7 @@ const HOURS_2 = 2 * 3600_000;
 export default function EventRequestScreen() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { inset } = useContentWidth();
   const topSpacing = useTopSpacing();
 
   const [title, setTitle] = useState('');
@@ -83,7 +85,7 @@ export default function EventRequestScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 + insets.bottom }}
+          contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 150 + insets.bottom }]}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           keyboardShouldPersistTaps="handled"
@@ -150,7 +152,7 @@ export default function EventRequestScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
+      <View style={[styles.bar, { left: inset, right: inset, paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
         <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <AuthButton label="Create event" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
         {!ready ? (

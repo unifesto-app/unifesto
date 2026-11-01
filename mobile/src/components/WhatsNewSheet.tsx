@@ -9,7 +9,7 @@ import { TopLayer } from './ui/TopLayer';
 import { SheetBackdrop } from './ui/CardSurface';
 import AuthButton from './auth/AuthButton';
 import { WHATS_NEW, sectionsFor, shouldShowWhatsNew } from '../lib/whatsNew';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
   card: {
+    ...column,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

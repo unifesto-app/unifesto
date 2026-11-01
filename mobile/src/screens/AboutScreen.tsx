@@ -19,7 +19,7 @@ import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -120,7 +120,7 @@ export default function AboutScreen() {
       <CosmosBackdrop horizon={false} />
       <ScrollView
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentContainerStyle={[column, styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>

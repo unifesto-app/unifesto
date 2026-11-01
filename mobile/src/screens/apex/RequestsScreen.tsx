@@ -6,7 +6,7 @@ import useTopSpacing from '../../hooks/useTopSpacing';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { ApexRow } from '../../components/apex/ApexRow';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../../components/ui/CardSurface';
@@ -88,7 +88,7 @@ export default function RequestsScreen() {
       <SectionList
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         sections={loading ? [] : sections}
         keyExtractor={(r) => r.key}
         stickySectionHeadersEnabled={false}

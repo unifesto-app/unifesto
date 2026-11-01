@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -17,16 +17,20 @@ import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { isEventOver } from '../lib/upcomingTickets';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
+import useContentWidth from '../hooks/useContentWidth';
+import useGrid from '../hooks/useGrid';
 
 const reflow = LinearTransition.duration(220);
+/** Narrowest a compact card gets before the grid drops a column (as Events). */
+const CARD_MIN = 320;
 
 /** Un-hearting removes a card live, so each one fades out and the rest reflow. */
-const SavedCard = (props: React.ComponentProps<typeof EventListCard>) => (
-  <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow}>
+const SavedCard = ({ width, ...props }: React.ComponentProps<typeof EventListCard> & { width: number }) => (
+  <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={{ width }}>
     <EventListCard {...props} />
   </Animated.View>
 );
@@ -39,7 +43,9 @@ const SavedCard = (props: React.ComponentProps<typeof EventListCard>) => (
 export default function FavoritesScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const { width } = useWindowDimensions();
+  const { width, hero } = useContentWidth();
+  // Tablets, landscape and wide windows: the compact cards flow into columns.
+  const grid = useGrid(CARD_MIN, spacing[3]);
   const defaults = useDefaultImages();
   const { isAuthenticated } = useAuth();
   const { favoriteIds, refresh } = useFavorites();
@@ -83,15 +89,16 @@ export default function FavoritesScreen() {
   }, [events, favoriteIds]);
 
   const openEvent = (e: Event) => router.push(`/event/${e.slug || e.id}`);
-  const posterWidth = width - GUTTER * 2;
+  const posterWidth = Math.min(width - GUTTER * 2, hero);
 
-  const page = (children: React.ReactNode) => (
+  // `wide` lets the grid use its own width; prompts stay in the reading column.
+  const page = (children: React.ReactNode, wide = false) => (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentContainerStyle={[column, wide && { maxWidth: grid.maxWidth }, styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           isAuthenticated ? (
@@ -136,9 +143,14 @@ export default function FavoritesScreen() {
       <View style={styles.pad}>
         <PosterCardSkeleton width={posterWidth} />
         <View style={[styles.list, { marginTop: spacing[8] }]}>
-          {[0, 1].map((i) => <EventListCardSkeleton key={i} />)}
+          {[0, 1].map((i) => (
+            <View key={i} style={{ width: grid.itemWidth }}>
+              <EventListCardSkeleton />
+            </View>
+          ))}
         </View>
       </View>,
+      true,
     );
   }
 
@@ -154,7 +166,7 @@ export default function FavoritesScreen() {
     <>
       {next ? (
         <Animated.View key={next.id} entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={styles.pad}>
-          <View style={styles.eyebrowRow}>
+          <View style={[styles.eyebrowRow, { width: posterWidth }]}>
             <Text style={[styles.eyebrow, { color: c.muted }]}>Up next</Text>
             <FavoriteButton eventId={next.id} size={20} color={c.muted} />
           </View>
@@ -176,7 +188,7 @@ export default function FavoritesScreen() {
         <Animated.View layout={reflow}>
           <Section title="Coming up" subtitle={`${later.length} more saved`} style={next ? undefined : styles.firstSection}>
             <View style={[styles.list, styles.pad]}>
-              {later.map((e) => <SavedCard key={e.id} event={e} onPress={() => openEvent(e)} />)}
+              {later.map((e) => <SavedCard key={e.id} width={grid.itemWidth} event={e} onPress={() => openEvent(e)} />)}
             </View>
           </Section>
         </Animated.View>
@@ -186,12 +198,13 @@ export default function FavoritesScreen() {
         <Animated.View layout={reflow}>
           <Section title="Been and gone" subtitle="Saved events that have ended" style={next || later.length ? undefined : styles.firstSection}>
             <View style={[styles.list, styles.pad]}>
-              {past.map((e) => <SavedCard key={e.id} event={e} past onPress={() => openEvent(e)} />)}
+              {past.map((e) => <SavedCard key={e.id} width={grid.itemWidth} event={e} past onPress={() => openEvent(e)} />)}
             </View>
           </Section>
         </Animated.View>
       ) : null}
     </>,
+    true,
   );
 }
 
@@ -203,7 +216,7 @@ const styles = StyleSheet.create({
   firstSection: { marginTop: spacing[4] },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[4], marginBottom: spacing[3] },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  list: { gap: spacing[3] },
+  list: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
   promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },

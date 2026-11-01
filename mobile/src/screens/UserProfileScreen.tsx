@@ -19,7 +19,7 @@ import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
 import { CircleRow } from '../components/home/SpaceCards';
 import ManageStats from '../components/manage/ManageStats';
 import { relativeWhen } from '../utils/eventFormat';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -141,7 +141,7 @@ export default function UserProfileScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

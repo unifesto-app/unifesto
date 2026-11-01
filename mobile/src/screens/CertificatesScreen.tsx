@@ -15,7 +15,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -151,7 +151,7 @@ export default function CertificatesScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />

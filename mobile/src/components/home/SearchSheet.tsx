@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { relativeWhen, shortPrice, spaceLogo } from '../../utils/eventFormat';
 import PressableScale from '../ui/PressableScale';
+import Modal from '../ui/Modal';
 
 interface SearchSheetProps {
   search: HomeSearch;

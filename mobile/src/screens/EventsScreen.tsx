@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '@unifesto/unicon/react-native';
@@ -17,11 +17,15 @@ import { PRESETS, useEventsBrowse, type Preset } from '../hooks/useEventsBrowse'
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import type { Event } from '../lib/api/events';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import useContentWidth from '../hooks/useContentWidth';
+import useGrid, { rows } from '../hooks/useGrid';
 
 const SEARCH_H = 52;
+/** Narrowest a compact event card gets before the grid drops a column. */
+const CARD_MIN = 320;
 
 /**
  * Browse all published events, in Home's cosmos voice: a search field with the
@@ -33,7 +37,9 @@ export default function EventsScreen() {
   const c = useCosmos();
   const router = useRouter();
   const defaults = useDefaultImages();
-  const { width } = useWindowDimensions();
+  const { width, hero } = useContentWidth();
+  // Tablets, landscape and wide windows: the compact cards flow into columns.
+  const grid = useGrid(CARD_MIN, spacing[3]);
   const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{
     category?: string;
@@ -68,7 +74,7 @@ export default function EventsScreen() {
   const presetLabel = PRESETS.find((p) => p.key === b.preset)?.label;
   const featured = !b.loading && !b.query.trim() ? b.events[0] : undefined;
   const rest = b.loading ? [] : featured ? b.events.slice(1) : b.events;
-  const posterWidth = width - GUTTER * 2;
+  const posterWidth = Math.min(width - GUTTER * 2, hero);
 
   const chip = (key: string, label: string, active: boolean, onPress: () => void, dismissible = false) => (
     <Pressable
@@ -163,13 +169,19 @@ export default function EventsScreen() {
   );
 
   const empty = b.loading ? (
-    <View style={styles.list}>
+    <View style={{ gap: spacing[3] }}>
       {b.query.trim() ? null : (
         <View style={{ marginBottom: spacing[3] }}>
           <PosterCardSkeleton width={posterWidth} />
         </View>
       )}
-      {[0, 1, 2, 3].map((i) => <EventListCardSkeleton key={i} />)}
+      <View style={styles.list}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={{ width: grid.itemWidth }}>
+            <EventListCardSkeleton />
+          </View>
+        ))}
+      </View>
     </View>
   ) : featured ? null : (
     <View style={styles.prompt}>
@@ -204,14 +216,22 @@ export default function EventsScreen() {
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <FlatList
-        data={rest}
-        keyExtractor={(e) => e.id}
-        renderItem={({ item }) => <EventListCard event={item} onPress={() => openEvent(item)} />}
+        data={rows(rest, grid.columns)}
+        keyExtractor={(row) => row[0].id}
+        renderItem={({ item: row }) => (
+          <View style={styles.list}>
+            {row.map((e) => (
+              <View key={e.id} style={{ width: grid.itemWidth }}>
+                <EventListCard event={e} onPress={() => openEvent(e)} />
+              </View>
+            ))}
+          </View>
+        )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={b.loadingMore ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} /> : null}
         ItemSeparatorComponent={() => <View style={{ height: spacing[3] }} />}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
+        contentContainerStyle={[column, { maxWidth: grid.maxWidth, paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }]}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
@@ -268,8 +288,8 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   featured: { marginBottom: spacing[3] },
-  list: { gap: spacing[3] },
-  prompt: { marginTop: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  list: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
+  prompt: { ...column, marginTop: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
   promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

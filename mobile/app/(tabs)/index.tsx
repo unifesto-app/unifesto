@@ -29,7 +29,7 @@ import HostCta from '../../src/components/home/HostCta';
 import BeyondFeature, { BeyondFeatureSkeleton } from '../../src/components/home/BeyondFeature';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import { relativeWhen, shortPrice } from '../../src/utils/eventFormat';
-import { spacing } from '../../src/theme/spacing';
+import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
 
 export default function HomeTab() {
@@ -99,7 +99,7 @@ export default function HomeTab() {
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[column, styles.content]}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}

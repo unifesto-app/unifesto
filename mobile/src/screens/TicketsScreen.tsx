@@ -16,7 +16,7 @@ import TicketTabs from '../components/tickets/TicketTabs';
 import TicketCard, { TicketCardSkeleton } from '../components/tickets/TicketCard';
 import NextPassCard, { NextPassCardSkeleton } from '../components/tickets/NextPassCard';
 import WaitlistCard from '../components/tickets/WaitlistCard';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
@@ -73,6 +73,12 @@ export default function TicketsScreen() {
     pager.current?.scrollTo({ x: index * width, animated: true });
   }, [t.tab, width, pager]);
 
+  // Rotation or a window resize (Split View, floating window): the page in view
+  // stays lined up at the new width instead of showing half of two.
+  useEffect(() => {
+    pager.current?.scrollTo({ x: shownIndex.current * width, animated: false });
+  }, [width, pager]);
+
   // Runs on the JS thread only when the nearest page changes, not per frame.
   const onPageChange = useRef((_index: number) => {});
   onPageChange.current = (index: number) => {
@@ -121,7 +127,7 @@ export default function TicketsScreen() {
     });
 
   const header = (
-    <View style={{ paddingTop: topInset + spacing[4], paddingHorizontal: GUTTER }}>
+    <View style={[column, { paddingTop: topInset + spacing[4], paddingHorizontal: GUTTER }]}>
       <Text accessibilityRole="header" style={[styles.title, { color: c.text }]}>My tickets</Text>
     </View>
   );
@@ -146,7 +152,7 @@ export default function TicketsScreen() {
     return (
       <View style={[styles.container, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
-        <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={[column, { flexGrow: 1 }]}>
           {header}
           <View style={styles.guest}>
             <CardBackdrop shape={styles.guest} />
@@ -255,7 +261,7 @@ export default function TicketsScreen() {
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       {header}
-      <View style={{ paddingHorizontal: GUTTER, marginTop: spacing[5], marginBottom: spacing[2] }}>
+      <View style={[column, { paddingHorizontal: GUTTER, marginTop: spacing[5], marginBottom: spacing[2] }]}>
         <TicketTabs value={t.tab} onChange={t.setTab} position={position} />
       </View>
       <Animated.ScrollView
@@ -278,7 +284,7 @@ export default function TicketsScreen() {
             contentInsetAdjustmentBehavior="never"
             automaticallyAdjustContentInsets={false}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: spacing[4], paddingBottom: 140 }}
+            contentContainerStyle={[column, { paddingTop: spacing[4], paddingBottom: 140 }]}
             refreshControl={
               <RefreshControl
                 refreshing={t.refreshing === tab}

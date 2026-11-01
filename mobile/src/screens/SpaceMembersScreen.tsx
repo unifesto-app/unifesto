@@ -14,7 +14,7 @@ import MemberRow from '../components/manage/MemberRow';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { AppAlert, type AppAlertButton } from '../components/ui/AppAlert';
 import { SPACE_ROLE_LABEL, type SpaceMember } from '../lib/api/spaceMembers';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { GUTTER } from '../components/home/Section';
@@ -171,7 +171,7 @@ export default function SpaceMembersScreen() {
         <FlatList
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[column, styles.content]}
           data={rows}
           keyExtractor={(r) => r.id}
           ListHeaderComponent={header}
