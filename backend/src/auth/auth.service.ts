@@ -783,13 +783,13 @@ export class AuthService {
   }
 
   /** J17: tell every email on the account that a new sign-in method was linked. */
-  private async notifySignInMethodAdded(userId: string, provider: Provider): Promise<void> {
+  async notifySignInMethodAdded(userId: string, provider: Provider | 'PASSKEY'): Promise<void> {
     const identities = await this.prisma.userIdentity.findMany({
       where: { userId, email: { not: null } },
       select: { email: true },
     });
     const emails = new Set(identities.map((i) => i.email!.toLowerCase()));
-    const method = { GOOGLE: 'Google', APPLE: 'Apple', EMAIL: 'Email sign-in codes', PHONE: 'Phone' }[provider];
+    const method = { GOOGLE: 'Google', APPLE: 'Apple', EMAIL: 'Email sign-in codes', PHONE: 'Phone', PASSKEY: 'A passkey' }[provider];
     for (const email of emails) await this.emailService.sendSignInMethodAdded(email, method);
   }
 
@@ -862,8 +862,8 @@ export class AuthService {
     return id;
   }
 
-  /** A sign-in: a new linked device, then its tokens. */
-  private async startSession(user: TokenUser, userAgent?: string) {
+  /** A sign-in: a new linked device, then its tokens. Passkey sign-in ends here too. */
+  async startSession(user: TokenUser, userAgent?: string) {
     assertNotSuspended(user);
     return this.tokensFor(user, await this.newSession(user.id, userAgent));
   }

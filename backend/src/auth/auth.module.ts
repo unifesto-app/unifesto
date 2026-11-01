@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { PasskeyController } from './passkey.controller';
+import { PasskeyService } from './passkey.service';
 import { OtpService } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
 import { AppleSignInService } from './apple-sign-in.service';
@@ -19,9 +21,10 @@ import { CanGuard } from './authorization/can.guard';
 
 @Module({
   imports: [ConfigModule, PrismaModule, EmailModule, WhatsAppModule, RedisModule, CacheModule],
-  controllers: [AuthController],
+  controllers: [AuthController, PasskeyController],
   providers: [
     AuthService,
+    PasskeyService,
     OtpService,
     CognitoJwtService,
     AppleSignInService,

@@ -4,6 +4,7 @@
  * helpers, which attach the current token (refreshing it when it expired).
  */
 
+import * as Passkeys from 'react-native-passkeys';
 import { expectOk, makeAuthenticatedRequest, makePublicRequest } from './helpers';
 import { uploadImage } from './upload';
 
@@ -129,5 +130,42 @@ export async function signOutDevice(id: string): Promise<{ revoked: true }> {
   return expectOk(
     await makeAuthenticatedRequest(`/auth/sessions/${id}`, { method: 'DELETE' }),
     "Couldn't sign that device out",
+  );
+}
+
+/** A passkey I sign in with: Face ID, a fingerprint or a screen lock. */
+export interface Passkey {
+  id: string;
+  /** Where I added it: "iPhone", "Chrome on macOS". */
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** I closed the passkey sheet: nothing to report (iOS says "cancelled", Android "UserCancelled"). */
+export const passkeyCancelled = (e: unknown) => /cancel/i.test(String((e as Error)?.message));
+
+export async function getPasskeys(): Promise<Passkey[]> {
+  return expectOk(await makeAuthenticatedRequest('/auth/passkeys'), "Couldn't load my passkeys");
+}
+
+/** This phone makes a passkey for my account, then it's saved. */
+export async function addPasskey(): Promise<Passkey> {
+  const options = await expectOk(
+    await makeAuthenticatedRequest('/auth/passkeys/register/options', { method: 'POST' }),
+    "Couldn't start adding a passkey",
+  );
+  const answer = await Passkeys.create(options);
+  if (!answer) throw new Error("This phone didn't make a passkey");
+  return expectOk(
+    await makeAuthenticatedRequest('/auth/passkeys/register', { method: 'POST', body: JSON.stringify(answer) }),
+    "Couldn't add that passkey",
+  );
+}
+
+export async function removePasskey(id: string): Promise<{ removed: true }> {
+  return expectOk(
+    await makeAuthenticatedRequest(`/auth/passkeys/${id}`, { method: 'DELETE' }),
+    "Couldn't remove that passkey",
   );
 }

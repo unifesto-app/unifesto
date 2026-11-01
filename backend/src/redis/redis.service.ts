@@ -295,6 +295,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return true;
   }
 
+  /** Read a key and delete it in one step (GETDEL): a value only one caller can have. */
+  async take(key: string): Promise<string | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    return client.getdel(key);
+  }
+
   async del(key: string): Promise<void> {
     const client = this.getClient();
     if (!client) return;

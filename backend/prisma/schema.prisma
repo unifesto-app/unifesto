@@ -500,6 +500,7 @@ model User {
   adminDevices                 AdminDevice[]
   pushDevices                  UserPushDevice[]
   authSessions                 AuthSession[]
+  passkeys                     Passkey[]
   bankAccounts                 PayoutBankAccount[]
   payoutsReceived              Payout[]                      @relation("PayoutUser")
   refundRequests               RefundRequest[]               @relation("RefundRequestedBy")
@@ -5034,6 +5035,28 @@ model AuthSession {
 
   @@index([userId])
   @@map("auth_sessions")
+}
+
+// A passkey (WebAuthn) I sign in with: Face ID, a fingerprint, a security key.
+model Passkey {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // base64url, as the authenticator reports it.
+  credentialId String    @unique @map("credential_id") @db.VarChar(1024)
+  publicKey    Bytes     @map("public_key")
+  // Signature counter; most passkeys stay at 0. Unsigned 32-bit, so BigInt.
+  counter      BigInt    @default(0)
+  transports   String[]
+  // Where I added it ("Chrome on macOS", "iPhone").
+  name         String    @db.VarChar(100)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastUsedAt   DateTime? @map("last_used_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("passkeys")
 }
 
 // =====================================================
