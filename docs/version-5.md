@@ -1089,3 +1089,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q33 sign-ups whose WhatsApp number is on another account are asked before the sign-in is added to it (409 with a link token, app alert, web confirm); old builds are told and never linked (#529)
 - **2026-11-01** · Q35 a Google/Apple sign-in writes no user until the number is verified; abandoned sign-ups no longer leave +0 placeholder users (prod count query in the PR) (#531)
 - **2026-11-01** · J6 load test run on an isolated staging copy; staging-setup.sh and runbook fixes (own security group, damaged-image guard, checkin.js roster shape) (#533)
+- **2026-11-01** · Q31 Space Admins invite teammates by email, account or not (app + console); invited accounts finish sign-in on web /login; console roster shows member emails (#532)
