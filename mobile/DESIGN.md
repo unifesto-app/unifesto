@@ -47,7 +47,8 @@ owner's approval first.
    page stay monochrome.
 4. **Colour blends.** Where a card carries its accent as a shape (a shade card), the shapes melt
    into a deep base. No hard edges, no outlines.
-5. **Grain on everything.** The sky carries film grain (12% night, 9% day); shade cards carry more.
+5. **Grain on the splash only.** Film grain (12% night, 9% day) is the splash's alone
+   (`<CosmosBackdrop grain />`). Every other screen and every card, shade cards included, is clean.
 6. **Statuses are plain text.** Never pills or tinted chips: "✓ Checked in", "Sold out",
    "Hackathon · Hyderabad".
 
@@ -56,8 +57,8 @@ owner's approval first.
 - Every screen sits on `CosmosScreen` / `CosmosList` or draws `<CosmosBackdrop horizon={false} />`
   itself. Never a custom page background, gradient or image behind a whole screen.
 - `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback, with the blue
-  glow from the bottom-right corner. Scrolling screens use `horizon={false}`: stars and grain
-  only. Banner-lit pages pass `hue`.
+  glow from the bottom-right corner. Scrolling screens use `horizon={false}`: stars only.
+  Banner-lit pages pass `hue`.
 
 ## 3. Colour
 

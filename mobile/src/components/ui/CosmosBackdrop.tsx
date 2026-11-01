@@ -21,18 +21,21 @@ const STARS: [number, number, number, number][] = [
 /**
  * The Unifesto Horizon sky, without lines (the owner removed the orbits and the
  * horizon line from the app on 31 Oct 2026). Behind every screen: starlight by
- * night and film grain. `horizon` (default) adds the hero light for the login
- * and splash: the Horizon-blue glow rising from the bottom-right corner,
- * measured in screen widths like the web's cqw units. `hue` lights the page
- * with a colour (the event banner's): a wide nebula behind the stars, fading to
- * the plain ground. Decorative, never touchable.
+ * night. `grain` adds film grain (the splash only, since 1 Nov 2026). `horizon`
+ * (default) adds the hero light for the login and splash: the Horizon-blue glow
+ * rising from the bottom-right corner, measured in screen widths like the web's
+ * cqw units. `hue` lights the page with a colour (the event banner's): a wide
+ * nebula behind the stars, fading to the plain ground. Decorative, never
+ * touchable.
  */
 export default function CosmosBackdrop({
   horizon = true,
+  grain = false,
   scheme,
   hue,
 }: {
   horizon?: boolean;
+  grain?: boolean;
   hue?: string | null;
   /** Override the app theme (the splash follows the OS instead). */
   scheme?: 'dark' | 'light';
@@ -67,7 +70,7 @@ export default function CosmosBackdrop({
         {horizon ? <Ellipse cx={w * 0.8} cy={h - w * 0.06} rx={w * 0.5} ry={w * 0.22} fill="url(#sun)" /> : null}
       </Svg>
       {/* Film grain, as on the site: 12% by night, 9% (ink) by day. */}
-      <Grain dark={isDark} opacity={isDark ? 0.12 : 0.09} />
+      {grain ? <Grain dark={isDark} opacity={isDark ? 0.12 : 0.09} /> : null}
     </View>
   );
 }

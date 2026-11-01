@@ -199,7 +199,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         {/* ── The pass: what it's for, then the stub that gets scanned ── */}
         <View onLayout={(e) => setPassSize(e.nativeEvent.layout)}>
           {/* The sky shade, cut to the pass outline. It sits behind the content, so the
-              QR's white panel is drawn above it, never under its grain. */}
+              QR's white panel is drawn above it, never under the shade. */}
           {passSize && notchY != null ? (
             <MaskedView
               style={StyleSheet.absoluteFill}
