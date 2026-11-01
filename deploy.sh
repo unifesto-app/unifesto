@@ -4,8 +4,9 @@ set -euo pipefail
 # Git-free deploy: sync this folder to the server and (re)build the
 # Docker stack there. Source is copied over SSH — no GitHub involved.
 #
-# Deploy everything:
+# Deploy what changed since the build each service runs (see pick_services):
 #   ./deploy.sh
+#   FULL=1 ./deploy.sh         # the whole stack, changed or not
 # Deploy only some services (backend | apex | web), others keep running:
 #   ./deploy.sh web            # just the public site
 #   ./deploy.sh apex           # just the platform-admin dashboard
@@ -13,6 +14,7 @@ set -euo pipefail
 # Check the gates below without touching the server (nothing synced or built):
 #   ./deploy.sh --check
 #   SERVER_MIGRATIONS=names.txt ./deploy.sh --check   # also the DROP guard, offline
+#   SERVER_SHAS="backend=<sha> web=<sha> apex=<sha>" ./deploy.sh --check   # what it would pick
 # Put back the image each service ran before its last deploy (J13):
 #   ./deploy.sh rollback                  # backend apex web
 #   ./deploy.sh rollback backend          # the API (+ cert-worker) only
@@ -69,8 +71,9 @@ case "${1:-}" in
   rollback) MODE=rollback; shift ;;
 esac
 
-# Any args are compose service names; no args = the whole stack. A rollback
-# with no args covers every image deploy.sh builds.
+# Any args are compose service names; no args = the whole stack, which
+# pick_services then narrows to what changed. A rollback with no args covers
+# every image deploy.sh builds.
 SERVICES="$*"
 if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web}"; fi
 
@@ -86,23 +89,27 @@ image_names() {
     esac
   done | sort -u | xargs
 }
-IMAGES="$(image_names ${SERVICES:-backend apex web})"
-
-# Does this deploy touch the backend? A full deploy (no args) always does; a
-# targeted one only if "backend" is named. When it does, DB migrations must be
-# applied with the freshly-built image BEFORE the API replicas start — otherwise
-# code that reads a not-yet-added column 500s (expand/contract ordering).
-DEPLOY_BACKEND=false
-if [ -z "${SERVICES}" ]; then
-  DEPLOY_BACKEND=true
-else
-  case " ${SERVICES} " in
-    *" backend "*) DEPLOY_BACKEND=true ;;
-  esac
-fi
+# IMAGES and DEPLOY_BACKEND for SERVICES; again once pick_services narrows it.
+scope() {
+  IMAGES="$(image_names ${SERVICES:-backend apex web})"
+  # Does this deploy touch the backend? A full deploy (no args) always does; a
+  # targeted one only if "backend" is named. When it does, DB migrations must be
+  # applied with the freshly-built image BEFORE the API replicas start — otherwise
+  # code that reads a not-yet-added column 500s (expand/contract ordering).
+  DEPLOY_BACKEND=false
+  if [ -z "${SERVICES}" ]; then
+    DEPLOY_BACKEND=true
+  else
+    case " ${SERVICES} " in
+      *" backend "*) DEPLOY_BACKEND=true ;;
+    esac
+  fi
+}
+scope
 
 FAILED=0
 FORCED=0
+NOTHING=false
 ok()   { echo "  ok     $*"; }
 fail() { echo "  FAIL   $*" >&2; FAILED=1; }
 # Git and CI gates: FORCE=1 turns a failure into a warning.
@@ -220,10 +227,89 @@ drop_guard() {
   fi
 }
 
+# With no service named, deploy only those whose build context changed since
+# the build they run: each running container's image carries that build's
+# :<sha> tag (what rollback reads). Not DEPLOYED_SHA, which `./deploy.sh web`
+# moves on while backend keeps its older build. Every builder prune makes an
+# unchanged app a full cold rebuild, so skipping it saves minutes, and skipping
+# backend saves the roll. Anything unclear deploys: an untagged image, replicas
+# on different builds, a service not running, a SHA outside HEAD's history.
+# docker-compose.yml or the Caddyfile changing (or every app changing) keeps the
+# whole stack, as before. Nothing changed (docs, mobile/): nothing deployed.
+pick_services() {
+  local running svc dir sha why picked=""
+  if [ -n "${SERVICES}" ] || [ "${FULL:-}" = 1 ]; then return 0; fi
+  echo "==> What changed since each service's running build"
+  case "${SHA}" in *-dirty)
+    echo "  all    uncommitted changes aren't in git's diff: the whole stack"
+    return 0 ;;
+  esac
+  running="$(mktemp)"
+  if [ "${MODE}" = check ]; then
+    if [ -z "${SERVER_SHAS:-}" ]; then
+      echo "  skip   needs the server's running builds (SERVER_SHAS=\"backend=<sha> web=<sha> apex=<sha>\" to run it offline)"
+      rm -f "${running}"
+      return 0
+    fi
+    printf '%s\n' ${SERVER_SHAS} | tr = ' ' > "${running}"
+  elif ! ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" > "${running}" <<'RUNNING'; then
+set -euo pipefail
+cd "$1"
+for svc in backend web apex; do
+  for c in $(docker compose ps -q "${svc}"); do
+    tag="$(docker image inspect -f '{{range .RepoTags}}{{println .}}{{end}}' "$(docker inspect -f '{{.Image}}' "${c}")" \
+      | sed -n 's/.*:\([0-9a-f]\{7,40\}\(-dirty\)\{0,1\}\)$/\1/p' | head -1)"
+    echo "${svc} ${tag:-untagged}"
+  done
+done
+RUNNING
+    echo "  all    could not read the server's running builds: the whole stack"
+    rm -f "${running}"
+    return 0
+  fi
+  for svc in backend web apex; do
+    case "${svc}" in backend) dir=backend ;; *) dir="websites/${svc}" ;; esac
+    sha="$(awk -v s="${svc}" '$1 == s { print $2 }' "${running}" | sort -u | xargs)"
+    case "${sha}" in
+      "") why="not running" ;;
+      *" "*) why="replicas run different builds (${sha})" ;;
+      untagged) why="runs an image with no :<sha> tag" ;;
+      *)
+        if ! git -C "${HERE}" merge-base --is-ancestor "${sha}" HEAD 2>/dev/null; then
+          why="runs ${sha}, which isn't in HEAD's history"
+        elif ! git -C "${HERE}" diff --quiet "${sha}" HEAD -- docker-compose.yml Caddyfile; then
+          echo "  all    docker-compose.yml or the Caddyfile changed since ${sha}: the whole stack"
+          rm -f "${running}"
+          return 0
+        elif git -C "${HERE}" diff --quiet "${sha}" HEAD -- "${dir}"; then
+          ok "${svc} unchanged since ${sha}"
+          continue
+        else
+          why="$(git -C "${HERE}" diff --name-only "${sha}" HEAD -- "${dir}" | wc -l | xargs) files in ${dir}/ changed since ${sha}"
+        fi ;;
+    esac
+    echo "  deploy ${svc}: ${why}"
+    picked="${picked} ${svc}"
+  done
+  rm -f "${running}"
+  case "$(echo ${picked})" in
+    "") NOTHING=true ;;
+    "backend web apex") ;;
+    *) SERVICES="$(echo ${picked})" ;;
+  esac
+}
+
 if [ "${MODE}" != rollback ]; then
   run_gates
+  pick_services
+  scope
   if [ "${MODE}" = check ]; then
-    if [ "${DEPLOY_BACKEND}" != true ]; then
+    if [ "${NOTHING}" = true ]; then
+      echo "==> Nothing to deploy"
+    else
+      echo "==> Would deploy: ${SERVICES:-the whole stack}"
+    fi
+    if [ "${NOTHING}" = true ] || [ "${DEPLOY_BACKEND}" != true ]; then
       echo "  skip   DROP guard: no backend in this deploy"
     elif [ -n "${SERVER_MIGRATIONS:-}" ]; then
       drop_guard "${SERVER_MIGRATIONS}"
@@ -236,6 +322,10 @@ if [ "${MODE}" != rollback ]; then
   if [ "${FAILED}" != 0 ]; then
     echo "!! Refusing to deploy (see FAIL above)." >&2
     exit 1
+  fi
+  if [ "${NOTHING}" = true ]; then
+    echo "==> Nothing to deploy: the running builds already have everything ${SHA} changes. FULL=1 ./deploy.sh rebuilds anyway."
+    exit 0
   fi
   if [ "${FORCED}" = 1 ]; then
     echo "" >&2

@@ -46,6 +46,7 @@ rewrite. Styling is `StyleSheet`-based:
 server over SSH and rebuilds:
 
 ```bash
-./deploy.sh                 # whole stack
+./deploy.sh                 # what changed since each service's running build
+FULL=1 ./deploy.sh          # whole stack
 ./deploy.sh backend web     # just these services
 ```
