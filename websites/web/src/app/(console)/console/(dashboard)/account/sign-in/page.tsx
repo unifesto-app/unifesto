@@ -18,6 +18,7 @@ import { signOut } from "@/console/lib/utils/auth";
 import { Button } from "@/console/components/ui/button";
 import { useAccount } from "../AccountShell";
 import DeleteAccount from "../DeleteAccount";
+import Passkeys from "../Passkeys";
 import Section from "../Section";
 
 const PROVIDER = {
@@ -54,7 +55,7 @@ function active(iso: string) {
   return `Active ${new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
 }
 
-/** Security (the app's Account settings; the URL keeps its old name): my phone, how I sign in, my linked devices, signing out everywhere, and deleting my account. */
+/** Security (the app's Account settings; the URL keeps its old name): my phone, how I sign in, my passkeys, my linked devices, signing out everywhere, and deleting my account. */
 export default function SignInPage() {
   const { session } = useWebSession();
   const token = session?.token ?? "";
@@ -177,6 +178,10 @@ export default function SignInPage() {
         )}
         {ids && groups.length === 1 && <p className="pt-4 text-xs text-muted-foreground">My only sign-in can&apos;t be removed.</p>}
         {ids && error && <p className="pt-4 text-sm text-destructive">{error}</p>}
+      </Section>
+
+      <Section title="Passkeys" description="Sign in with my face, fingerprint or screen lock instead of a code.">
+        <Passkeys />
       </Section>
 
       <Section title="Linked devices" description="Where I'm signed in. Signing out a phone also stops its notifications.">

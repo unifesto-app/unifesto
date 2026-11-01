@@ -38,7 +38,7 @@ const ORIGINS = [
   'android:apk-key-hash:Mb0XcjA-YQspEgdXI_-WQVpcegypS6vrl-lepYY_7uE',
 ];
 
-const UNKNOWN_PASSKEY = "That passkey isn't on a Unifesto account. Sign in another way, then add it in Security.";
+const UNKNOWN_PASSKEY = "That passkey isn't on a Unifesto account. Sign in another way.";
 
 /** What my passkey list shows. */
 const LISTED = { id: true, name: true, createdAt: true, lastUsedAt: true } as const;
