@@ -17,7 +17,7 @@ import { SettingsGroup, SettingsRow } from '../../src/components/profile/Setting
 import FormRow from '../../src/components/profile/FormRow';
 import { getCurrentUser, getUserIdentities } from '../../src/lib/api/auth';
 import { getClaimInfo, claimSeat, declineSeat } from '../../src/lib/api/registrations';
-import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../../src/lib/api/tickets';
+import { getEventCustomFields, getFieldsForTicket, toCustomField, type CustomField } from '../../src/lib/api/tickets';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
 import { firstFormProblem, visibleFields } from '../../src/utils/formQuestions';
 import { normalizeMobile, profileGenderToAttendeeOption, ATTENDEE_GENDER_OPTIONS, isCustomGender } from '../../src/utils/profile';
@@ -36,6 +36,8 @@ interface ClaimInfo {
   invitedEmail?: string | null;
   /** This account already has a ticket for the event (claiming would fail). */
   alreadyRegistered?: boolean;
+  /** The claimer's own questions for this ticket (newer servers only). */
+  formFields?: any[];
 }
 
 
@@ -105,7 +107,11 @@ export default function ClaimSeatRoute() {
         if (has.gender) setGender(pGender);
       }
       if (data?.event?.id) {
-        const { fields: all } = await getEventCustomFields(data.event.id).catch(() => ({ fields: [] as CustomField[] }));
+        const eventId = data.event.id;
+        // Older servers don't send them, and their event page 404s for a private space.
+        const all = data.formFields
+          ? data.formFields.map((f: unknown) => toCustomField(f, eventId))
+          : (await getEventCustomFields(eventId).catch(() => ({ fields: [] as CustomField[] }))).fields;
         // Without a ticket type (older server) this keeps only questions that apply to every ticket.
         setFields(
           getFieldsForTicket(all, data.ticketTypeId ?? '')

@@ -144,9 +144,16 @@ export interface ClaimInfo {
   ticketTypeId: string | null;
   /** This account already has a ticket for the event, so the claim would fail. */
   alreadyRegistered?: boolean;
+  /** The claimer's own questions for this ticket; absent on older servers. */
+  fields?: FormField[];
 }
 export const getClaimInfo = (token: string, auth: string) =>
-  call<ClaimInfo>("GET", `/registrations/claim/${encodeURIComponent(token)}`, undefined, auth);
+  call<ClaimInfo & { formFields?: Record<string, unknown>[] }>(
+    "GET",
+    `/registrations/claim/${encodeURIComponent(token)}`,
+    undefined,
+    auth,
+  ).then(({ formFields, ...info }): ClaimInfo => ({ ...info, fields: formFields?.map(mapField) }));
 export const claimSeat = (token: string, auth: string, memberDetails: Record<string, unknown>) =>
   call("POST", `/registrations/claim/${encodeURIComponent(token)}`, { memberDetails }, auth);
 

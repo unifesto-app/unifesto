@@ -267,38 +267,41 @@ export async function getEventCustomFields(eventId: string): Promise<{ fields: C
     const data = await response.json();
     const formFields: any[] = data.formFields || [];
 
-    const fields: CustomField[] = formFields.map((f) => ({
-      id: f.id,
-      event_id: eventId,
-      label: f.label,
-      // Organisers build CHECKBOX as "Checkboxes" (pick any of the options), so
-      // with options it's a multi-select; only an option-less one is a yes/no tick.
-      field_type:
-        f.type === 'CHECKBOX' && f.options?.length
-          ? 'multi_select'
-          : FIELD_TYPE_MAP[f.type] ?? 'text',
-      is_required: !!f.isRequired,
-      per_group: !!f.perGroup,
-      help_text: f.helpText || undefined,
-      config: f.config ?? undefined,
-      show_if: f.showIf ? { field_id: f.showIf.fieldId, any_of: f.showIf.anyOf ?? [] } : null,
-      options_json: (f.options || []).map((o: string) => ({
-        label: o,
-        value: o,
-      })),
-      // A field scoped to a ticket type only applies to that ticket; a field
-      // with no ticketTypeId (legacy event-wide) applies to all tickets.
-      applies_to_ticket_ids: f.ticketTypeId ? [f.ticketTypeId] : undefined,
-      display_order: f.order ?? 0,
-      created_at: '',
-      updated_at: '',
-    }));
-
-    return { fields };
+    return { fields: formFields.map((f) => toCustomField(f, eventId)) };
   } catch (error) {
     if (__DEV__) console.error('Error fetching event custom fields:', error);
     return { fields: [] };
   }
+}
+
+/** One of the backend's `formFields` rows as a CustomField. */
+export function toCustomField(f: any, eventId: string): CustomField {
+  return {
+    id: f.id,
+    event_id: eventId,
+    label: f.label,
+    // Organisers build CHECKBOX as "Checkboxes" (pick any of the options), so
+    // with options it's a multi-select; only an option-less one is a yes/no tick.
+    field_type:
+      f.type === 'CHECKBOX' && f.options?.length
+        ? 'multi_select'
+        : FIELD_TYPE_MAP[f.type] ?? 'text',
+    is_required: !!f.isRequired,
+    per_group: !!f.perGroup,
+    help_text: f.helpText || undefined,
+    config: f.config ?? undefined,
+    show_if: f.showIf ? { field_id: f.showIf.fieldId, any_of: f.showIf.anyOf ?? [] } : null,
+    options_json: (f.options || []).map((o: string) => ({
+      label: o,
+      value: o,
+    })),
+    // A field scoped to a ticket type only applies to that ticket; a field
+    // with no ticketTypeId (legacy event-wide) applies to all tickets.
+    applies_to_ticket_ids: f.ticketTypeId ? [f.ticketTypeId] : undefined,
+    display_order: f.order ?? 0,
+    created_at: '',
+    updated_at: '',
+  };
 }
 
 /**
