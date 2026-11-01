@@ -371,34 +371,8 @@ export class AdminController {
   }
 
   /**
-   * Approve a pending space (ADMIN only)
-   * PATCH /admin/spaces/:id/approve
-   */
-  @Patch('spaces/:id/approve')
-  @Audit('space.approve', (r) => ({ spaceId: r.params.id }))
-  @Roles(RoleCode.ADMIN)
-  async approveSpace(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.adminService.approveSpace(id, user.id);
-  }
-
-  /**
-   * Reject a pending space (ADMIN only)
-   * PATCH /admin/spaces/:id/reject
-   */
-  @Patch('spaces/:id/reject')
-  @Audit('space.reject', (r) => ({ spaceId: r.params.id }))
-  @Roles(RoleCode.ADMIN)
-  async rejectSpace(
-    @Param('id') id: string,
-    @CurrentUser() user: User,
-    @Body() body: { reason?: string },
-  ) {
-    return this.adminService.rejectSpace(id, user.id, body?.reason);
-  }
-
-  /**
-   * Manage a space's lifecycle state (ADMIN only)
-   * PATCH /admin/spaces/:id/status  { status: SpaceStatus }
+   * Set a space's status (ADMIN only, Q39). A reason is required to suspend.
+   * PATCH /admin/spaces/:id/status  { status, reason? }
    */
   @Patch('spaces/:id/status')
   @Audit('space.status', (r) => ({ spaceId: r.params.id }))
@@ -406,9 +380,9 @@ export class AdminController {
   async updateSpaceStatus(
     @Param('id') id: string,
     @CurrentUser() user: User,
-    @Body() body: { status: SpaceStatus },
+    @Body() body: { status: SpaceStatus; reason?: string },
   ) {
-    return this.adminService.updateSpaceStatus(id, body.status, user.id);
+    return this.adminService.updateSpaceStatus(id, body.status, user.id, typeof body?.reason === 'string' ? body.reason : undefined);
   }
 
   /**

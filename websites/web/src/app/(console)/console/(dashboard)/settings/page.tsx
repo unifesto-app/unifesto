@@ -19,6 +19,7 @@ import {
 } from "@/console/lib/api/spaces-api";
 import { ImageUploadCard } from "@/console/components/shared/ImageUploadCard";
 import { ParentSpaceCard } from "@/console/components/settings/ParentSpaceCard";
+import { SpaceStatusCard } from "@/console/components/settings/SpaceStatusCard";
 import type { SpaceWithHierarchy } from "@/console/lib/types/rbac";
 import { PageHeader } from "@/console/components/shared/PageHeader";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
@@ -611,6 +612,8 @@ export default function SpaceSettingsPage() {
       </form>
 
       {canEdit && <ParentSpaceCard space={space} />}
+
+      <SpaceStatusCard spaceId={space.id} onChange={() => void refreshSession()} />
     </div>
   );
 }

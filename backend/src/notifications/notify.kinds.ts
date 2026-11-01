@@ -2,6 +2,7 @@ import type { EmailService } from '../email/email.service';
 import type * as T from '../email/templates';
 import type { DeliveryOpts } from './message-delivery';
 import type { NotificationCategory } from './notifications.constants';
+import { button, esc, h1, note, p, SPACE_APP } from '../email/layout';
 
 /**
  * The notify() kind registry (C2). Each kind says which push category it
@@ -59,12 +60,24 @@ export interface NotifyKindData {
    * rejected space request (Q19) has no space yet, only the request.
    */
   'space.rejected': MailData<T.SpaceRejectedData> & ({ spaceId: string } | { requestId: string });
+  /**
+   * Q39: to the owner when Platform or the system moved the space's status
+   * (an owner's own pause or archive sends nothing). One per change.
+   */
+  'space.status': SpaceStatusNotice & { status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED'; reason?: string | null; changedAt: Date; bySystem?: boolean };
+  /** Q39: an abandoned space is archived in 14 days unless it hosts an event. */
+  'space.archive_warning': SpaceStatusNotice & { archiveOnText: string };
   /** To each Space Admin: a note from the public space page. One per lead. */
   'space.inquiry': MailData<T.SpaceInquiryData> & { spaceId: string; leadId: string };
   /** F2: to checked-in attendees 2 h after the event ends. Push + inbox only. */
   'feedback.request': FeedbackNotice;
   /** F2: the same, at 48 h, to those who haven't answered. */
   'feedback.reminder': FeedbackNotice & { closesText: string };
+}
+
+export interface SpaceStatusNotice {
+  spaceId: string;
+  spaceName: string;
 }
 
 /** A feedback ask (F2): the event and where the form opens. */
@@ -122,6 +135,50 @@ function stayKind<D extends StayNotice>(title: string, body: (d: D) => string): 
       svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body: body(d) }, delivery),
   };
 }
+
+/**
+ * A space status notice (Q39): critical, so the email always goes. The email
+ * says the push's words, plus the reason when there is one.
+ */
+function spaceStatusKind<D extends SpaceStatusNotice>(
+  entity: (d: D) => string,
+  copy: (d: D) => { title: string; body: string; reason?: string | null },
+): KindDef<D> {
+  const push = (d: D): PushCopy => ({
+    title: copy(d).title,
+    body: copy(d).body,
+    deepLink: `unifesto://manage/space/${d.spaceId}`,
+    data: { type: 'space_status', spaceId: d.spaceId },
+  });
+  return {
+    category: 'spaceUpdates',
+    criticality: 'critical',
+    entity,
+    push,
+    email: (svc, to, d, delivery) => {
+      const { title, body, reason } = copy(d);
+      const html =
+        h1(esc(title)) +
+        p(esc(body)) +
+        (reason ? note(`Reason: ${esc(reason)}`, 'danger') : '') +
+        button('Open my space', SPACE_APP);
+      return svc.sendRawEmailTracked(to, title, html, undefined, delivery).then((r) => r.ok);
+    },
+  };
+}
+
+const SPACE_STATUS_COPY: Record<NotifyKindData['space.status']['status'], (d: NotifyKindData['space.status']) => { title: string; body: string }> = {
+  ACTIVE: (d) => ({ title: `${d.spaceName} is live again`, body: 'You can publish events and sell tickets again.' }),
+  INACTIVE: (d) => ({ title: `${d.spaceName} is paused`, body: 'Unifesto paused it. Existing tickets still check in.' }),
+  SUSPENDED: (d) => ({
+    title: `${d.spaceName} is suspended`,
+    body: 'It is hidden and can\'t sell tickets. Existing tickets still check in. You can appeal from its settings.',
+  }),
+  ARCHIVED: (d) =>
+    d.bySystem
+      ? { title: `${d.spaceName} is archived`, body: 'It had no events for 180 days. Restore it any time from its settings.' }
+      : { title: `${d.spaceName} is archived`, body: 'Unifesto archived it. Ask from its settings to restore it.' },
+};
 
 /** A feedback ask: low (push + inbox, no email), once per event per attendee. */
 function feedbackKind<D extends FeedbackNotice>(title: (d: D) => string, body: (d: D) => string): KindDef<D> {
@@ -231,6 +288,17 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     }),
     email: (svc, to, d, delivery) => svc.sendSpaceRejected({ ...d, email: to }, delivery),
   },
+  'space.status': spaceStatusKind(
+    (d) => `${d.spaceId}:${d.changedAt.getTime()}`,
+    (d) => ({ ...SPACE_STATUS_COPY[d.status](d), reason: d.reason }),
+  ),
+  'space.archive_warning': spaceStatusKind(
+    (d) => `${d.spaceId}:${d.archiveOnText}`,
+    (d) => ({
+      title: `${d.spaceName} will be archived on ${d.archiveOnText}`,
+      body: 'It has had no events since it was made. Create an event to keep it, or let it go. You can restore an archived space any time.',
+    }),
+  ),
   'space.inquiry': {
     category: 'spaceUpdates',
     criticality: 'normal',

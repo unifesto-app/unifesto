@@ -3,10 +3,9 @@ import { Prisma, RoleCode, SpaceStatus, SpaceVisibility } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * "Publicly live" (J16), defined once: the space passed review and has not
- * been taken down. APPROVED is what Apex's approve button sets; ACTIVE is the
- * same state reached by the older paths (seed, sub-space approval, reactivation
- * requests), so both count. PENDING, REJECTED, INACTIVE, SUSPENDED and ARCHIVED
+ * "Publicly live" (J16), defined once. ACTIVE is live; APPROVED is its old
+ * name, no longer written (Q39) but still counted for old rows and old app
+ * builds. PENDING, REJECTED, INACTIVE (paused), SUSPENDED and ARCHIVED
  * are off: no public listing or page, no publish, no new sales, no payout
  * requests. Operators keep read access to their own data and existing tickets
  * still check in.

@@ -18,6 +18,7 @@ import {
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
+import SpaceStatusSection from '../components/manage/SpaceStatusSection';
 import { INDIAN_STATES } from '../lib/indianStates';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
@@ -254,6 +255,8 @@ export default function SpaceSettingsScreen() {
           </Text>
         </View>
       </Section>
+
+      <SpaceStatusSection spaceId={spaceId} onChange={() => void refreshAccess()} />
     </CosmosScreen>
   );
 }

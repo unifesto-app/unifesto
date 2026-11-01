@@ -27,7 +27,6 @@ import { SPACE_DOMAINS_ORPHANED } from '../white-label/white-label.service';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
-  UpdateSpaceStatusDto,
   CreateSpaceStatusRequestDto,
   ReviewSpaceStatusRequestDto,
   CreateSpaceOwnershipRequestDto,
@@ -57,6 +56,7 @@ import {
 import { assertEventSchedule } from '../events/event-dates';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, isSpaceLive, visibleSpacesWhere } from './space-access';
+import { statusChange } from './space-lifecycle';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { settle, SettleRow } from '../payouts/settle';
@@ -546,47 +546,6 @@ export class SpacesService {
           },
         },
       },
-    });
-
-    return updatedSpace;
-  }
-
-  /**
-   * Update space status (approve/reject). No first-party client calls this
-   * (Apex uses AdminService.approveSpace / rejectSpace, which tell the creator
-   * through notify()), so it sends nothing.
-   */
-  async updateSpaceStatus(
-    id: string,
-    dto: UpdateSpaceStatusDto,
-    approvedBy: string,
-  ) {
-    const space = await this.prisma.space.findUnique({ where: { id } });
-
-    if (!space) {
-      throw new NotFoundException('Space not found');
-    }
-    this.logger.log(`parentSpace: ${JSON.stringify((space as any).parentSpace)}`);
-
-    const updateData: any = {
-      status: dto.status,
-    };
-
-    if (dto.status === SpaceStatus.APPROVED) {
-      updateData.approvedAt = new Date();
-      updateData.approvedBy = approvedBy;
-      updateData.rejectedAt = null;
-      updateData.rejectionReason = null;
-    } else if (dto.status === SpaceStatus.REJECTED) {
-      updateData.rejectedAt = new Date();
-      updateData.rejectionReason = dto.rejectionReason;
-      updateData.approvedAt = null;
-      updateData.approvedBy = null;
-    }
-
-    const updatedSpace = await this.prisma.space.update({
-      where: { id },
-      data: updateData,
     });
 
     return updatedSpace;
@@ -1703,15 +1662,14 @@ export class SpacesService {
         'A pending status request already exists for this space',
       );
 
-    // Validate the requested transition
-    const allowedTransitions: Record<string, string[]> = {
-      ACTIVE: ['INACTIVE'],
-      INACTIVE: ['ACTIVE'],
-      SUSPENDED: ['ACTIVE'],
-      ARCHIVED: ['ACTIVE'], // restoration appeal
-    };
-    const allowed = allowedTransitions[space.status] || [];
-    if (!allowed.includes(dto.requestedStatus)) {
+    // Q39: owners pause, resume and restore their own archive themselves, so
+    // a request is only for what Platform decided: an appeal of a suspension,
+    // or restoring a space Platform archived.
+    if (isSpaceLive(space.status) || space.status === SpaceStatus.INACTIVE) {
+      throw new BadRequestException('Pause or resume your space yourself from its settings.');
+    }
+    const appealable = space.status === SpaceStatus.SUSPENDED || space.status === SpaceStatus.ARCHIVED;
+    if (!appealable || dto.requestedStatus !== SpaceStatus.ACTIVE) {
       throw new BadRequestException(
         `Cannot request ${dto.requestedStatus} from current status ${space.status}`,
       );
@@ -1829,7 +1787,7 @@ export class SpacesService {
     if (dto.status === 'APPROVED') {
       await this.prisma.space.update({
         where: { id: req.spaceId },
-        data: { status: req.requestedStatus as any },
+        data: statusChange(req.requestedStatus as SpaceStatus, adminId, dto.reviewNote),
       });
     }
 

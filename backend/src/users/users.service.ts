@@ -27,6 +27,7 @@ import {
   Provider,
   SupportMessageSide,
   PaymentStatus,
+  SpaceStatus,
 } from '@prisma/client';
 import {
   AdminDeleteUserCommand,
@@ -827,10 +828,13 @@ export class UsersService {
       updatedAt: space.updatedAt,
     });
 
+    // Q39: the owner still sees an archived space, to restore or appeal it.
+    const ownArchived = { space: { status: SpaceStatus.ARCHIVED, createdBy: userId } } satisfies Prisma.UserRoleWhereInput;
+
     // Default behaviour (apex/mobile) — one row per space-scoped role, unchanged.
     if (!opts.includeEventRoles) {
       const spaceRoles = await this.prisma.userRole.findMany({
-        where: { userId, space: { status: { in: OPERATOR_SPACE_STATUSES } } },
+        where: { userId, OR: [{ space: { status: { in: OPERATOR_SPACE_STATUSES } } }, ownArchived] },
         include: {
           space: { include: spaceInclude },
           role: { select: { id: true, code: true, name: true } },
@@ -853,6 +857,7 @@ export class UsersService {
         userId,
         OR: [
           { space: { status: { in: OPERATOR_SPACE_STATUSES } } },
+          ownArchived,
           { event: { space: { status: { in: OPERATOR_SPACE_STATUSES } } } },
         ],
       },
@@ -1053,7 +1058,7 @@ export class UsersService {
     });
     if (ownedSpaces.length > 0) {
       throw new ConflictException(
-        `You own ${ownedSpaces.map((s) => s.name).join(', ')}. Transfer ownership before deleting your account.`,
+        `You own ${ownedSpaces.map((s) => s.name).join(', ')}. Transfer or archive ${ownedSpaces.length > 1 ? 'them' : 'it'} before deleting your account.`,
       );
     }
 
