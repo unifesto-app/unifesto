@@ -47,7 +47,8 @@ export default function ClaimPage() {
     getClaimInfo(token, authToken)
       .then(async (i) => {
         // The member's own questions for this ticket; the lead answered the team's.
-        const all = await getEventFields(i.event.id).catch(() => [] as FormField[]);
+        // Older servers don't send them, and their event page 404s for a private space.
+        const all = i.fields ?? (await getEventFields(i.event.id).catch(() => [] as FormField[]));
         if (!live) return;
         setFields(
           all.filter((f) => !f.perGroup && (!f.ticketTypeId || f.ticketTypeId === i.ticketTypeId)).sort((a, b) => a.order - b.order),

@@ -243,6 +243,19 @@ describe('GroupSeatsService — seats as source of truth', () => {
     expect(email.sendRawEmail).toHaveBeenCalledWith('lead@x.com', expect.stringContaining('Eve'), expect.stringContaining('Eve'));
   });
 
+  it("claim info carries the claimer's own questions (a private space's event 404s for them)", async () => {
+    const { svc, seats, prisma } = build([seat(1, 'CLAIMED', { claimedByUserId: LEAD }), seat(2, 'INVITED', { inviteEmail: 'dinesh@x.com' })]);
+    const tshirt = { id: 'q-size', label: 'T-shirt size', type: 'TEXT', options: [], isRequired: true, perGroup: false };
+    const team = { id: 'q-team', label: 'Team name', type: 'TEXT', options: [], isRequired: true, perGroup: true };
+    prisma.eventFormField.findMany = async () => [tshirt, team];
+    const token = seats[1].inviteToken;
+
+    expect((await svc.getClaimInfo(token, 'user-dinesh')).formFields).toEqual([tshirt]);
+    await expect(svc.claim(token, 'user-dinesh', { name: 'Dinesh' })).rejects.toThrow(/T-shirt size is required/);
+    await svc.claim(token, 'user-dinesh', { name: 'Dinesh', customFields: { 'q-size': 'M' } });
+    expect(seats[1].memberDetails.customFields).toEqual({ 'q-size': 'M' });
+  });
+
   it('teammate emails at booking invite the open seats, mailed only once paid', async () => {
     const { svc, prisma, seats, email } = build();
     await svc.createSeatsForRegistration(prisma as any, {

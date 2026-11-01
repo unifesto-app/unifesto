@@ -17,7 +17,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { emailFilter, idsByEmail, sameEmail } from '../auth/identifiers';
-import { enforceFormAnswers } from './form-answers.policy';
+import { enforceFormAnswers, loadTicketFormFields } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
@@ -1030,6 +1030,11 @@ export class GroupSeatsService {
       // Already has a ticket here: the app says so instead of offering a
       // claim that would fail (and lets them decline to free the seat).
       alreadyRegistered: await this.isAlreadyInEvent(seat.registration.eventId, claimerUserId, seat.id),
+      // The claimer's own questions (the lead answered the team's). Sent here
+      // because the event itself 404s for non-members of a private space.
+      formFields: (
+        await loadTicketFormFields(this.prisma, seat.registration.eventId, seat.registration.ticketTypeId ?? null)
+      ).filter((f) => !f.perGroup),
     };
   }
 
