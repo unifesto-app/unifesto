@@ -141,5 +141,19 @@
       "notes": "   "
     },
     "drafts": false
+  },
+  {
+    "id": "price-not-given",
+    "input": {
+      "title": "Street Photography Walk",
+      "type": "IN_PERSON",
+      "when": "Sun, 15 Nov 2026, 6:30 am to Sun, 15 Nov 2026, 9:30 am IST",
+      "days": 1,
+      "venue": "Charminar, Hyderabad",
+      "notes": "paid photowalk for beginners, fee and kit list coming soon. we walk the old city lanes, then chai and a short critique of everyone's best 3 shots. bring a phone or any camera"
+    },
+    "drafts": true,
+    "mustInclude": ["charminar|old city"],
+    "mustNotInclude": ["₹\\s*\\d", "\\brs\\.?\\s*\\d", "\\d+\\s*(rupees|/-)"]
   }
 ]

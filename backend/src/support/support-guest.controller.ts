@@ -87,7 +87,7 @@ export class SupportGuestController {
   }
 
   @Post('assist/:id')
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async say(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GuestMessageDto) {
     const userId = await this.guestCase(id, dto.token);
     await this.bot.say(id, userId, dto.body, { guest: true });

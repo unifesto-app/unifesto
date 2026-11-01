@@ -11,6 +11,7 @@ const DRAFT_FAILED: Record<Extract<DraftResult, { ok: false }>["reason"], string
   capped: "You have used today's Assist drafts.",
   refused: "Assist could not draft this one. Write the reply yourself.",
   error: "Assist could not draft this one. Write the reply yourself.",
+  held: "Assist held its draft: it quoted something the case doesn't show. Write the reply yourself.",
 };
 
 interface AssistCopilotProps {
@@ -49,6 +50,7 @@ export function AssistCopilot({ ticketId, lastMessageAt, canDraft, onDraft }: As
     if (!data) return setNote(error?.message || DRAFT_FAILED.error);
     setFacts(data.facts);
     if (data.ok) onDraft(data.draft);
+    else if (data.reason === "held" && data.why) setNote(`Assist held its draft: ${data.why}. Write the reply yourself.`);
     else setNote(DRAFT_FAILED[data.reason]);
   };
 

@@ -742,8 +742,9 @@ export interface EventDraft {
 }
 
 export type EventDraftResult =
-  | { ok: true; draft: EventDraft }
-  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" };
+  /** dropped: parts left out because they quoted a price, date or contact the notes never gave. */
+  | { ok: true; draft: EventDraft; dropped?: string[] }
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" | "held"; why?: string };
 
 /** Draft description, agenda and FAQs from notes or a link. Saves nothing. `POST /events/:id/ai-draft`. */
 export async function draftEventContent(

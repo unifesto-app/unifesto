@@ -1,7 +1,10 @@
 import { AiRunOutcome } from '@prisma/client';
+import { reportError } from '../common/observability';
 import { AiService, aiCostUsd } from './ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
+
+jest.mock('../common/observability', () => ({ reportError: jest.fn() }));
 
 /**
  * D12 AI foundation: every path that isn't a clean answer comes back as
@@ -16,11 +19,19 @@ describe('AiService', () => {
     cache_creation_input_tokens: 0,
   };
 
-  function setup(opts: { enabled?: boolean; used?: number } = {}) {
+  beforeEach(() => jest.mocked(reportError).mockClear());
+
+  function setup(
+    opts: { enabled?: boolean; used?: number; spent?: number; lastHour?: Partial<Record<AiRunOutcome, number>> } = {},
+  ) {
     const prisma = {
       aiRun: {
         count: jest.fn().mockResolvedValue(opts.used ?? 0),
         create: jest.fn().mockResolvedValue({}),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { costUsd: opts.spent === undefined ? null : String(opts.spent) } }),
+        groupBy: jest.fn().mockResolvedValue(
+          Object.entries(opts.lastHour ?? {}).map(([outcome, n]) => ({ outcome, _count: { _all: n } })),
+        ),
       },
     };
     const platformConfig = {
@@ -135,6 +146,62 @@ describe('AiService', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("stops a feature at its 24-hour spend ceiling, system calls included", async () => {
+    const { svc, prisma, create } = setup({ spent: 0.5 });
+    // blog_writer has no user, so no per-user cap; the $0.50 ceiling still holds.
+    await expect(svc.run('blog_writer', { ...input, userId: undefined })).resolves.toEqual({
+      ok: false,
+      reason: 'capped',
+    });
+    expect(create).not.toHaveBeenCalled();
+    const [where] = prisma.aiRun.aggregate.mock.calls[0] as [{ where: { feature: string } }];
+    expect(where.where.feature).toBe('blog_writer');
+  });
+
+  it('logs the space and whether the call counts toward its plan', async () => {
+    const { svc, prisma, create, logged } = setup();
+    create.mockResolvedValue({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }], usage });
+    await svc.run('event_draft', { ...input, spaceId: 's1', billable: true });
+    expect(logged()).toMatchObject({ spaceId: 's1', billable: true });
+    await svc.run('triage', input);
+    const second = prisma.aiRun.create.mock.calls[1] as [{ data: Record<string, unknown> }];
+    expect(second[0].data).toMatchObject({ spaceId: undefined, billable: false });
+  });
+
+  it('tells Sentry once when spend crosses 80% of the ceiling', async () => {
+    // triage: $0.10 ceiling, so the line is $0.08; a $0.00024 run from just under it crosses.
+    const { svc, create } = setup({ spent: 0.0799 });
+    create.mockResolvedValue({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }], usage });
+    await svc.run('triage', input);
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(reportError).mock.calls[0][1]).toEqual({ ai: 'triage', aiAlert: 'spend' });
+
+    // Already past the line: no second alert.
+    const past = setup({ spent: 0.085 });
+    past.create.mockResolvedValue({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'ok' }], usage });
+    await past.svc.run('triage', input);
+    expect(reportError).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells Sentry when errors and refusals cross 20% of the last hour', async () => {
+    // This refusal makes 2 bad of 6: over, and 1 of 5 before it was not.
+    const { svc, create } = setup({ lastHour: { OK: 4, REFUSED: 1, ERROR: 1 } });
+    create.mockResolvedValue({ stop_reason: 'refusal', content: [], usage });
+    await svc.run('triage', input);
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(reportError).mock.calls[0][2]).toEqual(['ai-alert', 'failures', 'triage']);
+
+    // Already over before this run (2 of 5): no repeat.
+    const still = setup({ lastHour: { OK: 3, ERROR: 3 } });
+    still.create.mockResolvedValue({ stop_reason: 'refusal', content: [], usage });
+    await still.svc.run('triage', input);
+    // Too few runs to judge (1 of 2).
+    const few = setup({ lastHour: { OK: 1, ERROR: 1 } });
+    few.create.mockRejectedValue(new Error('529 overloaded'));
+    await few.svc.run('triage', input);
+    expect(reportError).toHaveBeenCalledTimes(1);
+  });
+
   it('returns a refusal as refused and logs it', async () => {
     const { svc, create, logged } = setup();
     create.mockResolvedValue({ stop_reason: 'refusal', content: [], usage });
@@ -203,9 +270,10 @@ describe('AiService', () => {
     });
   });
 
-  it('prices Haiku 5.5, 5× above 100K prompt tokens', () => {
+  it('prices Haiku 5.5, 5× above 100K prompt tokens, plus web searches', () => {
     // 1000×0.10 + 200×0.50 + 4000×0.01 = 240 per million.
     expect(aiCostUsd(usage)).toBeCloseTo(0.00024, 10);
+    expect(aiCostUsd({ ...usage, server_tool_use: { web_search_requests: 3, web_fetch_requests: 0 } as never })).toBeCloseTo(0.03024, 10);
     expect(aiCostUsd({ ...usage, input_tokens: 100_000 })).toBeCloseTo(
       (5 * (100_000 * 0.1 + 200 * 0.5 + 4000 * 0.01)) / 1e6,
       10,

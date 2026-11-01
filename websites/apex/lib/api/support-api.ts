@@ -204,7 +204,8 @@ export async function getCaseFacts(id: string): Promise<Result<{ facts: string[]
 
 export type DraftResult = { facts: string[] } & (
   | { ok: true; draft: string }
-  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" }
+  /** held: the draft quoted something the facts and thread don't show (`why`). */
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "held"; why?: string }
 );
 
 /** D15 copilot: a reply draft for the desk to edit. Nothing is sent. */

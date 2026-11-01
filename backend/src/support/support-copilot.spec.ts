@@ -126,6 +126,20 @@ describe('Desk copilot (D15)', () => {
     await expect(setup({ ok: true, text: 'Hi' }, { desk: false }).copilot.draft('t1', 'staff')).rejects.toThrow('Only the desk');
   });
 
+  it("holds a draft that quotes an amount only the requester said (AI10)", async () => {
+    const { copilot, run } = setup({ ok: true, text: 'Your ₹5,000 refund is on its way.' });
+    await expect(copilot.draft('t1', 'staff')).resolves.toEqual({
+      ok: false,
+      reason: 'held',
+      why: 'amount "₹5,000" is not in the source',
+      facts: [],
+    });
+    expect(run.mock.calls[0][1]).toMatchObject({ spaceId: 's1' });
+    await expect(setup({ ok: true, text: 'We are checking with the organiser.' }).copilot.draft('t1', 'staff')).resolves.toMatchObject({
+      ok: true,
+    });
+  });
+
   it('refreshes a stale summary and stamps the message it covers; a fresh one costs nothing', async () => {
     const stale = setup({ ok: true, text: 'New summary' });
     await expect(stale.copilot.summary('t1', 'staff')).resolves.toEqual({ summary: 'New summary' });

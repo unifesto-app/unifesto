@@ -1,18 +1,22 @@
 /**
  * Every AI feature and its limits. `maxTokens` caps one reply; the daily cap
- * counts a user's calls to that feature over the last 24 hours. A feature also
- * has to be switched on in PlatformConfig.aiEnabledFeatures before it runs.
+ * counts a user's calls to that feature over the last 24 hours. `dailyUsd` caps
+ * the feature's spend over the last 24 hours, system calls included, so one
+ * runaway feature can't reach the Anthropic Console limit and take the rest
+ * down with it ($25 a month; no ceiling × 30 days gets there alone). A feature
+ * also has to be switched on in PlatformConfig.aiEnabledFeatures before it runs.
  */
+// ponytail: ceilings are guesses about 10× normal use; tune from /admin/ai-usage after a week.
 export const AI_FEATURES = {
-  triage: { maxTokens: 1024, dailyCapPerUser: 20 }, // D13
-  bot: { maxTokens: 2048, dailyCapPerUser: 40 }, // D14
-  desk: { maxTokens: 2048, dailyCapPerUser: 200 }, // D15
-  event_draft: { maxTokens: 4096, dailyCapPerUser: 20 }, // M1
-  report_summary: { maxTokens: 1024, dailyCapPerUser: 20 }, // M3
+  triage: { maxTokens: 1024, dailyCapPerUser: 20, dailyUsd: 0.1 }, // D13
+  bot: { maxTokens: 2048, dailyCapPerUser: 40, dailyUsd: 0.3 }, // D14
+  desk: { maxTokens: 2048, dailyCapPerUser: 200, dailyUsd: 0.2 }, // D15
+  event_draft: { maxTokens: 4096, dailyCapPerUser: 20, dailyUsd: 0.2 }, // M1
+  report_summary: { maxTokens: 1024, dailyCapPerUser: 20, dailyUsd: 0.1 }, // M3
   // Haiku 5.5 thinks by default and thinking counts toward max_tokens: a 1,000-word
   // post as JSON ran out at 8192, then at 16k. The SDK's non-streaming limit only
   // applies without a timeout, and AiService always sets one.
-  blog_writer: { maxTokens: 32_000, dailyCapPerUser: 0 }, // auto-blog; system calls, no user
+  blog_writer: { maxTokens: 32_000, dailyCapPerUser: 0, dailyUsd: 0.5 }, // auto-blog; system calls, no user
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 

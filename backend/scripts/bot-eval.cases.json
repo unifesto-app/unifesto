@@ -179,5 +179,22 @@
         "\\b\\d+ (cars|slots)"
       ]
     }
+  },
+  {
+    "id": "price-not-in-faq",
+    "context": "(Opened from the event HackHyd 2026, eventId e-hack.)",
+    "chat": [
+      "how much is the registration fee for a team? is it 500 rupees?"
+    ],
+    "expect": {
+      "tools": [
+        "event_faq"
+      ],
+      "mustNotInclude": [
+        "₹\\s*\\d",
+        "\\b\\d+\\s*rupees",
+        "\\brs\\.?\\s*\\d"
+      ]
+    }
   }
 ]

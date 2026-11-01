@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Injectable, Logger } from '@nestjs/common';
 import { AiRunOutcome } from '@prisma/client';
+import { reportError } from '../common/observability';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { AI_FEATURES, type AiFeature } from './ai-features';
@@ -20,6 +21,10 @@ export interface AiRunInput {
   userId?: string;
   /** What the call is about, e.g. "case:<id>". */
   subject?: string;
+  /** The space the call is for, when there is one. */
+  spaceId?: string;
+  /** Counts toward the space's monthly AI requests (AI17): the first call of an organiser's request. */
+  billable?: boolean;
   /**
    * Passed through as `output_config` (effort, structured output). With a
    * `format`, the reply is parsed and returned as `json`; unparseable is an error.
@@ -73,7 +78,16 @@ const PRICE_PER_MTOK = {
 };
 /** Above this many prompt tokens every Haiku 5.5 rate is 5×. */
 const LONG_PROMPT_TOKENS = 100_000;
+/** The web search server tool: $10 per 1,000 searches, on top of tokens. */
+const WEB_SEARCH_USD = 0.01;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+/** Sentry hears when a feature's 24-hour spend passes this share of its ceiling. */
+export const SPEND_ALERT_SHARE = 0.8;
+/** …and when errors plus refusals pass this share of its runs in the last hour… */
+export const FAIL_ALERT_SHARE = 0.2;
+/** …once the hour has at least this many runs, so 1 bad run of 2 isn't an alert. */
+export const FAIL_ALERT_MIN_RUNS = 5;
 
 export function aiCostUsd(
   usage: Pick<
@@ -82,7 +96,8 @@ export function aiCostUsd(
     | 'output_tokens'
     | 'cache_read_input_tokens'
     | 'cache_creation_input_tokens'
-  >,
+  > &
+    Partial<Pick<Anthropic.Usage, 'server_tool_use'>>,
 ): number {
   const read = usage.cache_read_input_tokens ?? 0;
   const write = usage.cache_creation_input_tokens ?? 0;
@@ -94,7 +109,8 @@ export function aiCostUsd(
         usage.output_tokens * PRICE_PER_MTOK.output +
         read * PRICE_PER_MTOK.cacheRead +
         write * PRICE_PER_MTOK.cacheWrite)) /
-    1_000_000
+      1_000_000 +
+    (usage.server_tool_use?.web_search_requests ?? 0) * WEB_SEARCH_USD
   );
 }
 
@@ -119,6 +135,7 @@ export class AiService {
 
   async run(feature: AiFeature, input: AiRunInput): Promise<AiResult> {
     const limits = AI_FEATURES[feature];
+    let spent: number;
     try {
       if (
         !this.client ||
@@ -137,6 +154,10 @@ export class AiService {
         if (used >= limits.dailyCapPerUser)
           return { ok: false, reason: 'capped' };
       }
+      // Count-then-call, so parallel calls can pass the ceiling by a few;
+      // the per-endpoint throttles keep that to a few.
+      spent = await this.spentToday(feature);
+      if (spent >= limits.dailyUsd) return { ok: false, reason: 'capped' };
     } catch (err) {
       this.logger.error(
         `AI ${feature} pre-check failed: ${(err as Error).message}`,
@@ -204,6 +225,12 @@ export class AiService {
       Date.now() - started,
       response?.usage,
     );
+    await this.watch(
+      feature,
+      spent,
+      response?.usage ? aiCostUsd(response.usage) : 0,
+      outcome,
+    );
 
     if (outcome === AiRunOutcome.OK) {
       if (input.tools) return { ok: true, text, content: response!.content, toolUse };
@@ -249,6 +276,72 @@ export class AiService {
     );
   }
 
+  /** The feature's spend over the last 24 hours, system calls included. */
+  private async spentToday(feature: AiFeature): Promise<number> {
+    const { _sum } = await this.prisma.aiRun.aggregate({
+      where: { feature, createdAt: { gte: new Date(Date.now() - DAY_MS) } },
+      _sum: { costUsd: true },
+    });
+    return Number(_sum.costUsd ?? 0);
+  }
+
+  /**
+   * AI9 alerts, raised once when a line is crossed rather than on every run
+   * past it: spend passing 80% of the ceiling, and errors plus refusals passing
+   * 20% of the last hour's runs. Never fails the call.
+   */
+  private async watch(
+    feature: AiFeature,
+    spentBefore: number,
+    cost: number,
+    outcome: AiRunOutcome,
+  ): Promise<void> {
+    const ceiling = AI_FEATURES[feature].dailyUsd;
+    const warnAt = ceiling * SPEND_ALERT_SHARE;
+    if (spentBefore < warnAt && spentBefore + cost >= warnAt) {
+      this.alert(
+        feature,
+        'spend',
+        `AI ${feature} spent $${(spentBefore + cost).toFixed(3)} in 24 h, past ${SPEND_ALERT_SHARE * 100}% of its $${ceiling} ceiling`,
+      );
+    }
+    if (outcome === AiRunOutcome.OK) return;
+    try {
+      const rows = await this.prisma.aiRun.groupBy({
+        by: ['outcome'],
+        where: { feature, createdAt: { gte: new Date(Date.now() - HOUR_MS) } },
+        _count: { _all: true },
+      });
+      const total = rows.reduce((n, r) => n + r._count._all, 0);
+      const bad = rows
+        .filter((r) => r.outcome !== AiRunOutcome.OK)
+        .reduce((n, r) => n + r._count._all, 0);
+      const over = (b: number, t: number) =>
+        t >= FAIL_ALERT_MIN_RUNS && b / t > FAIL_ALERT_SHARE;
+      // This run is one of the bad ones; without it the hour was still fine.
+      if (over(bad, total) && !over(bad - 1, total - 1)) {
+        this.alert(
+          feature,
+          'failures',
+          `AI ${feature}: ${bad} of ${total} runs in the last hour failed or were refused`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `AI ${feature} failure check failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private alert(feature: AiFeature, kind: string, message: string): void {
+    this.logger.warn(message);
+    reportError(new Error(message), { ai: feature, aiAlert: kind }, [
+      'ai-alert',
+      kind,
+      feature,
+    ]);
+  }
+
   private async log(
     feature: AiFeature,
     input: AiRunInput,
@@ -279,6 +372,8 @@ export class AiService {
           outcome,
           userId: input.userId,
           subject: input.subject,
+          spaceId: input.spaceId,
+          billable: input.billable ?? false,
         },
       });
     } catch (err) {

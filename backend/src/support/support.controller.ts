@@ -67,7 +67,7 @@ export class SupportController {
 
   /** D14: the next message in my bot chat. */
   @Post('tickets/:id/assist')
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async assistMessage(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssistMessageDto, @Req() req: any) {
     await this.bot.say(id, req.user.id, dto.body);
     return this.supportService.getTicket(id, req.user.id);
@@ -237,13 +237,14 @@ export class SupportController {
 
   /** D15: an AI reply draft for the desk to edit and send. Nothing is sent. */
   @Post('tickets/:id/draft')
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   draftReply(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.copilot.draft(id, req.user.id);
   }
 
   /** D15: the staff thread summary, refreshed when a newer message arrived. */
   @Post('tickets/:id/summary')
+  // Opening a case asks for it, but the AI only runs when the thread moved on.
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   summarise(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.copilot.summary(id, req.user.id);

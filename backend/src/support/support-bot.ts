@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { HelpArticleStatus, Prisma, SupportMessageSide, SupportTicketStatus } from '@prisma/client';
 import { AiService, type AiResult, type AiRunInput } from '../ai/ai.service';
+import { ungrounded } from '../ai/grounding';
 import { PrismaService } from '../prisma/prisma.service';
 import { describeBooking, loadBookingFacts, type BookingFacts } from './case-facts';
 import { SupportService } from './support.service';
@@ -94,46 +95,20 @@ export interface BotTurn {
 /** Model calls per user message: lookups plus the answer. */
 const MAX_STEPS = 6;
 
-const AMOUNT = /(?:₹|\brs\.?|\binr)\s*(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s*(?:rupees|rupaye|rupay)\b/gi;
-const LINK = /\bhttps?:\/\/([^\s/?#)\]]+)|\bwww\.([^\s/?#)\]]+)/gi;
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-const PHONE = /\+?\d[\d\s-]{8,}\d/g;
-const num = (s: string) => Number(s.replace(/,/g, ''));
-
 /**
- * Output guardrail. A bot reply reaches the person with nobody reading it
- * first (desk drafts get a human), so every amount, link, email and phone
- * number in it must come from a tool result or an earlier Assist reply. The
- * person's own messages don't count: echoing "my ₹5,000 refund" is how a
- * wrong promise gets made. Returns why the reply can't go out, or null.
+ * What a bot reply may quote (AI10's shared check): tool results and earlier
+ * Assist replies. A bot reply reaches the person with nobody reading it first
+ * (desk drafts get a human), so the person's own messages don't count: echoing
+ * "my ₹5,000 refund" is how a wrong promise gets made.
  */
-export function ungrounded(reply: string, convo: Anthropic.MessageParam[]): string | null {
-  const seen = convo
+export function botSource(convo: Anthropic.MessageParam[]): string {
+  return convo
     .flatMap((m) =>
       typeof m.content === 'string'
         ? m.role === 'assistant' ? [m.content] : []
         : m.content.flatMap((b) => (b.type === 'tool_result' && typeof b.content === 'string' ? [b.content] : [])),
     )
-    .join('\n')
-    .toLowerCase();
-  // ponytail: any number a tool returned counts (₹2099 passes if a year 2099 came back); tighten to ₹-marked numbers if held drafts show misses.
-  const amounts = new Set((seen.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map(num));
-  for (const m of reply.matchAll(AMOUNT)) {
-    if (!amounts.has(num(m[1] ?? m[2]))) return `amount "${m[0].trim()}" is not in the facts`;
-  }
-  for (const m of reply.matchAll(LINK)) {
-    const host = (m[1] ?? m[2]).toLowerCase().replace(/[.,;:!]+$/, '').replace(/^www\./, '');
-    if (!/(^|\.)unifesto\.app$/.test(host) && !seen.includes(host)) return `link to ${host} is not from a tool`;
-  }
-  for (const m of reply.matchAll(EMAIL)) {
-    if (!seen.includes(m[0].toLowerCase())) return 'email address is not from a tool';
-  }
-  const seenDigits = seen.replace(/[\s-]/g, '');
-  for (const m of reply.matchAll(PHONE)) {
-    const digits = m[0].replace(/\D/g, '');
-    if (digits.length >= 10 && !seenDigits.includes(digits.slice(-10))) return 'phone number is not from a tool';
-  }
-  return null;
+    .join('\n');
 }
 
 /**
@@ -153,7 +128,7 @@ export async function botTurn(messages: Anthropic.MessageParam[], guest: boolean
     });
     if (!res.ok) return { text: null, actions, handoff: null, tools: used };
     if (!res.toolUse) {
-      const why = ungrounded(res.text, convo);
+      const why = ungrounded(res.text, botSource(convo));
       if (why) return { text: null, actions, handoff: null, tools: used, held: { why, draft: res.text } };
       return { text: res.text, actions, handoff: null, tools: used };
     }

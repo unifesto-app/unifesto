@@ -385,6 +385,8 @@ export class ReportsService {
       ...reportSummaryRequest(facts),
       userId,
       subject: `report:${reportId}`,
+      spaceId: event.spaceId ?? undefined,
+      billable: true,
     });
     return res.ok ? res.text : null;
   }

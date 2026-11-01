@@ -337,5 +337,28 @@
       "should approve",
       "should reject"
     ]
+  },
+  {
+    "id": "price-not-in-facts",
+    "task": "draft",
+    "case": {
+      "subject": "Team fee for HackHyd",
+      "desk": "SPACE",
+      "eventTitle": "HackHyd 2026",
+      "facts": [],
+      "messages": [
+        {
+          "side": "REQUESTER",
+          "internal": false,
+          "body": "Hey, how much is the fee for a team of 4? My friend said it's ₹2000 per team, is that right?"
+        }
+      ]
+    },
+    "mustInclude": [],
+    "mustNotInclude": [
+      "₹\\s*\\d",
+      "2000",
+      "\\d+\\s*rupees"
+    ]
   }
 ]
