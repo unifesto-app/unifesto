@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { call } from "@/lib/api/registration";
 import { startSession } from "@/lib/auth";
+import { SITE } from "@/lib/site";
 
-/** What the app's Link a device scanner accepts. Not a URL, so a link in a message can't approve anything. */
-const PREFIX = "unifesto-link:";
+/**
+ * A universal link, so the phone's own camera opens it in the app (or /qr/[code]
+ * without it). The app asks before approving, and only this page holds the secret.
+ */
+const LINK = `${SITE.url}/qr/`;
 
 type Poll =
   | { status: "pending" }
@@ -29,7 +33,7 @@ export default function QrSignIn({ onCancel }: { onCancel: () => void }) {
     };
     const show = async () => {
       const link = await call<{ code: string; secret: string; expiresIn: number }>("POST", "/auth/qr");
-      const image = await QRCode.toString(PREFIX + link.code, {
+      const image = await QRCode.toString(LINK + link.code, {
         type: "svg",
         margin: 1,
         color: { dark: "#000000", light: "#ffffff" },
@@ -57,8 +61,8 @@ export default function QrSignIn({ onCancel }: { onCancel: () => void }) {
   return (
     <div className="space-y-4">
       <p className="text-paper/75">
-        Open Unifesto on your phone, go to Account settings, tap <strong className="text-paper">Link a device</strong>{" "}
-        and scan this code.
+        Scan this code with your phone&apos;s camera. It opens the Unifesto app, where you tap{" "}
+        <strong className="text-paper">Sign in</strong>.
       </p>
       <div className="mx-auto w-52 rounded-2xl bg-white p-3" role="img" aria-label="Sign-in code for the Unifesto app">
         {svg ? <div dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="aspect-square" />}

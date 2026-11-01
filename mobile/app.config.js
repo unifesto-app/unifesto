@@ -135,6 +135,11 @@ module.exports = () => {
             },
             {
               scheme: "https",
+              host: "unifesto.app",
+              pathPrefix: "/qr/"
+            },
+            {
+              scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/event"
             },
@@ -152,6 +157,11 @@ module.exports = () => {
               scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/claim"
+            },
+            {
+              scheme: "https",
+              host: "www.unifesto.app",
+              pathPrefix: "/qr/"
             }
           ],
           category: [

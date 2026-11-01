@@ -1,5 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { captureUtmFromLink } from '../src/services/utm';
 import { claimTokenFrom, isClaimLinkHandled, seenClaimLinkBefore } from '../src/services/claimLinks';
+
+const QR_LAUNCH_KEY = 'qr.launchCode';
 
 /**
  * System links (scheme / universal links, including the one that launched the
@@ -18,6 +21,13 @@ export async function redirectSystemPath({ path, initial }: { path: string; init
   // Huddle sessions were retired; a cached AASA can still hand their links over.
   if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)(?:session|huddle)(?:[/?#]|$)/i.test(path)) return '/';
   try {
+    // Sign-in QR codes are single use: the launch link coming back would only
+    // say the code expired, so it goes home.
+    const qr = /^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)qr\/([\w-]+)/i.exec(path)?.[1];
+    if (qr && initial) {
+      if ((await AsyncStorage.getItem(QR_LAUNCH_KEY)) === qr) return '/';
+      await AsyncStorage.setItem(QR_LAUNCH_KEY, qr);
+    }
     const token = claimTokenFrom(path);
     if (token) {
       if (await isClaimLinkHandled(token)) return '/';
