@@ -13,13 +13,17 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
+import { isEmail } from '../lib/constants';
 const MIN_CHARS = 2;
+/** The invite-by-email row's stand-in id: `invite:<email>`. */
+const INVITE = 'invite:';
 const DEBOUNCE_MS = 300;
 
 /**
  * Find someone on Unifesto who isn't in the space yet and add them as a
  * Member or Space admin. Stays open after each add, so several people can be
- * added in one go; added people drop out of the results.
+ * added in one go; added people drop out of the results. Q31: a full email
+ * that finds no one can be invited; they join when they sign in with it.
  */
 export default function AddSpaceMemberScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -65,7 +69,7 @@ export default function AddSpaceMemberScreen() {
   const add = async (u: MemberUser, role: SpaceMemberRole) => {
     if (!spaceId) return;
     setAddingId(u.id);
-    const res = await addSpaceMember(spaceId, u.id, role);
+    const res = await addSpaceMember(spaceId, u.id.startsWith(INVITE) ? { email: u.id.slice(INVITE.length) } : u.id, role);
     setAddingId(null);
     if (!res.ok) {
       AppAlert.alert("Couldn't add", res.message);
@@ -78,18 +82,32 @@ export default function AddSpaceMemberScreen() {
 
   const choose = (u: MemberUser) => {
     const name = u.fullName || u.username || 'this person';
-    AppAlert.alert(`Add ${name}`, 'Space admins can manage events, money, members and settings.', [
-      { text: 'As member', onPress: () => void add(u, 'MEMBER'), isPreferred: true },
-      { text: 'As Space admin', onPress: () => void add(u, 'SPACE_ADMIN') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    const invite = u.id.startsWith(INVITE);
+    AppAlert.alert(
+      invite ? `Invite ${name}` : `Add ${name}`,
+      `${invite ? 'They get an email and join when they sign in with it. ' : ''}Space admins can manage events, money, members and settings.`,
+      [
+        { text: 'As member', onPress: () => void add(u, 'MEMBER'), isPreferred: true },
+        { text: 'As Space admin', onPress: () => void add(u, 'SPACE_ADMIN') },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
   };
 
   const term = query.trim();
+  // No account found for a full email: offer to invite it (once).
+  const inviteId = INVITE + term.toLowerCase();
+  const canInvite = isEmail(term) && !searching && !error && results.length === 0 && !added.some((a) => a.id === inviteId);
+  const rows: MemberUser[] = canInvite ? [{ id: inviteId, fullName: term, username: null, avatarUrl: null }] : results;
   const hint =
     term.length < MIN_CHARS
-      ? 'Search by name, username or email. People already in the space are hidden.'
-      : error || (!searching && results.length === 0 ? 'No one found. They need a Unifesto account first.' : '');
+      ? 'Search by name, username or email. To add someone without an account, type their email.'
+      : error ||
+        (canInvite
+          ? 'No account uses this email yet. Invite them and they join when they sign in with it.'
+          : !searching && results.length === 0
+            ? 'No one found. To add someone without an account, type their full email.'
+            : '');
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -98,7 +116,7 @@ export default function AddSpaceMemberScreen() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         contentContainerStyle={[column, styles.content, { paddingTop: topSpacing }]}
-        data={results}
+        data={rows}
         keyExtractor={(u) => u.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -126,9 +144,9 @@ export default function AddSpaceMemberScreen() {
         }
         // One card for all results: each row is a segment of it.
         renderItem={({ item, index }) => (
-          <View style={cardSegment(c.raised, index, results.length)}>
+          <View style={cardSegment(c.raised, index, rows.length)}>
             {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
-            <MemberRow user={item} trailing="Add" busy={addingId === item.id} onPress={() => choose(item)} />
+            <MemberRow user={item} trailing={item.id.startsWith(INVITE) ? 'Invite' : 'Add'} busy={addingId === item.id} onPress={() => choose(item)} />
           </View>
         )}
       />

@@ -15,7 +15,7 @@ import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { WEB } from '../email/layout';
-import { inviteeContact } from '../auth/collaborator-invite';
+import { findOrCreateUserByEmail, inviteeContact } from '../auth/collaborator-invite';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
@@ -854,11 +854,14 @@ export class SpacesService {
   /**
    * Add a member to a space with a specific role. The acting user must be a
    * platform admin or a Space Admin, and may only assign manageable roles.
+   * Q31: `{ email }` adds someone who may not have an account yet. E1 makes
+   * them a claimable one (the same answer either way), and signing in with
+   * that email later is the claim.
    */
   async addSpaceMember(
     spaceId: string,
     actingUserId: string,
-    userId: string,
+    target: string | { email: string },
     roleCode: RoleCode,
   ) {
     const space = await this.prisma.space.findUnique({
@@ -886,6 +889,9 @@ export class SpacesService {
       throw new NotFoundException(`Role ${roleCode} not found`);
     }
 
+    // Only now, past every check, so a refused add never mints an account.
+    const userId =
+      typeof target === 'string' ? target : await findOrCreateUserByEmail(this.prisma, target.email);
     const targetUser = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
