@@ -1085,3 +1085,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · apex builds with Turbopack like web (dropped --webpack and its unused fs/net/tls fallback) (#527)
 - **2026-11-01** · deploy.sh keeps a capped build cache, waits for cert-worker/web/apex to be healthy before the www purge; web and apex get healthchecks (#526)
 - **2026-11-01** · iOS build warnings fixed: output-less Run Script phases marked always-run via a Podfile post_integrate hook, plus a default firebase.json (#528)
+- **2026-11-01** · Q34 web /event/<slug>/register links open the event in the app and start registering (no more unmatched route); Q37 no seat hold for 5.0.0, the unused countdown and the 15-minute promise removed (#530)
