@@ -98,11 +98,17 @@ function installedUpiApps(): Promise<UpiApp[]> {
       'Razorpay::UPI_APPS',
       (res: { data?: import('react-native-customui').UpiAppInfo[] }) =>
         done(
-          (res?.data ?? []).map((a) => ({
-            id: a.packageName || a.appName,
-            name: Platform.OS === 'ios' ? IOS_NAMES[a.appName] ?? a.appName.replace(/_/g, ' ') : a.appName,
-            icon: a.iconBase64 ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}` : undefined,
-          })),
+          (res?.data ?? []).map((a) => {
+            // iOS: appName is the SDK's { appName, shortcode } and the shortcode is the id.
+            const ios = typeof a.appName === 'object' ? a.appName : null;
+            const name = ios ? ios.appName : String(a.appName);
+            const id = a.packageName || ios?.shortcode || name;
+            return {
+              id,
+              name: Platform.OS === 'ios' ? IOS_NAMES[id] ?? name.replace(/_/g, ' ') : name,
+              icon: a.iconBase64 ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}` : undefined,
+            };
+          }),
         ),
     );
     const timer = setTimeout(() => done([]), 4000);
