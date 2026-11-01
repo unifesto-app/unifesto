@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
+  Bank,
   Check,
   CheckCircle,
   Circle,
@@ -12,10 +13,11 @@ import {
   ShieldCheck,
   Sparkle,
   User,
+  Wallet,
   XCircle,
 } from '@unifesto/unicon/react-native';
 import AttendeeForm from '../AttendeeForm';
-import CustomFieldInput from '../CustomFieldInput';
+import CustomFieldInput, { OptionPicker } from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';
 import PressableScale from '../ui/PressableScale';
 import ShadeCard from '../ui/ShadeCard';
@@ -23,7 +25,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import type { PayMethod } from '../../lib/pay';
+import { methodKey, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -539,7 +541,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
         {r.couponError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{r.couponError}</Text> : null}
       </View>
 
-      {r.payApps.length ? <PayWith r={r} /> : null}
+      {r.payOptions.on ? <PayWith r={r} /> : null}
 
       <View style={styles.secure}>
         <ShieldCheck size={18} color={c.muted} weight="duotone" />
@@ -549,19 +551,30 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
   );
 }
 
-/** Q40: the phone's UPI apps (last used first), then Razorpay's sheet for the rest. Pay uses the pick. */
+/**
+ * Q40: our own payment page. The phone's UPI apps (last used first; "UPI" when
+ * none were found), card, netbanking and wallets our Razorpay account takes.
+ * Pay pays with the pick and nothing else.
+ */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
+  const { apps, banks, wallets, selected } = r.payOptions;
+  const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
   const options: { key: string; label: string; method: PayMethod; icon: React.ReactNode }[] = [
-    ...r.payApps.map((app) => ({
-      key: app.id,
-      label: app.name,
-      method: app,
-      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : <DeviceMobile size={26} color={c.text} weight="duotone" />,
-    })),
-    { key: 'more', label: 'Cards, netbanking and more', method: 'more', icon: <CreditCard size={26} color={c.text} weight="duotone" /> },
+    ...(apps.length
+      ? apps.map((app) => ({
+          key: app.id,
+          label: app.name,
+          method: app,
+          icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : icon(DeviceMobile),
+        }))
+      : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
+    { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
+    ...(banks.length ? [{ key: 'bank:', label: 'Netbanking', method: { bank: '' }, icon: icon(Bank) }] : []),
+    ...(wallets.length ? [{ key: 'wallet:', label: 'Wallet', method: { wallet: '' }, icon: icon(Wallet) }] : []),
   ];
-  const picked = r.payMethod === 'more' ? 'more' : r.payMethod.id;
+  // A picked bank or wallet still ticks its row.
+  const picked = methodKey(selected).replace(/:.*/, ':');
   return (
     <View style={styles.block}>
       <Label>Pay with</Label>
@@ -570,25 +583,47 @@ function PayWith({ r }: { r: EventRegistration }) {
           {options.map((o, i) => {
             const on = o.key === picked;
             return (
-              <Pressable
-                key={o.key}
-                onPress={() => {
-                  if (!on) selectionTick();
-                  r.setPayMethod(o.method);
-                }}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
-                accessibilityLabel={o.label}
-                style={({ pressed }) => [
-                  styles.payRow,
-                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
-                  { opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                {o.icon}
-                <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
-                {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
-              </Pressable>
+              <View key={o.key} style={i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+                <Pressable
+                  onPress={() => {
+                    if (on) return;
+                    selectionTick();
+                    r.setPayMethod(o.method);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={o.label}
+                  style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  {o.icon}
+                  <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
+                  {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
+                </Pressable>
+                {on && typeof selected === 'object' && 'bank' in selected ? (
+                  <View style={styles.payPick}>
+                    <OptionPicker
+                      title="Choose your bank"
+                      placeholder="Choose your bank"
+                      options={banks.map((b) => ({ label: b.name, value: b.code }))}
+                      value={selected.bank}
+                      onChange={(bank) => r.setPayMethod({ bank })}
+                      hasError={false}
+                    />
+                  </View>
+                ) : null}
+                {on && typeof selected === 'object' && 'wallet' in selected ? (
+                  <View style={styles.payPick}>
+                    <OptionPicker
+                      title="Choose your wallet"
+                      placeholder="Choose your wallet"
+                      options={wallets.map((w) => ({ label: w.name, value: w.code }))}
+                      value={selected.wallet}
+                      onChange={(wallet) => r.setPayMethod({ wallet })}
+                      hasError={false}
+                    />
+                  </View>
+                ) : null}
+              </View>
             );
           })}
         </View>
@@ -740,6 +775,7 @@ const styles = StyleSheet.create({
   payRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56 },
   payIcon: { width: 26, height: 26, borderRadius: 7 },
   payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  payPick: { paddingBottom: spacing[3] },
   secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },
   // gate
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
