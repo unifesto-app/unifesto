@@ -60,7 +60,8 @@ const PLACEHOLDER_PROBE = {
 } as const;
 
 /**
- * The account loginWithCognito mints for a new Google/Apple sign-in: synthetic
+ * The account loginWithCognito minted for a new Google/Apple sign-in until Q35
+ * (it no longer does; older ones still sign in through here): synthetic
  * `+0` mobile, never verified, no name, its only identity is this Google/Apple
  * login, and nothing else points at it. Manual-add and judge placeholders also
  * use `+0` but carry an EMAIL identity, so they never qualify.
@@ -1306,7 +1307,7 @@ export class AuthService {
    * 2. Find existing user by Cognito identity OR email
    * 3. If found + mobile verified → return access token
    * 4. If found + mobile not verified → return temp token for mobile OTP
-   * 5. If not found → create placeholder user → return temp token for mobile OTP
+   * 5. If not found → return temp token for mobile OTP (verify-mobile makes the user, Q35)
    */
   async loginWithCognito(idToken: string, userAgent?: string): Promise<AuthResponseDto> {
     if (!this.cognitoJwtService) {
@@ -1338,9 +1339,8 @@ export class AuthService {
     }
 
     // Steps 2-3 link by email, only when Cognito says the email is verified
-    // (S5). Unverified: a new placeholder user is created below and the mobile
-    // OTP step moves the identity onto the existing account if they prove its
-    // mobile number.
+    // (S5). Unverified: no account is made here, and the mobile OTP step links
+    // to the existing account only if they prove its mobile number.
     // Step 2: Find user by verified email identity (any provider)
     if (!user && emailVerified) {
       const identityByEmail = await findIdentityByEmail(this.prisma, email, {
@@ -1387,28 +1387,15 @@ export class AuthService {
       };
     }
 
-    // Step 6: New user → create with placeholder mobile + require mobile OTP
-    const placeholderMobile = `+0${Date.now().toString().slice(-9)}`;
-    const newUser = await this.prisma.user.create({
-      data: {
-        mobileNumber: placeholderMobile,
-        mobileVerified: false,
-        identities: {
-          create: {
-            provider: providerEnum,
-            providerUserId: cognitoSub,
-            email,
-            emailVerified,
-          },
-        },
-      },
-      include: { roles: { include: { role: true } } },
-    });
-
+    // Step 6: New user → require mobile OTP. Q35: no row until then (abandoned
+    // sign-ups used to stay as `+0` placeholders); verify-mobile creates the
+    // account from the temp token, as it does for email and Apple sign-ups.
+    // Apps (4.0.5 too) show the number step off `mobileVerified: false`; the
+    // empty id keeps them from treating it as an account.
     const tempToken = this.generateTempToken(providerEnum, cognitoSub, email, emailVerified);
     return {
       accessToken: '',
-      user: UserProfileDto.fromUser(newUser, []),
+      user: UserProfileDto.fromUser({ id: '', mobileNumber: '', mobileVerified: false, createdAt: new Date() } as User),
       requiresMobileVerification: true,
       tempToken,
     };

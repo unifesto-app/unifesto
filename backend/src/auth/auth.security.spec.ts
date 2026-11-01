@@ -461,7 +461,7 @@ describe('S5: email auto-link needs a verified email', () => {
     expect(email.sendSignInMethodAdded).not.toHaveBeenCalled();
   });
 
-  it('Cognito: unverified email creates a placeholder instead of linking', async () => {
+  it('Cognito: unverified email neither links nor (Q35) writes a placeholder row', async () => {
     const { service, prisma, cognito } = setup();
     cognito.verifyCognitoToken.mockResolvedValue({
       sub: 'cog-1',
@@ -471,14 +471,35 @@ describe('S5: email auto-link needs a verified email', () => {
     prisma.userIdentity.findFirst.mockImplementation(({ where }: any) =>
       where.providerUserId === 'cog-1' ? null : { user: user({ id: 'victim', roles: [] }) },
     );
-    prisma.user.create.mockResolvedValue(user({ id: 'placeholder', mobileVerified: false, roles: [] }));
 
     const res = await service.loginWithCognito('id-token');
 
     expect(prisma.userIdentity.create).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
     expect(res.accessToken).toBe('');
-    expect(res.user?.id).toBe('placeholder');
-    expect(prisma.user.create.mock.calls[0][0].data.identities.create.emailVerified).toBe(false);
+    expect(res.tempToken).toEqual(expect.any(String));
+    // Apps (4.0.5 too) show the number step off this; an empty id is no account.
+    expect(res.user).toMatchObject({ id: '', mobileVerified: false });
+  });
+});
+
+describe('Q35: a new Google/Apple sign-in becomes an account only once the number is verified', () => {
+  it('verify-mobile creates it with the Google identity, as a new account', async () => {
+    const { service, prisma, cognito } = setup();
+    cognito.verifyCognitoToken.mockResolvedValue({ sub: 'cog-1', email: 'new@gmail.com', email_verified: true });
+    const { tempToken } = await service.loginWithCognito('id-token');
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(user({ id: 'new' }));
+
+    const res = await service.verifyMobile({ mobileNumber: '+919999999999', otp: '123456', tempToken: tempToken! });
+
+    expect(prisma.user.create).toHaveBeenCalledTimes(1);
+    expect(prisma.user.create.mock.calls[0][0].data).toMatchObject({
+      mobileNumber: '+919999999999',
+      mobileVerified: true,
+      identities: { create: { provider: 'GOOGLE', providerUserId: 'cog-1', email: 'new@gmail.com', emailVerified: true } },
+    });
+    expect(res).toMatchObject({ isNewUser: true, user: { id: 'new' } });
   });
 });
 
