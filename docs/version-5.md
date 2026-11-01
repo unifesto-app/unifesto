@@ -1078,3 +1078,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · AI2: draft a new event from its poster in the console wizard (name, dates, venue or link, tickets, description, agenda, FAQs); nothing is saved until the curator creates the event (#518)
 - **2026-11-01** · Q22: publishing now requires a cover, a venue or joining link, and one ticket (a festival hub's sub-events count), with a message naming what's missing; the console checklist marks the three as required (#520)
 - **2026-11-01** · Sign-in QR on unifesto.app/login opens in the app from the phone's own camera (universal link unifesto.app/qr/<code>), approve with one tap; needs web rebuild + 5.0.0 build. (#521)
+- **2026-11-01** · Live quiz sockets no longer share one platform-wide 300/min rate-limit bucket (found by J6) (#522)
