@@ -1091,3 +1091,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · J6 load test run on an isolated staging copy; staging-setup.sh and runbook fixes (own security group, damaged-image guard, checkin.js roster shape) (#533)
 - **2026-11-01** · Q31 Space Admins invite teammates by email, account or not (app + console); invited accounts finish sign-in on web /login; console roster shows member emails (#532)
 - **2026-11-01** · Q40 iOS UPI app list no longer crashes (react-native-customui sends the SDK's dictionaries) (#537)
+- **2026-11-01** · Q40 payment page in the app: UPI apps, card, netbanking and wallets each pay with only that method (Custom UI, or Razorpay's sheet limited to it); GET /config/payment-methods lists the banks and wallets our Razorpay account takes (#538)
