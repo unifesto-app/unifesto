@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-import { Camera } from 'expo-camera';
 import { CheckCircle } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -19,7 +18,7 @@ import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type PermStatus = 'granted' | 'denied' | 'undetermined';
-type PermKey = 'notifications' | 'camera' | 'mediaLibrary' | 'location' | 'microphone';
+type PermKey = 'notifications' | 'camera' | 'mediaLibrary' | 'location';
 
 type ExpoPermission = { status: string };
 
@@ -65,14 +64,6 @@ const PERMISSIONS: {
     icon: 'map-pin',
     get: Location.getForegroundPermissionsAsync,
     request: Location.requestForegroundPermissionsAsync,
-  },
-  {
-    key: 'microphone',
-    label: 'Microphone',
-    why: 'Speak in live sessions',
-    icon: 'microphone',
-    get: Camera.getMicrophonePermissionsAsync,
-    request: Camera.requestMicrophonePermissionsAsync,
   },
 ];
 
