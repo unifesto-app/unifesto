@@ -493,7 +493,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | done (#380) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | done (#386) |
-| J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | in progress (#493) |
+| J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | done (#533) |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
 | J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | IN_REVIEW (#308) |
 | J9 | **Keep private event and session fields out of public APIs.** - Anonymous GET /events, GET /events/space/:id and favourites return every Event column through include with no select (backend/src/events/events.service.ts:1554-1593, getSpaceEvents ~:2675), exposing whatsappAttendeeGroupUrl, onl | IN_REVIEW (#311) |
@@ -1088,3 +1088,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q34 web /event/<slug>/register links open the event in the app and start registering (no more unmatched route); Q37 no seat hold for 5.0.0, the unused countdown and the 15-minute promise removed (#530)
 - **2026-11-01** · Q33 sign-ups whose WhatsApp number is on another account are asked before the sign-in is added to it (409 with a link token, app alert, web confirm); old builds are told and never linked (#529)
 - **2026-11-01** · Q35 a Google/Apple sign-in writes no user until the number is verified; abandoned sign-ups no longer leave +0 placeholder users (prod count query in the PR) (#531)
+- **2026-11-01** · J6 load test run on an isolated staging copy; staging-setup.sh and runbook fixes (own security group, damaged-image guard, checkin.js roster shape) (#533)
