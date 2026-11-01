@@ -277,17 +277,6 @@ describe('A28 claims', () => {
     ...over,
   });
 
-  it('an unverified identity email cannot claim', async () => {
-    const prisma: any = {
-      groupSeat: { findUnique: jest.fn(async () => seatRow()) },
-      userIdentity: {
-        findMany: jest.fn(async ({ where }: any) => (where.emailVerified === true ? [] : [{ userId: 'me', email: 'me@x.com' }])),
-      },
-    };
-    const svc = new GroupSeatsService(prisma, {} as any, {} as any);
-    await expect(svc.claim('tok', 'me')).rejects.toThrow(/different account/);
-  });
-
   it('the invite list reads verified emails only', async () => {
     const prisma: any = { userIdentity: { findMany: jest.fn(async () => []) } };
     const svc = new GroupSeatsService(prisma, {} as any, {} as any);

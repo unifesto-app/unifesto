@@ -344,12 +344,15 @@ export function useEventRegistration() {
 
   const isGroup = selectedTicket?.type === 'group';
   // Email invite only: in a group, every teammate (index 1+) gets their seat by
-  // email after booking and fills in their own details; only the lead (0) is
-  // filled in here. Their seats are left OPEN (index + 1 = seat number).
+  // email and fills in their own details; only the lead (0) is filled in here.
+  // index + 1 = seat number.
   const invitedIndices = useMemo(
     () => new Set(isGroup ? attendees.map((_, i) => i).filter((i) => i > 0) : []),
     [isGroup, attendees],
   );
+  // Q16: a teammate's email is optional (attendees[i].email). Named ones are
+  // invited once the booking is paid; blank seats stay open for Manage group.
+  const teammateEmails = [...invitedIndices].map((i) => attendees[i].email.trim()).filter(Boolean);
   const teamMin = selectedTicket ? (isGroup ? selectedTicket.group_size || 5 : selectedTicket.min_purchase) : 1;
   const teamMax = selectedTicket
     ? Math.min(selectedTicket.max_purchase, selectedTicket.quantity_available - selectedTicket.quantity_sold)
@@ -397,6 +400,11 @@ export function useEventRegistration() {
     if (!selectedTicket) return 'Pick a ticket first.';
     const teamProblem = firstFormProblem(teamFields, teamFieldValues);
     if (teamProblem) return teamProblem;
+    const badEmail = teammateEmails.find((e) => !isEmail(e));
+    if (badEmail) return `${badEmail} isn't a valid email.`;
+    if (new Set(teammateEmails.map((e) => e.toLowerCase())).size < teammateEmails.length) {
+      return 'Each teammate needs a different email.';
+    }
     for (let index = 0; index < attendees.length; index++) {
       if (invitedIndices.has(index)) continue; // invitee fills their own later
       const a = attendees[index];
@@ -425,10 +433,10 @@ export function useEventRegistration() {
   })();
 
   // With the "You" details hidden once complete, the Details step can end up
-  // with nothing to fill in: no team size to pick and no questions. Skip it
-  // then (Review still lists who the ticket is for).
+  // with nothing to fill in: no team (its teammate emails live there) and no
+  // questions. Skip it then (Review still lists who the ticket is for).
   const skipDetails =
-    !!selectedTicket && !(isGroup && teamMax > teamMin) && memberFields.length === 0 && teamFields.length === 0 && attendeesValid;
+    !!selectedTicket && !isGroup && memberFields.length === 0 && teamFields.length === 0 && attendeesValid;
   const steps = (step === 'ticket' ? skipDetails : detailsSkipped) ? STEPS.filter((s) => s.id !== 'details') : STEPS;
 
   // ── Money ──
@@ -567,7 +575,7 @@ export function useEventRegistration() {
             .filter((_, i) => !invitedIndices.has(i))
             .map((a) => ({ name: a.name, email: a.email, mobile: a.mobile, gender: a.gender, customFields: a.customFields }))
         : undefined;
-      const openSeats = isGroup ? invitedIndices.size : 0;
+      const openSeats = isGroup ? invitedIndices.size - teammateEmails.length : 0;
 
       const utm = await attributionFor({ id: event.id, slug: event.slug, spaceSlug: event.space?.slug });
       const order = await createRegistration(event.id, {
@@ -576,6 +584,7 @@ export function useEventRegistration() {
         quantity: isGroup ? 1 : quantity,
         groupSize: isGroup ? quantity : undefined,
         groupMembers,
+        teammateEmails: isGroup && teammateEmails.length ? teammateEmails : undefined,
         couponCode: appliedCoupon ? couponInput.trim() : undefined,
         // Group: team-wide answers (members carry their own). Individual: the
         // sole attendee's identity + answers.

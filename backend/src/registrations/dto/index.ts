@@ -18,6 +18,7 @@ import {
   MaxLength,
   IsBoolean,
   ArrayMaxSize,
+  ArrayUnique,
 } from 'class-validator';
 import { MAX_GROUP_SIZE } from '../registration.util';
 import { BADGE_LAYOUT_KEYS, type BadgeLayoutKey } from '../badges.util';
@@ -177,6 +178,17 @@ export class CreateOrderDto extends UtmAttributionDto {
   @ValidateNested({ each: true })
   @Type(() => GroupMemberDto)
   groupMembers?: GroupMemberDto[];
+
+  /**
+   * Q16: teammates the lead names by email while booking a group (optional).
+   * Their seats are invited, and the invites go out once the booking is paid.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_GROUP_SIZE)
+  @IsEmail({}, { each: true, message: 'Each teammate needs a valid email' })
+  @ArrayUnique((e: string) => e.trim().toLowerCase(), { message: 'Each teammate email can only be used once' })
+  teammateEmails?: string[];
 
   @IsOptional()
   @IsObject()

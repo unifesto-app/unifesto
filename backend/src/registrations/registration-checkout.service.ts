@@ -456,6 +456,9 @@ export class RegistrationCheckoutService {
     let baseAmount: number;
     if (groupSize != null) {
       this.assertGroupMembersComplete(dto.groupMembers, groupSize);
+      if ((dto.groupMembers?.length ?? 0) + (dto.teammateEmails?.length ?? 0) > groupSize) {
+        throw new BadRequestException(`A group of ${groupSize} has no seat left for every teammate email`);
+      }
       baseAmount =
         ticketType.groupPricingMode === 'PER_PERSON'
           ? Number(ticketType.price) * groupSize
@@ -563,6 +566,7 @@ export class RegistrationCheckoutService {
           leadUserId: userId,
           seatCount: seatsFor(reg),
           groupMembers: dto.groupMembers ?? null,
+          inviteEmails: dto.teammateEmails ?? null,
         });
 
         return reg;
@@ -649,6 +653,7 @@ export class RegistrationCheckoutService {
           leadUserId: userId,
           seatCount: seatsFor(reg),
           groupMembers: dto.groupMembers ?? null,
+          inviteEmails: dto.teammateEmails ?? null,
         });
 
         return reg;

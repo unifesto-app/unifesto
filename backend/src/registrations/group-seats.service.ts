@@ -16,7 +16,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { emailFilter, findIdentityByEmail, idsByEmail, maskEmail, sameEmail } from '../auth/identifiers';
+import { emailFilter, idsByEmail, sameEmail } from '../auth/identifiers';
 import { enforceFormAnswers } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -37,6 +37,12 @@ export interface CreateSeatsParams {
    * are OPEN for later invite/claim (fast-registration Part 2).
    */
   groupMembers?: unknown[] | null;
+  /**
+   * Teammate emails the lead typed at booking (Q16): the next OPEN seats are
+   * INVITED to them. Nothing is mailed until the booking is paid
+   * (`sendBookingInvites`).
+   */
+  inviteEmails?: string[] | null;
 }
 
 export interface SeatInvite {
@@ -193,6 +199,7 @@ export class GroupSeatsService {
     if (existing > 0) return;
 
     const members = Array.isArray(params.groupMembers) ? params.groupMembers : [];
+    const emails = (params.inviteEmails ?? []).map((e) => e.trim().toLowerCase());
     const now = new Date();
 
     const rows: Prisma.GroupSeatCreateManyInput[] = [];
@@ -201,11 +208,13 @@ export class GroupSeatsService {
       const hasDetail = memberDetail != null;
       const isLead = i === 1;
       const claimed = isLead || hasDetail;
+      const inviteEmail = claimed ? null : (emails.shift() ?? null);
       rows.push({
         registrationId,
         seatIndex: i,
-        status: claimed ? GroupSeatStatus.CLAIMED : GroupSeatStatus.OPEN,
+        status: claimed ? GroupSeatStatus.CLAIMED : inviteEmail ? GroupSeatStatus.INVITED : GroupSeatStatus.OPEN,
         inviteToken: GroupSeatsService.newToken(),
+        inviteEmail,
         memberDetails: hasDetail
           ? (memberDetail as Prisma.InputJsonValue)
           : Prisma.JsonNull,
@@ -215,6 +224,23 @@ export class GroupSeatsService {
     }
 
     await tx.groupSeat.createMany({ data: rows });
+  }
+
+  /**
+   * Q16: the booking is paid, so mail each teammate the lead named at
+   * checkout their claim link. Called once per booking, from the
+   * confirmation gate. Best-effort.
+   */
+  async sendBookingInvites(registrationId: string, eventTitle: string) {
+    const seats = await this.prisma.groupSeat.findMany({
+      where: { registrationId, status: GroupSeatStatus.INVITED, inviteEmail: { not: null } },
+      select: { inviteEmail: true, inviteToken: true },
+    });
+    for (const seat of seats) {
+      this.email
+        .sendRawEmail(seat.inviteEmail!, `You're invited to ${eventTitle}`, this.inviteHtml(eventTitle, this.claimUrl(seat.inviteToken)))
+        .catch((err) => this.logger.error(`Invite email failed to ${seat.inviteEmail}`, err));
+    }
   }
 
   /**
@@ -819,23 +845,14 @@ export class GroupSeatsService {
   }
 
   /**
-   * The signed-in account must own the invited email (any of its linked,
-   * verified emails, case-insensitive). The link alone is never enough: a forwarded or
-   * leaked invite can't be claimed by someone else, and the seat always lands
-   * on the person it was sent to.
+   * Q16 (decision D): the link is a bearer token. Whoever holds it signs in
+   * with any account and claims, so a teammate who signs in with another
+   * email still gets in. One claim per seat, and the lead is told who took it
+   * (`tellLeadClaimed`). Only a seat that was sent to someone has a live link.
    */
-  private async assertHybridAuth(inviteEmail: string | null, claimerUserId: string) {
+  private assertSent(inviteEmail: string | null) {
     if (!inviteEmail) {
       throw new ForbiddenException("This seat hasn't been sent to anyone yet, so it can't be claimed.");
-    }
-    const identity = await findIdentityByEmail(this.prisma, inviteEmail, {
-      where: { userId: claimerUserId, emailVerified: true },
-      select: { userId: true },
-    });
-    if (!identity) {
-      throw new ForbiddenException(
-        `This invite is for a different account (${maskEmail(inviteEmail)}). Sign in with that email to claim it.`,
-      );
     }
   }
 
@@ -992,7 +1009,7 @@ export class GroupSeatsService {
     };
   }
 
-  /** Claim-time info for the claim screen (seat + event). Applies hybrid auth. */
+  /** Claim-time info for the claim screen (seat + event). */
   async getClaimInfo(token: string, claimerUserId: string) {
     const seat = await this.seatByTokenOrThrow(token);
     if (seat.status === GroupSeatStatus.CLAIMED && !isTypedIn(seat)) {
@@ -1001,7 +1018,7 @@ export class GroupSeatsService {
     if (seat.status === GroupSeatStatus.RELEASED) {
       throw new BadRequestException('This seat is no longer available');
     }
-    await this.assertHybridAuth(seat.inviteEmail, claimerUserId);
+    this.assertSent(seat.inviteEmail);
     this.assertSeatClaimable(seat);
     const { id, title, slug } = seat.registration.event;
     return {
@@ -1018,7 +1035,7 @@ export class GroupSeatsService {
 
   /**
    * Claim a seat. Security-critical:
-   *  - hybrid auth (bind to invited account when the email resolves),
+   *  - the token is the capability (see assertSent), throttled on the route,
    *  - event-wide dedupe (no double-registration),
    *  - ATOMIC guarded transition `status != CLAIMED → CLAIMED` so only one of N
    *    concurrent claimers wins the seat (W10),
@@ -1037,7 +1054,7 @@ export class GroupSeatsService {
     if (seat.status === GroupSeatStatus.RELEASED) {
       throw new BadRequestException('This seat is no longer available');
     }
-    await this.assertHybridAuth(seat.inviteEmail, claimerUserId);
+    this.assertSent(seat.inviteEmail);
     this.assertSeatClaimable(seat);
     await this.assertNotAlreadyInEvent(seat.registration.eventId, claimerUserId, seat.id);
 
@@ -1133,6 +1150,12 @@ export class GroupSeatsService {
       this.logger.error(`sendClaimWhatsAppInvite(${seat.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
     );
 
+    // Anyone with the link can claim, so the lead hears who did. Best-effort.
+    const who = claimerName && claimerEmail ? `${claimerName} (${claimerEmail})` : claimerName || claimerEmail || 'Someone';
+    void this.tellLeadClaimed(seat.registrationId, who, seat.registration.event.title).catch((err) =>
+      this.logger.error(`tellLeadClaimed(${seat.registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
+
     // The usual "you're registered" email (with the member's own QR) and
     // WhatsApp confirmation, same as any registration. Best-effort.
     void this.sendClaimConfirmations(seat.registrationId, claimerUserId, claimerEmail, details, {
@@ -1147,6 +1170,20 @@ export class GroupSeatsService {
       event: seat.registration.event,
       ticket: { ticketCode: ticket.ticketCode, qrCode: ticket.qrCode },
     };
+  }
+
+  /** Q16: email the lead who just claimed a seat, and how to give it to someone else. */
+  private async tellLeadClaimed(registrationId: string, who: string, eventTitle: string) {
+    const reg = await this.prisma.eventRegistration.findUnique({ where: { id: registrationId }, select: { userId: true } });
+    const to = reg && (await this.primaryEmail(reg.userId, null));
+    if (!to) return;
+    await this.email.sendRawEmail(
+      to,
+      `${who} claimed a seat for ${eventTitle}`,
+      h1('A seat was claimed') +
+        p(`${strong(who)} claimed a seat in your team for ${strong(eventTitle)}.`) +
+        p('Not who you meant? Open your ticket in the Unifesto app, go to Manage group and give the seat to someone else.'),
+    );
   }
 
   /** The claimer's primary (else any) account email; falls back to the invite email. */
@@ -1413,10 +1450,10 @@ export class GroupSeatsService {
   }
 
   /** Decline an invite → seat back to OPEN (token rotated); notify the lead. */
-  async decline(token: string, userId: string) {
+  async decline(token: string, _userId: string) {
     const seat = await this.seatByTokenOrThrow(token);
-    // Same rule as claiming: only the invited account can turn it down.
-    await this.assertHybridAuth(seat.inviteEmail, userId);
+    // Same rule as claiming: whoever holds the link can turn it down.
+    this.assertSent(seat.inviteEmail);
     if (isTypedIn(seat)) {
       // A typed-in teammate saying no only cancels the link: they stay on the
       // team as the lead entered them, and a fresh token kills this link.

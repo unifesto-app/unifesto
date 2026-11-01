@@ -5,7 +5,7 @@ import Link from "next/link";
 import { QrCode } from "@unifesto/unicon/react";
 import QrSignIn from "@/components/QrSignIn";
 import SocialSignIn from "@/components/SocialSignIn";
-import { sendEmailCode, verifyEmailCode } from "@/lib/api/registration";
+import { sendEmailCode, sendPhoneCode, verifyEmailCode, verifyPhoneCode } from "@/lib/api/registration";
 import { clearSession, startSession, type PendingSignIn } from "@/lib/auth";
 
 const FIELD =
@@ -14,8 +14,10 @@ const FIELD =
 /**
  * K18/K19: sign in to an existing account on the web: Google, or the email
  * code. A new email or Google account has nothing to show here, so it gets
- * told where accounts are made (Q20). Signing in updates the shared session,
- * so the page re-renders signed in.
+ * told where accounts are made (Q20), unless the page takes new accounts
+ * (`newAccounts`, Q16: a seat claim), where it adds a WhatsApp number the way
+ * registering does. Signing in updates the shared session, so the page
+ * re-renders signed in.
  */
 
 const LINK = "text-paper underline underline-offset-4";
@@ -41,12 +43,14 @@ export default function SignIn({
   intro,
   submitLabel,
   pending,
+  newAccounts = false,
 }: {
   /** Where Google returns to. */
   next: string;
   intro: string;
   submitLabel: string;
   pending: PendingSignIn | null;
+  newAccounts?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -55,6 +59,12 @@ export default function SignIn({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [noAccount, setNoAccount] = useState(false);
+  // A new account's last step: its WhatsApp number (email code or Google).
+  const [tempToken, setTempToken] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneSent, setPhoneSent] = useState(false);
+  const signUp = tempToken || (newAccounts && pending?.tempToken) || "";
+  const mobileNumber = `+91${phone}`;
 
   const run = (fn: () => Promise<void>) => async (e: FormEvent) => {
     e.preventDefault();
@@ -76,9 +86,71 @@ export default function SignIn({
   });
   const verify = run(async () => {
     const res = await verifyEmailCode(email.trim(), otp.trim());
+    if (!res.accessToken && newAccounts && res.tempToken) return setTempToken(res.tempToken);
     if (!res.accessToken) return setNoAccount(true);
     await startSession(res, { email: email.trim(), fullName: res.user?.fullName || null });
   });
+  const sendPhone = run(async () => {
+    if (!/^[0-9]{10}$/.test(phone)) throw new Error("Enter a 10 digit mobile number.");
+    await sendPhoneCode(mobileNumber, signUp);
+    setOtp("");
+    setPhoneSent(true);
+  });
+  const verifyPhone = run(async () => {
+    const res = await verifyPhoneCode(mobileNumber, otp.trim(), signUp);
+    await startSession(res, { email: pending?.email || email.trim(), fullName: res.user?.fullName || null });
+  });
+
+  if (signUp) {
+    return phoneSent ? (
+      <form onSubmit={verifyPhone} className="space-y-4">
+        <p className="text-paper/75">
+          We sent a WhatsApp code to <strong className="text-paper">+91 {phone}</strong>.
+        </p>
+        <input
+          required
+          autoFocus
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          aria-label="Verification code"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          placeholder="Verification code"
+          className={FIELD}
+        />
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        <button type="submit" disabled={busy} className="btn btn-primary w-full">
+          {busy ? "Verifying…" : submitLabel}
+        </button>
+        <button type="button" onClick={() => setPhoneSent(false)} className="text-sm text-paper/65 hover:text-paper">
+          Change number
+        </button>
+      </form>
+    ) : (
+      <form onSubmit={sendPhone} className="space-y-4">
+        <p className="text-paper/75">New to Unifesto? Add your WhatsApp number to create your account.</p>
+        <div className="flex items-center rounded-lg bg-canvas">
+          <span className="pl-4 text-sm text-paper/65">+91</span>
+          <input
+            required
+            autoFocus
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            aria-label="Mobile number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="Mobile number (WhatsApp)"
+            className="w-full bg-transparent px-3 py-3 text-sm text-paper placeholder:text-paper/55 focus:outline-none"
+          />
+        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        <button type="submit" disabled={busy} className="btn btn-primary w-full">
+          {busy ? "Sending code…" : "Send WhatsApp code"}
+        </button>
+      </form>
+    );
+  }
 
   if (pending) {
     return (

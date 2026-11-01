@@ -8,7 +8,6 @@ import {
   DeviceMobile,
   EnvelopeSimple,
   Minus,
-  PaperPlaneTilt,
   Plus,
   ShieldCheck,
   Sparkle,
@@ -223,7 +222,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
   const adjustable = r.isGroup && r.teamMax > r.teamMin;
   const selfDone = r.attendees[0] ? isSelfComplete(r.attendees[0]) : false;
   const sub = r.isGroup
-    ? 'You invite your teammates by email after booking, and they fill in their own details.'
+    ? 'Add your teammates’ emails and each gets an invite once you pay. They fill in their own details.'
     : selfDone
       ? 'A few more details for this ticket.'
       : 'This is who the ticket is for.';
@@ -256,7 +255,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
 
       {r.attendees.map((a, index) => {
         const isSelf = index === 0;
-        // Teammates are invited by email after booking (see the note below).
+        // Teammates only get an email field (below); they fill in their own details.
         if (r.invitedIndices.has(index)) return null;
         // Personal details stay hidden once complete (Review still lists them);
         // the form only opens when a profile field is missing.
@@ -295,13 +294,24 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
 
       {r.invitedIndices.size > 0 ? (
         <View style={styles.block}>
-          <Label>{r.invitedIndices.size === 1 ? 'Your teammate' : `Your ${r.invitedIndices.size} teammates`}</Label>
-          <Card style={styles.inviteNote}>
-            <PaperPlaneTilt size={24} color={c.text} weight="duotone" />
-            <Text style={[styles.body, { color: c.soft, flex: 1 }]}>
-              After you book, invite each of them by email from Manage group. They claim their seat and fill in their own details.
-            </Text>
-          </Card>
+          <Label>Teammates</Label>
+          <View style={styles.fields}>
+            {[...r.invitedIndices].map((index) => (
+              <AuthField
+                key={index}
+                label={`Person ${index + 1}`}
+                value={r.attendees[index].email}
+                onChangeText={(v) => r.changeAttendee(index, 'email', v)}
+                placeholder="Email (optional)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="none"
+                autoComplete="off"
+              />
+            ))}
+          </View>
+          <Text style={[styles.hint, { color: c.muted }]}>Leave anyone blank and invite them later from Manage group.</Text>
         </View>
       ) : null}
 
@@ -383,10 +393,12 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.personName, { color: invited ? c.soft : c.text }]}>
-                    {invited ? `Person ${index + 1}` : a.name}
+                    {invited ? a.email.trim() || `Person ${index + 1}` : a.name}
                   </Text>
                   <Text style={[styles.meta, { color: c.muted }]} numberOfLines={2}>
-                    {invited ? 'You invite them after this' : `${a.email} · +91 ${a.mobile} · ${a.gender}`}
+                    {invited
+                      ? a.email.trim() ? 'Gets an invite once you pay' : 'You invite them after this'
+                      : `${a.email} · +91 ${a.mobile} · ${a.gender}`}
                   </Text>
                   {!invited
                     ? visibleFields(r.memberFields, a.customFields).filter((f) => f.field_type !== 'section').map((f) => {
@@ -738,7 +750,6 @@ const styles = StyleSheet.create({
   stepperBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   stepperValue: { minWidth: 32, textAlign: 'center', fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   block: { marginTop: spacing[8] },
-  inviteNote: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   questions: { marginTop: spacing[5] },
   fields: { gap: spacing[5] },
   // review (pass preview)

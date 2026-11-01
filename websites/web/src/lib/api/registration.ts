@@ -137,6 +137,19 @@ export const verifyPhoneCode = (mobileNumber: string, otp: string, tempToken: st
   call<AuthResponse>("POST", "/auth/verify-mobile", { mobileNumber, otp, tempToken });
 export const saveName = (fullName: string, token: string) => call("PATCH", "/users/me", { fullName }, token);
 
+/** Q16: a group seat's claim link. The link is the invite: any signed-in account can claim it. */
+export interface ClaimInfo {
+  seatIndex: number;
+  event: { id: string; title: string; slug: string };
+  ticketTypeId: string | null;
+  /** This account already has a ticket for the event, so the claim would fail. */
+  alreadyRegistered?: boolean;
+}
+export const getClaimInfo = (token: string, auth: string) =>
+  call<ClaimInfo>("GET", `/registrations/claim/${encodeURIComponent(token)}`, undefined, auth);
+export const claimSeat = (token: string, auth: string, memberDetails: Record<string, unknown>) =>
+  call("POST", `/registrations/claim/${encodeURIComponent(token)}`, { memberDetails }, auth);
+
 /** Z11: record "I am 18 or older" (stamped once server-side). */
 export const confirmAge = (token: string) => call("PATCH", "/users/me", { ageConfirmed: true }, token);
 

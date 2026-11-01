@@ -122,7 +122,7 @@ function makeDb(seed: Seat[] = []) {
       findUnique: async () => ({ id: REG, userId: LEAD, status: 'REGISTERED', paymentStatus: 'PAID', isWaitlisted: false, event: EVENT }),
       findFirst: async () => null,
     },
-    // Linked emails per account; claims must come from the invited email.
+    // Linked emails per account (the claimer's email on the seat falls back to the invite's).
     userIdentity: {
       findMany: async ({ where }: any) => {
         const want = String(where?.email?.equals ?? '').toLowerCase();
@@ -223,19 +223,46 @@ describe('GroupSeatsService — seats as source of truth', () => {
     expect(seats.map((s) => s.seatIndex)).toEqual([1, 2, 3, 4]);
   });
 
-  it('only the account that owns the invited email can claim', async () => {
+  it('anyone with the link claims it (Q16), once, and the lead hears who', async () => {
     const seed: Seat[] = [
       seat(1, 'CLAIMED', { claimedByUserId: LEAD }),
       seat(2, 'INVITED', { inviteEmail: 'dinesh@x.com' }),
     ];
-    const { svc, seats } = build(seed);
+    const { svc, seats, prisma, email } = build(seed);
+    prisma.userIdentity.findMany = async ({ where }: any) =>
+      where.userId === LEAD ? [{ email: 'lead@x.com', isPrimary: true }] : [];
     const token = seats[1].inviteToken;
 
-    await expect(svc.claim(token, 'user-someone-else', { name: 'Eve' })).rejects.toThrow(/different account/);
-    expect(seats[1].status).toBe('INVITED'); // untouched
-
-    const res = await svc.claim(token, 'user-dinesh', { name: 'Dinesh' }); // case-insensitive match
+    // Signed in with an account that doesn't own the invited email.
+    const res = await svc.claim(token, 'user-someone-else', { name: 'Eve' });
     expect(res.seatIndex).toBe(2);
+    expect(seats[1]).toMatchObject({ status: 'CLAIMED', claimedByUserId: 'user-someone-else' });
+    await expect(svc.claim(token, 'user-dinesh')).rejects.toThrow(/already been claimed/);
+
+    await new Promise((r) => setImmediate(r));
+    expect(email.sendRawEmail).toHaveBeenCalledWith('lead@x.com', expect.stringContaining('Eve'), expect.stringContaining('Eve'));
+  });
+
+  it('teammate emails at booking invite the open seats, mailed only once paid', async () => {
+    const { svc, prisma, seats, email } = build();
+    await svc.createSeatsForRegistration(prisma as any, {
+      registrationId: REG,
+      leadUserId: LEAD,
+      seatCount: 4,
+      groupMembers: [{ name: 'Lead' }],
+      inviteEmails: [' Bimal@x.com ', 'chandra@x.com'],
+    });
+    expect(seats.map((s) => [s.status, s.inviteEmail])).toEqual([
+      ['CLAIMED', null],
+      ['INVITED', 'bimal@x.com'],
+      ['INVITED', 'chandra@x.com'],
+      ['OPEN', null],
+    ]);
+    expect(email.sendRawEmail).not.toHaveBeenCalled();
+
+    await svc.sendBookingInvites(REG, 'Hack Night');
+    expect(email.sendRawEmail.mock.calls.map((c: any[]) => c[0])).toEqual(['bimal@x.com', 'chandra@x.com']);
+    expect(email.sendRawEmail.mock.calls[0][2]).toContain(`/claim/${seats[1].inviteToken}`);
   });
 
   it('null roster entries leave their seat untouched (edit one member past a gap)', async () => {
@@ -430,7 +457,6 @@ describe('GroupSeatsService — linking a typed-in teammate', () => {
     await svc.invite(REG, LEAD, [{ seatIndex: 2, email: 'bimal@x.com' }]);
     const token = seats[1].inviteToken;
 
-    await expect(svc.claim(token, 'user-dinesh', { name: 'Dinesh' })).rejects.toThrow(/different account/);
     expect((await svc.getClaimInfo(token, 'user-bimal')).seatIndex).toBe(2);
 
     const res = await svc.claim(token, 'user-bimal', { name: 'Bimal K' });
