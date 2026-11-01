@@ -40,6 +40,7 @@ import AuthField from '../components/auth/AuthField';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import BrandWordmark from '../components/BrandWordmark';
 import OtpCodeInput from '../components/auth/OtpCodeInput';
+import { AppAlert } from '../components/ui/AppAlert';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
 import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { column } from '../theme/spacing';
@@ -310,8 +311,28 @@ export default function NewLoginScreen() {
     } catch (err: any) {
       showError(err, 'That code didn\'t work');
       setMobileOtp('');
+      // Q33: the number is on another account. It's only linked on my yes.
+      const linkToken = err?.code === 'PHONE_ON_OTHER_ACCOUNT' ? err?.data?.linkToken : null;
+      if (typeof linkToken === 'string') {
+        AppAlert.alert('Is this my account?', err.message, [
+          { text: 'Not mine', style: 'cancel' },
+          { text: 'Add to my account', isPreferred: true, onPress: () => linkToMyAccount(linkToken) },
+        ]);
+      }
     } finally {
       submittingRef.current = false;
+      setIsLoading(false);
+    }
+  };
+
+  const linkToMyAccount = async (linkToken: string) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      await verifyMobileOtp('+91' + mobileNumber, '', linkToken);
+    } catch (err: any) {
+      showError(err, 'Couldn\'t add it to that account');
+    } finally {
       setIsLoading(false);
     }
   };

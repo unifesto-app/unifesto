@@ -91,7 +91,12 @@ export async function getRegistrationForm(
 
 /** Thrown for a non-2xx response, carrying the backend's message and status. */
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+    /** The server's error body, for codes that carry more (Q33: `linkToken`). */
+    readonly data?: Record<string, unknown>,
+  ) {
     super(message);
   }
 }
@@ -114,7 +119,7 @@ export async function call<T>(method: string, path: string, body?: unknown, toke
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = Array.isArray(data?.message) ? data.message[0] : data?.message;
-    throw new ApiError(msg || "Something went wrong. Please try again.", res.status);
+    throw new ApiError(msg || "Something went wrong. Please try again.", res.status, data);
   }
   return data as T;
 }
@@ -133,8 +138,21 @@ export const verifyEmailCode = (email: string, otp: string) =>
   call<AuthResponse>("POST", "/auth/email/verify", { email, otp });
 export const sendPhoneCode = (mobileNumber: string, tempToken: string) =>
   call("POST", "/auth/mobile/send-otp", { mobileNumber, tempToken });
-export const verifyPhoneCode = (mobileNumber: string, otp: string, tempToken: string) =>
-  call<AuthResponse>("POST", "/auth/verify-mobile", { mobileNumber, otp, tempToken });
+/**
+ * Q33: a number already on another account answers 409 with a `linkToken`.
+ * This sign-in is added to that account only if I say it's mine; otherwise
+ * the 409's message (sign in that way, or use another number) stands.
+ */
+export async function verifyPhoneCode(mobileNumber: string, otp: string, tempToken: string) {
+  try {
+    return await call<AuthResponse>("POST", "/auth/verify-mobile", { mobileNumber, otp, tempToken });
+  } catch (err) {
+    const linkToken = err instanceof ApiError ? err.data?.linkToken : null;
+    if (typeof linkToken !== "string") throw err;
+    if (!window.confirm(`${(err as ApiError).message}\n\nIs it my account? OK adds this sign-in to it.`)) throw err;
+    return call<AuthResponse>("POST", "/auth/verify-mobile", { mobileNumber, linkToken, tempToken });
+  }
+}
 export const saveName = (fullName: string, token: string) => call("PATCH", "/users/me", { fullName }, token);
 
 /** Q16: a group seat's claim link. The link is the invite: any signed-in account can claim it. */

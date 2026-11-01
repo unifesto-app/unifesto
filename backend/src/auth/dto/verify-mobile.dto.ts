@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, Matches, ValidateIf } from 'class-validator';
 
 export class VerifyMobileDto {
   @IsString()
@@ -8,11 +8,17 @@ export class VerifyMobileDto {
   })
   mobileNumber: string;
 
+  @ValidateIf((o) => !o.linkToken)
   @IsString()
   @IsNotEmpty()
-  otp: string;
+  otp?: string;
 
   @IsString()
   @IsNotEmpty()
   tempToken: string; // Temporary token from initial auth
+
+  /** Q33: from the PHONE_ON_OTHER_ACCOUNT 409, sent instead of `otp` to say "add this sign-in to that account". */
+  @IsOptional()
+  @IsString()
+  linkToken?: string;
 }
