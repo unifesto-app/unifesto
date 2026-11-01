@@ -1,8 +1,19 @@
 // Razorpay Custom UI (Q40): only what lib/pay.ts uses. The package ships no types.
 declare module 'react-native-customui' {
-  /** Android: name, package and icon. iOS: only appName, Razorpay's id (google_pay, phonepe…). */
-  export interface UpiAppInfo {
+  /** What the iOS SDK reports per app; shortcode is Razorpay's id (google_pay, phonepe…). */
+  export interface IosUpiApp {
     appName: string;
+    shortcode: string;
+    uriScheme?: string;
+  }
+
+  /**
+   * Android: name, package and icon. iOS: the bridge wraps each SDK entry as
+   * { appName: entry } (it was written for the old string-only API), so
+   * appName is the whole IosUpiApp there.
+   */
+  export interface UpiAppInfo {
+    appName: string | IosUpiApp;
     packageName?: string;
     iconBase64?: string;
     appLogo?: string;
