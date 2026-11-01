@@ -17,6 +17,9 @@ export const AI_FEATURES = {
   // post as JSON ran out at 8192, then at 16k. The SDK's non-streaming limit only
   // applies without a timeout, and AiService always sets one.
   blog_writer: { maxTokens: 32_000, dailyCapPerUser: 0, dailyUsd: 0.5 }, // auto-blog; system calls, no user
+  // Safety checks: system calls, so no user cap and they never count toward a space's AI requests.
+  risk_screen: { maxTokens: 2048, dailyCapPerUser: 0, dailyUsd: 0.1 }, // AI3: new spaces, first event publish
+  broadcast_check: { maxTokens: 2048, dailyCapPerUser: 0, dailyUsd: 0.2 }, // AI19: organiser broadcasts
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 

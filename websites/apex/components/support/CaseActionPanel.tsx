@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import type { ApiError } from "@/lib/api/backend-client";
-import type { CaseSubject } from "@/lib/api/support-api";
+import { decideBroadcastHold, type CaseSubject } from "@/lib/api/support-api";
 import { adminDecideRefund } from "@/lib/api/refunds-api";
 import {
   approveEventRequest,
@@ -236,6 +236,44 @@ const SUBJECTS: Record<string, SubjectDef> = {
       { label: "Mark paid with UTR", needsNote: true, when: ["PENDING"], run: (id, n) => markPayoutPaid(id, { utr: n.trim() }) },
       { label: "Cancel", destructive: true, when: ["PENDING"], run: (id) => cancelPayout(id) },
     ],
+  },
+  // AI19: a flagged message from an Unverified space, waiting on staff.
+  BroadcastHold: {
+    title: "Held message",
+    fields: (d) => [
+      ["Kind", String(d.kind ?? "").toLowerCase()],
+      ["Message", <span className="whitespace-pre-wrap">{d.preview}</span>],
+      ["Flagged because", d.reason],
+      ["Decided", d.decidedAt && `${String(d.status).toLowerCase()} ${when(d.decidedAt)}`],
+    ],
+    actions: [
+      { label: "Release", when: ["HELD"], run: (id, n) => decideBroadcastHold(id, "RELEASE", note(n)) },
+      { label: "Block", destructive: true, when: ["HELD"], run: (id, n) => decideBroadcastHold(id, "BLOCK", note(n)) },
+    ],
+  },
+  // AI3 risk screen: the space or first event it flagged. Act from the space page if needed.
+  Space: {
+    title: "Space",
+    href: "/dashboard/spaces",
+    fields: (d) => [
+      ["Name", d.name],
+      ["Status", d.status],
+      ["Verified", d.verifiedAt ? when(d.verifiedAt) : "No"],
+      ["Website", d.websiteUrl],
+      ["About", d.description],
+    ],
+    actions: [],
+  },
+  Event: {
+    title: "Event",
+    href: "/dashboard/events",
+    fields: (d) => [
+      ["Event", d.title],
+      ["Status", d.status],
+      ["Starts", d.startDateTime && when(d.startDateTime)],
+      ["About", d.description],
+    ],
+    actions: [],
   },
   // Space-to-space requests: the other space decides, Unifesto only watches.
   EventOwnershipTransfer: { title: "Event ownership transfer", href: "/dashboard/events", fields: () => [], actions: [] },

@@ -13,7 +13,9 @@ export type PushCampaignStatus =
   | "SENDING"
   | "SENT"
   | "FAILED"
-  | "CANCELLED";
+  | "CANCELLED"
+  /** AI19: held for staff in its Assist case. */
+  | "HELD";
 
 export interface PushCampaign {
   id: string;

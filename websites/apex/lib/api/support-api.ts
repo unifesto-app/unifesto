@@ -354,3 +354,12 @@ export function slaText(sla: CaseSla): string {
   const mins = (new Date(sla.dueAt).getTime() - Date.now()) / 60000;
   return sla.overdue ? `${what} overdue by ${formatMins(mins)}` : `${what} due in ${formatMins(mins)}`;
 }
+
+/** AI19: release (send as written) or block a broadcast the check held. */
+export async function decideBroadcastHold(
+  id: string,
+  action: "RELEASE" | "BLOCK",
+  note?: string
+): Promise<Result<{ status: string }>> {
+  return apiCall<{ status: string }>(backendClient.patch(`/admin/broadcast-holds/${id}`, { action, note }));
+}

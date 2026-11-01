@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
 import { ConfigModule } from '@nestjs/config';
 import { EmailModule } from '../email/email.module';
 import { AuthModule } from '../auth/auth.module';
@@ -19,7 +20,7 @@ import { UnsubscribeController } from './unsubscribe.controller';
  * JwtAuthGuard + CanGuard + CapabilityConfigService the space controller uses.
  */
 @Module({
-  imports: [ConfigModule, EmailModule, AuthModule],
+  imports: [ConfigModule, EmailModule, AuthModule, AiModule],
   controllers: [EmailTrackingController, SpaceEmailController, UnsubscribeController],
   providers: [EmailCampaignsService, EmailTemplatesService, EmailCampaignQueue],
   exports: [EmailCampaignsService, EmailTemplatesService],

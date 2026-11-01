@@ -25,7 +25,9 @@ export type EmailCampaignStatus =
   | "SENT"
   | "FAILED"
   | "SCHEDULED"
-  | "CANCELLED";
+  | "CANCELLED"
+  /** AI19: held for staff in its Assist case. */
+  | "HELD";
 
 export type EmailLogStatus = "SENT" | "FAILED" | "BOUNCED";
 

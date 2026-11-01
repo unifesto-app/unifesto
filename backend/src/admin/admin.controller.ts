@@ -27,6 +27,8 @@ import { RegistrationsService } from '../registrations/registrations.service';
 import { EventsService } from '../events/events.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { AiService } from '../ai/ai.service';
+import { BroadcastCheck } from '../ai/broadcast-check';
+import { DecideBroadcastHoldDto } from './dto/broadcast-hold.dto';
 import { UpdateProfileDto } from '../users/dto';
 import { AdminResolvePendingDto } from '../registrations/dto';
 import { CancelEventDto } from '../events/dto';
@@ -56,6 +58,7 @@ export class AdminController {
     private readonly platformConfig: PlatformConfigService,
     private readonly scorecard: ScorecardService,
     private readonly ai: AiService,
+    private readonly broadcastCheck: BroadcastCheck,
   ) {}
 
   @Get('health')
@@ -94,6 +97,19 @@ export class AdminController {
   @Roles(RoleCode.ADMIN)
   getAiUsage() {
     return this.ai.usage(30);
+  }
+
+  /**
+   * AI19: release (send as written) or block a broadcast the check held, from
+   * its Assist case. PATCH /admin/broadcast-holds/:id
+   */
+  @Patch('broadcast-holds/:id')
+  @Roles(RoleCode.ADMIN)
+  @Audit('broadcast.hold', async (r, prisma) =>
+    (await prisma.broadcastHold.findUnique({ where: { id: r.params.id }, select: { spaceId: true, eventId: true } })) ?? {},
+  )
+  decideBroadcastHold(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DecideBroadcastHoldDto, @CurrentUser() user: User) {
+    return this.broadcastCheck.decide(id, dto.action === 'RELEASE', user.id, dto.note?.trim() || undefined);
   }
 
   /**

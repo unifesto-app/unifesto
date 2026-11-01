@@ -4,8 +4,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
+  BroadcastKind,
   Prisma,
   PushCampaign,
   PushCampaignStatus,
@@ -14,6 +16,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
+import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
+import { OnEvent } from '../common/on-event';
 import { NotificationsService, SendSummary } from './notifications.service';
 import { OneSignalService } from './onesignal.service';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
@@ -61,6 +65,7 @@ export class PushCampaignService {
     private readonly notifications: NotificationsService,
     private readonly events: EventsService,
     private readonly oneSignal: OneSignalService,
+    @Optional() private readonly broadcastCheck?: BroadcastCheck,
   ) {}
 
   // ── Admin broadcasts ────────────────────────────────────────────────────────
@@ -315,6 +320,7 @@ export class PushCampaignService {
       const campaign = await this.prisma.pushCampaign.findUniqueOrThrow({
         where: { id: campaignId },
       });
+      if (!(await this.cleared(campaign))) return;
       // EVENT scope always sends as an organiser announcement; PLATFORM scope
       // uses the category the admin chose at compose time (productUpdates/promotions).
       const category: NotificationCategory =
@@ -395,6 +401,40 @@ export class PushCampaignService {
         .update({ where: { id: campaignId }, data: { status: PushCampaignStatus.FAILED } })
         .catch(() => undefined);
     }
+  }
+
+  /**
+   * AI19: an organiser's announcement (EVENT scope) is checked before it goes
+   * out; a held one waits as HELD until staff release or block it.
+   */
+  private async cleared(campaign: PushCampaign): Promise<boolean> {
+    if (campaign.scope !== PushScope.EVENT || !campaign.eventId || !this.broadcastCheck) return true;
+    const event = await this.prisma.event.findUnique({ where: { id: campaign.eventId }, select: { spaceId: true } });
+    const deepLink = (campaign.data as { deepLink?: string } | null)?.deepLink;
+    const ok = await this.broadcastCheck.clear({
+      kind: BroadcastKind.PUSH,
+      refId: campaign.id,
+      spaceId: event?.spaceId ?? null,
+      eventId: campaign.eventId,
+      senderId: campaign.createdById,
+      text: [campaign.title, campaign.body, ...(deepLink ? [`Link: ${deepLink}`] : [])].join('\n\n'),
+    });
+    if (!ok) {
+      await this.prisma.pushCampaign.update({ where: { id: campaign.id }, data: { status: PushCampaignStatus.HELD } });
+      this.logger.warn(`Campaign ${campaign.id} held for staff review (AI19)`);
+    }
+    return ok;
+  }
+
+  /** Staff released (back to DRAFT, then sent) or blocked (CANCELLED) a held announcement. */
+  @OnEvent(BROADCAST_DECIDED, { async: true })
+  async onBroadcastDecided(e: BroadcastDecided): Promise<void> {
+    if (e.kind !== BroadcastKind.PUSH) return;
+    const moved = await this.prisma.pushCampaign.updateMany({
+      where: { id: e.refId, status: PushCampaignStatus.HELD },
+      data: { status: e.release ? PushCampaignStatus.DRAFT : PushCampaignStatus.CANCELLED },
+    });
+    if (moved.count && e.release) await this.dispatch(e.refId);
   }
 
   /** Mark campaigns stranded in SENDING (see {@link STALE_SENDING_MS}) FAILED. */

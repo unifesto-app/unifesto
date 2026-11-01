@@ -1,3 +1,4 @@
+import { AiModule } from '../ai/ai.module';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CertificatesModule } from '../certificates/certificates.module';
@@ -28,7 +29,7 @@ import { HackathonHelpService } from './hackathon-help.service';
  * importing (for JwtAuthGuard + AuthService, the latter used to auth sockets).
  */
 @Module({
-  imports: [AuthModule, CertificatesModule, EmailModule],
+  imports: [AuthModule, CertificatesModule, EmailModule, AiModule],
   controllers: [
     LeaderboardController,
     HackathonTeamsController,

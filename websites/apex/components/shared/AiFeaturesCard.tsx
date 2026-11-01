@@ -16,6 +16,14 @@ const ABOUT: Record<string, { name: string; body: string }> = {
   event_draft: { name: "Event drafts", body: "Turns a poster or notes into a draft event for curators." },
   report_summary: { name: "Report summaries", body: "Writes the summary paragraph on event reports." },
   blog_writer: { name: "Auto-blog writer", body: "Researches queued questions and publishes up to 3 posts a day." },
+  risk_screen: {
+    name: "Risk screen",
+    body: "Reads each new space and its first published event for scam signs, and opens a Platform report case. Never blocks.",
+  },
+  broadcast_check: {
+    name: "Broadcast check",
+    body: "Reads organiser emails, push and hackathon announcements first. A flagged one from an Unverified space waits for staff.",
+  },
 };
 
 const usd = (n: number) => (n === 0 ? "$0" : n < 1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`);

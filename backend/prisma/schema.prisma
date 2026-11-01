@@ -2699,6 +2699,8 @@ enum EmailCampaignStatus {
   FAILED
   SCHEDULED
   CANCELLED
+  /// AI19: waiting for staff to release or block it (see BroadcastHold).
+  HELD
 
   @@map("email_campaign_status")
 }
@@ -4820,6 +4822,8 @@ enum PushCampaignStatus {
   SENT
   FAILED
   CANCELLED
+  /// AI19: waiting for staff to release or block it (see BroadcastHold).
+  HELD
 
   @@map("push_campaign_status")
 }
@@ -5910,6 +5914,46 @@ enum AiRunOutcome {
 
 /// One Claude call made through AiService (D12): what it cost and how it
 /// ended. Also the source of the per-user daily caps.
+enum BroadcastKind {
+  EMAIL
+  PUSH
+  HACKATHON
+
+  @@map("broadcast_kind")
+}
+
+enum BroadcastHoldStatus {
+  HELD
+  RELEASED
+  BLOCKED
+
+  @@map("broadcast_hold_status")
+}
+
+/// AI19: an Unverified space's message the broadcast check flagged. It waits,
+/// as a Platform REPORT case, until staff release or block it. One per message.
+model BroadcastHold {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind        BroadcastKind
+  /// The EmailCampaign, PushCampaign or HackathonAnnouncement id (no FK: three tables).
+  refId       String              @map("ref_id") @db.Uuid
+  spaceId     String              @map("space_id") @db.Uuid
+  eventId     String?             @map("event_id") @db.Uuid
+  /// What the check read, for staff.
+  preview     String              @db.Text
+  /// Why it was flagged.
+  reason      String              @db.Text
+  /// What the sender needs to send it on release (hackathon: the notification event).
+  payload     Json?
+  status      BroadcastHoldStatus @default(HELD)
+  decidedById String?             @map("decided_by_id") @db.Uuid
+  decidedAt   DateTime?           @map("decided_at") @db.Timestamptz(6)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([kind, refId])
+  @@map("broadcast_holds")
+}
+
 model AiRun {
   id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// AiService feature key, e.g. "triage".
