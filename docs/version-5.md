@@ -1066,3 +1066,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Mobile: my avatar moved from the Home header into the tab bar as the Profile tab icon (#507)
 - **2026-11-01** · Mobile: tablet, landscape and multi-window layouts (centred column, card grids for Events, Saved and Spaces, sheets rotate) (#508)
 - **2026-11-01** · AI9 + AI10: per-feature daily AI spend ceilings with Sentry alerts, burst limits on AI endpoints, AiRun space/billable, and one grounding check that drops or holds AI text quoting an amount, date, link or contact it was never given (#510)
+- **2026-11-01** · Q16 group bookings: teammate emails while booking (invited once paid), claim links work for any signed-in account on web or app, and the lead is emailed who claimed (#509)
