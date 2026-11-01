@@ -5,6 +5,7 @@ const withRemoveOrientationRestrictions = require('./plugins/withRemoveOrientati
 const withRemoveSplashScreen = require('./plugins/withRemoveSplashScreen');
 const withSceneDelegate = require('./plugins/withSceneDelegate');
 const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
+const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
 
 module.exports = () => {
   const config = {
@@ -347,5 +348,7 @@ module.exports = () => {
   modifiedConfig = withSceneDelegate(modifiedConfig);
   // Xcode 27 rejects pods targeting < iOS 15; lift them to the app minimum.
   modifiedConfig = withPodDeploymentTarget(modifiedConfig);
+  // Output-less Run Script phases always run anyway; say so, so Xcode stops warning.
+  modifiedConfig = withAlwaysRunScripts(modifiedConfig);
   return modifiedConfig;
 };
