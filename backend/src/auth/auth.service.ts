@@ -1396,7 +1396,7 @@ export class AuthService {
     // Steps 2-3 link by email, only when Cognito says the email is verified
     // (S5). Unverified: a new placeholder user is created below and the mobile
     // OTP step moves the identity onto the existing account if they prove its
-    // mobile number and say yes (Q33).
+    // mobile number.
     // Step 2: Find user by verified email identity (any provider)
     if (!user && emailVerified) {
       const identityByEmail = await findIdentityByEmail(this.prisma, email, {
