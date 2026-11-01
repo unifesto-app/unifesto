@@ -1083,3 +1083,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · J6 restore-check no longer crashes on tables later migrations dropped (session_registrations after #504) (#524)
 - **2026-11-01** · backend image build emits with tsc --noCheck (same JS as nest build, no duplicate type-check) and installs prod deps in a cached stage instead of npm prune (#525)
 - **2026-11-01** · apex builds with Turbopack like web (dropped --webpack and its unused fs/net/tls fallback) (#527)
+- **2026-11-01** · deploy.sh keeps a capped build cache, waits for cert-worker/web/apex to be healthy before the www purge; web and apex get healthchecks (#526)
