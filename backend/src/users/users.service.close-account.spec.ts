@@ -85,6 +85,7 @@ function makePrisma() {
     },
     userPushDevice: { deleteMany: op('d') },
     authSession: { deleteMany: op('d') },
+    passkey: { deleteMany: op('d') },
     adminDevice: { deleteMany: op('d') },
     notificationSettings: { deleteMany: op('d') },
     favoriteEvent: { deleteMany: op('d') },

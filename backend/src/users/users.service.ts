@@ -1242,6 +1242,7 @@ export class UsersService {
       this.prisma.userIdentity.deleteMany({ where: { userId } }),
       this.prisma.userPushDevice.deleteMany({ where: { userId } }),
       this.prisma.authSession.deleteMany({ where: { userId } }),
+      this.prisma.passkey.deleteMany({ where: { userId } }),
       this.prisma.adminDevice.deleteMany({ where: { userId } }),
       this.prisma.notificationSettings.deleteMany({ where: { userId } }),
       this.prisma.favoriteEvent.deleteMany({ where: { userId } }),
