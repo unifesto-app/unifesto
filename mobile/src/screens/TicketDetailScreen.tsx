@@ -32,6 +32,7 @@ import LivePollsPanel from '../components/tickets/LivePollsPanel';
 import { AfterEventGroup, EndedStub, useEventCertificate, useEventFeedback } from '../components/EventEnded';
 import LiveQaPanel from '../components/tickets/LiveQaPanel';
 import LiveQuizPanel from '../components/tickets/LiveQuizPanel';
+import TransferTicket from '../components/tickets/TransferTicket';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
@@ -445,6 +446,10 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               );
             })}
           </SettingsGroup>
+        ) : null}
+
+        {t.canTransfer ? (
+          <TransferTicket title={t.title} onTransfer={(email) => t.transferTicket(email, () => router.back())} />
         ) : null}
 
         {t.canRefund || t.canCancelFree ? (

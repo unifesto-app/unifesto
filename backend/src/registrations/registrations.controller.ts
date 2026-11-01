@@ -19,6 +19,7 @@ import {
   Res,
   BadRequestException,
 } from '@nestjs/common';
+import { Audit } from '../audit/audit';
 import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
@@ -480,6 +481,24 @@ export class RegistrationsController {
       registrationId,
       dto.email,
     );
+  }
+
+  /**
+   * Q17: the holder transfers their own free ticket, when the organiser turned
+   * transfers on for the event. Paid tickets keep the request path below.
+   */
+  @Post('registrations/:id/transfer')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } }) // it emails the new holder
+  @Audit('registration.self_transfer', (r, prisma) =>
+    prisma.eventRegistration.findUnique({ where: { id: r.params.id }, select: { userId: true, eventId: true } }).then((x) => x ?? {}),
+  )
+  async transferMyTicket(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) registrationId: string,
+    @Body() dto: TransferRegistrationDto,
+  ) {
+    return this.registrationsService.selfTransfer(req.user.id, registrationId, dto.email);
   }
 
   /** Organiser requests a transfer for an admin to review. */

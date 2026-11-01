@@ -81,6 +81,7 @@ const eventSelect = {
   teamChangesUntil: true,
   attendeeEditsEnabled: true,
   attendeeEditsUntil: true,
+  allowSelfTransfer: true,
 } satisfies Prisma.EventSelect;
 
 /**
@@ -109,6 +110,7 @@ export class AttendeeDetailsService {
       teamChangesUntil?: string | null;
       attendeeEditsEnabled?: boolean;
       attendeeEditsUntil?: string | null;
+      allowSelfTransfer?: boolean;
     },
   ) {
     const until = parseDeadline(dto.attendeeEditsUntil);
@@ -120,6 +122,7 @@ export class AttendeeDetailsService {
         ...(teamUntil !== undefined ? { teamChangesUntil: teamUntil } : {}),
         ...(dto.attendeeEditsEnabled !== undefined ? { attendeeEditsEnabled: dto.attendeeEditsEnabled } : {}),
         ...(until !== undefined ? { attendeeEditsUntil: until } : {}),
+        ...(dto.allowSelfTransfer !== undefined ? { allowSelfTransfer: dto.allowSelfTransfer } : {}),
       },
       select: eventSelect,
     });
@@ -132,6 +135,7 @@ export class AttendeeDetailsService {
       attendeeEditsEnabled: event.attendeeEditsEnabled,
       attendeeEditsUntil: event.attendeeEditsUntil,
       attendeeEditsOpen: editWindow(event).open,
+      allowSelfTransfer: event.allowSelfTransfer,
     };
   }
 

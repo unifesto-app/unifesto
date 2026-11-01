@@ -1552,6 +1552,9 @@ model Event {
   // `attendeeEditsUntil` (null = no deadline). Curators can always edit.
   attendeeEditsEnabled Boolean   @default(false) @map("attendee_edits_enabled")
   attendeeEditsUntil   DateTime? @map("attendee_edits_until") @db.Timestamptz(6)
+  // Q17: attendees may hand their own free ticket to another account. Paid
+  // tickets keep the organiser request path. Off by default.
+  allowSelfTransfer    Boolean   @default(false) @map("allow_self_transfer")
 
   // Space
   spaceId String @map("space_id") @db.Uuid

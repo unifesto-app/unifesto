@@ -9,6 +9,7 @@ import {
   cancelMyRegistration,
   deleteMyTicket,
   getMyGroupMembers,
+  transferMyTicket,
   getRegistrationWhatsappGroup,
   setWhatsappGroupJoined,
   type MyGroupRoster,
@@ -217,6 +218,10 @@ export function useTicketDetail(ticketParam: unknown) {
   // A finished ticket (event over, or cancelled) can be deleted from my list.
   // Needs the real registration id — `ticket.id` is the event's on list snapshots.
   const canDelete = !!ticket?.registrationId && (cancelled || ended);
+  // Q17: my own free solo ticket, unused, on an event whose organiser allows
+  // transfers. `live` is my registration fetched by id, so the id is real.
+  const canTransfer =
+    !!live?.event?.allowSelfTransfer && status === 'registered' && isFree && !ended && !isGroupMember && !isGroupPass;
 
   // Single registration-level check-in, used only if the history is empty.
   const fallbackCheckin =
@@ -288,6 +293,21 @@ export function useTicketDetail(ticketParam: unknown) {
     ]);
   };
 
+  /** Sends this ticket to `email`'s account; `onDone` leaves the screen. Resolves false on failure. */
+  const transferTicket = async (email: string, onDone: () => void) => {
+    if (!canTransfer || !registrationId) return false;
+    try {
+      await transferMyTicket(registrationId, email);
+      markTicketsStale();
+      AppAlert.alert('Ticket sent', `${title} is now with ${email}. They'll find it under Tickets.`);
+      onDone();
+      return true;
+    } catch (e: any) {
+      AppAlert.alert("Couldn't transfer", e?.message || 'Please try again.');
+      return false;
+    }
+  };
+
   /** Confirms, then deletes this finished ticket; `onDone` leaves the screen. */
   const confirmDelete = (onDone: () => void) => {
     if (!canDelete || deleting) return;
@@ -354,6 +374,8 @@ export function useTicketDetail(ticketParam: unknown) {
     confirmCancel,
     canDelete,
     confirmDelete,
+    canTransfer,
+    transferTicket,
     refreshing,
     refresh,
   };

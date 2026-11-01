@@ -18,6 +18,11 @@ export class AttendeeControlsDto {
   @ValidateIf((_, v) => v !== null)
   @IsISO8601()
   attendeeEditsUntil?: string | null;
+
+  /** Q17: attendees may transfer their own free ticket. */
+  @IsOptional()
+  @IsBoolean()
+  allowSelfTransfer?: boolean;
 }
 
 export class UpdateDetailsDto {

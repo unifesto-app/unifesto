@@ -693,6 +693,16 @@ function AttendeeControlsCard({
           />
         )}
 
+        <div className="border-t border-border pt-4">
+          <Toggle
+            label="Attendees can transfer free tickets"
+            hint="People can send their own free ticket to someone with a Unifesto account, from the ticket in the app. Paid tickets still go through you."
+            checked={!!event.allowSelfTransfer}
+            disabled={busy}
+            onChange={(v) => save({ allowSelfTransfer: v })}
+          />
+        </div>
+
         <p className="text-xs text-muted-foreground">
           {editsLocked
             ? "The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen."

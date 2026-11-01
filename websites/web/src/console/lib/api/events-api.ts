@@ -137,6 +137,8 @@ export interface Event {
   /** Attendees may edit their own registration answers. */
   attendeeEditsEnabled?: boolean;
   attendeeEditsUntil?: string | null;
+  /** Q17: attendees may transfer their own free ticket. */
+  allowSelfTransfer?: boolean;
   tags: string[];
   category?: string;
   visibility: EventVisibility;
@@ -464,13 +466,18 @@ export interface AttendeeControls {
   attendeeEditsEnabled: boolean;
   attendeeEditsUntil: string | null;
   attendeeEditsOpen: boolean;
+  /** Q17: attendees may transfer their own free ticket. */
+  allowSelfTransfer: boolean;
 }
 
 /** Backed by `PATCH /events/:eventId/attendee-controls` (event:edit). */
 export async function setAttendeeControls(
   id: string,
   body: Partial<
-    Pick<AttendeeControls, "allowTeamChanges" | "teamChangesUntil" | "attendeeEditsEnabled" | "attendeeEditsUntil">
+    Pick<
+      AttendeeControls,
+      "allowTeamChanges" | "teamChangesUntil" | "attendeeEditsEnabled" | "attendeeEditsUntil" | "allowSelfTransfer"
+    >
   >
 ): Promise<{ data: AttendeeControls | null; error: ApiError | null }> {
   return apiCall<AttendeeControls>(backendClient.patch(`/events/${id}/attendee-controls`, body));

@@ -182,6 +182,8 @@ export class MyRegistrationsService {
             // attendee group, else the parent's. Mirrors the registration push.
             whatsappAttendeeGroupUrl: true,
             parentEvent: { select: { whatsappAttendeeGroupUrl: true } },
+            // Q17: the ticket screen offers "Transfer ticket" when this is on.
+            allowSelfTransfer: true,
           },
         },
         ticketType: true,
