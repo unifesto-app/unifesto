@@ -20,7 +20,7 @@ import { uploadLimit } from '../common/upload-limits';
 import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
-import { EventDraftDto, EventDraftService } from './event-draft';
+import { EventDraftDto, EventDraftService, NewEventDraftDto } from './event-draft';
 import {
   AddCoHostDto,
   AddTeamMemberDto,
@@ -251,11 +251,21 @@ export class EventsController {
     return this.eventsService.deleteTicketType(req.user.id, id, typeId);
   }
 
+  // AI2: multipart with an optional `poster` (JPEG/PNG/WebP, 5 MB); JSON still works without one.
+  @Post('ai-draft')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
+  @UseInterceptors(FileInterceptor('poster', uploadLimit(6)))
+  async aiDraftNew(@Request() req, @Body() dto: NewEventDraftDto, @UploadedFile() poster?: Express.Multer.File) {
+    return this.eventDraft.draftNew(req.user.id, dto, poster?.buffer);
+  }
+
   @Post(':id/ai-draft')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
-  async aiDraft(@Request() req, @Param('id') id: string, @Body() dto: EventDraftDto) {
-    return this.eventDraft.draft(req.user.id, id, dto);
+  @UseInterceptors(FileInterceptor('poster', uploadLimit(6)))
+  async aiDraft(@Request() req, @Param('id') id: string, @Body() dto: EventDraftDto, @UploadedFile() poster?: Express.Multer.File) {
+    return this.eventDraft.draft(req.user.id, id, dto, poster?.buffer);
   }
 
   @Post(':id/agenda')

@@ -26,6 +26,13 @@ describe('ungrounded', () => {
     expect(ungrounded('See you on 14 Nov', 'startsAt: 2026-11-13T18:30:00.000Z')).toBeNull();
   });
 
+  it('reads both ends of a day range (AI2 posters)', () => {
+    expect(ungrounded('From 2026-11-14 to 2026-11-15', 'Hack Fest, 14-15 Nov')).toBeNull();
+    expect(ungrounded('From 2026-11-14 to 2026-11-15', 'Hack Fest, 14th & 15th November')).toBeNull();
+    expect(ungrounded('From 2026-11-14 to 2026-11-15', 'Hack Fest, Nov 14 to 15')).toBeNull();
+    expect(ungrounded('On 2026-11-13', 'Hack Fest, 14-15 Nov')).toBe('date "2026-11-13" is not in the source');
+  });
+
   it('names the first thing the source never said', () => {
     expect(ungrounded('Entry is ₹500.', source)).toBe('amount "₹500" is not in the source');
     expect(ungrounded('Day 2 is 15 Nov.', source)).toBe('date "15 Nov" is not in the source');

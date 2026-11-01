@@ -20,6 +20,12 @@ const DATE = new RegExp(
     `|\\b(\\d{4})-(\\d{2})-(\\d{2})(T[\\d:.]+(?:Z|[+-]\\d{2}:?\\d{2})?)?`,
   'gi',
 );
+/** The day DATE misses in a range: "14-15 Nov" (and "14th & 15th November") gives 14 Nov, "Nov 14-15" gives 15 Nov. */
+const RANGE = new RegExp(
+  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:-|–|to|&|and)\\s*\\d{1,2}(?:st|nd|rd|th)?(?:\\s+of)?\\s+${MONTH}(?![a-z])` +
+    `|\\b${MONTH}\\s+\\d{1,2}(?:st|nd|rd|th)?\\s*(?:-|–|to|&|and)\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b`,
+  'gi',
+);
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 const num = (s: string) => Number(s.replace(/,/g, ''));
@@ -41,6 +47,10 @@ function dates(text: string): Map<string, string> {
       if (ist.length === 3) keys.push(key(+ist[2], +ist[1]));
     }
     for (const k of keys) if (k && !out.has(k)) out.set(k, m[0].trim().replace(/\.$/, ''));
+  }
+  for (const m of text.matchAll(RANGE)) {
+    const k = m[1] ? key(+m[1], MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1) : key(+m[4], MONTHS.indexOf(m[3].slice(0, 3).toLowerCase()) + 1);
+    if (k && !out.has(k)) out.set(k, m[0].trim());
   }
   return out;
 }

@@ -4,19 +4,24 @@
  * its labels (should it draft at all, must / must-not patterns, agenda size)
  * plus house rules (no em dashes, no links or phone numbers it wasn't given,
  * nothing the AI10 check would drop).
- * Calls the real API (about a cent a run), so it needs ANTHROPIC_API_KEY.
+ * AI2 poster cases give `poster` lines, rendered here into a plain synthetic
+ * poster (a "~" line is small, faint print) and sent through aiImage().
+ * Calls the real API (a few cents a run), so it needs ANTHROPIC_API_KEY.
  *
  *   npx ts-node -T scripts/event-draft-eval.ts   (-T: tsc already type-checks it)
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import sharp from 'sharp';
 import { AI_FEATURES, AI_MODEL, aiCostUsd } from '../src/ai/ai.service';
+import { aiImage } from '../src/ai/image';
 import {
   eventDraftRequest,
   eventDraftSource,
   groundEventDraft,
   parseEventDraft,
+  posterTextOf,
   type EventDraft,
   type EventDraftInput,
 } from '../src/events/event-draft';
@@ -32,6 +37,23 @@ interface EvalCase {
   minAgenda?: number;
   maxAgenda?: number;
   minFaqs?: number;
+  /** AI2: the poster's lines, top to bottom. */
+  poster?: string[];
+}
+
+/** 1000×1200 PNG: the first line as a heading, "~" lines in small faint print. */
+function posterPng(lines: string[]): Promise<Buffer> {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let y = 140;
+  const rows = lines.map((line, i) => {
+    const faint = line.startsWith('~');
+    const size = i === 0 ? 64 : faint ? 18 : 34;
+    const row = `<text x="60" y="${y}" font-family="Helvetica, Arial, sans-serif" font-size="${size}" font-weight="${i === 0 ? 700 : 400}" fill="${faint ? '#8a7fa8' : '#ffffff'}">${esc(faint ? line.slice(1) : line)}</text>`;
+    y += i === 0 ? 100 : size * 1.6;
+    return row;
+  });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1200"><rect width="100%" height="100%" fill="#2b1055"/>${rows.join('')}</svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 async function main() {
@@ -43,6 +65,8 @@ async function main() {
 
   // One at a time so the system prompt is cached after the first case.
   for (const c of cases) {
+    if (c.poster) c.input.poster = await aiImage(await posterPng(c.poster));
+    const posterLines = (c.poster ?? []).map((l) => l.replace(/^~/, '')).join('\n');
     const req = eventDraftRequest(c.input);
     const res = await client.messages.create({
       model: AI_MODEL,
@@ -56,9 +80,12 @@ async function main() {
     const text = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('').trim();
     // A refusal on garbage counts as "did not draft", which is what we want there.
     let draft: EventDraft | null = null;
+    let posterText = '';
     if (res.stop_reason === 'end_turn') {
       try {
-        draft = parseEventDraft(JSON.parse(text), c.input.days);
+        const json: unknown = JSON.parse(text);
+        draft = parseEventDraft(json, c.input.days);
+        posterText = posterTextOf(json);
       } catch {
         /* unparseable: no draft */
       }
@@ -73,11 +100,14 @@ async function main() {
         ...(c.mustNotInclude ?? []).filter((p) => new RegExp(p, 'i').test(all)).map((p) => `has /${p}/`),
       );
       if (all.includes('—')) misses.push('em dash');
-      // What production would leave out (AI10): the model invented it.
-      misses.push(...groundEventDraft(draft, eventDraftSource(c.input)).dropped.map((d) => `dropped ${d}`));
-      const given = `${c.input.notes ?? ''} ${c.input.pageText ?? ''}`;
+      // Invented, against what the poster really says…
+      misses.push(...groundEventDraft(draft, eventDraftSource(c.input, posterLines)).dropped.map((d) => `invented ${d}`));
+      // …and what production would leave out (AI10), checking against the model's own reading.
+      misses.push(...groundEventDraft(draft, eventDraftSource(c.input, posterText)).dropped.map((d) => `dropped ${d}`));
+      const given = `${c.input.notes ?? ''} ${c.input.pageText ?? ''} ${posterLines}`;
       for (const link of all.match(/https?:\/\/[^\s"]+|www\.[^\s"]+/g) ?? []) {
-        if (!given.includes(link.replace(/[.,)]+$/, ''))) misses.push(`invented link ${link}`);
+        // The parser adds https:// to a bare poster link, so compare without the scheme.
+        if (!given.includes(link.replace(/^https?:\/\//, '').replace(/[.,)]+$/, ''))) misses.push(`invented link ${link}`);
       }
       if (c.minAgenda !== undefined && draft.agenda.length < c.minAgenda) misses.push(`agenda ${draft.agenda.length} < ${c.minAgenda}`);
       if (c.maxAgenda !== undefined && draft.agenda.length > c.maxAgenda) misses.push(`agenda ${draft.agenda.length} > ${c.maxAgenda}`);
@@ -86,6 +116,7 @@ async function main() {
     if (!misses.length) passed++;
     console.log(`${misses.length ? '✗' : '✓'} ${c.id}${misses.length ? `: ${misses.join(', ')}` : ''}`);
     if (draft) {
+      if (draft.basics) console.log(`  basics ${JSON.stringify(draft.basics)}`);
       console.log(`  ${draft.description.replace(/\n/g, '\n  ')}`);
       for (const a of draft.agenda) console.log(`  [d${a.day} ${a.start ?? '--:--'}-${a.end ?? '--:--'}] ${a.title}`);
       for (const f of draft.faqs) console.log(`  Q: ${f.question} A: ${f.answer}`);
