@@ -23,6 +23,8 @@ interface AttendeeFormProps {
   errors?: Partial<Record<keyof AttendeeInfo, string>>;
   showTitle?: boolean;
   onFillFromProfile?: () => void;
+  /** Q5: registration leaves gender to the organiser's own questions. */
+  showGender?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export default function AttendeeForm({
   errors = {},
   showTitle = true,
   onFillFromProfile,
+  showGender = true,
 }: AttendeeFormProps) {
   const c = useCosmos();
   // Base options + a pre-selected chip for a prefilled value that isn't one of
@@ -111,32 +114,34 @@ export default function AttendeeForm({
             error={!!errors.mobile}
           />
         </Field>
-        <Field error={errors.gender}>
-          <Text style={[styles.label, { color: c.muted }]}>Gender</Text>
-          <View style={styles.chips} accessibilityRole="radiogroup">
-            {genderOptions.map((option) => {
-              const active = attendee.gender === option;
-              return (
-                <Pressable
-                  key={option}
-                  onPress={() => {
-                    if (!active) selectionTick();
-                    onChange(index, 'gender', option);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: active ? c.primary : c.tint, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
-                  <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{option}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Field>
+        {showGender ? (
+          <Field error={errors.gender}>
+            <Text style={[styles.label, { color: c.muted }]}>Gender</Text>
+            <View style={styles.chips} accessibilityRole="radiogroup">
+              {genderOptions.map((option) => {
+                const active = attendee.gender === option;
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => {
+                      if (!active) selectionTick();
+                      onChange(index, 'gender', option);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      { backgroundColor: active ? c.primary : c.tint, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    ]}
+                  >
+                    {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
+                    <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{option}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Field>
+        ) : null}
       </View>
     </View>
   );

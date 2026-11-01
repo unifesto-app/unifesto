@@ -272,6 +272,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
                   onChange={r.changeAttendee}
                   onFillFromProfile={r.attendees.length > 1 ? () => r.fillFromProfile(index) : undefined}
                   showTitle={false}
+                  showGender={false}
                 />
                 {isSelf ? (
                   <Checkbox checked={r.alsoUpdateProfile} onToggle={() => r.setAlsoUpdateProfile(!r.alsoUpdateProfile)}>
@@ -598,117 +599,68 @@ function PayWith({ r }: { r: EventRegistration }) {
 
 // ── Profile gate ────────────────────────────────────────────────────────────
 
-const GATE_GENDERS = [
-  { label: 'Male', value: 'MALE' },
-  { label: 'Female', value: 'FEMALE' },
-  { label: 'Other', value: 'NON_BINARY' },
-];
-
 // Z11 (DPDP): self sign-up is 18+ only; under-18s are added by the organiser.
 const GATE_AGES = [
   { label: '18 or older', value: 'adult' },
   { label: 'Under 18', value: 'minor' },
 ] as const;
 
+/** Q5: only what the profile is missing (a name, the 18+ confirmation), once. */
 export function ProfileGate({ r }: { r: EventRegistration }) {
   const c = useCosmos();
   const g = r.gate;
+  const sub = [g.askName && 'Your name goes on your pass.', g.askAge && 'Registering yourself is for people 18 or older.', 'You only do this once.']
+    .filter(Boolean)
+    .join(' ');
   return (
     <View>
-      <Heading sub="We need your name, username, gender and age to register you and put the right name on your pass. You only do this once.">
-        One quick step
-      </Heading>
+      <Heading sub={sub}>One quick step</Heading>
       <View style={styles.fields}>
-        <AuthField
-          label="Full name"
-          value={g.name}
-          onChangeText={g.setName}
-          placeholder="As it should appear on the pass"
-          autoCapitalize="words"
-          textContentType="name"
-          autoComplete="name"
-          returnKeyType="next"
-        />
-        <View>
+        {g.askName ? (
           <AuthField
-            label="Username"
-            prefix="@"
-            value={g.username}
-            onChangeText={g.onUsernameChange}
-            placeholder="username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="username"
-            error={!!g.usernameError}
-            trailing={
-              g.checking ? (
-                <ActivityIndicator size="small" color={c.muted} />
-              ) : g.usernameError ? (
-                <XCircle size={20} color={c.danger} weight="fill" />
-              ) : g.usernameAvailable ? (
-                <CheckCircle size={20} color={c.success} weight="fill" accessibilityLabel="Username available" />
-              ) : null
-            }
+            label="Full name"
+            value={g.name}
+            onChangeText={g.setName}
+            placeholder="As it should appear on the pass"
+            autoCapitalize="words"
+            textContentType="name"
+            autoComplete="name"
+            returnKeyType="next"
           />
-          {g.usernameError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{g.usernameError}</Text> : null}
-        </View>
-        <View>
-          <Text style={[styles.fieldLabel, { color: c.muted }]}>Gender</Text>
-          <View style={styles.chips} accessibilityRole="radiogroup">
-            {GATE_GENDERS.map((o) => {
-              const active = g.gender === o.value;
-              return (
-                <Pressable
-                  key={o.value}
-                  onPress={() => {
-                    if (!active) selectionTick();
-                    g.setGender(o.value);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
-                  <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{o.label}</Text>
-                </Pressable>
-              );
-            })}
+        ) : null}
+        {g.askAge ? (
+          <View>
+            <Text style={[styles.fieldLabel, { color: c.muted }]}>Age</Text>
+            <View style={styles.chips} accessibilityRole="radiogroup">
+              {GATE_AGES.map((o) => {
+                const active = g.age === o.value;
+                return (
+                  <Pressable
+                    key={o.value}
+                    onPress={() => {
+                      if (!active) selectionTick();
+                      g.setAge(o.value);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    ]}
+                  >
+                    {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
+                    <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{o.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {g.age === 'minor' ? (
+              <Text style={[styles.meta, { color: c.muted, marginTop: spacing[2] }]} accessibilityLiveRegion="polite">
+                You need to be 18 or older to register yourself. Ask the organiser to register you through a parent or guardian.
+              </Text>
+            ) : null}
           </View>
-        </View>
-        <View>
-          <Text style={[styles.fieldLabel, { color: c.muted }]}>Age</Text>
-          <View style={styles.chips} accessibilityRole="radiogroup">
-            {GATE_AGES.map((o) => {
-              const active = g.age === o.value;
-              return (
-                <Pressable
-                  key={o.value}
-                  onPress={() => {
-                    if (!active) selectionTick();
-                    g.setAge(o.value);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
-                  <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{o.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {g.age === 'minor' ? (
-            <Text style={[styles.meta, { color: c.muted, marginTop: spacing[2] }]} accessibilityLiveRegion="polite">
-              You need to be 18 or older to register yourself. Ask the organiser to register you through a parent or guardian.
-            </Text>
-          ) : null}
-        </View>
+        ) : null}
       </View>
       {g.error ? <Text style={[styles.error, { color: c.danger, marginTop: spacing[4] }]} accessibilityLiveRegion="polite">{g.error}</Text> : null}
     </View>

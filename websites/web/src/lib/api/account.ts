@@ -21,6 +21,8 @@ export interface Me {
   createdAt: string;
   /** Set while a deletion request is pending: when the account closes. */
   deletionScheduledFor: string | null;
+  /** Z11: when I confirmed I am 18 or older; null = not yet. */
+  ageConfirmedAt: string | null;
 }
 
 /** null clears a field: the API skips validation for null and stores it. */
