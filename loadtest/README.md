@@ -51,36 +51,52 @@ in J6's board notes.
 Prod data holds real emails, phone numbers and push tokens. Everything below
 keeps a staging copy from messaging real people.
 
-**Host.** A temporary EC2 `t3.large` (same size as production, so the numbers
-mean something), launched from an AMI of the production server into the same
-VPC and the server's security group. **Launch it with no IAM instance role**:
-SES email and S3 uploads use the server's role, not a key in `.env`, so without
-the role they can't send or write anything. Open 443 to your own IP only.
-Terminate it afterwards.
+**Never launch staging in `unifesto-ec2-sg`.** Every container is
+`restart: unless-stopped`, so a server made from an image of production boots
+straight into production's `.env`. In the server's security group it would
+reach production's database and production's Redis (ElastiCache), take real
+jobs off the email and certificate queues and compete for the cron locks.
+`unifesto-rds-sg` and `unifesto-redis-sg` admit only `unifesto-ec2-sg`, so a
+separate group keeps staging away from both until it's reconfigured.
 
-**On the staging host, before starting anything:**
+1. **Security group** `unifesto-staging-sg` in `unifesto-vpc`: SSH 22 and HTTPS
+   443 from your own IP only, and PostgreSQL 5432 from the group itself.
+2. **Database copy:** restore as in section 1, but into `unifesto-staging-sg`
+   only (not `unifesto-rds-sg`), with automated backups off.
+3. **Image:** EC2 `create-image` of the production server **with
+   `--no-reboot`** (the default reboots production). Take it when no deploy
+   ran in the last ~15 minutes: a no-reboot image is only crash-consistent,
+   and on 1 Nov a backend image built 7 minutes earlier came out with 15,000
+   empty files. The setup script uses the `DEPLOYED_SHA` tag and refuses a
+   damaged image. A first image of the 50 GB disk took about 30 minutes.
+4. **Host:** a `t3.large` (production's size, so the numbers mean something)
+   from that image, in production's subnet and `unifesto-staging-sg`, with a
+   public IP and **no IAM instance profile**: SES and S3 use the server's role,
+   so without it they can't send or write. No role also means no SSM, so SSH
+   goes straight to the IP: `ssh -i ~/.ssh/unifesto-key.pem ubuntu@<ip>`.
+5. **Make it safe and ready** with [`staging-setup.sh`](staging-setup.sh),
+   copied up and run as a file (piped over SSH, `docker compose run` could
+   swallow the rest of the script):
 
-1. `backend/.env`:
-   - `DATABASE_URL` and `DIRECT_URL` → the drill copy from section 1.
-   - `SCHEDULER=off`: no crons, intervals or timeouts (reminders, digests,
-     retention sweeps).
-   - Blank every outbound key: `RESEND_API_KEY`, `WHATSAPP_ACCESS_TOKEN`,
-     `ONESIGNAL_REST_API_KEY` and `ONESIGNAL_APP_ID` (push),
-     `EXPO_TOKEN` and `ANTHROPIC_API_KEY`.
-   - Razorpay → **test** keys (`rzp_test_…`).
-   - `SENTRY_DSN` empty, so staging errors don't page production.
-   - Keep `INTERNAL_API_KEY` (the load test sends it, see section 3).
-2. Clear device tokens and turn on the App Review sign-in (it lets the load
-   test sign in without sending OTPs):
-
-   ```sql
-   DELETE FROM user_push_devices;
-   DELETE FROM admin_devices;
-   UPDATE platform_config SET app_review_login_enabled = true;
+   ```bash
+   scp -i ~/.ssh/unifesto-key.pem loadtest/staging-setup.sh ubuntu@<ip>:
+   ssh -i ~/.ssh/unifesto-key.pem ubuntu@<ip> bash staging-setup.sh <copy db identifier>
    ```
-3. Caddy: remove the `client_auth { … }` block from the `(cf_origin)` snippet
-   in `Caddyfile` (load traffic comes straight from k6, not through Cloudflare).
-4. `docker compose up -d`.
+
+   It refuses production's instance and database, stops what booted, then:
+   points the backend at the copy and a local Redis, sets `SCHEDULER=off`,
+   blanks every outbound key (Resend, WhatsApp, push, Expo, Anthropic,
+   Cloudflare, UptimeRobot, Sentry), gives Razorpay placeholder keys (its SDK
+   refuses an empty key at boot), sets a new `JWT_SECRET` (no
+   token minted on staging works on production) and a new `INTERNAL_API_KEY`,
+   removes Caddy's `client_auth` block (k6 doesn't come through Cloudflare),
+   and on the copy only clears device tokens, turns on the App Review sign-in
+   and off the 18+ gate. The copy usually has no upcoming event, so it moves
+   the latest public event 14 days ahead with a free ticket, on Enterprise
+   (General caps an event at 300 attendees, which would fail checkout early).
+   Last, it starts the API, web and Caddy, seeds 500 test users into
+   `tokens.json` and prints `INTERNAL_KEY`, `EVENT_ID`, `EVENT_SLUG` and
+   `TICKET_TYPE_ID`.
 
 ## 3. Load test (k6)
 
@@ -89,34 +105,24 @@ the load generator doesn't eat the CPU it's measuring. Every script needs
 `STAGING_IP` (the staging host's public IPv4): requests use production's
 hostnames but always go to that IP, never through public DNS.
 
-**Prepare (on the staging host):**
+**Prepare:** copy `tokens.json` from the staging host next to these scripts
+(it's gitignored; it grants sign-in on staging for 6 hours):
 
-1. Pick a published event with a **free** ticket type in the copy. A paid one
-   calls Razorpay on every order. From `GET /events/<slug>` you need its `id`
-   (EVENT_ID), its `slug` (EVENT_SLUG) and the free ticket type's `id`
-   (TICKET_TYPE_ID). Note a Curator or Crew user id of that event's space for
-   the scanner.
-2. Seed test users and their sign-in tokens, then copy the file next to these
-   scripts on the k6 machine (it's gitignored; it grants sign-in on staging):
+```bash
+scp -i ~/.ssh/unifesto-key.pem ubuntu@<ip>:unifesto/tokens.json loadtest/
+```
 
-   ```bash
-   docker compose run --rm --no-deps --entrypoint node backend \
-     dist/scripts/loadtest-seed.js --staging --count=500 --scanner=<curator user id> > tokens.json
-   ```
-
-   It refuses production's database. The users have `+999…` numbers (not a
-   real country code) and tokens valid for 6 hours.
-
-**Run, one at a time, watching `docker stats` on staging and the drill
-database's CPU in the RDS console:**
+**Run, one at a time, watching `docker stats` on staging and the copy's CPU in
+the RDS console.** Pass settings with `-e`: k6 2.x doesn't read shell
+variables unless given `--include-system-env-vars`.
 
 | Peak | Command |
 |---|---|
-| Viral event page (anonymous) | `STAGING_IP=… EVENT_SLUG=… INTERNAL_KEY=… k6 run event-page.js` |
-| Sign-in rush (App Review account) | `STAGING_IP=… INTERNAL_KEY=… k6 run login.js` |
-| Free-ticket rush (each seeded user once) | `STAGING_IP=… EVENT_ID=… TICKET_TYPE_ID=… INTERNAL_KEY=… k6 run checkout.js` |
-| Gates open (scans the tickets just made) | `STAGING_IP=… EVENT_ID=… INTERNAL_KEY=… k6 run checkin.js` |
-| Live leaderboard (Socket.IO + refetch) | `STAGING_IP=… EVENT_ID=… INTERNAL_KEY=… k6 run leaderboard.js` |
+| Viral event page (anonymous) | `k6 run -e STAGING_IP=… -e EVENT_SLUG=… -e INTERNAL_KEY=… event-page.js` |
+| Sign-in rush (App Review account) | `k6 run -e STAGING_IP=… -e INTERNAL_KEY=… login.js` |
+| Free-ticket rush (each seeded user once) | `k6 run -e STAGING_IP=… -e EVENT_ID=… -e TICKET_TYPE_ID=… -e INTERNAL_KEY=… checkout.js` |
+| Gates open (scans the tickets just made) | `k6 run -e STAGING_IP=… -e EVENT_ID=… -e INTERNAL_KEY=… checkin.js` |
+| Live leaderboard (Socket.IO + refetch) | `k6 run -e STAGING_IP=… -e EVENT_ID=… -e INTERNAL_KEY=… leaderboard.js` |
 
 - `INTERNAL_KEY` = staging's `INTERNAL_API_KEY`. One k6 machine is one IP, and
   without the key the 300/min-per-IP limit would cap the test before the
@@ -124,9 +130,8 @@ database's CPU in the RDS console:**
 - Each script fails its run when more than 1% of requests error or p95 latency
   goes over 800 ms. Raise the `stages` targets until that happens: the last
   passing target is the host's capacity for that peak.
-- Leaderboard: if `engagement:subscribe` starts failing at about 300 a minute,
-  that's the HTTP throttler applied to socket messages in one shared bucket (a
-  finding to fix, not a capacity limit).
+- Leaderboard: socket messages are no longer rate-limited (J24, #522). Before
+  that, `engagement:subscribe` failed at about 300 a minute platform-wide.
 - If `login.js` gets an empty `accessToken`, the App Review account
   (`test-user@unifesto.app`) is missing from the copy or isn't mobile-verified.
 
@@ -137,5 +142,6 @@ what one `t3.large` takes.
 
 ## 4. Clean up
 
-Terminate the staging EC2, delete the drill RDS instance, delete the AMI and
-its snapshot. Put the numbers in J6's board notes.
+Terminate the staging EC2, delete the copy (no final snapshot), deregister the
+AMI and delete its snapshot, then delete `unifesto-staging-sg`. Put the
+numbers in J6's board notes.

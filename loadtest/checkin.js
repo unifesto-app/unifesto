@@ -22,6 +22,8 @@ function qrCodes(node, out = []) {
   else if (node && typeof node === 'object') {
     for (const [k, v] of Object.entries(node)) {
       if (k === 'qrCode' && typeof v === 'string') out.push(v);
+      // The roster lists `codes: [registration QR, ...ticket QRs]`; a gate scans the first.
+      else if (k === 'codes' && Array.isArray(v) && typeof v[0] === 'string') out.push(v[0]);
       else qrCodes(v, out);
     }
   }
@@ -35,7 +37,7 @@ export function setup() {
   let type = __ENV.CHECKIN_TYPE_ID;
   if (!type) {
     const types = http.get(`${API}/checkin/event/${__ENV.EVENT_ID}/types`, auth(scanner)).json();
-    type = (Array.isArray(types) ? types : types.data ?? [])[0]?.id;
+    type = (Array.isArray(types) ? types : types.types ?? types.data ?? [])[0]?.id;
   }
   if (!codes.length || !type) throw new Error(`roster gave ${codes.length} QR codes, check-in point ${type}`);
   return { codes, type };
