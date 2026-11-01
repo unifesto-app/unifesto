@@ -106,6 +106,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+      # Probe every 2s while booting, so a new replica counts as healthy (and
+      # deploy.sh's roll moves on) as soon as Nest is up, not at the next 15s tick.
+      start_interval: 2s
     depends_on:
       backend-migrate:
         condition: service_completed_successfully
@@ -161,6 +164,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+      start_interval: 2s
     depends_on:
       backend-migrate:
         condition: service_completed_successfully
@@ -212,6 +216,20 @@ services:
       - "3000"
     depends_on:
       - backend
+    # Liveness of the Next server only: Next itself answers a missing
+    # /_next/static file (404), with no proxy, render or API call, so a slow
+    # backend can't mark the site unhealthy. deploy.sh waits on it after a deploy.
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:3000/_next/static/healthcheck',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
     # Measured ~80 MB resident (2026-10-18); the cap keeps a leak from
     # starving the API replicas on the shared 8 GB host.
     deploy:
@@ -251,6 +269,18 @@ services:
       - "3000"
     depends_on:
       - backend
+    # Same probe as apex (Next answers the missing static file without the proxy).
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:3000/_next/static/healthcheck',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
     # Measured ~145 MB resident (2026-10-18); SSR + ISR cache, so more headroom.
     deploy:
       resources:

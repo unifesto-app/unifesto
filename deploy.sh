@@ -448,8 +448,37 @@ start_others() {
   if [ -n "${OTHERS}" ]; then
     ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
       "cd ${REMOTE_DIR} && docker compose up -d --no-deps --remove-orphans ${OTHERS}"
+    wait_healthy ${OTHERS}
   fi
   ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && docker compose ps"
+}
+
+# Wait for what start_others just (re)created to pass its healthcheck, up to 2
+# min each: the www purge then sends traffic to a web that is serving, not
+# booting, and the log says whether cert-worker, web and apex came up (they
+# used to exit on "health: starting"). Services without a healthcheck (caddy)
+# are skipped. A timeout only warns: the stack is already up by now.
+wait_healthy() {
+  ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" "$@" <<'HEALTH'
+set -uo pipefail
+cd "$1"; shift
+for svc; do
+  for c in $(docker compose ps -q "${svc}"); do
+    status=""
+    for _ in $(seq 1 60); do
+      status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${c}")"
+      case "${status}" in healthy|none) break ;; esac
+      sleep 2
+    done
+    case "${status}" in
+      healthy) echo "    ${svc} healthy" ;;
+      none) ;;
+      *) echo "!! ${svc} (${c:0:12}) is '${status}' 2 min after starting: docker compose logs ${svc}" >&2 ;;
+    esac
+  done
+done
+exit 0
+HEALTH
 }
 
 # Cloudflare caches the prerendered www pages (websites/web/src/lib/cached-pages.ts).
@@ -591,10 +620,15 @@ restore_latest() {
   echo "!! Build did not finish: :latest is back on the images it was on before. Re-run when fixed." >&2
 }
 trap "restore_latest $*" EXIT
-# The 29G root fills up otherwise (~2.5G of build cache per deploy; ENOSPC
-# killed parallel Next builds on 2026-10-19 and 2026-10-21). Costs the
-# backend's cached npm ci layers; the websites rebuild those anyway.
-docker builder prune -af >/dev/null
+# Build cache: ~2.5G a deploy filled the 29G root (ENOSPC killed parallel Next
+# builds on 2026-10-19 and 2026-10-21), so every deploy dropped all of it, and
+# with it the cached apt and npm ci layers (~4 min a deploy). Keep the newest
+# 8G while the root still has 12G free; below that (or on a Docker without
+# --keep-storage), drop it all as before.
+docker builder prune -af --keep-storage 8gb >/dev/null 2>&1 || docker builder prune -af >/dev/null
+if [ "$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" -lt 12 ]; then
+  docker builder prune -af >/dev/null
+fi
 docker image prune -f >/dev/null
 SENTRY_RELEASE="${sha}" docker compose build ${services}
 trap - EXIT
