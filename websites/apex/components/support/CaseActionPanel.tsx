@@ -242,7 +242,12 @@ const SUBJECTS: Record<string, SubjectDef> = {
     title: "Held message",
     fields: (d) => [
       ["Kind", String(d.kind ?? "").toLowerCase()],
-      ["Message", <span className="whitespace-pre-wrap">{d.preview}</span>],
+      [
+        "Message",
+        <span key="message" className="whitespace-pre-wrap">
+          {d.preview}
+        </span>,
+      ],
       ["Flagged because", d.reason],
       ["Decided", d.decidedAt && `${String(d.status).toLowerCase()} ${when(d.decidedAt)}`],
     ],
