@@ -357,6 +357,11 @@ export interface SpaceMemberListResponse {
  * returned, search/role filtering and pagination are applied client-side so the
  * UI behaves consistently.
  */
+/** The API sends a member's primary email as `user.identities[0].email`; the console reads `user.email`. */
+function withEmail(m: SpaceMember & { user: { identities?: { email: string | null }[] } }): SpaceMember {
+  return { ...m, user: { ...m.user, email: m.user.email ?? m.user.identities?.[0]?.email ?? null } };
+}
+
 export async function getSpaceMembers(
   spaceId: string,
   params?: SpaceMemberListParams
@@ -370,7 +375,7 @@ export async function getSpaceMembers(
 
   // New backend: already paginated.
   if (!Array.isArray(data)) {
-    return { data: data as SpaceMemberListResponse, error: null };
+    return { data: { ...data, members: data.members.map(withEmail) }, error: null };
   }
 
   // Legacy backend: bare array — filter + paginate on the client.
@@ -378,7 +383,7 @@ export async function getSpaceMembers(
   const limit = Math.min(100, Math.max(1, params?.limit ?? 20));
   const term = params?.search?.trim().toLowerCase();
 
-  let filtered = data as SpaceMember[];
+  let filtered = data.map(withEmail);
   if (params?.role) {
     filtered = filtered.filter((m) => m.role?.code === params.role);
   }
@@ -427,19 +432,23 @@ export async function searchAddableUsers(
 }
 
 /**
- * Add a member to a space with a given role.
+ * Add a member to a space with a given role: someone found in search, or
+ * (Q31) anyone by email, account or not.
  * Backed by `POST /spaces/:id/members`.
  */
 export async function addSpaceMember(
   spaceId: string,
-  userId: string,
+  who: string | { email: string },
   role: SpaceMemberRoleCode
 ): Promise<{
   data: { message: string; member: SpaceMember } | null;
   error: ApiError | null;
 }> {
   return apiCall<{ message: string; member: SpaceMember }>(
-    backendClient.post(`/spaces/${spaceId}/members`, { userId, role })
+    backendClient.post(
+      `/spaces/${spaceId}/members`,
+      typeof who === "string" ? { userId: who, role } : { email: who.email, role }
+    )
   );
 }
 

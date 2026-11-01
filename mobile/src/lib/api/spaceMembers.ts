@@ -49,9 +49,12 @@ export function getSpaceMembers(spaceId: string, opts: { page: number; search?: 
 export const searchAddableUsers = (spaceId: string, q: string) =>
   call<{ users: MemberUser[] }>(`/spaces/${spaceId}/member-search?q=${encodeURIComponent(q.trim())}`);
 
-/** POST /spaces/:id/members */
-export const addSpaceMember = (spaceId: string, userId: string, role: SpaceMemberRole) =>
-  call<{ member: SpaceMember }>(`/spaces/${spaceId}/members`, { method: 'POST', body: JSON.stringify({ userId, role }) });
+/** POST /spaces/:id/members — someone found in search, or (Q31) anyone by email, account or not. */
+export const addSpaceMember = (spaceId: string, who: string | { email: string }, role: SpaceMemberRole) =>
+  call<{ member: SpaceMember }>(`/spaces/${spaceId}/members`, {
+    method: 'POST',
+    body: JSON.stringify(typeof who === 'string' ? { userId: who, role } : { email: who.email, role }),
+  });
 
 /** PATCH /spaces/:id/members/:userRoleId — the space creator can't be moved below Space admin. */
 export const changeSpaceMemberRole = (spaceId: string, userRoleId: string, role: SpaceMemberRole) =>

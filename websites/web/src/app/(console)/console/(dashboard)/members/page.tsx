@@ -416,14 +416,15 @@ export default function SpaceMembersPage() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
-                          {m.user.fullName || m.user.username || "Unknown user"}
+                          {m.user.fullName || m.user.username || m.user.email || "Unknown user"}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {m.user.username
-                            ? `@${m.user.username}`
-                            : m.user.email}
-                          {" · joined "}
-                          {formatDate(m.createdAt)}
+                          {[
+                            m.user.username ? `@${m.user.username}` : m.user.fullName && m.user.email,
+                            `joined ${formatDate(m.createdAt)}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </p>
                       </div>
                     </div>
@@ -648,6 +649,8 @@ function TransferOwnershipCard({
   );
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function AddMemberCard({
   spaceId,
   assignable,
@@ -692,7 +695,8 @@ function AddMemberCard({
     if (!selected) return;
     setBusy(true);
     setError("");
-    const { error } = await addSpaceMember(spaceId, selected.id, role);
+    // Q31: an invite (no id) goes by email; they join when they sign in with it.
+    const { error } = await addSpaceMember(spaceId, selected.id || { email: selected.email! }, role);
     if (error) {
       setError(error.message);
       setBusy(false);
@@ -713,7 +717,7 @@ function AddMemberCard({
           Add member
         </CardTitle>
         <CardDescription>
-          Search by name, username, or email, then choose a role.
+          Search by name, username or email, then choose a role. To add someone without an account, type their email.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -740,6 +744,11 @@ function AddMemberCard({
                   Change
                 </button>
               </div>
+              {!selected.id && (
+                <p className="text-xs text-muted-foreground">
+                  Not on Unifesto yet. They get an email and join when they sign in with it.
+                </p>
+              )}
             </div>
             <div className="space-y-1 sm:w-44">
               <Label htmlFor="members-role">Role</Label>
@@ -763,7 +772,7 @@ function AddMemberCard({
             </div>
             <Button onClick={handleAdd} disabled={busy}>
               <Plus className="h-4 w-4" />
-              Add
+              {selected.id ? "Add" : "Invite"}
             </Button>
           </div>
         ) : (
@@ -781,9 +790,23 @@ function AddMemberCard({
                   <p className="px-3 py-2 text-sm text-muted-foreground">
                     Searching…
                   </p>
+                ) : results.length === 0 && EMAIL_RE.test(query.trim()) ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setSelected({ id: "", fullName: null, username: null, email: query.trim(), avatarUrl: null });
+                      setQuery("");
+                    }}
+                  >
+                    <UserPlus className="h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      Invite <span className="font-medium">{query.trim()}</span>
+                    </span>
+                  </button>
                 ) : results.length === 0 ? (
                   <p className="px-3 py-2 text-sm text-muted-foreground">
-                    No users found.
+                    No one found. To add someone without an account, type their full email.
                   </p>
                 ) : (
                   <ul className="max-h-56 overflow-y-auto">

@@ -18,8 +18,9 @@ const FIELD =
  * the email code. A new email or Google account has nothing to show here, so it gets
  * told where accounts are made (Q20), unless the page takes new accounts
  * (`newAccounts`, Q16: a seat claim), where it adds a WhatsApp number the way
- * registering does. Signing in updates the shared session, so the page
- * re-renders signed in.
+ * registering does. An account someone invited me to (E1, Q31: a space team,
+ * a judge panel) already exists, so it adds the number on any page. Signing in
+ * updates the shared session, so the page re-renders signed in.
  */
 
 const LINK = "text-paper underline underline-offset-4";
@@ -90,7 +91,8 @@ export default function SignIn({
   });
   const verify = run(async () => {
     const res = await verifyEmailCode(email.trim(), otp.trim());
-    if (!res.accessToken && newAccounts && res.tempToken) return setTempToken(res.tempToken);
+    // `user` is only sent for an account that exists but has no number yet: an invite.
+    if (!res.accessToken && res.tempToken && (newAccounts || res.user)) return setTempToken(res.tempToken);
     if (!res.accessToken) return setNoAccount(true);
     await startSession(res, { email: email.trim(), fullName: res.user?.fullName || null });
   });

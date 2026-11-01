@@ -625,7 +625,7 @@ export class SpacesController {
     @Body() dto: AddSpaceMemberDto,
     @CurrentUser() user: User,
   ) {
-    return this.spacesService.addSpaceMember(id, user.id, dto.userId, dto.role);
+    return this.spacesService.addSpaceMember(id, user.id, dto.userId ?? { email: dto.email! }, dto.role);
   }
 
   /**
