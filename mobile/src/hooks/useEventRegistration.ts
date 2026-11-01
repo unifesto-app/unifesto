@@ -1,5 +1,5 @@
 import { isEmail } from '../lib/constants';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
@@ -22,7 +22,7 @@ import {
   type Ticket,
   type CustomField,
 } from '../lib/api/tickets';
-import { getUserIdentities, getCurrentUser, updateUserProfile, checkUsernameAvailability, type User } from '../lib/api/auth';
+import { getUserIdentities, getCurrentUser, updateUserProfile, type User } from '../lib/api/auth';
 import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfileValue } from '../utils/profile';
 import { markTicketsStale } from '../lib/ticketsRefresh';
 import { checkoutMethods, isPaymentCancelled, pay, type PayMethod, type UpiApp } from '../lib/pay';
@@ -84,9 +84,12 @@ export function displayFieldValue(field: CustomField, value: any): string {
  * attendee details, coupon, the 15-minute hold, order creation, Razorpay and
  * verification. The screen only renders what this returns.
  */
-/** attendee[0] has everything needed to show as the read-only "You" summary. */
+/**
+ * attendee[0] has everything needed to show as the read-only "You" summary.
+ * Q5: gender isn't asked here; an organiser who wants it adds a question.
+ */
 export function isSelfComplete(a: AttendeeInfo): boolean {
-  return !!(a.name.trim() && a.email.trim() && /^[0-9]{10}$/.test(a.mobile) && a.gender);
+  return !!(a.name.trim() && a.email.trim() && /^[0-9]{10}$/.test(a.mobile));
 }
 
 export function useEventRegistration() {
@@ -181,23 +184,20 @@ export function useEventRegistration() {
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([blankAttendee()]);
   const [alsoUpdateProfile, setAlsoUpdateProfile] = useState(false);
 
-  // ── Profile gate (name + username + gender + 18+ confirmation required) ──
+  // ── Profile gate (Q5): only a missing name, and the 18+ confirmation once ──
+  // The username is generated server-side; gender is the organiser's question.
   const [profileGender, setProfileGender] = useState('');
-  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
   const [gateName, setGateName] = useState('');
-  const [gateUsername, setGateUsername] = useState('');
-  const [gateGender, setGateGender] = useState('');
   // Z11: 'adult' = "I am 18 or older"; 'minor' blocks self-registration.
   const [gateAge, setGateAge] = useState<'adult' | 'minor' | null>(null);
-  const [gateUsernameError, setGateUsernameError] = useState('');
-  const [gateUsernameAvailable, setGateUsernameAvailable] = useState<boolean | null>(null);
-  const [gateChecking, setGateChecking] = useState(false);
   const [gateSaving, setGateSaving] = useState(false);
   const [gateError, setGateError] = useState('');
-  const gateUsernameTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const askName = !!profile && !profile.fullName?.trim();
+  const askAge = !!profile && !profile.ageConfirmedAt;
 
   // Re-checked on focus so completing the profile elsewhere clears the gate.
+  // A fetch failure leaves `profile` null: never hard-block on it.
   const loadProfile = useCallback(() => {
     if (!token) return;
     getCurrentUser()
@@ -205,12 +205,9 @@ export function useEventRegistration() {
         setProfile(p);
         setProfileGender(p.gender || '');
         setGateName(p.fullName || '');
-        setGateUsername(p.username || '');
-        setGateGender(p.gender || '');
         if (p.ageConfirmedAt) setGateAge('adult');
-        setProfileComplete(!!(p.fullName && p.username && p.gender && p.ageConfirmedAt));
       })
-      .catch(() => setProfileComplete(true)); // never hard-block on a fetch failure
+      .catch(() => {});
   }, [token]);
 
   useFocusEffect(
@@ -245,58 +242,21 @@ export function useEventRegistration() {
     });
   }, [user, profile, primaryEmail, profileGender]);
 
-  const onGateUsernameChange = (text: string) => {
-    setGateUsername(text);
-    setGateUsernameError('');
-    setGateUsernameAvailable(null);
-    if (gateUsernameTimeout.current) clearTimeout(gateUsernameTimeout.current);
-    const trimmed = text.trim();
-    if (!trimmed || trimmed === (profile?.username || '')) return;
-    gateUsernameTimeout.current = setTimeout(async () => {
-      try {
-        setGateChecking(true);
-        const { available } = await checkUsernameAvailability(trimmed);
-        setGateUsernameAvailable(available);
-        if (!available) setGateUsernameError('Username is already taken');
-      } catch {
-        setGateUsernameAvailable(null);
-      } finally {
-        setGateChecking(false);
-      }
-    }, 600);
-  };
-
   const saveGate = async () => {
     if (!token || gateSaving) return;
     const name = gateName.trim();
-    const uname = gateUsername.trim();
     setGateError('');
-    if (!name) { setGateError('Please enter your name.'); return; }
-    if (!uname) { setGateUsernameError('Username cannot be empty'); return; }
-    if (!gateGender) { setGateError('Please select your gender.'); return; }
-    if (gateAge !== 'adult') {
+    if (askName && !name) { setGateError('Please enter your name.'); return; }
+    if (askAge && gateAge !== 'adult') {
       setGateError(gateAge === 'minor'
         ? 'Under 18? Ask the organiser to register you through a parent or guardian.'
         : 'Please confirm your age.');
       return;
     }
-    if (gateUsernameError) return;
-
-    if (uname !== (profile?.username || '') && gateUsernameAvailable !== true) {
-      try {
-        setGateChecking(true);
-        const { available } = await checkUsernameAvailability(uname);
-        setGateUsernameAvailable(available);
-        if (!available) { setGateUsernameError('Username is already taken'); return; }
-      } catch {
-        // the PATCH rejects a dupe as the last line of defence
-      } finally {
-        setGateChecking(false);
-      }
-    }
     try {
       setGateSaving(true);
-      await updateUserProfile({ username: uname, fullName: name, gender: gateGender, ageConfirmed: true });
+      // A first name also gets the account a generated username (server-side).
+      await updateUserProfile({ ...(askName ? { fullName: name } : {}), ...(askAge ? { ageConfirmed: true } : {}) });
       loadProfile(); // flips the gate and prefills attendee[0]
     } catch (e: any) {
       setGateError(e?.message || 'Could not save. Check your connection and try again.');
@@ -400,11 +360,7 @@ export function useEventRegistration() {
     for (let index = 0; index < attendees.length; index++) {
       if (invitedIndices.has(index)) continue; // invitee fills their own later
       const a = attendees[index];
-      const basicValid =
-        a.name.trim() !== '' &&
-        isEmail(a.email.trim()) &&
-        /^[0-9]{10}$/.test(a.mobile) &&
-        a.gender !== '';
+      const basicValid = a.name.trim() !== '' && isEmail(a.email.trim()) && /^[0-9]{10}$/.test(a.mobile);
       if (!basicValid) return null;
       const p = firstFormProblem(memberFields, a.customFields);
       if (p) return attendees.length > 1 && index > 0 ? `Person ${index + 1}: ${p}` : p;
@@ -415,12 +371,7 @@ export function useEventRegistration() {
     if (!selectedTicket || detailsProblem) return false;
     return attendees.every((a, index) => {
       if (invitedIndices.has(index)) return true;
-      return (
-        a.name.trim() !== '' &&
-        isEmail(a.email.trim()) &&
-        /^[0-9]{10}$/.test(a.mobile) &&
-        a.gender !== ''
-      );
+      return a.name.trim() !== '' && isEmail(a.email.trim()) && /^[0-9]{10}$/.test(a.mobile);
     });
   })();
 
@@ -494,7 +445,7 @@ export function useEventRegistration() {
       // Opt-in, best-effort: persist the edited identity to the profile.
       if (alsoUpdateProfile && token) {
         const self = attendees[0];
-        updateUserProfile({ fullName: self.name, gender: attendeeGenderToProfileValue(self.gender) }).catch(() => {});
+        updateUserProfile({ fullName: self.name, ...(self.gender ? { gender: attendeeGenderToProfileValue(self.gender) } : {}) }).catch(() => {});
       }
       setStep('review');
     } else if (step === 'review') {
@@ -696,16 +647,11 @@ export function useEventRegistration() {
     hasTickets: tickets.length > 0,
     // gate
     gate: {
-      needed: profileComplete === false,
+      needed: askName || askAge,
+      askName,
+      askAge,
       name: gateName,
       setName: setGateName,
-      username: gateUsername,
-      onUsernameChange: onGateUsernameChange,
-      usernameError: gateUsernameError,
-      usernameAvailable: gateUsernameAvailable,
-      checking: gateChecking,
-      gender: gateGender,
-      setGender: setGateGender,
       age: gateAge,
       setAge: setGateAge,
       saving: gateSaving,

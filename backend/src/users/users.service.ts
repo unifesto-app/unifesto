@@ -7,6 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { OPERATOR_SPACE_STATUSES } from '../spaces/space-access';
 import { ConfigService } from '@nestjs/config';
@@ -494,10 +495,19 @@ export class UsersService {
       });
     }
 
+    // Q5: a username is generated, never asked for. An account without one
+    // gets one from its name the first time a name is known.
+    let username = dto.username;
+    if (!username) {
+      const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { username: true, fullName: true } });
+      const name = dto.fullName ?? me?.fullName;
+      if (me && !me.username && name?.trim()) username = await this.freeUsername(name);
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        username: dto.username,
+        username,
         fullName: dto.fullName,
         bio: dto.bio,
         gender: dto.gender,
@@ -534,6 +544,20 @@ export class UsersService {
   ): Promise<{ available: boolean }> {
     const available = await this.isUsernameAvailable(username);
     return { available };
+  }
+
+  /**
+   * Q5: "Priya K" → `priyak4821`. The name's letters and digits (else `user`)
+   * plus 4 random digits, retried on a clash; undefined if all 5 clash.
+   * ponytail: check-then-write, so a same-instant clash surfaces as the unique error.
+   */
+  private async freeUsername(name: string): Promise<string | undefined> {
+    const base = name.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'user';
+    for (let i = 0; i < 5; i++) {
+      const candidate = `${base}${randomInt(1000, 10000)}`;
+      if (await this.isUsernameAvailable(candidate)) return candidate;
+    }
+    return undefined;
   }
 
   /**

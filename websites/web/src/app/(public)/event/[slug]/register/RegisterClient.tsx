@@ -29,6 +29,7 @@ import {
   type Quote,
   type RegTicket,
 } from "@/lib/api/registration";
+import { getMe } from "@/lib/api/account";
 import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
 import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
@@ -164,6 +165,17 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     };
   }, [doneId, token]);
 
+  // Q5: the 18+ box is asked once per account (Z11), so it's hidden once on record.
+  const [ageDone, setAgeDone] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    let live = true;
+    getMe(token).then((m) => live && setAgeDone(!!m.ageConfirmedAt), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [token]);
+
   // A returning visitor who already holds a ticket sees it, not the form.
   // Runs once, when the page learns whether it's signed in.
   useEffect(() => {
@@ -222,8 +234,8 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         setDone({ kind: "already", registrationId: mine[0].id });
         return goTo("done");
       }
-      // Z11: the 18+ box is required on the form; record it before registering.
-      await confirmAge(s.token);
+      // Z11: the 18+ box is required on the form until it's on record; record it before registering.
+      if (!ageDone) await confirmAge(s.token);
       // K12: continuing past the Terms line accepts them. Record it the way the app does (I2).
       for (const d of await pendingLegal(s.token)) await acceptLegal(d.slug, d.version, s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
@@ -629,15 +641,17 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           </div>
         )}
 
-        <div>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
-            <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
-            <span>I am 18 or older</span>
-          </label>
-          <p className="mt-2 pl-7 text-xs text-paper/55">
-            Under 18? Ask the organiser to register you through a parent or guardian.
-          </p>
-        </div>
+        {!ageDone && (
+          <div>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
+              <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
+              <span>I am 18 or older</span>
+            </label>
+            <p className="mt-2 pl-7 text-xs text-paper/55">
+              Under 18? Ask the organiser to register you through a parent or guardian.
+            </p>
+          </div>
+        )}
 
         <p className="text-sm text-paper/65">
           By continuing you agree to the{" "}
