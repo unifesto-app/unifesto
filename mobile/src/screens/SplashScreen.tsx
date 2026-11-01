@@ -131,7 +131,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   return (
     <Animated.View style={[styles.container, { backgroundColor: c.bg }, rootStyle]}>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, skyStyle]}>
-        <CosmosBackdrop scheme={c.scheme} />
+        <CosmosBackdrop scheme={c.scheme} grain />
       </Animated.View>
 
       <Animated.View style={markStyle}>

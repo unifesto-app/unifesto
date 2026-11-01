@@ -3,13 +3,12 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'rea
 import Svg, { Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { spacing } from '../../theme/spacing';
 import { SHADES, cosmosCardRadius, useCosmos, type ShadeTone } from '../../theme/cosmos';
-import Grain from './Grain';
 
 /**
  * A Horizon shade card (guidelines §08): soft shapes in one accent, blended into
- * a deep base, grain on top. Sky = two orbs (tickets), mint = a horizon rising
- * from below (the door, check-in), ivory = a diagonal beam (money), blue = a fan
- * of light from a corner (hackathons, the Space). No lines, no edges, no border.
+ * a deep base. Sky = two orbs (tickets), mint = a horizon rising from below (the
+ * door, check-in), ivory = a diagonal beam (money), blue = a fan of light from a
+ * corner (hackathons, the Space). No lines, no edges, no grain, no border.
  * At most one per screen, for its hero card; everything else is a plain card.
  * Content sits straight on the shade (glass stays on floating chrome only).
  */
@@ -82,8 +81,6 @@ export default function ShadeCard({
           </>
         )}
       </Svg>
-      {/* Heavier grain than the page. */}
-      <Grain dark={isDark} opacity={isDark ? 0.2 : 0.14} />
     </View>
   );
 

@@ -175,7 +175,7 @@ export default function StayPassScreen() {
         setRefreshing(false);
       }}
     >
-      {/* ── The pass: the screen's hero, on the pass's sky shade. The QR's white panel sits above the grain. ── */}
+      {/* ── The pass: the screen's hero, on the pass's sky shade. The QR's white panel sits above the shade. ── */}
       <ShadeCard tone="sky" style={styles.pass}>
         <View style={styles.passTop}>
           <Text style={[styles.kicker, { color: c.soft }]}>Unifesto Stay Pass</Text>
