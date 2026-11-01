@@ -25,7 +25,7 @@ import {
 import { getUserIdentities, getCurrentUser, updateUserProfile, type User } from '../lib/api/auth';
 import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfileValue } from '../utils/profile';
 import { markTicketsStale } from '../lib/ticketsRefresh';
-import { checkoutMethods, isPaymentCancelled, pay, type PayMethod, type UpiApp } from '../lib/pay';
+import { CHECKOUT_OFF, checkoutMethods, isPaymentCancelled, pay, type CheckoutMethods, type PayMethod } from '../lib/pay';
 
 export type StepType = 'ticket' | 'details' | 'review' | 'payment';
 export const STEPS: { id: StepType; label: string }[] = [
@@ -166,8 +166,8 @@ export function useEventRegistration() {
       .catch(() => {});
   }, [token]);
 
-  // Q40: how to pay. The phone's UPI apps (none = Razorpay's sheet only) and the pick.
-  const [payOptions, setPayOptions] = useState<{ apps: UpiApp[]; selected: PayMethod }>({ apps: [], selected: 'more' });
+  // Q40: how to pay. The phone's UPI apps, banks, wallets and the pick (off = Razorpay's sheet only).
+  const [payOptions, setPayOptions] = useState<CheckoutMethods>(CHECKOUT_OFF);
   useEffect(() => {
     checkoutMethods(selectedTicket?.currency || 'INR').then(setPayOptions).catch(() => {});
   }, [selectedTicket?.currency]);
@@ -515,6 +515,12 @@ export function useEventRegistration() {
 
   const submit = async () => {
     if (!selectedTicket || !event || submitting || verifying) return;
+    // Netbanking or Wallet ticked, but which one? Ask before an order exists.
+    const sel = payOptions.selected;
+    if (payOptions.on && total > 0 && typeof sel === 'object' && (('bank' in sel && !sel.bank) || ('wallet' in sel && !sel.wallet))) {
+      AppAlert.alert('bank' in sel ? 'Choose your bank' : 'Choose your wallet', 'Pick one under Pay with, then pay.');
+      return;
+    }
     setSubmitting(true);
     try {
       const finalAmount = Math.max(0, total);
@@ -604,8 +610,8 @@ export function useEventRegistration() {
 
       let paymentData: any;
       try {
-        // No UPI apps on offer: pay() opens the sheet (and asks nothing).
-        paymentData = await pay(order, details, payOptions.apps.length ? payOptions.selected : undefined);
+        // Nothing on offer (switch off): pay() opens the sheet and asks nothing.
+        paymentData = await pay(order, details, payOptions.on ? payOptions.selected : undefined);
       } catch (paymentError: any) {
         // Cancelled or failed: the registration stays PENDING for reuse.
         if (!isPaymentCancelled(paymentError)) {
@@ -706,8 +712,7 @@ export function useEventRegistration() {
     feeCapped,
     feeIncluded,
     total,
-    payApps: payOptions.apps,
-    payMethod: payOptions.selected,
+    payOptions,
     setPayMethod,
     couponInput,
     setCouponInput,

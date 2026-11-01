@@ -336,7 +336,7 @@ const SEARCH_FROM = 8;
 
 type Option = { label: string; value: string };
 
-function OptionPicker({
+export function OptionPicker({
   options,
   title,
   placeholder,

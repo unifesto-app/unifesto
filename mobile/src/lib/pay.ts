@@ -8,11 +8,13 @@ import { getUserIdentities } from './api/auth';
 /**
  * Every Razorpay payment in the app goes through pay() (Q40).
  *
- * A UPI app picked at checkout opens straight away through Razorpay Custom UI
- * (UPI intent), with no sheet. "Cards, netbanking and more", and every
- * fallback, opens Razorpay Standard Checkout with UPI listed first. Either way
- * the result is the signed payment the backend verifies, and the webhook
- * settles it if the app dies mid-payment: the money path doesn't change.
+ * A UPI app, bank or wallet picked at checkout opens straight away through
+ * Razorpay Custom UI, with no sheet. A card, or a pick Custom UI can't take
+ * (no phone number, older binary), opens Razorpay Standard Checkout showing
+ * only that method; "Cards, netbanking and more" opens the whole sheet, UPI
+ * first. Either way the result is the signed payment the backend verifies,
+ * and the webhook settles it if the app dies mid-payment: the money path
+ * doesn't change.
  */
 
 /** A Razorpay order as every create-order route returns it. */
@@ -42,8 +44,33 @@ export interface UpiApp {
   icon?: string;
 }
 
-/** A UPI app, or Razorpay's sheet ('more': cards, netbanking, wallets, any UPI). */
-export type PayMethod = UpiApp | 'more';
+/** A netbanking bank or wallet our Razorpay account takes. */
+export interface PayOption {
+  code: string;
+  name: string;
+}
+
+/**
+ * A UPI app; UPI in the sheet ('upi', when no app was found); a card
+ * (Razorpay's card form, nothing else); a bank or wallet ('' = not picked
+ * yet); or Razorpay's whole sheet ('more').
+ */
+export type PayMethod = UpiApp | 'upi' | 'card' | { bank: string } | { wallet: string } | 'more';
+
+/** What the payment page offers. `on` = Q40's switch is on and Custom UI is here. */
+export interface CheckoutMethods {
+  on: boolean;
+  apps: UpiApp[];
+  banks: PayOption[];
+  wallets: PayOption[];
+  selected: PayMethod;
+}
+
+export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], banks: [], wallets: [], selected: 'more' };
+
+/** How a method is remembered: the app id, 'upi', 'card', 'more', 'bank:HDFC' or 'wallet:phonepe'. */
+export const methodKey = (m: PayMethod) =>
+  typeof m === 'string' ? m : 'id' in m ? m.id : 'bank' in m ? `bank:${m.bank}` : `wallet:${m.wallet}`;
 
 export interface SignedPayment {
   razorpay_payment_id: string;
@@ -62,6 +89,16 @@ const UPI_FIRST = {
     preferences: { show_default_blocks: true },
   },
 };
+
+const BLOCK_NAMES: Record<string, string> = { card: 'Card', upi: 'UPI', netbanking: 'Netbanking', wallet: 'Wallet' };
+// The sheet for one picked method: that instrument and nothing else.
+const onlyThis = (instrument: { method: string }) => ({
+  display: {
+    blocks: { only: { name: BLOCK_NAMES[instrument.method], instruments: [instrument] } },
+    sequence: ['block.only'],
+    preferences: { show_default_blocks: false },
+  },
+});
 
 // Razorpay's iOS ids; Android names come from the phone.
 const IOS_NAMES: Record<string, string> = { google_pay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', cred: 'CRED', bhim: 'BHIM' };
@@ -125,19 +162,40 @@ async function upiCheckoutOn(): Promise<boolean> {
   return Promise.race([read, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
 }
 
-/** The UPI app id (or 'more') the last successful payment on this phone used. */
+/** The banks and wallets our Razorpay account takes. Unreadable or slow = none: UPI and cards only. */
+async function banksAndWallets(): Promise<{ banks: PayOption[]; wallets: PayOption[] }> {
+  const none = { banks: [], wallets: [] };
+  const read = makePublicRequest('/config/payment-methods')
+    .then(async (res) => {
+      const m = res?.ok ? await res.json() : null;
+      return { banks: m?.netbanking ?? [], wallets: m?.wallets ?? [] };
+    })
+    .catch(() => none);
+  return Promise.race([read, new Promise<typeof none>((resolve) => setTimeout(() => resolve(none), 3000))]);
+}
+
+/** The methodKey() the last successful payment on this phone used. */
 const lastMethodId = () => AsyncStorage.getItem(LAST_METHOD_KEY).catch(() => null);
 
+/** The method paid with last time, while it's still on offer; else the first UPI app, else UPI. */
+function preselect(last: string | null, apps: UpiApp[], banks: PayOption[], wallets: PayOption[]): PayMethod {
+  const [kind, code] = (last ?? '').split(':');
+  if (kind === 'bank' && banks.some((b) => b.code === code)) return { bank: code };
+  if (kind === 'wallet' && wallets.some((w) => w.code === code)) return { wallet: code };
+  if (last === 'card') return 'card';
+  return apps[0] ?? 'upi';
+}
+
 /**
- * What checkout can offer: UPI apps (last used first) and the method to
- * preselect. No apps = the switch is off, the currency isn't INR, or this
- * phone has none: then only the sheet.
+ * What checkout can offer: UPI apps (last used first), banks, wallets and the
+ * method to preselect. Off = the switch is off, the currency isn't INR, or
+ * this binary has no Custom UI: then only the sheet.
  */
-export async function checkoutMethods(currency = 'INR'): Promise<{ apps: UpiApp[]; selected: PayMethod }> {
-  if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return { apps: [], selected: 'more' };
-  const [found, last] = await Promise.all([installedUpiApps(), lastMethodId()]);
+export async function checkoutMethods(currency = 'INR'): Promise<CheckoutMethods> {
+  if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return CHECKOUT_OFF;
+  const [found, last, { banks, wallets }] = await Promise.all([installedUpiApps(), lastMethodId(), banksAndWallets()]);
   const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last));
-  return { apps, selected: last === 'more' || !apps.length ? 'more' : apps[0] };
+  return { on: true, apps, banks, wallets, selected: preselect(last, apps, banks, wallets) };
 }
 
 /** Razorpay and the chooser report a dismissed payment as an error; it isn't one. Custom UI's Android back press is code 5. */
@@ -169,6 +227,23 @@ async function myEmail(): Promise<string> {
   }
 }
 
+/** Custom UI's options for a pick it pays without the sheet: a UPI app, a bank, a wallet. */
+function directOptions(m: PayMethod | null): Record<string, string> | null {
+  if (!m || typeof m === 'string') return null;
+  if ('id' in m) return { method: 'upi', '_[flow]': 'intent', upi_app_package_name: m.id };
+  if ('bank' in m) return m.bank ? { method: 'netbanking', bank: m.bank } : null;
+  return m.wallet ? { method: 'wallet', wallet: m.wallet } : null;
+}
+
+/** The one instrument the sheet shows for a pick it has to take. null = the whole sheet. */
+function onlyInstrument(m: PayMethod | null): { method: string } | null {
+  if (!m || m === 'more') return null;
+  if (m === 'card') return { method: 'card' };
+  if (m === 'upi' || 'id' in m) return { method: 'upi' };
+  if ('bank' in m) return { method: 'netbanking', ...(m.bank && { banks: [m.bank] }) };
+  return { method: 'wallet', ...(m.wallet && { wallets: [m.wallet] }) };
+}
+
 /**
  * Pays `order` with `method`, or asks how when there's no summary screen to
  * pick on. Resolves with the signed payment for the backend to verify; rejects
@@ -178,10 +253,10 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
   const chosen = method ?? (await chooseMethod(order));
   const prefill = { ...details.prefill, email: details.prefill.email || (await myEmail()) };
   const currency = order.currency || 'INR';
-  const upiApp = chosen && chosen !== 'more' ? chosen : null;
+  // Razorpay needs both to pay outside the sheet; the sheet asks.
+  const direct = customUi && currency === 'INR' && prefill.email && prefill.contact ? directOptions(chosen) : null;
   let payment: SignedPayment;
-  // Razorpay needs both to start a UPI payment outside the sheet; the sheet asks.
-  if (upiApp && customUi && currency === 'INR' && prefill.email && prefill.contact) {
+  if (customUi && direct) {
     payment = await customUi.open({
       key_id: order.razorpayKeyId,
       order_id: order.razorpayOrderId,
@@ -191,13 +266,14 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
       description: details.description,
       email: prefill.email,
       contact: prefill.contact,
-      method: 'upi',
-      '_[flow]': 'intent',
-      upi_app_package_name: upiApp.id,
+      ...direct,
     });
   } else {
+    const only = onlyInstrument(chosen);
     // A UPI pick (or, with nothing picked, a UPI habit) opens the sheet on UPI.
-    const upi = currency === 'INR' && (!!upiApp || (!chosen && ![null, 'more'].includes(await lastMethodId())));
+    const last = chosen ? null : await lastMethodId();
+    const upiHabit = !!last && last !== 'more' && last !== 'card' && !last.includes(':');
+    const upi = currency === 'INR' && (only?.method === 'upi' || upiHabit);
     payment = (await RazorpayCheckout.open({
       key: order.razorpayKeyId,
       order_id: order.razorpayOrderId,
@@ -208,9 +284,9 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
       image: details.image,
       prefill: upi ? { ...prefill, method: 'upi' } : prefill,
       theme: { color: details.color || '#111113' },
-      config: UPI_FIRST,
+      config: only ? onlyThis(only) : UPI_FIRST,
     })) as SignedPayment;
   }
-  if (chosen) await AsyncStorage.setItem(LAST_METHOD_KEY, upiApp ? upiApp.id : 'more').catch(() => {});
+  if (chosen) await AsyncStorage.setItem(LAST_METHOD_KEY, methodKey(chosen)).catch(() => {});
   return payment;
 }

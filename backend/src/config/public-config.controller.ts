@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
 import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
+import { paymentMethods } from './razorpay-methods';
 
 /**
  * Public, unauthenticated read of platform settings that clients need in order
@@ -30,6 +31,12 @@ export class PublicConfigController {
   @Get('checkout')
   getCheckout() {
     return this.platformConfig.getUpiCheckout();
+  }
+
+  /** Q40: the netbanking banks and wallets the payment page may list. */
+  @Get('payment-methods')
+  getPaymentMethods() {
+    return paymentMethods();
   }
 
   /**
