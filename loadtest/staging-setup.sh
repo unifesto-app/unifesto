@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # J6: turn a server launched from an image of production into an isolated
 # load-test target, pointed at a restored copy of the database. Run it ON THE
-# STAGING HOST, from the laptop:
+# STAGING HOST, from the laptop (as a file: piped over SSH, `docker compose
+# run` could swallow the rest of the script):
 #
-#   ssh -i ~/.ssh/unifesto-key.pem ubuntu@<staging ip> \
-#     bash -s -- <copy db identifier> < loadtest/staging-setup.sh
+#   scp -i ~/.ssh/unifesto-key.pem loadtest/staging-setup.sh ubuntu@<staging ip>:
+#   ssh -i ~/.ssh/unifesto-key.pem ubuntu@<staging ip> bash staging-setup.sh <copy db identifier>
 #
 # The server and the copy must sit in their own security group
 # (unifesto-staging-sg), never unifesto-ec2-sg: every container restarts on
