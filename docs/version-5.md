@@ -1068,3 +1068,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · AI9 + AI10: per-feature daily AI spend ceilings with Sentry alerts, burst limits on AI endpoints, AiRun space/billable, and one grounding check that drops or holds AI text quoting an amount, date, link or contact it was never given (#510)
 - **2026-11-01** · Q16 group bookings: teammate emails while booking (invited once paid), claim links work for any signed-in account on web or app, and the lead is emailed who claimed (#509)
 - **2026-11-01** · Q5 registration gate asks only what the event needs: a missing name and the 18+ confirmation once; username generated; gender only as an organiser question; web hides the 18+ box once confirmed (#511)
+- **2026-11-01** · Q16 group-seat claims show the organiser's per-member questions for events in private spaces (web and app) (#512)
