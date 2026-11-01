@@ -166,7 +166,7 @@ export function useEventRegistration() {
       .catch(() => {});
   }, [token]);
 
-  // Q40: how to pay. The phone's UPI apps, banks, wallets and the pick (off = Razorpay's sheet only).
+  // Q40: how to pay. The phone's UPI apps, wallets and the pick (off = Razorpay's sheet only).
   const [payOptions, setPayOptions] = useState<CheckoutMethods>(CHECKOUT_OFF);
   useEffect(() => {
     checkoutMethods(selectedTicket?.currency || 'INR').then(setPayOptions).catch(() => {});
@@ -515,10 +515,10 @@ export function useEventRegistration() {
 
   const submit = async () => {
     if (!selectedTicket || !event || submitting || verifying) return;
-    // Netbanking or Wallet ticked, but which one? Ask before an order exists.
+    // Wallet ticked, but which one? Ask before an order exists.
     const sel = payOptions.selected;
-    if (payOptions.on && total > 0 && typeof sel === 'object' && (('bank' in sel && !sel.bank) || ('wallet' in sel && !sel.wallet))) {
-      AppAlert.alert('bank' in sel ? 'Choose your bank' : 'Choose your wallet', 'Pick one under Pay with, then pay.');
+    if (payOptions.on && total > 0 && typeof sel === 'object' && 'wallet' in sel && !sel.wallet) {
+      AppAlert.alert('Choose your wallet', 'Pick one under Pay with, then pay.');
       return;
     }
     setSubmitting(true);

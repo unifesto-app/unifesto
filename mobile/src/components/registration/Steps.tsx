@@ -1,7 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
-  Bank,
   Check,
   CheckCircle,
   Circle,
@@ -553,12 +552,12 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 
 /**
  * Q40: our own payment page. The phone's UPI apps (last used first; "UPI" when
- * none were found), card, netbanking and wallets our Razorpay account takes.
+ * none were found), card and the wallets our Razorpay account takes.
  * Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, banks, wallets, selected } = r.payOptions;
+  const { apps, wallets, selected } = r.payOptions;
   const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
   const options: { key: string; label: string; method: PayMethod; icon: React.ReactNode }[] = [
     ...(apps.length
@@ -570,10 +569,9 @@ function PayWith({ r }: { r: EventRegistration }) {
         }))
       : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
     { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
-    ...(banks.length ? [{ key: 'bank:', label: 'Netbanking', method: { bank: '' }, icon: icon(Bank) }] : []),
     ...(wallets.length ? [{ key: 'wallet:', label: 'Wallet', method: { wallet: '' }, icon: icon(Wallet) }] : []),
   ];
-  // A picked bank or wallet still ticks its row.
+  // A picked wallet still ticks its row.
   const picked = methodKey(selected).replace(/:.*/, ':');
   return (
     <View style={styles.block}>
@@ -599,18 +597,6 @@ function PayWith({ r }: { r: EventRegistration }) {
                   <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
                   {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
                 </Pressable>
-                {on && typeof selected === 'object' && 'bank' in selected ? (
-                  <View style={styles.payPick}>
-                    <OptionPicker
-                      title="Choose your bank"
-                      placeholder="Choose your bank"
-                      options={banks.map((b) => ({ label: b.name, value: b.code }))}
-                      value={selected.bank}
-                      onChange={(bank) => r.setPayMethod({ bank })}
-                      hasError={false}
-                    />
-                  </View>
-                ) : null}
                 {on && typeof selected === 'object' && 'wallet' in selected ? (
                   <View style={styles.payPick}>
                     <OptionPicker
