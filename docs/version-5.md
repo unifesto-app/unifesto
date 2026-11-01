@@ -1076,3 +1076,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q17 self-serve ticket transfer: attendees send their own free ticket to another Unifesto account from the ticket screen when the organiser turns on the per-event switch (off by default); paid tickets keep the organiser request path (#517)
 - **2026-11-01** · Mobile Permissions screen no longer asks for the microphone after live sessions were removed (#519)
 - **2026-11-01** · AI2: draft a new event from its poster in the console wizard (name, dates, venue or link, tickets, description, agenda, FAQs); nothing is saved until the curator creates the event (#518)
+- **2026-11-01** · Q22: publishing now requires a cover, a venue or joining link, and one ticket (a festival hub's sub-events count), with a message naming what's missing; the console checklist marks the three as required (#520)
