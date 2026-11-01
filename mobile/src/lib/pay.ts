@@ -9,7 +9,7 @@ import { getUserIdentities } from './api/auth';
 /**
  * Every Razorpay payment in the app goes through pay() (Q40).
  *
- * A UPI app or wallet picked at checkout opens straight away through
+ * A UPI app, UPI ID or wallet picked at checkout opens straight away through
  * Razorpay Custom UI, with no sheet. A card, or a pick Custom UI can't take
  * (no phone number, older binary, or it fails before anything opens), opens
  * Razorpay Standard Checkout showing only that method; "Cards, netbanking and more" opens the whole sheet, UPI
@@ -52,11 +52,11 @@ export interface PayOption {
 }
 
 /**
- * A UPI app; UPI in the sheet ('upi', when no app was found); a card
+ * A UPI app; a UPI ID (a collect request, for any other UPI app); a card
  * (Razorpay's card form, nothing else); a wallet ('' = not picked yet); or
  * Razorpay's whole sheet ('more').
  */
-export type PayMethod = UpiApp | 'upi' | 'card' | { wallet: string } | 'more';
+export type PayMethod = UpiApp | { vpa: string } | 'card' | { wallet: string } | 'more';
 
 /** What the payment page offers. `on` = Q40's switch is on and Custom UI is here. */
 export interface CheckoutMethods {
@@ -68,9 +68,9 @@ export interface CheckoutMethods {
 
 export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more' };
 
-/** How a method is remembered: the app id, 'upi', 'card', 'more' or 'wallet:phonepe'. */
+/** How a method is remembered: the app id, 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
 export const methodKey = (m: PayMethod) =>
-  typeof m === 'string' ? m : 'id' in m ? m.id : `wallet:${m.wallet}`;
+  typeof m === 'string' ? m : 'id' in m ? m.id : 'vpa' in m ? `vpa:${m.vpa}` : `wallet:${m.wallet}`;
 
 export interface SignedPayment {
   razorpay_payment_id: string;
@@ -107,6 +107,12 @@ const IOS_NAMES: Record<string, string> = { google_pay: 'Google Pay', phonepe: '
 // other app is its name in lower case without spaces.
 const IOS_SHORTCODES: Record<string, string> = { 'Google Pay': 'google_pay', 'BoB World UPI': 'bobupi', IndusInd: 'indusmobile', PopClub: 'popclubapp', Kotak811: 'kotakbank' };
 const iosShortcode = (name: string) => IOS_SHORTCODES[name] ?? name.toLowerCase().replace(/\s/g, '');
+// Only the big three get a row (iOS shortcodes, Android packages); every other
+// UPI app pays by UPI ID.
+const MAJOR_UPI_APPS = new Set(['google_pay', 'phonepe', 'paytm', 'com.google.android.apps.nbu.paisa.user', 'com.phonepe.app', 'net.one97.paytm']);
+
+/** name@bank: a UPI ID worth sending to Razorpay, which checks it's real. */
+export const isVpa = (v: string) => /^[\w.-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$/.test(v);
 
 /**
  * Custom UI is loaded defensively: binaries before 5.0.0 (and Expo Go) have no
@@ -178,12 +184,13 @@ async function payWallets(): Promise<PayOption[]> {
 /** The methodKey() the last successful payment on this phone used. */
 const lastMethodId = () => AsyncStorage.getItem(LAST_METHOD_KEY).catch(() => null);
 
-/** The method paid with last time, while it's still on offer; else the first UPI app, else UPI. */
+/** The method paid with last time, while it's still on offer; else the first UPI app, else a UPI ID. */
 function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): PayMethod {
   const [kind, code] = (last ?? '').split(':');
   if (kind === 'wallet' && wallets.some((w) => w.code === code)) return { wallet: code };
+  if (kind === 'vpa') return { vpa: code };
   if (last === 'card') return 'card';
-  return apps[0] ?? 'upi';
+  return apps[0] ?? { vpa: '' };
 }
 
 /**
@@ -194,7 +201,7 @@ function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): P
 export async function checkoutMethods(currency = 'INR'): Promise<CheckoutMethods> {
   if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return CHECKOUT_OFF;
   const [found, last, wallets] = await Promise.all([installedUpiApps(), lastMethodId(), payWallets()]);
-  const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last));
+  const apps = found.filter((a) => MAJOR_UPI_APPS.has(a.id)).sort((a, b) => Number(b.id === last) - Number(a.id === last));
   return { on: true, apps, wallets, selected: preselect(last, apps, wallets) };
 }
 
@@ -227,10 +234,11 @@ async function myEmail(): Promise<string> {
   }
 }
 
-/** Custom UI's options for a pick it pays without the sheet: a UPI app or a wallet. */
+/** Custom UI's options for a pick it pays without the sheet: a UPI app, a UPI ID or a wallet. */
 function directOptions(m: PayMethod | null): Record<string, string> | null {
   if (!m || typeof m === 'string') return null;
   if ('id' in m) return { method: 'upi', '_[flow]': 'intent', upi_app_package_name: m.id };
+  if ('vpa' in m) return isVpa(m.vpa) ? { method: 'upi', '_[flow]': 'collect', vpa: m.vpa } : null;
   return m.wallet ? { method: 'wallet', wallet: m.wallet } : null;
 }
 
@@ -238,7 +246,7 @@ function directOptions(m: PayMethod | null): Record<string, string> | null {
 function onlyInstrument(m: PayMethod | null): { method: string } | null {
   if (!m || m === 'more') return null;
   if (m === 'card') return { method: 'card' };
-  if (m === 'upi' || 'id' in m) return { method: 'upi' };
+  if ('id' in m || 'vpa' in m) return { method: 'upi' };
   return { method: 'wallet', ...(m.wallet && { wallets: [m.wallet] }) };
 }
 
@@ -255,7 +263,7 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
   const direct = customUi && currency === 'INR' && prefill.email && prefill.contact ? directOptions(chosen) : null;
   let payment: SignedPayment | null = null;
   if (customUi && direct) {
-    // Left for the UPI app or wallet: what comes back is the buyer's answer.
+    // Left for the UPI app (or to approve the UPI ID's request) or wallet: what comes back is the buyer's answer.
     let left = false;
     const away = AppState.addEventListener('change', (state) => {
       if (state === 'background') left = true;
