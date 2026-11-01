@@ -398,7 +398,7 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
                   <Text style={[styles.meta, { color: c.muted }]} numberOfLines={2}>
                     {invited
                       ? a.email.trim() ? 'Gets an invite once you pay' : 'You invite them after this'
-                      : `${a.email} · +91 ${a.mobile} · ${a.gender}`}
+                      : [a.email, `+91 ${a.mobile}`, a.gender].filter(Boolean).join(' · ')}
                   </Text>
                   {!invited
                     ? visibleFields(r.memberFields, a.customFields).filter((f) => f.field_type !== 'section').map((f) => {
