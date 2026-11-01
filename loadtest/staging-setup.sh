@@ -33,6 +33,18 @@ cd ~/unifesto
 # 1. Stop everything that started from the image.
 docker compose down --remove-orphans
 
+# A no-reboot image is only crash-consistent: an image built minutes before it
+# was taken can come out with empty files. Use the deployed release's tag, and
+# refuse a damaged image.
+sha=$(cat DEPLOYED_SHA 2>/dev/null || true)
+if [ -n "$sha" ] && docker image inspect "unifesto-backend:$sha" >/dev/null 2>&1; then
+  docker tag "unifesto-backend:$sha" unifesto-backend:latest
+fi
+if [ "$(docker run --rm --entrypoint sh unifesto-backend:latest -c 'wc -c < /app/package.json')" -lt 10 ]; then
+  echo "unifesto-backend:latest has empty files (built just before the image was taken); retag an older release" >&2
+  exit 1
+fi
+
 # 2. The copy, a local Redis, no scheduler, no outbound keys, fresh secrets.
 #    A new JWT_SECRET means no token minted here works on production.
 KEY=$(openssl rand -hex 24)
@@ -57,13 +69,16 @@ outbound = [
     'RESEND_API_KEY', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID',
     'ONESIGNAL_APP_ID', 'ONESIGNAL_REST_API_KEY', 'EXPO_TOKEN', 'ANTHROPIC_API_KEY',
     'CLOUDFLARE_API_TOKEN', 'UPTIMEROBOT_API_KEY', 'SENTRY_DSN', 'SENTRY_AUTH_TOKEN',
-    'SENTRY_API_TOKEN', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET',
-    'RAZORPAY_WEBHOOK_SECRET', 'RAZORPAY_ACCOUNT_NUMBER',
+    'SENTRY_API_TOKEN', 'RAZORPAY_ACCOUNT_NUMBER',
 ]
+# The Razorpay SDK refuses an empty key at boot; a placeholder can't charge
+# anyone, and the free-ticket test never calls Razorpay.
 edit('backend/.env', {
     'DATABASE_URL': to_copy, 'DIRECT_URL': to_copy,
     'REDIS_HOST': 'staging-redis', 'REDIS_PORT': '6379', 'REDIS_TLS': 'false',
     'SCHEDULER': 'off', 'JWT_SECRET': secrets.token_hex(32), 'INTERNAL_API_KEY': key,
+    'RAZORPAY_KEY_ID': 'rzp_test_loadtest_placeholder', 'RAZORPAY_KEY_SECRET': 'loadtest-placeholder',
+    'RAZORPAY_WEBHOOK_SECRET': 'loadtest-placeholder',
     **{k: '' for k in outbound},
 })
 edit('websites/web/.env.local', {'INTERNAL_API_KEY': key})

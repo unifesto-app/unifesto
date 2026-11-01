@@ -64,7 +64,11 @@ separate group keeps staging away from both until it's reconfigured.
 2. **Database copy:** restore as in section 1, but into `unifesto-staging-sg`
    only (not `unifesto-rds-sg`), with automated backups off.
 3. **Image:** EC2 `create-image` of the production server **with
-   `--no-reboot`** (the default reboots production).
+   `--no-reboot`** (the default reboots production). Take it when no deploy
+   ran in the last ~15 minutes: a no-reboot image is only crash-consistent,
+   and on 1 Nov a backend image built 7 minutes earlier came out with 15,000
+   empty files. The setup script uses the `DEPLOYED_SHA` tag and refuses a
+   damaged image. A first image of the 50 GB disk took about 30 minutes.
 4. **Host:** a `t3.large` (production's size, so the numbers mean something)
    from that image, in production's subnet and `unifesto-staging-sg`, with a
    public IP and **no IAM instance profile**: SES and S3 use the server's role,
@@ -82,7 +86,8 @@ separate group keeps staging away from both until it's reconfigured.
    It refuses production's instance and database, stops what booted, then:
    points the backend at the copy and a local Redis, sets `SCHEDULER=off`,
    blanks every outbound key (Resend, WhatsApp, push, Expo, Anthropic,
-   Cloudflare, UptimeRobot, Sentry, Razorpay), sets a new `JWT_SECRET` (no
+   Cloudflare, UptimeRobot, Sentry), gives Razorpay placeholder keys (its SDK
+   refuses an empty key at boot), sets a new `JWT_SECRET` (no
    token minted on staging works on production) and a new `INTERNAL_API_KEY`,
    removes Caddy's `client_auth` block (k6 doesn't come through Cloudflare),
    and on the copy only clears device tokens, turns on the App Review sign-in
