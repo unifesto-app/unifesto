@@ -1,4 +1,5 @@
-import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import { AppState, NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -10,8 +11,8 @@ import { getUserIdentities } from './api/auth';
  *
  * A UPI app, bank or wallet picked at checkout opens straight away through
  * Razorpay Custom UI, with no sheet. A card, or a pick Custom UI can't take
- * (no phone number, older binary), opens Razorpay Standard Checkout showing
- * only that method; "Cards, netbanking and more" opens the whole sheet, UPI
+ * (no phone number, older binary, or it fails before anything opens), opens
+ * Razorpay Standard Checkout showing only that method; "Cards, netbanking and more" opens the whole sheet, UPI
  * first. Either way the result is the signed payment the backend verifies,
  * and the webhook settles it if the app dies mid-payment: the money path
  * doesn't change.
@@ -255,20 +256,36 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
   const currency = order.currency || 'INR';
   // Razorpay needs both to pay outside the sheet; the sheet asks.
   const direct = customUi && currency === 'INR' && prefill.email && prefill.contact ? directOptions(chosen) : null;
-  let payment: SignedPayment;
+  let payment: SignedPayment | null = null;
   if (customUi && direct) {
-    payment = await customUi.open({
-      key_id: order.razorpayKeyId,
-      order_id: order.razorpayOrderId,
-      // Razorpay's sample sends paise as a string; the Android bridge turns numbers into doubles.
-      amount: String(order.amount),
-      currency,
-      description: details.description,
-      email: prefill.email,
-      contact: prefill.contact,
-      ...direct,
+    // Left for the UPI app or bank: what comes back is the buyer's answer.
+    let left = false;
+    const away = AppState.addEventListener('change', (state) => {
+      if (state === 'background') left = true;
     });
-  } else {
+    try {
+      payment = await customUi.open({
+        key_id: order.razorpayKeyId,
+        order_id: order.razorpayOrderId,
+        // Razorpay's sample sends paise as a string; the Android bridge turns numbers into doubles.
+        amount: String(order.amount),
+        currency,
+        description: details.description,
+        email: prefill.email,
+        contact: prefill.contact,
+        ...direct,
+      });
+    } catch (err: any) {
+      // Custom UI's own Cancel (iOS) or back press (Android), or an answer from the app or bank.
+      if (left || /User Cancelled Payment|back button/i.test(err?.description ?? '')) throw err;
+      // Custom UI failed before anything opened: say why, then pay the same pick in the sheet.
+      console.warn('[pay] Custom UI failed, opening the sheet', err);
+      Sentry.captureMessage(`Custom UI failed (${direct.method}): ${err?.code} ${err?.description ?? ''}`, 'warning');
+    } finally {
+      away.remove();
+    }
+  }
+  if (!payment) {
     const only = onlyInstrument(chosen);
     // A UPI pick (or, with nothing picked, a UPI habit) opens the sheet on UPI.
     const last = chosen ? null : await lastMethodId();
