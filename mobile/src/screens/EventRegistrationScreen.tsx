@@ -50,7 +50,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title="Registration" step={null} secondsLeft={null} onBack={null} onClose={close} />
+        <FlowHeader title="Registration" step={null} onBack={null} onClose={close} />
         <View style={{ paddingHorizontal: GUTTER, paddingTop: spacing[6], gap: spacing[3] }}>
           <Skeleton width="60%" height={28} borderRadius={8} />
           <Skeleton width="40%" height={14} borderRadius={6} style={{ marginBottom: spacing[3] }} />
@@ -66,7 +66,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title="Registration" step={null} secondsLeft={null} onBack={null} onClose={close} />
+        <FlowHeader title="Registration" step={null} onBack={null} onClose={close} />
         <StateView
           icon={<CalendarX size={56} color={c.muted} weight="duotone" />}
           title="We couldn't find this event"
@@ -82,7 +82,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title={r.event.title} step={null} secondsLeft={null} onBack={null} onClose={close} />
+        <FlowHeader title={r.event.title} step={null} onBack={null} onClose={close} />
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={[column, styles.content, { paddingBottom: barSpace }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <ProfileGate r={r} />
@@ -97,7 +97,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title={r.event.title} step={null} secondsLeft={null} onBack={null} onClose={close} />
+        <FlowHeader title={r.event.title} step={null} onBack={null} onClose={close} />
         <StateView
           icon={<TicketIcon size={56} color={c.muted} weight="duotone" />}
           title="No tickets yet"
@@ -128,7 +128,6 @@ export default function EventRegistrationScreen() {
         title={r.event.title}
         step={r.step}
         steps={r.steps}
-        secondsLeft={null}
         onBack={r.step !== 'ticket' ? r.back : null}
         onClose={r.confirmLeave}
       />

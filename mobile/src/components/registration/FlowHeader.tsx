@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { CaretLeft, Timer, X } from '@unifesto/unicon/react-native';
+import { CaretLeft, X } from '@unifesto/unicon/react-native';
 import PressableScale from '../ui/PressableScale';
 import { STEPS, type StepType } from '../../hooks/useEventRegistration';
 import { spacing } from '../../theme/spacing';
@@ -24,19 +24,17 @@ export function SheetTop({ children, style, fill }: { children?: React.ReactNode
   );
 }
 
-const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-
 /**
- * Registration header: back/close on the left, the event title, the seat-hold
- * countdown on the right, then one labelled segment per step, so the whole
- * route (and where you are on it) is visible at a glance. The step's own
- * heading lives in the body, so the header never repeats it.
+ * Registration header: back/close on the left, the event title, then one
+ * labelled segment per step, so the whole route (and where you are on it) is
+ * visible at a glance. The step's own heading lives in the body, so the header
+ * never repeats it. No seat-hold countdown: seats aren't held before payment
+ * (Q37); checkout trusts the server's stock (A31).
  */
 export function FlowHeader({
   title,
   step,
   steps = STEPS,
-  secondsLeft,
   onBack,
   onClose,
 }: {
@@ -44,13 +42,11 @@ export function FlowHeader({
   step: StepType | null;
   /** Visible steps; Details drops out when there's nothing to fill in. */
   steps?: typeof STEPS;
-  secondsLeft: number | null;
   onBack: (() => void) | null;
   onClose: () => void;
 }) {
   const c = useCosmos();
   const index = step ? steps.findIndex((s) => s.id === step) : -1;
-  const urgent = secondsLeft != null && secondsLeft <= 120;
 
   return (
     <SheetTop style={{ paddingHorizontal: GUTTER }}>
@@ -66,18 +62,8 @@ export function FlowHeader({
           {onBack ? <CaretLeft size={24} color={c.text} weight="bold" /> : <X size={24} color={c.text} weight="bold" />}
         </PressableScale>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">{title}</Text>
-        <View style={[styles.side, styles.right]}>
-          {secondsLeft != null ? (
-            <View
-              style={styles.timer}
-              accessible
-              accessibilityLabel={`Seat held for ${Math.ceil(secondsLeft / 60)} more minute${secondsLeft > 60 ? 's' : ''}`}
-            >
-              <Timer size={16} color={urgent ? c.warn : c.muted} weight="bold" />
-              <Text style={[styles.timerText, { color: urgent ? c.warn : c.soft }]}>{mmss(secondsLeft)}</Text>
-            </View>
-          ) : null}
-        </View>
+        {/* Balances the close button so the title stays centred. */}
+        <View style={styles.side} />
       </View>
 
       {index >= 0 ? (
@@ -114,10 +100,7 @@ function Segment({ filled, color, track }: { filled: boolean; color: string; tra
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', height: 44 },
   side: { width: 76, height: 44, justifyContent: 'center' },
-  right: { alignItems: 'flex-end' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, ...cosmosFont.strong },
-  timer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timerText: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   progress: { flexDirection: 'row', gap: 6, marginTop: spacing[3], paddingBottom: spacing[3] },
   stepCol: { flex: 1, gap: spacing[2] },
   segment: { height: 4, borderRadius: 2, overflow: 'hidden' },
