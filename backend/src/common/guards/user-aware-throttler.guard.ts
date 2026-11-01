@@ -50,6 +50,11 @@ export class UserAwareThrottlerGuard extends ThrottlerGuard {
    * would 429 the whole public site. Unset INTERNAL_API_KEY = never skip.
    */
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    // APP_GUARD also runs on Socket.IO messages, where the "request" is the
+    // socket: no ip, no headers. Every socket on the platform would share one
+    // `ip:undefined` bucket, so a live quiz past 300 joins a minute locks the
+    // rest out. The HTTP refetches those sockets trigger are still limited.
+    if (context.getType() !== 'http') return true;
     const req = context.switchToHttp().getRequest<Record<string, any>>();
     if (isInternalRequest(req?.headers?.['x-internal-key'])) return true;
     return super.shouldSkip(context);
