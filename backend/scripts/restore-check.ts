@@ -19,7 +19,6 @@ const TABLES = [
   'event_registrations',
   'event_tickets',
   'group_seat_purchases',
-  'session_registrations',
   'payouts',
   'refund_requests',
   'support_tickets',
@@ -34,6 +33,15 @@ async function main() {
     console.log(`host        ${new URL(process.env.DATABASE_URL ?? 'postgresql://unknown').host}`);
     console.log(`migrations  ${m.n} applied, last ${m.last}`);
     for (const t of TABLES) {
+      // A table a later migration drops shows as missing instead of ending the run.
+      const [{ ok }] = await prisma.$queryRawUnsafe<{ ok: boolean }[]>(
+        `SELECT to_regclass($1) IS NOT NULL AS ok`,
+        t,
+      );
+      if (!ok) {
+        console.log(`${t.padEnd(22)} missing`);
+        continue;
+      }
       // Most tables stamp created_at; registration tables stamp registered_at.
       const cols = await prisma.$queryRawUnsafe<{ column_name: string }[]>(
         `SELECT column_name FROM information_schema.columns
