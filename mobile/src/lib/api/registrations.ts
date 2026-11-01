@@ -23,6 +23,8 @@ export const createPaymentOrder = async (eventId: string, data: {
   quantity: number;
   groupSize?: number;
   groupMembers?: Array<Record<string, any>>;
+  /** Q16: teammates named by email while booking; invited once the booking is paid. */
+  teammateEmails?: string[];
   formResponses?: Record<string, any>;
   /** Optional discount code, applied to the base ticket amount at checkout. */
   couponCode?: string;

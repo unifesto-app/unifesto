@@ -223,6 +223,11 @@ export class RegistrationConfirmationsService {
       email,
     );
 
+    // Q16: teammates the lead named by email at booking get their claim links now that it's paid.
+    await this.groupSeats
+      .sendBookingInvites(fullRegistration.id, fullRegistration.event.title)
+      .catch((err) => this.logger.error('Failed to send booking invites', err));
+
     // Offline push confirmation (best-effort, decoupled via the event bus).
     this.events.emit(NotificationEvents.RegistrationConfirmed, {
       userId: fullRegistration.userId,

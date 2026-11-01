@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User, UserSwitch } from '@unifesto/unicon/react-native';
+import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User } from '@unifesto/unicon/react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import useTopSpacing from '../../src/hooks/useTopSpacing';
 import Skeleton from '../../src/components/Skeleton';
@@ -54,7 +54,7 @@ export default function ClaimSeatRoute() {
   const barSpace = useActionBarSpace();
   const { token: rawToken } = useLocalSearchParams<{ token: string }>();
   const token = String(rawToken ?? '');
-  const { token: authToken, isLoading: authLoading, logout } = useAuth();
+  const { token: authToken, isLoading: authLoading } = useAuth();
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [info, setInfo] = useState<ClaimInfo | null>(null);
@@ -202,7 +202,6 @@ export default function ClaimSeatRoute() {
   }
 
   if (phase !== 'ready') {
-    const different = /different account/i.test(error);
     const taken = /already been claimed/i.test(error);
     // Event over / cancelled / not open, or the group was cancelled: a new invite won't help.
     const over = /ended|cancelled|isn't open/i.test(error);
@@ -211,7 +210,7 @@ export default function ClaimSeatRoute() {
         ? {
             icon: <Ticket size={64} color={c.text} weight="duotone" />,
             title: "You've been invited",
-            body: 'Sign in to claim your seat. Use the email address your invite was sent to.',
+            body: 'Sign in with any account to claim your seat.',
             action: 'Sign in to claim',
             onAction: () => router.push({ pathname: '/login', params: { redirect: `/claim/${token}` } }),
           }
@@ -239,29 +238,17 @@ export default function ClaimSeatRoute() {
                 action: 'Done',
                 onAction: leave,
               }
-            : different
-              ? {
-                  icon: <UserSwitch size={64} color={c.text} weight="duotone" />,
-                  title: 'Wrong account',
-                  // The server names the invited address (masked), e.g. "dh•••@wegobeyond.in".
-                  body: error,
-                  action: 'Sign in with that email',
-                  onAction: async () => {
-                    await logout().catch(() => {});
-                    router.replace({ pathname: '/login', params: { redirect: `/claim/${token}` } });
-                  },
-                }
-              : {
-                  icon: <LinkBreak size={64} color={c.muted} weight="duotone" />,
-                  title: taken ? 'This seat is taken' : over ? "This seat can't be claimed" : "This link doesn't work",
-                  body: taken
-                    ? 'Someone has already claimed this seat. If it was meant for you, ask your team lead to send a new invite.'
-                    : over
-                      ? `${error.replace(/\.$/, '')}.`
-                      : `${error.replace(/\.$/, '')}. Ask your team lead to send a new invite.`,
-                  action: 'Go back',
-                  onAction: leave,
-                };
+            : {
+                icon: <LinkBreak size={64} color={c.muted} weight="duotone" />,
+                title: taken ? 'This seat is taken' : over ? "This seat can't be claimed" : "This link doesn't work",
+                body: taken
+                  ? 'Someone has already claimed this seat. If it was meant for you, ask your team lead to send a new invite.'
+                  : over
+                    ? `${error.replace(/\.$/, '')}.`
+                    : `${error.replace(/\.$/, '')}. Ask your team lead to send a new invite.`,
+                action: 'Go back',
+                onAction: leave,
+              };
 
     return (
       <View style={[styles.flex, { backgroundColor: c.bg }]}>
@@ -275,11 +262,6 @@ export default function ClaimSeatRoute() {
           {phase === 'already' ? (
             <Text style={[styles.link, { color: c.soft, marginTop: spacing[5] }]} onPress={decline}>
               Decline this invite
-            </Text>
-          ) : null}
-          {different && phase === 'error' ? (
-            <Text style={[styles.link, { color: c.soft, marginTop: spacing[5] }]} onPress={leave}>
-              Not now
             </Text>
           ) : null}
           {phase === 'claimed' && eventLink ? (
