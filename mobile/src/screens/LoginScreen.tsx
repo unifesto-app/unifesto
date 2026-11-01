@@ -30,6 +30,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cognitoDiscovery, COGNITO_REDIRECT_URI, exchangeCognitoCode } from '../lib/api/cognito';
 import * as AuthSession from 'expo-auth-session';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Passkeys from 'react-native-passkeys';
+import { LockKey } from '@unifesto/unicon/react-native';
+import { passkeyCancelled } from '../lib/api/auth';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import AuthButton from '../components/auth/AuthButton';
@@ -80,6 +83,7 @@ export default function NewLoginScreen() {
     verifyMobileOtp,
     loginWithCognito,
     loginWithApple,
+    loginWithPasskey,
     user,
     token,
     isAuthenticated,
@@ -370,6 +374,18 @@ export default function NewLoginScreen() {
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      await loginWithPasskey();
+    } catch (err: any) {
+      if (!passkeyCancelled(err)) setError(err.message || 'Passkey sign-in failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ── Navigation ─────────────────────────────────────────────────────────────
   const goTo = (next: LoginStep) => {
     setError('');
@@ -532,6 +548,15 @@ export default function NewLoginScreen() {
           <SocialAuthButton provider="apple" onPress={handleAppleLogin} disabled={isLoading} />
         )}
         <SocialAuthButton provider="google" onPress={handleGoogleLogin} disabled={isLoading} />
+        {Passkeys.isSupported() && (
+          <AuthButton
+            variant="secondary"
+            label="Sign in with a passkey"
+            icon={<LockKey size={20} color={c.text} />}
+            onPress={handlePasskeyLogin}
+            disabled={isLoading}
+          />
+        )}
       </View>
 
       <View style={styles.divider}>

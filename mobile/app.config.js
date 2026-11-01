@@ -74,7 +74,9 @@ module.exports = () => {
       },
       associatedDomains: [
         "applinks:unifesto.app",
-        "applinks:www.unifesto.app"
+        "applinks:www.unifesto.app",
+        // Passkeys: the AASA's webcredentials lets the app sign for unifesto.app.
+        "webcredentials:unifesto.app"
       ],
       usesAppleSignIn: true
     },

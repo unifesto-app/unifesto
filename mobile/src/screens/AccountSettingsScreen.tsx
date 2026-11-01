@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as Passkeys from 'react-native-passkeys';
 import { CheckCircle, Trash } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
@@ -49,6 +50,9 @@ const lastActive = (iso: string) => {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
+/** "12 Oct 2026". */
+const addedOn = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
 /** One row per email: Google and Email sign-ins on the same address merge. */
 function groupByEmail(identities: AuthAPI.UserIdentity[]) {
   const groups: { email: string | null; identities: AuthAPI.UserIdentity[] }[] = [];
@@ -74,6 +78,7 @@ export default function AccountSettingsScreen() {
   const [identities, setIdentities] = useState<AuthAPI.UserIdentity[]>([]);
   // null hides the section: a failed load shouldn't take the whole screen down.
   const [devices, setDevices] = useState<AuthAPI.LinkedDevice[] | null>(null);
+  const [passkeys, setPasskeys] = useState<AuthAPI.Passkey[] | null>(null);
   const [managing, setManaging] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -82,14 +87,16 @@ export default function AccountSettingsScreen() {
       return;
     }
     try {
-      const [userProfile, userIdentities, linkedDevices] = await Promise.all([
+      const [userProfile, userIdentities, linkedDevices, myPasskeys] = await Promise.all([
         AuthAPI.getCurrentUser(),
         AuthAPI.getUserIdentities(),
         AuthAPI.getLinkedDevices().catch(() => null),
+        Passkeys.isSupported() ? AuthAPI.getPasskeys().catch(() => null) : null,
       ]);
       setProfile(userProfile);
       setIdentities(userIdentities);
       setDevices(linkedDevices);
+      setPasskeys(myPasskeys);
     } catch (error) {
       if (__DEV__) console.error('Failed to load data:', error);
       AppAlert.alert('Error', 'Failed to load account settings');
@@ -145,6 +152,33 @@ export default function AccountSettingsScreen() {
             await loadData();
           } catch (e: any) {
             AppAlert.alert('Error', e.message || "Couldn't sign that device out");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleAddPasskey = async () => {
+    try {
+      await AuthAPI.addPasskey();
+      await loadData();
+    } catch (e: any) {
+      if (!AuthAPI.passkeyCancelled(e)) AppAlert.alert("Couldn't add a passkey", e.message || 'Try again.');
+    }
+  };
+
+  const confirmRemovePasskey = (passkey: AuthAPI.Passkey) => {
+    AppAlert.alert(`Remove the passkey from ${passkey.name}?`, 'It stops signing in to my account right away.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await AuthAPI.removePasskey(passkey.id);
+            await loadData();
+          } catch (e: any) {
+            AppAlert.alert('Error', e.message || "Couldn't remove that passkey");
           }
         },
       },
@@ -309,6 +343,30 @@ export default function AccountSettingsScreen() {
             <Text style={[styles.note, { color: c.muted }]}>Add another sign-in before removing this one.</Text>
           ) : null}
         </Section>
+
+        {passkeys ? (
+          <Section title="Passkeys" subtitle="Sign in with my face, fingerprint or screen lock" style={styles.section}>
+            <SettingsGroup style={styles.group} action={{ label: 'Add', onPress: handleAddPasskey }}>
+              {passkeys.length === 0 ? (
+                <SettingsRow icon={unicon('lock-key')} label="No passkeys yet" />
+              ) : (
+                passkeys.map((p) => (
+                  <SettingsRow
+                    key={p.id}
+                    icon={unicon('lock-key')}
+                    label={p.name}
+                    value={`Added ${addedOn(p.createdAt)}`}
+                    trailing={
+                      <Pressable onPress={() => confirmRemovePasskey(p)} hitSlop={8} accessibilityRole="button">
+                        <Text style={[styles.inlineAction, { color: c.text }]}>Remove</Text>
+                      </Pressable>
+                    }
+                  />
+                ))
+              )}
+            </SettingsGroup>
+          </Section>
+        ) : null}
 
         {devices?.length ? (
           <Section title="Linked devices" subtitle="Phones and browsers signed in to my account">

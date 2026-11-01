@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import * as Passkeys from 'react-native-passkeys';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
 import { getToken, getRefreshToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest, onSessionEnded, readJson, errorFrom } from '../lib/api/helpers';
 import { readCache } from '../lib/offline/responseCache';
@@ -46,6 +47,8 @@ interface AuthContextType {
   // Social Auth
   loginWithApple: (identityToken: string, authorizationCode: string) => Promise<void>;
   loginWithCognito: (idToken: string) => Promise<void>;
+  /** A passkey only exists on a finished account, so this never needs the mobile step. */
+  loginWithPasskey: () => Promise<void>;
   // Actions
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -271,6 +274,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await handleAuthSuccess(data.accessToken, data.user, data.refreshToken);
   };
 
+  const loginWithPasskey = async () => {
+    const options = await makePublicRequest('/auth/passkeys/sign-in/options', { method: 'POST' });
+    if (!options?.ok) throw await errorFrom(options, "Couldn't start passkey sign-in");
+    const answer = await Passkeys.get(await options.json());
+    if (!answer) throw new Error('No passkey was picked');
+    const response = await makePublicRequest('/auth/passkeys/sign-in', {
+      method: 'POST',
+      body: JSON.stringify(answer),
+    });
+    if (!response?.ok) throw await errorFrom(response, 'Passkey sign-in failed');
+    const data = await response.json();
+    await handleAuthSuccess(data.accessToken, data.user, data.refreshToken);
+  };
+
   const logout = async () => {
     // Detach the device server-side first — the DELETE needs the auth token.
     await unregisterPushDevice();
@@ -322,7 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tempToken,
       sendMobileOtp, verifyMobileOtp,
       sendEmailOtp, verifyEmailOtp,
-      loginWithApple, loginWithCognito,
+      loginWithApple, loginWithCognito, loginWithPasskey,
       logout, refreshUser, updateUser,
     }}>
       {children}
