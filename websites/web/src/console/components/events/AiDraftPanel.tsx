@@ -23,6 +23,7 @@ const FAILED: Record<Extract<EventDraftResult, { ok: false }>["reason"], string>
   refused: "AI could not draft from that. Try different notes.",
   error: "AI could not draft this one. Try again, or write it yourself.",
   empty: "There wasn't enough about an event to draft from. Add a few more details.",
+  held: "The draft quoted a price, date or contact your notes don't have. Add it to your notes and try again.",
 };
 
 interface AgendaRow {
@@ -109,6 +110,7 @@ export function AiDraftPanel({
     setFaqs(data.draft.faqs);
     setApplied({ description: false, agenda: 0, faqs: 0 });
     setApplyError(null);
+    if (data.dropped?.length) setNote(`Left out what your notes don't back up: ${data.dropped.join("; ")}`);
   };
 
   const editAgenda = (i: number, patch: Partial<AgendaRow>) =>

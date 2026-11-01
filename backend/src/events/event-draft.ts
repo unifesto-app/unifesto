@@ -7,6 +7,7 @@ import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
 import { BlockList, isIP, type LookupFunction } from 'net';
 import { AiService, type AiResult, type AiRunInput } from '../ai/ai.service';
+import { ungrounded } from '../ai/grounding';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from './events.service';
 
@@ -92,6 +93,8 @@ export interface EventDraftInput {
   venue?: string | null;
   notes?: string;
   pageText?: string;
+  /** Each day of the event ("15 Nov"): not sent, but a multi-day agenda may name its middle days. */
+  dayLabels?: string[];
 }
 
 export const MAX_NOTES_CHARS = 4000;
@@ -114,6 +117,32 @@ export function eventDraftRequest(e: EventDraftInput): Pick<AiRunInput, 'system'
     system: EVENT_DRAFT_SYSTEM,
     messages: [{ role: 'user', content } satisfies Anthropic.MessageParam],
     outputConfig: { effort: 'low', format: { type: 'json_schema', schema: EVENT_DRAFT_SCHEMA } },
+  };
+}
+
+/** What a draft may quote (AI10): the facts, notes and page it was given, and the event's days. */
+export function eventDraftSource(e: EventDraftInput): string {
+  return [eventDraftRequest(e).messages[0].content as string, ...(e.dayLabels ?? [])].join('\n');
+}
+
+/**
+ * AI10: a part of the draft that quotes an amount, date, link, email or phone
+ * the source never gave is left out, and the curator is told why.
+ */
+export function groundEventDraft(draft: EventDraft, source: string): { draft: EventDraft; dropped: string[] } {
+  const dropped: string[] = [];
+  const keep = (label: string, ...texts: (string | undefined)[]) => {
+    const why = ungrounded(texts.filter(Boolean).join('\n'), source);
+    if (why) dropped.push(`${label}: ${why}`);
+    return !why;
+  };
+  return {
+    draft: {
+      description: keep('Description', draft.description) ? draft.description : '',
+      agenda: draft.agenda.filter((a) => keep(`Agenda "${a.title.slice(0, 60)}"`, a.title, a.detail)),
+      faqs: draft.faqs.filter((f) => keep(`FAQ "${f.question.slice(0, 60)}"`, f.question, f.answer)),
+    },
+    dropped,
   };
 }
 
@@ -297,8 +326,9 @@ export class EventDraftDto {
 }
 
 export type EventDraftResult =
-  | { ok: true; draft: EventDraft }
-  | { ok: false; reason: Extract<AiResult, { ok: false }>['reason'] | 'empty' };
+  /** `dropped`: parts left out by the AI10 check, and why. */
+  | { ok: true; draft: EventDraft; dropped?: string[] }
+  | { ok: false; reason: Extract<AiResult, { ok: false }>['reason'] | 'empty' | 'held'; why?: string };
 
 const IST = 'Asia/Kolkata';
 const dayKey = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: IST });
@@ -337,21 +367,30 @@ export class EventDraftService {
       1,
       Math.round((Date.parse(dayKey(event.endDateTime)) - Date.parse(dayKey(event.startDateTime))) / 86_400_000) + 1,
     );
+    const input: EventDraftInput = {
+      title: event.title,
+      type: event.type,
+      when: `${fmt(event.startDateTime)} to ${fmt(event.endDateTime)} IST`,
+      days,
+      venue: [event.venueName, event.city].filter(Boolean).join(', ') || null,
+      notes,
+      pageText,
+      dayLabels: Array.from({ length: Math.min(days, 31) }, (_, i) =>
+        new Date(event.startDateTime.getTime() + i * 86_400_000).toLocaleDateString('en-IN', { timeZone: IST, day: 'numeric', month: 'short' }),
+      ),
+    };
     const res = await this.ai.run('event_draft', {
-      ...eventDraftRequest({
-        title: event.title,
-        type: event.type,
-        when: `${fmt(event.startDateTime)} to ${fmt(event.endDateTime)} IST`,
-        days,
-        venue: [event.venueName, event.city].filter(Boolean).join(', ') || null,
-        notes,
-        pageText,
-      }),
+      ...eventDraftRequest(input),
       userId,
       subject: `event:${event.id}`,
+      spaceId: event.spaceId,
+      billable: true,
     });
     if (!res.ok) return { ok: false, reason: res.reason };
     const draft = parseEventDraft(res.json, days);
-    return draft ? { ok: true, draft } : { ok: false, reason: 'empty' };
+    if (!draft) return { ok: false, reason: 'empty' };
+    const { draft: kept, dropped } = groundEventDraft(draft, eventDraftSource(input));
+    if (!kept.description && !kept.agenda.length && !kept.faqs.length) return { ok: false, reason: 'held', why: dropped[0] };
+    return { ok: true, draft: kept, ...(dropped.length ? { dropped } : {}) };
   }
 }

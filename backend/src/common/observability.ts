@@ -29,15 +29,21 @@ export function initSentry(): void {
   });
 }
 
-/** Send an error to Sentry with a few searchable tags. No-op without a DSN. */
+/**
+ * Send an error to Sentry with a few searchable tags. No-op without a DSN.
+ * `fingerprint` splits one call site into separate issues (one per AI feature,
+ * say), so each gets its own alert.
+ */
 export function reportError(
   error: unknown,
   tags: Record<string, string | undefined> = {},
+  fingerprint?: string[],
 ): void {
   if (!sentry) return;
   const s = sentry;
   s.withScope((scope) => {
     for (const [k, v] of Object.entries(tags)) if (v) scope.setTag(k, v);
+    if (fingerprint) scope.setFingerprint(fingerprint);
     s.captureException(error);
   });
 }

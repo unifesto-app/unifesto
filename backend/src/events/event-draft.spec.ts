@@ -171,9 +171,38 @@ describe('EventDraftService', () => {
     });
     const [feature, input] = ai.run.mock.calls[0];
     expect(feature).toBe('event_draft');
-    expect(input).toMatchObject({ userId: 'u1', subject: 'event:e1' });
+    expect(input).toMatchObject({ userId: 'u1', subject: 'event:e1', spaceId: 's1', billable: true });
     // 6 Nov 18:00 IST to 7 Nov 12:00 IST is two event days.
     expect(input.messages[0].content).toMatch(/\(2 days\)/);
+  });
+
+  it('leaves out parts that quote a price or date it was never given, and says why (AI10)', async () => {
+    const json = {
+      enough: true,
+      description: 'An overnight build on 6 Nov, through to 7 November.',
+      agenda: [{ day: 1, start: '', end: '', title: 'Check-in', detail: 'Pay ₹200 at the desk' }],
+      faqs: [
+        { question: 'Is there a fee?', answer: 'Yes, ₹499 per team.' },
+        { question: 'Food?', answer: 'Dinner is on us.' },
+      ],
+    };
+    const { svc } = setup(true, { ok: true, text: '', json });
+    await expect(svc.draft('u1', 'e1', { notes: 'overnight hack, dinner provided' })).resolves.toEqual({
+      ok: true,
+      draft: { description: json.description, agenda: [], faqs: [json.faqs[1]] },
+      dropped: [
+        'Agenda "Check-in": amount "₹200" is not in the source',
+        'FAQ "Is there a fee?": amount "₹499" is not in the source',
+      ],
+    });
+
+    // Nothing left: held, with the reason, never an empty draft.
+    const only = { ...json, description: '', agenda: [], faqs: [json.faqs[0]] };
+    await expect(setup(true, { ok: true, text: '', json: only }).svc.draft('u1', 'e1', { notes: 'hack' })).resolves.toEqual({
+      ok: false,
+      reason: 'held',
+      why: 'FAQ "Is there a fee?": amount "₹499" is not in the source',
+    });
   });
 
   it('says so when the model had nothing to draft from', async () => {

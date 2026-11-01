@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { User } from '@prisma/client';
 import { ReportType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
@@ -55,6 +56,7 @@ export class ReportsController {
   /** Re-render a report in place with a fresh AI summary (M3; ended events only). */
   @Post(':reportId/regenerate')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
   regenerate(
     @CurrentUser() user: User,
     @Param('eventId') eventId: string,

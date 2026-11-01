@@ -9,10 +9,11 @@ import {
   actionCard,
   botHistory,
   botTurn,
-  ungrounded,
+  botSource,
   type BotIo,
 } from './support-bot';
 import type { AiResult, AiService } from '../ai/ai.service';
+import { ungrounded } from '../ai/grounding';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SupportService } from './support.service';
 
@@ -87,25 +88,25 @@ describe('Assist bot (D14)', () => {
     ];
     // Grounded: amounts from facts (any formatting) or an earlier Assist reply, links/contacts a tool returned.
     for (const ok of ['You can get ₹500 back; you paid Rs. 520 incl. ₹20.', 'That was 125000 rupees.', 'See https://unifesto.app/help/refunds or www.fest.in/map.', 'Mail help@fest.in or call 9000011111.', 'Banks take 5 to 7 working days, by 01-01-2099.'])
-      expect(ungrounded(ok, said)).toBeNull();
+      expect(ungrounded(ok, botSource(said))).toBeNull();
     // Only the person said these, or nobody did.
-    expect(ungrounded('Your ₹5,000 refund is approved.', said)).toBe('amount "₹5,000" is not in the facts');
-    expect(ungrounded('You get INR 499.', said)).toMatch(/amount/);
-    expect(ungrounded('Pay at https://rzp.io/x', said)).toBe('link to rzp.io is not from a tool');
-    expect(ungrounded('We will mail a@b.com', said)).toBe('email address is not from a tool');
-    expect(ungrounded('We will call +91 98765 43210', said)).toBe('phone number is not from a tool');
+    expect(ungrounded('Your ₹5,000 refund is approved.', botSource(said))).toBe('amount "₹5,000" is not in the source');
+    expect(ungrounded('You get INR 499.', botSource(said))).toMatch(/amount/);
+    expect(ungrounded('Pay at https://rzp.io/x', botSource(said))).toBe('link to rzp.io is not in the source');
+    expect(ungrounded('We will mail a@b.com', botSource(said))).toBe('email address is not in the source');
+    expect(ungrounded('We will call +91 98765 43210', botSource(said))).toBe('phone number is not in the source');
 
     const replies = [toolCall('booking_facts', { registrationId: 'r1' }), answer('Your ₹5,000 refund is on its way.')];
     const turn = await botTurn([{ role: 'user', content: 'refund?' }], false, {
       call: async () => replies.shift()!,
       exec: async () => ({ facts: describeBooking(facts) }),
     });
-    expect(turn).toMatchObject({ text: null, held: { why: 'amount "₹5,000" is not in the facts', draft: 'Your ₹5,000 refund is on its way.' } });
+    expect(turn).toMatchObject({ text: null, held: { why: 'amount "₹5,000" is not in the source', draft: 'Your ₹5,000 refund is on its way.' } });
 
     const { bot, prisma, support } = setup(answer('Your ₹5,000 refund is approved.'));
     await bot.say('t1', 'u1', 'help');
     expect(prisma.supportMessage.create).toHaveBeenCalledWith({ data: expect.objectContaining({ body: expect.stringContaining('passed it to a person') }) });
-    expect(support.handoff).toHaveBeenCalledWith('t1', 'u1', 'reply held, amount "₹5,000" is not in the facts. Draft: Your ₹5,000 refund is approved.');
+    expect(support.handoff).toHaveBeenCalledWith('t1', 'u1', 'reply held, amount "₹5,000" is not in the source. Draft: Your ₹5,000 refund is approved.');
   });
 
   it('cards follow the booking facts, not the model', () => {

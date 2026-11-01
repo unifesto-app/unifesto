@@ -14,6 +14,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
 import { EventStatus } from '@prisma/client';
@@ -252,6 +253,7 @@ export class EventsController {
 
   @Post(':id/ai-draft')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
   async aiDraft(@Request() req, @Param('id') id: string, @Body() dto: EventDraftDto) {
     return this.eventDraft.draft(req.user.id, id, dto);
   }

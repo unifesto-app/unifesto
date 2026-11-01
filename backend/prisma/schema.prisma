@@ -5926,9 +5926,15 @@ model AiRun {
   userId           String?      @map("user_id") @db.Uuid
   /// What the call was about, e.g. "case:<id>".
   subject          String?      @db.VarChar(80)
+  /// The space the call was for, if any (no FK, like userId).
+  spaceId          String?      @map("space_id") @db.Uuid
+  /// Counts toward the space's monthly AI requests (AI17).
+  billable         Boolean      @default(false)
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, feature, createdAt])
+  /// AI9's 24-hour spend per feature.
+  @@index([feature, createdAt])
   @@index([createdAt])
   @@map("ai_runs")
 }

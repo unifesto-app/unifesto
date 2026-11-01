@@ -3,6 +3,7 @@ import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nest
 import { OnEvent } from '../common/on-event';
 import { SupportDesk, SupportMessageSide } from '@prisma/client';
 import { AiService, type AiResult, type AiRunInput } from '../ai/ai.service';
+import { ungrounded } from '../ai/grounding';
 import { PrismaService } from '../prisma/prisma.service';
 import { describeBooking, loadBookingFacts } from './case-facts';
 import { SUPPORT_CASE_EVENT, SupportService, type SupportCaseEvent } from './support.service';
@@ -108,13 +109,31 @@ export function draftRequest(c: CopilotCase): Request {
   return { system: DRAFT_SYSTEM, messages: [{ role: 'user', content }], outputConfig: { effort: 'low' } };
 }
 
+/**
+ * What a desk draft may quote (AI10): the facts and what the desk, the bot or
+ * the system said. Not the requester: their "₹5,000" is what the facts check.
+ */
+export function draftSource(c: CopilotCase): string {
+  return [
+    ...c.facts,
+    ...c.messages.filter((m) => !m.internal && m.side !== SupportMessageSide.REQUESTER).map((m) => m.body),
+  ].join('\n');
+}
+
 export function summaryRequest(c: CopilotCase): Request {
   const content: Anthropic.MessageParam['content'] = `${context(c)}\n<thread>\nSubject: ${c.subject}\n\n${thread(c.messages, true)}\n</thread>`;
   return { system: SUMMARY_SYSTEM, messages: [{ role: 'user', content }], outputConfig: { effort: 'low' } };
 }
 
-/** Staff-facing results: facts always come back, AI text only when it ran. */
-export type DraftResult = { facts: string[] } & ({ ok: true; draft: string } | { ok: false; reason: Extract<AiResult, { ok: false }>['reason'] });
+/**
+ * Staff-facing results: facts always come back, AI text only when it ran. A
+ * draft that quotes something the facts and thread don't back up is held
+ * (AI10), with why, rather than landing in the composer.
+ */
+export type DraftResult = { facts: string[] } & (
+  | { ok: true; draft: string }
+  | { ok: false; reason: Extract<AiResult, { ok: false }>['reason'] | 'held'; why?: string }
+);
 
 /**
  * D15 desk copilot: reply drafts, thread summaries and code-computed policy
@@ -190,12 +209,16 @@ export class SupportCopilot {
   async draft(id: string, userId: string): Promise<DraftResult> {
     const c = await this.staffCase(id, userId, true);
     const facts = await this.facts(c);
+    const cc = this.asCopilotCase(c, facts);
     const res = await this.ai.run('desk', {
-      ...draftRequest(this.asCopilotCase(c, facts)),
+      ...draftRequest(cc),
       userId,
       subject: `case:${id}`,
+      spaceId: c.spaceId ?? undefined,
     });
-    return res.ok ? { ok: true, draft: res.text, facts } : { ok: false, reason: res.reason, facts };
+    if (!res.ok) return { ok: false, reason: res.reason, facts };
+    const why = ungrounded(res.text, draftSource(cc));
+    return why ? { ok: false, reason: 'held', why, facts } : { ok: true, draft: res.text, facts };
   }
 
   /** Summary on open: reuses the stored one until a newer message arrives. */
@@ -228,6 +251,7 @@ export class SupportCopilot {
       ...summaryRequest(this.asCopilotCase(c, await this.facts(c))),
       userId,
       subject: `case:${c.id}`,
+      spaceId: c.spaceId ?? undefined,
     });
     if (!res.ok) return c.aiSummary;
     await this.prisma.supportTicket.update({

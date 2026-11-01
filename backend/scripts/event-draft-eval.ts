@@ -2,7 +2,8 @@
  * M1 event draft eval: runs the labelled cases in event-draft-eval.cases.json
  * through the production prompt and validator, then checks each draft against
  * its labels (should it draft at all, must / must-not patterns, agenda size)
- * plus house rules (no em dashes, no links or phone numbers it wasn't given).
+ * plus house rules (no em dashes, no links or phone numbers it wasn't given,
+ * nothing the AI10 check would drop).
  * Calls the real API (about a cent a run), so it needs ANTHROPIC_API_KEY.
  *
  *   npx ts-node -T scripts/event-draft-eval.ts   (-T: tsc already type-checks it)
@@ -11,7 +12,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { AI_FEATURES, AI_MODEL, aiCostUsd } from '../src/ai/ai.service';
-import { eventDraftRequest, parseEventDraft, type EventDraft, type EventDraftInput } from '../src/events/event-draft';
+import {
+  eventDraftRequest,
+  eventDraftSource,
+  groundEventDraft,
+  parseEventDraft,
+  type EventDraft,
+  type EventDraftInput,
+} from '../src/events/event-draft';
 
 interface EvalCase {
   id: string;
@@ -65,6 +73,8 @@ async function main() {
         ...(c.mustNotInclude ?? []).filter((p) => new RegExp(p, 'i').test(all)).map((p) => `has /${p}/`),
       );
       if (all.includes('—')) misses.push('em dash');
+      // What production would leave out (AI10): the model invented it.
+      misses.push(...groundEventDraft(draft, eventDraftSource(c.input)).dropped.map((d) => `dropped ${d}`));
       const given = `${c.input.notes ?? ''} ${c.input.pageText ?? ''}`;
       for (const link of all.match(/https?:\/\/[^\s"]+|www\.[^\s"]+/g) ?? []) {
         if (!given.includes(link.replace(/[.,)]+$/, ''))) misses.push(`invented link ${link}`);
