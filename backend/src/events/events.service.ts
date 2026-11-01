@@ -24,6 +24,7 @@ import { PlanConfigService } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, CUSTOM_DOMAIN_SPACE_SELECT, liveCustomDomain, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { EventPublishFanout } from './event-publish-fanout';
+import { publishBlockedMessage, publishMustHaves } from './publish-must-haves';
 import { formatEventDate, formatEventTime } from './event-dates';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
@@ -2615,7 +2616,16 @@ export class EventsService {
   async publishEvent(userId: string, eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      include: { space: true },
+      include: {
+        space: true,
+        _count: {
+          select: {
+            ticketTypes: { where: { isActive: true } },
+            // The sub-events a hub lists, as the console checklist sees them.
+            childEvents: { where: { ...NOT_DELETED, status: { in: LISTED_EVENT_STATUSES } } },
+          },
+        },
+      },
     });
 
     if (!event) {
@@ -2628,6 +2638,13 @@ export class EventsService {
       throw new BadRequestException('Event is already published');
     }
     await assertSpaceLive(this.prisma, { id: event.spaceId });
+    // Q22: since Q29 new spaces publish with no review, so this is the quality floor.
+    const missing = publishMustHaves({
+      ...event,
+      ticketCount: event._count.ticketTypes,
+      subEventCount: event._count.childEvents,
+    });
+    if (missing.length) throw new BadRequestException(publishBlockedMessage(missing));
 
     const updated = await this.prisma.event.update({
       where: { id: eventId },

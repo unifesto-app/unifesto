@@ -25,30 +25,45 @@ interface ChecklistItem {
 /**
  * Compute the two tiers of the setup checklist from a hydrated event.
  *
- * `essentials` are the things an event really needs before it's worth
- * publishing — they drive the completeness percentage. `enhancements` make the
- * page richer but never block, so they sit below the bar and don't drag the
- * score down when they're empty.
+ * `required` is what publishing checks (Q22, decision E; the backend's
+ * `publishMustHaves` has the same rules): a cover, a venue or joining link,
+ * and one way to register. They drive the percentage. `enhancements` make the
+ * page richer but never block, so they sit below and don't drag the score down.
  */
 function buildChecklist(event: Event, base: string) {
   const has = (v?: string | null) => !!v && v.trim().length > 0;
-  const showVenue = event.type === "IN_PERSON" || event.type === "HYBRID";
-  const showOnline = event.type === "ONLINE" || event.type === "HYBRID";
-  const venueOk = !showVenue || has(event.venueName) || has(event.city);
-  const onlineOk = !showOnline || has(event.onlineUrl);
+  const venue = has(event.venueName) || has(event.venueAddress);
+  const link = has(event.onlineUrl);
+  const location = {
+    IN_PERSON: { label: "Venue", hint: "Add the venue so people can find you.", done: venue },
+    ONLINE: { label: "Joining link", hint: "Add where people join online.", done: link },
+    HYBRID: { label: "Venue or joining link", hint: "Add the venue, the joining link, or both.", done: venue || link },
+  }[event.type];
 
   const isPaid = event.registrationType === "TICKETED" || event.registrationType === "MIXED";
-  const ticketCount = event.ticketTypes?.length ?? 0;
+  // A festival hub takes registrations on its sub-events, not on itself.
+  const canRegister = (event.ticketTypes?.length ?? 0) > 0 || (event.childEvents?.length ?? 0) > 0;
   const registrationHref = isPaid ? `${base}/tickets` : `${base}/rsvps`;
 
-  const essentials: ChecklistItem[] = [
+  const required: ChecklistItem[] = [
     {
-      key: "banner",
-      label: "Banner image",
-      hint: "A cover image makes the event page pop.",
+      key: "cover",
+      label: "Cover image",
+      hint: "The first thing people see, in the app and on the web.",
       done: has(event.coverImageUrl),
       href: `${base}/edit`,
     },
+    { key: "location", ...location, href: `${base}/edit` },
+    {
+      key: "registration",
+      label: isPaid ? "A ticket" : "An RSVP option",
+      hint: isPaid ? "Add at least one ticket to sell." : "Set up how people RSVP.",
+      done: canRegister,
+      href: registrationHref,
+    },
+  ];
+
+  const enhancements: ChecklistItem[] = [
     {
       key: "description",
       label: "Description",
@@ -56,28 +71,6 @@ function buildChecklist(event: Event, base: string) {
       done: has(event.description),
       href: `${base}/edit`,
     },
-    {
-      key: "location",
-      label: showOnline && !showVenue ? "Joining link" : "Location",
-      hint:
-        showOnline && !showVenue
-          ? "Add where people join online."
-          : "Add the venue so people can find you.",
-      done: venueOk && onlineOk,
-      href: `${base}/edit`,
-    },
-    {
-      key: "registration",
-      label: isPaid ? "Ticket types" : "RSVP options",
-      hint: isPaid
-        ? "Add at least one ticket to sell."
-        : "Set up how people RSVP.",
-      done: ticketCount > 0,
-      href: registrationHref,
-    },
-  ];
-
-  const enhancements: ChecklistItem[] = [
     {
       key: "category",
       label: "Category & tags",
@@ -122,7 +115,7 @@ function buildChecklist(event: Event, base: string) {
     },
   ];
 
-  return { essentials, enhancements };
+  return { required, enhancements };
 }
 
 function ChecklistRow({ item }: { item: ChecklistItem }) {
@@ -163,17 +156,17 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
 }
 
 /**
- * The "Event setup" card shown at the top of an event's overview. Scores the
- * essentials (banner, description, location, registration) as a percentage and
+ * The "Event setup" card shown at the top of an event's overview. Scores what
+ * publishing requires (cover, venue or link, registration) as a percentage and
  * lists the richer, optional content below. Read-only — every row links out to
  * the tab where the organiser actually fills it in.
  */
 export function EventCompleteness({ event }: { event: Event }) {
   const base = `/console/events/${event.id}`;
-  const { essentials, enhancements } = buildChecklist(event, base);
+  const { required, enhancements } = buildChecklist(event, base);
 
-  const doneCount = essentials.filter((i) => i.done).length;
-  const total = essentials.length;
+  const doneCount = required.filter((i) => i.done).length;
+  const total = required.length;
   const pct = Math.round((doneCount / total) * 100);
   const complete = doneCount === total;
 
@@ -185,10 +178,10 @@ export function EventCompleteness({ event }: { event: Event }) {
             <CardTitle>Event setup</CardTitle>
             <CardDescription>
               {event.status !== "DRAFT"
-                ? `${doneCount} of ${total} essentials done.`
+                ? `${doneCount} of ${total} required done.`
                 : complete
-                  ? "The essentials are all set — this event is ready to publish."
-                  : `${doneCount} of ${total} essentials done. Finish these before publishing.`}
+                  ? "Ready to publish."
+                  : `${doneCount} of ${total} done. Add the rest to publish.`}
             </CardDescription>
           </div>
           <div className="text-right">
@@ -214,8 +207,9 @@ export function EventCompleteness({ event }: { event: Event }) {
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
+        <p className="text-eyebrow mb-1">Required to publish</p>
         <ul className="divide-y divide-border">
-          {essentials.map((item) => (
+          {required.map((item) => (
             <ChecklistRow key={item.key} item={item} />
           ))}
         </ul>
