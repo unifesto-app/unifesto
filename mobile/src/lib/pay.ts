@@ -52,11 +52,11 @@ export interface PayOption {
 }
 
 /**
- * A UPI app; a UPI ID (a collect request, for any other UPI app); a card
- * (Razorpay's card form, nothing else); a wallet ('' = not picked yet); or
- * Razorpay's whole sheet ('more').
+ * A UPI app; UPI in the sheet ('upi', Android when no app was found); a typed
+ * UPI ID (a collect request, iOS only); a card (Razorpay's card form, nothing
+ * else); a wallet ('' = not picked yet); or Razorpay's whole sheet ('more').
  */
-export type PayMethod = UpiApp | { vpa: string } | 'card' | { wallet: string } | 'more';
+export type PayMethod = UpiApp | 'upi' | { vpa: string } | 'card' | { wallet: string } | 'more';
 
 /** What the payment page offers. `on` = Q40's switch is on and Custom UI is here. */
 export interface CheckoutMethods {
@@ -68,7 +68,7 @@ export interface CheckoutMethods {
 
 export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more' };
 
-/** How a method is remembered: the app id, 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
+/** How a method is remembered: the app id, 'upi', 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
 export const methodKey = (m: PayMethod) =>
   typeof m === 'string' ? m : 'id' in m ? m.id : 'vpa' in m ? `vpa:${m.vpa}` : `wallet:${m.wallet}`;
 
@@ -101,15 +101,25 @@ const onlyThis = (instrument: { method: string }) => ({
 });
 
 // Razorpay's iOS ids; Android names come from the phone.
-const IOS_NAMES: Record<string, string> = { google_pay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', cred: 'CRED', bhim: 'BHIM' };
+const IOS_NAMES: Record<string, string> = {
+  google_pay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', cred: 'CRED', bhim: 'BHIM',
+  amazonpay: 'Amazon Pay', mobikwik: 'MobiKwik', whatsapp: 'WhatsApp', sbiyono: 'SBI YONO', kotakbank: 'Kotak 811',
+};
 // iOS opens an app by its shortcode, but the list reaches us with names only.
 // The SDK's own table (razorpay-customui-pod 2.2.4): these five, and every
 // other app is its name in lower case without spaces.
 const IOS_SHORTCODES: Record<string, string> = { 'Google Pay': 'google_pay', 'BoB World UPI': 'bobupi', IndusInd: 'indusmobile', PopClub: 'popclubapp', Kotak811: 'kotakbank' };
 const iosShortcode = (name: string) => IOS_SHORTCODES[name] ?? name.toLowerCase().replace(/\s/g, '');
-// Only the big three get a row (iOS shortcodes, Android packages); every other
-// UPI app pays by UPI ID.
-const MAJOR_UPI_APPS = new Set(['google_pay', 'phonepe', 'paytm', 'com.google.android.apps.nbu.paisa.user', 'com.phonepe.app', 'net.one97.paytm']);
+// The big three lead the list (iOS shortcodes, Android packages); every other
+// app Razorpay finds follows in its order.
+const TOP_UPI_APPS = ['google_pay', 'phonepe', 'paytm', 'com.google.android.apps.nbu.paisa.user', 'com.phonepe.app', 'net.one97.paytm'];
+const upiRank = (a: UpiApp) => (TOP_UPI_APPS.includes(a.id) ? TOP_UPI_APPS.indexOf(a.id) : TOP_UPI_APPS.length);
+
+/**
+ * NPCI ended typed UPI IDs (collect) on 28 Feb 2026, except in iOS apps and
+ * mobile web. Android lists every UPI app instead.
+ */
+export const CAN_TYPE_UPI_ID = Platform.OS === 'ios';
 
 /** name@bank: a UPI ID worth sending to Razorpay, which checks it's real. */
 export const isVpa = (v: string) => /^[\w.-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,63}$/.test(v);
@@ -184,13 +194,13 @@ async function payWallets(): Promise<PayOption[]> {
 /** The methodKey() the last successful payment on this phone used. */
 const lastMethodId = () => AsyncStorage.getItem(LAST_METHOD_KEY).catch(() => null);
 
-/** The method paid with last time, while it's still on offer; else the first UPI app, else a UPI ID. */
+/** The method paid with last time, while it's still on offer; else the first UPI app, else a UPI ID (iOS) or UPI. */
 function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): PayMethod {
   const [kind, code] = (last ?? '').split(':');
   if (kind === 'wallet' && wallets.some((w) => w.code === code)) return { wallet: code };
-  if (kind === 'vpa') return { vpa: code };
+  if (kind === 'vpa' && CAN_TYPE_UPI_ID) return { vpa: code };
   if (last === 'card') return 'card';
-  return apps[0] ?? { vpa: '' };
+  return apps[0] ?? (CAN_TYPE_UPI_ID ? { vpa: '' } : 'upi');
 }
 
 /**
@@ -201,7 +211,7 @@ function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): P
 export async function checkoutMethods(currency = 'INR'): Promise<CheckoutMethods> {
   if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return CHECKOUT_OFF;
   const [found, last, wallets] = await Promise.all([installedUpiApps(), lastMethodId(), payWallets()]);
-  const apps = found.filter((a) => MAJOR_UPI_APPS.has(a.id)).sort((a, b) => Number(b.id === last) - Number(a.id === last));
+  const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last) || upiRank(a) - upiRank(b));
   return { on: true, apps, wallets, selected: preselect(last, apps, wallets) };
 }
 
@@ -246,7 +256,7 @@ function directOptions(m: PayMethod | null): Record<string, string> | null {
 function onlyInstrument(m: PayMethod | null): { method: string } | null {
   if (!m || m === 'more') return null;
   if (m === 'card') return { method: 'card' };
-  if ('id' in m || 'vpa' in m) return { method: 'upi' };
+  if (m === 'upi' || 'id' in m || 'vpa' in m) return { method: 'upi' };
   return { method: 'wallet', ...(m.wallet && { wallets: [m.wallet] }) };
 }
 
