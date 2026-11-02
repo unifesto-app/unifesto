@@ -1094,3 +1094,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-01** · Q40 payment page in the app: UPI apps, card, netbanking and wallets each pay with only that method (Custom UI, or Razorpay's sheet limited to it); GET /config/payment-methods lists the banks and wallets our Razorpay account takes (#538)
 - **2026-11-01** · Q40 app checkout: when Razorpay Custom UI fails before a UPI app or bank opens, the same pick opens in Razorpay's sheet, and the error is logged to Sentry instead of being dropped as a cancel (#539)
 - **2026-11-02** · Q40 iOS UPI apps open from the pay page (shortcode, not name); pay page lists every UPI app (4 + show more), typed UPI ID on iOS only; netbanking off the app's pay page (#540)
+- **2026-11-02** · mobile dark mode drops the cosmos stars and grain; night shade cards dimmed to 8% so every text colour holds AA (#542)
