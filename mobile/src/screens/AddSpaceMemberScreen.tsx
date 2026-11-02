@@ -8,9 +8,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SPACE_ROLE_LABEL, addSpaceMember, searchAddableUsers, type MemberUser, type SpaceMemberRole } from '../lib/api/spaceMembers';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { isEmail } from '../lib/constants';
@@ -24,6 +23,7 @@ const DEBOUNCE_MS = 300;
  * Member or Space admin. Stays open after each add, so several people can be
  * added in one go; added people drop out of the results. Q31: a full email
  * that finds no one can be invited; they join when they sign in with it.
+ * Who was just added, and the results, sit on the page as rows (no cards).
  */
 export default function AddSpaceMemberScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -127,7 +127,6 @@ export default function AddSpaceMemberScreen() {
 
             {added.length > 0 ? (
               <View style={styles.added} accessibilityLiveRegion="polite">
-                <CardBackdrop shape={styles.added} />
                 {added.map((a) => (
                   <View key={a.id} style={styles.addedRow}>
                     <Check size={18} color={c.success} weight="bold" />
@@ -142,10 +141,9 @@ export default function AddSpaceMemberScreen() {
             {hint ? <Text style={[styles.hint, { color: error ? c.danger : c.muted }]}>{hint}</Text> : null}
           </View>
         }
-        // One card for all results: each row is a segment of it.
+        // Rows on the page: a full hairline between results, no card.
         renderItem={({ item, index }) => (
-          <View style={cardSegment(c.raised, index, rows.length)}>
-            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
             <MemberRow user={item} trailing={item.id.startsWith(INVITE) ? 'Invite' : 'Add'} busy={addingId === item.id} onPress={() => choose(item)} />
           </View>
         )}
@@ -157,7 +155,7 @@ export default function AddSpaceMemberScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  added: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[5], gap: spacing[3] },
+  added: { marginTop: spacing[5], marginHorizontal: spacing[1], gap: spacing[3] },
   addedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   addedText: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   hint: {
@@ -168,6 +166,5 @@ const styles = StyleSheet.create({
     lineHeight: typography.fontSize.sm * 1.5,
     ...cosmosFont.body,
   },
-  // Starts under the name: past the 40pt avatar and its gap.
-  sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
 });

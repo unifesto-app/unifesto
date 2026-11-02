@@ -5,11 +5,10 @@ import { CaretRight } from '@unifesto/unicon/react-native';
 import { getSubSpaceAnalytics, treeOrder, type SubSpaceAnalytics } from '../lib/api/subSpaces';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { inrShort } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -17,7 +16,8 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Everything beneath a parent space, rolled up: totals first, then each
- * sub-space indented under its parent. Tapping one opens its public page.
+ * sub-space indented under its parent, as rows on the page with full
+ * hairlines. Tapping one opens its public page.
  */
 export default function SubSpacesScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -51,10 +51,10 @@ export default function SubSpacesScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {error ? (
-            <View style={[styles.card, { alignItems: 'center' }]}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.note, { color: c.soft }]}>{error}</Text>
-              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            // On the page, not in a card: one line and one way out.
+            <View style={styles.error}>
+              <Text style={[styles.note, { color: c.muted }]}>{error}</Text>
+              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
             </View>
           ) : (
             <>
@@ -100,8 +100,7 @@ export default function SubSpacesScreen() {
         </ShadeCard>
       </View>
 
-      <Section title="Sub-spaces" subtitle="Each one under its parent. Tap to open its page" style={styles.firstSection}>
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup flat plain title="Sub-spaces" style={styles.group}>
           {rows.length === 0 ? <SettingsRow label="No sub-spaces yet" /> : null}
           {rows.map((r) => (
             <Pressable
@@ -109,7 +108,7 @@ export default function SubSpacesScreen() {
               onPress={() => router.push(`/space/${r.slug}`)}
               accessibilityRole="button"
               accessibilityLabel={`${r.name}, ${r.members} members, ${r.events} events`}
-              style={({ pressed }) => [styles.row, { paddingLeft: spacing[4] + (r.depth - 1) * spacing[5] }, pressed && { backgroundColor: c.tint }]}
+              style={({ pressed }) => [styles.row, { paddingLeft: (r.depth - 1) * spacing[5] }, pressed && { opacity: 0.6 }]}
             >
               {r.depth > 1 ? <View style={[styles.branch, { backgroundColor: c.outline }]} /> : null}
               <View style={{ flex: 1 }}>
@@ -125,15 +124,14 @@ export default function SubSpacesScreen() {
               <CaretRight size={15} color={c.muted} />
             </Pressable>
           ))}
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { alignItems: 'center', marginTop: spacing[10] },
   heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   big: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[4], marginTop: spacing[5] },
@@ -141,10 +139,10 @@ const styles = StyleSheet.create({
   value: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.figure },
   label: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  firstSection: { marginTop: spacing[10] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingRight: spacing[4], paddingVertical: spacing[3], minHeight: 64 },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
+  // On the page: no side padding; depth reads from the indent.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 64 },
   // A short tick marks a child row: depth reads from the indent, not an arrow glyph.
   branch: { width: 10, height: StyleSheet.hairlineWidth * 2 },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

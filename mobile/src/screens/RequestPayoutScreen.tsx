@@ -17,12 +17,11 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type Mode = 'full' | 'custom';
 const MODES: { key: Mode; label: string }[] = [
@@ -33,7 +32,8 @@ const MODES: { key: Mode; label: string }[] = [
 /**
  * Request a payout for one event. Shows the balance (net − already paid or
  * queued = available), lets the admin take all of it or part, and pick which
- * verified account it goes to (their own or another Space Admin's).
+ * verified account it goes to (their own or another Space Admin's). The balance
+ * is the ivory hero; the accounts are rows on the page; the amount stays a field.
  */
 export default function RequestPayoutScreen() {
   const { eventId, title } = useLocalSearchParams<{ eventId: string; title?: string }>();
@@ -85,9 +85,8 @@ export default function RequestPayoutScreen() {
   if (!summary) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
-        <View style={styles.emptyCard}>
-          <CardBackdrop shape={styles.emptyCard} />
-          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
+        <View style={styles.emptyState}>
+          <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
         </View>
       </CosmosScreen>
     );
@@ -172,9 +171,8 @@ export default function RequestPayoutScreen() {
       </Text>
 
       {available <= 0 ? (
-        <View style={[styles.emptyCard, { marginTop: spacing[8] }]}>
-          <CardBackdrop shape={styles.emptyCard} />
-          <Text style={[styles.empty, { color: c.soft }]}>Nothing left to pay out for this event.</Text>
+        <View style={styles.emptyState}>
+          <Text style={[styles.empty, { color: c.muted }]}>Nothing left to pay out for this event.</Text>
         </View>
       ) : (
         <>
@@ -194,7 +192,7 @@ export default function RequestPayoutScreen() {
             </SettingsGroup>
           ) : null}
 
-          <SettingsGroup title="Pay to">
+          <SettingsGroup flat title="Pay to">
             {accounts.length === 0 ? (
               <SettingsRow label="No verified payout account" value="Add on web" />
             ) : (
@@ -240,7 +238,7 @@ export default function RequestPayoutScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyState: { marginTop: spacing[10], alignItems: 'center' },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   event: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -258,7 +256,8 @@ const styles = StyleSheet.create({
   lineValue: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  account: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
+  // On the page: no side padding, SettingsGroup draws the full hairlines.
+  account: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 56 },
   accountName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   accountSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   error: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

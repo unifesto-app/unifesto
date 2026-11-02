@@ -24,15 +24,14 @@ import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const LOGO = 72;
+const ICON = 28;
 
 interface Draft {
   name: string;
@@ -65,6 +64,8 @@ const withScheme = (url: string) => {
 /**
  * Add or edit one roster sponsor. For an existing sponsor this also shows where
  * it's attached and who can sign in to its portal (booth scanning + leads).
+ * Identity sits on the page; fields keep their form cards; lists are rows;
+ * Send invite is the sky action and Remove the danger row.
  */
 export default function SponsorEditorScreen() {
   const { spaceId, sponsorId } = useLocalSearchParams<{ spaceId: string; sponsorId: string }>();
@@ -214,10 +215,7 @@ export default function SponsorEditorScreen() {
         <Stack.Screen options={{ title }} />
         <View style={styles.pad}>
           {error ? (
-            <View style={styles.card}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
-            </View>
+            <Text style={[styles.body, styles.error, { color: c.muted }]}>{error}</Text>
           ) : (
             <>
               <Skeleton width="100%" height={120} borderRadius={cosmosCardRadius} />
@@ -249,9 +247,8 @@ export default function SponsorEditorScreen() {
     >
       <Stack.Screen options={{ title }} />
 
-      {/* Logo + live name: what attendees see on event pages */}
-      <View style={[styles.card, styles.identity]}>
-        <CardBackdrop shape={styles.card} />
+      {/* Logo + live name, on the page: what attendees see on event pages */}
+      <View style={[styles.pad, styles.identity]}>
         <Pressable
           onPress={() => void pickLogo()}
           disabled={uploading}
@@ -283,8 +280,7 @@ export default function SponsorEditorScreen() {
         </View>
       </View>
 
-      <Section title="Details" style={styles.firstSection}>
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup title="Details" plain style={[styles.group, styles.first]}>
           <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Acme Corp" />
           <FieldRow
             stacked
@@ -304,11 +300,9 @@ export default function SponsorEditorScreen() {
             onChangeText={(v) => set({ description: v })}
             placeholder="What they do, in a line"
           />
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
 
-      <Section title="Contact" subtitle="Only your team sees this">
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup title="Contact" plain style={styles.group}>
           <FieldRow stacked label="Name" value={draft.contactName} onChangeText={(v) => set({ contactName: v })} />
           <FieldRow
             stacked
@@ -320,76 +314,75 @@ export default function SponsorEditorScreen() {
             autoCorrect={false}
           />
           <FieldRow stacked label="Phone" value={draft.contactPhone} onChangeText={(v) => set({ contactPhone: v })} keyboardType="phone-pad" />
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>Only your team sees the contact.</Text>
 
       {!isNew ? (
         <>
-          <Section title="On events" subtitle="To attach it, open an event and go to Sponsors">
-            <SettingsGroup style={styles.group}>
-              {events.length === 0 ? <SettingsRow label="Not attached to any event yet" /> : null}
-              {events.map((es) => (
-                <SettingsRow
-                  key={es.id}
-                  icon={<CalendarBlank size={24} color={c.text} />}
-                  label={es.event.title}
-                  onPress={() =>
-                    router.push({ pathname: `/manage/event/${es.event.id}/sponsors`, params: { spaceId: spaceId!, title: es.event.title } })
-                  }
-                />
-              ))}
-            </SettingsGroup>
-          </Section>
-
-          <Section title="Portal access" subtitle="Booth scanning and this sponsor's leads, in the app or on the web">
-            <SettingsGroup plain style={styles.group}>
-              {users.map((u) => (
-                <SettingsRow
-                  key={u.id}
-                  label={u.user.fullName || u.invitedEmail || 'Invited'}
-                  value={u.status === 'ACTIVE' ? 'Active' : 'Invited'}
-                  onPress={() => revoke(u)}
-                />
-              ))}
-              <FieldRow
-                stacked
-                label="Invite by email"
-                value={inviteEmail}
-                onChangeText={setInviteEmail}
-                placeholder="person@company.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="send"
-                onSubmitEditing={() => void invite()}
+          <SettingsGroup flat title="On events" style={styles.group}>
+            {events.length === 0 ? <SettingsRow label="Not attached to any event yet" /> : null}
+            {events.map((es) => (
+              <SettingsRow
+                key={es.id}
+                icon={<CalendarBlank size={ICON} color={c.sky} />}
+                label={es.event.title}
+                onPress={() =>
+                  router.push({ pathname: `/manage/event/${es.event.id}/sponsors`, params: { spaceId: spaceId!, title: es.event.title } })
+                }
               />
-            </SettingsGroup>
-            <Text style={[styles.note, { color: c.muted }]}>
-              We email them an invite. They sign in with this email, no account needed first. Tap a person to remove them.
-            </Text>
-            <View style={[styles.pad, { marginTop: spacing[4] }]}>
-              <AuthButton
-                label="Send invite"
-                variant="secondary"
-                loading={inviting}
-                disabled={!inviteEmail.trim()}
-                icon={<PaperPlaneTilt size={16} color={c.text} weight="bold" />}
-                onPress={() => void invite()}
-              />
-            </View>
-          </Section>
+            ))}
+          </SettingsGroup>
+          <Text style={[styles.note, { color: c.muted }]}>To attach it, open an event and go to Sponsors.</Text>
 
-          <View style={styles.pad}>
-            <AuthButton
-              label="Remove sponsor"
-              variant="danger"
-              loading={deleting}
-              disabled={saving}
-              icon={<Trash size={18} color={c.danger} />}
-              onPress={remove}
-              style={{ marginTop: spacing[12] }}
+          {/* Booth scanning and this sponsor's leads, in the app or on the web. */}
+          <SettingsGroup flat title="Portal access" style={styles.group}>
+            {users.length === 0 ? <SettingsRow label="No one yet" /> : null}
+            {users.map((u) => (
+              <SettingsRow
+                key={u.id}
+                label={u.user.fullName || u.invitedEmail || 'Invited'}
+                value={u.status === 'ACTIVE' ? 'Active' : 'Invited'}
+                onPress={() => revoke(u)}
+              />
+            ))}
+          </SettingsGroup>
+          <SettingsGroup plain style={[styles.group, { marginTop: spacing[4] }]}>
+            <FieldRow
+              stacked
+              label="Invite by email"
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              placeholder="person@company.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="send"
+              onSubmitEditing={() => void invite()}
             />
-          </View>
+          </SettingsGroup>
+          <Text style={[styles.note, { color: c.muted }]}>
+            We email them an invite. They sign in with this email, no account needed first. Tap a person to remove them.
+          </Text>
+          {/* Sending is the action: sky, muted and inert until there's an email. */}
+          <SettingsGroup flat style={[styles.group, { marginTop: spacing[2] }]}>
+            <SettingsRow
+              icon={<PaperPlaneTilt size={ICON} color={inviteEmail.trim() ? c.sky : c.muted} />}
+              label="Send invite"
+              value={inviting ? 'Sending…' : undefined}
+              accent={inviteEmail.trim() ? c.sky : c.muted}
+              onPress={inviting || !inviteEmail.trim() ? undefined : () => void invite()}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup flat style={styles.group}>
+            <SettingsRow
+              icon={<Trash size={ICON} color={c.danger} />}
+              label="Remove sponsor"
+              value={deleting ? 'Removing…' : undefined}
+              danger
+              onPress={saving || deleting ? undefined : remove}
+            />
+          </SettingsGroup>
         </>
       ) : null}
     </CosmosScreen>
@@ -398,7 +391,7 @@ export default function SponsorEditorScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { marginTop: spacing[10], textAlign: 'center' },
   body: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   name: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
@@ -415,9 +408,9 @@ const styles = StyleSheet.create({
   },
   logoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[2] },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  firstSection: { marginTop: spacing[10] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  first: { marginTop: spacing[8] },
+  // Grouped lists and forms: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   note: {
     marginTop: spacing[3],
     marginHorizontal: GUTTER + spacing[1],

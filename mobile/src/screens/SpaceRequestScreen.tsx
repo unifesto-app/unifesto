@@ -110,7 +110,7 @@ export default function SpaceRequestScreen() {
             </View>
           </View>
 
-            <Section title="My space" subtitle="What people will see" style={styles.tightSection}>
+            <Section title="My space" style={styles.tightSection}>
               <View style={styles.fields}>
                 <AuthField label="Name" value={name} onChangeText={setName} placeholder="e.g. Hyderabad Runners" maxLength={255} />
                 <AuthField
@@ -162,7 +162,7 @@ export default function SpaceRequestScreen() {
               </View>
             </Section>
 
-            <Section title="City" subtitle="Where most of your events happen">
+            <Section title="City">
               <View style={[styles.pad, styles.chips]}>
                 {CITIES.map((name_) => {
                   const active = city === name_;
@@ -190,7 +190,7 @@ export default function SpaceRequestScreen() {
               ) : null}
             </Section>
 
-            <Section title="About you" subtitle="Who is asking for this space">
+            <Section title="About you">
               <View style={styles.fields}>
                 <AuthField
                   label="Your role (optional)"

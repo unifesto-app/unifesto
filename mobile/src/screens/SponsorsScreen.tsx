@@ -7,10 +7,8 @@ import { getUsage } from '../lib/api/billing';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
@@ -22,7 +20,8 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /**
  * The space's sponsor roster (add once, attach to any event) and its tier
  * ladder (Platinum, Gold…), one under the other. Attaching to events happens
- * from each event's hub.
+ * from each event's hub. Both are rows on the page with full hairlines, each
+ * closed by its sky Add row (muted and inert when the plan doesn't include it).
  */
 export default function SponsorsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -77,12 +76,13 @@ export default function SponsorsScreen() {
   }
 
   const locked = onPlan === false;
+  // Adding is an action, so sky; muted while the plan locks it.
+  const add = locked ? c.muted : c.sky;
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
       {locked ? (
         <View style={styles.notice}>
-          <CardBackdrop shape={styles.notice} />
           <Text style={[styles.noticeTitle, { color: c.warn }]}>Not on this space's plan</Text>
           <Text style={[styles.noticeBody, { color: c.soft }]}>
             You can look through what's here, but adding or changing sponsors needs a plan that includes Sponsors and leads.
@@ -91,13 +91,11 @@ export default function SponsorsScreen() {
       ) : null}
       {error ? (
         <View style={styles.notice}>
-          <CardBackdrop shape={styles.notice} />
           <Text style={[styles.noticeBody, { color: c.danger }]}>{error}</Text>
         </View>
       ) : null}
 
-      <Section title="Sponsors" subtitle="Add one once, then attach it to any event from the event's page" style={styles.firstSection}>
-        <SettingsGroup style={styles.group}>
+      <SettingsGroup flat title="Sponsors" style={[styles.group, styles.first]}>
           {sponsors.length === 0 ? <SettingsRow label="No sponsors yet" /> : null}
           {sponsors.map((s) => {
             const events = s._count?.eventSponsors ?? 0;
@@ -111,20 +109,15 @@ export default function SponsorsScreen() {
               />
             );
           })}
-        </SettingsGroup>
-        <View style={[styles.pad, { marginTop: spacing[4] }]}>
-          <AuthButton
+          <SettingsRow
+            icon={<Plus size={ICON} color={add} />}
             label="Add sponsor"
-            variant="secondary"
-            disabled={locked}
-            icon={<Plus size={16} color={c.text} weight="bold" />}
-            onPress={() => openSponsor('new')}
+            accent={add}
+            onPress={locked ? undefined : () => openSponsor('new')}
           />
-        </View>
-      </Section>
+      </SettingsGroup>
 
-      <Section title="Tiers" subtitle="Group and order sponsors on event pages, top rank first. Optional">
-        <SettingsGroup style={styles.group}>
+      <SettingsGroup flat title="Tiers" style={styles.group}>
           {tiers.length === 0 ? <SettingsRow label="No tiers yet" /> : null}
           {tiers.map((t) => (
             <SettingsRow
@@ -135,29 +128,21 @@ export default function SponsorsScreen() {
               onPress={() => openTier(t.id)}
             />
           ))}
-        </SettingsGroup>
-        <View style={[styles.pad, { marginTop: spacing[4] }]}>
-          <AuthButton
-            label="Add tier"
-            variant="secondary"
-            disabled={locked}
-            icon={<Plus size={16} color={c.text} weight="bold" />}
-            onPress={() => openTier('new')}
-          />
-        </View>
-      </Section>
+          <SettingsRow icon={<Plus size={ICON} color={add} />} label="Add tier" accent={add} onPress={locked ? undefined : () => openTier('new')} />
+      </SettingsGroup>
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  notice: { marginHorizontal: GUTTER, marginBottom: spacing[3], padding: spacing[5], borderRadius: cosmosCardRadius, gap: spacing[1] },
+  // A notice on the page, not a card: its colour carries it.
+  notice: { marginHorizontal: GUTTER + spacing[1], marginTop: spacing[4], gap: spacing[1] },
   noticeTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   noticeBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  firstSection: { marginTop: spacing[4] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  first: { marginTop: spacing[6] },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   // A tier's colour as a round dot: bare, no tile behind it.
   swatch: { width: 18, height: 18, borderRadius: 9 },
 });

@@ -13,10 +13,9 @@ import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AdminRefundDecision from '../components/apex/AdminRefundDecision';
 import usePlatformAdmin from '../hooks/usePlatformAdmin';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /** Approval claims stuck this long can be approved again (matches the backend). */
 const STUCK_PROCESSING_MS = 10 * 60_000;
@@ -28,6 +27,7 @@ const when = (iso?: string | null) =>
  * One refund request. While it's waiting on the organiser, the Space Admin
  * forwards it to Unifesto or rejects it with a reason the attendee will see.
  * Refunds cover the ticket price only; the app fee is never returned.
+ * The money is the ivory hero; the reason and the history sit on the page.
  */
 export default function RefundDetailScreen() {
   const { refundId } = useLocalSearchParams<{ refundId: string }>();
@@ -86,8 +86,7 @@ export default function RefundDetailScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text>
           </View>
         ) : (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
@@ -137,8 +136,9 @@ export default function RefundDetailScreen() {
         </View>
       </ShadeCard>
 
-      <View style={[styles.quote]}>
-        <CardBackdrop shape={styles.quote} />
+      {/* Their words, on the page under a muted title (no card). */}
+      <View style={styles.quote}>
+        <Text style={[styles.quoteTitle, { color: c.muted }]} accessibilityRole="header">Their reason</Text>
         <Text style={[styles.quoteText, { color: c.text }]}>“{refund.reason}”</Text>
         <Text style={[styles.quoteBy, { color: c.muted }]}>
           {refund.requesterRole === 'ATTENDEE' ? 'Asked by the attendee' : `Raised by ${refund.requestedBy?.fullName ?? 'an organiser'}`} · {when(refund.createdAt)}
@@ -146,7 +146,7 @@ export default function RefundDetailScreen() {
       </View>
 
       {refund.curatorActionAt || refund.adminActionAt ? (
-        <SettingsGroup title="What happened" plain>
+        <SettingsGroup flat plain title="What happened">
           {refund.curatorActionAt ? (
             <SettingsRow label={refund.status === 'REJECTED' && !refund.adminActionAt ? 'Rejected by organiser' : 'Forwarded by organiser'} value={when(refund.curatorActionAt)} />
           ) : null}
@@ -207,7 +207,7 @@ function Line({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[10], alignItems: 'center' },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   meta: { marginTop: spacing[1] },
   // A person's name: Hanken, never display.
@@ -227,7 +227,9 @@ const styles = StyleSheet.create({
   },
   lineLabel: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   lineValue: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
-  quote: { marginTop: spacing[4], padding: spacing[5], borderRadius: cosmosCardRadius, gap: spacing[2] },
+  quote: { marginTop: spacing[8], gap: spacing[2] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  quoteTitle: { marginHorizontal: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
   quoteBy: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },

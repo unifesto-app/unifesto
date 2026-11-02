@@ -16,23 +16,24 @@ import { shareCsv } from '../lib/csvShare';
 import ManageStats from '../components/manage/ManageStats';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle } from '../components/manage/FormFields';
-import { GroupCell, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+
+const ICON = 28;
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 /**
  * The space's own lead funnel: people who tapped "Notify me" on an event, sent
  * an inquiry from the space page, or were added by hand. New → Contacted →
- * Converted, or Archived.
+ * Converted, or Archived. The counts card, the stage filters, then the leads
+ * as rows on the page with full hairlines, closed by the sky actions.
  */
 export default function LeadsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -118,10 +119,7 @@ export default function LeadsScreen() {
         <>
           <View style={styles.pad}>
             {error ? (
-              <View style={styles.notice}>
-                <CardBackdrop shape={styles.notice} />
-                <Text style={[styles.body, { color: c.danger }]}>{error}</Text>
-              </View>
+              <Text style={[styles.body, styles.notice, { color: c.danger }]}>{error}</Text>
             ) : null}
             <ManageStats
               stats={[
@@ -132,60 +130,59 @@ export default function LeadsScreen() {
             />
           </View>
 
-          <Section
-            title="Leads"
-            subtitle={leads.length ? undefined : 'People who tap Notify me on an event or send an inquiry from your space page'}
-            style={styles.firstSection}
-          >
-            <View style={styles.pad}>
-              <BlockTitle>Stage</BlockTitle>
+          <View style={[styles.pad, styles.filters]}>
+            <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">Leads</Text>
+            <BlockTitle>Stage</BlockTitle>
               <ChipPicker
                 options={LEAD_STATUSES.map((s) => ({ value: s, label: `${LEAD_STATUS_LABEL[s]} ${counts[s]}` }))}
                 value={status}
                 onChange={setStatus}
                 clearable
               />
-              {sources.length > 1 ? (
-                <View style={{ marginTop: spacing[4] }}>
-                  <BlockTitle>Came from</BlockTitle>
-                  <ChipPicker options={sources} value={source} onChange={setSource} clearable />
-                </View>
-              ) : null}
-            </View>
-          </Section>
+            {sources.length > 1 ? (
+              <View style={{ marginTop: spacing[4] }}>
+                <BlockTitle>Came from</BlockTitle>
+                <ChipPicker options={sources} value={source} onChange={setSource} clearable />
+              </View>
+            ) : null}
+          </View>
           <View style={styles.groupTop} />
         </>
       }
+      // An empty state on the page: what lands here, no card.
       ListEmptyComponent={
-        <GroupCell index={0} count={1} plain style={styles.group}>
-          <SettingsRow label={leads.length ? 'Nothing matches these filters' : 'No leads yet'} />
-        </GroupCell>
+        <View style={[styles.pad, styles.empty]}>
+          {leads.length ? (
+            <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>Nothing matches these filters.</Text>
+          ) : (
+            <>
+              <Text style={[styles.emptyTitle, { color: c.text }]}>No leads yet</Text>
+              <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>
+                People who tap Notify me on an event or send an inquiry from your space page
+              </Text>
+            </>
+          )}
+        </View>
       }
+      // Rows on the page: a full hairline between leads, no card.
       renderItem={({ item, index }) => (
-        <GroupCell index={index} count={shown.length} plain style={styles.group}>
+        <View style={[styles.group, index > 0 && [styles.divider, { borderTopColor: c.border }]]}>
           <LeadRow l={item} showStatus={!status} onOpen={open} />
-        </GroupCell>
+        </View>
       )}
+      // Actions close the list in sky, under its last hairline.
       ListFooterComponent={
-        <View style={[styles.pad, styles.actions]}>
-          <AuthButton
-            label="Add lead"
-            variant="secondary"
-            icon={<Plus size={16} color={c.text} weight="bold" />}
-            onPress={() => open('new')}
-            style={styles.action}
-          />
+        <SettingsGroup flat style={[styles.group, styles.actions, shown.length ? { borderTopColor: c.border } : styles.noLine]}>
+          <SettingsRow icon={<Plus size={ICON} color={c.sky} />} label="Add a lead" accent={c.sky} onPress={() => open('new')} />
           {shown.length ? (
-            <AuthButton
-              label="Export CSV"
-              variant="secondary"
-              accessibilityLabel={`Export ${shown.length === leads.length ? 'all' : 'these'} leads as CSV`}
-              icon={<Export size={16} color={c.text} weight="bold" />}
+            <SettingsRow
+              icon={<Export size={ICON} color={c.sky} />}
+              label={`Export ${shown.length === leads.length ? 'all' : 'these'} leads as CSV`}
+              accent={c.sky}
               onPress={() => void exportCsv()}
-              style={styles.action}
             />
           ) : null}
-        </View>
+        </SettingsGroup>
       }
     />
   );
@@ -199,7 +196,7 @@ const LeadRow = React.memo(function LeadRow({ l, showStatus, onOpen }: { l: Lead
       onPress={() => onOpen(l.id)}
       accessibilityRole="button"
       accessibilityLabel={`${leadName(l)}, ${meta}, ${shortDate(l.createdAt)}`}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
       <View style={{ flex: 1 }}>
         <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
@@ -217,17 +214,21 @@ const LeadRow = React.memo(function LeadRow({ l, showStatus, onOpen }: { l: Lead
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  notice: { marginBottom: spacing[3], padding: spacing[5], borderRadius: cosmosCardRadius },
+  notice: { marginBottom: spacing[4], marginHorizontal: spacing[1] },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  firstSection: { marginTop: spacing[10] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  groupTop: { height: spacing[5] },
+  filters: { marginTop: spacing[8] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  groupTop: { height: spacing[4] },
   group: { marginHorizontal: GUTTER },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 64 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  // On the page: no side padding; the list draws full hairlines between rows.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 64 },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   meta: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   date: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
-  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
-  // minHeight, not height: a fixed height clips the label at large Dynamic Type sizes.
-  action: { flex: 1, height: undefined, minHeight: 52, paddingHorizontal: spacing[3] },
+  actions: { marginTop: 0, borderTopWidth: StyleSheet.hairlineWidth },
+  noLine: { borderTopWidth: 0, marginTop: spacing[6] },
+  empty: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[8] },
+  emptyTitle: { fontSize: 20, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
 });

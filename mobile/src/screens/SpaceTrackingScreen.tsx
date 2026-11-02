@@ -7,14 +7,13 @@ import { conversion, getTraffic, type SpaceTrafficStats } from '../lib/api/traff
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
-const ICON = 26;
+const ICON = 28;
 
 const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campaign}`;
 
@@ -22,6 +21,7 @@ const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campa
  * Tracking across a whole space: which sources bring people in
  * over all its events. Tap a source to see its per-event split, then an event
  * to see who registered through it. Also builds tracking links to the space page.
+ * The traffic summary leads; every list below is rows on the page.
  */
 export default function SpaceTrackingScreen() {
   const { spaceId, slug, name } = useLocalSearchParams<{ spaceId: string; slug?: string; name?: string }>();
@@ -80,10 +80,7 @@ export default function SpaceTrackingScreen() {
         </Text>
       ) : null}
       {error ? (
-        <View style={[styles.card, styles.padded]}>
-          <CardBackdrop shape={styles.card} />
-          <Text style={[styles.muted, { color: c.danger }]}>{error}</Text>
-        </View>
+        <Text style={[styles.muted, styles.error, { color: c.danger }]}>{error}</Text>
       ) : null}
 
       {traffic ? (
@@ -102,8 +99,7 @@ export default function SpaceTrackingScreen() {
       ) : null}
 
       {traffic && traffic.topEvents.length > 0 ? (
-        <Section title="Most viewed">
-          <SettingsGroup plain style={styles.group}>
+        <SettingsGroup flat plain title="Most viewed" style={styles.group}>
             {traffic.spacePageViews > 0 ? <SettingsRow label="Space page" value={fmt(traffic.spacePageViews)} /> : null}
             {traffic.topEvents.map((e) => (
               <SettingsRow
@@ -113,21 +109,22 @@ export default function SpaceTrackingScreen() {
                 onPress={() => router.push({ pathname: `/manage/event/${e.id}/tracking`, params: { slug: e.slug, title: e.title ?? '' } })}
               />
             ))}
-          </SettingsGroup>
-        </Section>
+        </SettingsGroup>
       ) : null}
 
+      {/* The tagged share on the page (no card), then the sources: tap one for its
+          split by event, then an event to see who registered. */}
       {data ? (
-        <Section title="Where registrations come from" subtitle="Tap a source for its split by event, then an event to see who registered">
-          <View style={[styles.card, { padding: spacing[5] }]}>
-            <CardBackdrop shape={styles.card} />
+        <>
+          <View style={[styles.pad, styles.block]}>
+            <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">Where registrations come from</Text>
             <Text style={[styles.big, { color: c.sky }]}>{total ? Math.round((data.tagged / total) * 100) : 0}%</Text>
             <Text style={[styles.muted, { color: c.soft }]}>
               of {total.toLocaleString('en-IN')} confirmed registrations came through a tracking link
             </Text>
           </View>
 
-          <SettingsGroup plain style={[styles.group, { marginTop: spacing[3] }]}>
+          <SettingsGroup flat plain style={[styles.group, { marginTop: spacing[3] }]}>
             {data.sources.length === 0 ? (
               <SettingsRow label="No confirmed registrations yet" />
             ) : (
@@ -165,22 +162,24 @@ export default function SpaceTrackingScreen() {
               })
             )}
           </SettingsGroup>
-        </Section>
+        </>
       ) : null}
 
+      {/* Building a link is an action, so it is the sky row. */}
       {spaceUrl ? (
-        <Section title="Space page links">
-          <SettingsGroup style={styles.group}>
+        <>
+          <SettingsGroup flat title="Space page links" style={styles.group}>
             <SettingsRow
-              icon={<LinkIcon size={ICON} color={c.text} weight="bold" />}
+              icon={<LinkIcon size={ICON} color={c.sky} weight="bold" />}
               label="Build a tracking link"
+              accent={c.sky}
               onPress={() => router.push({ pathname: '/utm-link', params: { url: spaceUrl, title: name ?? '', campaign: slug } })}
             />
           </SettingsGroup>
           <Text style={[styles.note, { color: c.muted }]}>
             A registration for any of this space's events counts for a space link opened within 7 days before it.
           </Text>
-        </Section>
+        </>
       ) : null}
     </CosmosScreen>
   );
@@ -195,10 +194,12 @@ const styles = StyleSheet.create({
     ...cosmosFont.display,
     letterSpacing: displayTracking(24),
   },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius },
-  padded: { marginTop: spacing[4], padding: spacing[5] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  error: { marginTop: spacing[4], marginHorizontal: GUTTER + spacing[1] },
+  block: { marginTop: spacing[8] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   big: { fontSize: 36, lineHeight: 46, ...cosmosFont.figure },
   nested: { paddingLeft: spacing[5] },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },

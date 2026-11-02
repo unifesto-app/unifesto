@@ -30,7 +30,7 @@ export default function MemberRow({ user, trailing, tags = [], busy, onPress }: 
       disabled={!onPress || busy}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={[name, ...tags, trailing].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
       {user.avatarUrl ? (
         <Image source={{ uri: user.avatarUrl }} style={[styles.avatar, { backgroundColor: c.card }]} />
