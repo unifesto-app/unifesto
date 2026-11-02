@@ -38,8 +38,10 @@ const PAST_LIMIT = 12;
 /**
  * Space page, same fusion look as the event page: the cosmos sky lit by the
  * space's colour (an approved white-label colour, else the banner's hue).
- * Identity (4:3 banner + 1:1 logo), a stats card, about, then its events,
- * sub-spaces and public team. Joining lives in the bottom bar; share and the
+ * Identity (4:3 banner + 1:1 logo) is the one hero; under it the numbers sit
+ * in a band between full hairlines with membership and website as rows on the
+ * page (no card), then about, its events, sub-spaces and public team, with no
+ * blurbs under the titles. Joining lives in the bottom bar; share and the
  * overflow menu live in the header.
  */
 export default function SpaceDetailScreen() {
@@ -112,7 +114,14 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.xl} style={{ marginTop: -LOGO / 2, marginLeft: spacing[4] }} />
         <Skeleton width="70%" height={26} borderRadius={8} style={{ marginTop: spacing[4] }} />
         <Skeleton width="45%" height={14} borderRadius={7} style={{ marginTop: spacing[3] }} />
-        <Skeleton width="100%" height={92} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
+        <View style={[styles.stats, { borderColor: c.border }]}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[styles.stat, { gap: 8 }]}>
+              <Skeleton width={36} height={22} borderRadius={6} />
+              <Skeleton width={64} height={12} borderRadius={6} />
+            </View>
+          ))}
+        </View>
       </View>
     );
   }
@@ -136,7 +145,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const isDraft = (e: Event) => e.status === 'DRAFT';
   const upcomingCount = s.upcoming.filter((e) => !isDraft(e)).length;
   const eventCount = upcomingCount + s.past.filter((e) => !isDraft(e)).length;
-  // Upcoming is the events figure, so it takes the card's sky.
+  // Upcoming is the events figure, so it takes the sky.
   const stats = [
     { label: s.memberCount === 1 ? 'Member' : 'Members', value: s.memberCount, color: c.text },
     { label: 'Upcoming', value: upcomingCount, color: c.sky },
@@ -228,28 +237,28 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
             </Pressable>
           ) : null}
 
-          {/* ── Stats card: numbers divided by hairlines, then membership and website ── */}
-          <View style={[styles.card, { backgroundColor: c.raised }]}>
-            <View style={styles.stats}>
-              {stats.map((st, i) => (
-                <View key={st.label} style={[styles.stat, i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.border }]}>
-                  <Text style={[styles.statValue, { color: st.color }]}>{compact(st.value)}</Text>
-                  <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={1}>{st.label}</Text>
-                </View>
-              ))}
-            </View>
-            {s.isMember ? (
-              <Row icon={<CheckCircle size={ICON} color={c.success} weight="fill" />} title="You're a member" color={c.success} />
-            ) : null}
-            {websiteLabel ? (
-              <Row
-                icon={<Globe size={ICON} color={c.text} />}
-                title={websiteLabel}
-                trailing={<ArrowUpRight size={15} color={c.muted} />}
-                onPress={s.visitWebsite}
-              />
-            ) : null}
+          {/* ── Numbers in a band between full hairlines (no card), then membership
+              and website as rows on the page ── */}
+          <View style={[styles.stats, { borderColor: c.border }]}>
+            {stats.map((st) => (
+              <View key={st.label} style={styles.stat}>
+                <Text style={[styles.statValue, { color: st.color }]}>{compact(st.value)}</Text>
+                <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={1}>{st.label}</Text>
+              </View>
+            ))}
           </View>
+          {s.isMember ? (
+            <Row icon={<CheckCircle size={ICON} color={c.success} weight="fill" />} title="You're a member" color={c.success} />
+          ) : null}
+          {websiteLabel ? (
+            <Row
+              icon={<Globe size={ICON} color={c.text} />}
+              title={websiteLabel}
+              trailing={<ArrowUpRight size={15} color={c.muted} />}
+              onPress={s.visitWebsite}
+              divider={s.isMember}
+            />
+          ) : null}
         </View>
 
         {description ? (
@@ -268,14 +277,15 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         ) : null}
 
         {s.upcoming.length > 0 ? (
-          <Section title="Upcoming" subtitle={upcomingCount ? `${upcomingCount} coming up` : undefined}>
+          <Section title="Upcoming">
             <Rail>{s.upcoming.map((e) => poster(e))}</Rail>
           </Section>
         ) : null}
 
         {s.upcoming.length + s.past.length === 0 ? (
           <Section title="Events">
-            <View style={[styles.empty, { backgroundColor: c.raised, marginHorizontal: GUTTER }]}>
+            {/* On the page, not in a card: one bare glyph and one muted line. */}
+            <View style={styles.empty}>
               <CalendarBlank size={32} color={c.muted} />
               <Text style={[styles.emptyText, { color: c.muted }]}>No events yet. Check back soon.</Text>
             </View>
@@ -283,7 +293,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         ) : null}
 
         {s.subSpaces.length > 0 ? (
-          <Section title="Sub-spaces" subtitle={`${s.subSpaces.length} inside ${space.name}`}>
+          <Section title="Sub-spaces">
             <Rail>
               {s.subSpaces.map((sub) => (
                 <SpaceCard key={sub.id} space={sub} onPress={() => router.push(`/space/${sub.id}`)} />
@@ -293,7 +303,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         ) : null}
 
         {s.past.length > 0 ? (
-          <Section title="Past events" subtitle={`${s.past.length} hosted`}>
+          <Section title="Past events">
             <Rail>{s.past.slice(0, PAST_LIMIT).map((e) => poster(e, true))}</Rail>
           </Section>
         ) : null}
@@ -338,13 +348,18 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   );
 }
 
-/** A line under the stats: bare icon, label (coloured for a status), optional trailing mark. */
-function Row({ icon, title, color, trailing, onPress }: {
+/**
+ * A row under the numbers, on the page: bare icon, label (coloured for a
+ * status), optional trailing mark. The band's hairline sits above the first;
+ * `divider` draws the full hairline between rows.
+ */
+function Row({ icon, title, color, trailing, onPress, divider }: {
   icon: React.ReactNode;
   title: string;
   color?: string;
   trailing?: React.ReactNode;
   onPress?: () => void;
+  divider?: boolean;
 }) {
   const c = useCosmos();
   const content = (
@@ -354,14 +369,14 @@ function Row({ icon, title, color, trailing, onPress }: {
       {trailing}
     </>
   );
-  const style = [styles.row, { borderTopColor: c.border }];
+  const style = [styles.row, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }];
   if (!onPress) return <View style={style}>{content}</View>;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="link"
       accessibilityLabel={title}
-      style={({ pressed }) => [style, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [style, pressed && { opacity: 0.6 }]}
     >
       {content}
     </Pressable>
@@ -386,23 +401,23 @@ const styles = StyleSheet.create({
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[3] },
   partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  stats: { flexDirection: 'row', paddingVertical: spacing[4] },
-  stat: { flex: 1, paddingHorizontal: spacing[4], gap: 4 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
-  statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  row: {
+  // A band on the page: full hairlines above and below, like Profile's numbers.
+  stats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
+    marginTop: spacing[6],
     paddingVertical: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
+  statLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  // Rows sit on the page: no side padding, so they line up with the gutter.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56, paddingVertical: spacing[3] },
   rowTitle: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
   link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[8], borderRadius: cosmosCardRadius },
+  empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[8], paddingHorizontal: GUTTER },
   emptyText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   emptyTitle: { marginTop: spacing[4], paddingHorizontal: GUTTER, fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
 });
