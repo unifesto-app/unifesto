@@ -33,10 +33,14 @@ export class PublicConfigController {
     return this.platformConfig.getUpiCheckout();
   }
 
-  /** Q40: the netbanking banks and wallets the payment page may list. */
+  /**
+   * Q40: the netbanking banks and wallets the payment page may list, and our
+   * public key (every checkout already carries it) so the app can check a
+   * typed UPI ID before an order exists.
+   */
   @Get('payment-methods')
-  getPaymentMethods() {
-    return paymentMethods();
+  async getPaymentMethods() {
+    return { ...(await paymentMethods()), keyId: process.env.RAZORPAY_KEY_ID };
   }
 
   /**

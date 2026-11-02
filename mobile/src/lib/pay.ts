@@ -41,7 +41,7 @@ export interface PayDetails {
 export interface UpiApp {
   id: string;
   name: string;
-  /** Android only: the app's own icon as a data URI. */
+  /** Android: the app's own icon as a data URI. iOS: Razorpay's logo for it. */
   icon?: string;
 }
 
@@ -64,6 +64,8 @@ export interface CheckoutMethods {
   apps: UpiApp[];
   wallets: PayOption[];
   selected: PayMethod;
+  /** Our public Razorpay key, to check a typed UPI ID before an order exists. None = no Verify. */
+  keyId?: string;
 }
 
 export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more' };
@@ -110,6 +112,8 @@ const IOS_NAMES: Record<string, string> = {
 // other app is its name in lower case without spaces.
 const IOS_SHORTCODES: Record<string, string> = { 'Google Pay': 'google_pay', 'BoB World UPI': 'bobupi', IndusInd: 'indusmobile', PopClub: 'popclubapp', Kotak811: 'kotakbank' };
 const iosShortcode = (name: string) => IOS_SHORTCODES[name] ?? name.toLowerCase().replace(/\s/g, '');
+// iOS can't read another app's icon, so the logo Razorpay's own checkout shows: its CDN keeps one per shortcode, Kotak's under kotak811.
+const iosLogo = (shortcode: string) => `https://cdn.razorpay.com/app/${shortcode === 'kotakbank' ? 'kotak811' : shortcode}.png`;
 // The big three lead the list (iOS shortcodes, Android packages); every other
 // app Razorpay finds follows in its order.
 const TOP_UPI_APPS = ['google_pay', 'phonepe', 'paytm', 'com.google.android.apps.nbu.paisa.user', 'com.phonepe.app', 'net.one97.paytm'];
@@ -164,7 +168,11 @@ function installedUpiApps(): Promise<UpiApp[]> {
             return {
               id,
               name: Platform.OS === 'ios' ? IOS_NAMES[id] ?? name.replace(/_/g, ' ') : name,
-              icon: a.iconBase64 ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}` : undefined,
+              icon: a.iconBase64
+                ? `data:image/png;base64,${a.iconBase64.replace(/\s/g, '')}`
+                : Platform.OS === 'ios'
+                  ? iosLogo(id)
+                  : undefined,
             };
           }),
         ),
@@ -183,12 +191,40 @@ async function upiCheckoutOn(): Promise<boolean> {
   return Promise.race([read, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
 }
 
-/** The wallets our Razorpay account takes. Unreadable or slow = none: UPI and cards only. */
-async function payWallets(): Promise<PayOption[]> {
+type PayConfig = { wallets: PayOption[]; keyId?: string };
+
+/** The wallets our Razorpay account takes, and our public key. Unreadable or slow = no wallets (UPI and cards only), no Verify. */
+async function payConfig(): Promise<PayConfig> {
+  const none: PayConfig = { wallets: [] };
   const read = makePublicRequest('/config/payment-methods')
-    .then(async (res): Promise<PayOption[]> => (res?.ok ? (await res.json())?.wallets : null) ?? [])
-    .catch(() => []);
-  return Promise.race([read, new Promise<PayOption[]>((resolve) => setTimeout(() => resolve([]), 3000))]);
+    .then(async (res): Promise<PayConfig> => {
+      const body = res?.ok ? await res.json() : null;
+      return { wallets: body?.wallets ?? [], keyId: body?.keyId || undefined };
+    })
+    .catch(() => none);
+  return Promise.race([read, new Promise<PayConfig>((resolve) => setTimeout(() => resolve(none), 3000))]);
+}
+
+/**
+ * The check Razorpay's own SDK runs on a typed UPI ID (it needs only our
+ * public key): the account holder's name ('' if Razorpay has none),
+ * 'invalid' for an ID no bank knows, or null when Razorpay couldn't answer.
+ * Pay works either way; Razorpay checks the ID again when it sends the request.
+ */
+export async function verifyUpiId(keyId: string, vpa: string): Promise<{ name: string } | 'invalid' | null> {
+  const ask = fetch(`https://api.razorpay.com/v1/payments/validate/account?key_id=${encodeURIComponent(keyId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `entity=vpa&value=${encodeURIComponent(vpa)}`,
+  })
+    .then((res) => res.json())
+    .then((body): { name: string } | 'invalid' | null => {
+      if (body?.success === true) return { name: body.customer_name ?? '' };
+      // Unknown ID: 200 with success false. Malformed ID: 400 invalid_vpa.
+      return body?.success === false || body?.error?.reason === 'invalid_vpa' ? 'invalid' : null;
+    })
+    .catch(() => null);
+  return Promise.race([ask, new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))]);
 }
 
 /** The methodKey() the last successful payment on this phone used. */
@@ -210,9 +246,9 @@ function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): P
  */
 export async function checkoutMethods(currency = 'INR'): Promise<CheckoutMethods> {
   if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return CHECKOUT_OFF;
-  const [found, last, wallets] = await Promise.all([installedUpiApps(), lastMethodId(), payWallets()]);
+  const [found, last, { wallets, keyId }] = await Promise.all([installedUpiApps(), lastMethodId(), payConfig()]);
   const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last) || upiRank(a) - upiRank(b));
-  return { on: true, apps, wallets, selected: preselect(last, apps, wallets) };
+  return { on: true, apps, wallets, keyId, selected: preselect(last, apps, wallets) };
 }
 
 /** Razorpay and the chooser report a dismissed payment as an error; it isn't one. Custom UI's Android back press is code 5. */

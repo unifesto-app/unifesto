@@ -26,7 +26,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import { CAN_TYPE_UPI_ID, methodKey, type PayMethod } from '../../lib/pay';
+import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -555,13 +555,23 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 /**
  * Q40: our own payment page. Every UPI app Razorpay finds on the phone (last
  * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
- * typed UPI ID on iOS, card and the wallets our Razorpay account takes.
- * Pay pays with the pick and nothing else.
+ * typed UPI ID on iOS (Verify shows whose it is), card and the wallets our
+ * Razorpay account takes. Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, wallets, selected } = r.payOptions;
+  const { apps, wallets, selected, keyId } = r.payOptions;
   const [allApps, setAllApps] = React.useState(false);
+  // The last Verify, kept only while the box still holds the ID it checked.
+  const [check, setCheck] = React.useState<{ vpa: string; result: Awaited<ReturnType<typeof verifyUpiId>> | 'checking' } | null>(null);
+  const vpa = typeof selected === 'object' && 'vpa' in selected ? selected.vpa : '';
+  const checked = check?.vpa === vpa ? check.result : undefined;
+  const verify = () => {
+    if (!keyId) return;
+    setCheck({ vpa, result: 'checking' });
+    verifyUpiId(keyId, vpa).then((result) => setCheck((cur) => (cur?.vpa === vpa ? { vpa, result } : cur)));
+  };
+  const canVerify = isVpa(vpa) && checked !== 'checking';
   const hidden = allApps ? 0 : Math.max(apps.length - 4, 0);
   const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
   // No method = the Show more row.
@@ -570,7 +580,7 @@ function PayWith({ r }: { r: EventRegistration }) {
       key: app.id,
       label: app.name,
       method: app,
-      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : icon(DeviceMobile),
+      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} resizeMode="contain" /> : icon(DeviceMobile),
     })),
     ...(hidden ? [{ key: 'more-apps', label: `Show ${hidden} more UPI apps`, icon: <CaretDown size={26} color={c.muted} /> }] : []),
     ...(CAN_TYPE_UPI_ID
@@ -626,10 +636,10 @@ function PayWith({ r }: { r: EventRegistration }) {
                 </Pressable>
                 {on && typeof selected === 'object' && 'vpa' in selected ? (
                   <View style={styles.payPick}>
-                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: c.input }]}>
+                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: checked === 'invalid' ? c.danger : c.input }]}>
                       <TextInput
                         value={selected.vpa}
-                        onChangeText={(vpa) => r.setPayMethod({ vpa: vpa.trim() })}
+                        onChangeText={(v) => r.setPayMethod({ vpa: v.trim() })}
                         placeholder="name@bank"
                         placeholderTextColor={c.muted}
                         selectionColor={c.primary}
@@ -637,10 +647,39 @@ function PayWith({ r }: { r: EventRegistration }) {
                         autoCorrect={false}
                         keyboardType="email-address"
                         returnKeyType="done"
+                        onSubmitEditing={keyId && canVerify ? verify : undefined}
                         accessibilityLabel="UPI ID"
                         style={[styles.couponInput, { color: c.text }]}
                       />
+                      {!keyId ? null : checked === 'checking' ? (
+                        <ActivityIndicator color={c.text} />
+                      ) : (
+                        <Pressable
+                          onPress={verify}
+                          disabled={!canVerify}
+                          accessibilityRole="button"
+                          accessibilityLabel="Verify UPI ID"
+                          accessibilityState={{ disabled: !canVerify }}
+                          style={({ pressed }) => [styles.apply, { opacity: !canVerify ? 0.4 : pressed ? 0.6 : 1 }]}
+                        >
+                          <Text style={[styles.linkText, { color: c.text }]}>Verify</Text>
+                        </Pressable>
+                      )}
                     </View>
+                    {checked && typeof checked === 'object' ? (
+                      <View style={styles.verified} accessibilityLiveRegion="polite">
+                        <CheckCircle size={18} color={c.success} weight="fill" />
+                        <Text style={[styles.meta, { color: c.success, flexShrink: 1 }]}>{checked.name || 'UPI ID found'}</Text>
+                      </View>
+                    ) : checked === 'invalid' ? (
+                      <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">
+                        No bank has this UPI ID. Check it and try again.
+                      </Text>
+                    ) : checked === null ? (
+                      <Text style={[styles.error, { color: c.muted }]} accessibilityLiveRegion="polite">
+                        Couldn't check it right now. You can still pay.
+                      </Text>
+                    ) : null}
                   </View>
                 ) : null}
                 {on && typeof selected === 'object' && 'wallet' in selected ? (
@@ -808,6 +847,7 @@ const styles = StyleSheet.create({
   payIcon: { width: 26, height: 26, borderRadius: 7 },
   payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   payPick: { paddingBottom: spacing[3] },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },
   // gate
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
