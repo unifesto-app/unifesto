@@ -1106,3 +1106,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile My spaces drops the extra Find more spaces row (See all and search already cover it) (#550)
 - **2026-11-02** · mobile Profile redesigned: centred identity, numbers band, shorter lists, brand marks footer, guest empty state (#551)
 - **2026-11-02** · mobile Support redesigned: headline on the page, requests and contacts as flat rows, WhatsApp mark, no blurbs (#552)
+- **2026-11-02** · mobile Saved and Certificates redesigned: flat rows, one hero each, no blurbs or cards (#553)
