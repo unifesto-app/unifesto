@@ -18,6 +18,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { emailFilter, idsByEmail, sameEmail } from '../auth/identifiers';
 import { enforceFormAnswers, loadTicketFormFields } from './form-answers.policy';
+import { assertAgeConfirmed } from './age-confirmation';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
@@ -1062,6 +1063,8 @@ export class GroupSeatsService {
     this.assertSent(seat.inviteEmail);
     this.assertSeatClaimable(seat);
     await this.assertNotAlreadyInEvent(seat.registration.eventId, claimerUserId, seat.id);
+    // Claiming takes a ticket for yourself, like registering (Z11).
+    await assertAgeConfirmed(this.prisma, claimerUserId);
 
     // The claimer answers their own per-member questions now, so required
     // ones are enforced (team-wide answers were given by the lead).

@@ -308,6 +308,7 @@ describe('A28 claims', () => {
         }),
       },
       user: { findUnique: jest.fn(async () => null) },
+      platformConfig: { findUnique: jest.fn(async () => null) },
     };
     prisma.$transaction = jest.fn(async (fn: any) => {
       inTx = true;

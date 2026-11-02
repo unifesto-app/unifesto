@@ -136,6 +136,8 @@ function makeDb(seed: Seat[] = []) {
     },
     // No custom questions on this ticket: the answer policy passes through.
     eventFormField: { findMany: async () => [] },
+    // The Z11 18+ switch is off.
+    platformConfig: { findUnique: async () => null },
     eventTicket: {
       create: async ({ data }: any) => ({
         ticketCode: data.ticketCode,
