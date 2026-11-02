@@ -147,8 +147,8 @@ describe('AiService', () => {
   });
 
   it("stops a feature at its 24-hour spend ceiling, system calls included", async () => {
-    const { svc, prisma, create } = setup({ spent: 0.5 });
-    // blog_writer has no user, so no per-user cap; the $0.50 ceiling still holds.
+    const { svc, prisma, create } = setup({ spent: 0.8 });
+    // blog_writer has no user, so no per-user cap; the $0.80 ceiling still holds.
     await expect(svc.run('blog_writer', { ...input, userId: undefined })).resolves.toEqual({
       ok: false,
       reason: 'capped',
