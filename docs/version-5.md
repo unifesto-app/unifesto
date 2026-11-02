@@ -1116,3 +1116,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile Apex sub-screens as rows on the page: flat groups, item cards to rows, no list cards; tool tiles and dashboard kept (#561)
 - **2026-11-02** · mobile SearchList (Apex lookups, money lists, Space support) as rows on the page (#566)
 - **2026-11-03** · mobile Sponsors and Hackathon mode locks say ask Unifesto to turn them on, not upgrade a plan (#567)
+- **2026-11-03** · mobile alerts: centred text, buttons as hairline rows instead of outlined/filled boxes (#568)
