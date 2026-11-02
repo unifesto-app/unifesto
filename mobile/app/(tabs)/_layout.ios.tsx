@@ -60,19 +60,19 @@ export default function TabsLayout() {
       >
         {/* Icon-only tabs: labels are hidden but kept for VoiceOver. */}
         <NativeTabs.Trigger name="index">
-          <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} />
+          <NativeTabs.Trigger.Icon sf={{ default: 'rectangle.stack', selected: 'rectangle.stack.fill' }} />
           <NativeTabs.Trigger.Label hidden>Home</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="tickets">
-          <NativeTabs.Trigger.Icon sf={{ default: 'ticket', selected: 'ticket.fill' }} />
+          <NativeTabs.Trigger.Icon sf={{ default: 'wallet.pass', selected: 'wallet.pass.fill' }} />
           <NativeTabs.Trigger.Label hidden>Tickets</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="space" hidden={sections.length === 0}>
-          <NativeTabs.Trigger.Icon sf={{ default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' }} />
+          <NativeTabs.Trigger.Icon sf={{ default: 'square.stack.3d.up', selected: 'square.stack.3d.up.fill' }} />
           <NativeTabs.Trigger.Label hidden>Space</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="apex" hidden={!isPlatformAdmin}>
-          <NativeTabs.Trigger.Icon sf={{ default: 'checkmark.shield', selected: 'checkmark.shield.fill' }} />
+          <NativeTabs.Trigger.Icon sf={{ default: 'crown', selected: 'crown.fill' }} />
           <NativeTabs.Trigger.Label hidden>Apex</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">

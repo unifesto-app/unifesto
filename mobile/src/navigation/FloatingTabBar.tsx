@@ -3,17 +3,17 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { House, ShieldCheck, SquaresFour, Ticket, User, type Icon } from '@unifesto/unicon/react-native';
+import { Cards, Crown, Stack, User, Wallet, type Icon } from '@unifesto/unicon/react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useCosmos } from '../theme/cosmos';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
 import { borderRadius, spacing } from '../theme/spacing';
 
 export const TAB_META: Record<string, { label: string; icon: Icon }> = {
-  index: { label: 'Home', icon: House },
-  tickets: { label: 'Tickets', icon: Ticket },
-  space: { label: 'Space', icon: SquaresFour },
-  apex: { label: 'Apex', icon: ShieldCheck },
+  index: { label: 'Home', icon: Cards },
+  tickets: { label: 'Tickets', icon: Wallet },
+  space: { label: 'Space', icon: Stack },
+  apex: { label: 'Apex', icon: Crown },
   profile: { label: 'Profile', icon: User },
 };
 
