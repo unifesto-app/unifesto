@@ -9,13 +9,11 @@ import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
-import AuthButton from '../components/auth/AuthButton';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { GUTTER, Section } from '../components/home/Section';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type PermStatus = 'granted' | 'denied' | 'undetermined';
 type PermKey = 'notifications' | 'camera' | 'mediaLibrary' | 'location';
@@ -121,7 +119,7 @@ export default function PermissionsScreen() {
   const pending = statuses ? PERMISSIONS.filter((p) => statuses[p.key] !== 'granted') : [];
   const allowed = statuses ? PERMISSIONS.filter((p) => statuses[p.key] === 'granted') : [];
 
-  // One row of a grouped card: same icon column as SettingsRow, so the hairlines line up.
+  // One row of a flat group: same icon column as SettingsRow, so the rows line up.
   const card = (perm: Perm) => {
     const status = statuses?.[perm.key] ?? 'undetermined';
     const granted = status === 'granted';
@@ -132,7 +130,7 @@ export default function PermissionsScreen() {
         accessibilityRole="button"
         accessibilityLabel={`${perm.label}, ${granted ? 'allowed' : status === 'denied' ? 'not allowed' : 'not asked yet'}`}
         accessibilityHint={status === 'undetermined' ? 'Shows the permission prompt' : 'Opens Settings'}
-        style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
       >
         <View style={styles.icon}>
           <UnGlyph name={perm.icon} size={28} color={c.text} />
@@ -150,6 +148,17 @@ export default function PermissionsScreen() {
     );
   };
 
+  // Closes the last list. Changes made there show here on return (the AppState listener rechecks).
+  const openSettings = (
+    <SettingsRow
+      key="open-settings"
+      icon={<UnGlyph name="gear" size={28} color={c.sky} />}
+      label="Open Settings"
+      accent={c.sky}
+      onPress={() => Linking.openSettings()}
+    />
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
@@ -163,30 +172,26 @@ export default function PermissionsScreen() {
         }
       >
         {!statuses ? null : pending.length === 0 ? (
-          <View style={styles.summary}>
-            <CardBackdrop shape={styles.summary} />
-            <Text style={[styles.summaryTitle, { color: c.text }]}>All set</Text>
-            <Text style={[styles.summaryBody, { color: c.soft }]}>
-              Everything Unifesto can use is allowed. Change any of it in Settings whenever you like.
-            </Text>
+          <View style={styles.allSet} accessible accessibilityLabel="All set. Everything Unifesto can use is allowed.">
+            <CheckCircle size={24} color={c.success} weight="fill" />
+            <Text style={[styles.label, { color: c.text }]}>All set, everything is allowed</Text>
           </View>
         ) : (
-          <Section title="Needs a look" subtitle={`${pending.length} of ${PERMISSIONS.length} not allowed yet`} style={styles.firstSection}>
-            <SettingsGroup style={styles.group}>{pending.map(card)}</SettingsGroup>
+          <Section title="Needs a look" style={styles.firstSection}>
+            <SettingsGroup flat style={styles.group}>
+              {pending.map(card)}
+              {allowed.length === 0 ? openSettings : null}
+            </SettingsGroup>
           </Section>
         )}
 
         {allowed.length > 0 ? (
-          <Section title="Allowed" subtitle="Tap one to change it in Settings" style={styles.section}>
-            <SettingsGroup style={styles.group}>{allowed.map(card)}</SettingsGroup>
+          <Section title="Allowed" style={styles.section}>
+            <SettingsGroup flat style={styles.group}>
+              {allowed.map(card)}
+              {openSettings}
+            </SettingsGroup>
           </Section>
-        ) : null}
-
-        {statuses ? (
-          <View style={[styles.pad, { marginTop: spacing[8] }]}>
-            <AuthButton label="Open Settings" variant="secondary" onPress={() => Linking.openSettings()} />
-            <Text style={[styles.note, { color: c.muted }]}>Changes you make there show here when you come back.</Text>
-          </View>
         ) : null}
       </ScrollView>
     </View>
@@ -195,7 +200,6 @@ export default function PermissionsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  pad: { paddingHorizontal: GUTTER },
   // Section's default top margin is sized for Home; tighter at the top of a page.
   firstSection: { marginTop: spacing[6] },
   section: { marginTop: spacing[8] },
@@ -206,7 +210,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
     minHeight: 64,
   },
   icon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
@@ -214,8 +217,5 @@ const styles = StyleSheet.create({
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   why: { fontSize: typography.fontSize.sm, lineHeight: 18, ...cosmosFont.body },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  summary: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  summaryTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  summaryBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
-  note: { marginTop: spacing[3], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  allSet: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: GUTTER, marginTop: spacing[6] },
 });

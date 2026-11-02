@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../ui/CardSurface';
@@ -18,6 +18,8 @@ export interface SettingsRowProps {
   trailing?: React.ReactNode;
   /** Red label, for destructive rows. */
   danger?: boolean;
+  /** An action row closing a list (Add, Manage): label in this card accent, no chevron. */
+  accent?: string;
   /** Omit for a read-only row: no press state, no chevron. */
   onPress?: () => void;
 }
@@ -30,31 +32,41 @@ interface SettingsGroupProps {
   plain?: boolean;
   /** A flat fill instead of the card backdrop, e.g. a cosmos card on a fusion page. */
   surface?: string;
+  /** No card: rows straight on the page with a full hairline between them, like Up next. */
+  flat?: boolean;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
+const FlatContext = createContext(false);
+
+/** True inside a `flat` SettingsGroup: custom rows drop their side padding to line up with the gutter. */
+export const useFlatRows = () => useContext(FlatContext);
+
 /**
  * Inset-grouped list (Horizon): a muted Hanken SemiBold title in sentence case,
- * then rows on one borderless card divided by hairlines. Monochrome: labels in
- * text, values and chevrons muted, crimson only for destructive rows.
+ * then rows on one borderless card divided by hairlines (or on the page, `flat`).
+ * Monochrome: labels in text, values and chevrons muted, crimson only for
+ * destructive rows.
  */
-export function SettingsGroup({ title, action, plain, surface, style, children }: SettingsGroupProps) {
+export function SettingsGroup({ title, action, plain, surface, flat, style, children }: SettingsGroupProps) {
   const c = useCosmos();
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={[styles.group, style]}>
       <GroupTitle title={title} action={action} />
-      <View style={[styles.card, surface ? { backgroundColor: surface } : null]}>
-        {surface ? null : <CardBackdrop shape={styles.card} />}
-        {rows.map((row, i) => (
-          <View key={i}>
-            {row}
-            {i < rows.length - 1 ? (
-              <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: c.border }]} />
-            ) : null}
-          </View>
-        ))}
+      <View style={flat ? null : [styles.card, surface ? { backgroundColor: surface } : null]}>
+        {surface || flat ? null : <CardBackdrop shape={styles.card} />}
+        <FlatContext.Provider value={!!flat}>
+          {rows.map((row, i) => (
+            <View key={i}>
+              {row}
+              {i < rows.length - 1 ? (
+                <View style={[styles.divider, plain && styles.dividerPlain, flat && styles.dividerFlat, { backgroundColor: c.border }]} />
+              ) : null}
+            </View>
+          ))}
+        </FlatContext.Provider>
       </View>
     </View>
   );
@@ -118,17 +130,18 @@ export function GroupCell({ index, count, plain, divider, style, children }: {
   );
 }
 
-export function SettingsRow({ icon, label, value, external, trailing, danger, onPress }: SettingsRowProps) {
+export function SettingsRow({ icon, label, value, external, trailing, danger, accent, onPress }: SettingsRowProps) {
   const c = useCosmos();
+  const flat = useContext(FlatContext);
   const content = (
     <>
       {icon ? <View style={styles.icon}>{icon}</View> : null}
-      <Text style={[styles.label, { color: danger ? c.danger : c.text }]} numberOfLines={1}>
+      <Text style={[styles.label, { color: danger ? c.danger : accent ?? c.text }]} numberOfLines={1}>
         {label}
       </Text>
       {value ? <Text style={[styles.value, { color: c.muted }]} numberOfLines={1}>{value}</Text> : null}
       {trailing ??
-        (onPress ? (
+        (onPress && !accent ? (
           external ? (
             <ArrowUpRight size={15} color={c.muted} />
           ) : (
@@ -138,14 +151,16 @@ export function SettingsRow({ icon, label, value, external, trailing, danger, on
     </>
   );
 
-  if (!onPress) return <View style={styles.row}>{content}</View>;
+  // On the page the row lines up with the gutter, and a press dims it rather than tinting a box.
+  const row = [styles.row, flat && styles.rowFlat];
+  if (!onPress) return <View style={row}>{content}</View>;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole={external ? 'link' : 'button'}
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [row, pressed && (flat ? { opacity: 0.6 } : { backgroundColor: c.tint })]}
     >
       {content}
     </Pressable>
@@ -175,10 +190,12 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingVertical: spacing[2],
   },
+  rowFlat: { paddingHorizontal: 0 },
   icon: { width: ICON, height: ICON, alignItems: 'center', justifyContent: 'center' },
   label: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   value: { fontSize: typography.fontSize.sm, maxWidth: '55%', ...cosmosFont.body },
   // Inset so the hairline starts under the label, not the icon.
   divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + ICON + spacing[3] },
   dividerPlain: { marginLeft: spacing[4] },
+  dividerFlat: { marginLeft: 0 },
 });

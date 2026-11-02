@@ -1,27 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CaretDown, CaretUp } from '@unifesto/unicon/react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Updates from 'expo-updates';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { buildInfo, buildLabel } from '../lib/appBuild';
 import { checkForOtaNow, restartIntoUpdate } from '../lib/otaUpdate';
 import { getStoreUpdate, openStoreListing, type StoreUpdate } from '../lib/appUpdate';
-import { WHATS_NEW, sectionsFor } from '../lib/whatsNew';
-import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { currentAppIconPreview } from '../lib/appIcon';
 import { openStoreReview } from '../utils/storeReview';
 import BrandWordmark from '../components/BrandWordmark';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const STORE = Platform.OS === 'ios' ? 'App Store' : 'Play Store';
 const ICON = 88;
@@ -36,20 +31,18 @@ type Status =
   | { kind: 'store'; update: StoreUpdate };
 
 /**
- * Profile › About and updates: my app icon and version up top, one card that
+ * Profile › About and updates: my app icon and version up top, one row that
  * says where this install stands with the single next step (check, restart,
- * open the store), the latest release notes (older ones folded away), ways to
- * pass Unifesto on, then the exact build details for support.
+ * open the store), ways to pass Unifesto on, then the exact build details for
+ * support. Release notes live in the What's new sheet.
  */
 export default function AboutScreen() {
   const c = useCosmos();
-  const operator = useSpaceAccess().sections.length > 0;
   const topSpacing = useTopSpacing();
   const info = useMemo(buildInfo, []);
   // expo-updates' own state: also true when a foreground check downloaded one.
   const { isUpdatePending } = Updates.useUpdates();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const [showEarlier, setShowEarlier] = useState(false);
   const icon = useMemo(currentAppIconPreview, []);
 
   const checkNow = async () => {
@@ -80,40 +73,26 @@ export default function AboutScreen() {
   };
 
   const check = () => void checkNow();
-  const card: { title: string; body: string; action: React.ReactNode } = isUpdatePending
-    ? {
-        title: 'Update ready',
-        body: 'Restart to use it now. Otherwise it applies the next time you open the app.',
-        action: <AuthButton label="Restart now" arrow onPress={restartIntoUpdate} />,
-      }
+  // Where this install stands, as one row: the next step in the accent, the state as its value.
+  const update: { label: string; value?: string; onPress: () => void } = isUpdatePending
+    ? { label: 'Restart to update', value: 'Update ready', onPress: restartIntoUpdate }
     : status.kind === 'store'
       ? {
-          title: status.update.kind === 'force' ? 'Update required' : `Version ${status.update.info.latestVersion} is out`,
-          body:
-            status.update.kind === 'force'
-              ? `This version is no longer supported. Get the latest from the ${STORE}.`
-              : `Get it from the ${STORE} for the latest features and fixes.`,
-          action: <AuthButton label={`Open ${STORE}`} arrow onPress={() => openStoreListing(status.update.info)} />,
+          label: `Open ${STORE}`,
+          value: status.update.kind === 'force' ? 'Update required' : `Version ${status.update.info.latestVersion} is out`,
+          onPress: () => openStoreListing(status.update.info),
         }
       : status.kind === 'current'
-        ? {
-            title: 'You’re up to date',
-            body: 'Checked just now. Fixes also arrive on their own while you use the app.',
-            action: <AuthButton label="Check again" variant="secondary" onPress={check} />,
-          }
+        ? { label: 'Check again', value: 'Up to date', onPress: check }
         : status.kind === 'error'
-          ? {
-              title: 'Couldn’t check',
-              body: 'Check your connection and try again.',
-              action: <AuthButton label="Try again" variant="secondary" onPress={check} />,
-            }
-          : {
-              title: 'Updates',
-              body: info.updateCreatedAt
-                ? `Last updated ${when(info.updateCreatedAt)}. Fixes arrive on their own; check to get them now.`
-                : `Running the version from the ${STORE}. Fixes arrive on their own; check to get them now.`,
-              action: <AuthButton label="Check for updates" loading={status.kind === 'checking'} onPress={check} />,
-            };
+          ? { label: 'Try again', value: 'Couldn’t check', onPress: check }
+          : status.kind === 'checking'
+            ? { label: 'Checking…', onPress: () => {} }
+            : {
+                label: 'Check for updates',
+                value: info.updateCreatedAt ? `Updated ${when(info.updateCreatedAt)}` : undefined,
+                onPress: check,
+              };
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -133,49 +112,14 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <View style={styles.card}>
-          <CardBackdrop shape={styles.card} />
-          <Text style={[styles.cardTitle, { color: c.text }]}>{card.title}</Text>
-          <Text style={[styles.cardBody, { color: c.soft }]}>{card.body}</Text>
-          <View style={{ marginTop: spacing[5] }}>{card.action}</View>
-        </View>
+        <Section title="Updates" style={styles.firstSection}>
+          <SettingsGroup flat plain style={styles.group}>
+            <SettingsRow label={update.label} value={update.value} accent={c.sky} onPress={update.onPress} />
+          </SettingsGroup>
+        </Section>
 
-        {WHATS_NEW.length ? (
-          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].version}`} style={styles.section}>
-            <View style={styles.notes}>
-              {(showEarlier ? WHATS_NEW : WHATS_NEW.slice(0, 1)).map((entry, i) => (
-                <View key={entry.version} style={[styles.release, i === 0 ? { paddingTop: 0 } : { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                  {i > 0 ? <Text style={[styles.releaseId, { color: c.muted }]}>{entry.version}</Text> : null}
-                  {sectionsFor(entry, operator).flatMap((s) => s.items).map((item) => (
-                    <View key={item.title} style={styles.item}>
-                      <Text style={[styles.bullet, { color: c.muted }]}>•</Text>
-                      <Text style={[styles.itemText, { color: i === 0 ? c.soft : c.muted }]}>
-                        {item.body ? `${item.title}. ${item.body}` : item.title}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-              {WHATS_NEW.length > 1 ? (
-                <Pressable
-                  onPress={() => setShowEarlier((v) => !v)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showEarlier }}
-                  style={({ pressed }) => [styles.toggle, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <Text style={[styles.toggleText, { color: c.text }]}>
-                    {showEarlier ? 'Hide earlier releases' : `Earlier releases (${WHATS_NEW.length - 1})`}
-                  </Text>
-                  {showEarlier ? <CaretUp size={14} color={c.text} /> : <CaretDown size={14} color={c.text} />}
-                </Pressable>
-              ) : null}
-            </View>
-          </Section>
-        ) : null}
-
-        <Section title="Spread the word" subtitle="Know someone who’d like this?" style={styles.section}>
-          <SettingsGroup plain style={styles.group}>
+        <Section title="Spread the word" style={styles.section}>
+          <SettingsGroup flat plain style={styles.group}>
             <SettingsRow
               label="Share Unifesto"
               onPress={() => Share.share({ message: `Find events and the people going on Unifesto: ${APP_LINK}`, url: APP_LINK }).catch(() => {})}
@@ -185,14 +129,15 @@ export default function AboutScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="For support" subtitle="Share these if something isn’t working." style={styles.section}>
-          <SettingsGroup plain style={styles.group} action={{ label: 'Copy all', onPress: () => void copyDetails() }}>
+        <Section title="For support" style={styles.section}>
+          <SettingsGroup flat plain style={styles.group}>
             <SettingsRow label="Version" value={buildLabel(info)} />
             <SettingsRow label="Platform" value={info.platform} />
             <SettingsRow label="Runtime" value={info.runtimeVersion ? info.runtimeVersion.slice(0, 12) : '–'} />
             <SettingsRow label="Channel" value={info.channel ?? '–'} />
             <SettingsRow label="Update" value={info.updateId ? info.updateId.slice(0, 13) : 'Built-in'} />
             {info.emergencyLaunch ? <SettingsRow label="Recovered from a failed update" value="Yes" /> : null}
+            <SettingsRow label="Copy all details" accent={c.sky} onPress={() => void copyDetails()} />
           </SettingsGroup>
         </Section>
         <Text style={[styles.footer, { color: c.muted }]}>© {new Date().getFullYear()} Unifesto</Text>
@@ -209,19 +154,9 @@ const styles = StyleSheet.create({
   icon: { width: ICON, height: ICON, borderRadius: ICON * 0.22, marginBottom: spacing[5] },
   version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.figure },
   build: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
-  cardTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
-  cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
-  // A settings page steps by spacing[8] between sections (Home's are looser).
+  // The hero already spaces the first section; settings pages step by spacing[8] after it.
+  firstSection: { marginTop: 0 },
   section: { marginTop: spacing[8] },
-  notes: { paddingHorizontal: GUTTER },
-  release: { paddingVertical: spacing[5] },
-  releaseId: { fontSize: 15, lineHeight: 22, marginBottom: spacing[3], ...cosmosFont.figure },
-  item: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
-  bullet: { fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
-  itemText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
-  toggle: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingTop: spacing[4] },
-  toggleText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   footer: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
   // The SettingsGroup default top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },

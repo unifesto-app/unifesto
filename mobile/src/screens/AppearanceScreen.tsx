@@ -41,7 +41,7 @@ export default function AppearanceScreen() {
         contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Section title="Theme" subtitle="How Unifesto looks on this phone" style={styles.firstSection}>
+        <Section title="Theme" style={styles.firstSection}>
           <View style={styles.options} accessibilityRole="radiogroup">
             {OPTIONS.map(({ key, label }) => {
               const selected = theme === key;
@@ -112,7 +112,7 @@ function AppIconPicker() {
   };
 
   return (
-    <Section title="App icon" subtitle="Pick the one on your home screen" style={styles.section}>
+    <Section title="App icon" style={styles.section}>
       <View style={[styles.icons, { gap }]} accessibilityRole="radiogroup">
         {APP_ICONS.map((icon) => {
           const selected = current === icon.name;
