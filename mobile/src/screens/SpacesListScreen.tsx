@@ -5,30 +5,24 @@ import { UsersThree } from '@unifesto/unicon/react-native';
 import { CosmosList } from '../components/ui/CosmosScreen';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
-import { SpaceCard, SpaceCardSkeleton } from '../components/home/SpaceCards';
+import { SpaceRow, SpaceRowSkeleton } from '../components/home/SpaceCards';
 import { getAllSpaces, getSpaceById, Space } from '../lib/api/spaces';
-import { column, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
-import useGrid, { rows } from '../hooks/useGrid';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
-const GAP = spacing[3];
-/** Narrowest a space card gets before the grid drops a column (never below two). */
-const CARD_MIN = 200;
 /** Spaces fetched per page. */
 const PAGE_SIZE = 12;
 
 /**
- * The catalogue: every public space, searched and paged by the server, as a
- * grid (two columns on phones, more on tablets and wide windows) that loads
- * more as you scroll. My spaces (`?mine=true`) is
- * its own screen, MySpacesScreen.
+ * The catalogue: every public space, searched and paged by the server, as rows
+ * on the page with full hairlines (the same row as My spaces: 1:1 logo, name,
+ * place · members · events, "Part of" its parent), loading more as you scroll.
+ * My spaces (`?mine=true`) is its own screen, MySpacesScreen.
  */
 export default function SpacesListScreen() {
   const c = useCosmos();
   const router = useRouter();
-  const grid = useGrid(CARD_MIN, GAP, 2);
-  const cardW = grid.itemWidth;
 
   const { search: paramSearch } = useLocalSearchParams<{ search?: string }>();
 
@@ -119,9 +113,10 @@ export default function SpacesListScreen() {
     const searching = !!searchQuery.trim();
     const title = searching ? 'No matches' : 'No spaces yet';
     const body = searching ? `Nothing matches “${searchQuery.trim()}”.` : 'Check back soon for new spaces.';
+    // An empty state straight on the page: a headline and one muted line, no card.
     return (
-      <View style={[styles.empty, { backgroundColor: c.raised }]}>
-        <UsersThree size={40} color={c.muted} weight="duotone" />
+      <View style={styles.empty}>
+        <UsersThree size={44} color={c.muted} weight="duotone" />
         <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
         <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
       </View>
@@ -130,32 +125,30 @@ export default function SpacesListScreen() {
 
   return (
     <CosmosList
-      data={loading ? [] : rows(spaces, grid.columns)}
-      keyExtractor={(row) => row[0].id}
-      contentContainerStyle={[styles.content, { maxWidth: grid.maxWidth }]}
+      data={loading ? [] : spaces}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.content}
       keyboardDismissMode="on-drag"
       refreshing={refreshing}
       onRefresh={() => loadSpaces(1, 'refresh')}
       ListHeaderComponent={header}
-      ListHeaderComponentStyle={{ marginBottom: spacing[5] }}
-      renderItem={({ item: row }) => (
-        <View style={styles.row}>
-          {row.map((item) => (
-            <SpaceCard
-              key={item.id}
-              space={item}
-              width={cardW}
-              context={item.parentSpaceId && parentSpaceNames[item.parentSpaceId] ? `Part of ${parentSpaceNames[item.parentSpaceId]}` : null}
-              onPress={() => router.push(`/space/${item.id}`)}
-            />
-          ))}
+      ListHeaderComponentStyle={{ marginBottom: spacing[3] }}
+      renderItem={({ item, index }) => (
+        <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
+          <SpaceRow
+            space={item}
+            parent={item.parentSpaceId ? parentSpaceNames[item.parentSpaceId] : null}
+            onPress={() => router.push(`/space/${item.id}`)}
+          />
         </View>
       )}
       ListEmptyComponent={
         loading ? (
-          <View style={styles.skeletonGrid}>
-            {Array.from({ length: grid.columns * 3 }, (_, i) => (
-              <SpaceCardSkeleton key={i} width={cardW} />
+          <View>
+            {Array.from({ length: 6 }, (_, i) => (
+              <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+                <SpaceRowSkeleton />
+              </View>
             ))}
           </View>
         ) : (
@@ -170,15 +163,14 @@ export default function SpacesListScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, gap: GAP },
-  row: { flexDirection: 'row', gap: GAP },
-  skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-  empty: { ...column, alignItems: 'center', padding: spacing[6], borderRadius: cosmosCardRadius },
-  emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  content: { paddingHorizontal: GUTTER },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { alignItems: 'center', marginTop: spacing[8] },
+  emptyTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   emptyBody: {
-    marginTop: 6,
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.5,
+    marginTop: spacing[2],
+    fontSize: typography.fontSize.base,
+    lineHeight: 22,
     textAlign: 'center',
     maxWidth: 300,
     ...cosmosFont.body,
