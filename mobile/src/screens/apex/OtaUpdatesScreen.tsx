@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -22,7 +21,7 @@ import {
 } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex › OTA updates: what's published on each EAS Update channel, and the
@@ -157,7 +156,6 @@ export default function OtaUpdatesScreen() {
       {!groups ? (
         error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load(channel)} style={{ marginTop: spacing[4] }} />
           </View>
@@ -166,19 +164,17 @@ export default function OtaUpdatesScreen() {
         )
       ) : groups.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>Nothing published on {channel} yet.</Text>
         </View>
       ) : (
         <View style={styles.list}>
-          {groups.map((g) => {
+          {groups.map((g, n) => {
             const s = states.get(g.group) ?? 'past';
             const b = badge(s, g);
             const pct = g.rolloutPercentage ?? 0;
             const isMine = !!mine.updateId && g.updateIds.includes(mine.updateId);
             return (
-              <View key={g.group} style={styles.card}>
-                <CardBackdrop shape={styles.card} />
+              <View key={g.group} style={[styles.card, n > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
                 <View style={styles.head}>
                   <Badge label={b.label} tone={b.tone} />
                   {isMine ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
@@ -283,8 +279,7 @@ function StaleCard({ s }: { s: OtaStaleness }) {
   const old = s.oldestUnshippedAt ? daysAgo(s.oldestUnshippedAt) : 0;
   const tone: BadgeTone = !n ? 'success' : old >= 7 ? 'danger' : 'warning';
   return (
-    <View style={[styles.card, styles.section]}>
-      <CardBackdrop shape={styles.card} />
+    <View style={[styles.card, styles.section, { borderBottomColor: c.border }]}>
       <View style={styles.head}>
         {count != null ? <Badge label={n ? `${count} unshipped` : 'Up to date'} tone={tone} /> : null}
         {count != null && s.main ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
@@ -344,8 +339,7 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
     </View>
   );
   return (
-    <View style={[styles.card, styles.section]}>
-      <CardBackdrop shape={styles.card} />
+    <View style={[styles.card, styles.section, { borderBottomColor: c.border }]}>
       <Text style={[styles.title, { color: c.text }]}>What phones run</Text>
       <Text style={[styles.small, { color: c.muted }]}>
         {a.total} active user{a.total === 1 ? '' : 's'} (app reported in the last {a.days} days)
@@ -363,15 +357,17 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
 }
 
 const styles = StyleSheet.create({
-  section: { marginBottom: spacing[3] },
+  // Staleness and adoption: blocks on the page, a full hairline under each.
+  section: { marginBottom: spacing[3], borderBottomWidth: StyleSheet.hairlineWidth },
   adoptGroup: { gap: spacing[2], marginTop: spacing[2] },
   adoptRow: { gap: spacing[1] },
   adoptHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   content: { paddingHorizontal: GUTTER },
   center: { marginVertical: spacing[12] },
-  empty: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  list: { marginTop: spacing[4], gap: spacing[3] },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], gap: spacing[2] },
+  empty: { marginTop: spacing[4], paddingVertical: spacing[8] },
+  list: { marginTop: spacing[2] },
+  // Rows on the page, no card.
+  card: { paddingVertical: spacing[4], gap: spacing[2] },
   head: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing[2] },
   sep: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

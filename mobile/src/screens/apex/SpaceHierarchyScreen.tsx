@@ -7,13 +7,12 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { createSubSpaceRequest, getAllSpacesForPicker, getSpaceDetail, type AdminSpaceDetail, type AdminSpaceRow } from '../../lib/api/apex';
 import { ACTION_LABEL, availableActions, buildRequest, needsPicker, pickerOptions, type HierarchyAction } from '../../lib/apexHierarchy';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 const PICKER_LIMIT = 40;
 
@@ -56,7 +55,6 @@ export default function SpaceHierarchyScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.hint, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -92,7 +90,7 @@ export default function SpaceHierarchyScreen() {
           {space.parentSpace ? ` · under ${space.parentSpace.name}` : ''}
         </Text>
 
-        <SettingsGroup title="What should change?" plain>
+        <SettingsGroup title="What should change?" flat plain>
           {actions.map((a) => (
             <SettingsRow
               key={a}
@@ -145,7 +143,7 @@ export default function SpaceHierarchyScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   summary: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   hint: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },

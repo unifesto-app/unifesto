@@ -58,7 +58,8 @@ const localKey = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDat
 const utcDayLabel = (ymd: string) =>
   new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
-function ServiceCard({ service }: { service: Service }) {
+/** One service as a row on the page; `divider` draws the full hairline above it. */
+function ServiceCard({ service, divider }: { service: Service; divider?: boolean }) {
   const c = useCosmos();
   const [selected, setSelected] = useState<number | null>(null);
   const word = serviceWord(service.currentStatus, c);
@@ -71,8 +72,7 @@ function ServiceCard({ service }: { service: Service }) {
       : 'No data yet';
 
   return (
-    <View style={styles.card}>
-      <CardBackdrop shape={styles.card} />
+    <View style={[styles.service, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
       <View style={styles.serviceHead}>
         <Text style={[styles.serviceName, { color: c.text }]} numberOfLines={1}>
           {service.name}
@@ -261,7 +261,6 @@ export default function PlatformStatusScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -292,7 +291,6 @@ export default function PlatformStatusScreen() {
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
       {/* The overall state, as plain text in its colour with a dot. */}
       <View style={styles.banner} accessible accessibilityLabel={`${overall.text}. ${data.stale ? 'Health checks have stopped reporting.' : `As of ${time(checked)}`}`}>
-        <CardBackdrop shape={styles.banner} />
         <View style={styles.bannerHead}>
           <View style={[styles.bannerDot, { backgroundColor: overall.color }]} />
           <Text style={[styles.bannerText, { color: overall.color }]}>{overall.text}</Text>
@@ -310,8 +308,7 @@ export default function PlatformStatusScreen() {
       {open.length > 0 ? (
         <>
           <Text style={[styles.section, { color: c.muted }]}>Happening now</Text>
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
+          <View style={styles.list}>
             {open.map((i, n) => (
               <View key={i.id}>
                 {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -327,8 +324,8 @@ export default function PlatformStatusScreen() {
 
       <Text style={[styles.section, { color: c.muted }]}>Services</Text>
       <View style={styles.services}>
-        {data.services.map((s) => (
-          <ServiceCard key={s.key} service={s} />
+        {data.services.map((s, n) => (
+          <ServiceCard key={s.key} service={s} divider={n > 0} />
         ))}
       </View>
       <Text style={[styles.hint, { color: c.muted }]}>
@@ -346,8 +343,7 @@ export default function PlatformStatusScreen() {
           ) : (
             <>
               {external.monitors.length > 0 ? (
-                <View style={styles.card}>
-                  <CardBackdrop shape={styles.card} />
+                <View style={styles.list}>
                   {external.monitors.map((m, n) => (
                     <View key={m.id}>
                       {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -369,8 +365,7 @@ export default function PlatformStatusScreen() {
       ) : null}
 
       <Text style={[styles.section, { color: c.muted }]}>Past incidents</Text>
-      <View style={styles.card}>
-        <CardBackdrop shape={styles.card} />
+      <View style={styles.list}>
         {history.map(({ date, items }, n) => (
           <View key={localKey(date)}>
             {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -391,14 +386,19 @@ export default function PlatformStatusScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  banner: { borderRadius: cosmosCardRadius, padding: spacing[5], gap: spacing[2] },
+  empty: { paddingVertical: spacing[8] },
+  // The overall state as plain text on the page: a dot, the word, when it was checked.
+  banner: { gap: spacing[2] },
   bannerHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   bannerDot: { width: 8, height: 8, borderRadius: 4 },
   bannerText: { flex: 1, fontSize: typography.fontSize.xl, ...cosmosFont.strong },
   dot: { width: 6, height: 6, borderRadius: 3 },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  services: { gap: spacing[3] },
+  services: {},
+  service: { gap: spacing[3], paddingVertical: spacing[4] },
+  // Lists on the page; the dividers between items are full hairlines.
+  list: { gap: spacing[3] },
+  // The report form is a control, so it keeps its box.
   card: { borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[3] },
   serviceHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   serviceName: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },

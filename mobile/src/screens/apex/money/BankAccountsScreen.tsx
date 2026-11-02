@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CosmosList } from '../../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import * as Clipboard from 'expo-clipboard';
 import { getAllBankAccounts, setBankAccountStatus, type AdminBankAccount } from '../../../lib/api/apexMoney';
@@ -12,7 +11,7 @@ import { Button } from '../../../components/ui';
 import { AppAlert } from '../../../components/ui/AppAlert';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { type Cosmos, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
+import { type Cosmos, cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
 
 type Filter = BankAccountStatus | 'all';
 
@@ -123,19 +122,17 @@ export default function BankAccountsScreen() {
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
             {error ? <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} /> : null}
           </View>
         )
       }
-      renderItem={({ item: a }) => {
+      renderItem={({ item: a, index }) => {
         const s = statusLook(a.status, c);
         const owner = a.user?.fullName || (a.user?.username ? `@${a.user.username}` : 'Organiser');
         const upi = a.methodType === 'UPI';
         return (
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
+          <View style={[styles.card, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
             <View style={styles.head}>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
                 {upi ? 'UPI' : a.bankName || 'Bank account'}
@@ -215,9 +212,10 @@ export default function BankAccountsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   count: { marginTop: spacing[4], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[6], paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  // Rows on the page; the list draws a full hairline between accounts.
+  card: { paddingVertical: spacing[4] },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

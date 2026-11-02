@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import ManageStats from '../../components/manage/ManageStats';
@@ -15,7 +14,7 @@ import { cancelEmailCampaign, getEmailCampaign, previewEmailBody, type EmailCamp
 import { EMAIL_TARGET_LABEL, pct } from './EmailCampaignsScreen';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 /** One email campaign: delivery + engagement, A/B split, recipient log, cancel if scheduled. */
 export default function EmailCampaignDetailScreen() {
@@ -73,8 +72,7 @@ export default function EmailCampaignDetailScreen() {
         <Stack.Screen options={{ title: 'Campaign' }} />
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
         ) : (
@@ -114,13 +112,13 @@ export default function EmailCampaignDetailScreen() {
           />
         </View>
 
-        <SettingsGroup plain>
+        <SettingsGroup flat plain>
           <SettingsRow label="Preview email" onPress={() => void openPreview()} />
           {campaign.status === 'SCHEDULED' ? <SettingsRow label="Cancel campaign" danger onPress={cancel} /> : null}
         </SettingsGroup>
 
         {campaign.stats ? (
-          <SettingsGroup title="A/B subject results" plain>
+          <SettingsGroup title="A/B subject results" flat plain>
             {(['a', 'b'] as const).map((k) => {
               const v = campaign.stats![k];
               return (
@@ -143,13 +141,11 @@ export default function EmailCampaignDetailScreen() {
         <Text style={[styles.section, { color: c.muted }]}>Recipients ({campaign.logs.length} shown)</Text>
         {campaign.logs.length === 0 ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>Nobody yet.</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>Nobody yet.</Text>
           </View>
         ) : null}
         {campaign.logs.length > 0 ? (
-          <View style={styles.list}>
-          <CardBackdrop shape={styles.list} />
+          <View>
           {campaign.logs.map((l, i) => {
             const engaged = l.firstClickedAt ? `clicked ${shortDate(l.firstClickedAt)}` : l.openedAt ? `opened ${shortDate(l.openedAt)}` : 'not opened';
             const statusColor = l.status === 'SENT' ? c.success : l.status === 'BOUNCED' ? c.warn : c.danger;
@@ -175,16 +171,15 @@ export default function EmailCampaignDetailScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  list: { borderRadius: cosmosCardRadius, paddingHorizontal: spacing[4] },
   title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { marginTop: spacing[5], gap: spacing[3] },
-  variant: { paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  variant: { paddingVertical: spacing[4] },
   variantHead: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   variantRates: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

@@ -10,11 +10,10 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 const STATUSES: RequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
@@ -108,7 +107,6 @@ export default function QueueReviewScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error || !def ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error || 'Unknown queue.'}</Text>
             {def ? (
               <Button
@@ -147,20 +145,19 @@ export default function QueueReviewScreen() {
 
         {item.reason ? (
           <View style={styles.quote}>
-            <CardBackdrop shape={styles.quote} />
             <Text style={[styles.quoteText, { color: c.text }]}>“{item.reason}”</Text>
           </View>
         ) : null}
 
         {item.facts.length > 0 ? (
-          <SettingsGroup title="Details" plain>
+          <SettingsGroup title="Details" flat plain>
             {item.facts.map((f) => (
               <SettingsRow key={f.label} label={f.label} value={f.value} />
             ))}
           </SettingsGroup>
         ) : null}
 
-        <SettingsGroup title="Asked by" plain>
+        <SettingsGroup title="Asked by" flat plain>
           <SettingsRow label="Name" value={who?.label ?? '–'} />
           {who?.phone ? <SettingsRow label="Phone" value={who.phone} onPress={() => void Linking.openURL(`tel:${who.phone}`)} /> : null}
           {who?.email ? <SettingsRow label="Email" value={who.email} onPress={() => void Linking.openURL(`mailto:${who.email}`)} /> : null}
@@ -216,13 +213,13 @@ export default function QueueReviewScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  quote: { marginTop: spacing[5], padding: spacing[5], borderRadius: cosmosCardRadius },
+  quote: { marginTop: spacing[5] },
   quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

@@ -18,12 +18,11 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 type StatusFilter = ReportStatus | 'all';
 type TypeFilter = ReportTarget | 'all';
@@ -183,8 +182,7 @@ export function ContentReportDetailScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
           </View>
         ) : (
@@ -210,7 +208,7 @@ export function ContentReportDetailScreen() {
 
       {report.details ? <Text style={[styles.details, { color: c.soft }]}>{report.details}</Text> : null}
 
-      <SettingsGroup plain>
+      <SettingsGroup flat plain>
         <SettingsRow
           label={TYPE_NOUN[report.targetType]}
           value={report.targetName}
@@ -261,7 +259,7 @@ export function ContentReportDetailScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import CosmosScreen from '../../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import { useRouter } from 'expo-router';
 import { getOrphanedPayments, reconcileTransaction, type OrphanedPaymentRow, type OrphanedPayments } from '../../../lib/api/apexMoney';
@@ -14,7 +13,7 @@ import { rangeFor, WINDOWS, type WindowDays } from './reconWindow';
 import { inr } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
 
 type RowState = {
   busy?: boolean;
@@ -102,8 +101,7 @@ export default function OrphanedPaymentsScreen() {
 
       {error ? (
         <View style={styles.emptyCard}>
-          <CardBackdrop shape={styles.emptyCard} />
-          <Text style={[styles.empty, { color: c.soft }]}>{error}</Text>
+          <Text style={[styles.empty, { color: c.muted }]}>{error}</Text>
           <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} />
         </View>
       ) : null}
@@ -117,18 +115,16 @@ export default function OrphanedPaymentsScreen() {
           </View>
           {data.rows.length === 0 ? (
             <View style={styles.emptyCard}>
-              <CardBackdrop shape={styles.emptyCard} />
-              <Text style={[styles.empty, { color: c.soft }]}>Every captured payment in this window is a paid ticket.</Text>
+              <Text style={[styles.empty, { color: c.muted }]}>Every captured payment in this window is a paid ticket.</Text>
             </View>
           ) : null}
-          {data.rows.map((row) => {
+          {data.rows.map((row, index) => {
             const st = rows[row.paymentId] ?? {};
             const orphan = row.classification === 'ORPHANED';
             const hasTarget = !!row.targetRegistrationId;
             const openTxn = (id: string) => router.push(`/apex/money/transactions/${id}?pay=${encodeURIComponent(row.paymentId)}` as never);
             return (
-              <View key={row.paymentId} style={styles.card}>
-                <CardBackdrop shape={styles.card} />
+              <View key={row.paymentId} style={[styles.card, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
                 <View style={styles.head}>
                   <Text style={[styles.amount, { color: c.ivory }]}>{inr(row.amount)}</Text>
                   <View style={styles.kindRow}>
@@ -201,9 +197,10 @@ export default function OrphanedPaymentsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   tiles: { marginTop: spacing[5], marginBottom: spacing[2], gap: spacing[3] },
-  emptyCard: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyCard: { marginTop: spacing[4], paddingVertical: spacing[8] },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  // Rows on the page; a full hairline between payments.
+  card: { paddingVertical: spacing[4] },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   amount: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   kindRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

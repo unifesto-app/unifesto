@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
 import { CosmosList } from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
@@ -21,7 +20,7 @@ import {
 } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const PAGE_SIZE = 20;
 const ACTIONABLE: PushCampaignStatus[] = ['DRAFT', 'SCHEDULED'];
@@ -129,8 +128,7 @@ export default function PushCampaignsScreen() {
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
             </View>
           )
         }
@@ -139,7 +137,7 @@ export default function PushCampaignsScreen() {
           const delivery = item.status === 'SENT' ? `${item.sentCount} sent${item.failedCount ? ` · ${item.failedCount} failed` : ''}` : null;
           const when = item.status === 'SCHEDULED' ? `for ${whenShort(item.scheduledAt, now)}` : whenShort(item.sentAt ?? item.createdAt, now);
           return (
-            <View style={cardSegment(c.raised, index, data.length)}>
+            <View>
               {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
               <ApexRow
               title={item.title}
@@ -164,6 +162,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   hint: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
