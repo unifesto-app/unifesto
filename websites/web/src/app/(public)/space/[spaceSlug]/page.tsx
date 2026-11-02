@@ -74,6 +74,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ...(home ? { metadataBase: new URL(`https://${home}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
+    // White-labelled: no Unifesto Smart App Banner (S64); this replaces the layout's.
+    ...(brand ? { other: {} } : {}),
   }, { image: false, ...(brand ? { title, siteName: brand } : {}) });
 }
 

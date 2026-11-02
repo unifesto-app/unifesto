@@ -53,13 +53,9 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
     // Declaring and publishing hackathon winners is the Curator's call
     // (Space Admins inherit it; Co-Curators don't have it).
     Action.EVENT_DECLARE_HACKATHON_WINNERS,
-    // Curators run their events end-to-end, including outbound email to their
-    // audiences (space:manage-email is a SPACE-scoped action, resolved against
-    // the space the curator holds a role in).
-    Action.SPACE_MANAGE_EMAIL,
-    // Curators run sponsors + lead capture for their events (SPACE-scoped,
-    // resolved against the space the curator holds a role in).
-    Action.SPACE_MANAGE_SPONSORS,
+    // No space:manage-email / space:manage-sponsors (S64, T2): Curator is
+    // event-scoped, so a SPACE action never matched it. Space email, sponsors
+    // and leads stay with Space Admins.
     Action.EVENT_MANAGE_SUPPORT,
   ],
 

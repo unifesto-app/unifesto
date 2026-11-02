@@ -19,6 +19,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: form ? `Register for ${form.event.title}` : "Register",
     robots: { index: false, follow: false },
+    // White-labelled: no Unifesto Smart App Banner (S64); this replaces the layout's.
+    ...(form?.event.branding?.name ? { other: {} } : {}),
   };
 }
 

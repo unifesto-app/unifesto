@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { BrandTheme, brandStyle } from "@/components/BrandedChrome";
+import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } from "@/components/BrandedChrome";
 import { registrationState, type Event } from "@/lib/api/events";
 import {
   acceptLegal,
@@ -689,13 +689,16 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     );
   }
 
+  // White-labelled: the space's own header and footer, as on the event page (S64).
+  const branded = hasBrandedChrome(event.branding) ? event.branding : null;
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas" style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {individual.some((t) => t.price > 0) && (
         <Script src={CHECKOUT_JS} strategy="afterInteractive" nonce={nonce} />
       )}
-      <Navbar />
+      {branded ? <BrandHeader branding={branded} href={`/event/${event.slug}`} /> : <Navbar />}
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
         <div className="mx-auto max-w-xl">
           <p className="text-sm text-paper/55">Register for</p>
@@ -705,7 +708,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           <div className="mt-8 rounded-3xl bg-night-2 p-6 sm:p-8">{body}</div>
         </div>
       </section>
-      <Footer />
+      {branded ? <BrandFooter branding={branded} /> : <Footer />}
       {upi && upiWait && <UpiWait way={upi} qr={upiWait.qr} amount={upiWait.amount} onCancel={upiWait.cancel} />}
     </main>
   );

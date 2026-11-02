@@ -151,21 +151,31 @@ export class AdminSchedulerService {
     const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [revenue, transactions, topEvents] = await Promise.all([
-      this.prisma.eventRegistration.aggregate({
-        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' },
-        _sum: { razorpayAmount: true }
-      }),
-      this.prisma.eventRegistration.count({
-        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' }
-      }),
-      this.prisma.event.findMany({
-        where: { ...NOT_DEMO_EVENT, createdAt: { gte: firstOfLastMonth, lte: firstOfThisMonth } },
-        orderBy: { registeredCount: 'desc' },
+    const paidLastMonth = {
+      event: NOT_DEMO_EVENT,
+      registeredAt: { gte: firstOfLastMonth, lt: firstOfThisMonth },
+      paymentStatus: 'PAID' as const,
+    };
+    const [revenue, transactions, topByRevenue] = await Promise.all([
+      this.prisma.eventRegistration.aggregate({ where: paidLastMonth, _sum: { razorpayAmount: true } }),
+      this.prisma.eventRegistration.count({ where: paidLastMonth }),
+      // S64: the events that actually took the most money last month (was registeredCount × 499).
+      this.prisma.eventRegistration.groupBy({
+        by: ['eventId'],
+        where: paidLastMonth,
+        _sum: { razorpayAmount: true },
+        orderBy: { _sum: { razorpayAmount: 'desc' } },
         take: 5,
-        select: { title: true, registeredCount: true }
-      })
+      }),
     ]);
+    const titles = new Map(
+      (
+        await this.prisma.event.findMany({
+          where: { id: { in: topByRevenue.map((r) => r.eventId) } },
+          select: { id: true, title: true },
+        })
+      ).map((e) => [e.id, e.title]),
+    );
 
     const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
     await this.emailService.sendMonthlyInvoiceSummary({
@@ -173,7 +183,10 @@ export class AdminSchedulerService {
       month: firstOfLastMonth.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' }),
       totalRevenue: Number(revenue._sum.razorpayAmount || 0),
       totalTransactions: transactions,
-      topEvents: topEvents.map(e => ({ title: e.title, revenue: e.registeredCount * 499 })),
+      topEvents: topByRevenue.map((r) => ({
+        title: titles.get(r.eventId) ?? 'Deleted event',
+        revenue: Number(r._sum.razorpayAmount || 0),
+      })),
     }).catch(err => this.logger.error('Monthly summary failed', err));
 
     this.logger.log('Monthly invoice summary sent');
