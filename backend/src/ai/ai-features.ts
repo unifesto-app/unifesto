@@ -16,7 +16,8 @@ export const AI_FEATURES = {
   // Haiku 5.5 thinks by default and thinking counts toward max_tokens: a 1,000-word
   // post as JSON ran out at 8192, then at 16k. The SDK's non-streaming limit only
   // applies without a timeout, and AiService always sets one.
-  blog_writer: { maxTokens: 32_000, dailyCapPerUser: 0, dailyUsd: 0.5 }, // auto-blog; system calls, no user
+  // Three posts a day cost about $0.50, so $0.50 capped the third (UNIFESTO-BACKEND-C).
+  blog_writer: { maxTokens: 32_000, dailyCapPerUser: 0, dailyUsd: 0.8 }, // auto-blog; system calls, no user
   // Safety checks: system calls, so no user cap and they never count toward a space's AI requests.
   risk_screen: { maxTokens: 2048, dailyCapPerUser: 0, dailyUsd: 0.1 }, // AI3: new spaces, first event publish
   broadcast_check: { maxTokens: 2048, dailyCapPerUser: 0, dailyUsd: 0.2 }, // AI19: organiser broadcasts
