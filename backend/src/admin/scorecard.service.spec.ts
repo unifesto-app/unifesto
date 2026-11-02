@@ -66,5 +66,10 @@ describe('scorecard aggregation', () => {
     expect(card.money.gmv).toEqual({ current: 1400, previous: 700 });
     expect(card.money.platformFees).toEqual({ current: 7, previous: 7 });
     expect(card.support).toEqual({ open: 4, pending: 2, oldestOpenDays: 5 });
+    // P23: every event-based count leaves out the demo space.
+    const demo = { space: { slug: { not: 'aurora-tech-club' } } };
+    expect(prisma.eventRegistration.groupBy.mock.calls[0][0].where.event).toEqual(demo);
+    expect(prisma.event.count.mock.calls[0][0].where.space).toEqual(demo.space);
+    expect(prisma.event.findMany.mock.calls[0][0].where.space).toEqual(demo.space);
   });
 });
