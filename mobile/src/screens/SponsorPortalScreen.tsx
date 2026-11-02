@@ -7,7 +7,6 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useAuth } from '../context/AuthContext';
 import { dismissBoothScan, syncBoothScans, useBoothScanQueue } from '../lib/offline/boothScanQueue';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getPortalLeads, updatePortalLead, type PortalLead, type PortalLeadStatus } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
@@ -17,11 +16,10 @@ import ChipPicker from '../components/manage/ChipPicker';
 import ManageStats from '../components/manage/ManageStats';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -31,7 +29,8 @@ const STATUS: Record<PortalLeadStatus, string> = { NEW: 'New', CONTACTED: 'Conta
 
 /**
  * What a sponsor's own people see: the events they sponsor, a booth scanner for
- * each event with lead capture on, and every lead they've collected.
+ * each event with lead capture on, and every lead they've collected. Lists are
+ * rows on the page with full hairlines; scanning is mint; Export is the sky row.
  */
 export default function SponsorPortalScreen() {
   const { sponsorId } = useLocalSearchParams<{ sponsorId: string }>();
@@ -130,8 +129,7 @@ export default function SponsorPortalScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>This sponsor isn't linked to your account any more.</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>This sponsor isn't linked to your account any more.</Text>
         </View>
       </CosmosScreen>
     );
@@ -169,12 +167,12 @@ export default function SponsorPortalScreen() {
       </View>
 
       <View style={{ marginTop: spacing[8] }}>
-        <SettingsGroup title="Events">
+        <SettingsGroup flat title="Events">
           {events.length === 0 ? <SettingsRow label="Not on any event yet" /> : null}
           {events.map((e) => (
             <SettingsRow
               key={e.eventSponsorId}
-              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.text : c.muted} />}
+              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.mint : c.muted} />}
               label={e.title}
               value={leads ? boothLine(e.eventSponsorId) : e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
               onPress={
@@ -193,7 +191,7 @@ export default function SponsorPortalScreen() {
 
       {waiting || refused.length ? (
         <View style={{ marginTop: spacing[8] }}>
-          <SettingsGroup title="Offline scans">
+          <SettingsGroup flat title="Offline scans">
             {waiting ? (
               <SettingsRow
                 label={`${waiting} waiting for signal`}
@@ -219,7 +217,7 @@ export default function SponsorPortalScreen() {
       ) : null}
 
       <View style={{ marginTop: spacing[8] }}>
-        <Text style={[styles.section, { color: c.text }]} accessibilityRole="header">Leads</Text>
+        <Text style={[styles.section, { color: c.muted }]} accessibilityRole="header">Leads</Text>
         {events.length > 1 ? (
           <View style={{ marginTop: spacing[3] }}>
             <ChipPicker options={events.map((e) => ({ value: e.eventId, label: e.title }))} value={eventFilter} onChange={setEventFilter} clearable />
@@ -230,7 +228,7 @@ export default function SponsorPortalScreen() {
           {!leads ? (
             <ActivityIndicator color={c.text} />
           ) : (
-            <SettingsGroup plain>
+            <SettingsGroup flat plain>
               {shown.length === 0 ? <SettingsRow label="No leads yet" /> : null}
               {shown.map((l) => (
                 <View key={l.id}>
@@ -245,19 +243,13 @@ export default function SponsorPortalScreen() {
                   </Text>
                 </View>
               ))}
+              {/* Exporting is the action that closes the list, in sky. */}
+              {shown.length ? (
+                <SettingsRow icon={<Export size={ICON} color={c.sky} />} label="Export CSV" accent={c.sky} onPress={() => void exportCsv()} />
+              ) : null}
             </SettingsGroup>
           )}
         </View>
-        {shown.length ? (
-          <Button
-            label="Export CSV"
-            variant="secondary"
-            fullWidth
-            icon={<Export size={18} color={c.text} weight="bold" />}
-            onPress={() => void exportCsv()}
-            style={{ marginTop: spacing[5] }}
-          />
-        ) : null}
       </View>
     </CosmosScreen>
   );
@@ -265,13 +257,14 @@ export default function SponsorPortalScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[10] },
   subStrong: { ...cosmosFont.strong },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   name: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
-  section: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  section: { marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'left', ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

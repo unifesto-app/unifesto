@@ -7,11 +7,10 @@ import { getRefundQueue, type RefundRequest, type RefundStatus } from '../lib/ap
 import { RefundRow } from '../components/manage/FinanceRows';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 const PAGE_SIZE = 30;
 
 const TABS: { key: RefundStatus; label: string }[] = [
@@ -33,7 +32,7 @@ const EMPTY: Record<RefundStatus, string> = {
 /**
  * Refund requests on this space's events. Two-stage flow: you check the
  * request and forward it (or reject with a reason); Unifesto then approves and
- * sends the money.
+ * sends the money. The queue is rows on the page with full hairlines.
  */
 export default function RefundsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -115,15 +114,13 @@ export default function RefundsScreen() {
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>{error || EMPTY[status]}</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>{error || EMPTY[status]}</Text>
             </View>
           )
         }
-        // One card for the queue: each request is a segment of it.
+        // Rows on the page: a full hairline between requests, no card.
         renderItem={({ item, index }) => (
-          <View style={cardSegment(c.raised, index, data.length)}>
-            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
             <RefundRow refund={item} onPress={() => router.push(`/manage/refund/${item.id}`)} />
           </View>
         )}
@@ -143,7 +140,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { marginTop: spacing[10], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

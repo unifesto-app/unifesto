@@ -15,17 +15,16 @@ import { PayoutRow } from '../components/manage/FinanceRows';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const ICON = 26;
+const ICON = 28;
 
 interface State {
   fin: Financials;
@@ -36,7 +35,8 @@ interface State {
 
 /**
  * A space's money at a glance (Space Admins only): what's available to pay
- * out, how that number is reached, recent payouts, and refunds waiting on you.
+ * out on the ivory hero, then rows on the page with full hairlines: refunds
+ * waiting on you, how the number is reached, recent payouts, where it goes.
  */
 export default function FinanceScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -88,10 +88,10 @@ export default function FinanceScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {error ? (
-            <View style={styles.card}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
-              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            // On the page, not in a card: one line and one way out.
+            <View style={styles.error}>
+              <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>{error}</Text>
+              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
             </View>
           ) : (
             <>
@@ -107,7 +107,8 @@ export default function FinanceScreen() {
 
   const { fin, payouts, toReview, accounts } = state;
   const hasVerified = accounts?.some((a) => a.status === 'VERIFIED') ?? true;
-  const icon = (I: typeof Bank) => <I size={ICON} color={c.text} />;
+  // Money glyphs are ivory; a refund waiting on me is amber.
+  const icon = (I: typeof Bank, color: string = c.ivory) => <I size={ICON} color={color} />;
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
@@ -131,8 +132,8 @@ export default function FinanceScreen() {
         </ShadeCard>
 
         {!hasVerified ? (
+          // A notice on the page, not a card: the amber glyph carries it.
           <View style={styles.warn}>
-            <CardBackdrop shape={styles.warn} />
             <Warning size={22} color={c.warn} weight="fill" />
             <Text style={[styles.warnText, { color: c.soft }]}>
               No verified payout account yet. Add one in Unifesto Space on the web; Unifesto verifies it before money can be sent.
@@ -141,78 +142,72 @@ export default function FinanceScreen() {
         ) : null}
       </View>
 
-      <Section title="Needs you" style={styles.firstSection}>
-        <SettingsGroup style={styles.group}>
-          <SettingsRow
-            icon={icon(ArrowCounterClockwise)}
-            label="Refund requests"
-            value={toReview > 0 ? `${toReview} to review` : 'All clear'}
-            onPress={() => router.push(`/manage/space/${spaceId}/refunds`)}
-          />
-        </SettingsGroup>
-      </Section>
+      <SettingsGroup flat title="Needs you" style={[styles.group, styles.first]}>
+        <SettingsRow
+          icon={icon(ArrowCounterClockwise, toReview > 0 ? c.warn : c.ivory)}
+          label="Refund requests"
+          value={toReview > 0 ? `${toReview} to review` : 'All clear'}
+          onPress={() => router.push(`/manage/space/${spaceId}/refunds`)}
+        />
+      </SettingsGroup>
 
-      {/* How the number is reached — reconciles top to bottom */}
-      <Section title="How it adds up" subtitle="Paid out + on the way + available">
-        <SettingsGroup plain style={styles.group}>
-          <SettingsRow label="Collected" value={inr(fin.collectedOverall)} />
-          <SettingsRow label="App fees" value={`− ${inr(fin.processingFees)}`} />
-          <SettingsRow label="Ticket revenue" value={inr(fin.ticketRevenue)} />
-          <SettingsRow label="Refunded" value={fin.refunded ? `− ${inr(fin.refunded)}` : inr(0)} />
-          <SettingsRow label="Platform fee" value={`− ${inr(fin.platformFee)}`} />
-          <View style={styles.total}>
-            <Text style={[styles.totalLabel, { color: c.text }]}>My earnings</Text>
-            <Text style={[styles.totalValue, { color: c.ivory }]}>{inr(fin.netEntitlement)}</Text>
-          </View>
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>App fees are charged to buyers and kept by Unifesto.</Text>
-      </Section>
+      {/* How the number is reached: reconciles top to bottom (paid out + on the way + available). */}
+      <SettingsGroup flat plain title="How it adds up" style={styles.group}>
+        <SettingsRow label="Collected" value={inr(fin.collectedOverall)} />
+        <SettingsRow label="App fees" value={`− ${inr(fin.processingFees)}`} />
+        <SettingsRow label="Ticket revenue" value={inr(fin.ticketRevenue)} />
+        <SettingsRow label="Refunded" value={fin.refunded ? `− ${inr(fin.refunded)}` : inr(0)} />
+        <SettingsRow label="Platform fee" value={`− ${inr(fin.platformFee)}`} />
+        <View style={styles.total}>
+          <Text style={[styles.totalLabel, { color: c.text }]}>My earnings</Text>
+          <Text style={[styles.totalValue, { color: c.ivory }]}>{inr(fin.netEntitlement)}</Text>
+        </View>
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>App fees are charged to buyers and kept by Unifesto.</Text>
 
-      <Section
+      <SettingsGroup
+        flat
+        plain
         title="Recent payouts"
-        onSeeAll={payouts.length > 0 ? () => router.push(`/manage/space/${spaceId}/payouts`) : undefined}
+        action={payouts.length > 0 ? { label: 'See all', onPress: () => router.push(`/manage/space/${spaceId}/payouts`) } : undefined}
+        style={styles.group}
       >
-        <SettingsGroup plain style={styles.group}>
-          {payouts.length === 0 ? (
-            <SettingsRow label="No payouts yet" />
-          ) : (
-            payouts.slice(0, 4).map((p) => <PayoutRow key={p.id} payout={p} inCard />)
-          )}
-        </SettingsGroup>
-      </Section>
+        {payouts.length === 0 ? (
+          <SettingsRow label="No payouts yet" />
+        ) : (
+          payouts.slice(0, 4).map((p) => <PayoutRow key={p.id} payout={p} />)
+        )}
+      </SettingsGroup>
 
-      <Section title="Where it goes">
-        <SettingsGroup style={styles.group}>
-          <SettingsRow
-            icon={icon(Bank)}
-            label="My payout accounts"
-            value={accounts ? String(accounts.length) : undefined}
-            external
-            onPress={() => openSpaceWeb('/financials', spaceId)}
-          />
-        </SettingsGroup>
-      </Section>
+      <SettingsGroup flat title="Where it goes" style={styles.group}>
+        <SettingsRow
+          icon={icon(Bank)}
+          label="My payout accounts"
+          value={accounts ? String(accounts.length) : undefined}
+          external
+          onPress={() => openSpaceWeb('/financials', spaceId)}
+        />
+      </SettingsGroup>
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { alignItems: 'center', marginTop: spacing[10] },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
-  warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
+  warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[5] },
   warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
-  firstSection: { marginTop: spacing[10] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  first: { marginTop: spacing[10] },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   // The bottom line of the reconciliation: a real total, not one more row.
   total: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
   },
   totalLabel: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

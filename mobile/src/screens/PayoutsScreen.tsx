@@ -10,7 +10,7 @@ import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';
 import { inr } from '../utils/money';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
@@ -23,7 +23,10 @@ function requestable(e: ManagedEvent) {
   return e.status !== 'DRAFT' && e.status !== 'CANCELLED' && !e.isCoHost && (e.ticketTypes ?? []).some((t) => Number(t.price) > 0);
 }
 
-/** Request a payout for an event, and every payout this space has had. */
+/**
+ * Request a payout for an event, and every payout this space has had: the
+ * ivory hero, then both lists as rows on the page with full hairlines.
+ */
 export default function PayoutsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
@@ -98,8 +101,7 @@ export default function PayoutsScreen() {
         Pick an event to pay out what it has earned so far. Unifesto sends the money by bank transfer and records the reference here.
       </Text>
 
-      <Section title="Request a payout" style={styles.firstSection}>
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup flat plain title="Request a payout" style={styles.group}>
           {events.length === 0 ? (
             <SettingsRow label="No paid events yet" />
           ) : (
@@ -112,11 +114,10 @@ export default function PayoutsScreen() {
               />
             ))
           )}
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
 
-      <Section title="History" subtitle={payouts.length ? `${payouts.length} payout${payouts.length === 1 ? '' : 's'}` : undefined}>
-        <SettingsGroup plain style={styles.group}>
+      {/* The count lives in the hero, so no line under the title. */}
+      <SettingsGroup flat plain title="History" style={styles.group}>
           {error ? (
             <SettingsRow label={error} />
           ) : payouts.length === 0 ? (
@@ -126,13 +127,11 @@ export default function PayoutsScreen() {
               <PayoutRow
                 key={p.id}
                 payout={p}
-                inCard
                 detail={p.failureReason ? { text: p.failureReason, danger: true } : p.utr ? { text: `Reference ${p.utr}` } : null}
               />
             ))
           )}
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
     </CosmosScreen>
   );
 }
@@ -144,7 +143,6 @@ const styles = StyleSheet.create({
   heroValue: { marginTop: spacing[1], fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   heroMeta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   intro: { paddingHorizontal: GUTTER, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  firstSection: { marginTop: spacing[8] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
 });

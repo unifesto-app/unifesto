@@ -23,10 +23,9 @@ import { INDIAN_STATES } from '../lib/indianStates';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -58,7 +57,8 @@ const toForm = (p: SpaceProfile): Form => ({
 /**
  * The space's public profile: name, link, description, tags, logo (1:1),
  * banner (4:3), location and whether it's public. Images upload the moment
- * they're picked; the rest saves from the bar.
+ * they're picked; the rest saves from the bar. The images sit on the page; the
+ * fields keep their form cards; visibility is a segmented control.
  */
 export default function SpaceSettingsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -161,10 +161,10 @@ export default function SpaceSettingsScreen() {
       <CosmosScreen>
         <View style={styles.pad}>
           {loadError ? (
-            <View style={[styles.card, { alignItems: 'center' }]}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
-              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            // On the page, not in a card: one line and one way out.
+            <View style={styles.error}>
+              <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text>
+              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
             </View>
           ) : (
             <>
@@ -184,10 +184,9 @@ export default function SpaceSettingsScreen() {
       bottom={140 + insets.bottom}
       footer={<SaveBar visible={dirty} label="Save changes" onPress={save} loading={saving} error={error} />}
     >
-      {/* Logo 1:1 + compact 4:3 banner, each uploads on pick */}
+      {/* Logo 1:1 + compact 4:3 banner on the page, each uploads on pick */}
       <View style={styles.pad}>
-        <View style={[styles.card, styles.images]}>
-          <CardBackdrop shape={styles.card} />
+        <View style={styles.images}>
           <ImageSlot
             label="Logo"
             url={profile.logoUrl}
@@ -207,8 +206,7 @@ export default function SpaceSettingsScreen() {
         </View>
       </View>
 
-      <Section title="Profile" style={styles.firstSection}>
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup title="Profile" plain style={[styles.group, styles.first]}>
           <FieldRow stacked label="Name" value={form.name} onChangeText={(v) => set({ name: v })} maxLength={100} />
           <FieldRow
             stacked
@@ -227,11 +225,9 @@ export default function SpaceSettingsScreen() {
             placeholder="Tell people what this space is about"
           />
           <FieldRow stacked label="Tags" value={form.tagsText} onChangeText={(v) => set({ tagsText: v })} placeholder="tech, community, events" autoCapitalize="none" />
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
 
-      <Section title="Location and web">
-        <SettingsGroup plain style={styles.group}>
+      <SettingsGroup title="Location and web" plain style={styles.group}>
           <FieldRow
             stacked
             label="Website"
@@ -244,17 +240,15 @@ export default function SpaceSettingsScreen() {
           />
           <FieldRow label="City" value={form.city} onChangeText={(v) => set({ city: v })} placeholder="Hyderabad" />
           <SelectRow label="State" value={form.state} options={INDIAN_STATES} onChange={(v) => set({ state: v })} clearable />
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
 
-      <Section title="Who can see it">
-        <View style={styles.pad}>
-          <SegmentedTabs tabs={VIS_TABS} value={form.visibility} onChange={(v) => set({ visibility: v })} glass={false} />
-          <Text style={[styles.note, { color: c.muted }]}>
-            {form.visibility === 'PUBLIC' ? 'Anyone can find and view this space.' : 'Only members can view it. Add people from Members.'}
-          </Text>
-        </View>
-      </Section>
+      <View style={[styles.pad, styles.block]}>
+        <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">Who can see it</Text>
+        <SegmentedTabs tabs={VIS_TABS} value={form.visibility} onChange={(v) => set({ visibility: v })} glass={false} />
+        <Text style={[styles.note, { color: c.muted }]}>
+          {form.visibility === 'PUBLIC' ? 'Anyone can find and view this space.' : 'Only members can view it. Add people from Members.'}
+        </Text>
+      </View>
 
       <SpaceStatusSection spaceId={spaceId} onChange={() => void refreshAccess()} />
     </CosmosScreen>
@@ -298,14 +292,17 @@ function ImageSlot({
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { alignItems: 'center', marginTop: spacing[10] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   images: { flexDirection: 'row', gap: spacing[5], alignItems: 'flex-start' },
   slot: { height: IMG_H, borderRadius: borderRadius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   slotLabel: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   slotAction: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  firstSection: { marginTop: spacing[10] },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  first: { marginTop: spacing[8] },
+  block: { marginTop: spacing[8] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // Grouped forms: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

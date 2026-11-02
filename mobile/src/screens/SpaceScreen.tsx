@@ -32,6 +32,8 @@ const TILE_LOGO = 48;
  * Co-Curators, Crew, Judges, Mentors and sponsor staff. Top to bottom:
  * what's happening now (live check-ins + my next hosted events), my spaces,
  * then check-in / judging / sponsoring, each only for the roles that need it.
+ * The spaces stay tiles (a menu of spaces); every list is rows on the page
+ * with hairlines, like Up next, with no blurbs under the titles.
  */
 export default function SpaceScreen() {
   const router = useRouter();
@@ -87,6 +89,8 @@ export default function SpaceScreen() {
   const openWeb = () => openSpaceWeb();
 
   const glyph = { size: 24, color: c.primary };
+  // Scanning is the door's job, so its glyph is mint.
+  const door = { size: 24, color: c.mint };
   const hosting = sections.includes('hosting');
 
   // A plain View wraps the ScrollView so the native tab host doesn't add its
@@ -141,7 +145,7 @@ export default function SpaceScreen() {
             ) : null}
 
             {hosting ? (
-              <Section title="My spaces" subtitle="Events, team and money for each space">
+              <Section title="My spaces">
                 <Rail>
                   {hosted.map((s) => (
                     <SpaceTile key={s.id} space={s} onPress={() => router.push(`/manage/space/${s.id}`)} />
@@ -162,7 +166,7 @@ export default function SpaceScreen() {
             ) : null}
 
             {sections.includes('checkin') ? (
-              <Section title="Check-in" subtitle={w.liveCheckins.length > 0 ? 'Later on' : undefined}>
+              <Section title={w.liveCheckins.length > 0 ? 'Check-in later on' : 'Check-in'}>
                 {/* Rows on the page with hairlines between them, like Up next. */}
                 <View style={styles.pad}>
                   <Rows>
@@ -174,7 +178,7 @@ export default function SpaceScreen() {
                       laterCheckins.map((e) => (
                         <LinkRow
                           key={e.id}
-                          icon={<QrCode {...glyph} />}
+                          icon={<QrCode {...door} />}
                           title={e.title}
                           meta={`${relativeWhen(e.startDateTime, now)} · ${e._count.registrations.toLocaleString('en-IN')} registered`}
                           onPress={() => scan(e)}
@@ -188,7 +192,8 @@ export default function SpaceScreen() {
 
             {sections.includes('judging') ? (
               <Section title="Judging">
-                <Card>
+                <View style={styles.pad}>
+                  <Rows>
                   {(judging.length > 0 ? judging : judgingEvents).map((j) => (
                     <LinkRow
                       key={j.boardId}
@@ -202,13 +207,15 @@ export default function SpaceScreen() {
                       onPress={() => router.push({ pathname: `/judging/${j.eventId}`, params: { title: j.title } })}
                     />
                   ))}
-                </Card>
+                  </Rows>
+                </View>
               </Section>
             ) : null}
 
             {sections.includes('sponsoring') ? (
               <Section title="Sponsoring">
-                <Card>
+                <View style={styles.pad}>
+                  <Rows>
                   {sponsorships.map((sp) => {
                     const ready = sp.events.some((e) => e.leadCaptureEnabled);
                     return (
@@ -227,7 +234,8 @@ export default function SpaceScreen() {
                       />
                     );
                   })}
-                </Card>
+                  </Rows>
+                </View>
               </Section>
             ) : null}
           </>
@@ -247,18 +255,6 @@ function summaryLine(n: { live: number; upcoming: number; spaces: number }): str
     n.upcoming ? `${n.upcoming} event${n.upcoming === 1 ? '' : 's'} coming up` : null,
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
-}
-
-/** Card holding a list of rows (same surface as the Home operator panel). */
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.pad}>
-      <View style={styles.cardInner}>
-        <CardBackdrop shape={styles.cardInner} />
-        {children}
-      </View>
-    </View>
-  );
 }
 
 /** A hosted space: 1:1 logo, my role, name. Opens the space's manage hub. */
@@ -297,7 +293,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   summary: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   first: { marginTop: spacing[8] },
-  cardInner: { borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[4] },
   empty: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   tile: { width: TILE_W, minHeight: 168, borderRadius: cosmosCardRadius, padding: spacing[4] },
   tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { askSpaceBack, getSpaceLifecycle, setSpaceLifecycle, type SpaceLifecycle } from '../../lib/api/spaceSettings';
 import { SettingsGroup, SettingsRow } from '../profile/SettingsGroup';
 import { FieldRow } from './FormFields';
-import { GUTTER, Section } from '../home/Section';
+import { GUTTER } from '../home/Section';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';
 import { spacing } from '../../theme/spacing';
@@ -109,7 +109,9 @@ export default function SpaceStatusSection({ spaceId, onChange }: { spaceId: str
   };
 
   return (
-    <Section title="Status">
+    <View style={styles.block}>
+      {/* Muted title like SettingsGroup's; the status line sits on the page. */}
+      <Text style={[styles.title, { color: c.muted }]} accessibilityRole="header">Status</Text>
       <View style={styles.pad}>
         <Text style={[styles.line, { color: c.soft }]}>
           <Text style={[cosmosFont.strong, { color: toneColor }]}>{label}. </Text>
@@ -152,7 +154,7 @@ export default function SpaceStatusSection({ spaceId, onChange }: { spaceId: str
           </>
         )
       ) : (
-        <SettingsGroup plain style={styles.group}>
+        <SettingsGroup flat plain style={styles.group}>
           {life.status === 'ACTIVE' ? <SettingsRow label="Pause space" onPress={busy ? undefined : pause} /> : null}
           {life.status === 'INACTIVE' ? <SettingsRow label="Resume space" onPress={busy ? undefined : () => void set('ACTIVE')} /> : null}
           {life.status === 'ARCHIVED' ? <SettingsRow label="Restore space" onPress={busy ? undefined : () => void set('ACTIVE')} /> : null}
@@ -161,12 +163,14 @@ export default function SpaceStatusSection({ spaceId, onChange }: { spaceId: str
           ) : null}
         </SettingsGroup>
       )}
-    </Section>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
+  block: { marginTop: spacing[8] },
+  title: { marginBottom: spacing[3], marginHorizontal: GUTTER + spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   group: { marginTop: spacing[3], marginHorizontal: GUTTER },
   line: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: GUTTER, fontSize: typography.fontSize.sm, ...cosmosFont.body },

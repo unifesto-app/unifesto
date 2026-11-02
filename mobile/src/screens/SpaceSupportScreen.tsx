@@ -65,10 +65,12 @@ export default function SpaceSupportScreen() {
       header={
         <View style={{ marginTop: spacing[4], gap: spacing[4] }}>
           {admin ? (
-            <SettingsGroup style={{ marginTop: 0 }}>
+            // An action, so a sky row on the page rather than a card.
+            <SettingsGroup flat style={{ marginTop: 0 }}>
               <SettingsRow
-                icon={<Lifebuoy size={26} color={c.text} />}
+                icon={<Lifebuoy size={28} color={c.sky} />}
                 label="Ask Unifesto about this space"
+                accent={c.sky}
                 onPress={() => router.push({ pathname: '/manage/support/new', params: { spaceId } })}
               />
             </SettingsGroup>

@@ -6,13 +6,11 @@ import { Check, Trash } from '@unifesto/unicon/react-native';
 import { createTier, deleteTier, getTiers, HEX_RE, updateTier, type TierInput } from '../lib/api/spaceSponsors';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
@@ -38,7 +36,11 @@ interface Draft {
   color: string;
 }
 
-/** Create or edit one sponsor tier: name, rank (0 = top) and an optional colour. */
+/**
+ * Create or edit one sponsor tier: name, rank (0 = top) and an optional colour.
+ * The fields keep their form card; the swatches sit on the page; Delete closes
+ * the page as a danger row.
+ */
 export default function SponsorTierEditorScreen() {
   const { spaceId, tierId } = useLocalSearchParams<{ spaceId: string; tierId: string }>();
   const isNew = !tierId || tierId === 'new';
@@ -120,10 +122,7 @@ export default function SponsorTierEditorScreen() {
         <Stack.Screen options={{ title }} />
         <View style={styles.pad}>
           {error ? (
-            <View style={styles.card}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.body, { color: c.soft }]}>{error}</Text>
-            </View>
+            <Text style={[styles.body, styles.error, { color: c.muted }]}>{error}</Text>
           ) : (
             <Skeleton width="100%" height={120} borderRadius={cosmosCardRadius} />
           )}
@@ -150,10 +149,9 @@ export default function SponsorTierEditorScreen() {
         <FieldRow label="Rank (0 is the top)" value={draft.rank} onChangeText={(v) => set({ rank: v.replace(/\D/g, '') })} keyboardType="number-pad" />
       </SettingsGroup>
 
-      <Section title="Colour" subtitle="Picking a preset on a new tier also fills in its name">
-        <View style={styles.card}>
-          <CardBackdrop shape={styles.card} />
-          <View style={styles.swatches} accessibilityRole="radiogroup">
+      <View style={[styles.pad, styles.block]}>
+        <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">Colour</Text>
+        <View style={styles.swatches} accessibilityRole="radiogroup">
             <Swatch label="None" on={!picked} fill={c.tint} onPress={() => set({ color: '' })} />
             {PRESETS.map((p) => (
               <Swatch
@@ -164,9 +162,9 @@ export default function SponsorTierEditorScreen() {
                 onPress={() => set({ color: p.hex, name: draft.name || p.name })}
               />
             ))}
-          </View>
         </View>
-        <SettingsGroup plain style={[styles.group, { marginTop: spacing[3] }]}>
+      </View>
+      <SettingsGroup plain style={[styles.group, { marginTop: spacing[5] }]}>
           <FieldRow
             label="Hex"
             value={draft.color}
@@ -176,21 +174,18 @@ export default function SponsorTierEditorScreen() {
             autoCorrect={false}
             maxLength={7}
           />
-        </SettingsGroup>
-      </Section>
+      </SettingsGroup>
 
       {!isNew ? (
-        <View style={styles.pad}>
-          <AuthButton
+        <SettingsGroup flat style={styles.group}>
+          <SettingsRow
+            icon={<Trash size={28} color={c.danger} />}
             label="Delete tier"
-            variant="danger"
-            loading={deleting}
-            disabled={saving}
-            icon={<Trash size={18} color={c.danger} />}
-            onPress={remove}
-            style={{ marginTop: spacing[12] }}
+            value={deleting ? 'Deleting…' : undefined}
+            danger
+            onPress={saving || deleting ? undefined : remove}
           />
-        </View>
+        </SettingsGroup>
       ) : null}
     </CosmosScreen>
   );
@@ -219,9 +214,11 @@ function Swatch({ label, fill, on, onPress }: { label: string; fill: string; on:
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { marginTop: spacing[10] },
+  block: { marginTop: spacing[8] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  // Section owns the top spacing and the title; the card just needs the gutter.
   group: { marginTop: 0, marginHorizontal: GUTTER },
   swatches: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[3] },
   swatchCell: { alignItems: 'center', gap: spacing[1], width: '25%' },
