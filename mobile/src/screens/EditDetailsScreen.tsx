@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Lock } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import SaveBar from '../components/manage/SaveBar';
 import { GUTTER } from '../components/home/Section';
 import {
@@ -24,7 +23,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type Answers = Record<string, unknown>;
 
@@ -189,9 +188,8 @@ export default function EditDetailsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
-            <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+          <View style={styles.empty}>
+            <Text style={[styles.muted, { color: c.muted }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
         ) : (
@@ -218,8 +216,7 @@ export default function EditDetailsScreen() {
 
         {!editable ? (
           <View style={styles.locked}>
-            <CardBackdrop shape={styles.locked} />
-            <Lock size={18} color={c.muted} weight="bold" />
+            <Lock size={18} color={c.warn} weight="bold" />
             <Text style={[styles.lockedText, { color: c.soft }]}>
               {mine?.lockedReason ?? 'These details can’t be changed right now.'} Ask the organiser if something is wrong.
             </Text>
@@ -238,9 +235,8 @@ export default function EditDetailsScreen() {
         ) : null}
 
         {sections.length === 0 ? (
-          <View style={[styles.card, { marginTop: spacing[6] }]}>
-            <CardBackdrop shape={styles.card} />
-            <Text style={[styles.muted, { color: c.soft }]}>This ticket has no details to change.</Text>
+          <View style={styles.empty}>
+            <Text style={[styles.muted, { color: c.muted }]}>This ticket has no details to change.</Text>
           </View>
         ) : null}
 
@@ -266,7 +262,7 @@ export default function EditDetailsScreen() {
                   ))}
                 </>
               ) : (
-                <SettingsGroup title={s.title} plain style={{ marginTop: 0 }}>
+                <SettingsGroup flat plain title={s.title} style={{ marginTop: 0 }}>
                   {s.seatIndex !== undefined ? <SettingsRow label="Name" value={s.name || '–'} /> : null}
                   {visibleFields(s.fields, s.answers).map((f) => (
                     <SettingsRow key={f.id} label={f.label} value={displayAnswer(f, s.answers[f.id]) || '–'} />
@@ -288,11 +284,13 @@ export default function EditDetailsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // Empty and error states sit on the page: no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[3], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   section: { marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  locked: { flexDirection: 'row', gap: spacing[3], alignItems: 'center', padding: spacing[4], borderRadius: cosmosCardRadius },
+  // Locked: a plain line on the page, the lock in amber (it waits on the organiser).
+  locked: { flexDirection: 'row', gap: spacing[3], alignItems: 'center', paddingVertical: spacing[3] },
   lockedText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
 });

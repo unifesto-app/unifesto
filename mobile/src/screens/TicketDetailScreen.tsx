@@ -23,7 +23,6 @@ import {
   Ticket as TicketIcon,
   Trophy,
   UsersThree,
-  WhatsappLogo,
   XCircle,
   PencilSimple,
 } from '@unifesto/unicon/react-native';
@@ -42,7 +41,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import ShadeCard from '../components/ui/ShadeCard';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import BrandIcon from '../components/profile/BrandIcon';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
@@ -62,8 +61,10 @@ type TicketDetail = ReturnType<typeof useTicketDetail>;
 /**
  * The entry pass, in the fusion cosmos look of the event page: the sky lit by
  * the event's colour (white-label, else the banner's hue), a pass on the sky
- * shade (event, tear line, big QR stub on its white panel), a facts card (when,
- * where, ticket type, view event), then grouped actions with refund/cancel last.
+ * shade (event, tear line, big QR stub on its white panel) as the page's one
+ * hero. Under it, no cards: the facts (when, where, ticket type, view event)
+ * and every list after them are rows on the page with full hairlines, glyphs
+ * in their job's accent, with refund and cancel last in crimson.
  */
 export default function TicketDetailScreen() {
   const params = useLocalSearchParams<{ id: string; ticket?: string }>();
@@ -259,13 +260,12 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* ── Facts: a date stub, then where, then what I hold ── */}
         <View style={styles.facts}>
-          <CardBackdrop shape={styles.facts} />
           <Pressable
             onPress={canCalendar ? t.addToCalendar : undefined}
             disabled={!canCalendar}
             accessibilityRole="button"
             accessibilityLabel={`${when.weekday}, ${when.time}${canCalendar ? '. Add to calendar' : ''}`}
-            style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+            style={({ pressed }) => [styles.factRow, pressed && { opacity: 0.6 }]}
           >
             <View style={styles.dateStub}>
               <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
@@ -275,7 +275,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
               <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{when.time}</Text>
             </View>
-            {canCalendar ? <CalendarPlus size={ICON} color={c.text} /> : null}
+            {canCalendar ? <CalendarPlus size={ICON} color={c.sky} /> : null}
           </Pressable>
           <Divider />
           <Fact
@@ -295,7 +295,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               <Pressable
                 onPress={openEvent}
                 accessibilityRole="link"
-                style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+                style={({ pressed }) => [styles.factRow, pressed && { opacity: 0.6 }]}
               >
                 <View style={styles.factIcon}>
                   <ArrowUpRight size={ICON} color={c.text} />
@@ -313,7 +313,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (
-          <SettingsGroup title="Cancellation" plain>
+          <SettingsGroup flat plain title="Cancellation">
             {t.cancelledAt ? (
               <SettingsRow
                 label={t.cancellation.byOrganiser ? 'Cancelled by the organiser' : 'Cancelled'}
@@ -333,7 +333,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* ── Actions ── */}
         {!cancelled ? (
-          <SettingsGroup>
+          <SettingsGroup flat>
             {!t.ended ? (
               <SettingsRow
                 icon={<ShareNetwork size={24} color={c.text} />}
@@ -343,7 +343,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             ) : null}
             {t.canManageGroup ? (
               <SettingsRow
-                icon={<UsersThree size={24} color={c.text} />}
+                icon={<UsersThree size={24} color={c.sky} />}
                 label="Manage group"
                 onPress={() => router.push(`/group/${t.registrationId}` as never)}
               />
@@ -351,7 +351,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             {/* Group leads edit everything from Manage group. */}
             {t.canEditDetails && !t.canManageGroup ? (
               <SettingsRow
-                icon={<PencilSimple size={24} color={c.text} />}
+                icon={<PencilSimple size={24} color={c.sky} />}
                 label="Edit my details"
                 value={
                   t.editDetailsUntil
@@ -381,7 +381,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             ) : null}
             {stay ? (
               <SettingsRow
-                icon={<Bed size={24} color={c.text} />}
+                icon={<Bed size={24} color={c.sky} />}
                 label={stay.label}
                 value={stay.value}
                 onPress={() => router.push(stay.href as never)}
@@ -392,6 +392,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {t.ended ? (
           <AfterEventGroup
+            flat
             cert={cert}
             feedback={feedback && { ...feedback, onPress: () => router.push(`/feedback/${t.eventId}` as never) }}
             results={
@@ -407,9 +408,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (
-          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
+          <SettingsGroup flat title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
             <SettingsRow
-              icon={<WhatsappLogo size={24} color={c.text} weight="fill" />}
+              icon={<BrandIcon brand="whatsapp" size={24} />}
               label={`Join the ${t.waGroup.isCommunity ? 'community' : 'group'}`}
               external
               onPress={t.openWhatsapp}
@@ -432,7 +433,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.checkins.length > 0 ? (
-          <SettingsGroup title="Check-ins">
+          <SettingsGroup flat title="Check-ins">
             {t.checkins.map((ci) => {
               const at = new Date(ci.checkedInAt);
               const when = `${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${formatTime(at)}`;
@@ -453,7 +454,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.canRefund || t.canCancelFree ? (
-          <SettingsGroup>
+          <SettingsGroup flat>
             {t.canRefund ? (
               <SettingsRow
                 icon={<ArrowCounterClockwise size={24} color={c.danger} />}
@@ -566,8 +567,9 @@ const styles = StyleSheet.create({
   voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   code: { marginTop: spacing[4], fontSize: 18, ...cosmosFont.figure, letterSpacing: 2 },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  facts: { marginTop: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  // On the page: no card, no side padding; full hairlines between the facts.
+  facts: { marginTop: spacing[4] },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
   dateStub: { width: STUB, alignItems: 'center', justifyContent: 'center' },
@@ -575,8 +577,8 @@ const styles = StyleSheet.create({
   stubDay: { fontSize: 24, lineHeight: 28, ...cosmosFont.figure },
   factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   factSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
-  reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
+  divider: { height: StyleSheet.hairlineWidth },
+  reason: { paddingVertical: spacing[3], gap: 2 },
   reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   emptyTitle: { marginTop: spacing[4], fontSize: 20, ...cosmosFont.display },

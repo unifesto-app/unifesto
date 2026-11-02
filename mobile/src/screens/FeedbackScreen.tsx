@@ -7,14 +7,13 @@ import { BlockTitle } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getFeedback, submitFeedback, toCustomField, type FeedbackForm } from '../lib/api/feedback';
 import { selectionTick } from '../lib/haptics';
 import { firstFormProblem, visibleFields } from '../utils/formQuestions';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 
 /** A row of numbered cells, `from`..`to`; tapping the picked one clears it. */
 function Scale({ from, to, value, onChange }: { from: number; to: number; value: number | null; onChange: (v: number | null) => void }) {
@@ -106,8 +105,7 @@ export default function FeedbackScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title: 'Feedback' }} />
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.muted, { color: c.soft }]}>
+          <Text style={[styles.muted, { color: c.muted }]}>
             {!form.enabled
               ? 'This event is not collecting feedback.'
               : new Date(form.closesAt) < new Date()
@@ -160,7 +158,7 @@ export default function FeedbackScreen() {
           placeholder="What worked, what to improve"
           placeholderTextColor={c.muted}
           selectionColor={c.primary}
-          style={[styles.comment, { color: c.text, backgroundColor: c.raised }]}
+          style={[styles.comment, { color: c.text, backgroundColor: c.card, borderColor: c.input }]}
         />
       </View>
 
@@ -179,7 +177,8 @@ export default function FeedbackScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], marginTop: spacing[4] },
+  // On the page: no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   title: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   block: { marginTop: spacing[6] },
@@ -188,6 +187,6 @@ const styles = StyleSheet.create({
   cellText: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   ends: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing[1] },
   hint: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  comment: { marginTop: spacing[2], minHeight: 96, borderRadius: cosmosRadius, padding: spacing[3], textAlignVertical: 'top', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  comment: { marginTop: spacing[2], minHeight: 96, borderRadius: cosmosRadius, borderWidth: 1, padding: spacing[3], textAlignVertical: 'top', fontSize: typography.fontSize.base, ...cosmosFont.body },
   error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
