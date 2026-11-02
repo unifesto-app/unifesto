@@ -11,7 +11,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Rail, Section } from '../components/home/Section';
-import SpacePanel, { LinkRow } from '../components/home/SpacePanel';
+import SpacePanel, { LinkRow, Rows } from '../components/home/SpacePanel';
 import { Monogram } from '../components/home/SpaceCards';
 import SponsorMark from '../components/manage/SponsorMark';
 import { activeEvents, adminSpaces, hostedSpaces, hostingRoleLabel } from '../lib/spaceSections';
@@ -163,23 +163,26 @@ export default function SpaceScreen() {
 
             {sections.includes('checkin') ? (
               <Section title="Check-in" subtitle={w.liveCheckins.length > 0 ? 'Later on' : undefined}>
-                <Card>
-                  {laterCheckins.length === 0 ? (
-                    <Text style={[styles.empty, { color: c.muted }]}>
-                      {w.liveCheckins.length > 0 ? 'Nothing else coming up.' : 'No events to check in right now.'}
-                    </Text>
-                  ) : (
-                    laterCheckins.map((e) => (
-                      <LinkRow
-                        key={e.id}
-                        icon={<QrCode {...glyph} />}
-                        title={e.title}
-                        meta={`${relativeWhen(e.startDateTime, now)} · ${e._count.registrations.toLocaleString('en-IN')} registered`}
-                        onPress={() => scan(e)}
-                      />
-                    ))
-                  )}
-                </Card>
+                {/* Rows on the page with hairlines between them, like Up next. */}
+                <View style={styles.pad}>
+                  <Rows>
+                    {laterCheckins.length === 0 ? (
+                      <Text style={[styles.empty, { color: c.muted }]}>
+                        {w.liveCheckins.length > 0 ? 'Nothing else coming up.' : 'No events to check in right now.'}
+                      </Text>
+                    ) : (
+                      laterCheckins.map((e) => (
+                        <LinkRow
+                          key={e.id}
+                          icon={<QrCode {...glyph} />}
+                          title={e.title}
+                          meta={`${relativeWhen(e.startDateTime, now)} · ${e._count.registrations.toLocaleString('en-IN')} registered`}
+                          onPress={() => scan(e)}
+                        />
+                      ))
+                    )}
+                  </Rows>
+                </View>
               </Section>
             ) : null}
 

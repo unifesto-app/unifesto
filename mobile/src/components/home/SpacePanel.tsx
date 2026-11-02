@@ -141,7 +141,7 @@ export default function SpacePanel(p: SpacePanelProps) {
 }
 
 /** A list in the console style: rows straight on the page, a hairline between them, no card. */
-function Rows({ children }: { children: React.ReactNode }) {
+export function Rows({ children }: { children: React.ReactNode }) {
   const c = useCosmos();
   return (
     <View>
