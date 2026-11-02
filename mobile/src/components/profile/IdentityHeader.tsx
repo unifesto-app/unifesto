@@ -4,19 +4,20 @@ import { Image } from 'expo-image';
 import Skeleton from '../Skeleton';
 import AuthButton from '../auth/AuthButton';
 import PressableScale from '../ui/PressableScale';
-import { CardBackdrop } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface IdentityStat {
   label: string;
   /** null while loading: the number skeletons, the label stays. */
   value: number | null;
+  /** The figure's colour, by job (sky events, mint done). Defaults to text. */
+  accent?: string;
   onPress: () => void;
 }
 
-interface IdentityCardProps {
+interface IdentityHeaderProps {
   name: string;
   username?: string | null;
   avatarUrl?: string | null;
@@ -27,8 +28,8 @@ interface IdentityCardProps {
   onViewPublic: () => void;
 }
 
-const AVATAR = 72;
-/** Past this Dynamic Type scale the side-by-side rows would truncate: stack them. */
+const AVATAR = 88;
+/** Past this Dynamic Type scale the side-by-side buttons would truncate: stack them. */
 const LARGE_TEXT = 1.3;
 
 const initials = (name: string) =>
@@ -41,11 +42,11 @@ const initials = (name: string) =>
     .toUpperCase();
 
 /**
- * The Profile tab's top card, a plain borderless card: avatar beside my name
- * (Hanken SemiBold; names are never display), bio, two actions, then a hairline
- * and my numbers.
+ * The top of the Profile tab, straight on the page (no card): avatar, my name
+ * (Hanken SemiBold; names are never display), handle and bio centred, two
+ * outline buttons, then my numbers in a band between full hairlines.
  */
-export default function IdentityCard({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityCardProps) {
+export default function IdentityHeader({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityHeaderProps) {
   const c = useCosmos();
   const large = useWindowDimensions().fontScale > LARGE_TEXT;
   const joined = memberSince
@@ -53,13 +54,12 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
     : null;
 
   return (
-    <View style={styles.card}>
-      <CardBackdrop shape={styles.card} />
-      <View style={[styles.top, large && styles.stack]}>
+    <View>
+      <View style={styles.who}>
         <View
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
-          style={[styles.avatar, { backgroundColor: c.tint }]}
+          style={[styles.avatar, { backgroundColor: c.raised }]}
         >
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
@@ -67,22 +67,19 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
             <Text style={[styles.initials, { color: c.text }]}>{initials(name) || '·'}</Text>
           )}
         </View>
-        <View style={large ? null : styles.who}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={large ? undefined : 2}>{name}</Text>
-          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={large ? undefined : 1}>
-            {[username ? `@${username}` : null, joined].filter(Boolean).join('  ·  ')}
-          </Text>
-        </View>
+        <Text style={[styles.name, { color: c.text }]} numberOfLines={large ? undefined : 2}>{name}</Text>
+        <Text style={[styles.sub, { color: c.muted }]} numberOfLines={large ? undefined : 1}>
+          {[username ? `@${username}` : null, joined].filter(Boolean).join('  ·  ')}
+        </Text>
+        {bio ? <Text style={[styles.bio, { color: c.soft }]} numberOfLines={3}>{bio}</Text> : null}
       </View>
 
-      {bio ? <Text style={[styles.bio, { color: c.soft }]} numberOfLines={3}>{bio}</Text> : null}
-
       <View style={[styles.actions, large && styles.stackActions]}>
-        <AuthButton label="Edit profile" onPress={onEdit} style={[styles.action, large && styles.actionFull]} />
+        <AuthButton label="Edit profile" variant="secondary" onPress={onEdit} style={[styles.action, large && styles.actionFull]} />
         <AuthButton label="View profile" variant="secondary" onPress={onViewPublic} style={[styles.action, large && styles.actionFull]} />
       </View>
 
-      <View style={[styles.stats, { borderTopColor: c.border }]}>
+      <View style={[styles.stats, { borderColor: c.border }]}>
         {stats.map((s) => (
           <PressableScale
             key={s.label}
@@ -94,9 +91,9 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
             style={styles.stat}
           >
             {s.value == null ? (
-              <Skeleton width={28} height={22} borderRadius={6} />
+              <Skeleton width={28} height={28} borderRadius={6} />
             ) : (
-              <Text style={[styles.statValue, { color: c.text }]}>{s.value}</Text>
+              <Text style={[styles.statValue, { color: s.accent ?? c.text }]}>{s.value}</Text>
             )}
             <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={large ? 2 : 1}>{s.label}</Text>
           </PressableScale>
@@ -106,26 +103,29 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
   );
 }
 
-export function IdentityCardSkeleton() {
+export function IdentityHeaderSkeleton() {
   const c = useCosmos();
   return (
-    <View style={styles.card} accessible accessibilityLabel="Loading profile">
-      <CardBackdrop shape={styles.card} />
-      <View style={styles.top}>
+    <View accessible accessibilityLabel="Loading profile">
+      <View style={[styles.who, { gap: 10 }]}>
         <Skeleton width={AVATAR} height={AVATAR} borderRadius={AVATAR / 2} />
-        <View style={[styles.who, { gap: 10 }]}>
-          <Skeleton width={160} height={20} borderRadius={6} />
-          <Skeleton width={120} height={14} borderRadius={6} />
-        </View>
+        <Skeleton width={160} height={20} borderRadius={6} style={{ marginTop: spacing[2] }} />
+        <Skeleton width={120} height={14} borderRadius={6} />
       </View>
-      <Skeleton width="100%" height={46} borderRadius={cosmosRadius} style={{ marginTop: spacing[5] }} />
+      <View style={[styles.stats, { borderColor: c.border }]}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={styles.stat}>
+            <Skeleton width={28} height={28} borderRadius={6} />
+            <Skeleton width={56} height={12} borderRadius={6} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
-  top: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  who: { alignItems: 'center' },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -134,15 +134,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 22, ...cosmosFont.strong },
-  who: { flex: 1 },
-  stack: { flexDirection: 'column', alignItems: 'flex-start' },
-  name: { fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.strong },
-  sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  initials: { fontSize: 28, ...cosmosFont.strong },
+  name: { marginTop: spacing[4], fontSize: typography.fontSize.xl, lineHeight: 26, textAlign: 'center', ...cosmosFont.strong },
+  sub: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   bio: {
-    marginTop: spacing[4],
+    marginTop: spacing[3],
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
+    textAlign: 'center',
     ...cosmosFont.body,
   },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
@@ -150,14 +149,16 @@ const styles = StyleSheet.create({
   action: { flex: 1, height: undefined, minHeight: 46, paddingVertical: spacing[2], paddingHorizontal: spacing[3] },
   stackActions: { flexDirection: 'column' },
   actionFull: { flex: 0, alignSelf: 'stretch' },
+  // A band on the page: full hairlines above and below, like the row lists under it.
   stats: {
     flexDirection: 'row',
-    marginTop: spacing[5],
-    paddingTop: spacing[4],
+    marginTop: spacing[6],
+    paddingVertical: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   stat: { flex: 1, alignItems: 'center', gap: 4, minHeight: 44 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
+  statValue: { fontSize: 24, lineHeight: 30, ...cosmosFont.figure },
   // sm, not xs: 11pt is the floor, not a size for labels people tap.
   statLabel: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
 });
