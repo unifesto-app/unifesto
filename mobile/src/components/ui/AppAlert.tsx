@@ -3,15 +3,17 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { WarningCircle } from '@unifesto/unicon/react-native';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
 import { spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { TopLayer } from './TopLayer';
 
 /**
  * Themed drop-in for React Native's `Alert.alert`: same arguments, same
- * button styles, rendered as a cosmos glass card floating at the bottom
- * (Liquid Glass on iOS 26+, frosted blur elsewhere) instead of the system dialog.
+ * button styles, rendered as a glass card floating at the bottom (Liquid Glass
+ * on iOS 26+, frosted blur elsewhere) instead of the system dialog. Title and
+ * message are centred; the buttons are rows under a full hairline, divided by
+ * hairlines like every list in the app, never outlined or filled boxes.
  *
  *   AppAlert.alert('Delete?', 'This cannot be undone.', [
  *     { text: 'Cancel', style: 'cancel' },
@@ -66,7 +68,7 @@ export const AppAlert = {
 
 // ── Layout ──────────────────────────────────────────────────────────────
 
-type Variant = 'primary' | 'danger' | 'quiet';
+type Variant = 'primary' | 'danger' | 'action' | 'cancel';
 
 interface LaidOutButton {
   button: AppAlertButton;
@@ -74,23 +76,26 @@ interface LaidOutButton {
 }
 
 /**
- * Orders and styles the buttons. Destructive actions get a crimson label on a
- * hairline outline (the Button `danger` look); otherwise the preferred action
- * (else the last one) gets the silver fill; the rest are hairline outlines. Two short buttons sit side by side (cancel on the left,
- * action on the right); anything else stacks with the action on top.
+ * Orders and weighs the buttons. A destructive action reads crimson and
+ * semibold; otherwise the preferred action (else the last one) is the
+ * semibold one in text colour; other actions are regular text and cancel is
+ * regular and softer. Two short buttons sit side by side (cancel on the left,
+ * action on the right); anything else stacks with the action on top and
+ * cancel last.
  */
 function layoutButtons(buttons: AppAlertButton[]): { items: LaidOutButton[]; inRow: boolean } {
   const actions = buttons.filter((b) => b.style !== 'cancel');
   const cancels = buttons.filter((b) => b.style === 'cancel');
 
-  // A destructive action is the red one, so nothing else gets filled beside it.
-  const filled = actions.some((b) => b.style === 'destructive')
+  // A destructive action is the loud one, so nothing else is weighted beside it.
+  const main = actions.some((b) => b.style === 'destructive')
     ? null
     : actions.find((b) => b.isPreferred) ?? actions[actions.length - 1];
 
   const items = [...actions, ...cancels].map<LaidOutButton>((button) => ({
     button,
-    variant: button.style === 'destructive' ? 'danger' : button === filled ? 'primary' : 'quiet',
+    variant:
+      button.style === 'destructive' ? 'danger' : button.style === 'cancel' ? 'cancel' : button === main ? 'primary' : 'action',
   }));
 
   const inRow = items.length === 2 && items.every((i) => (i.button.text ?? 'OK').length <= 14);
@@ -180,17 +185,21 @@ export function AppAlertHost() {
             <CardBackdrop shape={styles.card} opaque />
           </CardSurfaceProvider>
 
-          {isDestructive && <WarningCircle size={28} color={c.danger} weight="fill" style={styles.glyph} />}
-          <Text style={[styles.title, { color: c.text }]}>{current.title}</Text>
-          {current.message ? <Text style={[styles.message, { color: c.soft }]}>{current.message}</Text> : null}
+          <View style={styles.body}>
+            {isDestructive && <WarningCircle size={32} color={c.danger} weight="fill" style={styles.glyph} />}
+            <Text style={[styles.title, { color: c.text }]}>{current.title}</Text>
+            {current.message ? <Text style={[styles.message, { color: c.soft }]}>{current.message}</Text> : null}
+          </View>
 
-          <View style={[styles.actions, inRow && styles.actionsRow]}>
+          {/* Buttons as rows: a full hairline under the text, then one between each. */}
+          <View style={[styles.actions, inRow && styles.actionsRow, { borderTopColor: c.border }]}>
             {items.map(({ button, variant }, i) => (
               <AlertButton
                 key={`${button.text ?? 'OK'}-${i}`}
                 label={button.text ?? 'OK'}
                 variant={variant}
-                flex={inRow}
+                inRow={inRow}
+                divider={i > 0}
                 c={c}
                 onPress={() => close(button.onPress)}
               />
@@ -204,29 +213,34 @@ export function AppAlertHost() {
 
 // ── Button ──────────────────────────────────────────────────────────────
 
-/** Silver fill (the web's .btn-primary), or a hairline outline with a text or crimson label. */
-function AlertButton({ label, variant, flex, c, onPress }: {
+/**
+ * One button as a row: a centred label, weighed by its role (semibold for the
+ * main or destructive action, softer for cancel), dimmed while pressed. The
+ * hairline sits above it when stacked, to its left when side by side.
+ */
+function AlertButton({ label, variant, inRow, divider, c, onPress }: {
   label: string;
   variant: Variant;
-  flex: boolean;
+  inRow: boolean;
+  divider: boolean;
   c: Cosmos;
   onPress: () => void;
 }) {
-  const fg = variant === 'primary' ? c.primaryFg : variant === 'danger' ? c.danger : c.text;
+  const color = variant === 'danger' ? c.danger : variant === 'cancel' ? c.soft : c.text;
+  const weight = variant === 'primary' || variant === 'danger' ? cosmosFont.strong : cosmosFont.body;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
-        flex && styles.flex,
-        variant === 'primary'
-          ? { backgroundColor: c.primary, opacity: pressed ? 0.88 : 1 }
-          : { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.tint : 'transparent' },
-        { transform: [{ scale: pressed ? 0.97 : 1 }] },
+        inRow && styles.flex,
+        divider && (inRow ? styles.dividerLeft : styles.dividerTop),
+        divider && { borderColor: c.border },
+        pressed && { opacity: 0.6 },
       ]}
     >
-      <Text style={[styles.buttonText, { color: fg }]} numberOfLines={1}>
+      <Text style={[styles.buttonText, weight, { color }]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -238,24 +252,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   // Lighter than a solid-card scrim so the screen still shows through the glass.
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
-  card: {
-    marginHorizontal: spacing[3],
-    borderRadius: cosmosCardRadius,
-    paddingHorizontal: spacing[6],
-    paddingTop: spacing[6],
-    paddingBottom: spacing[5],
-  },
+  card: { marginHorizontal: spacing[3], borderRadius: cosmosCardRadius },
+  body: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[6], paddingBottom: spacing[5] },
   glyph: { marginBottom: spacing[3] },
-  title: { fontSize: 18, lineHeight: 26, ...cosmosFont.strong },
-  message: { marginTop: spacing[2], fontSize: 15, lineHeight: 22, ...cosmosFont.body },
-  actions: { marginTop: spacing[6], gap: spacing[2] },
+  title: { fontSize: 18, lineHeight: 26, textAlign: 'center', ...cosmosFont.strong },
+  message: { marginTop: spacing[2], fontSize: 15, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
+  actions: { borderTopWidth: StyleSheet.hairlineWidth },
   actionsRow: { flexDirection: 'row' },
-  button: {
-    height: 50,
-    borderRadius: cosmosRadius,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing[4],
-  },
-  buttonText: { fontSize: 16, ...cosmosFont.strong },
+  button: { minHeight: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
+  dividerTop: { borderTopWidth: StyleSheet.hairlineWidth },
+  dividerLeft: { borderLeftWidth: StyleSheet.hairlineWidth },
+  buttonText: { fontSize: 16 },
 });
