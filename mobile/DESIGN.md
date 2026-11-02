@@ -3,12 +3,12 @@ name: Unifesto Horizon (Mobile)
 description: The Unifesto app in the Horizon theme. Night first, thin lines, monochrome chrome, and colour only inside cards, on the work it describes.
 theme: Unifesto Horizon, locked 29 Oct 2026. Spec marketing/brand-2026/guidelines.html; tokens src/theme/cosmos.ts.
 colors:
-  night: "#000000"
-  card: "#141416"
+  night: "#17171b (charcoal, since 2 Nov 2026)"
+  card: "#232327"
   type: "#ececee"
   silver: "#e8e8ea"
   soft: "#b4b4ba"
-  muted: "#8a8a90"
+  muted: "#9a9aa0 night / #63636a day"
   paper: "#f2f2f5"
   white-card: "#ffffff"
   ink: "#111113"
@@ -16,7 +16,7 @@ colors:
   sky: "#90d5ff night / #0369a1 day"
   ivory: "#f7f0e0 night / #7a5a1e day"
   horizon-blue: "#4d8dff night / #8fb4ff day (light only, never text)"
-  crimson: "#ec2f58 night / #be123c day"
+  crimson: "#f2557a night / #be123c day"
   amber: "#f59e0b night / #92400e day"
 typography:
   display: "DMSans-Medium 500, cosmosFont.display, displayTracking(size)"
@@ -37,8 +37,9 @@ owner's approval first.
 
 ## 1. The six rules
 
-1. **Night first.** Black ground, silver type. By day the same roles sit on paper `#f2f2f5` with
-   white cards, and light turns pale blue. Day is translated, not inverted.
+1. **Night first.** Charcoal ground `#17171b` (the owner's pick, 2 Nov 2026; it was black) with
+   `#232327` cards, silver type. By day the same roles sit on paper `#f2f2f5` with white cards, and
+   light turns pale blue. Day is translated, not inverted. Camera screens and QR codes stay black.
 2. **A quiet sky.** The plain ground and a soft Horizon-blue glow on hero screens, nothing else.
    No lines (the owner removed the orbits and the horizon line on 31 Oct 2026) and no stars or
    grain (removed 2 Nov: they read as the old cosmos theme). Never planets, bars, glows on
