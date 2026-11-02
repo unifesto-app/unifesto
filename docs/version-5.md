@@ -1108,3 +1108,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile Support redesigned: headline on the page, requests and contacts as flat rows, WhatsApp mark, no blurbs (#552)
 - **2026-11-02** · mobile Saved and Certificates redesigned: flat rows, one hero each, no blurbs or cards (#553)
 - **2026-11-02** · mobile Manage event split into job sections; Manage event and space as flat rows with accents (#554)
+- **2026-11-02** · web JSON-LD one script per object (Safari crash); blog_writer AI ceiling $0.50 → $0.80 (#555)
