@@ -1,25 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { CaretRight, MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
+import { MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { getSpaceById, getUserSpaces, type Space } from '../lib/api/spaces';
-import { logoOr, useDefaultImages } from '../lib/defaultImages';
-import { spaceLogo, spaceMembers } from '../utils/eventFormat';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import Skeleton from '../components/Skeleton';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { Monogram, compact, roleOf } from '../components/home/SpaceCards';
-import { borderRadius, column, spacing } from '../theme/spacing';
+import { FindMoreSpacesRow, SpaceRow, SpaceRowSkeleton, roleOf } from '../components/home/SpaceCards';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const LOGO = 56;
 /** Search only earns its place once the list stops fitting on a screen. */
 const SEARCH_FROM = 7;
 
@@ -90,20 +85,7 @@ export default function MySpacesScreen() {
   const row = (s: Space) => (
     <SpaceRow key={s.id} space={s} parent={s.parentSpaceId ? parents[s.parentSpaceId] : null} onPress={() => open(s)} />
   );
-  const findMore = (
-    <Pressable
-      key="more"
-      onPress={() => router.push('/spaces')}
-      accessibilityRole="button"
-      accessibilityLabel="Find more spaces"
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
-    >
-      <View style={styles.slot}>
-        <MagnifyingGlass size={24} color={c.sky} />
-      </View>
-      <Text style={[styles.name, { color: c.sky }]}>Find more spaces</Text>
-    </Pressable>
-  );
+  const findMore = <FindMoreSpacesRow key="more" onPress={() => router.push('/spaces')} />;
 
   const body = (() => {
     if (loading) {
@@ -188,59 +170,6 @@ export default function MySpacesScreen() {
   );
 }
 
-/** One space row: 1:1 logo, name, my role, place · members · events, parent. */
-function SpaceRow({ space, parent, onPress }: { space: Space; parent?: string | null; onPress: () => void }) {
-  const c = useCosmos();
-  const defaults = useDefaultImages();
-  const logo = logoOr(defaults, space.id, spaceLogo(space));
-  const role = roleOf(space);
-  const members = spaceMembers(space);
-  const events = space._count?.events ?? space.event_count ?? 0;
-  const meta = [
-    space.city,
-    `${compact(members)} ${members === 1 ? 'member' : 'members'}`,
-    `${compact(events)} ${events === 1 ? 'event' : 'events'}`,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={[space.name, role, meta].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
-    >
-      {logo ? (
-        <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: c.card }]} contentFit="cover" />
-      ) : (
-        <Monogram name={space.name} size={LOGO} radius={borderRadius.md} />
-      )}
-      <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{space.name}</Text>
-          {role ? <Text style={[styles.roleText, { color: c.muted }]} numberOfLines={1}>{role}</Text> : null}
-        </View>
-        <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
-        {parent ? <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>Part of {parent}</Text> : null}
-      </View>
-      <CaretRight size={15} color={c.muted} />
-    </Pressable>
-  );
-}
-
-function SpaceRowSkeleton() {
-  return (
-    <View style={styles.row}>
-      <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.md} />
-      <View style={[styles.info, { gap: 8 }]}>
-        <Skeleton width="70%" height={15} borderRadius={6} />
-        <Skeleton width="50%" height={12} borderRadius={6} />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   group: { marginHorizontal: GUTTER },
@@ -259,15 +188,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
   noMatch: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
-  logo: { width: LOGO, height: LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
-  slot: { width: LOGO, alignItems: 'center' },
-  info: { flex: 1, gap: 3 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  name: { flexShrink: 1, fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },
-  roleText: { flexShrink: 0, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[8] },
   promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },

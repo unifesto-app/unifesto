@@ -16,7 +16,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
-import { MySpacesRail } from '../components/home/SpaceCards';
+import { MySpacesRows } from '../components/home/SpaceCards';
 import ManageStats from '../components/manage/ManageStats';
 import { relativeWhen } from '../utils/eventFormat';
 import { column, spacing } from '../theme/spacing';
@@ -244,7 +244,7 @@ export default function UserProfileScreen() {
 
         {loadingSpaces || spaces.length > 0 ? (
           <Section title="Spaces" onSeeAll={spaces.length ? () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) : undefined}>
-            <MySpacesRail
+            <MySpacesRows
               spaces={spaces}
               loading={loadingSpaces}
               onPress={(s) => router.push(`/space/${s.id}`)}
