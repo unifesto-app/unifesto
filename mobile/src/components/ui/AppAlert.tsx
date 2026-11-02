@@ -43,16 +43,24 @@ interface AlertRequest {
 }
 
 let push: ((req: AlertRequest) => void) | null = null;
+let drop: ((id: number) => void) | null = null;
 let seq = 0;
 
 export const AppAlert = {
-  alert(title: string, message?: string, buttons?: AppAlertButton[], options?: AppAlertOptions) {
+  /** Returns the alert's id, for dismiss(); 0 when the native alert showed it. */
+  alert(title: string, message?: string, buttons?: AppAlertButton[], options?: AppAlertOptions): number {
     const list = buttons && buttons.length ? buttons : [{ text: 'OK' }];
     if (!push) {
       Alert.alert(title, message, list, options);
-      return;
+      return 0;
     }
-    push({ id: ++seq, title, message, buttons: list, options });
+    const id = ++seq;
+    push({ id, title, message, buttons: list, options });
+    return id;
+  },
+  /** Takes an alert away unanswered (its question no longer stands), whether it's showing or queued. */
+  dismiss(id: number) {
+    drop?.(id);
   },
 };
 
@@ -104,8 +112,10 @@ export function AppAlertHost() {
 
   useEffect(() => {
     push = (req) => setQueue((q) => [...q, req]);
+    drop = (id) => setQueue((q) => q.filter((req) => req.id !== id));
     return () => {
       push = null;
+      drop = null;
     };
   }, []);
 

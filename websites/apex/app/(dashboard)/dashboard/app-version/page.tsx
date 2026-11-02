@@ -301,6 +301,12 @@ export default function AppVersionPage() {
         iPhones always get Razorpay&apos;s sheet. Off sends everyone to the sheet.
       </FlagCard>
 
+      <FlagCard field="applePayIos" title="Apple Pay: iOS app" risky={false}>
+        Adds Apple Pay to the iPhone pay page, for phones with a card in Wallet. Turn it on only
+        once Razorpay confirms the Apple Pay certificate for merchant.com.unifesto.app: before that,
+        every Apple Pay payment fails. Needs UPI checkout on iOS and an app build with Apple Pay.
+      </FlagCard>
+
       <AiFeaturesCard />
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">

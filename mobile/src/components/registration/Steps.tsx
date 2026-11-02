@@ -12,13 +12,11 @@ import {
   Minus,
   Plus,
   ShieldCheck,
-  Sparkle,
   User,
-  Wallet,
   XCircle,
 } from '@unifesto/unicon/react-native';
 import AttendeeForm from '../AttendeeForm';
-import CustomFieldInput, { OptionPicker } from '../CustomFieldInput';
+import CustomFieldInput from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';
 import PressableScale from '../ui/PressableScale';
 import ShadeCard from '../ui/ShadeCard';
@@ -26,8 +24,9 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import { CAN_TYPE_UPI_ID, methodKey, type PayMethod } from '../../lib/pay';
+import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, walletLogo, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
+import { ApplePayButton } from '../../../modules/apple-pay-button';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -260,7 +259,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
         const isSelf = index === 0;
         // Teammates only get an email field (below); they fill in their own details.
         if (r.invitedIndices.has(index)) return null;
-        // Personal details stay hidden once complete (Review still lists them);
+        // Personal details stay hidden once complete (the pay page still lists them);
         // the form only opens when a profile field is missing.
         const hideSelfDetails = isSelf && isSelfComplete(a);
         if (hideSelfDetails && r.memberFields.length === 0) return null;
@@ -355,9 +354,10 @@ function StepperButton({ icon, disabled, onPress }: { icon: React.ReactNode; dis
   );
 }
 
-// ── Step 3: review ──────────────────────────────────────────────────────────
+// ── Step 3: review and pay ──────────────────────────────────────────────────
 
-export function ReviewStep({ r }: { r: EventRegistration }) {
+/** What they're getting: the pass, who it's for, the team's answers. `total` = show the total on the pass (nothing to pay, so no price card). */
+function Review({ r, total }: { r: EventRegistration; total: boolean }) {
   const c = useCosmos();
   const event = r.event!;
   const t = r.selectedTicket!;
@@ -365,8 +365,6 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
 
   return (
     <View>
-      <Heading sub="Make sure everything looks right before you confirm.">Almost there</Heading>
-
       {/* A preview of the pass they're about to get, on the pass's sky shade. */}
       <ShadeCard tone="sky" style={styles.pass}>
         <View style={styles.passBody}>
@@ -379,7 +377,7 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
         <View style={styles.passStub}>
           <Line label="Ticket" value={t.name} />
           <Line label={r.isGroup ? 'Team size' : 'People'} value={`${r.quantity}`} />
-          <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong tone={c.sky} />
+          {total ? <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong tone={c.sky} /> : null}
         </View>
       </ShadeCard>
 
@@ -437,59 +435,49 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
   );
 }
 
-// ── Step 4: pay ─────────────────────────────────────────────────────────────
-
-function CenterNote({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  const c = useCosmos();
-  return (
-    <View style={styles.center}>
-      {icon}
-      <Text style={[styles.h1, styles.centerText, { color: c.text, marginTop: spacing[5] }]} accessibilityRole="header">{title}</Text>
-      <Text style={[styles.sub, styles.centerText, { color: c.soft }]}>{body}</Text>
-    </View>
-  );
-}
-
+/** One page: what they're getting, then the total, a code and how to pay. */
 export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: boolean }) {
   const c = useCosmos();
 
-  if (waitlist) {
+  if (waitlist || r.total === 0) {
     return (
-      <CenterNote
-        icon={<Sparkle size={56} color={c.text} weight="duotone" />}
-        title="Join the waiting list"
-        body={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
-      />
-    );
-  }
-
-  if (r.total === 0) {
-    return (
-      <CenterNote
-        icon={<CheckCircle size={56} color={c.text} weight="duotone" />}
-        title="Nothing to pay"
-        body="This one's free. Confirm and your ticket is ready right away."
-      />
+      <View>
+        {waitlist ? (
+          <Heading
+            sub={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
+          >
+            Join the waiting list
+          </Heading>
+        ) : (
+          <Heading sub="This one's free. Confirm and your ticket is ready right away.">Almost there</Heading>
+        )}
+        <Review r={r} total={!waitlist} />
+      </View>
     );
   }
 
   const canApply = !!r.couponInput.trim() && !r.applyingCoupon;
   return (
     <View>
-      <Heading sub="Check the total, add a code if you have one, then pay.">Payment</Heading>
+      <Heading sub="Check everything, add a code if you have one, then slide to pay.">Almost there</Heading>
 
-      <Card style={{ gap: spacing[3] }}>
-        <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
-        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
-        {r.feePercent > 0 && r.fee > 0 ? (
-          <Line
-            label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
-            value={money(r.symbol, r.fee)}
-          />
-        ) : null}
-        <View style={[styles.divider, { backgroundColor: c.border }]} />
-        <Line label="Total" value={money(r.symbol, r.total)} strong tone={c.ivory} />
-      </Card>
+      <Review r={r} total={false} />
+
+      <View style={styles.block}>
+        <Label>Price</Label>
+        <Card style={{ gap: spacing[3] }}>
+          <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
+          {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
+          {r.feePercent > 0 && r.fee > 0 ? (
+            <Line
+              label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
+              value={money(r.symbol, r.fee)}
+            />
+          ) : null}
+          <View style={[styles.divider, { backgroundColor: c.border }]} />
+          <Line label="Total" value={money(r.symbol, r.total)} strong tone={c.ivory} />
+        </Card>
+      </View>
 
       <View style={styles.block}>
         {r.appliedCoupon ? (
@@ -553,24 +541,38 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 }
 
 /**
- * Q40: our own payment page. Every UPI app Razorpay finds on the phone (last
+ * Q40: our own payment page. Apple Pay (iPhones that can), every UPI app Razorpay finds on the phone (last
  * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
- * typed UPI ID on iOS, card and the wallets our Razorpay account takes.
- * Pay pays with the pick and nothing else.
+ * typed UPI ID on iOS (Verify shows whose it is), card and the wallets our
+ * Razorpay account takes, each its own row. Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, wallets, selected } = r.payOptions;
+  const { apps, wallets, selected, keyId, applePay } = r.payOptions;
   const [allApps, setAllApps] = React.useState(false);
+  // The last Verify, kept only while the box still holds the ID it checked.
+  const [check, setCheck] = React.useState<{ vpa: string; result: Awaited<ReturnType<typeof verifyUpiId>> | 'checking' } | null>(null);
+  const vpa = typeof selected === 'object' && 'vpa' in selected ? selected.vpa : '';
+  const checked = check?.vpa === vpa ? check.result : undefined;
+  const verify = () => {
+    if (!keyId) return;
+    setCheck({ vpa, result: 'checking' });
+    verifyUpiId(keyId, vpa).then((result) => setCheck((cur) => (cur?.vpa === vpa ? { vpa, result } : cur)));
+  };
+  const canVerify = isVpa(vpa) && checked !== 'checking';
   const hidden = allApps ? 0 : Math.max(apps.length - 4, 0);
   const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
   // No method = the Show more row.
   const options: { key: string; label: string; method?: PayMethod; icon: React.ReactNode }[] = [
+    // Apple's own mark (its button, untouchable here): Apple Pay may not be drawn any other way.
+    ...(applePay && ApplePayButton
+      ? [{ key: 'apple_pay', label: 'Apple Pay', method: 'apple_pay' as const, icon: <ApplePayButton type="plain" radius={6} pointerEvents="none" style={styles.applePayMark} /> }]
+      : []),
     ...apps.slice(0, apps.length - hidden).map((app) => ({
       key: app.id,
       label: app.name,
       method: app,
-      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : icon(DeviceMobile),
+      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} resizeMode="contain" /> : icon(DeviceMobile),
     })),
     ...(hidden ? [{ key: 'more-apps', label: `Show ${hidden} more UPI apps`, icon: <CaretDown size={26} color={c.muted} /> }] : []),
     ...(CAN_TYPE_UPI_ID
@@ -579,10 +581,17 @@ function PayWith({ r }: { r: EventRegistration }) {
         ? []
         : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
     { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
-    ...(wallets.length ? [{ key: 'wallet:', label: 'Wallet', method: { wallet: '' }, icon: icon(Wallet) }] : []),
+    // Each wallet is its own row, named as a wallet: PhonePe is often a UPI app above too.
+    ...wallets.map((w) => ({
+      key: `wallet:${w.code}`,
+      label: `${w.name} wallet`,
+      method: { wallet: w.code },
+      icon: <Image source={{ uri: walletLogo(w.code) }} style={styles.payIcon} resizeMode="contain" />,
+    })),
   ];
-  // A typed UPI ID or picked wallet still ticks its row.
-  const picked = methodKey(selected).replace(/:.*/, ':');
+  // A typed UPI ID still ticks its row.
+  const key = methodKey(selected);
+  const picked = key.startsWith('vpa:') ? 'vpa:' : key;
   return (
     <View style={styles.block}>
       <Label>Pay with</Label>
@@ -626,10 +635,10 @@ function PayWith({ r }: { r: EventRegistration }) {
                 </Pressable>
                 {on && typeof selected === 'object' && 'vpa' in selected ? (
                   <View style={styles.payPick}>
-                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: c.input }]}>
+                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: checked === 'invalid' ? c.danger : c.input }]}>
                       <TextInput
                         value={selected.vpa}
-                        onChangeText={(vpa) => r.setPayMethod({ vpa: vpa.trim() })}
+                        onChangeText={(v) => r.setPayMethod({ vpa: v.trim() })}
                         placeholder="name@bank"
                         placeholderTextColor={c.muted}
                         selectionColor={c.primary}
@@ -637,22 +646,39 @@ function PayWith({ r }: { r: EventRegistration }) {
                         autoCorrect={false}
                         keyboardType="email-address"
                         returnKeyType="done"
+                        onSubmitEditing={keyId && canVerify ? verify : undefined}
                         accessibilityLabel="UPI ID"
                         style={[styles.couponInput, { color: c.text }]}
                       />
+                      {!keyId ? null : checked === 'checking' ? (
+                        <ActivityIndicator color={c.text} />
+                      ) : (
+                        <Pressable
+                          onPress={verify}
+                          disabled={!canVerify}
+                          accessibilityRole="button"
+                          accessibilityLabel="Verify UPI ID"
+                          accessibilityState={{ disabled: !canVerify }}
+                          style={({ pressed }) => [styles.apply, { opacity: !canVerify ? 0.4 : pressed ? 0.6 : 1 }]}
+                        >
+                          <Text style={[styles.linkText, { color: c.text }]}>Verify</Text>
+                        </Pressable>
+                      )}
                     </View>
-                  </View>
-                ) : null}
-                {on && typeof selected === 'object' && 'wallet' in selected ? (
-                  <View style={styles.payPick}>
-                    <OptionPicker
-                      title="Choose your wallet"
-                      placeholder="Choose your wallet"
-                      options={wallets.map((w) => ({ label: w.name, value: w.code }))}
-                      value={selected.wallet}
-                      onChange={(wallet) => r.setPayMethod({ wallet })}
-                      hasError={false}
-                    />
+                    {checked && typeof checked === 'object' ? (
+                      <View style={styles.verified} accessibilityLiveRegion="polite">
+                        <CheckCircle size={18} color={c.success} weight="fill" />
+                        <Text style={[styles.meta, { color: c.success, flexShrink: 1 }]}>{checked.name || 'UPI ID found'}</Text>
+                      </View>
+                    ) : checked === 'invalid' ? (
+                      <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">
+                        No bank has this UPI ID. Check it and try again.
+                      </Text>
+                    ) : checked === null ? (
+                      <Text style={[styles.error, { color: c.muted }]} accessibilityLiveRegion="polite">
+                        Couldn't check it right now. You can still pay.
+                      </Text>
+                    ) : null}
                   </View>
                 ) : null}
               </View>
@@ -788,8 +814,6 @@ const styles = StyleSheet.create({
   lineValue: { flexShrink: 1, fontSize: typography.fontSize.base, textAlign: 'right', fontVariant: ['tabular-nums'], ...cosmosFont.strong },
   lineTotal: { fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
   // pay
-  center: { alignItems: 'center', paddingTop: spacing[10], paddingHorizontal: spacing[4] },
-  centerText: { textAlign: 'center' },
   coupon: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -806,8 +830,10 @@ const styles = StyleSheet.create({
   payCard: { paddingVertical: spacing[1] },
   payRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56 },
   payIcon: { width: 26, height: 26, borderRadius: 7 },
+  applePayMark: { width: 46, height: 30 },
   payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   payPick: { paddingBottom: spacing[3] },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },
   // gate
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },

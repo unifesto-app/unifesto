@@ -2681,6 +2681,9 @@ model PlatformConfig {
   upiCheckoutIos     Boolean @default(false) @map("upi_checkout_ios")
   upiCheckoutAndroid Boolean @default(false) @map("upi_checkout_android")
   upiCheckoutWeb     Boolean @default(false) @map("upi_checkout_web")
+  // Q40: Apple Pay on the iPhone pay page (needs upiCheckoutIos). Off until
+  // Razorpay holds the Apple Pay certificate for merchant.com.unifesto.app.
+  applePayIos        Boolean @default(false) @map("apple_pay_ios")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

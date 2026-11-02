@@ -1,0 +1,71 @@
+diff --git a/node_modules/react-native-customui/ios/RazorpayCustomui.m b/node_modules/react-native-customui/ios/RazorpayCustomui.m
+index 45f5cd0..630748c 100644
+--- a/node_modules/react-native-customui/ios/RazorpayCustomui.m
++++ b/node_modules/react-native-customui/ios/RazorpayCustomui.m
+@@ -27,6 +27,7 @@
+     UINavigationController *navController;
+     UIBarButtonItem *cancelBtn;
+     UIWindow *window;
++    BOOL invisibleWindow; // Unifesto Q40: a UPI app is paying (see isUpiIntentRequested:)
+ }
+ @end
+ 
+@@ -173,6 +174,24 @@
+     }
+     id name = [(NSDictionary *)app objectForKey:@"name"];
+     return [name isKindOfClass:[NSString class]] && [name isEqualToString:@"apple_pay"];
++}
++
++// Unifesto Q40: a UPI app pays (method upi, intent flow). Razorpay's page would only say "complete
++// the payment in the app", so the app shows that itself, with its own Cancel (see `cancel`).
++- (BOOL)isUpiIntentRequested:(NSDictionary *)options {
++    id method = [options objectForKey:@"method"];
++    id flow = [options objectForKey:@"_[flow]"];
++    return [method isKindOfClass:[NSString class]] && [method isEqualToString:@"upi"] &&
++           [flow isKindOfClass:[NSString class]] && [flow isEqualToString:@"intent"];
++}
++
++// Unifesto Q40: the Cancel of an invisible page, the same path as the page's own Cancel button.
++RCT_EXPORT_METHOD(cancel) {
++    dispatch_async(dispatch_get_main_queue(), ^{
++        if (self->razorpay != nil) {
++            [self onTapCancel:nil];
++        }
++    });
+ }
+ 
+ // apple_pay needs the 4-arg initialiser; everything else keeps the original 3-arg call.
+@@ -204,6 +223,8 @@
+     dispatch_sync(dispatch_get_main_queue(), ^{
+ 
+         // Apple Pay: PassKit shows its own sheet, so build the web view but do not present the window.
++        // A UPI app: present it invisibly (Unifesto Q40).
++        invisibleWindow = [self isUpiIntentRequested:options];
+         [self setupPaymentWindowPresenting:![self isApplePayRequested:options]];
+ 
+         razorpay = [self checkoutWithKey:keyID webView:webview forOptions:options];
+@@ -278,6 +299,16 @@
+         // setRootViewController: must run before makeKeyAndVisible so the window is
+         // never displayed empty.
+         [window setRootViewController:navController];
++
++        if (invisibleWindow) {
++            // Unifesto Q40: the web view stays in a shown window (WebKit can pause a page that's in
++            // none, and this one confirms the payment), but nothing is seen and every touch goes to
++            // the app underneath. Never key, so the app keeps the keyboard and its own alerts.
++            window.alpha = 0;
++            window.userInteractionEnabled = NO;
++            window.hidden = NO;
++            return;
++        }
+         [window makeKeyAndVisible];
+ 
+         if (!window.isKeyWindow) {
+@@ -483,6 +514,7 @@
+ 
+     window.hidden = YES;
+     window = nil;
++    invisibleWindow = NO;
+ 
+ }
+ 

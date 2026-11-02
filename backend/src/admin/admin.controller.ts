@@ -145,9 +145,9 @@ export class AdminController {
     if (dto.aiEnabledFeatures !== undefined) {
       await this.platformConfig.setAiEnabledFeatures(dto.aiEnabledFeatures);
     }
-    const { upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb } = dto;
-    if (upiCheckoutIos !== undefined || upiCheckoutAndroid !== undefined || upiCheckoutWeb !== undefined) {
-      await this.platformConfig.setUpiCheckout({ upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb });
+    const { upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb, applePayIos } = dto;
+    if ([upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb, applePayIos].some((v) => v !== undefined)) {
+      await this.platformConfig.setUpiCheckout({ upiCheckoutIos, upiCheckoutAndroid, upiCheckoutWeb, applePayIos });
     }
     return this.platformConfig.getConfig();
   }

@@ -9,12 +9,13 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { FlowHeader, GUTTER } from '../components/registration/FlowHeader';
 import { StateView, VerifyingOverlay } from '../components/registration/RegStates';
-import { DetailsStep, PaymentStep, ProfileGate, ReviewStep, TicketStep, money } from '../components/registration/Steps';
+import { DetailsStep, PaymentStep, ProfileGate, TicketStep, money } from '../components/registration/Steps';
+import { methodName } from '../lib/pay';
 import { column, spacing } from '../theme/spacing';
 import { cosmosCardRadius, useCosmos } from '../theme/cosmos';
 
 /**
- * Event registration (modal): ticket → details → review → pay, on the cosmos
+ * Event registration (modal): ticket → details → review and pay, on the cosmos
  * night sky; a free ticket with nothing to fill in confirms from the ticket
  * step. All state and payment logic
  * lives in useEventRegistration; this file only lays the steps out.
@@ -112,14 +113,19 @@ export default function EventRegistrationScreen() {
   const waitlist = !!r.selectedTicket && isWaitlistOnly(r.selectedTicket);
   const totalLabel = r.total === 0 ? 'Free' : money(r.symbol, r.total);
   const confirming = r.step === 'payment' || r.quickConfirm;
-  const cta = !confirming
-    ? 'Continue'
-    : waitlist
-      ? 'Join waiting list'
-      : r.total === 0
-        ? 'Confirm registration'
-        : `Pay ${totalLabel}`;
-  const info = r.selectedTicket && r.step !== 'payment' ? { label: 'Total', value: totalLabel } : null;
+  // Money moves: the bar names the method and the amount, and the button slides.
+  const paying = r.step === 'payment' && !waitlist && r.total > 0;
+  const cta = paying ? 'Slide to pay' : !confirming ? 'Continue' : waitlist ? 'Join waiting list' : 'Confirm registration';
+  const method = r.payOptions.on ? methodName(r.payOptions.selected, r.payOptions.wallets) : '';
+  const info = paying
+    ? {
+        label: method ? `Pay with ${method}` : 'Total',
+        value: totalLabel,
+        was: r.fullTotal > r.total ? money(r.symbol, r.fullTotal) : undefined,
+      }
+    : r.selectedTicket && r.step !== 'payment'
+      ? { label: 'Total', value: totalLabel }
+      : null;
 
   return (
     <View style={styles.flex}>
@@ -141,7 +147,6 @@ export default function EventRegistrationScreen() {
         >
           {r.step === 'ticket' ? <TicketStep r={r} /> : null}
           {r.step === 'details' ? <DetailsStep r={r} /> : null}
-          {r.step === 'review' ? <ReviewStep r={r} /> : null}
           {r.step === 'payment' ? <PaymentStep r={r} waitlist={waitlist} /> : null}
         </ScrollView>
         <ActionBar
@@ -149,6 +154,8 @@ export default function EventRegistrationScreen() {
           label={cta}
           disabled={!r.canContinue}
           loading={r.submitting || r.verifying}
+          slide={paying}
+          applePay={paying && r.payOptions.selected === 'apple_pay'}
           tone="neutral"
           accent={c.primary}
           onPress={confirming ? r.submit : r.next}
