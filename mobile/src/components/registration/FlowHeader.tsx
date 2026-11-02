@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CaretLeft, X } from '@unifesto/unicon/react-native';
 import PressableScale from '../ui/PressableScale';
@@ -9,20 +9,13 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
 export const GUTTER = spacing[6];
 
 /**
- * Top of the registration modals. iOS opens them as sheets, which start below
- * the status bar: no inset there (SafeAreaView reads the app's insets, the
- * window's, so it padded a sheet by the status bar's height). Android opens
- * them full screen, so the top clears the status bar.
+ * Top of the registration modals. They open full screen (never as sheets, see
+ * app/_layout.tsx), so the top clears the status bar.
  */
 export function SheetTop({ children, style, fill }: { children?: React.ReactNode; style?: object; fill?: boolean }) {
-  const outer = [fill && { flex: 1 }, style];
-  // A sheet's own top margin (clear of its rounded corners); full screen sits under the inset.
-  const inner = <View style={[{ paddingTop: Platform.OS === 'ios' ? spacing[5] : spacing[2] }, fill && { flex: 1 }]}>{children}</View>;
-  return Platform.OS === 'ios' ? (
-    <View style={outer}>{inner}</View>
-  ) : (
-    <SafeAreaView edges={['top']} style={outer}>
-      {inner}
+  return (
+    <SafeAreaView edges={['top']} style={[fill && { flex: 1 }, style]}>
+      <View style={[{ paddingTop: spacing[2] }, fill && { flex: 1 }]}>{children}</View>
     </SafeAreaView>
   );
 }

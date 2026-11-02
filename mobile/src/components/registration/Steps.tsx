@@ -461,7 +461,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
   const canApply = !!r.couponInput.trim() && !r.applyingCoupon;
   return (
     <View>
-      <Heading sub="Check everything, add a code if you have one, then slide to pay.">Almost there</Heading>
+      <Heading sub="Check everything, add a code if you have one, then pay.">Almost there</Heading>
 
       <Review r={r} total={false} />
 
@@ -532,7 +532,6 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
         {r.couponError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{r.couponError}</Text> : null}
       </View>
 
-      {r.payOptions.on ? <PayWith r={r} /> : null}
 
       <View style={styles.secure}>
         <ShieldCheck size={18} color={c.muted} weight="duotone" />
@@ -593,51 +592,29 @@ const pickedKey = (m: PayMethod) => {
 };
 
 /**
- * Q40: how this pays, on the pay page: the pick, and Change, which opens the
- * Pay with sheet. Pay pays with the pick and nothing else.
+ * Q40: the pick as the pay bar shows it: its logo and "Pay with …" (a UPI
+ * ID's own address, or a prompt to add one). `missing` = no usable UPI ID yet.
  */
-function PayWith({ r }: { r: EventRegistration }) {
+export function usePayPick(r: EventRegistration): { icon: React.ReactNode; label: string; missing: boolean } {
   const c = useCosmos();
-  const [open, setOpen] = React.useState(false);
   const { selected } = r.payOptions;
   const picked = pickedKey(selected);
   const row = payRows(r, c, true).flatMap((section) => section.rows).find((o) => o.key === picked);
-  const vpa = typeof selected === 'object' && 'vpa' in selected ? selected.vpa : null;
-  return (
-    <View style={styles.block}>
-      <Label>Pay with</Label>
-      <Card style={styles.payCard}>
-        <Pressable
-          onPress={() => setOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Pay with ${row?.label ?? 'not chosen'}${vpa ? `, ${vpa}` : ''}. Change`}
-          style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          {row?.icon}
-          <View style={styles.payLabel}>
-            <Text style={[styles.payName, { color: c.text }]} numberOfLines={1}>{row?.label ?? 'Choose how to pay'}</Text>
-            {vpa !== null ? (
-              <Text style={[styles.meta, { color: isVpa(vpa) ? c.muted : c.danger }]} numberOfLines={1}>
-                {vpa || 'Add your UPI ID'}
-              </Text>
-            ) : null}
-          </View>
-          <Text style={[styles.linkText, { color: c.text }]}>Change</Text>
-        </Pressable>
-      </Card>
-      <PayMethodsSheet r={r} visible={open} onClose={() => setOpen(false)} />
-    </View>
-  );
+  if (typeof selected === 'object' && 'vpa' in selected) {
+    const missing = !isVpa(selected.vpa);
+    return { icon: row?.icon, label: selected.vpa ? `Pay with ${selected.vpa}` : 'Add your UPI ID', missing };
+  }
+  return { icon: row?.icon, label: row ? `Pay with ${row.label}` : 'Choose how to pay', missing: !row };
 }
 
 /**
  * Q40: every way to pay, by kind: Apple Pay (iPhones that can), the UPI apps
  * Razorpay finds on the phone (last used, then GPay, PhonePe, Paytm; four
  * show, the rest under Show more), a typed UPI ID on iOS (Verify shows whose
- * it is), card, and the wallets our Razorpay account takes. A pick closes the
- * sheet; a UPI ID keeps it open to type.
+ * it is), card, and the wallets our Razorpay account takes. The pay bar's
+ * method opens it. A pick closes the sheet; a UPI ID keeps it open to type.
  */
-function PayMethodsSheet({ r, visible, onClose }: { r: EventRegistration; visible: boolean; onClose: () => void }) {
+export function PayMethodsSheet({ r, visible, onClose }: { r: EventRegistration; visible: boolean; onClose: () => void }) {
   const c = useCosmos();
   const { selected, keyId } = r.payOptions;
   const [allApps, setAllApps] = React.useState(false);

@@ -183,12 +183,13 @@ function RootStack() {
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
           {/* Declared here, not inside the routes: how a screen opens, and its
               gestures, have to be known when it's pushed. From inside, the
-              registration opened with swipe-back still on. */}
+              registration opened with swipe-back still on. Full screen, not a
+              sheet: a sheet's own drag took the pay slider halfway through. */}
           <Stack.Screen
             name="event-registration"
             options={{
               title: 'Event registration',
-              presentation: 'modal',
+              presentation: 'fullScreenModal',
               // No swipe-back: leaving goes through the close button's confirm, so a
               // stray edge swipe can't throw away the ticket choice and details.
               gestureEnabled: false,
@@ -199,7 +200,7 @@ function RootStack() {
             name="registration-success"
             options={{
               title: 'Registration successful',
-              presentation: 'modal',
+              presentation: 'fullScreenModal',
               // Terminal screen: no swipe back into the finished registration.
               gestureEnabled: false,
               fullScreenGestureEnabled: false,
