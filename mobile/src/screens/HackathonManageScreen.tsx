@@ -152,7 +152,7 @@ export default function HackathonManageScreen() {
           ) : null}
           {!data.planAllowed ? (
             <Text style={[styles.note, { color: c.warn, marginTop: spacing[5] }]}>
-              Hackathon mode isn’t included in this space’s plan. Ask a space admin to upgrade.
+              Hackathon mode isn’t turned on for this space yet. Ask Unifesto to turn it on.
             </Text>
           ) : data.otherBoard && data.otherBoard.entrants > 0 ? (
             <Text style={[styles.note, { color: c.warn, marginTop: spacing[5] }]}>

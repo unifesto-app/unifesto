@@ -21,7 +21,8 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * The space's sponsor roster (add once, attach to any event) and its tier
  * ladder (Platinum, Gold…), one under the other. Attaching to events happens
  * from each event's hub. Both are rows on the page with full hairlines, each
- * closed by its sky Add row (muted and inert when the plan doesn't include it).
+ * closed by its sky Add row (muted and inert while Sponsors and leads are off
+ * for this space; Unifesto turns them on).
  */
 export default function SponsorsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -29,8 +30,9 @@ export default function SponsorsScreen() {
   const c = useCosmos();
   const [sponsors, setSponsors] = useState<Sponsor[] | null>(null);
   const [tiers, setTiers] = useState<SponsorTier[]>([]);
-  // null = unknown (usage call failed); the server still enforces the plan.
-  const [onPlan, setOnPlan] = useState<boolean | null>(null);
+  // Sponsors and leads switched on for this space. null = unknown (usage call
+  // failed); the server still refuses writes when they're off.
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,7 +47,7 @@ export default function SponsorsScreen() {
       setSponsors((prev) => prev ?? []);
     }
     if (t.ok) setTiers([...t.data].sort((a, b) => a.rank - b.rank));
-    if (u.ok) setOnPlan(u.data.features.hasSponsors === true);
+    if (u.ok) setEnabled(u.data.features.hasSponsors === true);
   }, [spaceId]);
 
   // Refetch on focus so edits made in the editors show on return.
@@ -75,17 +77,17 @@ export default function SponsorsScreen() {
     );
   }
 
-  const locked = onPlan === false;
-  // Adding is an action, so sky; muted while the plan locks it.
+  const locked = enabled === false;
+  // Adding is an action, so sky; muted while it's off.
   const add = locked ? c.muted : c.sky;
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
       {locked ? (
         <View style={styles.notice}>
-          <Text style={[styles.noticeTitle, { color: c.warn }]}>Not on this space's plan</Text>
+          <Text style={[styles.noticeTitle, { color: c.warn }]}>Sponsors aren't on for this space yet</Text>
           <Text style={[styles.noticeBody, { color: c.soft }]}>
-            You can look through what's here, but adding or changing sponsors needs a plan that includes Sponsors and leads.
+            You can look through what's here. To add or change sponsors, ask Unifesto to turn on Sponsors and leads for this space.
           </Text>
         </View>
       ) : null}
