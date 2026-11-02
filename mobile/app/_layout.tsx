@@ -181,6 +181,30 @@ function RootStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+          {/* Declared here, not inside the routes: how a screen opens, and its
+              gestures, have to be known when it's pushed. From inside, the
+              registration opened with swipe-back still on. */}
+          <Stack.Screen
+            name="event-registration"
+            options={{
+              title: 'Event registration',
+              presentation: 'modal',
+              // No swipe-back: leaving goes through the close button's confirm, so a
+              // stray edge swipe can't throw away the ticket choice and details.
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="registration-success"
+            options={{
+              title: 'Registration successful',
+              presentation: 'modal',
+              // Terminal screen: no swipe back into the finished registration.
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
         </Stack>
         </NavigationThemeProvider>
         <WhatsNewSheet />
