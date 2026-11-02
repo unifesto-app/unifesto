@@ -23,12 +23,15 @@ interface StatementCardProps {
   expanded?: boolean;
   /** The screen's hero (the team's locked statement): drawn on the hackathon's blue shade. Read-only. */
   hero?: boolean;
+  /** Part of a list someone picks from: every card keeps its box, the full ones too. */
+  choice?: boolean;
 }
 
 /**
- * One problem statement: code, title, theme and description. Used read-only
- * (the team's locked statement, the list for members) and as a radio choice
- * for the team lead picking from the curator's list.
+ * One problem statement: code, title, theme and description. As a radio choice
+ * for the team lead it is an option card (a control, so it keeps its box); read-only
+ * (the list for members) it is a row on the page under a full hairline; the
+ * team's locked statement is the blue hero.
  */
 export default function StatementCard({
   code,
@@ -41,14 +44,16 @@ export default function StatementCard({
   onPress,
   expanded,
   hero,
+  choice,
 }: StatementCardProps) {
   const c = useCosmos();
   const selectable = !!onPress;
+  const boxed = selectable || !!choice;
   const Radio = selected ? CheckCircle : Circle;
 
   const body = (
     <>
-      {hero ? null : <CardBackdrop shape={styles.card} />}
+      {hero || !boxed ? null : <CardBackdrop shape={styles.card} />}
       <View style={styles.top}>
         {code ? <Text style={[styles.code, { color: c.text }]}>{code}</Text> : null}
         {theme ? (
@@ -78,7 +83,7 @@ export default function StatementCard({
   );
 
   if (hero) return <ShadeCard tone="blue" style={{ marginTop: spacing[3] }}>{body}</ShadeCard>;
-  if (!selectable) return <View style={styles.card}>{body}</View>;
+  if (!selectable) return boxed ? <View style={styles.card}>{body}</View> : <View style={[styles.row, { borderTopColor: c.border }]}>{body}</View>;
   return (
     <Pressable
       onPress={onPress}
@@ -104,6 +109,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing[5],
   },
+  // Read-only: on the page, a full hairline above each statement.
+  row: { paddingVertical: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   code: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   theme: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },

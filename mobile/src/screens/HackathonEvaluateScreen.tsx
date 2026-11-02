@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Coffee, Gavel, MapPin, UsersThree, VideoCamera } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -23,14 +22,15 @@ import {
 import { evalStatusLabel, roundBlockedCopy, stageCopy, teamRequestCopy, waitLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
 /**
  * The team's judging screen: pick a judge (or panel) in an open round and
  * join their queue, watch your place in line, and get called ("You're up",
- * with the room or a call link). Live over the socket; no marks, ever.
+ * with the room or a call link). The place in line is the blue hero; rounds,
+ * the picker and history are rows on the page. Live over the socket; no marks, ever.
  */
 export default function HackathonEvaluateScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -110,7 +110,6 @@ export default function HackathonEvaluateScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -141,9 +140,8 @@ export default function HackathonEvaluateScreen() {
       <Text style={[styles.label, { color: c.muted }]}>{[data.team.teamCode, data.team.name].filter(Boolean).join(' · ')}</Text>
 
       {notReady ? (
-        <View style={[styles.card, { marginTop: spacing[3] }]}>
-          <CardBackdrop shape={styles.card} />
-          <Text style={[styles.title, { color: c.text }]}>{stageCopy(data.stage).title}</Text>
+        <View style={styles.card}>
+          <Text style={[styles.title, { color: c.warn }]}>{stageCopy(data.stage).title}</Text>
           <Text style={[styles.body, { color: c.soft }]}>
             {data.stage === 'NEEDS_PS' ? 'Lock in your problem statement to unlock judging.' : stageCopy(data.stage).body}
           </Text>
@@ -201,7 +199,7 @@ export default function HackathonEvaluateScreen() {
       ) : null}
 
       {data.rounds.length ? (
-        <SettingsGroup title="Rounds">
+        <SettingsGroup flat title="Rounds">
           {data.rounds.map((r) => {
             const blocked = roundBlockedCopy(r, !!req);
             const mentoring = r.kind === 'MENTORING';
@@ -239,6 +237,7 @@ export default function HackathonEvaluateScreen() {
       {picking ? (
         <>
           <SettingsGroup
+            flat
             title={`${picking.round.kind === 'MENTORING' ? 'Pick a mentor' : picking.round.judgingMode === 'PANEL' ? 'Pick a panel' : 'Pick a judge'} · ${picking.round.name}`}
             action={{ label: 'Cancel', onPress: () => setPicking(null) }}
           >
@@ -280,7 +279,7 @@ export default function HackathonEvaluateScreen() {
       ) : null}
 
       {data.history.length ? (
-        <SettingsGroup title="Earlier">
+        <SettingsGroup flat title="Earlier">
           {data.history.map((h) => (
             <SettingsRow
               key={h.id}
@@ -297,9 +296,11 @@ export default function HackathonEvaluateScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  // Not ready yet: a line on the page in amber, not a card.
+  card: { marginTop: spacing[3], marginHorizontal: spacing[1] },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },

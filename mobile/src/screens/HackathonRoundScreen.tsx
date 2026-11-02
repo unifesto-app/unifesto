@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, CircleDashed, PencilSimple, Pause, Play, Stop, XCircle } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -15,14 +14,15 @@ import { getRound, setRoundStatus, setTeamDecision, type RoundDetail, type Round
 import { evalStatusLabel, roundStatusLabel, standingLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
 /**
  * One round on the day: opening, pausing and closing it, and advancing or
  * eliminating its teams. How it's judged and its criteria are set up on
- * Unifesto Space (D3). Marks aren't shown here.
+ * Unifesto Space (D3). Marks aren't shown here. The round is the blue hero;
+ * criteria and teams are rows on the page with full hairlines.
  */
 export default function HackathonRoundScreen() {
   const { eventId, roundId, spaceId } = useLocalSearchParams<{ eventId: string; roundId: string; spaceId?: string }>();
@@ -53,7 +53,6 @@ export default function HackathonRoundScreen() {
         <Stack.Screen options={{ title }} />
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -181,7 +180,7 @@ export default function HackathonRoundScreen() {
 
       {round.kind === 'EVALUATION' ? (
         <>
-          <SettingsGroup title="Criteria">
+          <SettingsGroup flat title="Criteria">
             {round.criteria.map((crit) => (
               <SettingsRow
                 key={crit.id}
@@ -195,17 +194,18 @@ export default function HackathonRoundScreen() {
           ) : null}
         </>
       ) : null}
-      <SettingsGroup>
+      {/* An action, so it's a sky row (opens the round on Unifesto Space). */}
+      <SettingsGroup flat>
         <SettingsRow
-          icon={icon(PencilSimple)}
+          icon={icon(PencilSimple, c.sky)}
           label="Edit round and criteria"
-          external
+          accent={c.sky}
           onPress={() => openSpaceWeb(`/events/${eventId}/hackathon/rounds`, spaceId)}
         />
       </SettingsGroup>
 
       {round.teams.length ? (
-        <SettingsGroup title={`Teams in this round · ${round.teams.length}`}>
+        <SettingsGroup flat title={`Teams in this round · ${round.teams.length}`}>
           {round.teams.map((t) => (
             <SettingsRow
               key={t.id}
@@ -242,7 +242,8 @@ export default function HackathonRoundScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 8, height: 8, borderRadius: 4 },

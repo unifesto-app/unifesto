@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Check } from '@unifesto/unicon/react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -15,14 +14,15 @@ import { getMyHelp, HELP_STATUS_LABEL, raiseHelpQuery, type MyHelp } from '../li
 import { timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const OTHER = 'OTHER';
 
 /**
  * A team asks the organisers for help: pick a topic (Food, Wi-Fi… or Other),
  * say what's needed, and it goes to that topic's contacts and the room's
- * volunteers. The team sees who's on it and when it's resolved.
+ * volunteers. The team sees who's on it and when it's resolved. The ask stays a
+ * boxed field (a control); my queries are rows on the page, no cards.
  */
 export default function HackathonHelpScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -75,7 +75,6 @@ export default function HackathonHelpScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -102,7 +101,7 @@ export default function HackathonHelpScreen() {
       }}
     >
       {help.room ? (
-        <SettingsGroup title={`Volunteers in ${help.room.name}`}>
+        <SettingsGroup flat title={`Volunteers in ${help.room.name}`}>
           <SettingsRow label={volunteers.length ? volunteers.join(', ') : 'None assigned yet'} />
         </SettingsGroup>
       ) : null}
@@ -139,12 +138,11 @@ export default function HackathonHelpScreen() {
       {help.queries.length ? (
         <>
           <Text style={[styles.section, { color: c.muted }]}>My queries</Text>
-          {help.queries.map((q) => {
+          {help.queries.map((q, i) => {
             // Plain status text: waiting needs attention, resolved is done.
             const statusColor = q.status === 'OPEN' ? c.warn : q.status === 'ACKNOWLEDGED' ? c.soft : c.success;
             return (
-              <View key={q.id} style={styles.card}>
-                <CardBackdrop shape={styles.card} />
+              <View key={q.id} style={[styles.card, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
                 <View style={styles.cardHead}>
                   <Text style={[styles.topic, { color: c.text }]} numberOfLines={1}>
                     {q.topicName}
@@ -174,11 +172,13 @@ export default function HackathonHelpScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
+  // One query as a row on the page.
+  card: { paddingVertical: spacing[4] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
   topic: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2 },

@@ -5,7 +5,6 @@ import { Megaphone, Plus, Trophy } from '@unifesto/unicon/react-native';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -13,14 +12,15 @@ import { openSpaceWeb } from '../lib/openOnWeb';
 import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
 /**
  * Winners (plan §2 #20): awards the curator declares for any team, whatever
  * its rank, each with notes, then publishes. Winners hear "You won", everyone
- * else "Winners announced". Co-Curators see the list read-only.
+ * else "Winners announced". Co-Curators see the list read-only. The first award
+ * is the blue hero; the rest are rows on the page, closed by a sky "Add an award".
  */
 export default function HackathonWinnersScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
@@ -51,7 +51,6 @@ export default function HackathonWinnersScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -108,7 +107,7 @@ export default function HackathonWinnersScreen() {
           accessibilityLabel={`${top.title}: ${top.team.name}. ${awardStatus(top)}`}
         >
           <View style={styles.heroTop}>
-            <Trophy size={22} color={c.text} weight="fill" />
+            <Trophy size={22} color={c.ivory} weight="fill" />
             <Text style={[styles.heroAward, { color: c.soft }]} numberOfLines={1}>
               {top.title}
             </Text>
@@ -124,7 +123,7 @@ export default function HackathonWinnersScreen() {
       ) : null}
 
       {!top || rest.length || data.canDeclareWinners ? (
-      <SettingsGroup title={top ? 'More awards' : 'Awards'}>
+      <SettingsGroup flat title={top ? 'More awards' : 'Awards'}>
         {data.awards.length === 0 ? <SettingsRow label="No awards yet" /> : null}
         {rest.map((a) => (
           <SettingsRow
@@ -137,7 +136,7 @@ export default function HackathonWinnersScreen() {
           />
         ))}
         {data.canDeclareWinners ? (
-          <SettingsRow icon={<Plus size={ICON} color={c.text} />} label="Add an award" external onPress={openAwards} />
+          <SettingsRow icon={<Plus size={ICON} color={c.sky} />} label="Add an award" accent={c.sky} onPress={openAwards} />
         ) : null}
       </SettingsGroup>
       ) : null}
@@ -172,7 +171,8 @@ export default function HackathonWinnersScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   heroAward: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },

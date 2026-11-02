@@ -6,10 +6,9 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { GUTTER } from '../components/home/Section';
-import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
@@ -29,19 +28,20 @@ import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
 const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? '–'}  ${t.name}` : 'Team');
 
-/** One titled card of rows. Rows are built up front (cheap) and only mounted when scrolled near. */
+/** One titled list of rows on the page. Rows are built up front (cheap) and only mounted when scrolled near. */
 type Group = { key: string; title: string; action?: { label: string; onPress: () => void }; data: { key: string; row: React.ReactElement }[] };
 
 /**
  * The curator's live view of every judge's and panel's queue: who's in a slot
  * and who's waiting. Take a team out of a queue, move it to another judge,
- * finish a stuck slot, pause a judge, and reopen locked marks.
+ * finish a stuck slot, pause a judge, and reopen locked marks. Each queue is a
+ * titled list of rows on the page with full hairlines, no cards.
  */
 export default function HackathonQueuesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -77,8 +77,7 @@ export default function HackathonQueuesScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
+          <View style={[styles.empty, styles.emptyPage]}>
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -286,18 +285,20 @@ export default function HackathonQueuesScreen() {
               </Text>
             </View>
             {!active.length ? (
-              <View style={[styles.empty, { marginTop: spacing[5] }]}>
-                <CardBackdrop shape={styles.empty} />
+              <View style={styles.empty}>
                 <Text style={[styles.emptyText, { color: c.soft }]}>Nobody is in a queue right now.</Text>
               </View>
             ) : null}
           </>
         }
         renderSectionHeader={({ section }) => <SettingsGroupHeader title={section.title} action={section.action} />}
-        renderItem={({ item, index, section }) => (
-          <GroupCell index={index} count={section.data.length}>
-            {item.row}
-          </GroupCell>
+        renderItem={({ item, index }) => (
+          // A one-row flat group gives the row its on-page padding; the hairline sits between rows.
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
+            <SettingsGroup flat style={styles.cell}>
+              {item.row}
+            </SettingsGroup>
+          </View>
         )}
         ListFooterComponent={
           <Text style={[styles.note, { color: c.muted }]}>
@@ -312,7 +313,11 @@ export default function HackathonQueuesScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', paddingVertical: spacing[6] },
+  emptyPage: { marginTop: spacing[10] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  cell: { marginTop: 0 },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
   live: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },

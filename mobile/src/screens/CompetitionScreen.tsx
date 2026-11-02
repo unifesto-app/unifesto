@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Check, CheckCircle, CircleDashed, Quotes, Trophy, XCircle } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -12,7 +11,7 @@ import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 24;
 
@@ -41,8 +40,9 @@ function headline(s: Standing): { title: string; body: string } {
 /**
  * The participant's side of a hackathon / competition board: where their team
  * stands, declared winners, the panel's written feedback once the organiser
- * reveals it, and the round-by-round bracket. No marks anywhere; the server
- * never sends them on this path.
+ * reveals it, and the round-by-round bracket. The standing is the blue hero;
+ * everything under it is rows on the page with full hairlines, no cards. No
+ * marks anywhere; the server never sends them on this path.
  */
 export default function CompetitionScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -109,7 +109,6 @@ export default function CompetitionScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
             No competition yet
           </Text>
@@ -138,7 +137,7 @@ export default function CompetitionScreen() {
       </ShadeCard>
 
       {view.awards.length ? (
-        <SettingsGroup title="Winners">
+        <SettingsGroup flat title="Winners">
           {view.awards.map((a) => (
             <SettingsRow
               key={a.id}
@@ -158,7 +157,7 @@ export default function CompetitionScreen() {
         ))}
 
       {steps.length ? (
-        <SettingsGroup title="My rounds">
+        <SettingsGroup flat title="My rounds">
           {steps.map((s) => (
             <SettingsRow
               key={s.roundId}
@@ -176,8 +175,7 @@ export default function CompetitionScreen() {
           {view.feedback
             .filter((f) => f.overallReview)
             .map((f, i) => (
-              <View key={`${f.roundId}-${i}`} style={styles.quoteCard}>
-                <CardBackdrop shape={styles.quoteCard} />
+              <View key={`${f.roundId}-${i}`} style={[styles.quoteRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
                 <Quotes size={20} color={c.muted} weight="fill" />
                 <Text style={[styles.quote, { color: c.text }]}>{f.overallReview}</Text>
                 {view.rounds.length > 1 ? (
@@ -200,7 +198,7 @@ export default function CompetitionScreen() {
               />
             </View>
           ) : null}
-          <SettingsGroup plain>
+          <SettingsGroup flat plain>
             {!bracket || bracket.entrants.length === 0 ? <SettingsRow label="No teams yet" /> : null}
             {bracket
               ? sortBracket(bracket.entrants).map((e) => (
@@ -238,19 +236,23 @@ export default function CompetitionScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  // An empty state on the page, no card: a headline and one muted line.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   hero: { marginTop: spacing[2] },
   team: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[2] },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   headTitle: { flexShrink: 1, fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   headBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   section: { marginTop: spacing[8] },
-  sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[3] },
-  quoteCard: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3], gap: spacing[2] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong, marginBottom: spacing[3], marginHorizontal: spacing[1] },
+  // A review on the page; full hairlines between reviews, no card.
+  quoteRow: { paddingVertical: spacing[4], gap: spacing[2] },
   quote: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   quoteMeta: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  emptyTitle: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display, marginBottom: spacing[2] },
-  entrantRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 52, paddingVertical: spacing[2] },
+  emptyTitle: { fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24), marginBottom: spacing[2] },
+  // On the page inside a flat group: no side padding, so it lines up with the gutter.
+  entrantRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 52, paddingVertical: spacing[2] },
   code: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   entrant: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   status: { flexDirection: 'row', alignItems: 'center', gap: 4 },

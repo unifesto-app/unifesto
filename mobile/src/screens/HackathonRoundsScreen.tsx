@@ -4,7 +4,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleDashed, PlayCircle, Plus } from '@unifesto/unicon/react-native';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { openSpaceWeb } from '../lib/openOnWeb';
@@ -12,7 +11,7 @@ import { getRounds, type RoundRow } from '../lib/api/hackathon';
 import { JUDGING_MODE_OPTIONS, roundStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -25,7 +24,7 @@ function roundSummary(r: RoundRow): string {
   return `${mode} · ${r.criteria ? `${r.criteria} criteria` : 'no criteria yet'}`;
 }
 
-/** The hackathon's rounds in order: status and progress, and a way to add one. */
+/** The hackathon's rounds in order as rows on the page (status and progress), closed by a sky row to add one. */
 export default function HackathonRoundsScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
@@ -54,7 +53,6 @@ export default function HackathonRoundsScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -78,7 +76,7 @@ export default function HackathonRoundsScreen() {
         setRefreshing(false);
       }}
     >
-      <SettingsGroup>
+      <SettingsGroup flat>
         {rounds.length === 0 ? <SettingsRow label="No rounds yet" /> : null}
         {rounds.map((r) => (
           <SettingsRow
@@ -97,27 +95,26 @@ export default function HackathonRoundsScreen() {
             onPress={() => open(r.id)}
           />
         ))}
+        {/* Adding is an action, so it closes the list in sky (it opens Unifesto Space). */}
+        <SettingsRow
+          icon={<Plus size={ICON} color={c.sky} />}
+          label="Add a round on the web"
+          accent={c.sky}
+          onPress={() => openSpaceWeb(`/events/${eventId}/hackathon/rounds`, spaceId)}
+        />
       </SettingsGroup>
       <Text style={[styles.note, { color: c.muted }]}>
         Open a round to let teams join judges’ queues. A round that eliminates needs every team advanced or eliminated before
         the next round can open.
       </Text>
-      <Button
-        label="Add a round on the web"
-        variant="secondary"
-        size="lg"
-        fullWidth
-        icon={<Plus size={18} color={c.text} weight="bold" />}
-        onPress={() => openSpaceWeb(`/events/${eventId}/hackathon/rounds`, spaceId)}
-        style={{ marginTop: spacing[6] }}
-      />
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

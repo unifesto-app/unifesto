@@ -12,7 +12,7 @@ export interface QuickTile {
   onPress: () => void;
 }
 
-/** Row of equal borderless cards for the things I open most (saved, certificates, spaces); bare glyphs. */
+/** Row of equal borderless tiles for the hackathon hub's tools (team, updates, help); bare glyphs. Tool menus stay tiles. */
 export default function QuickTiles({ tiles }: { tiles: QuickTile[] }) {
   const c = useCosmos();
   return (

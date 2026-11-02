@@ -4,19 +4,18 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { DownloadSimple } from '@unifesto/unicon/react-native';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
 import { Badge } from '../components/ui/Badge';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import ChipPicker from '../components/manage/ChipPicker';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
-import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { runImportTeams } from '../components/hackathon/importTeamsFlow';
 import { getHackathonOverview, getTeams, type HackathonOverview, type TeamRow } from '../lib/api/hackathon';
 import { joinedLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 type Filter = 'all' | 'active' | 'nops' | 'noroom' | 'cancelled';
 const FILTERS: { value: Filter; label: string }[] = [
@@ -27,7 +26,10 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-/** Every team with its Team ID, problem statement, room and who has joined. Cancelled teams keep their ID. */
+/**
+ * Every team with its Team ID, problem statement, room and who has joined, as rows
+ * on the page with full hairlines. Cancelled teams keep their ID.
+ */
 export default function HackathonTeamsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
@@ -122,7 +124,6 @@ export default function HackathonTeamsScreen() {
         ListEmptyComponent={
           teams.length === 0 ? (
             <View style={styles.emptyCard}>
-              <CardBackdrop shape={styles.emptyCard} />
               <Text style={[styles.empty, { color: c.text }]} accessibilityRole="header">
                 No teams yet
               </Text>
@@ -132,15 +133,18 @@ export default function HackathonTeamsScreen() {
               <Button label="Import teams" onPress={startImport} disabled={!overview} style={{ marginTop: spacing[5] }} />
             </View>
           ) : (
-            <GroupCell index={0} count={1} plain>
+            <SettingsGroup flat plain style={styles.cell}>
               <SettingsRow label="No teams match" />
-            </GroupCell>
+            </SettingsGroup>
           )
         }
         renderItem={({ item, index }) => (
-          <GroupCell index={index} count={shown.length} plain>
-            <TeamItem t={item} onOpen={openTeam} />
-          </GroupCell>
+          // A one-row flat group gives the row its on-page padding; the hairline sits between rows.
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
+            <SettingsGroup flat plain style={styles.cell}>
+              <TeamItem t={item} onOpen={openTeam} />
+            </SettingsGroup>
+          </View>
         )}
         ListFooterComponent={error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
       />
@@ -165,7 +169,10 @@ const TeamItem = React.memo(function TeamItem({ t, onOpen }: { t: TeamRow; onOpe
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  empty: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  // An empty state on the page: headline, one line, one button.
+  emptyCard: { alignItems: 'center', marginTop: spacing[10] },
+  empty: { fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  cell: { marginTop: 0 },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });
