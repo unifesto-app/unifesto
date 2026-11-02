@@ -17,7 +17,6 @@ import {
 } from '../../lib/api/support';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import SearchField from '../../components/manage/SearchField';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -28,7 +27,7 @@ import { longDate, shortDate } from '../../components/apex/ApexRow';
 import { DESK_LABEL } from './SupportInboxScreen';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const STATUSES: { value: SupportTicketStatus; label: string }[] = (['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const).map((s) => ({
   value: s,
@@ -112,8 +111,7 @@ export default function AdminSupportThreadScreen() {
       <CosmosScreen contentContainerStyle={{ paddingHorizontal: GUTTER }}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
         ) : (
@@ -143,7 +141,7 @@ export default function AdminSupportThreadScreen() {
           {KIND_LABEL[ticket.kind]} · {CATEGORY_LABEL[ticket.category]} · opened {longDate(ticket.createdAt)}
         </Text>
 
-        <SettingsGroup plain>
+        <SettingsGroup flat plain>
           <SettingsRow
             label="From"
             value={personName(ticket.requester)}
@@ -257,7 +255,7 @@ function SendToOrganiser({
         {suggested ? `Assist thinks the organiser can answer this${reason ? `: ${reason}` : '.'}` : "Pass this question to an event's space desk."}
       </Text>
       {!open ? (
-        <SettingsGroup plain>
+        <SettingsGroup flat plain>
           <SettingsRow label="Pick an event" onPress={() => setOpen(true)} />
         </SettingsGroup>
       ) : (
@@ -266,7 +264,7 @@ function SendToOrganiser({
             <SearchField value={query} onChangeText={setQuery} placeholder="Search events" accessibilityLabel="Search events" />
           </View>
           {results.length ? (
-            <SettingsGroup plain>
+            <SettingsGroup flat plain>
               {results.map((ev) => (
                 <SettingsRow
                   key={ev.id}
@@ -285,7 +283,7 @@ function SendToOrganiser({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   subject: { fontSize: typography.fontSize['2xl'], lineHeight: 28, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },

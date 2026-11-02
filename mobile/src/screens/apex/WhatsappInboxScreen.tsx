@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { CosmosList } from "../../components/ui/CosmosScreen";
-import { CardBackdrop } from "../../components/ui/CardSurface";
 import SearchField from "../../components/manage/SearchField";
 import { GUTTER } from "../../components/home/Section";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
@@ -19,7 +18,7 @@ import {
 import { ApexRow, whenShort } from "../../components/apex/ApexRow";
 import { spacing } from "../../theme/spacing";
 import { typography } from "../../theme/typography";
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from "../../theme/cosmos";
+import { cosmosFont, useCosmos } from "../../theme/cosmos";
 
 /** Messages sent to the Unifesto WhatsApp Business number, newest first. */
 export default function WhatsappInboxScreen() {
@@ -111,8 +110,7 @@ export default function WhatsappInboxScreen() {
             />
           ) : (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>
+              <Text style={[styles.emptyText, { color: c.muted }]}>
                 {error || (query ? "No matches." : "No messages yet.")}
               </Text>
             </View>
@@ -122,7 +120,7 @@ export default function WhatsappInboxScreen() {
           const last = item.messages?.[0];
           const preview = `${last?.direction === "OUTBOUND" ? "You: " : ""}${messagePreview(last)}`;
           return (
-            <View style={cardSegment(c.raised, index, data.length)}>
+            <View>
               {index > 0 ? (
                 <View style={[styles.sep, { backgroundColor: c.border }]} />
               ) : null}
@@ -150,7 +148,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   search: { marginBottom: spacing[4] },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: {
     textAlign: "center",
     fontSize: typography.fontSize.sm,

@@ -9,7 +9,6 @@ import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import SaveBar from '../../components/manage/SaveBar';
 import { GUTTER } from '../../components/home/Section';
 import { AppAlert } from '../../components/ui/AppAlert';
@@ -23,7 +22,7 @@ import {
 } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Platform admin edits someone else's profile (Apex parity). Photo changes
@@ -154,7 +153,6 @@ export default function AdminEditUserScreen() {
       <CosmosScreen contentContainerStyle={styles.pad}>
         {loadError ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -247,7 +245,7 @@ export default function AdminEditUserScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   avatarWrap: { alignSelf: 'center', alignItems: 'center' },
   avatar: {

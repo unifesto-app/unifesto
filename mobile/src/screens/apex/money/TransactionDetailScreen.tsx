@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import CosmosScreen from '../../../components/ui/CosmosScreen';
 import ShadeCard from '../../../components/ui/ShadeCard';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -25,7 +24,7 @@ import { payerName, txnStatus } from './TransactionsScreen';
 import { inr } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 type Panel = 'refund' | 'resolve' | null;
 
@@ -81,7 +80,6 @@ export default function TransactionDetailScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -217,7 +215,7 @@ export default function TransactionDetailScreen() {
           </>
         ) : null}
 
-        <SettingsGroup title="Payment" plain>
+        <SettingsGroup title="Payment" flat plain>
           <SettingsRow label="Total" value={inr(txn.totalAmount)} />
           <SettingsRow label="Paid to gateway" value={inr(txn.razorpayAmount)} />
           <SettingsRow label="Processing fee" value={inr(txn.processingFee)} />
@@ -231,14 +229,14 @@ export default function TransactionDetailScreen() {
           {txn.cancelledAt ? <SettingsRow label="Cancelled" value={longDate(txn.cancelledAt)} /> : null}
         </SettingsGroup>
 
-        <SettingsGroup title="People" plain>
+        <SettingsGroup title="People" flat plain>
           <SettingsRow label="Attendee" value={payerName(txn.user)} onPress={() => router.push(`/apex/users/${txn.user.id}`)} />
           {txn.user.email ? <SettingsRow label="Email" value={txn.user.email} onPress={copy('Email', txn.user.email)} /> : null}
           {txn.user.mobileNumber ? <SettingsRow label="Phone" value={txn.user.mobileNumber} onPress={copy('Phone', txn.user.mobileNumber)} /> : null}
           <SettingsRow label="Curator" value={payerName(txn.organiser)} onPress={() => router.push(`/apex/users/${txn.organiser.id}`)} />
         </SettingsGroup>
 
-        <SettingsGroup title="Event & space" plain>
+        <SettingsGroup title="Event & space" flat plain>
           <SettingsRow label="Event" value={txn.event.title} onPress={() => router.push(`/apex/events/${txn.event.id}`)} />
           <SettingsRow label="Starts" value={longDate(txn.event.startDateTime)} />
           <SettingsRow label="Type" value={`${titleCase(txn.event.type)} · ${titleCase(txn.event.status)}`} />
@@ -247,7 +245,7 @@ export default function TransactionDetailScreen() {
         </SettingsGroup>
 
         {txn.tickets.length > 0 ? (
-          <SettingsGroup title={`Tickets (${txn.tickets.length})`} plain>
+          <SettingsGroup title={`Tickets (${txn.tickets.length})`} flat plain>
             {txn.tickets.map((tk) => (
               <SettingsRow
                 key={tk.id}
@@ -260,7 +258,7 @@ export default function TransactionDetailScreen() {
         ) : null}
 
         {txn.refundRequests.length > 0 ? (
-          <SettingsGroup title={`Refund requests (${txn.refundRequests.length})`} plain>
+          <SettingsGroup title={`Refund requests (${txn.refundRequests.length})`} flat plain>
             {txn.refundRequests.map((r) => (
               <SettingsRow
                 key={r.id}
@@ -277,7 +275,7 @@ export default function TransactionDetailScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },

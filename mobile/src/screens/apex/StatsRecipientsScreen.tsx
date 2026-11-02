@@ -5,13 +5,12 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import SaveBar from '../../components/manage/SaveBar';
 import { GUTTER } from '../../components/home/Section';
 import { getStatsRecipients, updateStatsRecipients } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "Stats recipients": the WhatsApp numbers that get the Unifesto Stats
@@ -107,7 +106,6 @@ export default function StatsRecipientsScreen() {
       <CosmosScreen contentContainerStyle={styles.pad}>
         {loadError ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -126,7 +124,7 @@ export default function StatsRecipientsScreen() {
       keyboardDismissMode="interactive"
       footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} />}
     >
-        <SettingsGroup title="Recipients">
+        <SettingsGroup title="Recipients" flat>
           {draft.length === 0 ? (
             <SettingsRow label="No one yet" value="Stats won't be sent" />
           ) : (
@@ -179,7 +177,7 @@ export default function StatsRecipientsScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   note: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

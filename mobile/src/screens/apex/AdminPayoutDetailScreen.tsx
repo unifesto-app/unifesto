@@ -12,12 +12,11 @@ import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
 import ShadeCard from '../../components/ui/ShadeCard';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /**
  * One payout: what's owed, where to send it (copy-on-tap), then record it as
@@ -36,7 +35,6 @@ export default function AdminPayoutDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
         </View>
       </CosmosScreen>
@@ -108,14 +106,14 @@ export default function AdminPayoutDetailScreen() {
           </View>
         </ShadeCard>
 
-        <SettingsGroup title="Money" plain>
+        <SettingsGroup title="Money" flat plain>
           <SettingsRow label="Ticket revenue" value={inr(payout.grossRevenue)} />
           <SettingsRow label={`Platform fee (${Number(payout.platformFeePercent)}%)`} value={`− ${inr(payout.platformFee)}`} />
           <SettingsRow label="To send" value={inr(payout.netAmount)} onPress={copy('Amount', String(Number(payout.netAmount)))} />
         </SettingsGroup>
 
         {acct ? (
-          <SettingsGroup title={acct.methodType === 'UPI' ? 'Send by UPI (tap to copy)' : 'Send to (tap to copy)'} plain>
+          <SettingsGroup title={acct.methodType === 'UPI' ? 'Send by UPI (tap to copy)' : 'Send to (tap to copy)'} flat plain>
             {acct.accountHolderName ? <SettingsRow label="Name" value={acct.accountHolderName} onPress={copy('Name', acct.accountHolderName)} /> : null}
             {acct.upiId ? <SettingsRow label="UPI" value={acct.upiId} onPress={copy('UPI ID', acct.upiId)} /> : null}
             {acct.accountNumber ? <SettingsRow label="Account" value={acct.accountNumber} onPress={copy('Account number', acct.accountNumber)} /> : null}
@@ -126,7 +124,7 @@ export default function AdminPayoutDetailScreen() {
           <Text style={[styles.note, { color: c.warn }]}>No payout account on this request.</Text>
         )}
 
-        <SettingsGroup title="History" plain>
+        <SettingsGroup title="History" flat plain>
           <SettingsRow label="Asked on" value={longDate(payout.createdAt)} />
           {payout.completedAt ? <SettingsRow label="Paid on" value={longDate(payout.completedAt)} /> : null}
           {payout.utr ? <SettingsRow label="UTR" value={payout.utr} onPress={copy('UTR', payout.utr)} /> : null}
@@ -151,7 +149,7 @@ export default function AdminPayoutDetailScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },

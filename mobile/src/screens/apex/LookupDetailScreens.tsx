@@ -3,7 +3,6 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import * as Clipboard from 'expo-clipboard';
 import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/unicon/react-native';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -25,7 +24,7 @@ import { getManagedSpaceEvents, type ManagedEvent } from '../../lib/api/manageSp
 import { titleCase } from '../../lib/apexQueues';
 import { longDate, shortDate } from '../../components/apex/ApexRow';
 import ManageStats from '../../components/manage/ManageStats';
-import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsRow, useFlatRows } from '../../components/profile/SettingsGroup';
 import { inr, inrShort } from '../../utils/money';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -90,8 +89,7 @@ function Shell({
         <CosmosScreen contentContainerStyle={styles.content}>
           {error ? (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={onRefresh} style={{ marginTop: spacing[4] }} />
             </View>
           ) : (
@@ -163,7 +161,7 @@ export function UserDetailScreen() {
           <Hero imageUrl={u.avatarUrl} title={nameOf(u)} lines={[u.username ? `@${u.username}` : 'No username', `Joined ${shortDate(u.createdAt)}`]} />
           <Text style={[styles.bio, { color: u.bio ? c.soft : c.muted }]}>{u.bio || 'No bio provided.'}</Text>
 
-          <SettingsGroup title="Contact" plain>
+          <SettingsGroup title="Contact" flat plain>
             <InfoRow
               title={u.email ?? 'No email'}
               subtitle={u.email ? (u.emailVerified ? 'Email · verified' : 'Email · not verified') : undefined}
@@ -180,7 +178,7 @@ export function UserDetailScreen() {
             />
           </SettingsGroup>
 
-          <SettingsGroup title="Reach out" plain>
+          <SettingsGroup title="Reach out" flat plain>
             <SettingsRow
               label="Send a push notification"
               value={u.pushDevices && !u.pushDevices.some((d) => d.linkedAt && d.optedIn) ? 'No linked device' : undefined}
@@ -188,21 +186,21 @@ export function UserDetailScreen() {
             />
           </SettingsGroup>
 
-          <SettingsGroup title="Links" plain>
+          <SettingsGroup title="Links" flat plain>
             {links.length === 0 ? <SettingsRow label="No links added" /> : null}
             {links.map((s) => (
               <SettingsRow key={s.key} label={s.label} value={hostOf(u[s.key]!)} external onPress={() => void Linking.openURL(u[s.key]!)} />
             ))}
           </SettingsGroup>
 
-          <SettingsGroup title="App" plain>
+          <SettingsGroup title="App" flat plain>
             <InfoRow
               title={u.appVersion ? `v${u.appVersion}${u.appPlatform ? ` · ${platformLabel(u.appPlatform)}` : ''}` : 'Not reported yet'}
               subtitle={u.appVersionLastReportedAt ? `Last seen ${shortDate(u.appVersionLastReportedAt)}` : undefined}
             />
           </SettingsGroup>
 
-          <SettingsGroup title={`Roles (${u.roles.length})`} plain>
+          <SettingsGroup title={`Roles (${u.roles.length})`} flat plain>
             {u.roles.length === 0 ? <SettingsRow label="No roles assigned" /> : null}
             {u.roles.map((r) => (
               <InfoRow
@@ -221,7 +219,7 @@ export function UserDetailScreen() {
           </SettingsGroup>
 
           {u.pushDevices ? (
-            <SettingsGroup title={`Push devices (${u.pushDevices.length})`} plain>
+            <SettingsGroup title={`Push devices (${u.pushDevices.length})`} flat plain>
               {u.pushDevices.length === 0 ? <SettingsRow label="No devices registered" /> : null}
               {u.pushDevices.map((d) => (
                 <InfoRow
@@ -247,7 +245,7 @@ export function UserDetailScreen() {
             </SettingsGroup>
           ) : null}
 
-          <SettingsGroup title={`Sign-in methods (${u.identities.length})`} plain>
+          <SettingsGroup title={`Sign-in methods (${u.identities.length})`} flat plain>
             {u.identities.length === 0 ? <SettingsRow label="No linked identities" /> : null}
             {u.identities.map((i) => (
               <InfoRow
@@ -275,7 +273,7 @@ const PLATFORM_LABEL: Record<string, string> = { ios: 'iOS', android: 'Android',
 const platformLabel = (p: string) => PLATFORM_LABEL[p] ?? titleCase(p);
 const hostOf = (url: string) => url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
 
-/** Two-line row (title + muted subtitle, optional third line) on a SettingsGroup card. */
+/** Two-line row (title + muted subtitle, optional third line) in a SettingsGroup; on the page when the group is flat. */
 function InfoRow({
   title,
   subtitle,
@@ -294,6 +292,8 @@ function InfoRow({
   onLongPress?: () => void;
 }) {
   const c = useCosmos();
+  const flat = useFlatRows();
+  const row = [styles.row, flat && styles.rowFlat];
   const body = (
     <>
       <View style={{ flex: 1 }}>
@@ -314,14 +314,14 @@ function InfoRow({
       {trailing ?? (onPress ? <CaretRight size={15} color={c.muted} /> : null)}
     </>
   );
-  if (!onPress && !onLongPress) return <View style={styles.row}>{body}</View>;
+  if (!onPress && !onLongPress) return <View style={row}>{body}</View>;
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={title}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [row, pressed && (flat ? { opacity: 0.6 } : { backgroundColor: c.tint })]}
     >
       {body}
     </Pressable>
@@ -443,7 +443,7 @@ export function SpaceDetailAdminScreen() {
           ) : null}
 
           {/* Admin controls (Q39): four statuses, with a reason the owner sees. */}
-          <SettingsGroup title="Admin controls" plain>
+          <SettingsGroup title="Admin controls" flat plain>
             <SettingsRow
               label="Status"
               value={busy ? 'Updating…' : SPACE_STATUS_LABEL[s.status] ?? titleCase(s.status)}
@@ -494,14 +494,14 @@ export function SpaceDetailAdminScreen() {
             </>
           ) : null}
 
-          <SettingsGroup title="Manage" plain>
+          <SettingsGroup title="Manage" flat plain>
             <SettingsRow label="Edit details and branding" onPress={() => router.push(`/manage/space/${id}/settings`)} />
             <SettingsRow label="Members" value={s._count ? String(s._count.userRoles) : undefined} onPress={() => router.push(`/manage/space/${id}/members`)} />
             <SettingsRow label="Add member" onPress={() => router.push(`/manage/space/${id}/add-member`)} />
             <SettingsRow label="Hierarchy" value={s.type === 'SUPER' ? 'Parent space' : 'Regular'} onPress={() => router.push(`/apex/spaces/${id}/hierarchy`)} />
           </SettingsGroup>
 
-          <SettingsGroup title="About" plain>
+          <SettingsGroup title="About" flat plain>
             <SettingsRow label="Owner" value={nameOf(s.creator)} onPress={s.creator ? () => router.push(`/apex/users/${s.creator!.id}`) : undefined} />
             {s.parentSpace ? <SettingsRow label="Parent" value={s.parentSpace.name} onPress={() => router.push(`/apex/spaces/${s.parentSpace!.id}`)} /> : null}
             {s.websiteUrl ? (
@@ -517,7 +517,7 @@ export function SpaceDetailAdminScreen() {
           </SettingsGroup>
 
           {s.organisers && s.organisers.length > 0 ? (
-            <SettingsGroup title="Space admins" plain>
+            <SettingsGroup title="Space admins" flat plain>
               {s.organisers.map((o) => (
                 <SettingsRow key={o.id} label={nameOf(o.user)} value={o.role.name} onPress={() => router.push(`/apex/users/${o.user.id}`)} />
               ))}
@@ -525,7 +525,7 @@ export function SpaceDetailAdminScreen() {
           ) : null}
 
           {s.type === 'SUPER' ? (
-            <SettingsGroup title={`Child spaces (${childPage.total})`} plain>
+            <SettingsGroup title={`Child spaces (${childPage.total})`} flat plain>
               {children.length === 0 ? <SettingsRow label="No child spaces yet" /> : null}
               {children.map((c) => {
                 const members = c._count?.userRoles ?? 0;
@@ -546,12 +546,12 @@ export function SpaceDetailAdminScreen() {
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} />
           ) : (
             <>
-              {upcoming.length > 0 ? <SettingsGroup title="Upcoming and drafts" plain>{upcoming.map(eventRow)}</SettingsGroup> : null}
-              {past.length > 0 ? <SettingsGroup title="Past" plain>{past.slice(0, 20).map(eventRow)}</SettingsGroup> : null}
+              {upcoming.length > 0 ? <SettingsGroup title="Upcoming and drafts" flat plain>{upcoming.map(eventRow)}</SettingsGroup> : null}
+              {past.length > 0 ? <SettingsGroup title="Past" flat plain>{past.slice(0, 20).map(eventRow)}</SettingsGroup> : null}
             </>
           )}
 
-          <SettingsGroup plain>
+          <SettingsGroup flat plain>
             <SettingsRow label="Delete space" danger onPress={() => router.push(`/apex/spaces/${id}/delete`)} />
           </SettingsGroup>
         </>
@@ -600,7 +600,7 @@ export function EventDetailAdminScreen() {
             />
           </View>
 
-          <SettingsGroup title="About" plain>
+          <SettingsGroup title="About" flat plain>
             {e.space ? <SettingsRow label="Space" value={e.space.name} onPress={() => router.push(`/apex/spaces/${e.space!.id}`)} /> : null}
             {e.parentEvent ? <SettingsRow label="Part of" value={e.parentEvent.title} onPress={() => router.push(`/apex/events/${e.parentEvent!.id}`)} /> : null}
             <SettingsRow label="Created by" value={nameOf(e.creator)} onPress={e.creator ? () => router.push(`/apex/users/${e.creator!.id}`) : undefined} />
@@ -610,7 +610,7 @@ export function EventDetailAdminScreen() {
           </SettingsGroup>
 
           {e.ticketTypes.length > 0 ? (
-            <SettingsGroup title="Tickets" plain>
+            <SettingsGroup title="Tickets" flat plain>
               {e.ticketTypes.map((t) => (
                 <SettingsRow
                   key={t.id}
@@ -622,7 +622,7 @@ export function EventDetailAdminScreen() {
           ) : null}
 
           {e.childEvents.length > 0 ? (
-            <SettingsGroup title="Sub-events" plain>
+            <SettingsGroup title="Sub-events" flat plain>
               {e.childEvents.map((c) => (
                 <SettingsRow key={c.id} label={c.title} value={`${titleCase(c.status)} · ${shortDate(c.startDateTime)}`} onPress={() => router.push(`/apex/events/${c.id}`)} />
               ))}
@@ -630,7 +630,7 @@ export function EventDetailAdminScreen() {
           ) : null}
 
           {e.recentRegistrations.length > 0 ? (
-            <SettingsGroup title="Latest bookings" plain>
+            <SettingsGroup title="Latest bookings" flat plain>
               {e.recentRegistrations.map((r) => (
                 <SettingsRow
                   key={r.id}
@@ -649,7 +649,7 @@ export function EventDetailAdminScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   heroImg: { width: 64, height: 64, borderRadius: borderRadius.md },
@@ -661,6 +661,7 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   status: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
+  rowFlat: { paddingHorizontal: 0 },
   rowTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   rowSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   rowDetail: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },

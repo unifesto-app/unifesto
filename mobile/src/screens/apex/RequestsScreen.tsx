@@ -11,7 +11,7 @@ import { typography } from '../../theme/typography';
 import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
-import { cardSegment, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const TABS: { key: RequestTab; label: string }[] = [
   { key: 'open', label: 'Review' },
@@ -138,14 +138,13 @@ export default function RequestsScreen() {
             <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
-              <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
             </View>
           )
         }
         // Each section reads as one card.
         renderItem={({ item, index, section }) => (
-          <View style={cardSegment(c.raised, index, section.data.length)}>
+          <View>
             {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
             <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
           </View>
@@ -170,6 +169,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   fail: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[6], paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

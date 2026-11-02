@@ -168,7 +168,6 @@ export default function WhatsappThreadScreen() {
         <View style={styles.center}>
           {error ? (
             <View style={styles.empty}>
-              <CardBackdrop shape={styles.empty} />
               <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
             </View>
@@ -260,7 +259,7 @@ function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', padding: spacing[6] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   headerAction: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },

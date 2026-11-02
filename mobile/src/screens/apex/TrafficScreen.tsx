@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { Button } from '../../components/ui';
 import { GUTTER } from '../../components/home/Section';
 import { conversion, getTraffic, type PlatformTrafficStats } from '../../lib/api/traffic';
@@ -10,7 +9,7 @@ import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGro
 import { TrafficSummary, fmt } from '../../components/traffic/TrafficSummary';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const PLATFORM_LABEL: Record<string, string> = { ios: 'iOS', android: 'Android', web: 'Web' };
 
@@ -54,7 +53,6 @@ export default function TrafficScreen() {
     >
       {error ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.error, { color: c.soft }]}>{error}</Text>
           <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
         </View>
@@ -105,7 +103,7 @@ export default function TrafficScreen() {
 
 function Section({ title, empty, children }: { title: string; empty: string; children: React.ReactNode[] }) {
   return (
-    <SettingsGroup title={title} plain>
+    <SettingsGroup title={title} flat plain>
       {children.length === 0 ? <SettingsRow label={empty} /> : children}
     </SettingsGroup>
   );
@@ -113,6 +111,6 @@ function Section({ title, empty, children }: { title: string; empty: string; chi
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   error: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

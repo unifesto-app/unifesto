@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { CosmosList } from '../../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { Button } from '../../../components/ui';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -16,7 +15,7 @@ import { payoutStatus } from '../../../components/manage/FinanceRows';
 import { inr, inrShort } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 const OWED: PayoutStatus[] = ['PENDING', 'PROCESSING'];
 
@@ -124,8 +123,7 @@ export default function SettlementsScreen() {
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
           {error ? (
             <View style={styles.emptyCard}>
-              <CardBackdrop shape={styles.emptyCard} />
-              <Text style={[styles.empty, { color: c.soft }]}>{error}</Text>
+              <Text style={[styles.empty, { color: c.muted }]}>{error}</Text>
               <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} />
             </View>
           ) : null}
@@ -136,8 +134,7 @@ export default function SettlementsScreen() {
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : payouts ? (
           <View style={styles.emptyCard}>
-            <CardBackdrop shape={styles.emptyCard} />
-            <Text style={[styles.empty, { color: c.soft }]}>Nothing here.</Text>
+            <Text style={[styles.empty, { color: c.muted }]}>Nothing here.</Text>
           </View>
         ) : null
       }
@@ -145,7 +142,7 @@ export default function SettlementsScreen() {
         const s = payoutStatus(p.status, c);
         const to = p.bankAccount ? describeAccount(p.bankAccount) : null;
         return (
-          <View style={cardSegment(c.raised, index, data.length)}>
+          <View>
             {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
             <ApexRow
             title={p.event?.title ?? 'Event'}
@@ -166,6 +163,6 @@ export default function SettlementsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   sep: { height: StyleSheet.hairlineWidth },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyCard: { paddingVertical: spacing[8] },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

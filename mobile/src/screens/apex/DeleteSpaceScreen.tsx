@@ -6,12 +6,11 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import CosmosScreen from '../../components/ui/CosmosScreen';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import { GUTTER } from '../../components/home/Section';
 import { deleteSpace, getSpaceDetail, type AdminSpaceDetail } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 
 /** Permanently delete a space. Gated on typing its slug, as on Apex web. */
 export default function DeleteSpaceScreen() {
@@ -36,8 +35,7 @@ export default function DeleteSpaceScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
           </View>
         ) : (
@@ -89,7 +87,7 @@ export default function DeleteSpaceScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   title: { fontSize: 26, lineHeight: 32, ...cosmosFont.display, letterSpacing: displayTracking(26) },
   body: { marginTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
