@@ -6,7 +6,6 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { shareCsv } from '../lib/csvShare';
@@ -21,7 +20,7 @@ import {
 } from '../lib/api/stays';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Tab = 'requests' | 'pay' | 'guests' | 'all';
 const TABS: { key: Tab; label: string }[] = [
@@ -139,7 +138,6 @@ export default function StayBookingsScreen() {
       }
       ListEmptyComponent={
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>
             {tab === 'requests' ? 'No new requests.' : tab === 'pay' ? 'Nobody is waiting to pay.' : 'Nothing here yet.'}
           </Text>
@@ -157,7 +155,7 @@ export default function StayBookingsScreen() {
           />
         ) : null
       }
-      // One card for the list: each booking is a segment of it.
+      // Rows on the page with full hairlines, no card.
       renderItem={({ item: b, index }) => {
         const booker = b.guests.find((g) => g.isBooker) ?? b.guests[0];
         const tone =
@@ -167,12 +165,12 @@ export default function StayBookingsScreen() {
               ? c.danger
               : c.success;
         return (
-          <View style={cardSegment(c.raised, index, shown.length)}>
+          <View>
             {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
             <Pressable
               onPress={() => router.push(`/manage/event/${eventId}/stay-booking/${b.id}`)}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
             >
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
@@ -203,6 +201,6 @@ const styles = StyleSheet.create({
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   status: { fontSize: typography.fontSize.xs, maxWidth: 110, textAlign: 'right', ...cosmosFont.strong },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

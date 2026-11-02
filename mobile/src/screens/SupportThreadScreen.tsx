@@ -7,7 +7,6 @@ import { cancelAccountDeletion } from '../lib/api/profile';
 import useTopSpacing from '../hooks/useTopSpacing';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import {
   assistStep,
   closeTicket,
@@ -28,7 +27,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * One Assist case. The person who raised it gets the conversation, a reply box
@@ -141,7 +140,6 @@ export default function SupportThreadScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {missing ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>This request couldn't be opened.</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
@@ -242,7 +240,8 @@ export default function SupportThreadScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, not in a card.
+  empty: { marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   subject: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },

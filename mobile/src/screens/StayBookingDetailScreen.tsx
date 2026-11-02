@@ -18,7 +18,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getFormUploadUrl, FIELD_TYPE_MAP, type CustomField } from '../lib/api/tickets';
 import {
@@ -41,7 +40,7 @@ import type { Result } from '../lib/api/manageEvent';
 import { displayAnswer, isFileAnswer, type FileAnswer } from '../utils/formQuestions';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 
 const when = (iso: string) =>
@@ -90,7 +89,6 @@ export default function StayBookingDetailScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -199,7 +197,6 @@ export default function StayBookingDetailScreen() {
       {/* ── Next step ── */}
       {b.status === 'PENDING' && desk ? (
         <View style={styles.banner}>
-          <CardBackdrop shape={styles.banner} />
           <Warning size={20} color={c.warn} />
           <Text style={[styles.bannerText, { color: c.text }]}>Not approved yet. Ask an organiser to approve it first.</Text>
         </View>
@@ -214,7 +211,6 @@ export default function StayBookingDetailScreen() {
         </View>
       ) : b.status === 'AWAITING_PAYMENT' ? (
         <View style={styles.banner}>
-          <CardBackdrop shape={styles.banner} />
           <CurrencyInr size={20} color={c.warn} />
           <Text style={[styles.bannerText, { color: c.text }]}>
             Waiting for {rupees(b.totalAmount)}
@@ -269,8 +265,7 @@ export default function StayBookingDetailScreen() {
       ) : b.status === 'CHECKED_IN' ? (
         <View style={styles.actions}>
           <View style={styles.banner}>
-            <CardBackdrop shape={styles.banner} />
-            <CheckCircle size={20} color={c.success} weight="fill" />
+              <CheckCircle size={20} color={c.success} weight="fill" />
             <Text style={[styles.bannerText, { color: c.text }]}>Checked in {b.checkedInAt ? when(b.checkedInAt) : ''}</Text>
           </View>
           <Button
@@ -286,7 +281,6 @@ export default function StayBookingDetailScreen() {
         </View>
       ) : (
         <View style={styles.banner}>
-          <CardBackdrop shape={styles.banner} />
           <Warning size={20} color={c.danger} />
           <Text style={[styles.bannerText, { color: c.text }]}>
             {b.rejectionReason || b.cancellationReason || STATUS_LABELS[b.status]}
@@ -296,7 +290,7 @@ export default function StayBookingDetailScreen() {
 
       {/* ── Room & notes ── */}
       {desk ? (
-        <SettingsGroup title="Room">
+        <SettingsGroup flat title="Room">
           <SettingsRow label={b.allocation || 'Not assigned yet'} />
           {b.staffNote ? <SettingsRow label={b.staffNote} /> : null}
         </SettingsGroup>
@@ -323,7 +317,7 @@ export default function StayBookingDetailScreen() {
       ) : null}
 
       {/* ── Guests ── */}
-      <SettingsGroup title={`Guests (${b.guestCount})`}>
+      <SettingsGroup flat title={`Guests (${b.guestCount})`}>
         {b.guests.map((g) => (
           <View key={g.id ?? g.name}>
             <SettingsRow
@@ -334,7 +328,7 @@ export default function StayBookingDetailScreen() {
             <Text style={[styles.rowSub, { color: c.muted }]}>{[g.phone, g.email].filter(Boolean).join(' · ') || 'No contact given'}</Text>
             {g.idProof && !desk ? (
               <SettingsRow
-                icon={<IdentificationCard size={22} color={c.primary} />}
+                icon={<IdentificationCard size={22} color={c.sky} />}
                 label="View ID"
                 value={g.idProof.name}
                 external
@@ -345,7 +339,7 @@ export default function StayBookingDetailScreen() {
         ))}
       </SettingsGroup>
 
-      <SettingsGroup title="Arrival and emergency">
+      <SettingsGroup flat title="Arrival and emergency">
         <SettingsRow
           icon={<CalendarBlank size={22} color={c.primary} />}
           label="Arriving"
@@ -361,13 +355,13 @@ export default function StayBookingDetailScreen() {
         ) : null}
       </SettingsGroup>
       {b.note ? (
-        <SettingsGroup title="Their note" plain>
+        <SettingsGroup flat title="Their note" plain>
           <Text style={[styles.body, { color: c.soft }]}>{b.note}</Text>
         </SettingsGroup>
       ) : null}
 
       {answered.length ? (
-        <SettingsGroup title="Answers" plain>
+        <SettingsGroup flat title="Answers" plain>
           {answered.map((q) => {
             const v = b.answers[q.id];
             return (
@@ -389,7 +383,7 @@ export default function StayBookingDetailScreen() {
       ) : null}
 
       {/* ── Payment ── */}
-      <SettingsGroup title="Payment">
+      <SettingsGroup flat title="Payment">
         <SettingsRow label={b.totalAmount ? PAYMENT_LABELS[b.paymentMode] : 'Free'} value={b.totalAmount ? rupees(b.totalAmount) : undefined} />
         {b.processingFee ? <SettingsRow label="Includes processing fee" value={rupees(b.processingFee)} /> : null}
         {b.totalAmount ? (
@@ -422,7 +416,8 @@ export default function StayBookingDetailScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, not in a card.
+  empty: { marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   // A guest's name: Hanken, never display.
   title: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.25, ...cosmosFont.strong },
@@ -432,12 +427,14 @@ const styles = StyleSheet.create({
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { marginTop: spacing[5], gap: spacing[3] },
-  banner: { marginTop: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
+  // A status line on the page (icon in its tone, then the words), no card.
+  banner: { marginTop: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   bannerText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.strong },
   note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  rowSub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  answer: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
+  // These sit in flat groups: no side padding, in line with the rows.
+  rowSub: { marginTop: -spacing[2], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  body: { paddingVertical: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  answer: { paddingVertical: spacing[3], gap: 2 },
   answerLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   answerValue: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

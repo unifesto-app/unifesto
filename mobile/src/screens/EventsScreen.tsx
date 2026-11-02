@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import EventListCard, { EventListCardSkeleton, placeOf } from '../components/EventListCard';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
 import { PRESET_ITEMS } from '../components/home/HomeHeader';
@@ -17,29 +16,25 @@ import { PRESETS, useEventsBrowse, type Preset } from '../hooks/useEventsBrowse'
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import type { Event } from '../lib/api/events';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
-import { borderRadius, column, spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import useContentWidth from '../hooks/useContentWidth';
-import useGrid, { rows } from '../hooks/useGrid';
 
 const SEARCH_H = 52;
-/** Narrowest a compact event card gets before the grid drops a column. */
-const CARD_MIN = 320;
 
 /**
  * Browse all published events, in Home's cosmos voice: a search field with the
  * quick-filter menu beside it (same as Home), category chips, then the top
- * result as a full poster and the rest as compact cards. While searching the
- * poster steps aside so results read as one even list.
+ * result as a full poster and the rest as rows on the page with full hairlines
+ * (the same row as Saved). While searching the poster steps aside so results
+ * read as one even list.
  */
 export default function EventsScreen() {
   const c = useCosmos();
   const router = useRouter();
   const defaults = useDefaultImages();
   const { width, hero } = useContentWidth();
-  // Tablets, landscape and wide windows: the compact cards flow into columns.
-  const grid = useGrid(CARD_MIN, spacing[3]);
   const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{
     category?: string;
@@ -139,7 +134,7 @@ export default function EventsScreen() {
         contentContainerStyle={styles.chips}
       >
         {b.categoriesLoading
-          ? [72, 96, 80, 104].map((w, i) => <Skeleton key={i} width={w} height={36} borderRadius={borderRadius.full} />)
+          ? [72, 96, 80, 104].map((w, i) => <Skeleton key={i} width={w} height={36} borderRadius={cosmosRadius} />)
           : [
               // The active quick filter rides first so it's visible and one tap to drop.
               presetLabel ? chip(`preset-${b.preset}`, presetLabel, true, () => b.setPreset(null), true) : null,
@@ -175,21 +170,21 @@ export default function EventsScreen() {
           <PosterCardSkeleton width={posterWidth} />
         </View>
       )}
-      <View style={styles.list}>
+      <View>
         {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={{ width: grid.itemWidth }}>
-            <EventListCardSkeleton />
+          <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+            <EventListCardSkeleton flat />
           </View>
         ))}
       </View>
     </View>
   ) : featured ? null : (
+    // An empty state straight on the page: one headline, one line, at most one button.
     <View style={styles.prompt}>
-      <CardBackdrop shape={styles.prompt} />
       {b.error ? (
-        <CalendarBlank size={40} color={c.muted} weight="duotone" />
+        <CalendarBlank size={44} color={c.muted} weight="duotone" />
       ) : (
-        <MagnifyingGlass size={40} color={c.muted} weight="duotone" />
+        <MagnifyingGlass size={44} color={c.muted} weight="duotone" />
       )}
       <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">
         {b.error ? "Couldn't load events" : b.filtered ? 'Nothing matches that' : 'No events yet'}
@@ -206,7 +201,7 @@ export default function EventsScreen() {
           label={b.error ? 'Try again' : 'Clear filters'}
           variant="secondary"
           onPress={b.error ? b.refresh : b.clearFilters}
-          style={{ marginTop: spacing[6] }}
+          style={styles.promptButton}
         />
       ) : null}
     </View>
@@ -216,22 +211,17 @@ export default function EventsScreen() {
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <FlatList
-        data={rows(rest, grid.columns)}
-        keyExtractor={(row) => row[0].id}
-        renderItem={({ item: row }) => (
-          <View style={styles.list}>
-            {row.map((e) => (
-              <View key={e.id} style={{ width: grid.itemWidth }}>
-                <EventListCard event={e} onPress={() => openEvent(e)} />
-              </View>
-            ))}
+        data={rest}
+        keyExtractor={(e) => e.id}
+        renderItem={({ item: e, index }) => (
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
+            <EventListCard flat event={e} onPress={() => openEvent(e)} />
           </View>
         )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={b.loadingMore ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} /> : null}
-        ItemSeparatorComponent={() => <View style={{ height: spacing[3] }} />}
-        contentContainerStyle={[column, { maxWidth: grid.maxWidth, paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }]}
+        contentContainerStyle={[column, { paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }]}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
@@ -283,13 +273,15 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 36,
     paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
+    // A filter control: control corners, not a pill.
+    borderRadius: cosmosRadius,
     borderWidth: 1,
   },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   featured: { marginBottom: spacing[3] },
-  list: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
-  prompt: { ...column, marginTop: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  prompt: { alignItems: 'center', marginTop: spacing[8] },
+  promptTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  promptBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
+  promptButton: { marginTop: spacing[6], alignSelf: 'stretch' },
 });
