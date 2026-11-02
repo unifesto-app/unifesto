@@ -1105,3 +1105,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · Q40 registration opens as a page sheet with no swipe-back (options on the root stack, no status-bar gap on iOS); slide to pay removed; the pay bar shows the method's logo and opens the Pay with sheet; in-page Pay with row removed (#548)
 - **2026-11-02** · mobile My spaces drops the extra Find more spaces row (See all and search already cover it) (#550)
 - **2026-11-02** · mobile Profile redesigned: centred identity, numbers band, shorter lists, brand marks footer, guest empty state (#551)
+- **2026-11-02** · mobile Support redesigned: headline on the page, requests and contacts as flat rows, WhatsApp mark, no blurbs (#552)
