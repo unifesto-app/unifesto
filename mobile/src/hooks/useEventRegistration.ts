@@ -25,7 +25,7 @@ import {
 import { getUserIdentities, getCurrentUser, updateUserProfile, type User } from '../lib/api/auth';
 import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfileValue } from '../utils/profile';
 import { markTicketsStale } from '../lib/ticketsRefresh';
-import { CHECKOUT_OFF, checkoutMethods, isPaymentCancelled, pay, type CheckoutMethods, type PayMethod } from '../lib/pay';
+import { CHECKOUT_OFF, checkoutMethods, isPaymentCancelled, isVpa, pay, type CheckoutMethods, type PayMethod } from '../lib/pay';
 
 export type StepType = 'ticket' | 'details' | 'review' | 'payment';
 export const STEPS: { id: StepType; label: string }[] = [
@@ -166,7 +166,7 @@ export function useEventRegistration() {
       .catch(() => {});
   }, [token]);
 
-  // Q40: how to pay. The phone's UPI apps, banks, wallets and the pick (off = Razorpay's sheet only).
+  // Q40: how to pay. The phone's major UPI apps, wallets and the pick (off = Razorpay's sheet only).
   const [payOptions, setPayOptions] = useState<CheckoutMethods>(CHECKOUT_OFF);
   useEffect(() => {
     checkoutMethods(selectedTicket?.currency || 'INR').then(setPayOptions).catch(() => {});
@@ -515,10 +515,14 @@ export function useEventRegistration() {
 
   const submit = async () => {
     if (!selectedTicket || !event || submitting || verifying) return;
-    // Netbanking or Wallet ticked, but which one? Ask before an order exists.
+    // UPI ID or Wallet ticked, but which one? Ask before an order exists.
     const sel = payOptions.selected;
-    if (payOptions.on && total > 0 && typeof sel === 'object' && (('bank' in sel && !sel.bank) || ('wallet' in sel && !sel.wallet))) {
-      AppAlert.alert('bank' in sel ? 'Choose your bank' : 'Choose your wallet', 'Pick one under Pay with, then pay.');
+    if (payOptions.on && total > 0 && typeof sel === 'object' && 'vpa' in sel && !isVpa(sel.vpa)) {
+      AppAlert.alert('Check your UPI ID', 'Type it like name@bank under Pay with, then pay.');
+      return;
+    }
+    if (payOptions.on && total > 0 && typeof sel === 'object' && 'wallet' in sel && !sel.wallet) {
+      AppAlert.alert('Choose your wallet', 'Pick one under Pay with, then pay.');
       return;
     }
     setSubmitting(true);

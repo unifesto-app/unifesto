@@ -1,7 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
-  Bank,
+  At,
+  CaretDown,
   Check,
   CheckCircle,
   Circle,
@@ -25,7 +26,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import { methodKey, type PayMethod } from '../../lib/pay';
+import { CAN_TYPE_UPI_ID, methodKey, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -552,28 +553,35 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 }
 
 /**
- * Q40: our own payment page. The phone's UPI apps (last used first; "UPI" when
- * none were found), card, netbanking and wallets our Razorpay account takes.
+ * Q40: our own payment page. Every UPI app Razorpay finds on the phone (last
+ * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
+ * typed UPI ID on iOS, card and the wallets our Razorpay account takes.
  * Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, banks, wallets, selected } = r.payOptions;
+  const { apps, wallets, selected } = r.payOptions;
+  const [allApps, setAllApps] = React.useState(false);
+  const hidden = allApps ? 0 : Math.max(apps.length - 4, 0);
   const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
-  const options: { key: string; label: string; method: PayMethod; icon: React.ReactNode }[] = [
-    ...(apps.length
-      ? apps.map((app) => ({
-          key: app.id,
-          label: app.name,
-          method: app,
-          icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : icon(DeviceMobile),
-        }))
-      : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
+  // No method = the Show more row.
+  const options: { key: string; label: string; method?: PayMethod; icon: React.ReactNode }[] = [
+    ...apps.slice(0, apps.length - hidden).map((app) => ({
+      key: app.id,
+      label: app.name,
+      method: app,
+      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} /> : icon(DeviceMobile),
+    })),
+    ...(hidden ? [{ key: 'more-apps', label: `Show ${hidden} more UPI apps`, icon: <CaretDown size={26} color={c.muted} /> }] : []),
+    ...(CAN_TYPE_UPI_ID
+      ? [{ key: 'vpa:', label: 'UPI ID', method: { vpa: '' }, icon: icon(At) }]
+      : apps.length
+        ? []
+        : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
     { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
-    ...(banks.length ? [{ key: 'bank:', label: 'Netbanking', method: { bank: '' }, icon: icon(Bank) }] : []),
     ...(wallets.length ? [{ key: 'wallet:', label: 'Wallet', method: { wallet: '' }, icon: icon(Wallet) }] : []),
   ];
-  // A picked bank or wallet still ticks its row.
+  // A typed UPI ID or picked wallet still ticks its row.
   const picked = methodKey(selected).replace(/:.*/, ':');
   return (
     <View style={styles.block}>
@@ -582,13 +590,30 @@ function PayWith({ r }: { r: EventRegistration }) {
         <View accessibilityRole="radiogroup">
           {options.map((o, i) => {
             const on = o.key === picked;
+            const divider = i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border };
+            const { method } = o;
+            if (!method) {
+              return (
+                <View key={o.key} style={divider}>
+                  <Pressable
+                    onPress={() => setAllApps(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={o.label}
+                    style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    {o.icon}
+                    <Text style={[styles.payLabel, { color: c.muted }]}>{o.label}</Text>
+                  </Pressable>
+                </View>
+              );
+            }
             return (
-              <View key={o.key} style={i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+              <View key={o.key} style={divider}>
                 <Pressable
                   onPress={() => {
                     if (on) return;
                     selectionTick();
-                    r.setPayMethod(o.method);
+                    r.setPayMethod(method);
                   }}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: on }}
@@ -599,16 +624,23 @@ function PayWith({ r }: { r: EventRegistration }) {
                   <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
                   {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
                 </Pressable>
-                {on && typeof selected === 'object' && 'bank' in selected ? (
+                {on && typeof selected === 'object' && 'vpa' in selected ? (
                   <View style={styles.payPick}>
-                    <OptionPicker
-                      title="Choose your bank"
-                      placeholder="Choose your bank"
-                      options={banks.map((b) => ({ label: b.name, value: b.code }))}
-                      value={selected.bank}
-                      onChange={(bank) => r.setPayMethod({ bank })}
-                      hasError={false}
-                    />
+                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: c.input }]}>
+                      <TextInput
+                        value={selected.vpa}
+                        onChangeText={(vpa) => r.setPayMethod({ vpa: vpa.trim() })}
+                        placeholder="name@bank"
+                        placeholderTextColor={c.muted}
+                        selectionColor={c.primary}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="email-address"
+                        returnKeyType="done"
+                        accessibilityLabel="UPI ID"
+                        style={[styles.couponInput, { color: c.text }]}
+                      />
+                    </View>
                   </View>
                 ) : null}
                 {on && typeof selected === 'object' && 'wallet' in selected ? (
