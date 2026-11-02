@@ -1114,3 +1114,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile ticket page and its screens (group, refund, edit details, feedback) redesigned as flat rows; the pass stays the hero (#559)
 - **2026-11-02** · Mobile tab bar icons: Home stack, Tickets wallet pass, Space 3D stack, Apex crown (#560)
 - **2026-11-02** · mobile Apex sub-screens as rows on the page: flat groups, item cards to rows, no list cards; tool tiles and dashboard kept (#561)
+- **2026-11-02** · mobile SearchList (Apex lookups, money lists, Space support) as rows on the page (#566)
