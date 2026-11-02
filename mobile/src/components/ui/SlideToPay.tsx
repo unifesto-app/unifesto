@@ -14,8 +14,8 @@ export const isSliding = () => dragging;
 
 /**
  * Slide the knob to the end to pay, so a stray tap never spends money. Let go
- * early and it springs back; it springs back after paying too (the bar shows
- * the spinner while `loading`). Screen readers get a plain button: double-tap
+ * early and it springs back; after paying it's back home at once (the bar
+ * shows the spinner while `loading`). Screen readers get a plain button: double-tap
  * pays, since a drag is no way to pay with VoiceOver or TalkBack.
  */
 export default function SlideToPay({ label, onComplete, disabled = false, loading = false, style }: {
@@ -52,7 +52,12 @@ export default function SlideToPay({ label, onComplete, disabled = false, loadin
       onPanResponderRelease: (_, g) => {
         if (live.current.max > 0 && g.dx >= live.current.max * 0.9) {
           successTap();
+          // Straight home, no spring: the spinner takes the knob's place, and a spring cut
+          // short there left the knob at the far end when the bar came back (a cancel).
+          dragging = false;
+          x.setValue(0);
           live.current.onComplete();
+          return;
         }
         home();
       },
