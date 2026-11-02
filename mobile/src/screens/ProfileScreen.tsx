@@ -15,18 +15,15 @@ import { getMyUnreadCount } from '../lib/api/support';
 import { openStoreReview } from '../utils/storeReview';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import AuthButton from '../components/auth/AuthButton';
 import BrandWordmark from '../components/BrandWordmark';
 import { GUTTER } from '../components/home/Section';
-import PromptCard from '../components/home/PromptCard';
 import IdentityCard, { IdentityCardSkeleton } from '../components/profile/IdentityCard';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import BrandIcon from '../components/profile/BrandIcon';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import PressableScale from '../components/ui/PressableScale';
 import { openWhatsNew } from '../components/WhatsNewSheet';
 
 const ICON = 28;
@@ -42,23 +39,18 @@ interface Counts {
 
 interface Nudge {
   title: string;
-  body: string;
   to: Href;
   icon: GlyphName;
 }
 
 /**
- * The single "finish your profile" card under the identity card, or null.
+ * The single "finish your profile" row under the identity card, or null.
  * Home already nags for a username and a name; this is the Profile tab's own
  * chance to ask for what makes the public profile worth opening.
  */
 function profileNudge(profile: AuthAPI.User): Nudge | null {
-  if (!profile.avatarUrl) {
-    return { title: 'Add a photo', body: 'So friends and organisers know it’s you.', to: '/edit-profile', icon: 'image-square' };
-  }
-  if (!profile.bio) {
-    return { title: 'Write a short bio', body: 'A line about you for your public profile.', to: '/edit-profile', icon: 'user' };
-  }
+  if (!profile.avatarUrl) return { title: 'Add a photo', to: '/edit-profile', icon: 'image-square' };
+  if (!profile.bio) return { title: 'Write a short bio', to: '/edit-profile', icon: 'user' };
   return null;
 }
 
@@ -138,7 +130,9 @@ export default function ProfileScreen() {
   const version = Application.nativeApplicationVersion;
   // A downloaded OTA waiting for a restart: point people at About to apply it.
   const { isUpdatePending } = Updates.useUpdates();
-  const icon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={c.text} />;
+  // Glyphs carry the card accent of their job (sky tickets and events, mint
+  // done, ivory the gold star); settings chrome stays monochrome.
+  const icon = (name: GlyphName, color: string = c.text) => <UnGlyph name={name} size={ICON} color={color} />;
 
   const header = (
     <View style={[styles.header, { paddingTop: topInset + spacing[4] }]}>
@@ -146,18 +140,27 @@ export default function ProfileScreen() {
     </View>
   );
 
-  // Help is the same signed in or out.
+  // Help is the same signed in or out. Apps show their real marks.
   const help = (
-    <SettingsGroup title="Help and more" style={styles.group}>
-      <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
-      <SettingsRow icon={icon('sparkle')} label="What’s new" onPress={openWhatsNew} />
-      <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
-      <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
-      <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
-      <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/unifestoapp', 'X')} />
-      <SettingsRow icon={icon('linkedin-logo')} label="LinkedIn" external onPress={() => openExternal('https://www.linkedin.com/company/unifesto', 'LinkedIn')} />
-      <SettingsRow icon={icon('play-circle')} label="YouTube" external onPress={() => openExternal('https://www.youtube.com/@unifesto-app', 'YouTube')} />
-    </SettingsGroup>
+    <>
+      <SettingsGroup flat title="Help and more" style={styles.group}>
+        <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
+        <SettingsRow icon={icon('sparkle', c.sky)} label="What’s new" onPress={openWhatsNew} />
+        <SettingsRow
+          icon={icon('arrows-clockwise', isUpdatePending ? c.mint : c.text)}
+          label="About and updates"
+          value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined}
+          onPress={() => router.push('/about')}
+        />
+        <SettingsRow icon={icon('star', c.ivory)} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
+      </SettingsGroup>
+      <SettingsGroup flat title="Follow Unifesto" style={styles.group}>
+        <SettingsRow icon={<BrandIcon brand="instagram" />} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
+        <SettingsRow icon={<BrandIcon brand="x" />} label="X" external onPress={() => openExternal('https://x.com/unifestoapp', 'X')} />
+        <SettingsRow icon={<BrandIcon brand="linkedin" />} label="LinkedIn" external onPress={() => openExternal('https://www.linkedin.com/company/unifesto', 'LinkedIn')} />
+        <SettingsRow icon={<BrandIcon brand="youtube" />} label="YouTube" external onPress={() => openExternal('https://www.youtube.com/@unifesto-app', 'YouTube')} />
+      </SettingsGroup>
+    </>
   );
 
   const footer = (
@@ -175,15 +178,10 @@ export default function ProfileScreen() {
         <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={[column, styles.content]}>
           {header}
-          <View style={styles.guest}>
-            <CardBackdrop shape={styles.guest} />
-            <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Make it yours</Text>
-            <Text style={[styles.guestBody, { color: c.soft }]}>
-              Sign in to keep your tickets, save events, collect certificates and join the circles you care about.
-            </Text>
-            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
-            <AuthButton label="Browse events" variant="secondary" onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[3] }} />
-          </View>
+          <SettingsGroup flat title="Make it yours" style={[styles.group, styles.first]}>
+            <SettingsRow icon={icon('sign-in', c.sky)} label="Sign in" accent={c.sky} onPress={() => router.push('/login')} />
+            <SettingsRow icon={icon('magnifying-glass')} label="Browse events" onPress={() => router.navigate('/(tabs)')} />
+          </SettingsGroup>
           {help}
           {footer}
         </ScrollView>
@@ -233,24 +231,19 @@ export default function ProfileScreen() {
         </View>
 
         {nudge ? (
-          <View style={{ marginTop: spacing[4] }}>
-            <PromptCard
-              icon={<UnGlyph name={nudge.icon} size={24} color={c.text} />}
-              title={nudge.title}
-              body={nudge.body}
-              onPress={() => router.push(nudge.to)}
-            />
-          </View>
+          <SettingsGroup flat style={[styles.group, styles.nudge]}>
+            <SettingsRow icon={icon(nudge.icon, c.sky)} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
+          </SettingsGroup>
         ) : null}
 
-        <SettingsGroup title="My stuff" style={styles.group}>
-          <SettingsRow icon={icon('qr-code')} label="Tickets" onPress={() => router.navigate('/tickets')} />
-          <SettingsRow icon={icon('tag')} label="Saved" onPress={() => router.push('/favorites')} />
-          <SettingsRow icon={icon('file-text')} label="Certificates" onPress={() => router.push('/certificates')} />
-          <SettingsRow icon={icon('users-three')} label="My circles" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
+        <SettingsGroup flat title="My stuff" style={styles.group}>
+          <SettingsRow icon={icon('qr-code', c.sky)} label="Tickets" onPress={() => router.navigate('/tickets')} />
+          <SettingsRow icon={icon('tag', c.sky)} label="Saved" onPress={() => router.push('/favorites')} />
+          <SettingsRow icon={icon('certificate', c.mint)} label="Certificates" onPress={() => router.push('/certificates')} />
+          <SettingsRow icon={icon('users-three', c.sky)} label="My circles" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
-        <SettingsGroup title="Settings" style={styles.group}>
+        <SettingsGroup flat title="Settings" style={styles.group}>
           <SettingsRow icon={icon('user-circle')} label="Account" onPress={() => router.push('/account')} />
           <SettingsRow icon={icon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
           <SettingsRow icon={icon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
@@ -264,27 +257,26 @@ export default function ProfileScreen() {
 
         {/* Hosts get a door into their Space tab. Starting one stays for everyone:
             people who already run a space can start another. */}
-        <SettingsGroup title="Hosting" style={styles.group}>
+        {/* Starting something is an action, so those rows close the list in the sky accent. */}
+        <SettingsGroup flat title="Hosting" style={styles.group}>
           {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
           <SettingsRow
-            icon={icon('plus-circle')}
+            icon={icon('plus-circle', c.sky)}
             label={hosts ? 'Start another space' : 'Start a space'}
+            accent={c.sky}
             onPress={() => router.push('/space-request')}
           />
           {/* D7: no space yet? One event is enough to start. */}
           {!hosts ? (
-            <SettingsRow icon={icon('calendar-plus')} label="Host one event" onPress={() => router.push('/event-request')} />
+            <SettingsRow icon={icon('calendar-plus', c.sky)} label="Host one event" accent={c.sky} onPress={() => router.push('/event-request')} />
           ) : null}
         </SettingsGroup>
 
         {help}
 
-        <View style={styles.pad}>
-          <PressableScale onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Sign out" style={[styles.signOut, { borderColor: c.border }]}>
-            <UnGlyph name="sign-out" size={22} color={c.danger} />
-            <Text style={[styles.signOutText, { color: c.danger }]}>Sign out</Text>
-          </PressableScale>
-        </View>
+        <SettingsGroup flat style={styles.group}>
+          <SettingsRow icon={icon('sign-out', c.danger)} label="Sign out" danger onPress={handleLogout} />
+        </SettingsGroup>
 
         {footer}
       </ScrollView>
@@ -300,19 +292,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   // Grouped lists: SettingsGroup owns the section spacing and its muted title.
   group: { marginHorizontal: GUTTER },
-  guest: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },
-  guestTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
-  signOut: {
-    marginTop: spacing[8],
-    minHeight: 52,
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
-  signOutText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  // Right under the header or the identity card, closer than a new section.
+  first: { marginTop: 0 },
+  nudge: { marginTop: spacing[4] },
   footer: { alignItems: 'center', marginTop: spacing[12] },
 });

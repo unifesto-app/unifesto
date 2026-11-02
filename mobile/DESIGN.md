@@ -43,9 +43,9 @@ owner's approval first.
    No lines (the owner removed the orbits and the horizon line on 31 Oct 2026) and no stars or
    grain (removed 2 Nov: they read as the old cosmos theme). Never planets, bars, glows on
    buttons or coloured lines.
-3. **Colour lives in cards.** Mint, sky and ivory sit inside cards, on the work they describe:
-   text, figures, progress fills, dots and glyphs. Navigation, links, buttons, borders and the
-   page stay monochrome.
+3. **Colour lives on the work.** Mint, sky and ivory sit inside cards and rows, on the work they
+   describe: text, figures, progress fills, dots and glyphs. Navigation, buttons, borders and the
+   page stay monochrome. One exception (owner, 2 Nov): the action row that closes a list is sky.
 4. **Colour blends.** Where a card carries its accent as a shape (a shade card), the shapes melt
    into a deep base. No hard edges, no outlines.
 5. **Dim gradients, legible text.** A gradient never costs text its contrast. By night every text
@@ -109,7 +109,13 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   divided by a hairline (`c.border`) or 12–16pt of space. No tinted tiles, boxes or cards nested in
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
-  Hanken SemiBold, sentence case.
+  Hanken SemiBold, sentence case, with no blurb under them.
+- **Row lists** (Profile and its settings pages, About, the Space tab, Apex "Waiting on me"): rows
+  straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
+  `Rows` from `SpacePanel`). An action (Manage, Add, Link, Start, Open Settings) is the last row of
+  its list, label and glyph in `c.sky` (`SettingsRow accent`), never a title button. Glyphs may
+  carry their job's accent: sky tickets and events, mint done, ivory the star. A row that opens
+  another app shows that app's real mark (`BrandIcon`).
 - **Stats** are a figure over a muted label. `ManageStats` draws a row of them as one card divided
   by hairlines.
 - **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,
