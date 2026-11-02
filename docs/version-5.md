@@ -1097,3 +1097,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile dark mode drops the cosmos stars and grain; night shade cards dimmed to 8% so every text colour holds AA (#542)
 - **2026-11-02** · Space tab check-in list drops its card for hairline rows, like Up next (#543)
 - **2026-11-02** · Apex tab "Waiting on me" drops its tile rail for hairline rows, like Up next (#544)
+- **2026-11-02** · Profile, Account, Notifications, Permissions, Appearance and About as hairline row lists with sky action rows and real app marks; What's new loses Got it (#545)
