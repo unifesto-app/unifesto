@@ -39,7 +39,7 @@ interface PersonRowProps {
 /**
  * A person in a check-in list: avatar (or initials), name, one line of detail,
  * and either a timestamp or an inline "Check in" button that flips to a mint
- * "✓ Checked in" once done.
+ * "✓ Checked in" once done. A row on the page: the list draws the hairlines.
  */
 export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }: PersonRowProps) {
   const c = useCosmos();
@@ -118,7 +118,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     minHeight: 64,
   },

@@ -12,22 +12,21 @@ import PointChips from '../components/checkin/PointChips';
 import SearchField from '../components/manage/SearchField';
 import { CosmosList } from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
-import { GroupCell } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { attendeeName } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const MIN_QUERY = 2;
 
 /**
  * Find someone without a QR (dead phone, forgotten ticket) and check them in
  * right from the result row. Stays on the list afterwards: the next person in
- * line is usually also waiting.
+ * line is usually also waiting. Results are rows on the page with full hairlines.
  */
 export default function ManualCheckinScreen() {
+  const c = useCosmos();
   const { eventId, checkinTypeId } = useLocalSearchParams<{ eventId: string; checkinTypeId?: string }>();
   const { points, loading: pointsLoading } = useCheckinEvent(eventId);
   const offline = useOfflineCheckin(eventId);
@@ -202,9 +201,9 @@ export default function ManualCheckinScreen() {
       ListHeaderComponent={header}
       ListEmptyComponent={emptyState}
       renderItem={({ item, index }) => (
-        <GroupCell index={index} count={results.length} style={styles.cell} divider={styles.divider}>
+        <View style={[styles.cell, index > 0 && [styles.divider, { borderTopColor: c.border }]]}>
           <ResultRow item={item} busy={busyId === rowKey(item)} canUndo={!isOffline} onCheckIn={checkIn} onUndo={undo} />
-        </GroupCell>
+        </View>
       )}
     />
   );
@@ -243,8 +242,7 @@ function Empty({ title, body }: { title: string; body: string }) {
   const c = useCosmos();
   return (
     <View style={styles.empty}>
-      <CardBackdrop shape={styles.empty} />
-      <UserFocus size={40} color={c.muted} />
+      <UserFocus size={44} color={c.muted} />
       <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
       <Text style={[styles.emptyBody, { color: c.muted }]}>{body}</Text>
     </View>
@@ -256,8 +254,9 @@ const styles = StyleSheet.create({
   search: { marginHorizontal: GUTTER },
   chips: { marginTop: spacing[3] },
   cell: { marginHorizontal: GUTTER },
-  divider: { marginLeft: spacing[4] + 40 + spacing[3] },
-  empty: { alignItems: 'center', marginHorizontal: GUTTER, padding: spacing[6], borderRadius: cosmosCardRadius, gap: spacing[2] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  // An empty state on the page: no card.
+  empty: { alignItems: 'center', marginHorizontal: GUTTER, paddingVertical: spacing[8], gap: spacing[2] },
   emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.display },
   emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

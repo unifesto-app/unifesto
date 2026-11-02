@@ -2,9 +2,8 @@ import { isEmail } from '../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, ArrowsLeftRight, Check, EnvelopeSimple, PencilSimple, Phone, Receipt, XCircle } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, ArrowsLeftRight, Check, EnvelopeSimple, PencilSimple, Phone, Plus, Receipt, XCircle } from '@unifesto/unicon/react-native';
 import { Avatar } from '../components/checkin/PersonRow';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';
 import SeatRow, { seatPerson } from '../components/manage/SeatRow';
@@ -20,10 +19,10 @@ import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const AVATAR = 72;
-const ICON = 24;
+const ICON = 28;
 
 const when = (iso?: string | null) =>
   iso
@@ -40,6 +39,8 @@ const money = (amount: number | string | undefined, currency = 'INR') => {
 /**
  * One registration, operator view: who, what they bought, check-ins, group
  * seats (release / reopen), and the actions: cancel or refund, transfer, restore.
+ * Every list is rows on the page with full hairlines; adding a seat closes the
+ * seats list in sky, and destructive actions are crimson.
  */
 export default function AttendeeDetailScreen() {
   const { eventId, registrationId } = useLocalSearchParams<{ eventId: string; registrationId: string }>();
@@ -231,8 +232,7 @@ export default function AttendeeDetailScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Not found'}</Text>
+          <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error || 'Not found'}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
         </View>
       </CosmosScreen>
@@ -241,7 +241,8 @@ export default function AttendeeDetailScreen() {
 
   const badge = attendeeBadge(reg, c);
   const name = reg.user.fullName || reg.user.username || 'Attendee';
-  const icon = (I: typeof Phone) => <I size={ICON} color={c.text} />;
+  // Sky: the attendee and their booking.
+  const icon = (I: typeof Phone) => <I size={ICON} color={c.sky} />;
   const seats = reg.groupSeats ?? [];
   const cancelled = reg.status === 'CANCELLED';
   const answers = Object.entries(reg.formResponses ?? {})
@@ -277,7 +278,7 @@ export default function AttendeeDetailScreen() {
       </View>
 
       {reg.user.mobileNumber || reg.user.email ? (
-        <SettingsGroup title="Contact">
+        <SettingsGroup flat title="Contact">
           {reg.user.mobileNumber ? (
             <SettingsRow icon={icon(Phone)} label={reg.user.mobileNumber} external onPress={() => Linking.openURL(`tel:${reg.user.mobileNumber}`)} />
           ) : null}
@@ -287,7 +288,7 @@ export default function AttendeeDetailScreen() {
         </SettingsGroup>
       ) : null}
 
-      <SettingsGroup title="Booking" plain>
+      <SettingsGroup flat title="Booking" plain>
         <SettingsRow label="Ticket" value={reg.ticketType?.name ?? 'None'} />
         {reg.groupSize && reg.groupSize > 1 ? <SettingsRow label="Group size" value={String(reg.groupSize)} /> : null}
         <SettingsRow label="Paid" value={money(reg.totalAmount, reg.ticketType?.currency)} />
@@ -300,7 +301,7 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       {reg.checkinRecords && reg.checkinRecords.length > 0 ? (
-        <SettingsGroup title="Check-ins" plain>
+        <SettingsGroup flat title="Check-ins" plain>
           {reg.checkinRecords.map((c, i) => (
             <SettingsRow
               key={`${c.checkedInAt}-${i}`}
@@ -312,7 +313,7 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       {answers.length > 0 ? (
-        <SettingsGroup title={seats.length > 0 ? 'Team answers' : 'Answers'} plain>
+        <SettingsGroup flat title={seats.length > 0 ? 'Team answers' : 'Answers'} plain>
           {answers.map((a) => (
             <View key={a.id} style={styles.answer}>
               <Text style={[styles.answerLabel, { color: c.muted }]}>{a.label}</Text>
@@ -335,11 +336,7 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       {seats.length > 0 ? (
-        <SettingsGroup
-          title={`Group seats · ${seats.filter((x) => x.status === 'CLAIMED').length} of ${seats.length} filled`}
-          action={cancelled ? undefined : { label: seatBusy === 0 ? 'Adding…' : 'Add seat', onPress: addSeat }}
-          plain
-        >
+        <SettingsGroup flat title={`Group seats · ${seats.filter((x) => x.status === 'CLAIMED').length} of ${seats.length} filled`} plain>
           {seats.map((s) => (
             // Seat 1 is the lead's; every other seat can change until the group is cancelled.
             <SeatRow
@@ -351,11 +348,21 @@ export default function AttendeeDetailScreen() {
               onAction={() => seatMenu(s)}
             />
           ))}
+          {/* Adding a seat is an action, so it closes the list in sky. */}
+          {cancelled ? null : (
+            <SettingsRow
+              icon={<Plus size={ICON} color={c.sky} />}
+              label={seatBusy === 0 ? 'Adding…' : 'Add seat'}
+              accent={c.sky}
+              onPress={addSeat}
+            />
+          )}
         </SettingsGroup>
       ) : null}
 
       {replacing ? (
         <>
+          {/* A field, so this group keeps its box (controls). */}
           <SettingsGroup
             title={`Replace ${replacing.name}`}
             action={{ label: 'Cancel', onPress: () => setReplacing(null) }}
@@ -388,14 +395,14 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       {!cancelled ? (
-        <SettingsGroup title="Actions">
+        <SettingsGroup flat title="Actions">
           <SettingsRow
-            icon={<PencilSimple size={ICON} color={c.text} />}
+            icon={<PencilSimple size={ICON} color={c.sky} />}
             label="Edit details"
             onPress={() => router.push({ pathname: '/edit-details', params: { registrationId: registrationId!, eventId: eventId!, title: name } })}
           />
           <SettingsRow
-            icon={<ArrowsLeftRight size={ICON} color={c.text} />}
+            icon={<ArrowsLeftRight size={ICON} color={c.sky} />}
             label="Transfer to someone else"
             onPress={() => openAction('transfer')}
           />
@@ -437,7 +444,7 @@ export default function AttendeeDetailScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[10], alignItems: 'center' },
   hero: { alignItems: 'center', gap: 4, marginBottom: spacing[6] },
   avatar: { marginBottom: spacing[2] },
   // A person's name: Hanken, never display.
@@ -447,7 +454,8 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, marginRight: 2 },
   badgeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  answer: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
+  // On the page: no side padding, the list draws the hairlines.
+  answer: { paddingVertical: spacing[3], gap: 2 },
   answerLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   answerValue: { fontSize: typography.fontSize.base, ...cosmosFont.body },
   reason: { marginTop: -spacing[2], marginBottom: spacing[4], paddingHorizontal: spacing[2], fontSize: typography.fontSize.sm, fontStyle: 'italic', ...cosmosFont.body },

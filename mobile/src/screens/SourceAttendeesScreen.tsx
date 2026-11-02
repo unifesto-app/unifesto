@@ -6,11 +6,10 @@ import { UserCircle } from '@unifesto/unicon/react-native';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -19,7 +18,8 @@ const orNull = (v?: string) => (v ? v : null);
 
 /**
  * Who registered through one source of an event's breakdown (curators with
- * attendee access). Tapping a person opens their attendee detail.
+ * attendee access). Tapping a person opens their attendee detail. Rows on the
+ * page with full hairlines.
  */
 export default function SourceAttendeesScreen() {
   const params = useLocalSearchParams<{ eventId: string; source?: string; medium?: string; campaign?: string }>();
@@ -66,17 +66,17 @@ export default function SourceAttendeesScreen() {
 
       {error ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
         </View>
       ) : rows!.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>No confirmed registrations from this source.</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>No confirmed registrations from this source.</Text>
         </View>
       ) : (
         <View style={{ marginTop: spacing[6] }}>
           <SettingsGroup
+            flat
+            style={{ marginTop: 0 }}
             title={`${rows!.length.toLocaleString('en-IN')} ${rows!.length === 1 ? 'booking' : 'bookings'} · ${headcount.toLocaleString('en-IN')} ${headcount === 1 ? 'person' : 'people'}`}
           >
             {rows!.map((r) => (
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   avatar: { width: ICON, height: ICON, borderRadius: ICON / 2 },

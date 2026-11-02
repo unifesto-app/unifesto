@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretLeft, CaretRight } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';
 import { useEventAttendees } from '../hooks/useEventAttendees';
@@ -15,7 +14,7 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import type { AttendeeFilter } from '../lib/api/manageEvent';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const TABS: { key: AttendeeFilter; label: string }[] = [
   { key: 'attending', label: 'Attending' },
@@ -23,7 +22,7 @@ const TABS: { key: AttendeeFilter; label: string }[] = [
   { key: 'all', label: 'All' },
 ];
 
-/** Searchable, paged attendee list for one event (operator view). */
+/** Searchable, paged attendee list for one event (operator view): rows on the page with full hairlines. */
 export default function EventAttendeesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
@@ -57,8 +56,7 @@ export default function EventAttendeesScreen() {
     <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
   ) : (
     <View style={styles.empty}>
-      <CardBackdrop shape={styles.empty} />
-      <Text style={[styles.emptyText, { color: c.soft }]}>
+      <Text style={[styles.emptyText, { color: c.muted }]}>
         {a.denied
           ? 'The attendee list is only open to Space admins right now.'
           : a.error || (a.query ? 'No one matches that search.' : 'No one here yet.')}
@@ -118,10 +116,9 @@ export default function EventAttendeesScreen() {
         keyExtractor={(r) => r.id}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
-        // One card for the page: each booking is a segment of it.
+        // Rows on the page, a full hairline between bookings (no card).
         renderItem={({ item, index }) => (
-          <View style={cardSegment(c.raised, index, data.length)}>
-            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
             <AttendeeRow
               row={item}
               onPress={() => router.push(`/manage/event/${eventId}/attendee/${item.id}`)}
@@ -150,8 +147,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { marginTop: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[6], minHeight: 44 },
   pageBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingVertical: spacing[2] },

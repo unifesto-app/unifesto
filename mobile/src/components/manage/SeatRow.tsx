@@ -39,8 +39,9 @@ interface SeatRowProps {
 }
 
 /**
- * One group seat: who holds it and its state; tap to see what they filled in
- * (contact details and their own answers). Seat 1 is the lead.
+ * One group seat as a row on the page (the list draws the hairlines): who
+ * holds it and its state; tap to see what they filled in (contact details and
+ * their own answers). Seat 1 is the lead.
  */
 export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRowProps) {
   const c = useCosmos();
@@ -76,7 +77,7 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
     <View>
       <Pressable
         onPress={hasDetail ? () => setOpen((o) => !o) : undefined}
-        style={({ pressed }) => [styles.row, pressed && hasDetail && { backgroundColor: c.tint }]}
+        style={({ pressed }) => [styles.row, pressed && hasDetail && { opacity: 0.6 }]}
         accessibilityRole={hasDetail ? 'button' : undefined}
         accessibilityState={hasDetail ? { expanded: open } : undefined}
       >
@@ -122,14 +123,14 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 60 },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  body: { paddingHorizontal: spacing[4], paddingBottom: spacing[3], gap: spacing[2] },
+  body: { paddingBottom: spacing[3], gap: spacing[2] },
   detail: { gap: 2 },
   detailLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   detailValue: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing[4], paddingBottom: spacing[3] },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', paddingBottom: spacing[3] },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

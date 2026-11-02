@@ -40,6 +40,7 @@ function Avatar({ user }: { user: TeamUser }) {
 /**
  * Who runs this event. Search members of the space, pick a role, and remove
  * people. Changing someone's role is remove + add again with the new one.
+ * Results and the team are rows on the page with full hairlines.
  */
 export default function EventTeamScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -162,7 +163,7 @@ export default function EventTeamScreen() {
         <SearchField value={query} onChangeText={setQuery} busy={searching} placeholder="Add someone from your space" />
       ) : null}
       {roleOptions.length > 0 && query.trim().length >= 2 && !searching ? (
-        <SettingsGroup>
+        <SettingsGroup flat style={{ marginTop: spacing[4] }}>
           {results.length === 0 ? <SettingsRow label="No space members match" /> : null}
           {results.map((u) => (
             <SettingsRow
@@ -172,7 +173,7 @@ export default function EventTeamScreen() {
               value={onTeam.has(u.id) ? 'On the team' : undefined}
               trailing={
                 onTeam.has(u.id) ? <View /> : busy === u.id ? <ActivityIndicator size="small" color={c.text} /> : (
-                  <Text style={[styles.link, { color: c.text }]}>Add</Text>
+                  <Text style={[styles.link, { color: c.sky }]}>Add</Text>
                 )
               }
               onPress={onTeam.has(u.id) || busy ? undefined : () => add(u)}
@@ -181,7 +182,7 @@ export default function EventTeamScreen() {
         </SettingsGroup>
       ) : null}
 
-      <SettingsGroup title={`Team · ${members.length}`}>
+      <SettingsGroup flat title={`Team · ${members.length}`}>
         {members.length === 0 ? <SettingsRow label="Nobody assigned yet" /> : null}
         {members.map((m) => (
           <SettingsRow

@@ -12,7 +12,10 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 
-/** F3: an event's feedback for its curators: averages, NPS, the rating spread and comments. */
+/**
+ * F3: an event's feedback for its curators: averages, NPS, the rating spread and
+ * comments. The sky average is the one hero; the lists are rows on the page.
+ */
 export default function FeedbackResultsScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const c = useCosmos();
@@ -60,7 +63,7 @@ export default function FeedbackResultsScreen() {
             </View>
           </ShadeCard>
 
-          <SettingsGroup title="Ratings">
+          <SettingsGroup flat plain title="Ratings">
             {[...data.distribution].reverse().map((d) => (
               <View
                 key={d.value}
@@ -92,7 +95,7 @@ export default function FeedbackResultsScreen() {
       )}
 
       {data.comments.length ? (
-        <SettingsGroup title={`Comments (${data.comments.length})`}>
+        <SettingsGroup flat plain title={`Comments (${data.comments.length})`}>
           {data.comments.map((m, i) => (
             <View key={i} style={styles.comment}>
               <Text style={[styles.commentRating, { color: c.sky }]}>{m.rating}★</Text>
@@ -103,9 +106,9 @@ export default function FeedbackResultsScreen() {
       ) : null}
 
       {/* Question summaries and the CSV live on the web (D3). */}
-      <SettingsGroup title="More">
+      <SettingsGroup flat title="More">
         <SettingsRow
-          icon={<DownloadSimple size={24} color={c.text} />}
+          icon={<DownloadSimple size={28} color={c.text} />}
           label="Answers and CSV on the web"
           external
           onPress={() => openSpaceWeb(`/events/${eventId}/feedback`, spaceId)}
@@ -126,7 +129,7 @@ const styles = StyleSheet.create({
   heroStat: { gap: 2 },
   statValue: { fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
   barLabel: { width: 28, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   // Thin progress fill on a tint track (DESIGN §3).
   track: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
@@ -134,7 +137,7 @@ const styles = StyleSheet.create({
   barCount: { width: 76, textAlign: 'right', fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   empty: { marginTop: spacing[10], alignItems: 'center', paddingHorizontal: spacing[4] },
   emptyTitle: { fontSize: typography.fontSize.xl, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
-  comment: { flexDirection: 'row', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
+  comment: { flexDirection: 'row', gap: spacing[3], paddingVertical: spacing[3] },
   commentRating: { width: 28, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.figure },
   commentText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
 });

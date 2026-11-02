@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Check, Export } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import {
   downloadTransactionsExport,
   getTransactions,
@@ -23,7 +22,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { inr, inrShort } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { type Cosmos, cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { type Cosmos, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type StatusFilter = 'all' | 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED';
 const STATUS: { value: Exclude<StatusFilter, 'all'>; label: string }[] = [
@@ -43,7 +42,8 @@ const when = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '
 /**
  * Money in and out for one event: collected, net, pending and refunded, then
  * every paid registration with search and filters. Tapping a row opens the
- * attendee. Export shares the server's own transactions file.
+ * attendee. Export shares the server's own transactions file. Payments are rows
+ * on the page with full hairlines, amounts in ivory (money).
  */
 export default function TransactionsScreen() {
   const { eventId, slug, spaceId } = useLocalSearchParams<{ eventId: string; slug?: string; spaceId?: string }>();
@@ -189,8 +189,7 @@ export default function TransactionsScreen() {
       ListEmptyComponent={
         error ? null : (
           <View style={styles.emptyCard}>
-            <CardBackdrop shape={styles.emptyCard} />
-            <Text style={[styles.empty, { color: c.soft }]}>
+            <Text style={[styles.empty, { color: c.muted }]}>
               {rows.length === 0 ? 'Paid registrations show up here once tickets sell.' : 'Nothing matches these filters.'}
             </Text>
           </View>
@@ -209,10 +208,9 @@ export default function TransactionsScreen() {
           />
         ) : null
       }
-      // One card for the list: each payment is a segment of it.
+      // Rows on the page, a full hairline between payments (no card).
       renderItem={({ item: r, index }) => (
-        <View style={cardSegment(c.raised, index, list.length)}>
-          {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+        <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
           <Pressable
             onPress={() => router.push(`/manage/event/${eventId}/attendee/${r.id}`)}
             accessibilityRole="button"
@@ -228,7 +226,7 @@ export default function TransactionsScreen() {
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.amount, { color: c.text }]}>{inr(Number(r.totalAmount) || 0)}</Text>
+              <Text style={[styles.amount, { color: c.ivory }]}>{inr(Number(r.totalAmount) || 0)}</Text>
               <View style={styles.statusRow}>
                 {r.paymentStatus === 'PAID' ? <Check size={11} color={c.success} weight="bold" /> : null}
                 <Text style={[styles.status, { color: statusColor(r.paymentStatus, c) }]}>{statusLabel(r.paymentStatus)}</Text>
@@ -244,13 +242,13 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   meta: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  sep: { height: StyleSheet.hairlineWidth },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[4] },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   amount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyCard: { paddingVertical: spacing[8], alignItems: 'center' },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

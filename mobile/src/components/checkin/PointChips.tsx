@@ -2,9 +2,9 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import type { CheckinPoint } from '../../lib/api/checkin';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, cosmosFor, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 // The camera stays dark in both themes: its chips take the night tokens.
 const night = cosmosFor('dark');
@@ -66,6 +66,7 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
 
 const styles = StyleSheet.create({
   row: { gap: spacing[2] },
-  chip: { paddingHorizontal: spacing[4], height: 36, justifyContent: 'center', borderRadius: borderRadius.full },
+  // Controls take the 14 radius, chips too: never pills.
+  chip: { paddingHorizontal: spacing[4], height: 36, justifyContent: 'center', borderRadius: cosmosRadius },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
