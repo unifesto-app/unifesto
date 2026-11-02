@@ -74,8 +74,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ...(home ? { metadataBase: new URL(`https://${home}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
-    // White-labelled: no Unifesto Smart App Banner (S64); this replaces the layout's.
-    ...(brand ? { other: {} } : {}),
+    // White-labelled: no Unifesto Smart App Banner (S64). Next merges `other`
+    // with the layout's, so the key is overridden with "" (renders no tag).
+    ...(brand ? { other: { "apple-itunes-app": "" } } : {}),
   }, { image: false, ...(brand ? { title, siteName: brand } : {}) });
 }
 

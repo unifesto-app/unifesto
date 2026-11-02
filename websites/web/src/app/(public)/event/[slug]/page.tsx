@@ -97,8 +97,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
     // Safari Smart App Banner; app-argument opens this event if installed. None
-    // on a white-labelled event (S64): `other` replaces the layout's banner.
-    other: brand ? {} : { "apple-itunes-app": `app-id=6767165496, app-argument=https://unifesto.app${canonical}` },
+    // on a white-labelled event (S64). Next merges `other` with the layout's, so
+    // the key is overridden with "" (an empty value renders no tag).
+    other: {
+      "apple-itunes-app": brand ? "" : `app-id=6767165496, app-argument=https://unifesto.app${canonical}`,
+    },
   }, { image: false, ...(brand ? { title, siteName: brand } : {}) });
 }
 
