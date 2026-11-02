@@ -4,6 +4,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { useFlatRows } from '../profile/SettingsGroup';
 
 interface DateTimeRowProps {
   label: string;
@@ -28,10 +29,11 @@ const display = (d: Date, mode: 'datetime' | 'date' | 'time') =>
  */
 export default function DateTimeRow({ label, value, onChange, minimumDate, mode = 'datetime' }: DateTimeRowProps) {
   const c = useCosmos();
+  const row = [styles.row, useFlatRows() && styles.rowFlat];
 
   if (Platform.OS === 'ios') {
     return (
-      <View style={styles.row}>
+      <View style={row}>
         <Text style={[styles.label, { color: c.text }]}>{label}</Text>
         <DateTimePicker
           value={value}
@@ -69,7 +71,7 @@ export default function DateTimeRow({ label, value, onChange, minimumDate, mode 
     });
 
   return (
-    <Pressable onPress={pick} style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]} accessibilityRole="button">
+    <Pressable onPress={pick} style={({ pressed }) => [row, pressed && { backgroundColor: c.tint }]} accessibilityRole="button">
       <Text style={[styles.label, { color: c.text }]}>{label}</Text>
       <Text style={[styles.value, { color: c.primary }]}>{display(value, mode)}</Text>
     </Pressable>
@@ -78,6 +80,7 @@ export default function DateTimeRow({ label, value, onChange, minimumDate, mode 
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
+  rowFlat: { paddingHorizontal: 0 },
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   value: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

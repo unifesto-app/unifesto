@@ -239,6 +239,8 @@ export default function AccountSettingsScreen() {
   }
 
   const unicon = (name: IconName) => <UnGlyph name={name} size={ICON} color={c.text} />;
+  // The row that closes a list (Manage, Add, Link) carries the sky accent.
+  const action = (name: IconName) => <UnGlyph name={name} size={ICON} color={c.sky} />;
   const groups = groupByEmail(identities);
   const since = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
@@ -264,8 +266,8 @@ export default function AccountSettingsScreen() {
           </View>
         ) : null}
 
-        <Section title="My details" subtitle="Change these in Edit profile" style={styles.firstSection}>
-          <SettingsGroup style={styles.group}>
+        <Section title="My details" style={styles.firstSection}>
+          <SettingsGroup flat style={styles.group}>
             <SettingsRow icon={unicon('user')} label="Name" value={profile?.fullName || 'Not set'} onPress={() => router.push('/edit-profile')} />
             <SettingsRow
               icon={unicon('at')}
@@ -278,11 +280,8 @@ export default function AccountSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Sign-in methods" subtitle="Ways you can get into Unifesto" style={styles.section}>
-          <SettingsGroup
-            style={styles.group}
-            action={groups.length > 0 ? { label: managing ? 'Done' : 'Manage', onPress: () => setManaging((v) => !v) } : undefined}
-          >
+        <Section title="Sign-in methods" style={styles.section}>
+          <SettingsGroup flat style={styles.group}>
             {groups.length === 0 ? (
               <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
             ) : (
@@ -338,6 +337,14 @@ export default function AccountSettingsScreen() {
                 );
               })
             )}
+            {groups.length > 0 ? (
+              <SettingsRow
+                icon={action('gear')}
+                label={managing ? 'Done' : 'Manage sign-ins'}
+                accent={c.sky}
+                onPress={() => setManaging((v) => !v)}
+              />
+            ) : null}
           </SettingsGroup>
           {managing && groups.length === 1 ? (
             <Text style={[styles.note, { color: c.muted }]}>Add another sign-in before removing this one.</Text>
@@ -345,8 +352,8 @@ export default function AccountSettingsScreen() {
         </Section>
 
         {passkeys ? (
-          <Section title="Passkeys" subtitle="Sign in with my face, fingerprint or screen lock" style={styles.section}>
-            <SettingsGroup style={styles.group} action={{ label: 'Add', onPress: handleAddPasskey }}>
+          <Section title="Passkeys" style={styles.section}>
+            <SettingsGroup flat style={styles.group}>
               {passkeys.length === 0 ? (
                 <SettingsRow icon={unicon('lock-key')} label="No passkeys yet" />
               ) : (
@@ -364,13 +371,14 @@ export default function AccountSettingsScreen() {
                   />
                 ))
               )}
+              <SettingsRow icon={action('plus')} label="Add a passkey" accent={c.sky} onPress={handleAddPasskey} />
             </SettingsGroup>
           </Section>
         ) : null}
 
         {devices?.length ? (
-          <Section title="Linked devices" subtitle="Phones and browsers signed in to my account">
-            <SettingsGroup style={styles.group} action={{ label: 'Link a device', onPress: () => router.push('/link-device') }}>
+          <Section title="Linked devices" style={styles.section}>
+            <SettingsGroup flat style={styles.group}>
               {devices.map((d) => (
                 <SettingsRow
                   key={d.id}
@@ -386,26 +394,17 @@ export default function AccountSettingsScreen() {
                   }
                 />
               ))}
+              <SettingsRow icon={action('qr-code')} label="Link a device" accent={c.sky} onPress={() => router.push('/link-device')} />
             </SettingsGroup>
           </Section>
         ) : null}
 
+        {/* The 30-day grace period is spelled out in the confirm alert. */}
         {profile?.deletionScheduledFor ? null : (
           <Section title="Delete account" style={styles.section}>
-            <View style={styles.card}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.cardBody, { color: c.soft, marginTop: 0 }]}>
-                You get 30 days to change your mind: sign in before then and cancel. After that your profile and
-                sign-ins are gone for good.
-              </Text>
-              <AuthButton
-                label="Delete my account"
-                variant="danger"
-                icon={<Trash size={18} color={c.danger} />}
-                onPress={handleDeleteAccount}
-                style={{ marginTop: spacing[5] }}
-              />
-            </View>
+            <SettingsGroup flat style={styles.group}>
+              <SettingsRow icon={<Trash size={ICON} color={c.danger} />} label="Delete my account" danger onPress={handleDeleteAccount} />
+            </SettingsGroup>
           </Section>
         )}
       </ScrollView>

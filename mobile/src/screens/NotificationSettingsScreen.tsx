@@ -6,13 +6,11 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import AuthButton from '../components/auth/AuthButton';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 import {
   NotificationSettings,
   getNotificationSettings,
@@ -301,37 +299,23 @@ export default function NotificationSettingsScreen() {
         contentContainerStyle={[column, { paddingTop: topSpacing, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {pushOff ? (
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
-            <Text style={[styles.cardTitle, { color: c.text }]}>Push is off</Text>
-            <Text style={[styles.cardBody, { color: c.soft }]}>
-              You won’t hear about waitlist spots, reminders before your events or changes from hosts.
-            </Text>
-            <AuthButton label="Turn on push" onPress={handlePushToggle} style={{ marginTop: spacing[5] }} />
-          </View>
-        ) : (
-          <View style={styles.firstGroup}>
-            <SettingsGroup style={styles.group}>
-              {row('bell', 'Push notifications', true, handlePushToggle)}
-            </SettingsGroup>
-          </View>
-        )}
+        {/* One switch both ways: handlePushToggle asks for the OS permission when turning on. */}
+        <View style={styles.firstGroup}>
+          <SettingsGroup flat style={styles.group}>
+            {row('bell', 'Push notifications', !pushOff, handlePushToggle)}
+          </SettingsGroup>
+        </View>
 
-        <Section
-          title="Updates about my tickets"
-          style={styles.section}
-          subtitle="Tickets, receipts, refunds, support replies and sign-in codes always arrive by email."
-        >
+        <Section title="Updates about my tickets" style={styles.section}>
           {gridHeader}
-          <SettingsGroup style={styles.group}>
+          <SettingsGroup flat style={styles.group}>
             {gridRow('ticket', 'Tickets and waitlist', 'registrationUpdates', 'always')}
           </SettingsGroup>
         </Section>
 
         <Section title="Events and spaces" style={styles.section}>
           {gridHeader}
-          <SettingsGroup style={styles.group}>
+          <SettingsGroup flat style={styles.group}>
             {gridRow('calendar-blank', 'Reminders', 'eventReminders', 'emailEventReminders')}
             {gridRow('sparkle', 'New events', 'newEvents', 'emailNewEvents')}
             {gridRow('megaphone', 'From hosts', 'organiserAnnouncements', 'none')}
@@ -340,12 +324,8 @@ export default function NotificationSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section
-          title="Promotions"
-          style={styles.section}
-          subtitle="Offers from Unifesto need the first switch. Email and WhatsApp cover all marketing, from Unifesto and from spaces I joined."
-        >
-          <SettingsGroup style={styles.group}>
+        <Section title="Promotions" style={styles.section}>
+          <SettingsGroup flat style={styles.group}>
             {row('tag', 'Offers from Unifesto', notifs.promotions, () => toggle('promotions'))}
             {/* Hidden without an address on file: there's nothing to opt out of. */}
             {notifs.marketingEmail != null
@@ -356,7 +336,7 @@ export default function NotificationSettingsScreen() {
               : null}
           </SettingsGroup>
           {notifs.spaceOptOuts.length ? (
-            <SettingsGroup title="Spaces I unsubscribed from" style={styles.group}>
+            <SettingsGroup flat title="Spaces I unsubscribed from" style={styles.group}>
               {notifs.spaceOptOuts.map((sp) => (
                 <SettingsRow
                   key={sp.spaceId}
@@ -372,8 +352,8 @@ export default function NotificationSettingsScreen() {
           ) : null}
         </Section>
 
-        <Section title="Quiet hours" style={styles.section} subtitle="Pushes that can wait arrive when quiet hours end. Tickets and payments still come through. Times are IST.">
-          <SettingsGroup style={styles.group}>
+        <Section title="Quiet hours" style={styles.section}>
+          <SettingsGroup flat style={styles.group}>
             {row('moon', 'Quiet hours', quietOn, () =>
               commit(quietOn ? { quietHoursStart: null, quietHoursEnd: null } : QUIET_DEFAULT),
             )}
@@ -396,8 +376,8 @@ export default function NotificationSettingsScreen() {
           </SettingsGroup>
         </Section>
 
-        <Section title="Email" style={styles.section} subtitle="Turns off all optional email. Tickets, receipts and sign-in codes still arrive.">
-          <SettingsGroup style={styles.group}>
+        <Section title="Email" style={styles.section}>
+          <SettingsGroup flat style={styles.group}>
             {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
           </SettingsGroup>
         </Section>
@@ -418,9 +398,6 @@ const styles = StyleSheet.create({
   cells: { flexDirection: 'row', alignItems: 'center' },
   cell: { width: 64, alignItems: 'center', textAlign: 'center' },
   note: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER, paddingRight: spacing[4], marginBottom: spacing[2] },
+  gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER, marginBottom: spacing[2] },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[5] },
-  cardTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
-  cardBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

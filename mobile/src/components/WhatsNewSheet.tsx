@@ -7,7 +7,6 @@ import { UnGlyph, X } from '@unifesto/unicon/react-native';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { TopLayer } from './ui/TopLayer';
 import { SheetBackdrop } from './ui/CardSurface';
-import AuthButton from './auth/AuthButton';
 import { WHATS_NEW, sectionsFor, shouldShowWhatsNew } from '../lib/whatsNew';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -130,8 +129,6 @@ export default function WhatsNewSheet() {
               </View>
             ))}
           </ScrollView>
-
-          <AuthButton label="Got it" onPress={close} style={styles.button} />
         </Animated.View>
       </View>
     </TopLayer>
@@ -159,5 +156,4 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] },
   itemTitle: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },
   itemBody: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
-  button: { marginTop: spacing[4] },
 });
