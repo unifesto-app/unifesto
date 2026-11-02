@@ -39,16 +39,19 @@ owner's approval first.
 
 1. **Night first.** Black ground, silver type. By day the same roles sit on paper `#f2f2f5` with
    white cards, and light turns pale blue. Day is translated, not inverted.
-2. **A quiet sky.** Starlight by night and a soft Horizon-blue glow on hero screens. The app draws
-   no lines in its sky: the owner removed the orbits and the horizon line on 31 Oct 2026. Never
-   planets, bars, glows on buttons or coloured lines.
+2. **A quiet sky.** The plain ground and a soft Horizon-blue glow on hero screens, nothing else.
+   No lines (the owner removed the orbits and the horizon line on 31 Oct 2026) and no stars or
+   grain (removed 2 Nov: they read as the old cosmos theme). Never planets, bars, glows on
+   buttons or coloured lines.
 3. **Colour lives in cards.** Mint, sky and ivory sit inside cards, on the work they describe:
    text, figures, progress fills, dots and glyphs. Navigation, links, buttons, borders and the
    page stay monochrome.
 4. **Colour blends.** Where a card carries its accent as a shape (a shade card), the shapes melt
    into a deep base. No hard edges, no outlines.
-5. **Grain on the splash only.** Film grain (12% night, 9% day) is the splash's alone
-   (`<CosmosBackdrop grain />`). Every other screen and every card, shade cards included, is clean.
+5. **Dim gradients, legible text.** A gradient never costs text its contrast. By night every text
+   colour, muted labels included, holds 4.5:1 on the brightest point of a shade card, which keeps
+   the shapes at 8%. By day the pastels keep title and secondary text above AA; muted labels dip to
+   about 3.2:1 at the centre of a sky or blue orb.
 6. **Statuses are plain text.** Never pills or tinted chips: "✓ Checked in", "Sold out",
    "Hackathon · Hyderabad".
 
@@ -57,7 +60,7 @@ owner's approval first.
 - Every screen sits on `CosmosScreen` / `CosmosList` or draws `<CosmosBackdrop horizon={false} />`
   itself. Never a custom page background, gradient or image behind a whole screen.
 - `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback, with the blue
-  glow from the bottom-right corner. Scrolling screens use `horizon={false}`: stars only.
+  glow from the bottom-right corner. Scrolling screens use `horizon={false}`: the plain ground.
   Banner-lit pages pass `hue`.
 
 ## 3. Colour
@@ -112,7 +115,8 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
 - **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,
   in its job's tone: `sky` a ticket or pass, `mint` check-in and the door, `ivory` money, `blue`
   hackathons and the Space. The key figure sits on it large, in the accent. Content sits straight
-  on the shade; no glass inside.
+  on the shade; no glass inside. By night the base sits at card level with a hint of the tone and
+  the shapes run at 8%; by day the pastels run at 85% (blue 70%).
 - **Glass** only on floating chrome (header buttons, segmented tabs over content, sheets, alerts,
   notices, bottom bars, camera overlays). Frosted and untinted. Never on content cards or fields.
 

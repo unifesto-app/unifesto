@@ -37,8 +37,8 @@ const MIN_VISIBLE_MS = 2600;
 const ease = Easing.out(Easing.cubic);
 
 /**
- * Launch splash in the 2026 brand (same night sky as the login): stars fade
- * in and the blue glow rises into place, the silver wordmark lifts in with a
+ * Launch splash in the 2026 brand (same sky as the login): the blue glow
+ * rises into place, the silver wordmark lifts in with a
  * light sweeping across it, and a thin silver line runs while auth loads.
  * Leaves with a short fade, not a zoom.
  */
@@ -131,7 +131,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   return (
     <Animated.View style={[styles.container, { backgroundColor: c.bg }, rootStyle]}>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, skyStyle]}>
-        <CosmosBackdrop scheme={c.scheme} grain />
+        <CosmosBackdrop scheme={c.scheme} />
       </Animated.View>
 
       <Animated.View style={markStyle}>

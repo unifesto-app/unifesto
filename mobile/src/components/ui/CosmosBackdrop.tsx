@@ -1,41 +1,24 @@
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
-import Grain from './Grain';
+import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 import { cosmosFor, useCosmos } from '../../theme/cosmos';
 
-// Star field lifted from the app icon (marketing/brand-2026/svg/app-icon-dark.svg),
-// as fractions of the screen: [x, y, radius, opacity]. Night only.
-const STARS: [number, number, number, number][] = [
-  [0.18, 0.1, 1.4, 0.75],
-  [0.82, 0.07, 1.2, 0.6],
-  [0.9, 0.24, 1, 0.45],
-  [0.12, 0.36, 1, 0.4],
-  [0.7, 0.05, 0.9, 0.5],
-  [0.31, 0.06, 0.8, 0.4],
-  [0.6, 0.14, 0.8, 0.3],
-  [0.86, 0.5, 0.9, 0.3],
-  [0.05, 0.6, 0.8, 0.25],
-];
-
 /**
- * The Unifesto Horizon sky, without lines (the owner removed the orbits and the
- * horizon line from the app on 31 Oct 2026). Behind every screen: starlight by
- * night. `grain` adds film grain (the splash only, since 1 Nov 2026). `horizon`
- * (default) adds the hero light for the login and splash: the Horizon-blue glow
- * rising from the bottom-right corner, measured in screen widths like the web's
- * cqw units. `hue` lights the page with a colour (the event banner's): a wide
- * nebula behind the stars, fading to the plain ground. Decorative, never
+ * The Unifesto Horizon sky, without lines or noise: the owner removed the orbits
+ * and the horizon line on 31 Oct 2026, and the stars and film grain on 2 Nov
+ * (they read as the old cosmos theme). Behind every screen: the plain ground.
+ * `horizon` (default) adds the hero light for the login and splash: the
+ * Horizon-blue glow rising from the bottom-right corner, measured in screen
+ * widths like the web's cqw units. `hue` lights the page with a colour (the
+ * event banner's): a wide nebula fading to the plain ground. Decorative, never
  * touchable.
  */
 export default function CosmosBackdrop({
   horizon = true,
-  grain = false,
   scheme,
   hue,
 }: {
   horizon?: boolean;
-  grain?: boolean;
   hue?: string | null;
   /** Override the app theme (the splash follows the OS instead). */
   scheme?: 'dark' | 'light';
@@ -65,12 +48,8 @@ export default function CosmosBackdrop({
         </Defs>
 
         {hue ? <Ellipse cx={w * 0.5} cy={h * 0.12} rx={w * 1.3} ry={h * 0.55} fill="url(#nebula)" /> : null}
-        {isDark &&
-          STARS.map(([x, sy, r, o], i) => <Circle key={i} cx={x * w} cy={sy * h} r={r} fill="#ffffff" opacity={o} />)}
         {horizon ? <Ellipse cx={w * 0.8} cy={h - w * 0.06} rx={w * 0.5} ry={w * 0.22} fill="url(#sun)" /> : null}
       </Svg>
-      {/* Film grain, as on the site: 12% by night, 9% (ink) by day. */}
-      {grain ? <Grain dark={isDark} opacity={isDark ? 0.12 : 0.09} /> : null}
     </View>
   );
 }
