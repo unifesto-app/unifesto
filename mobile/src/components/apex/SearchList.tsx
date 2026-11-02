@@ -5,10 +5,9 @@ import type { Result } from '../../lib/api/apex';
 import { CosmosList } from '../ui/CosmosScreen';
 import SearchField from '../manage/SearchField';
 import { GUTTER } from '../home/Section';
-import { CardBackdrop } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface PageOf<T> {
   items: T[];
@@ -30,7 +29,10 @@ interface SearchListProps<T> {
   refreshOnFocus?: boolean;
 }
 
-/** Debounced search box + paged, pull-to-refresh list for Apex lookups. */
+/**
+ * Debounced search box + paged, pull-to-refresh list for Apex lookups: rows
+ * straight on the page with full hairlines (no card), as every list since #545.
+ */
 export default function SearchList<T>({
   placeholder,
   fetchPage,
@@ -132,17 +134,12 @@ export default function SearchList<T>({
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.emptyText, { color: c.soft }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
           </View>
         )
       }
-      // One card for the list: each row is a segment of it.
       renderItem={({ item, index }) => (
-        <View style={cardSegment(c.raised, index, data.length)}>
-          {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
-          {renderItem(item)}
-        </View>
+        <View style={index > 0 && [styles.sep, { borderTopColor: c.border }]}>{renderItem(item)}</View>
       )}
       onEndReached={() => void loadMore()}
       onEndReachedThreshold={0.4}
@@ -154,7 +151,7 @@ export default function SearchList<T>({
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  sep: { borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { marginTop: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
