@@ -6,29 +6,34 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { TextStyle } from 'react-native';
 import { useTokens } from '../context/ThemeContext';
 
+// Night ground is charcoal #17171b, not black (owner, 2 Nov 2026); cards step up
+// by the same ratio they had over black, and muted and crimson lift with them
+// so every pair keeps AA.
 const dark = {
-  bg: '#000000',
-  card: '#0a0a0b',
-  /** Event / content cards (the web's night-3). */
-  raised: '#141416',
+  bg: '#17171b',
+  /** Placeholder behind images (covers, logos), between the ground and a card. */
+  card: '#1d1d21',
+  /** Event / content cards. */
+  raised: '#232327',
   text: '#ececee',
   /** Secondary text, between text and muted (the web's paper/65). */
   soft: '#b4b4ba',
-  muted: '#8a8a90',
+  /** 5.6:1 on a card, 4.7:1 on the brightest point of a night shade card. */
+  muted: '#9a9aa0',
   primary: '#e8e8ea',
   primaryFg: '#000000',
   border: 'rgba(255, 255, 255, 0.1)',
   input: 'rgba(255, 255, 255, 0.18)',
   outline: 'rgba(255, 255, 255, 0.28)',
-  /** Crimson (#be123c by day), lifted to read on black: 5.1:1 (#be123c itself is 3.3:1). */
-  danger: '#ec2f58',
+  /** Crimson (#be123c by day), lifted to read at night: 5.4:1 on the ground, 4.7:1 on a card. */
+  danger: '#f2557a',
   /** Amber for counts and other text that needs attention; the light value holds 4.5:1 on cards. */
   warn: '#f59e0b',
   glow: '255, 255, 255',
   /** Faint silver wash for highlighted cards (the web's rgb(var(--glow) / 0.06)). */
   tint: 'rgba(255, 255, 255, 0.06)',
-  /** Cover placeholder when an image is missing: the web's night-3 field. */
-  fallback: ['#1c1c20', '#0a0a0b'] as [string, string],
+  /** Cover placeholder when an image is missing. */
+  fallback: ['#2b2b30', '#1d1d21'] as [string, string],
   /** Done states (Checked in, Paid, Sent): mint. */
   success: '#90e4c1',
   // Card accents, inside cards only (text, figures, progress, dots, glyphs);
@@ -76,16 +81,16 @@ const light: typeof dark = {
 
 /**
  * Shade card colours (guidelines §08): s1 the accent, s2 its deep partner, s3 the base.
- * Night bases sit at the `raised` card level with a hint of the tone, so a shade card
- * lifts off the black like every other card instead of sinking into it.
+ * Night bases sit at about the `raised` card level with a hint of the tone, so a shade
+ * card lifts off the ground like every other card instead of sinking into it.
  */
 export type ShadeTone = 'sky' | 'mint' | 'ivory' | 'blue';
 export const SHADES: Record<'dark' | 'light', Record<ShadeTone, { s1: string; s2: string; s3: string }>> = {
   dark: {
-    sky: { s1: '#90d5ff', s2: '#2f6bff', s3: '#0e141d' },
-    mint: { s1: '#90e4c1', s2: '#1f7a5c', s3: '#0d1613' },
-    ivory: { s1: '#f7f0e0', s2: '#9a7444', s3: '#14120c' },
-    blue: { s1: '#8fb4ff', s2: '#0062ff', s3: '#0d1224' },
+    sky: { s1: '#90d5ff', s2: '#2f6bff', s3: '#1d222b' },
+    mint: { s1: '#90e4c1', s2: '#1f7a5c', s3: '#1c2320' },
+    ivory: { s1: '#f7f0e0', s2: '#9a7444', s3: '#22201b' },
+    blue: { s1: '#8fb4ff', s2: '#0062ff', s3: '#1d1f2c' },
   },
   light: {
     sky: { s1: '#90d5ff', s2: '#8fb4ff', s3: '#e9f3ff' },
