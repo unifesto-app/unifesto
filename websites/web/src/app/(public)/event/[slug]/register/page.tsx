@@ -19,8 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: form ? `Register for ${form.event.title}` : "Register",
     robots: { index: false, follow: false },
-    // White-labelled: no Unifesto Smart App Banner (S64); this replaces the layout's.
-    ...(form?.event.branding?.name ? { other: {} } : {}),
+    // White-labelled: no Unifesto Smart App Banner (S64). Next merges `other`
+    // with the layout's, so the key is overridden with "" (renders no tag).
+    ...(form?.event.branding?.name ? { other: { "apple-itunes-app": "" } } : {}),
   };
 }
 
