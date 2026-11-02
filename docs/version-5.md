@@ -1099,3 +1099,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · Apex tab "Waiting on me" drops its tile rail for hairline rows, like Up next (#544)
 - **2026-11-02** · Profile, Account, Notifications, Permissions, Appearance and About as hairline row lists with sky action rows and real app marks; What's new loses Got it (#545)
 - **2026-11-02** · mobile dark ground is charcoal #17171b; cards, muted text and crimson lifted to keep AA (#546)
+- **2026-11-02** · Q40 app review and pay are one page; no Razorpay page while a UPI app pays (iOS, own Keep waiting/Cancel); Apple Pay (merchant.com.unifesto.app, PKPaymentButton, Apex switch "Apple Pay: iOS app", off); bar shows method and final amount (pre-code total struck), slide to pay; wallets as rows with logos; iOS UPI app logos (Razorpay CDN); Verify on a typed UPI ID shows the account holder's name; /config/payment-methods returns the public key id (#541)
