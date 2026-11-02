@@ -12,7 +12,6 @@ import {
   Minus,
   Plus,
   ShieldCheck,
-  Sparkle,
   User,
   Wallet,
   XCircle,
@@ -260,7 +259,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
         const isSelf = index === 0;
         // Teammates only get an email field (below); they fill in their own details.
         if (r.invitedIndices.has(index)) return null;
-        // Personal details stay hidden once complete (Review still lists them);
+        // Personal details stay hidden once complete (the pay page still lists them);
         // the form only opens when a profile field is missing.
         const hideSelfDetails = isSelf && isSelfComplete(a);
         if (hideSelfDetails && r.memberFields.length === 0) return null;
@@ -355,9 +354,10 @@ function StepperButton({ icon, disabled, onPress }: { icon: React.ReactNode; dis
   );
 }
 
-// ── Step 3: review ──────────────────────────────────────────────────────────
+// ── Step 3: review and pay ──────────────────────────────────────────────────
 
-export function ReviewStep({ r }: { r: EventRegistration }) {
+/** What they're getting: the pass, who it's for, the team's answers. `total` = show the total on the pass (nothing to pay, so no price card). */
+function Review({ r, total }: { r: EventRegistration; total: boolean }) {
   const c = useCosmos();
   const event = r.event!;
   const t = r.selectedTicket!;
@@ -365,8 +365,6 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
 
   return (
     <View>
-      <Heading sub="Make sure everything looks right before you confirm.">Almost there</Heading>
-
       {/* A preview of the pass they're about to get, on the pass's sky shade. */}
       <ShadeCard tone="sky" style={styles.pass}>
         <View style={styles.passBody}>
@@ -379,7 +377,7 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
         <View style={styles.passStub}>
           <Line label="Ticket" value={t.name} />
           <Line label={r.isGroup ? 'Team size' : 'People'} value={`${r.quantity}`} />
-          <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong tone={c.sky} />
+          {total ? <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong tone={c.sky} /> : null}
         </View>
       </ShadeCard>
 
@@ -437,59 +435,49 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
   );
 }
 
-// ── Step 4: pay ─────────────────────────────────────────────────────────────
-
-function CenterNote({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  const c = useCosmos();
-  return (
-    <View style={styles.center}>
-      {icon}
-      <Text style={[styles.h1, styles.centerText, { color: c.text, marginTop: spacing[5] }]} accessibilityRole="header">{title}</Text>
-      <Text style={[styles.sub, styles.centerText, { color: c.soft }]}>{body}</Text>
-    </View>
-  );
-}
-
+/** One page: what they're getting, then the total, a code and how to pay. */
 export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: boolean }) {
   const c = useCosmos();
 
-  if (waitlist) {
+  if (waitlist || r.total === 0) {
     return (
-      <CenterNote
-        icon={<Sparkle size={56} color={c.text} weight="duotone" />}
-        title="Join the waiting list"
-        body={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
-      />
-    );
-  }
-
-  if (r.total === 0) {
-    return (
-      <CenterNote
-        icon={<CheckCircle size={56} color={c.text} weight="duotone" />}
-        title="Nothing to pay"
-        body="This one's free. Confirm and your ticket is ready right away."
-      />
+      <View>
+        {waitlist ? (
+          <Heading
+            sub={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
+          >
+            Join the waiting list
+          </Heading>
+        ) : (
+          <Heading sub="This one's free. Confirm and your ticket is ready right away.">Almost there</Heading>
+        )}
+        <Review r={r} total={!waitlist} />
+      </View>
     );
   }
 
   const canApply = !!r.couponInput.trim() && !r.applyingCoupon;
   return (
     <View>
-      <Heading sub="Check the total, add a code if you have one, then pay.">Payment</Heading>
+      <Heading sub="Check everything, add a code if you have one, then slide to pay.">Almost there</Heading>
 
-      <Card style={{ gap: spacing[3] }}>
-        <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
-        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
-        {r.feePercent > 0 && r.fee > 0 ? (
-          <Line
-            label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
-            value={money(r.symbol, r.fee)}
-          />
-        ) : null}
-        <View style={[styles.divider, { backgroundColor: c.border }]} />
-        <Line label="Total" value={money(r.symbol, r.total)} strong tone={c.ivory} />
-      </Card>
+      <Review r={r} total={false} />
+
+      <View style={styles.block}>
+        <Label>Price</Label>
+        <Card style={{ gap: spacing[3] }}>
+          <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
+          {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
+          {r.feePercent > 0 && r.fee > 0 ? (
+            <Line
+              label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
+              value={money(r.symbol, r.fee)}
+            />
+          ) : null}
+          <View style={[styles.divider, { backgroundColor: c.border }]} />
+          <Line label="Total" value={money(r.symbol, r.total)} strong tone={c.ivory} />
+        </Card>
+      </View>
 
       <View style={styles.block}>
         {r.appliedCoupon ? (
@@ -827,8 +815,6 @@ const styles = StyleSheet.create({
   lineValue: { flexShrink: 1, fontSize: typography.fontSize.base, textAlign: 'right', fontVariant: ['tabular-nums'], ...cosmosFont.strong },
   lineTotal: { fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
   // pay
-  center: { alignItems: 'center', paddingTop: spacing[10], paddingHorizontal: spacing[4] },
-  centerText: { textAlign: 'center' },
   coupon: {
     flexDirection: 'row',
     alignItems: 'center',

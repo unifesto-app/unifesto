@@ -27,11 +27,11 @@ import { normalizeMobile, profileGenderToAttendeeOption, attendeeGenderToProfile
 import { markTicketsStale } from '../lib/ticketsRefresh';
 import { CHECKOUT_OFF, checkoutMethods, isPaymentCancelled, isVpa, pay, type CheckoutMethods, type PayMethod } from '../lib/pay';
 
-export type StepType = 'ticket' | 'details' | 'review' | 'payment';
+// Review and pay are one page: what you're getting, then how you pay for it.
+export type StepType = 'ticket' | 'details' | 'payment';
 export const STEPS: { id: StepType; label: string }[] = [
   { id: 'ticket', label: 'Ticket' },
   { id: 'details', label: 'Details' },
-  { id: 'review', label: 'Review' },
   { id: 'payment', label: 'Pay' },
 ];
 
@@ -384,7 +384,7 @@ export function useEventRegistration() {
 
   // With the "You" details hidden once complete, the Details step can end up
   // with nothing to fill in: no team (its teammate emails live there) and no
-  // questions. Skip it then (Review still lists who the ticket is for).
+  // questions. Skip it then (the pay page still lists who the ticket is for).
   const skipDetails =
     !!selectedTicket && !isGroup && memberFields.length === 0 && teamFields.length === 0 && attendeesValid;
   const steps = (step === 'ticket' ? skipDetails : detailsSkipped) ? STEPS.filter((s) => s.id !== 'details') : STEPS;
@@ -408,6 +408,9 @@ export function useEventRegistration() {
         ? buyerFeeIncluded(discountedBase, feeTerms, feeTickets)
         : buyerFee(discountedBase, feeTerms, feeTickets);
   const total = basePrice === 0 ? 0 : feeIncluded ? discountedBase : Math.round((discountedBase + fee) * 100) / 100;
+  // The same total without the code: struck through beside the real one.
+  const fullTotal =
+    basePrice === 0 ? 0 : feeIncluded ? basePrice : Math.round((basePrice + buyerFee(basePrice, feeTerms, feeTickets)) * 100) / 100;
   const feePercent = feeTerms.percent;
   const feeCapped =
     !feeIncluded && fee > 0 && fee < Math.round(discountedBase * feeTerms.percent + 1e-9) / 100;
@@ -441,31 +444,33 @@ export function useEventRegistration() {
   // ── Steps ──
   const canContinue = step === 'ticket' ? !!selectedTicket : step === 'details' ? attendeesValid : true;
   // Free, with nothing to fill in: the Ticket step confirms straight away, no
-  // Review or Confirm screens (the server still decides whether money is due).
+  // pay page (the server still decides whether money is due).
   const quickConfirm = step === 'ticket' && skipDetails && basePrice === 0;
+
+  const toPayment = () => {
+    setStep('payment');
+    // The fee may have changed while the form was open; refresh the total.
+    getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
+  };
 
   const next = () => {
     if (step === 'ticket' && selectedTicket) {
       setDetailsSkipped(skipDetails);
-      setStep(skipDetails ? 'review' : 'details');
+      if (skipDetails) toPayment();
+      else setStep('details');
     } else if (step === 'details' && attendeesValid) {
       // Opt-in, best-effort: persist the edited identity to the profile.
       if (alsoUpdateProfile && token) {
         const self = attendees[0];
         updateUserProfile({ fullName: self.name, ...(self.gender ? { gender: attendeeGenderToProfileValue(self.gender) } : {}) }).catch(() => {});
       }
-      setStep('review');
-    } else if (step === 'review') {
-      setStep('payment');
-      // The fee may have changed while the form was open; refresh the total.
-      getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
+      toPayment();
     }
   };
 
   const back = () => {
     if (step === 'details') setStep('ticket');
-    else if (step === 'review') setStep(detailsSkipped ? 'ticket' : 'details');
-    else if (step === 'payment') setStep('review');
+    else if (step === 'payment') setStep(detailsSkipped ? 'ticket' : 'details');
   };
 
   const confirmLeave = () => {
@@ -716,6 +721,7 @@ export function useEventRegistration() {
     feeCapped,
     feeIncluded,
     total,
+    fullTotal,
     payOptions,
     setPayMethod,
     couponInput,

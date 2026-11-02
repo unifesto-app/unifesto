@@ -9,6 +9,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import useContentWidth from '../../hooks/useContentWidth';
+import SlideToPay from '../ui/SlideToPay';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
@@ -73,10 +74,13 @@ function useBarBottomPad() {
  * button, silver by night and ink by day. Without info the button takes the
  * full row. Shared by the event, space and session pages.
  */
-export function ActionBar({ info, label, onPress, disabled = false, loading = false, backdropImage, backdropColor }: {
-  info: { label: string; value: string } | null;
+export function ActionBar({ info, label, onPress, disabled = false, loading = false, slide = false, backdropImage, backdropColor }: {
+  /** `was`: the price before a discount, struck through after the value. */
+  info: { label: string; value: string; was?: string } | null;
   label: string;
   onPress: () => void;
+  /** Slide to pay instead of a tap: for the one press that spends money. */
+  slide?: boolean;
   /** Ignored: the button is always the primary (buttons never take an accent). Kept for callers. */
   accent?: string;
   /** Ignored, as `accent`. */
@@ -126,32 +130,37 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
           <Text style={[styles.barLabel, { color: c.muted }]} numberOfLines={1}>{info.label}</Text>
           <Text style={[styles.barValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {info.value}
+            {info.was ? <Text style={[styles.barWas, { color: c.muted }]}>{`  ${info.was}`}</Text> : null}
           </Text>
         </View>
       ) : null}
-      <Pressable
-        onPress={onPress}
-        disabled={disabled || loading}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: disabled || loading, busy: loading }}
-        style={({ pressed }) => [
-          styles.cta,
-          info ? styles.ctaBeside : styles.ctaFull,
-          {
-            backgroundColor: c.primary,
-            opacity: disabled ? 0.6 : pressed ? 0.85 : 1,
-          },
-        ]}
-      >
-        {loading ? (
-          <ActivityIndicator color={c.primaryFg} />
-        ) : (
-          <Text style={[styles.ctaText, { color: c.primaryFg }]} numberOfLines={1}>
-            {label}
-          </Text>
-        )}
-      </Pressable>
+      {slide ? (
+        <SlideToPay label={label} onComplete={onPress} disabled={disabled} loading={loading} style={styles.slide} />
+      ) : (
+        <Pressable
+          onPress={onPress}
+          disabled={disabled || loading}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityState={{ disabled: disabled || loading, busy: loading }}
+          style={({ pressed }) => [
+            styles.cta,
+            info ? styles.ctaBeside : styles.ctaFull,
+            {
+              backgroundColor: c.primary,
+              opacity: disabled ? 0.6 : pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator color={c.primaryFg} />
+          ) : (
+            <Text style={[styles.ctaText, { color: c.primaryFg }]} numberOfLines={1}>
+              {label}
+            </Text>
+          )}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -181,6 +190,9 @@ const styles = StyleSheet.create({
   priceCol: { flex: 1, minWidth: 0 },
   barLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...cosmosFont.figure },
+  barWas: { fontSize: typography.fontSize.sm, textDecorationLine: 'line-through', ...cosmosFont.body },
+  // Wider than the info beside it: the knob needs room to travel.
+  slide: { flex: 1.5 },
   cta: { height: 52, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   // Sized by its label (never squeezed below a comfortable tap target).
   ctaBeside: { flexShrink: 0, minWidth: 148, paddingHorizontal: spacing[6] },

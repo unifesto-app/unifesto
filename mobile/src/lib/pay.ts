@@ -70,6 +70,15 @@ export interface CheckoutMethods {
 
 export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more' };
 
+/** The pick in words, for the pay button's bar. '' = Razorpay's sheet, which asks. */
+export function methodName(m: PayMethod, wallets: PayOption[]): string {
+  if (m === 'more') return '';
+  if (m === 'upi' || m === 'card') return BLOCK_NAMES[m];
+  if ('id' in m) return m.name;
+  if ('vpa' in m) return 'UPI ID';
+  return wallets.find((w) => w.code === m.wallet)?.name ?? 'Wallet';
+}
+
 /** How a method is remembered: the app id, 'upi', 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
 export const methodKey = (m: PayMethod) =>
   typeof m === 'string' ? m : 'id' in m ? m.id : 'vpa' in m ? `vpa:${m.vpa}` : `wallet:${m.wallet}`;
