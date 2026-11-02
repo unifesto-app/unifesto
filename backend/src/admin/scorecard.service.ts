@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventStatus, SupportTicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { NOT_DEMO_EVENT } from '../common/demo-data';
 import { lastDays, startOfIstDay } from '../traffic/traffic.service';
 import { SupportService } from '../support/support.service';
 import { AdminService } from './admin.service';
@@ -36,9 +37,8 @@ export function splitWeeks<T>(days: T[], pick: (d: T) => number): WoW {
 /**
  * Z7 weekly scorecard for Apex: the last 7 IST days (today included) against
  * the 7 before. Money and support numbers come from their own services so the
- * scorecard can never disagree with the Financials or Support pages.
- *
- * ponytail: no demo-space exclusion yet; add it once common/demo-data.ts lands on main.
+ * scorecard can never disagree with the Financials or Support pages. Event
+ * counts leave out the demo space, as the money series already does (P23).
  */
 @Injectable()
 export class ScorecardService {
@@ -58,7 +58,7 @@ export class ScorecardService {
       this.prisma.eventRegistration
         .groupBy({
           by: ['utmSource'],
-          where: { ...COUNTS_AS_ATTENDING, registeredAt: { gte, lt } },
+          where: { ...COUNTS_AS_ATTENDING, event: NOT_DEMO_EVENT, registeredAt: { gte, lt } },
           _count: { _all: true },
         })
         .then((gs) => gs.map((g) => ({ key: g.utmSource, n: g._count._all })));
@@ -68,6 +68,7 @@ export class ScorecardService {
     const upcomingAt = (t: Date) =>
       this.prisma.event.count({
         where: {
+          ...NOT_DEMO_EVENT,
           status: EventStatus.PUBLISHED,
           deletedAt: null,
           startDateTime: { gt: t },
@@ -79,7 +80,7 @@ export class ScorecardService {
     const activeOrganisersAt = (t: Date) =>
       this.prisma.event
         .findMany({
-          where: { deletedAt: null, publishedAt: { gt: new Date(t.getTime() - 30 * DAY_MS), lte: t } },
+          where: { ...NOT_DEMO_EVENT, deletedAt: null, publishedAt: { gt: new Date(t.getTime() - 30 * DAY_MS), lte: t } },
           distinct: ['spaceId'],
           select: { spaceId: true },
         })
