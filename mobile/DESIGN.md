@@ -111,7 +111,7 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
   Hanken SemiBold, sentence case, with no blurb under them.
-- **Row lists** (Profile and its settings pages, About, the Space tab, Apex "Waiting on me"): rows
+- **Row lists** (Profile and its settings pages, My spaces, About, the Space tab, Apex "Waiting on me"): rows
   straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
   `Rows` from `SpacePanel`). An action (Manage, Add, Link, Start, Open Settings) is the last row of
   its list, label and glyph in `c.sky` (`SettingsRow accent`), never a title button. Glyphs may
@@ -155,4 +155,5 @@ and gate details only.
 ## 9. Copy
 
 Organiser-first and plain. First person for the user's own things ("My tickets"). No em dashes in
-UI copy. Errors say what happened and what to do.
+UI copy. Errors say what happened and what to do. Clubs and communities are "spaces", never
+"circles" ("My spaces", "Find more spaces").

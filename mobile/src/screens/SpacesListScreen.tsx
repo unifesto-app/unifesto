@@ -21,8 +21,8 @@ const PAGE_SIZE = 12;
 /**
  * The catalogue: every public space, searched and paged by the server, as a
  * grid (two columns on phones, more on tablets and wide windows) that loads
- * more as you scroll. My circles (`?mine=true`) is
- * its own screen, MyCirclesScreen.
+ * more as you scroll. My spaces (`?mine=true`) is
+ * its own screen, MySpacesScreen.
  */
 export default function SpacesListScreen() {
   const c = useCosmos();

@@ -34,7 +34,7 @@ const openExternal = (url: string, name: string) =>
 interface Counts {
   upcoming: number;
   past: number;
-  circles: number;
+  spaces: number;
 }
 
 interface Nudge {
@@ -92,8 +92,8 @@ export default function ProfileScreen() {
       else past++;
     }
     // /users/me/spaces returns one row per role: count spaces, not rows.
-    const circles = spaces.status === 'fulfilled' ? new Set((spaces.value || []).map((s) => s.id)).size : 0;
-    setCounts({ upcoming, past, circles });
+    const mySpaces = spaces.status === 'fulfilled' ? new Set((spaces.value || []).map((s) => s.id)).size : 0;
+    setCounts({ upcoming, past, spaces: mySpaces });
   }, [token]);
 
   // On focus, so edits made in Edit profile show the moment you come back.
@@ -224,7 +224,7 @@ export default function ProfileScreen() {
               stats={[
                 { label: 'Going to', value: counts?.upcoming ?? null, onPress: () => router.navigate('/tickets') },
                 { label: 'Been to', value: counts?.past ?? null, onPress: () => router.push('/user-profile') },
-                { label: 'Circles', value: counts?.circles ?? null, onPress: () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) },
+                { label: 'Spaces', value: counts?.spaces ?? null, onPress: () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) },
               ]}
             />
           )}
@@ -240,7 +240,7 @@ export default function ProfileScreen() {
           <SettingsRow icon={icon('qr-code', c.sky)} label="Tickets" onPress={() => router.navigate('/tickets')} />
           <SettingsRow icon={icon('tag', c.sky)} label="Saved" onPress={() => router.push('/favorites')} />
           <SettingsRow icon={icon('certificate', c.mint)} label="Certificates" onPress={() => router.push('/certificates')} />
-          <SettingsRow icon={icon('users-three', c.sky)} label="My circles" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
+          <SettingsRow icon={icon('users-three', c.sky)} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
         <SettingsGroup flat title="Settings" style={styles.group}>

@@ -12,7 +12,7 @@ export interface QuickTile {
   onPress: () => void;
 }
 
-/** Row of equal borderless cards for the things I open most (saved, certificates, circles); bare glyphs. */
+/** Row of equal borderless cards for the things I open most (saved, certificates, spaces); bare glyphs. */
 export default function QuickTiles({ tiles }: { tiles: QuickTile[] }) {
   const c = useCosmos();
   return (

@@ -16,7 +16,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
-import { CircleRow } from '../components/home/SpaceCards';
+import { MySpacesRail } from '../components/home/SpaceCards';
 import ManageStats from '../components/manage/ManageStats';
 import { relativeWhen } from '../utils/eventFormat';
 import { column, spacing } from '../theme/spacing';
@@ -48,7 +48,7 @@ const initials = (name: string) =>
 /**
  * "View profile": the signed-in user's own profile as others would see it.
  * Identity up top (avatar, name, handle, bio, links), the numbers on one card,
- * then what they're going to, where they've been and the circles they're in.
+ * then what they're going to, where they've been and the spaces they're in.
  */
 export default function UserProfileScreen() {
   const router = useRouter();
@@ -60,10 +60,10 @@ export default function UserProfileScreen() {
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
   const [upcoming, setUpcoming] = useState<Event[]>([]);
   const [past, setPast] = useState<Event[]>([]);
-  const [circles, setCircles] = useState<Space[]>([]);
+  const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
-  const [loadingCircles, setLoadingCircles] = useState(true);
+  const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
@@ -91,12 +91,12 @@ export default function UserProfileScreen() {
       .finally(() => setLoadingEvents(false));
 
     // A space can come back once per role; one tile each.
-    const circlesTask = getUserSpaces()
-      .then((s) => setCircles((s || []).filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i)))
+    const spacesTask = getUserSpaces()
+      .then((s) => setSpaces((s || []).filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i)))
       .catch(() => {})
-      .finally(() => setLoadingCircles(false));
+      .finally(() => setLoadingSpaces(false));
 
-    await Promise.all([profileTask, eventsTask, circlesTask]);
+    await Promise.all([profileTask, eventsTask, spacesTask]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
 
@@ -202,11 +202,11 @@ export default function UserProfileScreen() {
         {/* Numbers: one card, divided by hairlines; events going to in sky. */}
         <View style={styles.stats}>
           <ManageStats
-            loading={loadingEvents || loadingCircles}
+            loading={loadingEvents || loadingSpaces}
             stats={[
               { label: 'Going to', value: upcoming.length, tone: 'sky' },
               { label: 'Been to', value: past.length },
-              { label: 'Circles', value: circles.length },
+              { label: 'Spaces', value: spaces.length },
             ]}
           />
         </View>
@@ -242,11 +242,11 @@ export default function UserProfileScreen() {
           </>
         )}
 
-        {loadingCircles || circles.length > 0 ? (
-          <Section title="Circles" onSeeAll={circles.length ? () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) : undefined}>
-            <CircleRow
-              spaces={circles}
-              loading={loadingCircles}
+        {loadingSpaces || spaces.length > 0 ? (
+          <Section title="Spaces" onSeeAll={spaces.length ? () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) : undefined}>
+            <MySpacesRail
+              spaces={spaces}
+              loading={loadingSpaces}
               onPress={(s) => router.push(`/space/${s.id}`)}
               onFindMore={() => router.push('/spaces')}
             />

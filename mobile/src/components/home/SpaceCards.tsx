@@ -18,7 +18,7 @@ const CARD_W = 148;
 // Space banners are 4:3; logos are 1:1.
 const LOGO = 44;
 const RING = 3;
-// My circles tiles.
+// My spaces tiles.
 const TILE_W = 164;
 const TILE_LOGO = 48;
 
@@ -132,11 +132,11 @@ export function roleOf(space: Space): string | null {
 }
 
 /**
- * "My circles": a rail of membership tiles. Logo and my role (plain text) up
+ * "My spaces": a rail of membership tiles. Logo and my role (plain text) up
  * top, then the name, place · members, and the event count in sky, closing
- * with a "Find more circles" link tile so the row always leads somewhere.
+ * with a "Find more spaces" link tile so the row always leads somewhere.
  */
-export function CircleRow({
+export function MySpacesRail({
   spaces,
   loading,
   onPress,
@@ -202,10 +202,10 @@ export function CircleRow({
       <PressableScale
         onPress={onFindMore}
         accessibilityRole="button"
-        accessibilityLabel="Find more circles"
+        accessibilityLabel="Find more spaces"
         style={[styles.tile, styles.more]}
       >
-        <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
+        <Text style={[styles.moreTitle, { color: c.text }]}>Find more spaces</Text>
         <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs, communities and organisers</Text>
         <ArrowRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
       </PressableScale>
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   // Pinned to the bottom so counts line up across tiles with one- and two-line names.
   tileFoot: { marginTop: 'auto', paddingTop: spacing[4], flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   tileCount: { fontSize: 16, ...cosmosFont.figure },
-  // A link, not another circle: no fill, no outline.
+  // A link, not another space: no fill, no outline.
   more: { justifyContent: 'center' },
   moreTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });
