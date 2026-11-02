@@ -31,6 +31,7 @@ import SearchSheet from '../../src/components/home/SearchSheet';
 import { relativeWhen, shortPrice } from '../../src/utils/eventFormat';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
+import { openSpaceWeb } from '../../src/lib/openOnWeb';
 
 export default function HomeTab() {
   const router = useRouter();
@@ -264,9 +265,10 @@ export default function HomeTab() {
               }
               onOpenEvent={(e) => router.push(`/manage/event/${e.id}`)}
               onCreateEvent={() =>
-                // One space I can create in: straight into the form. Otherwise pick on the Space tab.
+                // One space I can create in: straight into the web form (G1 moved editing to the
+                // web). Otherwise pick on the Space tab.
                 workspace.adminSpaceIds.length === 1
-                  ? router.push(`/manage/space/${workspace.adminSpaceIds[0]}/new-event`)
+                  ? openSpaceWeb('/events/new', workspace.adminSpaceIds[0])
                   : router.navigate('/space')
               }
               onOpenJudging={(j) => router.push({ pathname: `/judging/${j.eventId}`, params: { title: j.title } })}

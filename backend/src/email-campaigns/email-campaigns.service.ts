@@ -307,14 +307,22 @@ export class EmailCampaignsService {
   }
 
   async getCampaign(scope: CampaignScope, id: string) {
-    const campaign = await this.prisma.emailCampaign.findUnique({
-      where: { id },
-      include: { logs: { orderBy: { sentAt: 'desc' }, take: 200 } },
-    });
+    const [campaign, variants] = await Promise.all([
+      this.prisma.emailCampaign.findUnique({
+        where: { id },
+        // The recipient table shows the newest 200; the A/B stats count every log.
+        include: { logs: { orderBy: { sentAt: 'desc' }, take: 200 } },
+      }),
+      this.prisma.emailCampaignLog.groupBy({
+        by: ['variant'],
+        where: { campaignId: id },
+        _count: { _all: true, openedAt: true, firstClickedAt: true },
+      }),
+    ]);
     if (!campaign || campaign.spaceId !== scope.spaceId) {
       throw new NotFoundException('Campaign not found');
     }
-    return { ...campaign, stats: this.abStatsFromLogs(campaign.logs) };
+    return { ...campaign, stats: this.abStats(variants) };
   }
 
   async cancelCampaign(scope: CampaignScope, id: string) {
@@ -948,23 +956,21 @@ export class EmailCampaignsService {
   // MISC
   // ==========================================================================
 
-  /** Per-variant open/click tallies for the campaign-detail A/B panel. */
-  private abStatsFromLogs(
-    logs: Array<{
+  /**
+   * Per-variant open/click tallies for the campaign-detail A/B panel, from
+   * every log grouped by variant (S64: was only the newest 200 rows).
+   */
+  private abStats(
+    groups: Array<{
       variant: string | null;
-      openedAt: Date | null;
-      firstClickedAt: Date | null;
+      _count: { _all: number; openedAt: number; firstClickedAt: number };
     }>,
   ) {
-    const tally = (v: 'A' | 'B' | null) => {
-      const rows = logs.filter((l) => (l.variant ?? null) === v);
-      return {
-        sent: rows.length,
-        opens: rows.filter((l) => l.openedAt).length,
-        clicks: rows.filter((l) => l.firstClickedAt).length,
-      };
+    const tally = (v: 'A' | 'B') => {
+      const g = groups.find((x) => x.variant === v);
+      return { sent: g?._count._all ?? 0, opens: g?._count.openedAt ?? 0, clicks: g?._count.firstClickedAt ?? 0 };
     };
-    const hasAb = logs.some((l) => l.variant);
+    const hasAb = groups.some((g) => g.variant);
     return hasAb ? { a: tally('A'), b: tally('B') } : null;
   }
 

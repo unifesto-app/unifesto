@@ -177,11 +177,12 @@ describe('AuthorizationService', () => {
       expect(await svc.can(user, Action.SPACE_MANAGE_EMAIL, { spaceId: SPACE_A })).toBe(true);
     });
 
-    it('Curator holds it (runs their events end-to-end, incl. email)', async () => {
+    it('Curator does NOT hold it: space email stays with Space Admins (S64, T2)', async () => {
       const svc = build([
-        { code: RoleCode.CURATOR, scope: RoleScope.SPACE, spaceId: SPACE_A, eventId: null },
+        { code: RoleCode.CURATOR, scope: RoleScope.EVENT, spaceId: null, eventId: EVENT_IN_A },
       ]);
-      expect(await svc.can(user, Action.SPACE_MANAGE_EMAIL, { spaceId: SPACE_A })).toBe(true);
+      expect(await svc.can(user, Action.SPACE_MANAGE_EMAIL, { spaceId: SPACE_A })).toBe(false);
+      expect(await svc.can(user, Action.SPACE_MANAGE_SPONSORS, { spaceId: SPACE_A })).toBe(false);
     });
 
     it('Co-Curator and Crew do NOT hold it', async () => {

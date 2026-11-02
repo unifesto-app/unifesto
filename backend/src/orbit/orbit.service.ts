@@ -230,10 +230,16 @@ export class OrbitService {
 
   /** End an Orbit Lead: remove their campus admin access, keep the row as history. */
   async end(leadId: string, reason: string | undefined, actorId: string) {
-    const lead = await this.prisma.orbitLead.findUnique({ where: { id: leadId } });
+    const lead = await this.prisma.orbitLead.findUnique({
+      where: { id: leadId },
+      include: { space: { select: { createdBy: true } } },
+    });
     if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
     // Only Leads were given campus admin access; Crew memberships are left alone.
-    const roles = lead.role === 'CREW' ? [] : await this.prisma.userRole.findMany({
+    // A Lead who created the campus space keeps it: a creator can't be removed
+    // (S64), so only their Orbit term ends. Ownership moves via an Ownership request.
+    const keepAccess = lead.role === 'CREW' || lead.space.createdBy === lead.userId;
+    const roles = keepAccess ? [] : await this.prisma.userRole.findMany({
       where: { userId: lead.userId, spaceId: lead.spaceId, eventId: null },
       select: { id: true },
     });

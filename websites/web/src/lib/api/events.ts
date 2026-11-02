@@ -390,7 +390,6 @@ export async function getEvents(
     category?: string;
     event_type?: string;
     city?: string;
-    is_free?: boolean;
     organization_id?: string;
     /** upcoming (default): live + upcoming, soonest first. past: ended, newest first. */
     when?: 'upcoming' | 'past';
@@ -497,7 +496,8 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
 }
 
 /**
- * Filter events (client-side for compatibility)
+ * Filter events in the browser. The /events API has no price filter, so
+ * free/paid is decided here, over every listed event (getListedEvents).
  */
 export function filterEvents(
   events: Event[],
