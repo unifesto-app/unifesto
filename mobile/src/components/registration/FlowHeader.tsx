@@ -16,7 +16,8 @@ export const GUTTER = spacing[6];
  */
 export function SheetTop({ children, style, fill }: { children?: React.ReactNode; style?: object; fill?: boolean }) {
   const outer = [fill && { flex: 1 }, style];
-  const inner = <View style={[{ paddingTop: spacing[2] }, fill && { flex: 1 }]}>{children}</View>;
+  // A sheet's own top margin (clear of its rounded corners); full screen sits under the inset.
+  const inner = <View style={[{ paddingTop: Platform.OS === 'ios' ? spacing[5] : spacing[2] }, fill && { flex: 1 }]}>{children}</View>;
   return Platform.OS === 'ios' ? (
     <View style={outer}>{inner}</View>
   ) : (
