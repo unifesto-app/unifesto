@@ -3,22 +3,21 @@ import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-nat
 import * as Application from 'expo-application';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { EnvelopeSimple, WhatsappLogo } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { listMyTickets, type SupportTicket } from '../lib/api/support';
-import TicketRow from '../components/support/TicketRow';
+import TicketRow, { TicketRowSkeleton } from '../components/support/TicketRow';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
-import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import { AppAlert } from '../components/ui/AppAlert';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const SUPPORT_EMAIL = 'support@unifesto.app';
 const WHATSAPP_NUMBER = '919346095136';
@@ -65,11 +64,11 @@ function supportMailto() {
 
 
 /**
- * Profile › Support. Signed in, a tracked request comes first (replies land in
- * the app and the team sees the build it came from), then My help: every case
- * I raised (questions, refunds, requests, reports…), newest activity first,
- * with a dot on the ones that have news. Email and WhatsApp follow for a quick word,
- * and the legal pages close the page.
+ * Profile › Support, straight on the page (no cards): a headline and the one
+ * main action, a tracked request (replies land in the app and the team sees the
+ * build it came from). Then My requests as rows: every case I raised, newest
+ * activity first, with a sky dot on the ones that have news. Email and WhatsApp
+ * (its real mark) for a quick word, and the legal pages close the page.
  */
 export default function SupportScreen() {
   const c = useCosmos();
@@ -116,65 +115,56 @@ export default function SupportScreen() {
           ) : undefined
         }
       >
-        <View style={styles.card}>
-          <CardBackdrop shape={styles.card} />
+        <View style={styles.hero}>
           <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">How can we help?</Text>
-          <Text style={[styles.body, { color: c.soft }]}>
+          <Text style={[styles.body, { color: c.muted }]}>
             {user
-              ? 'Tell us what’s up and we’ll reply right here in the app. We see which version you’re on, so no need to explain.'
-              : 'Sign in to raise a request and follow the replies in the app, or reach us directly below.'}
+              ? 'Replies land right here, and we see which version you’re on.'
+              : 'Sign in to raise a request and follow the replies here, or reach us below.'}
           </Text>
           {user ? (
-            <AuthButton label="Start a request" arrow onPress={newRequest} style={{ marginTop: spacing[6] }} />
+            <AuthButton label="Start a request" arrow onPress={newRequest} style={styles.button} />
           ) : (
-            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
+            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={styles.button} />
           )}
         </View>
 
         {user && (tickets === null || tickets.length > 0) ? (
-          <Section title="My help" subtitle="Everything I've raised, newest first" style={styles.section}>
-            <View style={[styles.list, styles.pad]}>
-              {tickets === null
-                ? [0, 1].map((i) => <Skeleton key={i} width="100%" height={76} borderRadius={cosmosCardRadius} />)
-                : tickets.map((t) => <TicketRow key={t.id} ticket={t} onPress={() => router.push(`/manage/support/${t.id}`)} />)}
-            </View>
-          </Section>
+          <SettingsGroup flat title="My requests" style={styles.group}>
+            {tickets === null
+              ? [0, 1].map((i) => <TicketRowSkeleton key={i} />)
+              : tickets.map((t) => <TicketRow key={t.id} ticket={t} onPress={() => router.push(`/manage/support/${t.id}`)} />)}
+          </SettingsGroup>
         ) : null}
 
-        <Section title="Talk to us" subtitle="For a quick word" style={styles.section}>
-          <SettingsGroup style={styles.group}>
-            <SettingsRow
-              icon={<EnvelopeSimple size={26} color={c.text} />}
-              label="Email"
-              value={SUPPORT_EMAIL}
-              external
-              onPress={() => open(supportMailto())}
-            />
-            <SettingsRow
-              icon={<WhatsappLogo size={26} color={c.text} />}
-              label="WhatsApp"
-              value={WHATSAPP_DISPLAY}
-              external
-              onPress={() => open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi Unifesto Support')}`)}
-            />
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup flat title="Talk to us" style={styles.group}>
+          <SettingsRow
+            icon={<EnvelopeSimple size={28} color={c.text} />}
+            label="Email"
+            value={SUPPORT_EMAIL}
+            external
+            onPress={() => open(supportMailto())}
+          />
+          <SettingsRow
+            icon={<BrandIcon brand="whatsapp" size={28} />}
+            label="WhatsApp"
+            value={WHATSAPP_DISPLAY}
+            external
+            onPress={() => open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi Unifesto Support')}`)}
+          />
+        </SettingsGroup>
 
-        <Section title="Policies" subtitle="The terms Unifesto runs on" style={styles.section}>
-          <SettingsGroup plain style={styles.group}>
-            {POLICIES.map((p) => (
-              <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
-            ))}
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup flat plain title="Policies" style={styles.group}>
+          {POLICIES.map((p) => (
+            <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
+          ))}
+        </SettingsGroup>
 
-        <Section title="My data" subtitle="What we hold and how to ask about it" style={styles.section}>
-          <SettingsGroup plain style={styles.group}>
-            {YOUR_DATA.map((p) => (
-              <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
-            ))}
-          </SettingsGroup>
-        </Section>
+        <SettingsGroup flat plain title="My data" style={styles.group}>
+          {YOUR_DATA.map((p) => (
+            <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
+          ))}
+        </SettingsGroup>
       </ScrollView>
     </View>
   );
@@ -182,14 +172,11 @@ export default function SupportScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  pad: { paddingHorizontal: GUTTER },
-  // SettingsGroup's own top margin doubles Section's; Section owns spacing.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
-  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  // A settings page steps by spacing[8] between sections (Home's are looser).
-  section: { marginTop: spacing[8] },
+  hero: { paddingHorizontal: GUTTER, marginTop: spacing[4] },
   // The page's hero headline.
-  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  body: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
-  list: { gap: spacing[3] },
+  title: { fontSize: 24, lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  button: { marginTop: spacing[6] },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
 });

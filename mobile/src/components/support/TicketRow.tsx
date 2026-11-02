@@ -3,18 +3,19 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CaretRight } from '@unifesto/unicon/react-native';
 import { CATEGORY_LABEL, KIND_LABEL, STATUS_LABEL, type SupportTicket } from '../../lib/api/support';
 import { Badge, type BadgeTone } from '../ui/Badge';
-import { CardBackdrop } from '../ui/CardSurface';
+import Skeleton from '../Skeleton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 export const isActiveTicket = (t: SupportTicket) => t.status === 'BOT' || t.status === 'OPEN' || t.status === 'PENDING';
 
 /**
- * One case on a borderless card: subject and its status as plain text, then
- * #number · kind (category for help) · space · last activity.
+ * One case as a row on the page (inside a flat SettingsGroup, which draws the
+ * hairlines): a sky dot when there's news, the subject and its status as plain
+ * text, then #number · kind (category for help) · space · last activity.
  */
 export default function TicketRow({ ticket, onPress, showSpace = true }: { ticket: SupportTicket; onPress: () => void; showSpace?: boolean }) {
   const c = useCosmos();
@@ -31,24 +32,33 @@ export default function TicketRow({ ticket, onPress, showSpace = true }: { ticke
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${ticket.subject}, ${STATUS_LABEL[ticket.status]}${ticket.unread ? ', new reply' : ''}`}
-      style={({ pressed }) => [styles.ticket, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
-      <CardBackdrop shape={styles.ticket} />
       <View style={[styles.info, !active && { opacity: 0.62 }]}>
         <View style={styles.subjectRow}>
-          {ticket.unread && <View style={[styles.unreadDot, { backgroundColor: c.text }]} />}
+          {ticket.unread && <View style={[styles.unreadDot, { backgroundColor: c.sky }]} />}
           <Text style={[styles.subject, { color: c.text }]} numberOfLines={1}>{ticket.subject}</Text>
           <Badge label={STATUS_LABEL[ticket.status]} tone={tone} style={styles.status} />
         </View>
         <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
       </View>
-      <CaretRight size={16} color={c.muted} />
+      <CaretRight size={15} color={c.muted} />
     </Pressable>
   );
 }
 
+export function TicketRowSkeleton() {
+  return (
+    <View style={styles.skeleton}>
+      <Skeleton width="70%" height={15} borderRadius={6} />
+      <Skeleton width="45%" height={12} borderRadius={6} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  ticket: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 56 },
+  skeleton: { justifyContent: 'center', gap: 8, paddingVertical: spacing[3], minHeight: 56 },
   info: { flex: 1, gap: 4 },
   subjectRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   subject: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
