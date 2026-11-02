@@ -7,12 +7,11 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { GUTTER } from '../components/home/Section';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
-import { GroupCell, SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
@@ -29,7 +28,7 @@ import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from '../
 import { shareCsvText } from '../lib/csvShare';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const OVERALL = '__overall__';
 
@@ -37,7 +36,9 @@ const OVERALL = '__overall__';
  * The curator's results (plan §9): the ranking overall and per round, from
  * submitted evaluations only. Rankings are a guide; advancing stays the
  * curator's call, with a "top N" helper. Also: how the winner is decided,
- * sharing judges' notes with teams, and the results CSV.
+ * sharing judges' notes with teams, and the results CSV. The leader is the blue
+ * hero; the ranking is rows on the page with full hairlines. Settings that are
+ * controls (switches, fields) stay boxed.
  */
 export default function HackathonResultsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -79,7 +80,6 @@ export default function HackathonResultsScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -224,7 +224,7 @@ export default function HackathonResultsScreen() {
                 style={{ marginTop: spacing[5] }}
               >
                 <View style={styles.heroTop}>
-                  <Trophy size={20} color={c.text} weight="fill" />
+                  <Trophy size={20} color={c.ivory} weight="fill" />
                   <Text style={[styles.heroLabel, { color: c.soft }]}>Leading</Text>
                 </View>
                 <View style={styles.heroRow}>
@@ -255,18 +255,19 @@ export default function HackathonResultsScreen() {
           </>
         }
         ListEmptyComponent={
-          <GroupCell index={0} count={1}>
+          <SettingsGroup flat style={styles.cell}>
             <SettingsRow label={round ? 'No teams in this round' : 'No teams yet'} />
-          </GroupCell>
+          </SettingsGroup>
         }
         renderItem={({ item, index }) => (
-          <GroupCell index={index} count={round ? roundTeams.length : data.teams.length} divider={styles.divider}>
+          // Rows on the page; a full hairline between them.
+          <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
             {round && item.p ? (
               <RoundRow t={item.t} p={item.p} round={round} onOpen={openTeam} />
             ) : (
               <OverallRow t={item.t} onOpen={openTeam} />
             )}
-          </GroupCell>
+          </View>
         )}
         ListFooterComponent={
           <>
@@ -350,7 +351,7 @@ export default function HackathonResultsScreen() {
   );
 }
 
-/** One leaderboard line: rank, team, status, score. Plain card; figures in c.text. */
+/** One leaderboard line on the page: rank, team, status, score; figures in c.text. */
 function RankRow({ rank, t, figure, meta, onOpen }: {
   rank: number | null;
   t: ResultTeam;
@@ -365,7 +366,7 @@ function RankRow({ rank, t, figure, meta, onOpen }: {
       onPress={() => onOpen(t.id)}
       accessibilityRole="button"
       accessibilityLabel={[rank != null ? `Rank ${rank}` : null, t.teamCode, t.name, figure].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
       <Text style={[styles.rank, { color: rank != null ? c.text : c.muted }]}>{rank ?? '–'}</Text>
       <View style={{ flex: 1 }}>
@@ -449,7 +450,9 @@ const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
+  cell: { marginTop: 0 },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   heroLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -457,7 +460,8 @@ const styles = StyleSheet.create({
   heroName: { fontSize: typography.fontSize.xl, lineHeight: 24, ...cosmosFont.strong },
   heroCode: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   heroScore: { fontSize: 40, lineHeight: 46, ...cosmosFont.figure, letterSpacing: displayTracking(40) },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
+  // On the page: no side padding, so rows line up with the gutter.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 60 },
   rank: { width: 28, fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
@@ -466,7 +470,6 @@ const styles = StyleSheet.create({
   status: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   score: { fontSize: typography.fontSize.lg, ...cosmosFont.figure },
-  // Under the team name, past the rank column.
-  divider: { marginLeft: spacing[4] + 28 + spacing[3] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

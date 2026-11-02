@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { CheckCircle, Hourglass, LockSimple, MegaphoneSimple, PencilSimple, UserMinus, VideoCamera } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -26,7 +25,7 @@ import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel, formatClock, secondsUntil } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
@@ -34,7 +33,8 @@ const ICON = 26;
  * The judge's console for a hackathon (plan §12): take teams or go on a
  * break, call the next team, start its slot or mark a no-show, give marks,
  * and see what you finished with the 5-minute edit countdown. Call next stays
- * off until marks for the current team are in. Live over the socket.
+ * off until marks for the current team are in. Live over the socket. The first
+ * team in a slot is the blue hero; everything else sits on the page as rows.
  */
 export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const router = useRouter();
@@ -82,8 +82,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
+          <View style={[styles.empty, styles.emptyPage]}>
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -97,7 +96,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const openRound = data.rounds.some((r) => r.status === 'ACTIVE');
   const mentor = data.kind === 'MENTOR';
 
-  // The first team in a slot is the screen's hero (blue shade); any other is a plain card.
+  // The first team in a slot is the screen's hero (blue shade); any other sits on the page under a hairline.
   const slotCard = (q: ConsoleQueue, s: JudgeSlot, hero: boolean) => {
     const team = s.team;
     const graceLeft = secondsUntil(s.graceEndsAt, now);
@@ -201,8 +200,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         {content}
       </ShadeCard>
     ) : (
-      <View key={s.requestId} style={[styles.card, styles.slot]}>
-        <CardBackdrop shape={styles.card} />
+      <View key={s.requestId} style={[styles.card, styles.slot, { borderTopColor: c.border }]}>
         {content}
       </View>
     );
@@ -240,7 +238,6 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
       ) : null}
       {!openRound ? (
         <View style={[styles.empty, { marginTop: spacing[4] }]}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>
             No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
           </Text>
@@ -252,7 +249,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         const title = q.kind === 'PANEL' ? `${q.name} · queue` : 'My queue';
         return (
           <View key={`${q.kind}:${q.id}`}>
-            <SettingsGroup title={`${title} · ${q.waiting.length} waiting`}>
+            <SettingsGroup flat title={`${title} · ${q.waiting.length} waiting`}>
               {q.waiting.length === 0 ? <SettingsRow label="Nobody waiting" /> : null}
               {q.waiting.map((w) => (
                 <SettingsRow
@@ -285,7 +282,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
       })}
 
       {data.recent.length ? (
-        <SettingsGroup title="Recently">
+        <SettingsGroup flat title="Recently">
           {data.recent.map((r) => {
             const left = secondsUntil(r.editableUntil, now);
             const editable = r.status === 'COMPLETED' && r.submittedAt && !r.locked && left != null && left > 0;
@@ -329,9 +326,12 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', paddingVertical: spacing[4] },
+  emptyPage: { marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  // A second team in a slot: on the page, a full hairline above it.
+  card: { paddingTop: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },
   slot: { marginBottom: spacing[4] },
   overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   teamCode: { marginTop: spacing[3], fontSize: 40, lineHeight: 46, ...cosmosFont.figure },

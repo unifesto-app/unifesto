@@ -10,8 +10,7 @@ import {
 } from '../lib/api/leaderboard';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../theme/cosmos';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosFont, displayTracking, useCosmos, type Cosmos } from '../theme/cosmos';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import JudgeConsoleScreen from './JudgeConsoleScreen';
@@ -69,7 +68,6 @@ export default function JudgingEventScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
             Nothing to judge yet
           </Text>
@@ -98,8 +96,8 @@ export default function JudgingEventScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <CardBackdrop shape={styles.card} />
+        {/* The round's teams as rows on the page, full hairlines between them. */}
+        <View>
           {isClosed ? (
             <View style={styles.lockedNote}>
               <Lock size={20} color={c.muted} weight="duotone" />
@@ -120,7 +118,7 @@ export default function JudgingEventScreen() {
                 style={({ pressed }) => [
                   styles.entrantRow,
                   idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
-                  pressed && { backgroundColor: c.tint },
+                  pressed && { opacity: 0.6 },
                 ]}
                 disabled={!isActive}
                 accessibilityRole="button"
@@ -184,20 +182,22 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   intro: { fontSize: typography.fontSize.sm, lineHeight: 20, marginBottom: spacing[6], ...cosmosFont.body },
   roundBlock: { marginBottom: spacing[6] },
-  roundHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[3] },
-  roundName: { fontSize: 17, flex: 1, ...cosmosFont.strong },
+  // Like SettingsGroup's title: muted Hanken SemiBold, with the round's status on the right.
+  roundHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[1], marginHorizontal: spacing[1] },
+  roundName: { fontSize: typography.fontSize.sm, flex: 1, ...cosmosFont.strong },
   badge: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  entrantRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[4], paddingVertical: spacing[4], gap: spacing[3] },
+  // On the page: no side padding, so rows line up with the gutter.
+  entrantRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[4], gap: spacing[3] },
   entrantText: { flex: 1 },
   entrantName: { fontSize: 16, ...cosmosFont.strong },
   entrantStatus: { fontSize: 13, marginTop: 2, ...cosmosFont.body },
-  lockedNote: { paddingHorizontal: spacing[4], paddingVertical: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  emptyNote: { paddingHorizontal: spacing[4], paddingVertical: spacing[5] },
+  lockedNote: { paddingVertical: spacing[4], flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  emptyNote: { paddingVertical: spacing[4] },
   noteText: { fontSize: typography.fontSize.sm, lineHeight: 20, flex: 1, ...cosmosFont.body },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyTitle: { fontSize: 22, lineHeight: 28, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display },
+  // An empty state on the page: a headline and one muted line, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
+  emptyTitle: { fontSize: 24, lineHeight: 30, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

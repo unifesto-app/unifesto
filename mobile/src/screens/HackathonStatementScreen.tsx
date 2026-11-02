@@ -10,7 +10,6 @@ import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import {
   getMyHackathon,
@@ -24,13 +23,14 @@ import { blockCopy, formatWhen, placesLabel } from '../lib/hackathon';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /**
  * The team's problem statement. Once locked it just shows what the team has.
  * Before that, the team lead picks one from the organisers' list or writes
  * their own (whichever the hackathon uses), adds a theme if needed, and locks
  * it in — once. Everyone else on the team sees the same choices, read-only.
+ * Choices are option cards (controls); notices and empty states sit on the page.
  */
 export default function HackathonStatementScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -85,8 +85,7 @@ export default function HackathonStatementScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={styles.box}>
-            <CardBackdrop shape={styles.box} />
+          <View style={[styles.box, styles.page]}>
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -188,7 +187,6 @@ export default function HackathonStatementScreen() {
         </>
       ) : stop ? (
         <View style={styles.box}>
-          <CardBackdrop shape={styles.box} />
           <Text style={[styles.boxTitle, { color: c.text }]}>{stop.title}</Text>
           <Text style={[styles.boxBody, { color: c.soft }]}>{stop.body}</Text>
         </View>
@@ -234,7 +232,6 @@ export default function HackathonStatementScreen() {
             ) : null
           ) : opts.statements.length === 0 ? (
             <View style={[styles.box, { marginTop: spacing[5] }]}>
-              <CardBackdrop shape={styles.box} />
               <Text style={[styles.emptyText, { color: c.soft }]}>The organisers haven’t added problem statements yet.</Text>
             </View>
           ) : (
@@ -248,6 +245,7 @@ export default function HackathonStatementScreen() {
                   description={s.description}
                   theme={s.theme?.name}
                   note={placesLabel(s.placesLeft)}
+                  choice={canChoose}
                   selected={canChoose && s.id === pickedId}
                   disabled={full}
                   onPress={
@@ -320,7 +318,9 @@ const styles = StyleSheet.create({
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   lockedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
   lockedLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  box: { padding: spacing[6], borderRadius: cosmosCardRadius },
+  // Notices and empty states on the page, no card.
+  box: { paddingVertical: spacing[4], marginHorizontal: spacing[1] },
+  page: { alignItems: 'center', marginTop: spacing[10] },
   boxTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   boxBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

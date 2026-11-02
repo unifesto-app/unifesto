@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -18,7 +17,7 @@ import { normalizeDeepLink, routeToDeepLink } from '../services/deepLinkRouter';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -35,7 +34,8 @@ const TABS: { key: InboxTab; label: string }[] = [
  * bell on Home): help-desk queries sent to event staff sit in their own Staff
  * tab (shown once there are any), a tap marks one read, and "Mark all as read"
  * clears the tab on display. Each push is also kept here, so it isn't lost if
- * push was off or the notification was swiped away.
+ * push was off or the notification was swiped away. Each one is a row on the
+ * page with full hairlines between them (a sky dot while unread), no cards.
  */
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -168,7 +168,6 @@ export default function HackathonUpdatesScreen() {
         <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
       ) : items.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
             {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
           </Text>
@@ -182,8 +181,8 @@ export default function HackathonUpdatesScreen() {
         </View>
       ) : null}
 
-      <View style={{ gap: spacing[3] }}>
-        {(items ?? []).map((n) => {
+      <View>
+        {(items ?? []).map((n, i) => {
           const path = normalizeDeepLink(n.deepLink);
           // Updates that point back at the hub have nowhere else to go.
           const target = path && path !== hub ? n.deepLink : null;
@@ -192,12 +191,15 @@ export default function HackathonUpdatesScreen() {
               key={n.id}
               disabled={!target && (!!eventId || !!n.readAt)}
               onPress={() => open(n, target)}
-              style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+              style={({ pressed }) => [
+                styles.card,
+                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+                pressed && { opacity: 0.6 },
+              ]}
               accessibilityRole={target ? 'button' : 'text'}
             >
-              <CardBackdrop shape={styles.card} />
               <View style={styles.cardHead}>
-                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.text }]} accessibilityLabel="Unread" /> : null}
+                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.sky }]} accessibilityLabel="Unread" /> : null}
                 <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
                   {n.title}
                 </Text>
@@ -219,9 +221,11 @@ export default function HackathonUpdatesScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyTitle: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  // An empty state on the page: a headline and one muted line, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
+  emptyTitle: { fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  // One notification as a row on the page.
+  card: { paddingVertical: spacing[4] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing[3] },

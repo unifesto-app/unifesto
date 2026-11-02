@@ -10,7 +10,6 @@ import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import {
   assignTeamStatement,
@@ -26,7 +25,7 @@ import {
 import { formatWhen, placesLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Source = 'LIST' | 'OWN';
 const SOURCES: { value: Source; label: string }[] = [
@@ -38,6 +37,8 @@ const SOURCES: { value: Source; label: string }[] = [
  * The curator sets a team's problem statement and theme: one from the list or
  * written for them, in any mode and after the deadline. It locks for the team
  * straight away. "Let the team choose again" clears it and reopens the choice.
+ * The current statement is the blue hero; picks are option cards (controls);
+ * empty states sit on the page.
  */
 export default function HackathonTeamStatementScreen() {
   const { eventId, teamId } = useLocalSearchParams<{ eventId: string; teamId: string }>();
@@ -81,8 +82,7 @@ export default function HackathonTeamStatementScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
+          <View style={[styles.empty, styles.page]}>
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -189,7 +189,6 @@ export default function HackathonTeamStatementScreen() {
         </>
       ) : (
         <View style={[styles.empty, { marginTop: spacing[4] }]}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No problem statement yet.</Text>
         </View>
       )}
@@ -208,7 +207,6 @@ export default function HackathonTeamStatementScreen() {
           {source === 'LIST' ? (
             list.statements.length === 0 ? (
               <View style={[styles.empty, { marginTop: spacing[4] }]}>
-                <CardBackdrop shape={styles.empty} />
                 <Text style={[styles.emptyText, { color: c.soft }]}>Your list is empty. Add statements first, or write one.</Text>
               </View>
             ) : (
@@ -223,6 +221,7 @@ export default function HackathonTeamStatementScreen() {
                     description={s.description}
                     theme={s.theme?.name}
                     note={mine ? 'Current' : placesLabel(s.placesLeft)}
+                    choice
                     selected={s.id === pickedId}
                     disabled={full}
                     onPress={
@@ -293,7 +292,9 @@ export default function HackathonTeamStatementScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', paddingVertical: spacing[4] },
+  page: { marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   // A team's name: Hanken, never display.
   heading: { fontSize: typography.fontSize['2xl'], lineHeight: 28, ...cosmosFont.strong },

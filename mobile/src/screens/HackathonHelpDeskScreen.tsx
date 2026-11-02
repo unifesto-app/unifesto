@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Check } from '@unifesto/unicon/react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -20,12 +19,13 @@ import {
 import { timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * The event team's help desk: queries teams raised that were sent to me (as a
  * topic POC or room volunteer), or every query for curators. Pick one up so
- * the team knows someone's coming, then resolve it.
+ * the team knows someone's coming, then resolve it. Each query is a row on the
+ * page with full hairlines between them, no cards.
  */
 export default function HackathonHelpDeskScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -97,12 +97,11 @@ export default function HackathonHelpDeskScreen() {
   const active = queries.filter((q) => q.status !== 'RESOLVED');
   const resolved = queries.filter((q) => q.status === 'RESOLVED');
 
-  const card = (q: HelpInboxQuery) => {
+  const card = (q: HelpInboxQuery, i: number) => {
     // Plain status text: waiting needs attention, resolved is done.
     const statusColor = q.status === 'OPEN' ? c.warn : q.status === 'ACKNOWLEDGED' ? c.soft : c.success;
     return (
-      <View key={q.id} style={styles.card}>
-        <CardBackdrop shape={styles.card} />
+      <View key={q.id} style={[styles.card, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
         <View style={styles.cardHead}>
           <Text style={[styles.topic, { color: c.text }]} numberOfLines={1}>
             {q.topicName}
@@ -171,8 +170,7 @@ export default function HackathonHelpDeskScreen() {
       }}
     >
       {!inbox ? (
-        <View style={styles.emptyCard}>
-          <CardBackdrop shape={styles.emptyCard} />
+        <View style={[styles.emptyCard, styles.emptyPage]}>
           <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'This event isn’t running a hackathon.'}</Text>
           {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
         </View>
@@ -186,7 +184,6 @@ export default function HackathonHelpDeskScreen() {
             active.map(card)
           ) : (
             <View style={styles.emptyCard}>
-              <CardBackdrop shape={styles.emptyCard} />
               <Text style={[styles.emptyText, { color: c.soft }]}>All clear. New queries show up here.</Text>
             </View>
           )}
@@ -206,9 +203,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   lead: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // Empty and error states sit on the page, no card.
+  emptyCard: { alignItems: 'center', paddingVertical: spacing[6] },
+  emptyPage: { marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
+  // One query as a row on the page.
+  card: { paddingVertical: spacing[4] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
   topic: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2 },

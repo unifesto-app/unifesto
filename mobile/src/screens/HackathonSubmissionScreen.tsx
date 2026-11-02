@@ -26,7 +26,8 @@ interface LinkDraft {
 /**
  * The team's project links per round (repo, demo, deck…). Any member can edit
  * them until the round's cut-off or until a judge scores them; judges and
- * mentors see them while evaluating.
+ * mentors see them while evaluating. The link editors are controls and keep
+ * their boxes; read-only links are rows on the page.
  */
 export default function HackathonSubmissionScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -79,7 +80,6 @@ export default function HackathonSubmissionScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -114,7 +114,6 @@ export default function HackathonSubmissionScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>The organisers haven’t set up rounds yet. You can add project links once they do.</Text>
         </View>
       </CosmosScreen>
@@ -213,12 +212,12 @@ export default function HackathonSubmissionScreen() {
               </View>
             </>
           ) : (
-            <SettingsGroup>
+            <SettingsGroup flat>
               {round.links.length === 0 ? <SettingsRow label="No links" /> : null}
               {round.links.map((l) => (
                 <SettingsRow
                   key={l.url}
-                  icon={<LinkSimple size={24} color={c.text} />}
+                  icon={<LinkSimple size={24} color={c.sky} />}
                   label={l.label}
                   external
                   onPress={() => void Linking.openURL(l.url)}
@@ -240,7 +239,8 @@ export default function HackathonSubmissionScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   linkCard: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginTop: spacing[3], gap: spacing[2] },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },

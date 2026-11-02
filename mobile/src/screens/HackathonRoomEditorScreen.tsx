@@ -6,7 +6,6 @@ import { Trash } from '@unifesto/unicon/react-native';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -15,7 +14,7 @@ import MultiChips from '../components/hackathon/MultiChips';
 import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 interface Draft {
   name: string;
@@ -27,7 +26,10 @@ interface Draft {
 
 const EMPTY: Draft = { name: '', location: '', capacity: '', notes: '', volunteerUserIds: [] };
 
-/** Add or edit a room: its name, where it is, how many teams fit, notes for teams, and its volunteers. */
+/**
+ * Add or edit a room: its name, where it is, how many teams fit, notes for teams,
+ * and its volunteers. The fields stay boxed (controls); its teams are rows on the page.
+ */
 export default function HackathonRoomEditorScreen() {
   const { eventId, roomId } = useLocalSearchParams<{ eventId: string; roomId: string }>();
   const isNew = !roomId || roomId === 'new';
@@ -75,7 +77,6 @@ export default function HackathonRoomEditorScreen() {
         <Stack.Screen options={{ title }} />
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -149,8 +150,8 @@ export default function HackathonRoomEditorScreen() {
           />
         </>
       ) : (
-        <SettingsGroup title="Volunteers here" plain>
-          <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
+        <SettingsGroup flat title="Volunteers here" plain>
+          <SettingsRow label="Add people to the event team first" accent={c.sky} onPress={() => router.push(`/manage/event/${eventId}/team`)} />
         </SettingsGroup>
       )}
       <Text style={[styles.note, { color: c.muted, marginTop: spacing[3] }]}>
@@ -158,7 +159,7 @@ export default function HackathonRoomEditorScreen() {
       </Text>
 
       {room ? (
-        <SettingsGroup title={`Teams here · ${room.occupied} of ${room.capacity}`} plain>
+        <SettingsGroup flat title={`Teams here · ${room.occupied} of ${room.capacity}`} plain>
           {room.teams.length === 0 ? <SettingsRow label="No teams yet" /> : null}
           {room.teams.map((t) => (
             <SettingsRow
@@ -189,7 +190,8 @@ export default function HackathonRoomEditorScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

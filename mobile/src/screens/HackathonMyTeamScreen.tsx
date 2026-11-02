@@ -6,17 +6,17 @@ import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { GUTTER } from '../components/home/Section';
 import { getMyHackathon, renameMyTeam, type HackathonHub } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Who's on the team, and (for the lead) the team name. Members who haven't
  * claimed their seat show as "Not joined yet" so the lead knows who to chase.
+ * The name field stays boxed (a control); the team and members are rows on the page.
  */
 export default function HackathonMyTeamScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -49,7 +49,6 @@ export default function HackathonMyTeamScreen() {
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
             {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
           </View>
@@ -99,12 +98,12 @@ export default function HackathonMyTeamScreen() {
           </Text>
         </>
       ) : (
-        <SettingsGroup title="My team" plain>
+        <SettingsGroup flat title="My team" plain>
           <SettingsRow label={team.name} value={team.teamCode ?? undefined} />
         </SettingsGroup>
       )}
 
-      <SettingsGroup title="Members" plain>
+      <SettingsGroup flat title="Members" plain>
         {team.members.map((m) => (
           <SettingsRow
             key={m.seat}
@@ -124,7 +123,8 @@ export default function HackathonMyTeamScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

@@ -4,7 +4,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import MultiChips from '../components/hackathon/MultiChips';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -20,14 +19,15 @@ import {
 } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Topic = HelpTopics['topics'][number];
 
 /**
  * Help topics teams raise queries under ("Food", "Wi-Fi"), each with its
  * points of contact from the event team. A query goes to the topic's POCs and
- * the volunteers in the team's room; "Other" goes to the curators.
+ * the volunteers in the team's room; "Other" goes to the curators. The form
+ * stays boxed (a control); the topics are rows on the page.
  */
 export default function HackathonHelpTopicsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -124,8 +124,8 @@ export default function HackathonHelpTopicsScreen() {
           <MultiChips options={data.staff.map((u) => ({ value: u.id, label: staffName(u) }))} value={pocs} onChange={setPocs} />
         </>
       ) : (
-        <SettingsGroup title="Points of contact" plain>
-          <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
+        <SettingsGroup flat title="Points of contact" plain>
+          <SettingsRow label="Add people to the event team first" accent={c.sky} onPress={() => router.push(`/manage/event/${eventId}/team`)} />
         </SettingsGroup>
       )}
       <Text style={[styles.note, { color: c.muted, marginTop: spacing[3] }]}>
@@ -140,11 +140,10 @@ export default function HackathonHelpTopicsScreen() {
 
       {data.topics.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>No topics yet. Teams can still raise “Other” queries, which go to the curators.</Text>
         </View>
       ) : (
-        <SettingsGroup title="Topics" plain>
+        <SettingsGroup flat title="Topics" plain>
           {data.topics.map((t) => (
             <SettingsRow
               key={t.id}
@@ -175,7 +174,8 @@ export default function HackathonHelpTopicsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { marginTop: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

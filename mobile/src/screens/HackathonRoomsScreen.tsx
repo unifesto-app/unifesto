@@ -4,7 +4,6 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { Check, Plus } from '@unifesto/unicon/react-native';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ManageStats from '../components/manage/ManageStats';
 import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -13,12 +12,13 @@ import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { autoAllocateRooms, getRooms, type Room } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /**
  * Rooms at the venue and how full they are. "Auto-allocate" fills free places
  * with teams that have no room, in Team ID order; move single teams from the
- * team screen.
+ * team screen. The rooms are rows on the page; an empty venue is a headline,
+ * one line and one button, no card.
  */
 export default function HackathonRoomsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -113,7 +113,6 @@ export default function HackathonRoomsScreen() {
       >
         {rooms.length === 0 ? (
           <View style={styles.emptyCard}>
-            <CardBackdrop shape={styles.emptyCard} />
             <Text style={[styles.empty, { color: c.text }]} accessibilityRole="header">
               No rooms yet
             </Text>
@@ -152,7 +151,7 @@ export default function HackathonRoomsScreen() {
               <Text style={[styles.note, { color: c.warn }]}>Every room is full. Add a room or raise a capacity.</Text>
             ) : null}
 
-            <SettingsGroup title="Rooms" plain>
+            <SettingsGroup flat title="Rooms" plain>
               {rooms.map((r) => (
                 <SettingsRow
                   key={r.id}
@@ -172,8 +171,8 @@ export default function HackathonRoomsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  empty: { fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  emptyCard: { alignItems: 'center', marginTop: spacing[10] },
+  empty: { fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   done: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] + 2, marginTop: spacing[3], marginHorizontal: spacing[1] },
   doneText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

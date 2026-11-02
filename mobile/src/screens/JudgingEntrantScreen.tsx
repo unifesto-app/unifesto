@@ -12,8 +12,7 @@ import {
 } from '../lib/api/leaderboard';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { Button } from '../components/ui';
 import { GUTTER } from '../components/home/Section';
@@ -206,7 +205,6 @@ export default function JudgingEntrantScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.lockCard}>
-          <CardBackdrop shape={styles.lockCard} />
           <Lock size={52} color={c.muted} weight="duotone" style={styles.lockIcon} />
           <Text style={[styles.lockTitle, { color: c.text }]} accessibilityRole="header">
             Round closed
@@ -286,9 +284,9 @@ export default function JudgingEntrantScreen() {
       {!isMentor && metrics.length > 0 && (
         <>
           <Text style={[styles.sectionLabel, { color: c.muted }]}>Criteria</Text>
-          {metrics.map((m) => (
-            <View key={m.id} style={styles.metricCard}>
-              <CardBackdrop shape={styles.metricCard} />
+          {/* Each criterion is a row on the page; its score and note are boxed fields (controls). */}
+          {metrics.map((m, i) => (
+            <View key={m.id} style={[styles.metricCard, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
               <View style={styles.metricTopRow}>
                 <Text style={[styles.metricLabel, { color: c.text }]}>{m.label}</Text>
                 <TextInput
@@ -326,8 +324,8 @@ export default function JudgingEntrantScreen() {
       )}
 
       <Text style={[styles.sectionLabel, { color: c.muted }]}>{isMentor ? 'Feedback' : 'Overall review'}</Text>
-      <View style={styles.reviewWrap}>
-        <CardBackdrop shape={styles.reviewWrap} />
+      {/* A field like the score and note inputs above: tinted, control corners. */}
+      <View style={[styles.reviewWrap, { backgroundColor: c.tint }]}>
         <TextInput
           accessibilityLabel="Overall review"
           style={[styles.reviewInput, { color: c.text }]}
@@ -382,8 +380,8 @@ const styles = StyleSheet.create({
   statusText: { fontSize: typography.fontSize.sm, flexShrink: 1, ...cosmosFont.figure },
   contextText: { fontSize: 15, marginTop: spacing[3], lineHeight: 21, ...cosmosFont.strong },
   contextMuted: { fontSize: 13, marginTop: spacing[2], lineHeight: 19, ...cosmosFont.body },
-  sectionLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginTop: spacing[2], marginLeft: spacing[1], ...cosmosFont.strong },
-  metricCard: { borderRadius: cosmosCardRadius, padding: spacing[4], marginBottom: spacing[3] },
+  sectionLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[1], marginTop: spacing[4], marginLeft: spacing[1], ...cosmosFont.strong },
+  metricCard: { paddingVertical: spacing[4] },
   metricTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3] },
   metricLabel: { fontSize: 16, flex: 1, ...cosmosFont.strong },
   scoreInput: {
@@ -404,11 +402,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     ...cosmosFont.body,
   },
-  reviewWrap: { borderRadius: cosmosCardRadius, marginBottom: spacing[5] },
+  reviewWrap: { borderRadius: cosmosRadius, marginBottom: spacing[5] },
   reviewInput: { fontSize: 15, padding: spacing[4], minHeight: 120, textAlignVertical: 'top', ...cosmosFont.body },
   actions: { gap: spacing[3] },
-  lockCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  // On the page, no card: glyph, headline, one line.
+  lockCard: { alignItems: 'center', marginTop: spacing[10] },
   lockIcon: { marginBottom: spacing[5] },
-  lockTitle: { fontSize: 22, lineHeight: 28, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display },
+  lockTitle: { fontSize: 24, lineHeight: 30, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   lockText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

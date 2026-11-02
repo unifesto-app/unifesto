@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -17,14 +16,15 @@ import { AfterEventGroup, useEventCertificate } from '../components/EventEnded';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 26;
 
 /**
- * A team member's home for the hackathon: their Team ID, what's next, their
- * room and the venue, the team, and updates from the organisers. Refreshes on
- * focus and whenever a hackathon notification arrives. No marks, ever.
+ * A team member's home for the hackathon: their Team ID and what's next on the
+ * blue pass (the one hero), the tool tiles, then problem statement, judging and
+ * where to be as rows on the page with full hairlines. Refreshes on focus and
+ * whenever a hackathon notification arrives. No marks, ever.
  */
 export default function HackathonHubScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -99,7 +99,6 @@ export default function HackathonHubScreen() {
         {header}
         <CosmosScreen contentContainerStyle={styles.content}>
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
               {!hub ? 'No hackathon here right now' : 'You’re not on a hackathon team'}
             </Text>
@@ -125,7 +124,8 @@ export default function HackathonHubScreen() {
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
   const joined = team.members.filter((m) => m.joined).length;
   const request = team.evaluation?.request ?? null;
-  const icon = (I: typeof MapPin) => <I size={ICON} color={c.text} />;
+  // Glyphs carry their job's accent: ivory prizes, sky the statement and links.
+  const icon = (I: typeof MapPin, color: string = c.text) => <I size={ICON} color={color} />;
   const go = (path: string) => () => router.push(`/hackathon/${eventId}/${path}`);
 
   // The one thing the team should do right now, if any, lives on the pass.
@@ -193,9 +193,9 @@ export default function HackathonHubScreen() {
         </View>
 
         {!cancelled && (!ended || team.statement) ? (
-          <SettingsGroup title="Problem statement">
+          <SettingsGroup flat title="Problem statement">
             <SettingsRow
-              icon={team.statement?.lockedAt ? icon(LockSimple) : icon(Lightbulb)}
+              icon={team.statement?.lockedAt ? icon(LockSimple) : icon(Lightbulb, c.sky)}
               label={
                 team.statement
                   ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ')
@@ -213,10 +213,10 @@ export default function HackathonHubScreen() {
           </SettingsGroup>
         ) : null}
 
-        {ended ? <AfterEventGroup cert={cert} results={{ onPress: go('results') }} /> : null}
+        {ended ? <AfterEventGroup flat cert={cert} results={{ onPress: go('results') }} /> : null}
 
         {team.evaluation && !ended ? (
-          <SettingsGroup title="Judging">
+          <SettingsGroup flat title="Judging">
             <SettingsRow
               icon={icon(Gavel)}
               label={
@@ -231,13 +231,13 @@ export default function HackathonHubScreen() {
               value={request ? request.roundName : team.evaluation.openRounds ? 'Round open' : 'Not open yet'}
               onPress={go('evaluate')}
             />
-            <SettingsRow icon={icon(LinkSimple)} label="Project links" onPress={go('submission')} />
-            <SettingsRow icon={icon(Trophy)} label="Results and winners" onPress={go('results')} />
+            <SettingsRow icon={icon(LinkSimple, c.sky)} label="Project links" onPress={go('submission')} />
+            <SettingsRow icon={icon(Trophy, c.ivory)} label="Results and winners" onPress={go('results')} />
           </SettingsGroup>
         ) : null}
 
         {!ended && (!cancelled || venueLines.length) ? (
-          <SettingsGroup title="Where to be">
+          <SettingsGroup flat title="Where to be">
             {!cancelled ? (
               <SettingsRow
                 icon={icon(DoorOpen)}
@@ -268,8 +268,9 @@ export default function HackathonHubScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
-  emptyTitle: { fontSize: typography.fontSize['2xl'], lineHeight: 28, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(22) },
+  // An empty state on the page, no card: headline, one line, one button.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
+  emptyTitle: { fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   pass: { padding: 0 },
   passTop: { paddingHorizontal: spacing[5], paddingTop: spacing[6], paddingBottom: spacing[5], alignItems: 'center' },

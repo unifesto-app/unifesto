@@ -6,7 +6,6 @@ import { Megaphone } from '@unifesto/unicon/react-native';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import ChipPicker from '../components/manage/ChipPicker';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -16,7 +15,7 @@ import { getAnnouncements, sendAnnouncement, type AnnouncementAudience, type Ann
 import { formatWhen } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const AUDIENCES: { value: AnnouncementAudience; label: string; hint: string }[] = [
   { value: 'ALL', label: 'Everyone', hint: 'Every team member, judge and mentor.' },
@@ -31,7 +30,8 @@ const audienceLabel = (a: Announcements['announcements'][number]) =>
 /**
  * Send an announcement (push + in-app, in everyone's updates feed) to the
  * whole hackathon, only teams, only judges and mentors, or one room; and see
- * what was sent before.
+ * what was sent before, as rows on the page with full hairlines. The form's
+ * fields stay boxed (they're controls).
  */
 export default function HackathonAnnounceScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -63,7 +63,6 @@ export default function HackathonAnnounceScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
@@ -153,9 +152,8 @@ export default function HackathonAnnounceScreen() {
       {data.announcements.length ? (
         <>
           <Text style={[styles.section, { color: c.muted }]}>Sent</Text>
-          {data.announcements.map((a) => (
-            <View key={a.id} style={styles.card}>
-              <CardBackdrop shape={styles.card} />
+          {data.announcements.map((a, i) => (
+            <View key={a.id} style={[styles.card, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
               <View style={styles.cardHead}>
                 <Megaphone size={18} color={c.muted} weight="fill" />
                 <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={2}>
@@ -177,10 +175,12 @@ export default function HackathonAnnounceScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5], marginBottom: spacing[3] },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // One sent announcement as a row on the page; full hairlines between them.
+  card: { paddingVertical: spacing[4] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   cardTitle: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

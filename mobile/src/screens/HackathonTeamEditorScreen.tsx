@@ -9,12 +9,11 @@ import SelectRow from '../components/manage/SelectRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Badge } from '../components/ui/Badge';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const NAME_SOURCE: Record<string, string> = {
   FORM: 'From their registration',
@@ -31,7 +30,8 @@ interface Draft {
 
 /**
  * One team: correct its Team ID or name, move it to another room, and see who
- * is on it. Members appear once they claim their seat in the app.
+ * is on it. Members appear once they claim their seat in the app. The fields
+ * stay boxed (controls); statement, members and the registration are rows on the page.
  */
 export default function HackathonTeamEditorScreen() {
   const { eventId, teamId } = useLocalSearchParams<{ eventId: string; teamId: string }>();
@@ -86,7 +86,6 @@ export default function HackathonTeamEditorScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
           </View>
         ) : (
@@ -175,13 +174,13 @@ export default function HackathonTeamEditorScreen() {
 
       {!cancelled || team.statement ? (
         <>
-          <SettingsGroup title="Problem statement">
+          <SettingsGroup flat title="Problem statement">
             <SettingsRow
               icon={
                 team.statement ? (
                   <LockSimple size={26} color={c.success} weight="fill" />
                 ) : (
-                  <Lightbulb size={26} color={c.text} />
+                  <Lightbulb size={26} color={c.warn} />
                 )
               }
               label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
@@ -208,7 +207,7 @@ export default function HackathonTeamEditorScreen() {
         </>
       ) : null}
 
-      <SettingsGroup title={`Members · ${joined} of ${team.members.length} joined`} plain>
+      <SettingsGroup flat title={`Members · ${joined} of ${team.members.length} joined`} plain>
         {team.members.map((m) => (
           <SettingsRow
             key={m.seat}
@@ -222,7 +221,7 @@ export default function HackathonTeamEditorScreen() {
       </Text>
 
       {team.registrationId ? (
-        <SettingsGroup>
+        <SettingsGroup flat>
           <SettingsRow
             icon={<IdentificationCard size={26} color={c.text} />}
             label="Open the registration"
@@ -236,7 +235,8 @@ export default function HackathonTeamEditorScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   banner: { marginBottom: spacing[2] },
   flag: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], marginHorizontal: spacing[1] },
