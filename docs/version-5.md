@@ -1117,3 +1117,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · mobile SearchList (Apex lookups, money lists, Space support) as rows on the page (#566)
 - **2026-11-03** · mobile Sponsors and Hackathon mode locks say ask Unifesto to turn them on, not upgrade a plan (#567)
 - **2026-11-03** · mobile alerts: centred text, buttons as hairline rows instead of outlined/filled boxes (#568)
+- **2026-11-03** · Z11 group seat claims ask the 18+ confirmation once, on web and in the app (#570)
