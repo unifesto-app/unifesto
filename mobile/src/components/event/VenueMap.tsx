@@ -132,6 +132,8 @@ export async function geocodeVenue(place: VenuePlace): Promise<Coords | null> {
  * dark-styled and non-interactive so it never traps the page scroll. Falls
  * back to a keyless Google embed when native maps aren't available in this
  * build, or when the venue can't be geocoded. Directions opens the maps app.
+ * No card: the map keeps a card's corners like an image, and the place and
+ * Directions sit on the page under it.
  */
 export default function VenueMap({ coords, place, name, address, accent, onDirections }: VenueMapProps) {
   const c = useCosmos();
@@ -174,7 +176,7 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
   const showWeb = !Maps || geocodeFailed;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View>
       <View style={[styles.map, { backgroundColor: c.card }]} pointerEvents="none">
         {showNative && Maps ? (
           <Maps.default
@@ -267,10 +269,9 @@ iframe{border:0;width:100%;height:calc(100% + 60px);margin-top:-30px;${c.scheme 
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  map: { height: MAP_HEIGHT, overflow: 'hidden' },
+  map: { height: MAP_HEIGHT, borderRadius: cosmosCardRadius, overflow: 'hidden' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingTop: spacing[4], paddingHorizontal: spacing[1] },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   address: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   directions: { flexDirection: 'row', alignItems: 'center', gap: 4 },

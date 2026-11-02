@@ -4,11 +4,12 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt, WhatsappLogo } from '@unifesto/unicon/react-native';
+import { CalendarPlus, CheckCircle, PaperPlaneTilt } from '@unifesto/unicon/react-native';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import ShadeCard from '../components/ui/ShadeCard';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SheetTop, GUTTER } from '../components/registration/FlowHeader';
 import { money } from '../components/registration/Steps';
@@ -19,13 +20,17 @@ import { googleCalendarUrl, icsDownloadUrl, outlookCalendarUrl } from '../lib/ca
 import { relativeWhen } from '../utils/eventFormat';
 import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { markTicketsStale } from '../lib/ticketsRefresh';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
+const ICON = 28;
 
-/** Terminal step after registering: confirmation, the pass on the sky shade, next actions. */
+/**
+ * Terminal step after registering: confirmation, the pass on the sky shade (the
+ * one hero), then the next steps as rows on the page. Inviting the team is the
+ * action that closes them, in sky.
+ */
 export default function RegistrationSuccessScreen() {
   const c = useCosmos();
   const router = useRouter();
@@ -101,6 +106,7 @@ export default function RegistrationSuccessScreen() {
   const title = event?.title || str(params.eventTitle) || 'your event';
   const where = event?.venueName || event?.city;
   const ticketLine = quantity > 1 ? `${ticketName} · ${quantity} people` : ticketName;
+  const invite = openSeats > 0 && !!registration?.id;
 
   const viewTicket = () => {
     if (!registration) {
@@ -193,36 +199,35 @@ export default function RegistrationSuccessScreen() {
             </View>
           </ShadeCard>
 
-          {openSeats > 0 && registration?.id ? (
-            <Pressable
-              onPress={() => router.push(`/group/${registration.id}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`Invite your team, ${openSeats} open seat${openSeats === 1 ? '' : 's'}`}
-              style={({ pressed }) => [styles.invite, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
-            >
-              <CardBackdrop shape={styles.invite} />
-              <PaperPlaneTilt size={28} color={c.text} weight="duotone" />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.passValue, { color: c.text, textAlign: 'left' }]}>Invite your team</Text>
-                <Text style={[styles.meta, { color: c.soft }]}>
-                  {openSeats} seat{openSeats === 1 ? ' is' : 's are'} waiting for someone
-                </Text>
-              </View>
-              <CaretRight size={16} color={c.muted} weight="bold" />
-            </Pressable>
-          ) : null}
-
-          {event || waGroup?.inviteUrl ? (
-            <SettingsGroup>
+          {event || waGroup?.inviteUrl || invite ? (
+            <SettingsGroup flat>
               {waGroup?.inviteUrl ? (
                 <SettingsRow
-                  icon={<WhatsappLogo size={24} color={c.text} weight="fill" />}
+                  icon={<BrandIcon brand="whatsapp" size={ICON} />}
                   label={`Join the WhatsApp ${waGroup.isCommunity ? 'community' : 'group'}`}
                   external
                   onPress={() => Linking.openURL(waGroup.inviteUrl!).catch(() => {})}
                 />
               ) : null}
-              {event ? <SettingsRow icon={<CalendarPlus size={24} color={c.text} />} label="Add to calendar" onPress={addToCalendar} /> : null}
+              {event ? <SettingsRow icon={<CalendarPlus size={ICON} color={c.text} />} label="Add to calendar" onPress={addToCalendar} /> : null}
+              {invite ? (
+                <Pressable
+                  onPress={() => router.push(`/group/${registration.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Invite your team, ${openSeats} open seat${openSeats === 1 ? '' : 's'}`}
+                  style={({ pressed }) => [styles.invite, pressed && { opacity: 0.6 }]}
+                >
+                  <View style={styles.inviteIcon}>
+                    <PaperPlaneTilt size={ICON} color={c.sky} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inviteLabel, { color: c.sky }]}>Invite your team</Text>
+                    <Text style={[styles.meta, { color: c.soft }]}>
+                      {openSeats} seat{openSeats === 1 ? ' is' : 's are'} waiting for someone
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
             </SettingsGroup>
           ) : null}
 
@@ -274,13 +279,9 @@ const styles = StyleSheet.create({
   passRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[4] },
   passValue: { flexShrink: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   figure: { fontSize: typography.fontSize['2xl'], ...cosmosFont.figure },
-  invite: {
-    marginTop: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    padding: spacing[5],
-    borderRadius: cosmosCardRadius,
-  },
+  // Lines up with SettingsRow in a flat group: 30pt glyph slot, no side padding.
+  invite: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56, paddingVertical: spacing[2] },
+  inviteIcon: { width: 30, alignItems: 'center' },
+  inviteLabel: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   explore: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

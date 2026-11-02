@@ -10,31 +10,44 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { CaretDown, CaretRight, CheckCircle, EnvelopeSimple, Phone } from '@unifesto/unicon/react-native';
-import { GUTTER, Rail, Section } from '../home/Section';
+import { GUTTER, Rail } from '../home/Section';
 import type { AgendaItem, Contact, Faq, Prize, Speaker } from '../../lib/api/additional-info';
 import type { EventCurator, EventSponsor } from '../../lib/api/events';
 import { formatTime } from '../../utils/eventFormat';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** Long agendas start folded to this many slots. */
 const AGENDA_PREVIEW = 4;
 const SPEAKER_WIDTH = 148;
 
 const toggleAnim = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-const countLabel = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Raised card in the gutter whose children are split by hairlines. */
-function Card({ children }: { children: React.ReactNode }) {
+/**
+ * A section of the event (or space) page: a muted Hanken SemiBold title in
+ * sentence case, no blurb under it, then its content. Same title as the
+ * settings lists, so the page reads as one system.
+ */
+export function EventBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  const c = useCosmos();
+  return (
+    <View style={styles.block}>
+      <Text style={[styles.blockTitle, { color: c.muted }]} accessibilityRole="header">{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** Rows straight on the page, a full hairline between each; no card. */
+function Rows({ children }: { children: React.ReactNode }) {
   const c = useCosmos();
   const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View>
       {items.map((child, i) => (
-        <View key={i}>
+        <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
           {child}
-          {i < items.length - 1 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
         </View>
       ))}
     </View>
@@ -70,9 +83,9 @@ export function AgendaSection({ items }: { items: AgendaItem[] }) {
   const [open, setOpen] = useState(false);
   const shown = open ? items : items.slice(0, AGENDA_PREVIEW);
   return (
-    <Section title="Schedule" subtitle={countLabel(items.length, 'slot')}>
+    <EventBlock title="Schedule">
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {shown.map((item) => {
             const start = item.startTime || item.start_time;
             const end = item.endTime || item.end_time;
@@ -80,7 +93,7 @@ export function AgendaSection({ items }: { items: AgendaItem[] }) {
             return (
               <View key={item.id} style={styles.agendaRow}>
                 <View style={styles.agendaTimeCol}>
-                  <Text style={[styles.agendaTime, { color: c.text }]}>{start ? formatTime(new Date(start)) : ''}</Text>
+                  <Text style={[styles.agendaTime, { color: c.sky }]}>{start ? formatTime(new Date(start)) : ''}</Text>
                   {end ? <Text style={[styles.agendaEnd, { color: c.muted }]}>{formatTime(new Date(end))}</Text> : null}
                 </View>
                 <View style={styles.flexGap}>
@@ -91,26 +104,26 @@ export function AgendaSection({ items }: { items: AgendaItem[] }) {
               </View>
             );
           })}
-        </Card>
+        </Rows>
         {items.length > AGENDA_PREVIEW ? (
           <MoreToggle open={open} label={`Show all ${items.length}`} onPress={() => { toggleAnim(); setOpen((o) => !o); }} />
         ) : null}
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
-/** Speakers as a rail of tiles: faces are the point, so they lead. */
+/** Speakers as a rail of bare faces (no tiles): faces are the point, so they lead. */
 export function SpeakersSection({ items }: { items: Speaker[] }) {
   const c = useCosmos();
   return (
-    <Section title="Speakers" subtitle={countLabel(items.length, 'speaker')}>
+    <EventBlock title="Speakers">
       <Rail>
         {items.map((s: any) => {
           const role = [s.title || s.designation, s.company].filter(Boolean).join(' · ');
           const featured = s.is_featured || s.isFeatured;
           return (
-            <View key={s.id} style={[styles.speaker, { backgroundColor: c.raised }]}>
+            <View key={s.id} style={styles.speaker}>
               <Avatar uri={s.profile_image_url || s.avatarUrl} name={s.name} size={72} />
               <Text style={[styles.speakerName, { color: c.text }]} numberOfLines={2}>{s.name}</Text>
               {role ? <Text style={[styles.speakerRole, { color: c.muted }]} numberOfLines={2}>{role}</Text> : null}
@@ -119,7 +132,7 @@ export function SpeakersSection({ items }: { items: Speaker[] }) {
           );
         })}
       </Rail>
-    </Section>
+    </EventBlock>
   );
 }
 
@@ -128,9 +141,9 @@ const PLACE: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd' };
 export function PrizesSection({ items }: { items: Prize[] }) {
   const c = useCosmos();
   return (
-    <Section title="Prizes" subtitle={countLabel(items.length, 'prize')}>
+    <EventBlock title="Prizes">
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {items.map((p) => (
             <View key={p.id} style={styles.row}>
               <Text style={[styles.place, { color: p.position ? c.text : c.muted }]}>
@@ -143,9 +156,9 @@ export function PrizesSection({ items }: { items: Prize[] }) {
               {p.value ? <Text style={[styles.prizeValue, { color: c.ivory }]} numberOfLines={1}>{p.value}</Text> : null}
             </View>
           ))}
-        </Card>
+        </Rows>
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
@@ -157,9 +170,9 @@ export function SponsorsSection({ items, optedIn, pending, onToggle }: {
 }) {
   const c = useCosmos();
   return (
-    <Section title="Sponsors and partners">
+    <EventBlock title="Sponsors and partners">
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {items.map((sp) => {
             const isIn = optedIn.has(sp.eventSponsorId);
             const busy = pending.has(sp.eventSponsorId);
@@ -209,9 +222,9 @@ export function SponsorsSection({ items, optedIn, pending, onToggle }: {
               </View>
             );
           })}
-        </Card>
+        </Rows>
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
@@ -229,9 +242,9 @@ export function FaqSection({ items }: { items: Faq[] }) {
     });
   };
   return (
-    <Section title="FAQs">
+    <EventBlock title="FAQs">
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {items.map((f) => {
             const isOpen = open.has(f.id);
             return (
@@ -250,9 +263,9 @@ export function FaqSection({ items }: { items: Faq[] }) {
               </Pressable>
             );
           })}
-        </Card>
+        </Rows>
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
@@ -272,9 +285,9 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
   const people = curators ?? [];
   if (!spaces.length && !people.length && !contacts.length) return null;
   return (
-    <Section title="Hosted by">
+    <EventBlock title="Hosted by">
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {spaces.map((s) => (
             <Pressable
               key={s.id}
@@ -282,7 +295,7 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
               disabled={s.visibility === 'PRIVATE'}
               onPress={() => onOpenSpace(s.id)}
               accessibilityRole={s.visibility === 'PRIVATE' ? undefined : 'link'}
-              style={({ pressed }) => [styles.row, styles.center, pressed && { backgroundColor: c.tint }]}
+              style={({ pressed }) => [styles.row, styles.center, pressed && { opacity: 0.6 }]}
             >
               <Avatar uri={s.logoUrl} name={s.name} size={44} square />
               <Text style={[styles.itemTitle, styles.flex, { color: c.text }]} numberOfLines={1}>{s.name}</Text>
@@ -318,22 +331,22 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
               ) : null}
             </View>
           ))}
-        </Card>
+        </Rows>
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
-/** A titled card of people: round avatar, name, role underneath. Used by the space page. */
+/** A titled list of people as rows: round avatar, name, role underneath. Used by the space page. */
 export function PeopleBlock({ title, people }: {
   title: string;
   people: { id: string; name: string; avatarUrl: string | null; role: string }[];
 }) {
   const c = useCosmos();
   return (
-    <Section title={title} subtitle={countLabel(people.length, 'person', 'people')}>
+    <EventBlock title={title}>
       <View style={styles.gutter}>
-        <Card>
+        <Rows>
           {people.map((p) => (
             <View key={p.id} style={[styles.row, styles.center]}>
               <Avatar uri={p.avatarUrl} name={p.name} size={44} />
@@ -343,9 +356,9 @@ export function PeopleBlock({ title, people }: {
               </View>
             </View>
           ))}
-        </Card>
+        </Rows>
       </View>
-    </Section>
+    </EventBlock>
   );
 }
 
@@ -354,26 +367,29 @@ const styles = StyleSheet.create({
   flexGap: { flex: 1, gap: 3 },
   center: { alignItems: 'center' },
   gutter: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: spacing[4] },
-  row: { flexDirection: 'row', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  // A page section: spacing[8] above, like the settings lists.
+  block: { marginTop: spacing[8] },
+  blockTitle: { marginBottom: spacing[3], marginHorizontal: GUTTER + spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // Rows sit on the page inside the gutter: full hairlines, no side padding.
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  row: { flexDirection: 'row', gap: spacing[3], paddingVertical: spacing[4] },
   rowTight: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   itemTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
   itemBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   itemMeta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   more: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginTop: spacing[3], paddingHorizontal: spacing[1] },
   moreText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  agendaRow: { flexDirection: 'row', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  agendaRow: { flexDirection: 'row', gap: spacing[4], paddingVertical: spacing[4] },
   agendaTimeCol: { width: 74 },
   agendaTime: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   agendaEnd: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.figure },
-  speaker: { width: SPEAKER_WIDTH, borderRadius: cosmosCardRadius, padding: spacing[4], alignItems: 'center' },
+  speaker: { width: SPEAKER_WIDTH, alignItems: 'center' },
   speakerName: { marginTop: spacing[3], textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 19, ...cosmosFont.strong },
   speakerRole: { marginTop: 3, textAlign: 'center', fontSize: typography.fontSize.xs, lineHeight: 16, ...cosmosFont.body },
   featured: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   place: { width: 44, fontSize: 15, lineHeight: 21, ...cosmosFont.figure },
   prizeValue: { maxWidth: '35%', fontSize: typography.fontSize.base, ...cosmosFont.figure },
-  sponsor: { gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  sponsor: { gap: spacing[3], paddingVertical: spacing[4] },
   optIn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -383,6 +399,6 @@ const styles = StyleSheet.create({
     borderRadius: cosmosRadius,
   },
   optInText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  faq: { paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  faq: { paddingVertical: spacing[4] },
   faqHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
 });

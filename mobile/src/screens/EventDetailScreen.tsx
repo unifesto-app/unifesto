@@ -13,6 +13,7 @@ import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  ArrowUpRight,
   Bed,
   CalendarPlus,
   CaretRight,
@@ -21,7 +22,6 @@ import {
   ShareNetwork,
   Star,
   Ticket,
-  WhatsappLogo,
   XCircle,
 } from '@unifesto/unicon/react-native';
 import FavoriteButton from '../components/FavoriteButton';
@@ -29,10 +29,11 @@ import Skeleton from '../components/Skeleton';
 import AttendingShareModal from '../components/AttendingShareModal';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import { Rail, Section, GUTTER } from '../components/home/Section';
+import { Rail, GUTTER } from '../components/home/Section';
 import PosterCard from '../components/home/PosterCard';
 import {
   AgendaSection,
+  EventBlock,
   FaqSection,
   HostedBySection,
   PrizesSection,
@@ -41,6 +42,7 @@ import {
 } from '../components/event/EventSections';
 import { RegisterBar, useActionBarSpace } from '../components/event/EventOverlays';
 import NotifySheet from '../components/event/NotifySheet';
+import BrandIcon from '../components/profile/BrandIcon';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
@@ -179,7 +181,9 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         <Skeleton width={bannerW} height={bannerH} borderRadius={cosmosCardRadius} />
         <Skeleton width="85%" height={28} borderRadius={8} style={{ marginTop: spacing[6] }} />
         <Skeleton width="50%" height={16} borderRadius={8} style={{ marginTop: spacing[3] }} />
-        <Skeleton width="100%" height={196} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} width="100%" height={44} borderRadius={8} style={{ marginTop: spacing[i ? 4 : 6] }} />
+        ))}
       </View>
     );
   }
@@ -324,13 +328,14 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             </View>
           ) : null}
 
-          {/* ── Facts: a ticket-stub date, then where, entry and stay ── */}
-          <View style={[styles.facts, { backgroundColor: c.raised }]}>
+          {/* ── Facts: a ticket-stub date, then where, entry and stay, as rows on the page
+              (full hairlines, no card). Joining the chat and saying I'm going close the list. ── */}
+          <View style={styles.facts}>
             <Pressable
               onPress={d.addToCalendar}
               accessibilityRole="button"
               accessibilityLabel={`${when.title}, ${when.sub}. Add to calendar`}
-              style={({ pressed }) => [styles.whenRow, pressed && { backgroundColor: c.tint }]}
+              style={({ pressed }) => [styles.whenRow, pressed && { opacity: 0.6 }]}
             >
               <View style={styles.stub}>
                 <Text style={[styles.stubMonth, { color: c.muted }]}>{chip.month}</Text>
@@ -360,7 +365,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This event has ended" />
             ) : (
               <Fact
-                icon={<Ticket size={ICON} color={c.text} />}
+                icon={<Ticket size={ICON} color={c.sky} />}
                 title={priceLine}
                 color={c.sky}
                 sub={d.canAddTicket ? 'Add another ticket' : d.feeNote}
@@ -372,42 +377,44 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               <>
                 <Divider />
                 <Fact
-                  icon={<Bed size={ICON} color={c.text} />}
+                  icon={<Bed size={ICON} color={c.sky} />}
                   title={stay.label}
                   sub={stay.value}
                   onPress={() => router.push(stay.href as never)}
                 />
               </>
             ) : null}
-          </View>
 
-          {/* ── Attendee actions ── */}
-          {(d.user && d.ownsAnyTicket) || whatsappUrl ? (
-            <View style={styles.actions}>
-              {d.user && d.ownsAnyTicket ? (
-                <AuthButton
-                  label="I'm going"
-                  variant="secondary"
-                  icon={<ShareNetwork size={18} color={c.text} />}
-                  onPress={() => setShareOpen(true)}
-                  style={styles.flex}
-                />
-              ) : null}
-              {whatsappUrl ? (
-                <AuthButton
-                  label={`Join ${groupUrl ? 'group' : 'community'}`}
-                  variant="secondary"
-                  icon={<WhatsappLogo size={18} color={c.text} weight="fill" />}
+            {/* Opens WhatsApp, so it shows WhatsApp's own mark. */}
+            {whatsappUrl ? (
+              <>
+                <Divider />
+                <Fact
+                  icon={<BrandIcon brand="whatsapp" size={ICON} />}
+                  title={`Join the WhatsApp ${groupUrl ? 'group' : 'community'}`}
                   onPress={() => Linking.openURL(whatsappUrl)}
-                  style={styles.flex}
+                  external
                 />
-              ) : null}
-            </View>
-          ) : null}
+              </>
+            ) : null}
+            {/* An action closing the list: sky, no chevron. */}
+            {d.user && d.ownsAnyTicket ? (
+              <>
+                <Divider />
+                <Fact
+                  icon={<ShareNetwork size={ICON} color={c.sky} />}
+                  title="I'm going"
+                  color={c.sky}
+                  onPress={() => setShareOpen(true)}
+                  action
+                />
+              </>
+            ) : null}
+          </View>
         </View>
 
         {description ? (
-          <Section title="About">
+          <EventBlock title="About">
             <View style={{ paddingHorizontal: GUTTER }}>
               <Text style={[styles.body, { color: c.soft }]} numberOfLines={descExpanded ? undefined : 6}>
                 {description}
@@ -418,13 +425,13 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                 </Pressable>
               ) : null}
             </View>
-          </Section>
+          </EventBlock>
         ) : null}
 
         {/* Sub-events of a big event */}
         {event.childEvents && event.childEvents.length > 0 ? (
           <View onLayout={(ev) => { subEventsY.current = ev.nativeEvent.layout.y; }}>
-            <Section title="Events inside" subtitle={`${event.childEvents.length} to choose from`}>
+            <EventBlock title="Events inside">
               <Rail>
                 {orderSubEvents(event.childEvents).map((sub) => (
                   <PosterCard
@@ -439,7 +446,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                   />
                 ))}
               </Rail>
-            </Section>
+            </EventBlock>
           </View>
         ) : null}
 
@@ -448,7 +455,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         {d.prizes.length > 0 ? <PrizesSection items={d.prizes} /> : null}
 
         {hasVenue || venueCoords ? (
-          <Section title="Location">
+          <EventBlock title="Location">
             <View style={{ paddingHorizontal: GUTTER }}>
               <VenueMap
                 coords={venueCoords}
@@ -459,7 +466,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                 onDirections={d.openMaps}
               />
             </View>
-          </Section>
+          </EventBlock>
         ) : null}
 
         {event.sponsors && event.sponsors.length > 0 ? (
@@ -525,14 +532,20 @@ function Divider() {
   return <View style={[styles.divider, { backgroundColor: c.border }]} />;
 }
 
-/** One line of the facts card: bare icon, title (in the card's sky when it's the price), optional quieter line under it. */
-function Fact({ icon, title, sub, danger, color, onPress }: {
+/**
+ * One line of the facts list: bare icon, title (sky when it's the price or an
+ * action), optional quieter line under it. `external` opens another app (↗);
+ * `action` closes the list, so it has no chevron.
+ */
+function Fact({ icon, title, sub, danger, color, onPress, external, action }: {
   icon: React.ReactNode;
   title: string;
   sub?: string | null;
   danger?: boolean;
   color?: string;
   onPress?: () => void;
+  external?: boolean;
+  action?: boolean;
 }) {
   const c = useCosmos();
   const content = (
@@ -542,16 +555,16 @@ function Fact({ icon, title, sub, danger, color, onPress }: {
         <Text style={[styles.factTitle, { color: danger ? c.danger : color ?? c.text }]} numberOfLines={1}>{title}</Text>
         {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={2}>{sub}</Text> : null}
       </View>
-      {onPress ? <CaretRight size={15} color={c.muted} /> : null}
+      {onPress && !action ? external ? <ArrowUpRight size={15} color={c.muted} /> : <CaretRight size={15} color={c.muted} /> : null}
     </>
   );
   if (!onPress) return <View style={styles.factRow}>{content}</View>;
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole={external ? 'link' : 'button'}
       accessibilityLabel={title}
-      style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [styles.factRow, pressed && { opacity: 0.6 }]}
     >
       {content}
     </Pressable>
@@ -574,19 +587,19 @@ const styles = StyleSheet.create({
   hostInitial: { fontSize: 11, ...cosmosFont.strong },
   hostText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   rating: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
-  facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  facts: { marginTop: spacing[6] },
+  whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[4] },
   // The date as a bare figure over its month: no box inside the card.
   stub: { width: STUB, alignItems: 'center', justifyContent: 'center' },
   stubMonth: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   stubDay: { marginTop: 1, fontSize: 26, lineHeight: 30, ...cosmosFont.figure },
-  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
   factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   factSub: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
-  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
+  // Full hairlines between rows on the page.
+  divider: { height: StyleSheet.hairlineWidth },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
   link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   emptyTitle: { marginTop: spacing[4], paddingHorizontal: GUTTER, fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
