@@ -25,7 +25,6 @@ import SelectRow from '../components/manage/SelectRow';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -39,7 +38,9 @@ const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { d
 
 /**
  * Sponsors on one event (from the space roster): tier, lead capture, removal,
- * plus every lead captured for them here, with a CSV export.
+ * plus every lead captured for them here, with a CSV export. Each sponsor's
+ * controls keep their box; leads are rows on the page, and adding a sponsor or
+ * exporting closes its list in sky.
  */
 export default function EventSponsorsScreen() {
   const params = useLocalSearchParams<{ eventId: string; spaceId?: string; title?: string }>();
@@ -193,11 +194,6 @@ export default function EventSponsorsScreen() {
 
       {tab === 'sponsors' ? (
         <>
-          <Text style={[styles.intro, { color: c.soft }]}>
-            Sponsors show on the event page, grouped by tier. With lead capture on, attendees can share their details with that
-            sponsor, and the sponsor's people can scan tickets at their booth.
-          </Text>
-
           {attached.map((es) => (
             <View key={es.id} style={{ marginTop: spacing[5] }}>
               <SettingsGroup plain>
@@ -247,14 +243,14 @@ export default function EventSponsorsScreen() {
               </Text>
             )}
             {busy === 'attach' ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3] }} /> : null}
-            <Button
-              label="New sponsor"
-              variant="ghost"
-              fullWidth
-              icon={<Plus size={18} color={c.text} weight="bold" />}
-              onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
-              style={{ marginTop: spacing[3] }}
-            />
+            <SettingsGroup flat style={{ marginTop: spacing[3] }}>
+              <SettingsRow
+                icon={<Plus size={28} color={c.sky} />}
+                label="New sponsor"
+                accent={c.sky}
+                onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
+              />
+            </SettingsGroup>
           </View>
         </>
       ) : (
@@ -271,7 +267,7 @@ export default function EventSponsorsScreen() {
           ) : null}
 
           <View style={{ marginTop: spacing[4] }}>
-            <SettingsGroup plain>
+            <SettingsGroup flat plain style={{ marginTop: 0 }}>
               {shownLeads.length === 0 ? (
                 <SettingsRow label="No leads yet" value={attached.some((a) => a.leadCaptureEnabled) ? undefined : 'Lead capture is off'} />
               ) : null}
@@ -285,19 +281,12 @@ export default function EventSponsorsScreen() {
                   </Text>
                 </View>
               ))}
+              {/* Exporting is an action, so it closes the list in sky. */}
+              {shownLeads.length ? (
+                <SettingsRow icon={<Export size={28} color={c.sky} />} label="Export CSV" accent={c.sky} onPress={() => void exportLeads()} />
+              ) : null}
             </SettingsGroup>
           </View>
-
-          {shownLeads.length ? (
-            <Button
-              label="Export CSV"
-              variant="secondary"
-              fullWidth
-              icon={<Export size={18} color={c.text} weight="bold" />}
-              onPress={() => void exportLeads()}
-              style={{ marginTop: spacing[5] }}
-            />
-          ) : null}
         </>
       )}
     </CosmosScreen>
@@ -307,5 +296,5 @@ export default function EventSponsorsScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   intro: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

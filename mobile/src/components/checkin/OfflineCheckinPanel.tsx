@@ -12,11 +12,14 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 type Offline = ReturnType<typeof useOfflineCheckin>;
 
+const ICON = 28;
+
 /**
  * The hub's offline section: whether a guest list is saved for scanning with
  * no signal, how many check-ins are waiting to upload, and anything that
  * needs a look after sync: refused (cancelled after the list was saved, no
  * access at that point…) or a ticket another device had already let in.
+ * Rows on the page with full hairlines; clearing the reviewed ones closes its list in sky.
  */
 export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
   const c = useCosmos();
@@ -37,33 +40,34 @@ export default function OfflineCheckinPanel({ offline }: { offline: Offline }) {
 
   return (
     <>
-      <SettingsGroup title="Offline scanning">
+      <SettingsGroup flat title="Offline scanning">
         <SettingsRow
-          icon={<UsersThree size={22} color={c.soft} />}
+          icon={<UsersThree size={ICON} color={c.sky} />}
           label="Saved guest list"
           value={listValue}
           trailing={textAction('Refresh', () => void offline.download(), offline.downloading, isOffline)}
         />
         {offline.pending > 0 ? (
           <SettingsRow
-            icon={<CloudArrowUp size={22} color={c.warn} />}
+            icon={<CloudArrowUp size={ICON} color={c.warn} />}
             label={`${offline.pending} waiting to sync`}
             trailing={textAction('Sync now', () => void offline.sync(), offline.syncing, isOffline)}
           />
         ) : null}
         {offline.error ? (
-          <SettingsRow icon={<Warning size={22} color={c.danger} />} label={offline.error} />
+          <SettingsRow icon={<Warning size={ICON} color={c.danger} />} label={offline.error} />
         ) : null}
       </SettingsGroup>
 
       {offline.review.length > 0 ? (
-        <SettingsGroup title="Needs review">
+        <SettingsGroup flat title="Needs review">
           {offline.review.map((r) => (
             <PersonRow key={r.id} name={r.name ?? 'Attendee'} sub={reviewLine(r)} />
           ))}
           <SettingsRow
-            icon={<ArrowsClockwise size={22} color={c.soft} />}
+            icon={<ArrowsClockwise size={ICON} color={c.sky} />}
             label="Clear reviewed"
+            accent={c.sky}
             onPress={() => offline.review.forEach((r) => void offline.dismiss(r.id))}
           />
         </SettingsGroup>

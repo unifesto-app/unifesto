@@ -30,7 +30,11 @@ const VISIBILITY: { key: PollResultsVisibility; label: string }[] = [
 ];
 const STATUS_LABEL = { DRAFT: 'Draft', LIVE: 'Live', CLOSED: 'Closed' } as const;
 
-/** Live polls for one event (event:edit): draft, launch, watch votes, close. */
+/**
+ * Live polls for one event (event:edit): draft, launch, watch votes, close.
+ * Polls are blocks on the page divided by full hairlines (no card per poll);
+ * the new-poll form keeps its box, and saving is the one primary button.
+ */
 export default function PollsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
@@ -109,16 +113,17 @@ export default function PollsScreen() {
         setRefreshing(false);
       }}
     >
-      <Text style={[styles.intro, { color: c.soft }]}>
+      <Text style={[styles.intro, { color: c.muted }]}>
         Attendees vote from their ticket while the event is on, once each. Results update live.
       </Text>
       {error ? <Text style={[styles.intro, { color: c.danger }]}>{error}</Text> : null}
 
-      {polls.map((p) => {
+      {polls.length ? (
+      <View>
+      {polls.map((p, idx) => {
         const total = p.totalVotes ?? 0;
         return (
-          <SettingsGroup key={p.id}>
-            <View style={styles.poll}>
+            <View key={p.id} style={[styles.poll, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
               {/* Status as plain text: live in mint with its dot, the rest muted. */}
               <View style={styles.statusRow}>
                 {p.status === 'LIVE' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
@@ -147,7 +152,13 @@ export default function PollsScreen() {
               })}
               <View style={styles.actions}>
                 {p.status === 'DRAFT' ? (
-                  <Button label="Launch" size="sm" loading={busy === p.id} onPress={() => void run(p.id, () => launchPoll(eventId!, p.id))} />
+                  <Button
+                    label="Launch"
+                    size="sm"
+                    variant="secondary"
+                    loading={busy === p.id}
+                    onPress={() => void run(p.id, () => launchPoll(eventId!, p.id))}
+                  />
                 ) : null}
                 {p.status === 'LIVE' ? (
                   <Button
@@ -161,9 +172,10 @@ export default function PollsScreen() {
                 {p.status !== 'LIVE' ? <Button label="Delete" size="sm" variant="ghost" onPress={() => remove(p)} /> : null}
               </View>
             </View>
-          </SettingsGroup>
         );
       })}
+      </View>
+      ) : null}
 
       <SettingsGroup title="New poll" plain>
         <FieldRow stacked label="Question" value={question} onChangeText={setQuestion} maxLength={300} placeholder="Which session should we repeat?" />
@@ -206,7 +218,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing[4] },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   label: { marginLeft: spacing[1], marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  poll: { padding: spacing[5], gap: spacing[3] },
+  // A poll on the page: no card, hairlines between polls.
+  poll: { paddingVertical: spacing[4], gap: spacing[3] },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

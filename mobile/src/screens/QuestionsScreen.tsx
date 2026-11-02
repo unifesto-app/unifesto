@@ -9,11 +9,10 @@ import { SwitchRow } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const TABS: { key: QuestionStatus; label: string }[] = [
   { key: 'PENDING', label: 'Waiting' },
@@ -28,7 +27,11 @@ const EMPTY: Record<QuestionStatus, string> = {
   HIDDEN: 'Nothing hidden.',
 };
 
-/** Live Q&A moderation for one event (event:edit): the compact queue. Space web has the full one. */
+/**
+ * Live Q&A moderation for one event (event:edit): the compact queue. Space web
+ * has the full one. Questions are blocks on the page divided by full hairlines;
+ * the moderation switch keeps its box.
+ */
 export default function QuestionsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
@@ -88,7 +91,7 @@ export default function QuestionsScreen() {
         setRefreshing(false);
       }}
     >
-      <Text style={[styles.intro, { color: c.soft }]}>
+      <Text style={[styles.intro, { color: c.muted }]}>
         Attendees ask and upvote from their ticket while the event is on.
       </Text>
       {error ? <Text style={[styles.intro, { color: c.danger }]}>{error}</Text> : null}
@@ -106,13 +109,13 @@ export default function QuestionsScreen() {
 
       {shown.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
         </View>
       ) : null}
-      {shown.map((q) => (
-        <SettingsGroup key={q.id}>
-          <View style={styles.question}>
+      {shown.length ? (
+      <View>
+      {shown.map((q, idx) => (
+          <View key={q.id} style={[styles.question, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
             <Text style={[styles.text, { color: c.text }]}>{q.text}</Text>
             <Text style={[styles.meta, { color: c.muted }]}>
               <Text style={[styles.votes, { color: c.text }]}>{q.votes}</Text>
@@ -123,6 +126,7 @@ export default function QuestionsScreen() {
                 <Button
                   label={q.status === 'PENDING' ? 'Approve' : q.status === 'ANSWERED' ? 'Reopen' : 'Show'}
                   size="sm"
+                  variant="secondary"
                   loading={busy === q.id}
                   onPress={() => act(q, { status: 'APPROVED' })}
                 />
@@ -136,18 +140,20 @@ export default function QuestionsScreen() {
               {q.status !== 'HIDDEN' ? <Button label="Hide" size="sm" variant="ghost" onPress={() => act(q, { status: 'HIDDEN' })} /> : null}
             </View>
           </View>
-        </SettingsGroup>
       ))}
+      </View>
+      ) : null}
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing[4] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  question: { padding: spacing[5], gap: spacing[2] },
+  // A question on the page: no card, hairlines between questions.
+  question: { paddingVertical: spacing[4], gap: spacing[2] },
   text: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   votes: { ...cosmosFont.figure },

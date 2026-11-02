@@ -22,13 +22,13 @@ import { relativeWhen } from '../utils/eventFormat';
 import { checkinPhase, timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /**
  * One event's door: live progress, the two ways to check people in, and the
  * latest arrivals. With several check-in points the numbers can be narrowed to
- * one, and the chosen point carries into the scanner and search.
+ * one, and the chosen point carries into the scanner and search. The mint
+ * progress card is the page's one hero; the lists under it are rows on the page.
  */
 export default function EventCheckinScreen() {
   const router = useRouter();
@@ -125,8 +125,7 @@ export default function EventCheckinScreen() {
       <View style={[styles.gutter, { marginTop: spacing[5] }]}>
         {hub.error && !stats ? (
           <View style={styles.errorBox}>
-            <CardBackdrop shape={styles.errorBox} />
-            <Text style={[styles.errorText, { color: c.soft }]}>{hub.error}</Text>
+            <Text style={[styles.errorText, { color: c.muted }]}>{hub.error}</Text>
             <Button label="Try again" variant="secondary" onPress={hub.retry} style={{ alignSelf: 'center' }} />
           </View>
         ) : (
@@ -155,9 +154,9 @@ export default function EventCheckinScreen() {
 
       {openQueries !== null ? (
         <View style={styles.gutter}>
-          <SettingsGroup title="Unifesto Sprint">
+          <SettingsGroup flat title="Unifesto Sprint">
             <SettingsRow
-              icon={<Lifebuoy size={24} color={c.text} />}
+              icon={<Lifebuoy size={28} color={openQueries ? c.warn : c.text} />}
               label="Help desk"
               value={openQueries ? `${openQueries} open` : 'All clear'}
               onPress={() => router.push(`/hackathon/${eventId}/help-desk`)}
@@ -173,7 +172,7 @@ export default function EventCheckinScreen() {
 
       {/* Latest arrivals */}
       <View style={styles.gutter}>
-        <SettingsGroup title={activePoint ? `Recent at ${activePoint.name}` : 'Recent check-ins'}>
+        <SettingsGroup flat title={activePoint ? `Recent at ${activePoint.name}` : 'Recent check-ins'}>
           {hub.recent === null ? (
             <Text style={[styles.placeholder, { color: c.muted }]}>Loading…</Text>
           ) : recent.length === 0 ? (
@@ -206,8 +205,8 @@ const styles = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3 },
   meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   chips: { marginTop: spacing[5] },
-  errorBox: { gap: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  errorBox: { gap: spacing[4], paddingVertical: spacing[6] },
   errorText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   actions: { gap: spacing[3], marginTop: spacing[5] },
-  placeholder: { fontSize: typography.fontSize.sm, padding: spacing[4], lineHeight: 20, ...cosmosFont.body },
+  placeholder: { fontSize: typography.fontSize.sm, paddingVertical: spacing[4], lineHeight: 20, ...cosmosFont.body },
 });

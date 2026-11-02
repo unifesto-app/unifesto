@@ -5,13 +5,11 @@ import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import { getManagedQuizzes, stepQuiz, type ManagedQuiz } from '../lib/api/quizzes';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /** Answer counts move without a ping; refetch this often while a quiz runs. */
 const LIVE_REFRESH_MS = 2000;
@@ -22,6 +20,7 @@ const ms = (iso: string | null) => (iso ? new Date(iso).getTime() : 0);
 /**
  * Run an event's live quizzes from the floor (event:edit): start, close the
  * question early, next, end. Quizzes are built on the Space web dashboard.
+ * Quizzes are blocks on the page divided by full hairlines (no card per quiz).
  */
 export default function QuizRunnerScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -101,32 +100,31 @@ export default function QuizRunnerScreen() {
         setRefreshing(false);
       }}
     >
-      <Text style={[styles.intro, { color: c.soft }]}>
+      <Text style={[styles.intro, { color: c.muted }]}>
         Build quizzes on the Space dashboard on the web. Run them from here: attendees answer from their ticket and
         the leaderboard updates after each question.
       </Text>
       {error ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>{error}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
         </View>
       ) : null}
       {!quizzes.length && !error ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.emptyText, { color: c.soft }]}>No quizzes for this event yet.</Text>
+          <Text style={[styles.emptyText, { color: c.muted }]}>No quizzes for this event yet.</Text>
         </View>
       ) : null}
 
-      {quizzes.map((z) => {
+      {quizzes.length ? (
+      <View>
+      {quizzes.map((z, idx) => {
         const q = z.status === 'LIVE' && z.currentIndex !== null ? z.questions[z.currentIndex] : null;
         const isLast = z.currentIndex !== null && z.currentIndex + 1 >= z.questions.length;
         const opensIn = q ? Math.ceil((ms(q.openedAt) - serverNow) / 1000) : 0;
         const left = q ? Math.max(0, Math.ceil((ms(q.closesAt) - serverNow) / 1000)) : 0;
         return (
-          <SettingsGroup key={z.id}>
-            <View style={styles.quiz}>
+            <View key={z.id} style={[styles.quiz, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
               {/* The status as plain text: a mint dot while it's live. */}
               <View style={styles.statusRow}>
                 {z.status === 'LIVE' ? <View style={[styles.dot, { backgroundColor: c.mint }]} /> : null}
@@ -170,7 +168,7 @@ export default function QuizRunnerScreen() {
               ) : null}
               <View style={styles.actions}>
                 {z.status === 'DRAFT' ? (
-                  <Button label="Start quiz" size="sm" loading={busy === z.id} onPress={() => void step(z, 'start')} />
+                  <Button label="Start quiz" size="sm" variant="secondary" loading={busy === z.id} onPress={() => void step(z, 'start')} />
                 ) : null}
                 {q && !q.closed ? (
                   <Button
@@ -189,19 +187,21 @@ export default function QuizRunnerScreen() {
                 ) : null}
               </View>
             </View>
-          </SettingsGroup>
         );
       })}
+      </View>
+      ) : null}
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing[4] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { paddingVertical: spacing[8], alignItems: 'center' },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  quiz: { padding: spacing[4], gap: spacing[3] },
+  // A quiz on the page: no card, hairlines between quizzes.
+  quiz: { paddingVertical: spacing[4], gap: spacing[3] },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

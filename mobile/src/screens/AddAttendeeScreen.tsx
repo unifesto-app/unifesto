@@ -22,11 +22,10 @@ import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const PHONE = /^[0-9]{10}$/;
 const GENDERS = ATTENDEE_GENDER_OPTIONS.map((g) => ({ value: g, label: g }));
@@ -59,7 +58,8 @@ function checkPerson(p: Person, who: string, fields: CustomField[]): string {
 /**
  * Add one person (or a whole group) to an event. The account is found or
  * created by email. A paid ticket sends them a payment link, unless a
- * Platform Admin has allowed free adds for this event.
+ * Platform Admin has allowed free adds for this event. A form: its fields keep
+ * their box; the empty and error states sit on the page.
  */
 export default function AddAttendeeScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -243,8 +243,7 @@ export default function AddAttendeeScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {loadError ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
-            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text>
           </View>
         ) : (
           <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
@@ -257,8 +256,7 @@ export default function AddAttendeeScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <Text style={[styles.muted, { color: c.soft }]}>Add a ticket or RSVP option to this event first.</Text>
+          <Text style={[styles.muted, { color: c.muted }]}>Add a ticket or RSVP option to this event first.</Text>
         </View>
       </CosmosScreen>
     );
@@ -383,7 +381,7 @@ export default function AddAttendeeScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { marginTop: spacing[10], alignItems: 'center' },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   block: { marginTop: spacing[4] },
   // Same as a SettingsGroup title: muted Hanken SemiBold, sentence case.

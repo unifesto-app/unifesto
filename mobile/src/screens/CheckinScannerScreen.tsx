@@ -36,8 +36,8 @@ import GroupCheckinSheet from '../components/checkin/GroupCheckinSheet';
 import { attendeeName } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
-import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { Button } from '../components/ui';
 
@@ -362,17 +362,21 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
       <Shell align="top" paddingTop={topSpacing + spacing[6]}>
         <Text style={[styles.chooseTitle, { color: c.text }]} accessibilityRole="header">Where are you scanning?</Text>
         <Text style={[styles.chooseBody, { color: c.soft }]}>Check-ins are recorded against this point.</Text>
+        {/* The points as rows on the page with full hairlines; mint, the door's accent. */}
         <View style={styles.chooseList}>
-          {points.map((p) => (
+          {points.map((p, i) => (
             <Pressable
               key={p.id}
               onPress={() => setPointId(p.id)}
               accessibilityRole="button"
               accessibilityLabel={p.name}
-              style={({ pressed }) => [styles.chooseRow, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+              style={({ pressed }) => [
+                styles.chooseRow,
+                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+                pressed && { opacity: 0.6 },
+              ]}
             >
-              <CardBackdrop shape={styles.chooseRow} />
-              <MapPin size={22} color={c.text} weight="fill" />
+              <MapPin size={24} color={c.mint} weight="fill" />
               <Text style={[styles.chooseName, { color: c.text }]} numberOfLines={1}>
                 {p.name}
               </Text>
@@ -567,15 +571,8 @@ const styles = StyleSheet.create({
 
   chooseTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   chooseBody: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  chooseList: { alignSelf: 'stretch', gap: spacing[3], marginTop: spacing[4] },
-  chooseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    height: 60,
-    paddingHorizontal: spacing[5],
-    borderRadius: cosmosCardRadius,
-  },
+  chooseList: { alignSelf: 'stretch', marginTop: spacing[4] },
+  chooseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 60 },
   chooseName: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
 
   msgTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },

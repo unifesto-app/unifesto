@@ -13,8 +13,7 @@ import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const SOURCES = ['instagram', 'whatsapp', 'linkedin', 'x', 'email', 'college', 'poster'];
 const MEDIUMS = ['social', 'email', 'ads', 'print', 'qr', 'referral'];
@@ -44,7 +43,8 @@ function Chips({ options, value, onPick }: { options: string[]; value: string; o
  * Build a tracking link for any channel the fixed buttons don't cover (a
  * college notice board QR, a newsletter, an ad). Opened with the public
  * event or space URL to tag; registrations through the result show up under
- * its source in the tracking breakdown.
+ * its source in the tracking breakdown. The fields keep their box (controls);
+ * the built link sits in a band between full hairlines, not a card.
  */
 export default function UtmLinkBuilderScreen() {
   const { url, title, campaign: defaultCampaign } = useLocalSearchParams<{ url: string; title?: string; campaign?: string }>();
@@ -87,8 +87,7 @@ export default function UtmLinkBuilderScreen() {
         <FieldRow label="Campaign" value={campaign} onChangeText={setCampaign} placeholder="e.g. early-bird" autoCapitalize="none" autoCorrect={false} />
       </SettingsGroup>
 
-      <View style={styles.preview}>
-        <CardBackdrop shape={styles.preview} />
+      <View style={[styles.preview, { borderColor: c.border }]}>
         <Text style={[styles.previewLabel, { color: c.muted }]}>My link</Text>
         <Text style={[styles.previewUrl, { color: link ? c.text : c.muted }]} selectable>
           {link || 'Add a source to build the link.'}
@@ -115,7 +114,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   title: { fontSize: typography.fontSize['2xl'], lineHeight: 30, marginBottom: spacing[2], ...cosmosFont.display, letterSpacing: displayTracking(24) },
   chips: { marginTop: spacing[2], marginHorizontal: spacing[1] },
-  preview: { marginTop: spacing[8], padding: spacing[5], borderRadius: cosmosCardRadius },
+  preview: { marginTop: spacing[8], paddingVertical: spacing[4], borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
   previewLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   previewUrl: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },

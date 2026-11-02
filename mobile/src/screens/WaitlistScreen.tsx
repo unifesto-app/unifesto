@@ -13,15 +13,14 @@ import {
 } from '../lib/api/waitlist';
 import type { Result } from '../lib/api/manageEvent';
 import ChipPicker from '../components/manage/ChipPicker';
-import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
+import { SettingsGroupHeader } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type View_ = 'active' | 'CONVERTED' | 'EXPIRED' | 'DECLINED';
 const VIEWS: { value: View_; label: string }[] = [
@@ -39,6 +38,7 @@ const nameOf = (e: WaitlistEntry) => e.user.fullName || e.user.username || 'They
 /**
  * The waiting list per ticket: let the next few in, let a specific person in,
  * or revoke an offer someone never paid for (offers don't expire on their own).
+ * Tickets and people are rows on the page with full hairlines (no cards).
  */
 export default function WaitlistScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -140,15 +140,13 @@ export default function WaitlistScreen() {
 
       {enabled.length === 0 ? (
         <View style={styles.emptyCard}>
-          <CardBackdrop shape={styles.emptyCard} />
-          <Text style={[styles.empty, { color: c.soft }]}>
+          <Text style={[styles.empty, { color: c.muted }]}>
             No ticket has a waiting list. Turn it on for a ticket with a capacity under Tickets.
           </Text>
         </View>
       ) : (
-        // One card for the tickets, a hairline between each.
-        <View style={styles.cards}>
-          <CardBackdrop shape={styles.cards} />
+        // The tickets as rows on the page, a full hairline between each.
+        <View>
           {enabled.map((row, i) => (
             <View
               key={row.ticketTypeId}
@@ -206,15 +204,11 @@ export default function WaitlistScreen() {
       data={entries}
       keyExtractor={(e) => e.registrationId}
       ListHeaderComponent={header}
-      ListEmptyComponent={
-        <GroupCell index={0} count={1}>
-          <SettingsRow label="Nobody here" />
-        </GroupCell>
-      }
+      ListEmptyComponent={<Text style={[styles.nobody, { color: c.muted }]}>Nobody here</Text>}
       renderItem={({ item, index }) => (
-        <GroupCell index={index} count={entries.length}>
+        <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
           <EntryRow e={item} busy={busy === item.registrationId} onAllow={allow} onRevoke={revoke} />
-        </GroupCell>
+        </View>
       )}
     />
   );
@@ -250,7 +244,7 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
         <ActivityIndicator size="small" color={c.text} />
       ) : waiting ? (
         <Pressable onPress={() => onAllow(e)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Let ${nameOf(e)} in`}>
-          <Text style={[styles.link, { color: c.primary }]}>Let in</Text>
+          <Text style={[styles.link, { color: c.sky }]}>Let in</Text>
         </Pressable>
       ) : offered ? (
         <Pressable onPress={() => onRevoke(e)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Revoke the offer for ${nameOf(e)}`}>
@@ -264,14 +258,15 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   note: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyCard: { paddingVertical: spacing[8], alignItems: 'center' },
   empty: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  cards: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
+  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[4] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  nobody: { paddingVertical: spacing[4], fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   cardSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   figure: { ...cosmosFont.figure },
-  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 60 },
   pos: { width: 28, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

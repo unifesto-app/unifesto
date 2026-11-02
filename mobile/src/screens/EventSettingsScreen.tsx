@@ -20,11 +20,10 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
@@ -42,6 +41,8 @@ const STATUS_TEXT: Record<string, string> = {
  * Status and the irreversible stuff for one event: publish a draft, pick the
  * payout account, cancel, hide or delete. The rules match the web: hide only
  * finished or cancelled events, delete only drafts or cancelled ones.
+ * The status sits on the page as plain coloured text; row lists are flat with
+ * full hairlines, and the switch and field groups keep their box (controls).
  */
 export default function EventSettingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -161,9 +162,8 @@ export default function EventSettingsScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <View style={[styles.card, { alignItems: 'center' }]}>
-            <CardBackdrop shape={styles.card} />
-            <Text style={[styles.muted, { color: c.soft, marginLeft: 0 }]}>{error}</Text>
+          <View style={styles.error}>
+            <Text style={[styles.muted, { color: c.muted, marginLeft: 0 }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
           </View>
         ) : (
@@ -206,8 +206,7 @@ export default function EventSettingsScreen() {
         setRefreshing(false);
       }}
     >
-      <View style={styles.card}>
-        <CardBackdrop shape={styles.card} />
+      <View>
         <View style={styles.statusRow}>
           <View style={[styles.dot, { backgroundColor: statusColor }]} />
           <Text style={[styles.status, { color: statusColor }]} accessibilityRole="header">
@@ -316,9 +315,10 @@ export default function EventSettingsScreen() {
       {/* Where this event's earnings are paid. Blank = the creator's primary account. */}
       {isSpaceAdmin && accounts ? (
         <>
-          <SettingsGroup title="Payout account">
+          {/* Ivory: money. */}
+          <SettingsGroup flat title="Payout account">
             <SettingsRow
-              icon={icon(Bank)}
+              icon={icon(Bank, c.ivory)}
               label="Creator's primary account"
               trailing={radio(selected === '')}
               onPress={() => setSelected('')}
@@ -326,7 +326,7 @@ export default function EventSettingsScreen() {
             {accounts.map((a) => (
               <SettingsRow
                 key={a.id}
-                icon={icon(Bank)}
+                icon={icon(Bank, c.ivory)}
                 label={describeAccount(a)}
                 value={a.isOwn ? undefined : a.ownerName}
                 trailing={radio(selected === a.id)}
@@ -345,7 +345,7 @@ export default function EventSettingsScreen() {
 
       {isEventOwner ? (
         <>
-        <SettingsGroup title="Danger zone">
+        <SettingsGroup flat title="Danger zone">
           {canCancel ? (
             <SettingsRow icon={icon(XCircle, c.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
           ) : null}
@@ -411,7 +411,7 @@ export default function EventSettingsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  error: { marginTop: spacing[10], alignItems: 'center' },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },

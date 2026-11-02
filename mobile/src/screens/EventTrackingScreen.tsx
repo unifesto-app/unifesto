@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, WhatsappLogo } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple, LinkSimple } from '@unifesto/unicon/react-native';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
 import { conversion, getTraffic, type TrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -18,18 +19,18 @@ import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const ICON = 28;
 
-/** Channels a curator typically promotes on; each gets its own tracking link. */
+/** Channels a curator typically promotes on; each gets its own tracking link, shown by the app's real mark. */
 const CHANNELS = [
-  { source: 'instagram', medium: 'social', label: 'Instagram', Icon: InstagramLogo },
-  { source: 'whatsapp', medium: 'social', label: 'WhatsApp', Icon: WhatsappLogo },
-  { source: 'linkedin', medium: 'social', label: 'LinkedIn', Icon: LinkedinLogo },
-  { source: 'email', medium: 'email', label: 'Email', Icon: EnvelopeSimple },
+  { source: 'instagram', medium: 'social', label: 'Instagram', brand: 'instagram' },
+  { source: 'whatsapp', medium: 'social', label: 'WhatsApp', brand: 'whatsapp' },
+  { source: 'linkedin', medium: 'social', label: 'LinkedIn', brand: 'linkedin' },
+  { source: 'email', medium: 'email', label: 'Email', brand: null },
 ] as const;
 
 /**
  * Tracking for one event (curators): where confirmed attendees came from, by
  * the utm tags of the link that brought them in, plus tracking links per
- * channel.
+ * channel. Lists are rows on the page; building a link closes them in sky.
  */
 export default function EventTrackingScreen() {
   const { eventId, slug, title } = useLocalSearchParams<{ eventId: string; slug: string; title?: string }>();
@@ -77,7 +78,6 @@ export default function EventTrackingScreen() {
     );
   }
 
-  const icon = (I: typeof LinkSimple) => <I size={ICON} color={c.text} />;
   const total = sources?.total ?? 0;
 
   return (
@@ -113,7 +113,7 @@ export default function EventTrackingScreen() {
         </>
       ) : null}
 
-      <SettingsGroup title="Where registrations came from" plain>
+      <SettingsGroup flat title="Where registrations came from" plain>
         {total === 0 ? (
           <SettingsRow label="No confirmed registrations yet" />
         ) : (
@@ -139,18 +139,19 @@ export default function EventTrackingScreen() {
       ) : null}
 
       <View style={{ marginTop: spacing[8] }}>
-        <SettingsGroup title="Tracking links">
-          {CHANNELS.map((c) => (
+        <SettingsGroup flat title="Tracking links" style={{ marginTop: 0 }}>
+          {CHANNELS.map((ch) => (
             <SettingsRow
-              key={c.source}
-              icon={icon(c.Icon)}
-              label={`Copy ${c.label} link`}
-              onPress={() => void copy(c.source, c.medium, c.label)}
+              key={ch.source}
+              icon={ch.brand ? <BrandIcon brand={ch.brand} size={ICON} /> : <EnvelopeSimple size={ICON} color={c.text} />}
+              label={`Copy ${ch.label} link`}
+              onPress={() => void copy(ch.source, ch.medium, ch.label)}
             />
           ))}
           <SettingsRow
-            icon={icon(LinkSimple)}
+            icon={<LinkSimple size={ICON} color={c.sky} />}
             label="Build a tracking link"
+            accent={c.sky}
             onPress={() =>
               router.push({ pathname: '/utm-link', params: { url: publicUrl, title: title ?? '', campaign: slug ?? '' } })
             }
