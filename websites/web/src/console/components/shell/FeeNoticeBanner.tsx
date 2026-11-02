@@ -8,14 +8,15 @@ import { BUYER_FEE_PERCENT } from "@/console/lib/utils/money";
 import { PLANS, planFee } from "@/lib/site";
 
 /**
- * Z2: tell organisers the platform fee started on 31 Oct 2026, and that every
- * Space moved to General (replaces A10's 2 Nov notice). Shown to the people
- * who run a space's money (Space Admins, Curators) for two weeks; dismissing
- * it hides it on this browser.
+ * Z2: tell organisers the platform fee applies from 3 Nov 2026 (the Terms v2
+ * date), and that every Space moved to General (replaces A10's 2 Nov notice).
+ * Shown to the people who run a space's money (Space Admins, Curators) for two
+ * weeks; dismissing it hides it on this browser.
  */
-const GO_LIVE_LABEL = "31 October 2026";
-const SHOW_UNTIL = new Date("2026-11-14T00:00:00+05:30");
-const DISMISS_KEY = "fee-notice-2026-10-31";
+const GO_LIVE_LABEL = "3 November 2026";
+const SHOW_UNTIL = new Date("2026-11-17T00:00:00+05:30");
+// New key: the 31 Oct notice had the wrong date, so it shows again for everyone.
+const DISMISS_KEY = "fee-notice-2026-11-03";
 
 export function FeeNoticeBanner() {
   const { billing, can } = useSession();
