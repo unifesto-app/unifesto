@@ -1098,3 +1098,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · Space tab check-in list drops its card for hairline rows, like Up next (#543)
 - **2026-11-02** · Apex tab "Waiting on me" drops its tile rail for hairline rows, like Up next (#544)
 - **2026-11-02** · Profile, Account, Notifications, Permissions, Appearance and About as hairline row lists with sky action rows and real app marks; What's new loses Got it (#545)
+- **2026-11-02** · mobile dark ground is charcoal #17171b; cards, muted text and crimson lifted to keep AA (#546)
