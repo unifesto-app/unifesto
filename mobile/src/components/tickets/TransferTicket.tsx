@@ -30,8 +30,8 @@ export default function TransferTicket({
 
   if (!open) {
     return (
-      <SettingsGroup>
-        <SettingsRow icon={<PaperPlaneTilt size={24} color={c.text} />} label="Transfer ticket" onPress={() => setOpen(true)} />
+      <SettingsGroup flat>
+        <SettingsRow icon={<PaperPlaneTilt size={24} color={c.sky} />} label="Transfer ticket" onPress={() => setOpen(true)} />
       </SettingsGroup>
     );
   }

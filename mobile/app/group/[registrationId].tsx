@@ -11,7 +11,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowCounterClockwise, CaretRight, Crown, EnvelopeSimple, GenderIntersex, Minus, Phone, Plus, Star, User, UsersThree } from '@unifesto/unicon/react-native';
-import { GroupCell, SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
+import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import { profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
@@ -24,7 +24,6 @@ import { GUTTER } from '../../src/components/home/Section';
 import type { GroupMemberInput } from '../../src/lib/api/registrations';
 import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
-import { CardBackdrop } from '../../src/components/ui/CardSurface';
 import ShadeCard from '../../src/components/ui/ShadeCard';
 import { Button } from '../../src/components/ui';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../../src/theme/cosmos';
@@ -33,8 +32,10 @@ const AVATAR = 40;
 
 /**
  * "Manage group": one page for both group models (pay-first seats and the
- * shared-ticket roster): seats filled on the sky shade, one row per person, an
- * inline invite field, and an inline member editor. No modals, by design.
+ * shared-ticket roster): seats filled on the sky shade (the page's one hero),
+ * then everything else straight on the page with no cards: one row per person
+ * with full hairlines, titled blocks for adding seats, answers and the inline
+ * invite, and an inline member editor. No modals, by design.
  */
 export default function ManageGroupRoute() {
   const c = useCosmos();
@@ -60,8 +61,7 @@ export default function ManageGroupRoute() {
       <CosmosScreen contentContainerStyle={styles.pad}>
         {header}
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <UsersThree size={40} color={c.muted} weight="duotone" />
+          <UsersThree size={44} color={c.muted} weight="duotone" />
           <Text style={[styles.body, { color: c.soft, textAlign: 'center', marginTop: spacing[3] }]}>{g.error}</Text>
         </View>
       </CosmosScreen>
@@ -117,7 +117,7 @@ export default function ManageGroupRoute() {
                     />
                   ) : (
                     <>
-                      <SettingsGroup>
+                      <SettingsGroup flat style={styles.flatFirst}>
                         {has.name ? <SettingsRow icon={<User size={24} color={c.text} />} label={saved!.name} /> : null}
                         {has.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={saved!.email} /> : null}
                         {has.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${saved!.mobile}`} /> : null}
@@ -145,9 +145,8 @@ export default function ManageGroupRoute() {
                   )}
 
                   {g.customFields.length > 0 ? (
-                    <View style={[styles.card, { marginTop: spacing[5] }]}>
-                      <CardBackdrop shape={styles.card} />
-                      <Text style={[styles.cardTitle, { color: c.text }]}>Additional information</Text>
+                    <View style={styles.block}>
+                      <Text style={[styles.blockTitle, { color: c.muted }]}>Additional information</Text>
                       {view
                         ? visibleFields(g.customFields, m.customFields)
                             .filter((field) => field.field_type !== 'section')
@@ -209,7 +208,7 @@ export default function ManageGroupRoute() {
           </View>
           <Text style={[styles.body, { color: c.muted, marginTop: 4 }]}>{status}</Text>
           {row.kind === 'filled' && (md.email || md.mobile) ? (
-            <SettingsGroup style={{ marginTop: spacing[5] }}>
+            <SettingsGroup flat style={{ marginTop: spacing[5] }}>
               {md.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={md.email} /> : null}
               {md.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${md.mobile}`} /> : null}
             </SettingsGroup>
@@ -257,10 +256,9 @@ export default function ManageGroupRoute() {
 
               {/* Lead handover: asked of me (member), or waiting on someone (lead). */}
               {g.team?.leadTransfer ? (
-                <View style={[styles.card, { marginTop: spacing[5] }]}>
-                  <CardBackdrop shape={styles.card} />
+                <View style={styles.block}>
                   <View style={styles.nameRow}>
-                    <Crown size={20} color={c.text} weight="duotone" />
+                    <Crown size={20} color={c.warn} weight="duotone" />
                     <Text style={[styles.cardTitle, { color: c.text, marginBottom: 0 }]}>
                       {g.team.leadTransfer.toMe ? 'Lead your team?' : `Waiting for ${g.team.leadTransfer.toName}`}
                     </Text>
@@ -296,7 +294,7 @@ export default function ManageGroupRoute() {
 
               {g.isMember ? (
                 <View>
-                  <SettingsGroup style={{ marginTop: spacing[6] }}>
+                  <SettingsGroup flat style={{ marginTop: spacing[6] }}>
                     <SettingsRow icon={<User size={24} color={c.text} />} label={g.details?.member?.name || 'Me'} />
                   </SettingsGroup>
                   <Text style={[styles.body, { color: c.muted, marginTop: spacing[2] }]}>
@@ -308,29 +306,22 @@ export default function ManageGroupRoute() {
           }
           ListEmptyComponent={
             g.isMember ? null : (
-              <View style={[styles.empty, { marginTop: spacing[6] }]}>
-                <CardBackdrop shape={styles.empty} />
+              <View style={styles.empty}>
                 <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>There's nothing to manage for this ticket.</Text>
               </View>
             )
           }
           renderItem={({ item, index }) => (
-            <GroupCell
-              index={index}
-              count={g.rows.length}
-              divider={styles.rosterDivider}
-              style={[index === 0 && styles.rosterFirst, index === g.rows.length - 1 && styles.rosterLast]}
-            >
+            <View style={index === 0 ? styles.rosterFirst : [styles.rosterRow, { borderTopColor: c.border }]}>
               <Row row={item} />
-            </GroupCell>
+            </View>
           )}
           ListFooterComponent={
             <>
               {/* Lead: grow the team, inside the window and its size limit. */}
               {g.team?.isLead && g.teamOpen && g.usesSeats && g.team.canAddUpTo !== 0 ? (
-                <View style={[styles.card, { marginTop: spacing[4] }]}>
-                  <CardBackdrop shape={styles.card} />
-                  <Text style={[styles.cardTitle, { color: c.text }]}>Add people</Text>
+                <View style={styles.block}>
+                  <Text style={[styles.blockTitle, { color: c.muted }]}>Add people</Text>
                   <Text style={[styles.small, { color: c.muted }]}>
                     {g.addIosBlocked
                       ? "Paid seats for online events aren't available in the iOS app."
@@ -370,9 +361,8 @@ export default function ManageGroupRoute() {
 
               {/* Lead: the per-group questions, asked once for everyone. Teammate: their own answers. */}
               {g.details && g.teamFields.length > 0 ? (
-                <View style={[styles.card, { marginTop: spacing[4] }]}>
-                  <CardBackdrop shape={styles.card} />
-                  <Text style={[styles.cardTitle, { color: c.text }]}>{g.isMember ? 'My answers' : 'Team answers'}</Text>
+                <View style={styles.block}>
+                  <Text style={[styles.blockTitle, { color: c.muted }]}>{g.isMember ? 'My answers' : 'Team answers'}</Text>
                   {g.details.editable ? (
                     <>
                       {g.details.editsUntil ? (
@@ -405,10 +395,9 @@ export default function ManageGroupRoute() {
 
               {/* Inline invite (seats) — opened from an open row */}
               {g.composerOpen ? (
-                <View style={[styles.card, { marginTop: spacing[4] }]}>
-                  <CardBackdrop shape={styles.card} />
+                <View style={styles.block}>
                   <View style={styles.cardHead}>
-                    <Text style={[styles.cardTitle, { color: c.text, marginBottom: 0 }]}>
+                    <Text style={[styles.blockTitle, { color: c.muted, marginBottom: 0 }]}>
                       {g.replacing ? `Replace ${g.replacing.name}` : 'Invite by email'}
                     </Text>
                     <Pressable onPress={() => g.setComposerOpen(false)} hitSlop={10}>
@@ -459,7 +448,7 @@ export default function ManageGroupRoute() {
 function SeatActions({ actions }: { actions: SeatAction[] }) {
   if (actions.length === 0) return null;
   return (
-    <SettingsGroup title="Actions" style={{ marginTop: spacing[6] }}>
+    <SettingsGroup flat title="Actions">
       {actions.map((a) => (
         <SettingsRow key={a.key} label={a.label} danger={a.danger} onPress={a.onPress} />
       ))}
@@ -503,7 +492,7 @@ const Row = React.memo(function Row({ row }: { row: GroupRow }) {
       onPress={row.onOpen}
       accessibilityRole="button"
       accessibilityLabel={sub ? `${title}, ${sub}` : title}
-      style={({ pressed }) => [styles.row, row.kind === 'released' && { opacity: 0.6 }, pressed && { backgroundColor: c.tint }]}
+      style={({ pressed }) => [styles.row, row.kind === 'released' && { opacity: 0.6 }, pressed && { opacity: 0.6 }]}
     >
       {mark}
       <View style={{ flex: 1 }}>
@@ -528,7 +517,8 @@ const Row = React.memo(function Row({ row }: { row: GroupRow }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
-  empty: { alignItems: 'center', borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // Empty and error states sit on the page: no card.
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   title: { flexShrink: 1, fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   nameTitle: { flexShrink: 1, fontSize: typography.fontSize.xl, lineHeight: 26, ...cosmosFont.strong },
   cardLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -540,11 +530,14 @@ const styles = StyleSheet.create({
   error: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   track: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: spacing[3] },
   fill: { height: '100%', borderRadius: 3 },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5], overflow: 'hidden' },
+  // A titled block on the page (no card), like a SettingsGroup's title over its rows.
+  block: { marginTop: spacing[8] },
+  blockTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginHorizontal: spacing[1], ...cosmosFont.strong },
+  flatFirst: { marginTop: 0 },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...cosmosFont.strong },
   editHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 64, paddingVertical: spacing[2] },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 64, paddingVertical: spacing[2] },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 16, ...cosmosFont.strong },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -554,10 +547,9 @@ const styles = StyleSheet.create({
   stepCount: { minWidth: 24, textAlign: 'center', fontSize: typography.fontSize.lg, ...cosmosFont.figure },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   divider: { height: StyleSheet.hairlineWidth },
-  // The roster card: a little air above the first row and below the last.
-  rosterFirst: { marginTop: spacing[6], paddingTop: spacing[1] },
-  rosterLast: { paddingBottom: spacing[1] },
-  rosterDivider: { marginLeft: spacing[4] + AVATAR + spacing[3] },
+  // The roster: rows on the page, a full hairline between them.
+  rosterFirst: { marginTop: spacing[6] },
+  rosterRow: { borderTopWidth: StyleSheet.hairlineWidth },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

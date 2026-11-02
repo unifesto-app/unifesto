@@ -9,7 +9,7 @@ import CosmosScreen from '../../src/components/ui/CosmosScreen';
 import ShadeCard from '../../src/components/ui/ShadeCard';
 import { GUTTER } from '../../src/components/home/Section';
 import { Button } from '../../src/components/ui';
-import { borderRadius, spacing } from '../../src/theme/spacing';
+import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import {
   requestRefund,
@@ -18,7 +18,6 @@ import {
   type RefundRequest,
   type RefundStatus,
 } from '../../src/lib/api/refunds';
-import { CardBackdrop } from '../../src/components/ui/CardSurface';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../../src/theme/cosmos';
 
 /** Visual state a single timeline step can be in. */
@@ -207,13 +206,9 @@ export default function RefundRoute() {
 
             {/* ── Request form ── */}
             {showForm ? (
-              <View style={[styles.card, latest && { marginTop: spacing[4] }]}>
-                <CardBackdrop shape={styles.card} />
-                <Text style={[styles.cardTitle, { color: c.text }]}>
+              <View style={latest ? styles.block : null}>
+                <Text style={[styles.groupTitle, { color: c.muted }]}>
                   {latest ? 'Request another refund' : 'Request a refund'}
-                </Text>
-                <Text style={[styles.body, { color: c.soft }]}>
-                  The organiser reviews it first, then our team makes the final decision.
                 </Text>
 
                 <View style={styles.chips}>
@@ -257,7 +252,7 @@ export default function RefundRoute() {
                 <View style={styles.note}>
                   <Info size={18} color={c.muted} />
                   <Text style={[styles.small, { color: c.muted, flex: 1 }]}>
-                    Only the ticket price is refunded; booking fees are not. Approved refunds go back to your original payment method in 5 to 7 business days.
+                    The organiser reviews it first, then our team makes the final decision. Only the ticket price is refunded; booking fees are not. Approved refunds go back to your original payment method in 5 to 7 business days.
                   </Text>
                 </View>
 
@@ -280,17 +275,16 @@ export default function RefundRoute() {
 
             {/* ── Earlier requests (the latest is shown above) ── */}
             {earlier.length > 0 ? (
-              <View style={{ marginTop: spacing[8] }}>
+              <View style={styles.block}>
                 <Text style={[styles.groupTitle, { color: c.muted }]}>Earlier requests</Text>
-                <View style={[styles.card, { paddingVertical: spacing[1] }]}>
-                  <CardBackdrop shape={styles.card} />
+                <View>
                   {earlier.map((r, i) => {
                     const sum = statusSummary(r.status);
                     return (
                       <View key={r.id}>
                         <View style={styles.earlierRow}>
                           <View style={{ flex: 1 }}>
-                            <Text style={[styles.earlierTitle, { color: c.text }]}>{sum.label}</Text>
+                            <Text style={[styles.earlierTitle, { color: toneColor(sum.tone) }]}>{sum.label}</Text>
                             <Text style={[styles.small, { color: c.muted }]} numberOfLines={1}>
                               {formatWhen(r.createdAt)}
                             </Text>
@@ -377,7 +371,8 @@ const styles = StyleSheet.create({
     ...cosmosFont.display,
     letterSpacing: displayTracking(24),
   },
-  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  // A titled block on the page (no card).
+  block: { marginTop: spacing[8] },
   status: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
@@ -393,10 +388,8 @@ const styles = StyleSheet.create({
   amountLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   amount: { fontSize: 40, lineHeight: 48, ...cosmosFont.figure },
   small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
-  cardTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  body: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[4] },
-  reasonChip: { paddingHorizontal: 14, height: 36, borderRadius: borderRadius.full, borderWidth: 1, justifyContent: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  reasonChip: { paddingHorizontal: 14, height: 36, borderRadius: cosmosRadius, borderWidth: 1, justifyContent: 'center' },
   reasonChipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   input: {
     marginTop: spacing[3],

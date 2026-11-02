@@ -67,16 +67,19 @@ export function AfterEventGroup({
   results,
   feedback,
   surface,
+  flat,
 }: {
   cert: MyCertificate | null;
   results?: { value?: string; onPress: () => void } | null;
   feedback?: { sent: boolean; onPress: () => void } | null;
   surface?: string;
+  /** Rows on the page instead of a card (the ticket page). */
+  flat?: boolean;
 }) {
   const c = useCosmos();
   if (!cert && !results && !feedback) return null;
   return (
-    <SettingsGroup title="After the event" surface={surface}>
+    <SettingsGroup title="After the event" surface={surface} flat={flat}>
       {feedback ? (
         <SettingsRow
           icon={<Star size={24} color={c.text} />}
