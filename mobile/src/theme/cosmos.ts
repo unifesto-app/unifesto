@@ -74,14 +74,18 @@ const light: typeof dark = {
   scheme: 'light',
 };
 
-/** Shade card colours (guidelines §08): s1 the accent, s2 its deep partner, s3 the base. */
+/**
+ * Shade card colours (guidelines §08): s1 the accent, s2 its deep partner, s3 the base.
+ * Night bases sit at the `raised` card level with a hint of the tone, so a shade card
+ * lifts off the black like every other card instead of sinking into it.
+ */
 export type ShadeTone = 'sky' | 'mint' | 'ivory' | 'blue';
 export const SHADES: Record<'dark' | 'light', Record<ShadeTone, { s1: string; s2: string; s3: string }>> = {
   dark: {
-    sky: { s1: '#90d5ff', s2: '#2f6bff', s3: '#070d1c' },
-    mint: { s1: '#90e4c1', s2: '#1f7a5c', s3: '#061410' },
-    ivory: { s1: '#f7f0e0', s2: '#9a7444', s3: '#140f08' },
-    blue: { s1: '#8fb4ff', s2: '#0062ff', s3: '#050a1f' },
+    sky: { s1: '#90d5ff', s2: '#2f6bff', s3: '#0e141d' },
+    mint: { s1: '#90e4c1', s2: '#1f7a5c', s3: '#0d1613' },
+    ivory: { s1: '#f7f0e0', s2: '#9a7444', s3: '#14120c' },
+    blue: { s1: '#8fb4ff', s2: '#0062ff', s3: '#0d1224' },
   },
   light: {
     sky: { s1: '#90d5ff', s2: '#8fb4ff', s3: '#e9f3ff' },

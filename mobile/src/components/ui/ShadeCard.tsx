@@ -28,10 +28,10 @@ export default function ShadeCard({
   const c = useCosmos();
   const isDark = c.scheme === 'dark';
   const { s1, s2, s3 } = SHADES[c.scheme][tone];
-  // The site runs the shapes at 70% under a dark glass panel; here text sits on
-  // the shade itself, so night holds them to 40% (silver text stays above 4.5:1
-  // on the brightest orb or beam). Blue is held back, as on the site.
-  const opacity = tone === 'blue' ? (isDark ? 0.28 : 0.7) : isDark ? 0.4 : 0.85;
+  // Very dim by night: text sits straight on the shade, and at 8% even muted
+  // labels hold 4.5:1 on the brightest orb or beam (40% put them near 2:1).
+  // Day keeps its pastels. Blue is held back by day, as on the site.
+  const opacity = isDark ? 0.08 : tone === 'blue' ? 0.7 : 0.85;
 
   const fill = (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: s3 }]}>
