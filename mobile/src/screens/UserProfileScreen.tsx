@@ -248,7 +248,6 @@ export default function UserProfileScreen() {
               spaces={spaces}
               loading={loadingSpaces}
               onPress={(s) => router.push(`/space/${s.id}`)}
-              onFindMore={() => router.push('/spaces')}
             />
           </Section>
         ) : null}

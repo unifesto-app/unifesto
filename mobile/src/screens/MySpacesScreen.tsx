@@ -10,7 +10,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { FindMoreSpacesRow, SpaceRow, SpaceRowSkeleton, roleOf } from '../components/home/SpaceCards';
+import { SpaceRow, SpaceRowSkeleton, roleOf } from '../components/home/SpaceCards';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
@@ -21,7 +21,7 @@ const SEARCH_FROM = 7;
 /**
  * Profile › My spaces: the spaces I belong to. The ones I run come first
  * (they're where I have work to do), then the ones I'm a member of, as rows
- * straight on the page (my role as plain text). Finding more closes the list in sky.
+ * straight on the page (my role as plain text).
  */
 export default function MySpacesScreen() {
   const router = useRouter();
@@ -85,8 +85,6 @@ export default function MySpacesScreen() {
   const row = (s: Space) => (
     <SpaceRow key={s.id} space={s} parent={s.parentSpaceId ? parents[s.parentSpaceId] : null} onPress={() => open(s)} />
   );
-  const findMore = <FindMoreSpacesRow key="more" onPress={() => router.push('/spaces')} />;
-
   const body = (() => {
     if (loading) {
       return (
@@ -137,13 +135,11 @@ export default function MySpacesScreen() {
         {running.length > 0 ? (
           <SettingsGroup flat title="I run" style={[styles.group, styles.first]}>
             {running.map(row)}
-            {member.length ? null : findMore}
           </SettingsGroup>
         ) : null}
         {member.length > 0 ? (
           <SettingsGroup flat title="Member of" style={[styles.group, !running.length && styles.first]}>
             {member.map(row)}
-            {findMore}
           </SettingsGroup>
         ) : null}
       </>
