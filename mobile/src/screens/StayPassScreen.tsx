@@ -16,7 +16,6 @@ import {
   XCircle,
 } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -38,7 +37,7 @@ import {
 } from '../lib/api/stays';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -80,7 +79,6 @@ export default function StayPassScreen() {
       <CosmosScreen contentContainerStyle={styles.pad}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
           </View>
@@ -246,8 +244,8 @@ export default function StayPassScreen() {
         />
       ) : null}
 
-      {/* ── Property ── */}
-      <SettingsGroup title="Property">
+      {/* ── Below the pass: rows on the page with full hairlines, no cards. ── */}
+      <SettingsGroup flat title="Property">
         {b.stay.address ? (
           <SettingsRow
             icon={<MapPin size={24} color={c.text} />}
@@ -273,19 +271,19 @@ export default function StayPassScreen() {
           />
         ) : null}
         <SettingsRow
-          icon={<Ticket size={24} color={c.text} />}
+          icon={<Ticket size={24} color={c.sky} />}
           label="View event"
           onPress={() => router.push(`/event/${b.event.slug || b.event.id}`)}
         />
       </SettingsGroup>
 
       {b.stay.houseRules ? (
-        <SettingsGroup title="House rules" plain>
+        <SettingsGroup flat title="House rules" plain>
           <Text style={[styles.body, { color: c.soft }]}>{b.stay.houseRules}</Text>
         </SettingsGroup>
       ) : null}
 
-      <SettingsGroup title="Guests">
+      <SettingsGroup flat title="Guests">
         {b.guests.map((g) => (
           <SettingsRow
             key={g.id ?? g.name}
@@ -299,9 +297,9 @@ export default function StayPassScreen() {
         ) : null}
       </SettingsGroup>
 
-      <SettingsGroup title="Payment">
+      <SettingsGroup flat title="Payment">
         <SettingsRow
-          icon={<Bed size={24} color={c.text} />}
+          icon={<Bed size={24} color={c.ivory} />}
           label={b.totalAmount ? PAYMENT_LABELS[b.paymentMode] : 'Free stay'}
           value={b.totalAmount ? rupees(b.totalAmount) : undefined}
         />
@@ -314,7 +312,7 @@ export default function StayPassScreen() {
       </SettingsGroup>
 
       {canCancel ? (
-        <SettingsGroup>
+        <SettingsGroup flat>
           <SettingsRow
             icon={<XCircle size={24} color={c.danger} />}
             label={cancelling ? 'Cancelling…' : 'Cancel stay'}
@@ -323,7 +321,7 @@ export default function StayPassScreen() {
           />
         </SettingsGroup>
       ) : paidOnline && !closed && b.status !== 'CHECKED_OUT' && b.status !== 'CHECKED_IN' ? (
-        <SettingsGroup>
+        <SettingsGroup flat>
           <SettingsRow
             icon={<XCircle size={24} color={c.danger} />}
             label={cancelling ? 'Sending…' : 'Ask to cancel and refund'}
@@ -361,7 +359,8 @@ function StubMessage({ icon, title, children }: { icon: React.ReactNode; title: 
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, not in a card.
+  empty: { marginTop: spacing[10] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   pass: { padding: 0 },
   passTop: { padding: spacing[5], gap: spacing[2] },
@@ -389,5 +388,5 @@ const styles = StyleSheet.create({
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   stubMsg: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
   stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
-  body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  body: { paddingVertical: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

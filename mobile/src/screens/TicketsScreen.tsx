@@ -7,10 +7,9 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
-import PromptCard from '../components/home/PromptCard';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { ALL_TABS, canDeleteTicket, useMyTickets, type MyTicket, type TicketTab } from '../hooks/useMyTickets';
 import TicketTabs from '../components/tickets/TicketTabs';
 import TicketCard, { TicketCardSkeleton } from '../components/tickets/TicketCard';
@@ -18,7 +17,7 @@ import NextPassCard, { NextPassCardSkeleton } from '../components/tickets/NextPa
 import WaitlistCard from '../components/tickets/WaitlistCard';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /** Bucket tickets under "October 2026"-style headers, preserving order. */
 function groupByMonth(tickets: MyTicket[]) {
@@ -154,14 +153,14 @@ export default function TicketsScreen() {
         <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={[column, { flexGrow: 1 }]}>
           {header}
-          <View style={styles.guest}>
-            <CardBackdrop shape={styles.guest} />
-            <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Every pass, one place</Text>
-            <Text style={[styles.guestBody, { color: c.soft }]}>
+          {/* An empty state straight on the page: one headline, one line, one button. */}
+          <View style={styles.empty}>
+            <Ticket size={44} color={c.muted} weight="duotone" accessibilityElementsHidden importantForAccessibility="no" />
+            <Text accessibilityRole="header" style={[styles.emptyTitle, { color: c.text }]}>Every pass, one place</Text>
+            <Text style={[styles.emptyBody, { color: c.muted }]}>
               Sign in to register for events and keep your tickets ready for the door.
             </Text>
-            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
-            <AuthButton label="Browse events" variant="secondary" onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[3] }} />
+            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={styles.emptyCta} />
           </View>
         </ScrollView>
       </View>
@@ -190,15 +189,17 @@ export default function TicketsScreen() {
   // A spot the organiser offered off a waiting list is time-sensitive, so it
   // surfaces on Upcoming too instead of waiting for someone to open Waitlist.
   const offers = t.waitlist.filter((e) => e.waitlistStatus === 'OFFERED' && e.offer);
+  // An action, so it's a sky row on the page (as Profile's nudge), with the detail as its value.
   const offerNudge = offers.length > 0 ? (
-    <View style={{ marginBottom: spacing[6] }}>
-      <PromptCard
-        icon={<Confetti size={24} color={c.text} />}
-        title="A spot opened up"
-        body={offers.length === 1 ? `${offers[0].event.title}. Confirm it to keep your seat.` : `${offers.length} waiting lists have a seat for you.`}
+    <SettingsGroup flat style={styles.nudge}>
+      <SettingsRow
+        icon={<Confetti size={28} color={c.sky} />}
+        label="A spot opened up"
+        value={offers.length === 1 ? offers[0].event.title : `${offers.length} waiting lists`}
+        accent={c.sky}
         onPress={() => t.setTab('waitlist')}
       />
-    </View>
+    </SettingsGroup>
   ) : null;
 
   const renderBody = (tab: TicketTab) => {
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   group: { marginBottom: spacing[8] },
   label: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], ...cosmosFont.strong },
   empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: GUTTER + spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: 20, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  emptyTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   emptyBody: {
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
@@ -333,7 +334,5 @@ const styles = StyleSheet.create({
     ...cosmosFont.body,
   },
   emptyCta: { marginTop: spacing[6], alignSelf: 'stretch' },
-  guest: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  guestTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  nudge: { marginTop: 0, marginBottom: spacing[4], marginHorizontal: GUTTER },
 });

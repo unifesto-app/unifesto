@@ -4,7 +4,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bed, ClipboardText, House, Plus, QrCode } from '@unifesto/unicon/react-native';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { openSpaceWeb } from '../lib/openOnWeb';
@@ -90,21 +89,22 @@ export default function StaysManageScreen() {
         </View>
       ) : null}
 
-      <SettingsGroup title="Bookings">
+      {/* Rows on the page with full hairlines; glyphs by job (sky requests, mint the door). */}
+      <SettingsGroup flat title="Bookings">
         <SettingsRow
-          icon={<ClipboardText size={24} color={c.text} />}
+          icon={<ClipboardText size={24} color={c.sky} />}
           label="Requests and guests"
           value={data.pendingRequests ? `${data.pendingRequests} new` : undefined}
           onPress={() => router.push(`/manage/event/${eventId}/stay-bookings`)}
         />
         <SettingsRow
-          icon={<QrCode size={24} color={c.text} />}
+          icon={<QrCode size={24} color={c.mint} />}
           label="Scan Stay Pass"
           onPress={() => router.push(`/manage/event/${eventId}/stay-scan`)}
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Stays">
+      <SettingsGroup flat title="Stays">
         {data.stays.length === 0 ? (
           <SettingsRow icon={<House size={24} color={c.muted} />} label="No stays yet" />
         ) : null}
@@ -113,7 +113,7 @@ export default function StaysManageScreen() {
           return (
             <View key={s.id}>
               <SettingsRow
-                icon={<Bed size={24} color={s.isPublished ? c.primary : c.muted} weight="fill" />}
+                icon={<Bed size={24} color={s.isPublished ? c.sky : c.muted} weight="fill" />}
                 label={s.name}
                 value={s.isPublished ? (s.counts.pending ? `${s.counts.pending} new` : 'Live') : 'Hidden'}
                 external
@@ -126,16 +126,9 @@ export default function StaysManageScreen() {
             </View>
           );
         })}
+        {/* Adding one is an action, so it closes the list in sky. */}
+        <SettingsRow icon={<Plus size={24} color={c.sky} weight="bold" />} label="Add a stay on the web" accent={c.sky} onPress={() => openStay()} />
       </SettingsGroup>
-
-      <Button
-        label="Add a stay on the web"
-        variant="secondary"
-        fullWidth
-        icon={<Plus size={18} color={c.text} weight="bold" />}
-        onPress={() => openStay()}
-        style={{ marginTop: spacing[5] }}
-      />
       {totals.beds === 0 && data.stays.length ? (
         <Text style={[styles.note, { color: c.muted }]}>Add room or bed options to a stay, then publish it.</Text>
       ) : null}
@@ -146,6 +139,7 @@ export default function StaysManageScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  sub: { marginTop: -spacing[2], paddingLeft: spacing[4] + 40, paddingRight: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  // Under the row's label in a flat group: icon slot (30) plus the row's gap (12).
+  sub: { marginTop: -spacing[2], paddingLeft: 42, paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

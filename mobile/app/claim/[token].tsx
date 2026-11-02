@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User } from '@unifesto/unicon/react-native';
+import { CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User } from '@unifesto/unicon/react-native';
 import { useAuth } from '../../src/context/AuthContext';
 import useTopSpacing from '../../src/hooks/useTopSpacing';
 import Skeleton from '../../src/components/Skeleton';
@@ -21,11 +21,10 @@ import { getEventCustomFields, getFieldsForTicket, toCustomField, type CustomFie
 import CustomFieldInput from '../../src/components/CustomFieldInput';
 import { firstFormProblem, visibleFields } from '../../src/utils/formQuestions';
 import { normalizeMobile, profileGenderToAttendeeOption, ATTENDEE_GENDER_OPTIONS, isCustomGender } from '../../src/utils/profile';
-import { borderRadius, spacing } from '../../src/theme/spacing';
+import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
-import { CardBackdrop } from '../../src/components/ui/CardSurface';
 import { markTicketsStale } from '../../src/lib/ticketsRefresh';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../src/theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../src/theme/cosmos';
 
 interface ClaimInfo {
   seatIndex: number;
@@ -300,21 +299,16 @@ export default function ClaimSeatRoute() {
             </Text>
           </ShadeCard>
 
+          {/* Rows on the page under the hero; the inputs below stay a box (they're fields). */}
           {eventLink ? (
-            <Pressable
-              onPress={eventLink}
-              accessibilityRole="link"
-              style={({ pressed }) => [styles.eventRow, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
-            >
-              <CardBackdrop shape={styles.eventRow} />
-              <Text style={[styles.eventRowText, { color: c.text }]}>See event details</Text>
-              <CaretRight size={16} color={c.muted} weight="bold" />
-            </Pressable>
+            <SettingsGroup flat style={styles.eventRow}>
+              <SettingsRow icon={<Ticket size={24} color={c.sky} />} label="See event details" onPress={eventLink} />
+            </SettingsGroup>
           ) : null}
 
           {anyLocked ? (
             <>
-              <SettingsGroup title="Your details">
+              <SettingsGroup flat title="Your details">
                 {locked.name ? <SettingsRow icon={<User size={24} color={c.text} />} label={name} /> : null}
                 {email ? <SettingsRow icon={<EnvelopeSimple size={24} color={c.text} />} label={email} /> : null}
                 {locked.mobile ? <SettingsRow icon={<Phone size={24} color={c.text} />} label={`+91 ${mobile}`} /> : null}
@@ -419,20 +413,12 @@ const styles = StyleSheet.create({
   },
   seat: { marginTop: spacing[5], fontSize: 32, lineHeight: 38, ...cosmosFont.figure },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  eventRow: {
-    marginTop: spacing[4],
-    height: 52,
-    borderRadius: cosmosCardRadius,
-    paddingHorizontal: spacing[5],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  eventRowText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  eventRow: { marginTop: spacing[4] },
   section: { marginTop: spacing[8], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 40, paddingHorizontal: spacing[5], borderRadius: borderRadius.full, justifyContent: 'center' },
+  // An option control: control corners, not a pill.
+  chip: { height: 40, paddingHorizontal: spacing[5], borderRadius: cosmosRadius, justifyContent: 'center' },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   link: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.strong },

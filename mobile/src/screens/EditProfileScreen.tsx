@@ -17,7 +17,6 @@ import { Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/reac
 import useTopSpacing from '../hooks/useTopSpacing';
 import { GENDER_OPTIONS, useEditProfile } from '../hooks/useEditProfile';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthField from '../components/auth/AuthField';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
@@ -27,7 +26,7 @@ import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 import useContentWidth from '../hooks/useContentWidth';
 
-const AVATAR = 76;
+const AVATAR = 88;
 
 const LINKS = [
   { key: 'linkedinUrl', label: 'LinkedIn', placeholder: 'linkedin.com/in/you' },
@@ -46,8 +45,8 @@ const initials = (name: string) =>
     .toUpperCase() || '·';
 
 /**
- * Profile › Edit profile. A live preview of the identity card (photo, name,
- * handle) on top, then the fields in the order registration cares about:
+ * Profile › Edit profile. A live preview of the Profile tab's identity (photo,
+ * name, handle, centred on the page) on top, then the fields in the order registration cares about:
  * the basics it requires, the optional bio, then links. Save springs up from
  * the bottom only when something changed (logic lives in useEditProfile).
  */
@@ -79,7 +78,7 @@ export default function EditProfileScreen() {
       <View style={[styles.container, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <View style={{ paddingTop: topSpacing, paddingHorizontal: GUTTER }}>
-          <Skeleton width="100%" height={AVATAR + spacing[6] * 2} borderRadius={cosmosCardRadius} />
+          <Skeleton width={AVATAR} height={AVATAR} borderRadius={AVATAR / 2} style={{ alignSelf: 'center', marginTop: spacing[4] }} />
           {[2, 1, 4].map((rows, i) => (
             <Skeleton key={i} width="100%" height={rows * 82} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
           ))}
@@ -118,9 +117,8 @@ export default function EditProfileScreen() {
           onPress={p.pickAvatar}
           accessibilityRole="button"
           accessibilityLabel="Change photo"
-          style={({ pressed }) => [styles.identity, { transform: [{ scale: pressed ? 0.99 : 1 }] }]}
+          style={({ pressed }) => [styles.identity, pressed && { opacity: 0.6 }]}
         >
-          <CardBackdrop shape={styles.identity} />
           <View style={[styles.avatar, { backgroundColor: c.tint }]}>
             {p.avatarUrl ? (
               <Image source={{ uri: p.avatarUrl }} style={StyleSheet.absoluteFill} />
@@ -135,16 +133,17 @@ export default function EditProfileScreen() {
             {fields.username ? (
               <Text style={[styles.handle, { color: c.muted }]} numberOfLines={1}>@{fields.username}</Text>
             ) : null}
+            {/* An action, so it takes the sky. */}
             <View style={styles.changePhoto}>
-              <Camera size={16} color={c.text} weight="fill" />
-              <Text style={[styles.changePhotoText, { color: c.text }]}>
+              <Camera size={16} color={c.sky} weight="fill" />
+              <Text style={[styles.changePhotoText, { color: c.sky }]}>
                 {p.avatarUrl ? 'Change photo' : 'Add a photo'}
               </Text>
             </View>
           </View>
         </Pressable>
 
-        <Section title="The basics" subtitle="Needed to register for events" style={styles.firstSection}>
+        <Section title="The basics" style={styles.firstSection}>
           <View style={styles.fields}>
             <AuthField
               label="Full name"
@@ -197,7 +196,7 @@ export default function EditProfileScreen() {
           </View>
         </Section>
 
-        <Section title="About you" subtitle="Shown on your public profile" style={styles.section}>
+        <Section title="About you" style={styles.section}>
           <View style={styles.fields}>
             <AuthField
               label="Bio"
@@ -209,7 +208,7 @@ export default function EditProfileScreen() {
           </View>
         </Section>
 
-        <Section title="Links" subtitle="Where people can find you" style={styles.section}>
+        <Section title="Links" style={styles.section}>
           <View style={styles.fields}>
             {LINKS.map((l) => (
               <AuthField
@@ -248,15 +247,8 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    marginHorizontal: GUTTER,
-    marginTop: spacing[4],
-    padding: spacing[6],
-    borderRadius: cosmosCardRadius,
-  },
+  // Straight on the page and centred, as the Profile tab shows it.
+  identity: { alignItems: 'center', marginHorizontal: GUTTER, marginTop: spacing[4] },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -265,10 +257,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 22, ...cosmosFont.strong },
-  who: { flex: 1 },
+  initials: { fontSize: 28, ...cosmosFont.strong },
+  who: { alignItems: 'center', marginTop: spacing[4] },
   // Names are never display.
-  name: { fontSize: 18, lineHeight: 24, ...cosmosFont.strong },
+  name: { fontSize: typography.fontSize.xl, lineHeight: 26, textAlign: 'center', ...cosmosFont.strong },
   handle: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   changePhoto: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
   changePhotoText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

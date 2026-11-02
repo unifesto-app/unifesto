@@ -12,7 +12,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useAuth } from '../context/AuthContext';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { getProfile } from '../lib/api/profile';
 import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
@@ -34,9 +33,9 @@ import {
   type StayOption,
 } from '../lib/api/stays';
 import { firstFormProblem, visibleFields, type FileAnswer } from '../utils/formQuestions';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 
 const GENDERS: GuestGender[] = ['MALE', 'FEMALE', 'OTHER'];
 
@@ -126,7 +125,6 @@ export default function StayBookingScreen() {
         <Stack.Screen options={{ title: 'Book a stay' }} />
         {loadError ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
           </View>
         ) : (
@@ -289,15 +287,16 @@ export default function StayBookingScreen() {
             />
           </SettingsGroup>
         ))}
+        {/* Adding someone is an action: a sky row under the guests. */}
         {guests.length < option.maxGuests ? (
-          <Button
-            label="Add a teammate"
-            variant="secondary"
-            fullWidth
-            icon={<Plus size={18} color={c.text} weight="bold" />}
-            onPress={() => setGuests((g) => [...g, blankGuest()])}
-            style={{ marginTop: spacing[4] }}
-          />
+          <SettingsGroup flat style={styles.addRow}>
+            <SettingsRow
+              icon={<Plus size={24} color={c.sky} weight="bold" />}
+              label="Add a teammate"
+              accent={c.sky}
+              onPress={() => setGuests((g) => [...g, blankGuest()])}
+            />
+          </SettingsGroup>
         ) : null}
 
         {/* Arrival & emergency */}
@@ -307,6 +306,7 @@ export default function StayBookingScreen() {
           ) : (
             <SettingsRow
               label="Set arrival time"
+              accent={c.sky}
               onPress={() => {
                 const d = fromDay(checkIn || stay.checkInFrom);
                 d.setHours(12, 0, 0, 0);
@@ -335,7 +335,8 @@ export default function StayBookingScreen() {
         </SettingsGroup>
 
         {/* Summary */}
-        <SettingsGroup title="Summary" plain>
+        {/* Read-only, so rows on the page rather than a box. */}
+        <SettingsGroup flat title="Summary" plain>
           <SettingsRow label="Nights" value={`${nights} × ${guests.length} guest${guests.length === 1 ? '' : 's'}`} />
           <SettingsRow label="Stay" value={base ? rupees(base) : 'Free'} />
           {fee ? <SettingsRow label="Processing fee" value={rupees(fee)} /> : null}
@@ -469,7 +470,9 @@ function IdProofPicker({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  // On the page, not in a card.
+  empty: { marginTop: spacing[10] },
+  addRow: { marginTop: spacing[2] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
@@ -484,7 +487,8 @@ const styles = StyleSheet.create({
   caption: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   input: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[2], ...cosmosFont.strong },
   genderRow: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[2] },
-  genderChip: { flex: 1, alignItems: 'center', paddingVertical: spacing[2], borderRadius: borderRadius.full },
+  // An option control: control corners, not a pill.
+  genderChip: { flex: 1, alignItems: 'center', paddingVertical: spacing[2], borderRadius: cosmosRadius },
   genderText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   file: {
     marginTop: spacing[2],

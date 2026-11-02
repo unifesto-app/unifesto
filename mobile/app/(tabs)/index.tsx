@@ -199,7 +199,7 @@ export default function HomeTab() {
 
         {/* Under three it isn't much of a ranking. */}
         {data.trendingEvents.length >= 3 ? (
-          <Section title="Trending now" subtitle="What people are booking this week">
+          <Section title="Trending now">
             <TrendingList events={data.trendingEvents} onPress={openEvent} />
           </Section>
         ) : null}
@@ -213,7 +213,7 @@ export default function HomeTab() {
         </Section>
 
         {data.isLoadingBeyond || data.beyondEvents.length > 0 ? (
-          <Section title="Beyond by Unifesto" subtitle="Curated by the Unifesto team">
+          <Section title="Beyond by Unifesto">
             {data.beyondSpace ? (
               <BeyondFeature space={data.beyondSpace} onPress={() => openSpace(data.beyondSpace!)} />
             ) : data.isLoadingBeyond ? (
@@ -228,7 +228,6 @@ export default function HomeTab() {
         {data.isLoadingDiscoverSpaces || data.discoverSpaces.length > 0 ? (
           <Section
             title={data.showNearbySpaces ? `Spaces in ${data.detectedCity}` : 'Explore spaces'}
-            subtitle="Clubs, communities and organisers"
             onSeeAll={() => router.push('/spaces')}
           >
             <Rail>

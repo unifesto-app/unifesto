@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bed, CaretRight, House, MapPin, Moon } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
@@ -60,7 +59,6 @@ export default function StayBrowseScreen() {
       <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
           <View style={styles.empty}>
-            <CardBackdrop shape={styles.empty} />
             <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[1], alignSelf: 'center' }} />
           </View>
@@ -92,32 +90,29 @@ export default function StayBrowseScreen() {
       </Text>
 
       {data.myBooking ? (
-        <SettingsGroup title="My stay">
+        <SettingsGroup flat title="My stay">
           <SettingsRow
-            icon={<Bed size={24} color={c.text} />}
+            icon={<Bed size={28} color={c.sky} />}
             label={data.stays.find((s) => s.id === data.myBooking!.stayId)?.name ?? 'My stay'}
             value={STATUS_LABELS[data.myBooking.status]}
             onPress={() => router.push(`/stay/pass/${data.myBooking!.id}`)}
           />
         </SettingsGroup>
       ) : !data.registered ? (
-        <View style={styles.notice}>
-          <CardBackdrop shape={styles.notice} />
-          <Text style={[styles.noticeText, { color: c.text }]}>Register for the event first, then book a stay here.</Text>
-        </View>
+        // Needs doing first, so it reads in amber, straight on the page.
+        <Text style={[styles.notice, { color: c.warn }]}>Register for the event first, then book a stay here.</Text>
       ) : null}
 
       {data.stays.length === 0 ? (
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
-          <House size={40} color={c.muted} weight="duotone" />
+          <House size={44} color={c.muted} weight="duotone" />
           <Text style={[styles.muted, { color: c.soft }]}>No stays have been listed for this event yet.</Text>
         </View>
       ) : null}
 
       {data.stays.map((stay) => (
+        // Each stay on the page: its photos keep the card corners, its options are rows with full hairlines.
         <View key={stay.id} style={styles.card}>
-          <CardBackdrop shape={styles.card} />
           <StayPhotos urls={[stay.coverImageUrl, ...(stay.galleryUrls ?? [])].filter((u): u is string => !!u)} />
           <View style={styles.cardBody}>
             <Text style={[styles.stayName, { color: c.text }]}>{stay.name}</Text>
@@ -168,7 +163,7 @@ export default function StayBrowseScreen() {
                 style={({ pressed }) => [
                   styles.option,
                   { borderTopColor: c.border, opacity: disabled && !data.myBooking ? 0.55 : 1 },
-                  pressed && { backgroundColor: c.tint },
+                  pressed && { opacity: 0.6 },
                 ]}
               >
                 <View style={{ flex: 1, gap: 2 }}>
@@ -230,15 +225,14 @@ const styles = StyleSheet.create({
   kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], lineHeight: 30, ...cosmosFont.display, letterSpacing: displayTracking(24) },
   intro: { marginTop: spacing[2], marginBottom: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  notice: { marginTop: spacing[4], padding: spacing[4], borderRadius: cosmosCardRadius },
-  noticeText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  empty: { alignItems: 'center', gap: spacing[3], marginTop: spacing[6], padding: spacing[6], borderRadius: cosmosCardRadius },
+  notice: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  empty: { alignItems: 'center', gap: spacing[3], marginTop: spacing[8] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  cover: { width: '100%', aspectRatio: 16 / 9 },
+  card: { marginTop: spacing[8] },
+  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: cosmosCardRadius, overflow: 'hidden' },
   counter: { position: 'absolute', right: spacing[3], bottom: spacing[3], paddingHorizontal: spacing[2], paddingVertical: 2, borderRadius: borderRadius.full, backgroundColor: 'rgba(0,0,0,0.55)' },
   counterText: { color: NIGHT.text, fontSize: typography.fontSize.xs, ...cosmosFont.figure },
-  cardBody: { padding: spacing[5], gap: spacing[2] },
+  cardBody: { paddingTop: spacing[4], paddingBottom: spacing[4], gap: spacing[2] },
   stayName: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.3, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
@@ -247,7 +241,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    paddingHorizontal: spacing[5],
     paddingVertical: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
   },
