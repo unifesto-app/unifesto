@@ -46,6 +46,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import SearchField from '../components/manage/SearchField';
 import Skeleton from '../components/Skeleton';
 import PressableScale from '../components/ui/PressableScale';
+import { Rows } from '../components/home/SpacePanel';
 import { openApexWeb } from '../lib/openOnWeb';
 import { AreaChart, BarChart, BarList, Meter, Ring } from '../components/apex/MiniCharts';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -491,45 +492,48 @@ export default function ApexScreen() {
           <>
             {/* ── Waiting on me ──────────────────────────────────── */}
             {heading('Waiting on me', waitingTotal > 0 ? fmt(waitingTotal) : undefined)}
+            {/* Rows on the page with hairlines between them, like the Space tab's Up next. */}
             {!countsLoaded ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.rail}>
+              <Rows>
                 {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} width={124} height={92} borderRadius={cosmosCardRadius} />
+                  <Skeleton key={i} width="100%" height={36} borderRadius={8} />
                 ))}
-              </ScrollView>
+              </Rows>
             ) : waiting.length === 0 ? (
               <View style={styles.clear} accessible accessibilityLabel="All clear. Nothing is waiting on me.">
-                <CardBackdrop shape={styles.clear} />
                 <CheckCircle size={24} color={c.success} weight="fill" />
                 <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
               </View>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.rail}>
+              <Rows>
                 {waiting.map((t) => {
                   const n = countOf(t);
                   const name = t.short ?? t.label;
                   return (
                     <PressableScale
                       key={t.label}
+                      feedback="inline"
                       onPress={() => openTool(t)}
                       accessibilityRole="button"
                       accessibilityLabel={`${name}, ${n} waiting`}
                       style={styles.need}
                     >
-                      <CardBackdrop shape={styles.need} />
-                      <View style={styles.tileTop}>
-                        <t.icon size={16} color={c.soft} />
-                        <Text style={[styles.needCount, { color: c.warn }]}>{fmt(n)}</Text>
+                      <t.icon size={ICON} color={c.soft} />
+                      <View style={styles.needBody}>
+                        <View style={styles.needHead}>
+                          <Text style={[styles.needLabel, { color: c.text }]} numberOfLines={1}>
+                            {name}
+                          </Text>
+                          <Text style={[styles.needCount, { color: c.warn }]}>{fmt(n)}</Text>
+                        </View>
+                        {/* Share of everything waiting. */}
+                        <Meter frac={n / waitingTotal} color={c.warn} />
                       </View>
-                      <Text style={[styles.needLabel, { color: c.text }]} numberOfLines={1}>
-                        {name}
-                      </Text>
-                      {/* Share of everything waiting. */}
-                      <Meter frac={n / waitingTotal} color={c.warn} />
+                      <CaretRight size={14} color={c.muted} />
                     </PressableScale>
                   );
                 })}
-              </ScrollView>
+              </Rows>
             )}
 
             {/* ── Pulse: visual overview ─────────────────────────── */}
@@ -785,13 +789,12 @@ const styles = StyleSheet.create({
   heading: { marginTop: spacing[8], marginBottom: spacing[3] },
   headingText: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
   headingCount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
-  // Rails run edge to edge; the first card still lines up with the gutter.
-  bleed: { marginHorizontal: -GUTTER },
-  rail: { paddingHorizontal: GUTTER, gap: GAP },
-  need: { minWidth: 124, borderRadius: cosmosCardRadius, padding: PAD, gap: spacing[2] },
-  needCount: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.figure },
-  needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  clear: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: PAD, borderRadius: cosmosCardRadius },
+  need: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  needBody: { flex: 1, gap: spacing[2] },
+  needHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[2] },
+  needCount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
+  needLabel: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  clear: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
   clearText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: cosmosCardRadius, padding: PAD, gap: 4, marginBottom: GAP },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[2] },
