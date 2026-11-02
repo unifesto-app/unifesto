@@ -10,14 +10,13 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import Skeleton from '../components/Skeleton';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
 import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 
 /** Most templates are landscape A4; used until the real image size is known. */
 const DEFAULT_RATIO = 1.414;
@@ -52,9 +51,10 @@ function useRatio(url: string | null) {
 }
 
 /**
- * Profile › Certificates: the newest one up front, big, with everything you'd
- * do with it (open, share, copy the code a résumé asks for); every earlier
- * one as a compact row, grouped by the year it was issued.
+ * Profile › Certificates, straight on the page (no cards): the newest one up
+ * front, big, with everything you'd do with it (open, share, copy the code a
+ * résumé asks for); every earlier one as a row with full hairlines, grouped by
+ * the year it was issued.
  */
 export default function CertificatesScreen() {
   const c = useCosmos();
@@ -95,52 +95,47 @@ export default function CertificatesScreen() {
 
   const body = loading ? (
     <View style={styles.pad}>
-      <Skeleton width="100%" height={340} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[4] }} />
-      {[0, 1].map((i) => (
-        <Skeleton key={i} width="100%" height={92} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[3] }} />
-      ))}
+      <Skeleton width="100%" height={240} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[4] }} />
+      <Skeleton width="70%" height={20} borderRadius={6} style={{ marginTop: spacing[4] }} />
+      <Skeleton width="40%" height={14} borderRadius={6} style={{ marginTop: spacing[2] }} />
     </View>
   ) : !latest && !locked.length ? (
+    // An empty state straight on the page: one headline, one line, one button.
     <View style={styles.prompt}>
-      <CardBackdrop shape={styles.prompt} />
-      <CertificateIcon size={40} color={c.muted} weight="duotone" />
+      <CertificateIcon size={44} color={c.muted} weight="duotone" />
       <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">No certificates yet</Text>
-      <Text style={[styles.promptBody, { color: c.soft }]}>
+      <Text style={[styles.promptBody, { color: c.muted }]}>
         When an organiser issues a certificate for an event you attended, it lands here, ready to share.
       </Text>
-      <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={{ marginTop: spacing[6] }} />
+      <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={styles.promptButton} />
     </View>
   ) : (
     <>
       {locked.length ? (
-        <View style={styles.pad}>
-          <SettingsGroup title="Waiting for my feedback">
-            {locked.map((cert) => (
-              <SettingsRow
-                key={cert.id}
-                icon={<CertificateIcon size={24} color={c.text} />}
-                label={cert.event.title}
-                value="Rate to unlock"
-                onPress={() => router.push(`/feedback/${cert.event.id}` as never)}
-              />
-            ))}
-          </SettingsGroup>
-        </View>
+        <SettingsGroup flat title="Waiting for my feedback" style={[styles.group, styles.first]}>
+          {locked.map((cert) => (
+            <SettingsRow
+              key={cert.id}
+              icon={<CertificateIcon size={28} color={c.warn} />}
+              label={cert.event.title}
+              value="Rate to unlock"
+              onPress={() => router.push(`/feedback/${cert.event.id}` as never)}
+            />
+          ))}
+        </SettingsGroup>
       ) : null}
       {latest ? (
-        <View style={styles.pad}>
+        <View style={[styles.pad, locked.length ? styles.after : null]}>
           <Text style={[styles.eyebrow, { color: c.muted }]}>
-            {certificates.length === 1 ? 'My certificate' : `Latest of ${certificates.length - locked.length}`}
+            {certificates.length - locked.length === 1 ? 'My certificate' : `Latest of ${certificates.length - locked.length}`}
           </Text>
-          <LatestCard cert={latest} onOpenEvent={() => router.push(`/event/${latest.event.slug || latest.event.id}`)} />
+          <LatestCertificate cert={latest} onOpenEvent={() => router.push(`/event/${latest.event.slug || latest.event.id}`)} />
         </View>
       ) : null}
-      {years.map(([year, certs], i) => (
-        <Section key={year} title={String(year)} style={i === 0 ? styles.firstSection : undefined}>
-          <View style={[styles.pad, styles.list]}>
-            {certs.map((cert) => <CertificateRow key={cert.id} cert={cert} />)}
-          </View>
-        </Section>
+      {years.map(([year, certs]) => (
+        <SettingsGroup key={year} flat title={String(year)} style={styles.group}>
+          {certs.map((cert) => <CertificateRow key={cert.id} cert={cert} />)}
+        </SettingsGroup>
       ))}
     </>
   );
@@ -163,7 +158,8 @@ export default function CertificatesScreen() {
   );
 }
 
-function LatestCard({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: () => void }) {
+/** The newest certificate on the page: its image at true proportions, then title, actions and the code band. */
+function LatestCertificate({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: () => void }) {
   const c = useCosmos();
   const ratio = useRatio(cert.imageUrl);
 
@@ -177,8 +173,7 @@ function LatestCard({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: (
   };
 
   return (
-    <View style={styles.card}>
-      <CardBackdrop shape={styles.card} />
+    <View>
       <Pressable
         onPress={() => cert.imageUrl && WebBrowser.openBrowserAsync(cert.imageUrl)}
         disabled={!cert.imageUrl}
@@ -194,7 +189,7 @@ function LatestCard({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: (
         </View>
       </Pressable>
 
-      <View style={styles.cardBody}>
+      <View style={styles.latestBody}>
         <Pressable onPress={onOpenEvent} accessibilityRole="link" accessibilityHint="Opens the event">
           <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{cert.event.title}</Text>
         </Pressable>
@@ -213,11 +208,12 @@ function LatestCard({ cert, onOpenEvent }: { cert: MyCertificate; onOpenEvent: (
           />
         </View>
 
-        {/* The code résumés and forms ask for; copying gives the full verify link. */}
-        <View style={[styles.code, { borderTopColor: c.border }]}>
+        {/* The code résumés and forms ask for, in a band between full hairlines;
+            copying gives the full verify link. Mint: a certificate is a done thing. */}
+        <View style={[styles.code, { borderColor: c.border }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.codeLabel, { color: c.muted }]}>Verification code</Text>
-            <Text style={[styles.codeValue, { color: c.text }]} selectable>{cert.verificationCode}</Text>
+            <Text style={[styles.codeValue, { color: c.mint }]} selectable>{cert.verificationCode}</Text>
           </View>
           <Pressable onPress={copyCode} hitSlop={10} accessibilityRole="button" accessibilityLabel="Copy verification link">
             {({ pressed }) => <Text style={[styles.copy, { color: c.text, opacity: pressed ? 0.6 : 1 }]}>Copy link</Text>}
@@ -237,9 +233,8 @@ function CertificateRow({ cert }: { cert: MyCertificate }) {
       disabled={!cert.pdfUrl && !cert.imageUrl}
       accessibilityRole="button"
       accessibilityLabel={`Certificate for ${cert.event.title}, issued ${formatDate(cert.issuedAt)}`}
-      style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
-      <CardBackdrop shape={styles.row} />
       <View style={[styles.thumb, { height: THUMB_W / ratio, backgroundColor: c.card }]}>
         {cert.imageUrl ? (
           <Image source={{ uri: cert.imageUrl }} style={StyleSheet.absoluteFill} contentFit="contain" />
@@ -261,13 +256,14 @@ function CertificateRow({ cert }: { cert: MyCertificate }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   pad: { paddingHorizontal: GUTTER },
-  // Section's default top margin is sized for Home; tighter under the hero.
-  firstSection: { marginTop: spacing[10] },
-  list: { gap: spacing[3] },
-  eyebrow: { marginTop: spacing[4], marginBottom: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  preview: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  cardBody: { padding: spacing[5] },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
+  first: { marginTop: spacing[4] },
+  after: { marginTop: spacing[8] },
+  eyebrow: { marginTop: spacing[4], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // The certificate itself keeps a card's corners; it's the one image on the page.
+  preview: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: cosmosCardRadius },
+  latestBody: { paddingTop: spacing[4] },
   title: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
   meta: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
@@ -277,17 +273,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     marginTop: spacing[5],
-    paddingTop: spacing[4],
+    paddingVertical: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   codeLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   codeValue: { marginTop: 2, fontSize: typography.fontSize.base, letterSpacing: 0.5, ...cosmosFont.figure },
   copy: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[3], paddingRight: spacing[4], borderRadius: cosmosCardRadius },
+  // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
   thumb: { width: THUMB_W, borderRadius: borderRadius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 2 },
   rowTitle: { fontSize: typography.fontSize.base, lineHeight: 21, ...cosmosFont.strong },
-  prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  prompt: { alignItems: 'center', paddingHorizontal: GUTTER, marginTop: spacing[10] },
+  promptTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  promptBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
+  promptButton: { marginTop: spacing[6], alignSelf: 'stretch' },
 });

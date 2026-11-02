@@ -13,39 +13,30 @@ import EventListCard, { EventListCardSkeleton, placeOf } from '../components/Eve
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { isEventOver } from '../lib/upcomingTickets';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
 import useContentWidth from '../hooks/useContentWidth';
-import useGrid from '../hooks/useGrid';
 
 const reflow = LinearTransition.duration(220);
-/** Narrowest a compact card gets before the grid drops a column (as Events). */
-const CARD_MIN = 320;
-
-/** Un-hearting removes a card live, so each one fades out and the rest reflow. */
-const SavedCard = ({ width, ...props }: React.ComponentProps<typeof EventListCard> & { width: number }) => (
-  <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={{ width }}>
-    <EventListCard {...props} />
-  </Animated.View>
-);
 
 /**
- * Profile › Saved: the soonest saved event as a full poster ("Up next"), the
- * rest of what's coming as compact cards, then what's already happened, faded.
- * Un-hearting removes a card live (FavoritesContext updates ids optimistically).
+ * Profile › Saved: the soonest saved event as a full poster ("Up next"), then
+ * the rest of what's coming and what's already happened (faded) as rows on the
+ * page with full hairlines, no cards and no blurbs.
+ * Un-hearting removes a row live (FavoritesContext updates ids optimistically):
+ * each row fades out and the rest reflow, so the list keys rows by event, not
+ * index (SettingsGroup would key by index).
  */
 export default function FavoritesScreen() {
   const router = useRouter();
   const c = useCosmos();
   const { width, hero } = useContentWidth();
-  // Tablets, landscape and wide windows: the compact cards flow into columns.
-  const grid = useGrid(CARD_MIN, spacing[3]);
   const defaults = useDefaultImages();
   const { isAuthenticated } = useAuth();
   const { favoriteIds, refresh } = useFavorites();
@@ -91,14 +82,13 @@ export default function FavoritesScreen() {
   const openEvent = (e: Event) => router.push(`/event/${e.slug || e.id}`);
   const posterWidth = Math.min(width - GUTTER * 2, hero);
 
-  // `wide` lets the grid use its own width; prompts stay in the reading column.
-  const page = (children: React.ReactNode, wide = false) => (
+  const page = (children: React.ReactNode) => (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
-        contentContainerStyle={[column, wide && { maxWidth: grid.maxWidth }, styles.content, { paddingTop: topSpacing }]}
+        contentContainerStyle={[column, styles.content, { paddingTop: topSpacing }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           isAuthenticated ? (
@@ -117,24 +107,22 @@ export default function FavoritesScreen() {
     </View>
   );
 
-  const promptCard = (title: string, body: string, actions: React.ReactNode) =>
+  // An empty state straight on the page: one headline, one line, one button.
+  const prompt = (title: string, body: string, action: React.ReactNode) =>
     page(
-      <View style={[styles.prompt, { backgroundColor: c.raised }]}>
-        <Heart size={40} color={c.muted} weight="duotone" />
+      <View style={styles.prompt}>
+        <Heart size={44} color={c.muted} weight="duotone" />
         <Text style={[styles.promptTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
         <Text style={[styles.promptBody, { color: c.muted }]}>{body}</Text>
-        {actions}
+        {action}
       </View>,
     );
 
   if (!isAuthenticated) {
-    return promptCard(
+    return prompt(
       'Keep events for later',
       'Sign in and tap the heart on any event. Saved events sync across your devices.',
-      <>
-        <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
-        <AuthButton label="Browse events" variant="secondary" onPress={() => router.push('/events')} style={{ marginTop: spacing[3] }} />
-      </>,
+      <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={styles.promptButton} />,
     );
   }
 
@@ -142,32 +130,49 @@ export default function FavoritesScreen() {
     return page(
       <View style={styles.pad}>
         <PosterCardSkeleton width={posterWidth} />
-        <View style={[styles.list, { marginTop: spacing[8] }]}>
+        <View style={styles.list}>
           {[0, 1].map((i) => (
-            <View key={i} style={{ width: grid.itemWidth }}>
-              <EventListCardSkeleton />
+            <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+              <EventListCardSkeleton flat />
             </View>
           ))}
         </View>
       </View>,
-      true,
     );
   }
 
   if (!next && past.length === 0) {
-    return promptCard(
+    return prompt(
       'Nothing saved yet',
       'Tap the heart on any event and it lands here, soonest first.',
-      <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={{ marginTop: spacing[6] }} />,
+      <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={styles.promptButton} />,
     );
   }
+
+  // A titled list of rows with full hairlines, each row keyed by its event.
+  const list = (title: string, items: Event[], first: boolean, faded = false) => (
+    <Animated.View layout={reflow} style={[styles.pad, styles.list, first && styles.first]}>
+      <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">{title}</Text>
+      {items.map((e, i) => (
+        <Animated.View
+          key={e.id}
+          entering={FadeIn}
+          exiting={FadeOut.duration(180)}
+          layout={reflow}
+          style={i > 0 && [styles.divider, { borderTopColor: c.border }]}
+        >
+          <EventListCard flat event={e} past={faded} onPress={() => openEvent(e)} />
+        </Animated.View>
+      ))}
+    </Animated.View>
+  );
 
   return page(
     <>
       {next ? (
         <Animated.View key={next.id} entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={styles.pad}>
           <View style={[styles.eyebrowRow, { width: posterWidth }]}>
-            <Text style={[styles.eyebrow, { color: c.muted }]}>Up next</Text>
+            <Text style={[styles.listTitle, styles.eyebrow, { color: c.muted }]}>Up next</Text>
             <FavoriteButton eventId={next.id} size={20} color={c.muted} />
           </View>
           <PosterCard
@@ -184,27 +189,9 @@ export default function FavoritesScreen() {
         </Animated.View>
       ) : null}
 
-      {later.length > 0 ? (
-        <Animated.View layout={reflow}>
-          <Section title="Coming up" subtitle={`${later.length} more saved`} style={next ? undefined : styles.firstSection}>
-            <View style={[styles.list, styles.pad]}>
-              {later.map((e) => <SavedCard key={e.id} width={grid.itemWidth} event={e} onPress={() => openEvent(e)} />)}
-            </View>
-          </Section>
-        </Animated.View>
-      ) : null}
-
-      {past.length > 0 ? (
-        <Animated.View layout={reflow}>
-          <Section title="Been and gone" subtitle="Saved events that have ended" style={next || later.length ? undefined : styles.firstSection}>
-            <View style={[styles.list, styles.pad]}>
-              {past.map((e) => <SavedCard key={e.id} width={grid.itemWidth} event={e} past onPress={() => openEvent(e)} />)}
-            </View>
-          </Section>
-        </Animated.View>
-      ) : null}
+      {later.length > 0 ? list('Coming up', later, !next) : null}
+      {past.length > 0 ? list('Been and gone', past, !next && !later.length, true) : null}
     </>,
-    true,
   );
 }
 
@@ -212,12 +199,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 100 },
   pad: { paddingHorizontal: GUTTER },
-  // Section brings its own large top margin; trim it when nothing sits above.
-  firstSection: { marginTop: spacing[4] },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[4], marginBottom: spacing[3] },
-  eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  list: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3] },
-  prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
-  promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
-  promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  // A settings page steps by spacing[8] between lists; tighter when nothing sits above.
+  list: { marginTop: spacing[8] },
+  first: { marginTop: spacing[4] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  eyebrow: { marginBottom: 0 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  prompt: { alignItems: 'center', paddingHorizontal: GUTTER, marginTop: spacing[10] },
+  promptTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
+  promptBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
+  promptButton: { marginTop: spacing[6], alignSelf: 'stretch' },
 });

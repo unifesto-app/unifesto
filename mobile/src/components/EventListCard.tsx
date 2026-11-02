@@ -17,8 +17,11 @@ const THUMB_H = 63;
 
 export const placeOf = (e: Event) => e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null);
 
-/** Compact event card: 4:3 thumb, title, host, when · where, the price in sky, heart. `past` fades it and drops the price. */
-export default function EventListCard({ event, past = false, onPress }: { event: Event; past?: boolean; onPress: () => void }) {
+/**
+ * Compact event card: 4:3 thumb, title, host, when · where, the price in sky, heart. `past` fades it and drops the price.
+ * `flat` drops the card for a row on the page (the list draws the hairlines), as on Saved.
+ */
+export default function EventListCard({ event, past = false, flat = false, onPress }: { event: Event; past?: boolean; flat?: boolean; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
   const cover = coverOr(defaults, event.id, event.coverImageUrl);
@@ -27,12 +30,17 @@ export default function EventListCard({ event, past = false, onPress }: { event:
   // The heart is a sibling of the card's pressable, not inside it: VoiceOver
   // reads a pressable as one element, so a nested button can't be reached.
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, flat ? null : { backgroundColor: c.raised }]}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={[event.title, event.space?.name, meta, past ? null : shortPrice(event)].filter(Boolean).join(', ')}
-        style={({ pressed }) => [styles.main, past && { opacity: 0.62 }, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+        style={({ pressed }) => [
+          styles.main,
+          flat && styles.mainFlat,
+          past && { opacity: 0.62 },
+          flat ? pressed && { opacity: 0.6 } : { transform: [{ scale: pressed ? 0.985 : 1 }] },
+        ]}
       >
         <View style={[styles.thumb, { backgroundColor: c.card }]}>
           {cover ? (
@@ -50,16 +58,16 @@ export default function EventListCard({ event, past = false, onPress }: { event:
           {past ? null : <Text style={[styles.price, { color: c.sky }]}>{shortPrice(event)}</Text>}
         </View>
       </Pressable>
-      <FavoriteButton eventId={event.id} size={20} color={c.muted} style={styles.heart} />
+      <FavoriteButton eventId={event.id} size={20} color={c.muted} style={[styles.heart, flat && styles.heartFlat]} />
     </View>
   );
 }
 
-export function EventListCardSkeleton() {
+export function EventListCardSkeleton({ flat = false }: { flat?: boolean }) {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <View style={styles.main}>
+    <View style={[styles.card, flat ? null : { backgroundColor: c.raised }]}>
+      <View style={[styles.main, flat && styles.mainFlat]}>
         <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
         <View style={[styles.info, { gap: 8 }]}>
           <Skeleton width="85%" height={14} borderRadius={6} />
@@ -74,7 +82,10 @@ export function EventListCardSkeleton() {
 const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', borderRadius: cosmosCardRadius, overflow: 'hidden' },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3] },
+  // On the page the row lines up with the gutter.
+  mainFlat: { paddingHorizontal: 0 },
   heart: { paddingRight: spacing[4], paddingLeft: spacing[1] },
+  heartFlat: { paddingRight: 0, paddingLeft: spacing[3] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   info: { flex: 1, gap: 3 },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
