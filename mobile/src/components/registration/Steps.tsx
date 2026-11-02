@@ -13,11 +13,10 @@ import {
   Plus,
   ShieldCheck,
   User,
-  Wallet,
   XCircle,
 } from '@unifesto/unicon/react-native';
 import AttendeeForm from '../AttendeeForm';
-import CustomFieldInput, { OptionPicker } from '../CustomFieldInput';
+import CustomFieldInput from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';
 import PressableScale from '../ui/PressableScale';
 import ShadeCard from '../ui/ShadeCard';
@@ -25,7 +24,7 @@ import { CardBackdrop } from '../ui/CardSurface';
 import { visibleFields } from '../../utils/formQuestions';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, type PayMethod } from '../../lib/pay';
+import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, walletLogo, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -544,7 +543,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
  * Q40: our own payment page. Every UPI app Razorpay finds on the phone (last
  * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
  * typed UPI ID on iOS (Verify shows whose it is), card and the wallets our
- * Razorpay account takes. Pay pays with the pick and nothing else.
+ * Razorpay account takes, each its own row. Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
@@ -577,10 +576,17 @@ function PayWith({ r }: { r: EventRegistration }) {
         ? []
         : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
     { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
-    ...(wallets.length ? [{ key: 'wallet:', label: 'Wallet', method: { wallet: '' }, icon: icon(Wallet) }] : []),
+    // Each wallet is its own row, named as a wallet: PhonePe is often a UPI app above too.
+    ...wallets.map((w) => ({
+      key: `wallet:${w.code}`,
+      label: `${w.name} wallet`,
+      method: { wallet: w.code },
+      icon: <Image source={{ uri: walletLogo(w.code) }} style={styles.payIcon} resizeMode="contain" />,
+    })),
   ];
-  // A typed UPI ID or picked wallet still ticks its row.
-  const picked = methodKey(selected).replace(/:.*/, ':');
+  // A typed UPI ID still ticks its row.
+  const key = methodKey(selected);
+  const picked = key.startsWith('vpa:') ? 'vpa:' : key;
   return (
     <View style={styles.block}>
       <Label>Pay with</Label>
@@ -668,18 +674,6 @@ function PayWith({ r }: { r: EventRegistration }) {
                         Couldn't check it right now. You can still pay.
                       </Text>
                     ) : null}
-                  </View>
-                ) : null}
-                {on && typeof selected === 'object' && 'wallet' in selected ? (
-                  <View style={styles.payPick}>
-                    <OptionPicker
-                      title="Choose your wallet"
-                      placeholder="Choose your wallet"
-                      options={wallets.map((w) => ({ label: w.name, value: w.code }))}
-                      value={selected.wallet}
-                      onChange={(wallet) => r.setPayMethod({ wallet })}
-                      hasError={false}
-                    />
                   </View>
                 ) : null}
               </View>

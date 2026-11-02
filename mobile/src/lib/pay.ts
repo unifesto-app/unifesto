@@ -54,7 +54,7 @@ export interface PayOption {
 /**
  * A UPI app; UPI in the sheet ('upi', Android when no app was found); a typed
  * UPI ID (a collect request, iOS only); a card (Razorpay's card form, nothing
- * else); a wallet ('' = not picked yet); or Razorpay's whole sheet ('more').
+ * else); a wallet; or Razorpay's whole sheet ('more').
  */
 export type PayMethod = UpiApp | 'upi' | { vpa: string } | 'card' | { wallet: string } | 'more';
 
@@ -76,7 +76,8 @@ export function methodName(m: PayMethod, wallets: PayOption[]): string {
   if (m === 'upi' || m === 'card') return BLOCK_NAMES[m];
   if ('id' in m) return m.name;
   if ('vpa' in m) return 'UPI ID';
-  return wallets.find((w) => w.code === m.wallet)?.name ?? 'Wallet';
+  const wallet = wallets.find((w) => w.code === m.wallet)?.name;
+  return wallet ? `${wallet} wallet` : 'Wallet';
 }
 
 /** How a method is remembered: the app id, 'upi', 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
@@ -123,6 +124,8 @@ const IOS_SHORTCODES: Record<string, string> = { 'Google Pay': 'google_pay', 'Bo
 const iosShortcode = (name: string) => IOS_SHORTCODES[name] ?? name.toLowerCase().replace(/\s/g, '');
 // iOS can't read another app's icon, so the logo Razorpay's own checkout shows: its CDN keeps one per shortcode, Kotak's under kotak811.
 const iosLogo = (shortcode: string) => `https://cdn.razorpay.com/app/${shortcode === 'kotakbank' ? 'kotak811' : shortcode}.png`;
+/** A wallet's square logo, from the CDN base Razorpay's SDK uses. */
+export const walletLogo = (code: string) => `https://cdn.razorpay.com/wallet-sq/${code}.png`;
 // The big three lead the list (iOS shortcodes, Android packages); every other
 // app Razorpay finds follows in its order.
 const TOP_UPI_APPS = ['google_pay', 'phonepe', 'paytm', 'com.google.android.apps.nbu.paisa.user', 'com.phonepe.app', 'net.one97.paytm'];

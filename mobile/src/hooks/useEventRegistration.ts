@@ -520,14 +520,10 @@ export function useEventRegistration() {
 
   const submit = async () => {
     if (!selectedTicket || !event || submitting || verifying) return;
-    // UPI ID or Wallet ticked, but which one? Ask before an order exists.
+    // UPI ID ticked but not typed right: ask before an order exists.
     const sel = payOptions.selected;
     if (payOptions.on && total > 0 && typeof sel === 'object' && 'vpa' in sel && !isVpa(sel.vpa)) {
       AppAlert.alert('Check your UPI ID', 'Type it like name@bank under Pay with, then pay.');
-      return;
-    }
-    if (payOptions.on && total > 0 && typeof sel === 'object' && 'wallet' in sel && !sel.wallet) {
-      AppAlert.alert('Choose your wallet', 'Pick one under Pay with, then pay.');
       return;
     }
     setSubmitting(true);
