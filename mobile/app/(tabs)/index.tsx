@@ -179,7 +179,6 @@ export default function HomeTab() {
               spaces={data.mySpaces}
               loading={data.isLoadingMySpaces}
               onPress={openSpace}
-              onFindMore={() => router.push('/spaces')}
             />
           </Section>
         ) : null}

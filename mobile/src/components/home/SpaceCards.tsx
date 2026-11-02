@@ -10,7 +10,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
-import { CaretRight, MagnifyingGlass } from '@unifesto/unicon/react-native';
+import { CaretRight } from '@unifesto/unicon/react-native';
 import { SPACE_ROLE_LABEL } from '../../lib/api/spaceMembers';
 import PressableScale from '../ui/PressableScale';
 import { SettingsGroup } from '../profile/SettingsGroup';
@@ -186,45 +186,24 @@ export function SpaceRowSkeleton() {
   );
 }
 
-/** The action that closes a list of my spaces, in sky. */
-export function FindMoreSpacesRow({ onPress }: { onPress: () => void }) {
-  const c = useCosmos();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Find more spaces"
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
-    >
-      <View style={styles.rowSlot}>
-        <MagnifyingGlass size={24} color={c.sky} />
-      </View>
-      <Text style={[styles.rowName, { color: c.sky }]}>Find more spaces</Text>
-    </Pressable>
-  );
-}
-
 /**
  * "My spaces" on Home and a person's profile: the first few as rows on the
- * page with full hairlines, like Up next, closed by Find more spaces in sky.
+ * page with full hairlines, like Up next. The section's See all opens the rest.
  */
 export function MySpacesRows({
   spaces,
   loading,
   onPress,
-  onFindMore,
 }: {
   spaces: Space[];
   loading: boolean;
   onPress: (space: Space) => void;
-  onFindMore: () => void;
 }) {
   return (
     <SettingsGroup flat style={styles.rows}>
       {loading && spaces.length === 0
         ? [0, 1].map((i) => <SpaceRowSkeleton key={i} />)
         : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} onPress={() => onPress(s)} />)}
-      <FindMoreSpacesRow onPress={onFindMore} />
     </SettingsGroup>
   );
 }
@@ -254,7 +233,6 @@ const styles = StyleSheet.create({
   // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
   rowLogo: { width: ROW_LOGO, height: ROW_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
-  rowSlot: { width: ROW_LOGO, alignItems: 'center' },
   rowInfo: { flex: 1, gap: 3 },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   rowName: { flexShrink: 1, fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },

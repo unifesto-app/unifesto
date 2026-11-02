@@ -156,4 +156,5 @@ and gate details only.
 
 Organiser-first and plain. First person for the user's own things ("My tickets"). No em dashes in
 UI copy. Errors say what happened and what to do. Clubs and communities are "spaces", never
-"circles" ("My spaces", "Find more spaces").
+"circles" ("My spaces", "Explore spaces"). A list with See all or search doesn't also get a
+"find more" row.
