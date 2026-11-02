@@ -8,6 +8,10 @@ import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 const KNOB = 44;
 const PAD = 4;
 
+// A slide in progress. The screen ignores a back gesture that fires under it (Android's edge back).
+let dragging = false;
+export const isSliding = () => dragging;
+
 /**
  * Slide the knob to the end to pay, so a stray tap never spends money. Let go
  * early and it springs back; it springs back after paying too (the bar shows
@@ -31,12 +35,19 @@ export default function SlideToPay({ label, onComplete, disabled = false, loadin
   live.current = { max, blocked, onComplete };
 
   const pan = useMemo(() => {
-    const home = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+    const home = () => {
+      dragging = false;
+      Animated.spring(x, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+    };
     return PanResponder.create({
+      // Claimed on first touch, ahead of anything behind it, and kept until let go.
       onStartShouldSetPanResponder: () => !live.current.blocked,
+      onStartShouldSetPanResponderCapture: () => !live.current.blocked,
       onMoveShouldSetPanResponder: (_, g) => !live.current.blocked && Math.abs(g.dx) > Math.abs(g.dy),
-      // Keep the drag when the sheet or a scroll view asks for it.
       onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        dragging = true;
+      },
       onPanResponderMove: (_, g) => x.setValue(Math.min(Math.max(g.dx, 0), live.current.max)),
       onPanResponderRelease: (_, g) => {
         if (live.current.max > 0 && g.dx >= live.current.max * 0.9) {

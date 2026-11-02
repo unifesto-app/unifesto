@@ -11,6 +11,7 @@ import { FlowHeader, GUTTER } from '../components/registration/FlowHeader';
 import { StateView, VerifyingOverlay } from '../components/registration/RegStates';
 import { DetailsStep, PaymentStep, ProfileGate, TicketStep, money } from '../components/registration/Steps';
 import { methodName } from '../lib/pay';
+import { isSliding } from '../components/ui/SlideToPay';
 import { column, spacing } from '../theme/spacing';
 import { cosmosCardRadius, useCosmos } from '../theme/cosmos';
 
@@ -33,10 +34,11 @@ export default function EventRegistrationScreen() {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }, [r.step]);
 
-  // Android back: step back, else confirm leaving; never during verification.
+  // Android back: step back, else confirm leaving; never during verification,
+  // nor mid-slide (an edge back gesture can fire under the pay slider).
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (r.verifying) return true;
+      if (r.verifying || isSliding()) return true;
       if (r.loading || !r.event || r.gate.needed || !r.hasTickets) return false;
       if (r.step !== 'ticket') r.back();
       else r.confirmLeave();
@@ -51,7 +53,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title="Registration" step={null} onBack={null} onClose={close} />
+        <FlowHeader title="Registration" onBack={null} onClose={close} />
         <View style={{ paddingHorizontal: GUTTER, paddingTop: spacing[6], gap: spacing[3] }}>
           <Skeleton width="60%" height={28} borderRadius={8} />
           <Skeleton width="40%" height={14} borderRadius={6} style={{ marginBottom: spacing[3] }} />
@@ -67,7 +69,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title="Registration" step={null} onBack={null} onClose={close} />
+        <FlowHeader title="Registration" onBack={null} onClose={close} />
         <StateView
           icon={<CalendarX size={56} color={c.muted} weight="duotone" />}
           title="We couldn't find this event"
@@ -83,7 +85,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title={r.event.title} step={null} onBack={null} onClose={close} />
+        <FlowHeader title={r.event.title} onBack={null} onClose={close} />
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={[column, styles.content, { paddingBottom: barSpace }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <ProfileGate r={r} />
@@ -98,7 +100,7 @@ export default function EventRegistrationScreen() {
     return (
       <View style={styles.flex}>
         <CosmosBackdrop horizon={false} />
-        <FlowHeader title={r.event.title} step={null} onBack={null} onClose={close} />
+        <FlowHeader title={r.event.title} onBack={null} onClose={close} />
         <StateView
           icon={<TicketIcon size={56} color={c.muted} weight="duotone" />}
           title="No tickets yet"
@@ -132,8 +134,6 @@ export default function EventRegistrationScreen() {
       <CosmosBackdrop horizon={false} />
       <FlowHeader
         title={r.event.title}
-        step={r.step}
-        steps={r.steps}
         onBack={r.step !== 'ticket' ? r.back : null}
         onClose={r.confirmLeave}
       />

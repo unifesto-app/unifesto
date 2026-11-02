@@ -29,11 +29,6 @@ import { CHECKOUT_OFF, checkoutMethods, isPaymentCancelled, isVpa, pay, type Che
 
 // Review and pay are one page: what you're getting, then how you pay for it.
 export type StepType = 'ticket' | 'details' | 'payment';
-export const STEPS: { id: StepType; label: string }[] = [
-  { id: 'ticket', label: 'Ticket' },
-  { id: 'details', label: 'Details' },
-  { id: 'payment', label: 'Pay' },
-];
 
 export interface AttendeeInfo {
   name: string;
@@ -387,7 +382,6 @@ export function useEventRegistration() {
   // questions. Skip it then (the pay page still lists who the ticket is for).
   const skipDetails =
     !!selectedTicket && !isGroup && memberFields.length === 0 && teamFields.length === 0 && attendeesValid;
-  const steps = (step === 'ticket' ? skipDetails : detailsSkipped) ? STEPS.filter((s) => s.id !== 'details') : STEPS;
 
   // ── Money ──
   const symbol = symbolFor(selectedTicket?.currency);
@@ -680,7 +674,6 @@ export function useEventRegistration() {
     // timer
     // flow
     step,
-    steps,
     next,
     back,
     canContinue,

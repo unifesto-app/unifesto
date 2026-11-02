@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   At,
   CaretDown,
@@ -13,11 +13,13 @@ import {
   Plus,
   ShieldCheck,
   User,
+  X,
   XCircle,
 } from '@unifesto/unicon/react-native';
 import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';
+import Modal from '../ui/Modal';
 import PressableScale from '../ui/PressableScale';
 import ShadeCard from '../ui/ShadeCard';
 import { CardBackdrop } from '../ui/CardSurface';
@@ -540,15 +542,104 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
   );
 }
 
+type PayRow = { key: string; label: string; method?: PayMethod; icon: React.ReactNode };
+
+/** Every way to pay, by kind. A row with no method is the UPI apps' Show more. */
+function payRows(r: EventRegistration, c: ReturnType<typeof useCosmos>, allApps: boolean) {
+  const { apps, wallets, applePay } = r.payOptions;
+  const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
+  const hidden = allApps ? 0 : Math.max(apps.length - 4, 0);
+  const upiApps: PayRow[] = [
+    ...apps.slice(0, apps.length - hidden).map((app) => ({
+      key: app.id,
+      label: app.name,
+      method: app,
+      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} resizeMode="contain" /> : icon(DeviceMobile),
+    })),
+    ...(hidden ? [{ key: 'more-apps', label: `Show ${hidden} more UPI apps`, icon: <CaretDown size={26} color={c.muted} /> }] : []),
+    // Android with no UPI app found: Razorpay's sheet on UPI.
+    ...(!apps.length && !CAN_TYPE_UPI_ID ? [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }] : []),
+  ];
+  return [
+    // Apple's own mark (its button, untouchable here): Apple Pay may not be drawn any other way.
+    applePay && ApplePayButton
+      ? {
+          title: 'Apple Pay',
+          rows: [{ key: 'apple_pay', label: 'Apple Pay', method: 'apple_pay' as const, icon: <ApplePayButton type="plain" radius={6} pointerEvents="none" style={styles.applePayMark} /> }],
+        }
+      : null,
+    upiApps.length ? { title: apps.length ? 'UPI apps' : 'UPI', rows: upiApps } : null,
+    CAN_TYPE_UPI_ID ? { title: 'UPI ID', rows: [{ key: 'vpa:', label: 'UPI ID', method: { vpa: '' }, icon: icon(At) }] } : null,
+    { title: 'Card', rows: [{ key: 'card', label: 'Credit or debit card', method: 'card' as const, icon: icon(CreditCard) }] },
+    // Named as wallets: PhonePe is often a UPI app too.
+    wallets.length
+      ? {
+          title: 'Wallets',
+          rows: wallets.map((w) => ({
+            key: `wallet:${w.code}`,
+            label: `${w.name} wallet`,
+            method: { wallet: w.code },
+            icon: <Image source={{ uri: walletLogo(w.code) }} style={styles.payIcon} resizeMode="contain" />,
+          })),
+        }
+      : null,
+  ].filter((section): section is { title: string; rows: PayRow[] } => !!section);
+}
+
+/** The picked row's key: a typed UPI ID still ticks its row. */
+const pickedKey = (m: PayMethod) => {
+  const key = methodKey(m);
+  return key.startsWith('vpa:') ? 'vpa:' : key;
+};
+
 /**
- * Q40: our own payment page. Apple Pay (iPhones that can), every UPI app Razorpay finds on the phone (last
- * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
- * typed UPI ID on iOS (Verify shows whose it is), card and the wallets our
- * Razorpay account takes, each its own row. Pay pays with the pick and nothing else.
+ * Q40: how this pays, on the pay page: the pick, and Change, which opens the
+ * Pay with sheet. Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, wallets, selected, keyId, applePay } = r.payOptions;
+  const [open, setOpen] = React.useState(false);
+  const { selected } = r.payOptions;
+  const picked = pickedKey(selected);
+  const row = payRows(r, c, true).flatMap((section) => section.rows).find((o) => o.key === picked);
+  const vpa = typeof selected === 'object' && 'vpa' in selected ? selected.vpa : null;
+  return (
+    <View style={styles.block}>
+      <Label>Pay with</Label>
+      <Card style={styles.payCard}>
+        <Pressable
+          onPress={() => setOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Pay with ${row?.label ?? 'not chosen'}${vpa ? `, ${vpa}` : ''}. Change`}
+          style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          {row?.icon}
+          <View style={styles.payLabel}>
+            <Text style={[styles.payName, { color: c.text }]} numberOfLines={1}>{row?.label ?? 'Choose how to pay'}</Text>
+            {vpa !== null ? (
+              <Text style={[styles.meta, { color: isVpa(vpa) ? c.muted : c.danger }]} numberOfLines={1}>
+                {vpa || 'Add your UPI ID'}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={[styles.linkText, { color: c.text }]}>Change</Text>
+        </Pressable>
+      </Card>
+      <PayMethodsSheet r={r} visible={open} onClose={() => setOpen(false)} />
+    </View>
+  );
+}
+
+/**
+ * Q40: every way to pay, by kind: Apple Pay (iPhones that can), the UPI apps
+ * Razorpay finds on the phone (last used, then GPay, PhonePe, Paytm; four
+ * show, the rest under Show more), a typed UPI ID on iOS (Verify shows whose
+ * it is), card, and the wallets our Razorpay account takes. A pick closes the
+ * sheet; a UPI ID keeps it open to type.
+ */
+function PayMethodsSheet({ r, visible, onClose }: { r: EventRegistration; visible: boolean; onClose: () => void }) {
+  const c = useCosmos();
+  const { selected, keyId } = r.payOptions;
   const [allApps, setAllApps] = React.useState(false);
   // The last Verify, kept only while the box still holds the ID it checked.
   const [check, setCheck] = React.useState<{ vpa: string; result: Awaited<ReturnType<typeof verifyUpiId>> | 'checking' } | null>(null);
@@ -560,133 +651,119 @@ function PayWith({ r }: { r: EventRegistration }) {
     verifyUpiId(keyId, vpa).then((result) => setCheck((cur) => (cur?.vpa === vpa ? { vpa, result } : cur)));
   };
   const canVerify = isVpa(vpa) && checked !== 'checking';
-  const hidden = allApps ? 0 : Math.max(apps.length - 4, 0);
-  const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
-  // No method = the Show more row.
-  const options: { key: string; label: string; method?: PayMethod; icon: React.ReactNode }[] = [
-    // Apple's own mark (its button, untouchable here): Apple Pay may not be drawn any other way.
-    ...(applePay && ApplePayButton
-      ? [{ key: 'apple_pay', label: 'Apple Pay', method: 'apple_pay' as const, icon: <ApplePayButton type="plain" radius={6} pointerEvents="none" style={styles.applePayMark} /> }]
-      : []),
-    ...apps.slice(0, apps.length - hidden).map((app) => ({
-      key: app.id,
-      label: app.name,
-      method: app,
-      icon: app.icon ? <Image source={{ uri: app.icon }} style={styles.payIcon} resizeMode="contain" /> : icon(DeviceMobile),
-    })),
-    ...(hidden ? [{ key: 'more-apps', label: `Show ${hidden} more UPI apps`, icon: <CaretDown size={26} color={c.muted} /> }] : []),
-    ...(CAN_TYPE_UPI_ID
-      ? [{ key: 'vpa:', label: 'UPI ID', method: { vpa: '' }, icon: icon(At) }]
-      : apps.length
-        ? []
-        : [{ key: 'upi', label: 'UPI', method: 'upi' as const, icon: icon(DeviceMobile) }]),
-    { key: 'card', label: 'Credit or debit card', method: 'card', icon: icon(CreditCard) },
-    // Each wallet is its own row, named as a wallet: PhonePe is often a UPI app above too.
-    ...wallets.map((w) => ({
-      key: `wallet:${w.code}`,
-      label: `${w.name} wallet`,
-      method: { wallet: w.code },
-      icon: <Image source={{ uri: walletLogo(w.code) }} style={styles.payIcon} resizeMode="contain" />,
-    })),
-  ];
-  // A typed UPI ID still ticks its row.
-  const key = methodKey(selected);
-  const picked = key.startsWith('vpa:') ? 'vpa:' : key;
-  return (
-    <View style={styles.block}>
-      <Label>Pay with</Label>
-      <Card style={styles.payCard}>
-        <View accessibilityRole="radiogroup">
-          {options.map((o, i) => {
-            const on = o.key === picked;
-            const divider = i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border };
-            const { method } = o;
-            if (!method) {
-              return (
-                <View key={o.key} style={divider}>
-                  <Pressable
-                    onPress={() => setAllApps(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel={o.label}
-                    style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
-                  >
-                    {o.icon}
-                    <Text style={[styles.payLabel, { color: c.muted }]}>{o.label}</Text>
-                  </Pressable>
-                </View>
-              );
-            }
-            return (
-              <View key={o.key} style={divider}>
-                <Pressable
-                  onPress={() => {
-                    if (on) return;
-                    selectionTick();
-                    r.setPayMethod(method);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={o.label}
-                  style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  {o.icon}
-                  <Text style={[styles.payLabel, { color: c.text }]}>{o.label}</Text>
-                  {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
-                </Pressable>
-                {on && typeof selected === 'object' && 'vpa' in selected ? (
-                  <View style={styles.payPick}>
-                    <View style={[styles.coupon, { backgroundColor: c.card, borderColor: checked === 'invalid' ? c.danger : c.input }]}>
-                      <TextInput
-                        value={selected.vpa}
-                        onChangeText={(v) => r.setPayMethod({ vpa: v.trim() })}
-                        placeholder="name@bank"
-                        placeholderTextColor={c.muted}
-                        selectionColor={c.primary}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="email-address"
-                        returnKeyType="done"
-                        onSubmitEditing={keyId && canVerify ? verify : undefined}
-                        accessibilityLabel="UPI ID"
-                        style={[styles.couponInput, { color: c.text }]}
-                      />
-                      {!keyId ? null : checked === 'checking' ? (
-                        <ActivityIndicator color={c.text} />
-                      ) : (
-                        <Pressable
-                          onPress={verify}
-                          disabled={!canVerify}
-                          accessibilityRole="button"
-                          accessibilityLabel="Verify UPI ID"
-                          accessibilityState={{ disabled: !canVerify }}
-                          style={({ pressed }) => [styles.apply, { opacity: !canVerify ? 0.4 : pressed ? 0.6 : 1 }]}
-                        >
-                          <Text style={[styles.linkText, { color: c.text }]}>Verify</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                    {checked && typeof checked === 'object' ? (
-                      <View style={styles.verified} accessibilityLiveRegion="polite">
-                        <CheckCircle size={18} color={c.success} weight="fill" />
-                        <Text style={[styles.meta, { color: c.success, flexShrink: 1 }]}>{checked.name || 'UPI ID found'}</Text>
-                      </View>
-                    ) : checked === 'invalid' ? (
-                      <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">
-                        No bank has this UPI ID. Check it and try again.
-                      </Text>
-                    ) : checked === null ? (
-                      <Text style={[styles.error, { color: c.muted }]} accessibilityLiveRegion="polite">
-                        Couldn't check it right now. You can still pay.
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
+  const picked = pickedKey(selected);
+
+  const renderRow = (o: PayRow, i: number) => {
+    const divider = i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border };
+    const { method } = o;
+    if (!method) {
+      return (
+        <View key={o.key} style={divider}>
+          <Pressable
+            onPress={() => setAllApps(true)}
+            accessibilityRole="button"
+            accessibilityLabel={o.label}
+            style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            {o.icon}
+            <Text style={[styles.payLabel, styles.payName, { color: c.muted }]}>{o.label}</Text>
+          </Pressable>
         </View>
-      </Card>
-    </View>
+      );
+    }
+    const on = o.key === picked;
+    const typed = typeof method === 'object' && 'vpa' in method;
+    return (
+      <View key={o.key} style={divider}>
+        <Pressable
+          onPress={() => {
+            if (!on) {
+              selectionTick();
+              r.setPayMethod(method);
+            }
+            if (!typed) onClose();
+          }}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: on }}
+          accessibilityLabel={o.label}
+          style={({ pressed }) => [styles.payRow, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          {o.icon}
+          <Text style={[styles.payLabel, styles.payName, { color: c.text }]}>{o.label}</Text>
+          {on ? <CheckCircle size={24} color={c.primary} weight="fill" /> : <Circle size={24} color={c.muted} />}
+        </Pressable>
+        {on && typed ? (
+          <View style={styles.payPick}>
+            <View style={[styles.coupon, { backgroundColor: c.card, borderColor: checked === 'invalid' ? c.danger : c.input }]}>
+              <TextInput
+                value={vpa}
+                onChangeText={(v) => r.setPayMethod({ vpa: v.trim() })}
+                placeholder="name@bank"
+                placeholderTextColor={c.muted}
+                selectionColor={c.primary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus={!vpa}
+                keyboardType="email-address"
+                returnKeyType="done"
+                onSubmitEditing={keyId && canVerify ? verify : undefined}
+                accessibilityLabel="UPI ID"
+                style={[styles.couponInput, { color: c.text }]}
+              />
+              {!keyId ? null : checked === 'checking' ? (
+                <ActivityIndicator color={c.text} />
+              ) : (
+                <Pressable
+                  onPress={verify}
+                  disabled={!canVerify}
+                  accessibilityRole="button"
+                  accessibilityLabel="Verify UPI ID"
+                  accessibilityState={{ disabled: !canVerify }}
+                  style={({ pressed }) => [styles.apply, { opacity: !canVerify ? 0.4 : pressed ? 0.6 : 1 }]}
+                >
+                  <Text style={[styles.linkText, { color: c.text }]}>Verify</Text>
+                </Pressable>
+              )}
+            </View>
+            {checked && typeof checked === 'object' ? (
+              <View style={styles.verified} accessibilityLiveRegion="polite">
+                <CheckCircle size={18} color={c.success} weight="fill" />
+                <Text style={[styles.meta, { color: c.success, flexShrink: 1 }]}>{checked.name || 'UPI ID found'}</Text>
+              </View>
+            ) : checked === 'invalid' ? (
+              <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">
+                No bank has this UPI ID. Check it and try again.
+              </Text>
+            ) : checked === null ? (
+              <Text style={[styles.error, { color: c.muted }]} accessibilityLiveRegion="polite">
+                Couldn't check it right now. You can still pay.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={[styles.sheet, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.sheetHead}>
+          <Text style={[styles.sheetTitle, { color: c.text }]} accessibilityRole="header">Pay with</Text>
+          <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+            <X size={24} color={c.text} />
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {payRows(r, c, allApps).map((section, i) => (
+            <View key={section.title} style={i > 0 && styles.sheetSection} accessibilityRole="radiogroup">
+              <Label>{section.title}</Label>
+              <Card style={styles.payCard}>{section.rows.map(renderRow)}</Card>
+            </View>
+          ))}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -831,7 +908,18 @@ const styles = StyleSheet.create({
   payRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56 },
   payIcon: { width: 26, height: 26, borderRadius: 7 },
   applePayMark: { width: 46, height: 30 },
-  payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  payLabel: { flex: 1 },
+  payName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  // The Pay with sheet (a page sheet on iOS; Android shows it full screen, so clear the status bar there).
+  sheet: {
+    flex: 1,
+    paddingHorizontal: spacing[5],
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + spacing[4] : spacing[6],
+  },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[5] },
+  sheetTitle: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.strong },
+  sheetBody: { paddingBottom: spacing[10] },
+  sheetSection: { marginTop: spacing[6] },
   payPick: { paddingBottom: spacing[3] },
   verified: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },

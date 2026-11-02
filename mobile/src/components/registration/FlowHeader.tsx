@@ -1,12 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CaretLeft, X } from '@unifesto/unicon/react-native';
 import PressableScale from '../ui/PressableScale';
-import { STEPS, type StepType } from '../../hooks/useEventRegistration';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export const GUTTER = spacing[6];
@@ -25,28 +22,21 @@ export function SheetTop({ children, style, fill }: { children?: React.ReactNode
 }
 
 /**
- * Registration header: back/close on the left, the event title, then one
- * labelled segment per step, so the whole route (and where you are on it) is
- * visible at a glance. The step's own heading lives in the body, so the header
- * never repeats it. No seat-hold countdown: seats aren't held before payment
- * (Q37); checkout trusts the server's stock (A31).
+ * Registration header: back/close on the left and the event title. No step
+ * progress: the step's own heading in the body says where you are. No
+ * seat-hold countdown: seats aren't held before payment (Q37); checkout
+ * trusts the server's stock (A31).
  */
 export function FlowHeader({
   title,
-  step,
-  steps = STEPS,
   onBack,
   onClose,
 }: {
   title: string;
-  step: StepType | null;
-  /** Visible steps; Details drops out when there's nothing to fill in. */
-  steps?: typeof STEPS;
   onBack: (() => void) | null;
   onClose: () => void;
 }) {
   const c = useCosmos();
-  const index = step ? steps.findIndex((s) => s.id === step) : -1;
 
   return (
     <SheetTop style={{ paddingHorizontal: GUTTER }}>
@@ -65,35 +55,7 @@ export function FlowHeader({
         {/* Balances the close button so the title stays centred. */}
         <View style={styles.side} />
       </View>
-
-      {index >= 0 ? (
-        <View
-          style={styles.progress}
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel={`Step ${index + 1} of ${steps.length}, ${steps[index].label}`}
-        >
-          {steps.map((s, i) => (
-            <View key={s.id} style={styles.stepCol}>
-              <Segment filled={i <= index} color={c.primary} track={c.border} />
-              <Text style={[styles.stepText, { color: i === index ? c.text : c.muted }, i === index && cosmosFont.strong]} numberOfLines={1}>
-                {s.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
     </SheetTop>
-  );
-}
-
-function Segment({ filled, color, track }: { filled: boolean; color: string; track: string }) {
-  // withTiming follows the system Reduce Motion setting (jumps straight to the end).
-  const fill = useAnimatedStyle(() => ({ width: withTiming(filled ? '100%' : '0%', { duration: 260 }) }));
-  return (
-    <View style={[styles.segment, { backgroundColor: track }]}>
-      <Animated.View style={[styles.segmentFill, { backgroundColor: color }, fill]} />
-    </View>
   );
 }
 
@@ -101,9 +63,4 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', height: 44 },
   side: { width: 76, height: 44, justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, ...cosmosFont.strong },
-  progress: { flexDirection: 'row', gap: 6, marginTop: spacing[3], paddingBottom: spacing[3] },
-  stepCol: { flex: 1, gap: spacing[2] },
-  segment: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  segmentFill: { height: '100%', borderRadius: 2 },
-  stepText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
