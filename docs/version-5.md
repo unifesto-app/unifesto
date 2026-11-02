@@ -1111,3 +1111,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-02** · web JSON-LD one script per object (Safari crash); blog_writer AI ceiling $0.50 → $0.80 (#555)
 - **2026-11-02** · mobile View profile redesigned: shared identity block, bare link marks, hairline numbers band, no chips or blurbs (#556)
 - **2026-11-02** · mobile Space details numbers in a hairline band with rows, no subtitles; Spaces directory as flat rows (#557)
+- **2026-11-02** · mobile ticket page and its screens (group, refund, edit details, feedback) redesigned as flat rows; the pass stays the hero (#559)
