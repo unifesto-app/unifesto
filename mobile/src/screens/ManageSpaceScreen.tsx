@@ -14,6 +14,7 @@ import {
   Medal,
   PaintBrush,
   Plus,
+  UserPlus,
   TreeStructure,
   Wallet,
 } from '@unifesto/unicon/react-native';
@@ -24,10 +25,9 @@ import type { ManagedEvent } from '../lib/api/manageSpace';
 import { getSpaceDeskUnread } from '../lib/api/support';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import ShadeCard from '../components/ui/ShadeCard';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import AuthButton from '../components/auth/AuthButton';
-import { GUTTER, Section } from '../components/home/Section';
+import { GUTTER } from '../components/home/Section';
 import { Monogram } from '../components/home/SpaceCards';
 import ManageEventRow, { ManageEventRowSkeleton } from '../components/manage/ManageEventRow';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -35,9 +35,9 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
-const ICON = 26;
+const ICON = 28;
 const LOGO = 56;
 const AVATAR = 28;
 
@@ -50,9 +50,11 @@ const EMPTY: Record<ManageTab, string> = {
 };
 
 /**
- * Operator view of one space, in the cosmos theme. Top to bottom: who the space
- * is (with its numbers and the two things you do most), its events by state,
- * then team, money, sponsors and setup for Space Admins, and the web door last.
+ * Operator view of one space. Top to bottom: who the space is, on its blue
+ * shade (with its numbers and the two things you do most), its events by state
+ * as rows, then one short list per job: team, money, sponsors, insights,
+ * support, space setup, and the web door last. Lists are rows on the page with
+ * full hairlines and no blurbs; glyphs carry their job's accent.
  */
 export default function ManageSpaceScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
@@ -68,6 +70,7 @@ export default function ManageSpaceScreen() {
   // Desk work (creating events, branding, billing) opens on Unifesto Space (D3).
   const web = (path: string) => () => openSpaceWeb(path, spaceId);
   const glyph = { size: ICON, color: c.text };
+  const ivory = { size: ICON, color: c.ivory };
   // Assist desk: null while loading or for someone who works no part of it (403).
   const [deskUnread, setDeskUnread] = useState<number | null>(null);
   useFocusEffect(
@@ -170,122 +173,123 @@ export default function ManageSpaceScreen() {
           </ShadeCard>
         </View>
 
-        {/* Events */}
-        <Section title="Events" style={styles.firstSection}>
-          <View style={styles.pad}>
-            <SegmentedTabs tabs={tabs} value={m.tab} onChange={m.setTab} />
-            <View style={styles.list}>
-              {m.loading ? (
-                [0, 1, 2].map((i) => <ManageEventRowSkeleton key={i} />)
-              ) : m.error ? (
-                <View style={styles.empty}>
-                  <CardBackdrop shape={styles.empty} />
-                  <Text style={[styles.emptyText, { color: c.soft }]}>{m.error}</Text>
-                  <AuthButton label="Try again" variant="secondary" onPress={() => void m.retry()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
+        {/* Events: the state tabs, then rows on the page with full hairlines. */}
+        <View style={[styles.pad, styles.events]}>
+          <Text accessibilityRole="header" style={[styles.listTitle, { color: c.muted }]}>Events</Text>
+          <SegmentedTabs tabs={tabs} value={m.tab} onChange={m.setTab} />
+          <View style={styles.list}>
+            {m.loading ? (
+              [0, 1, 2].map((i) => (
+                <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+                  <ManageEventRowSkeleton />
                 </View>
-              ) : list.length === 0 ? (
-                <View style={styles.empty}>
-                  <CardBackdrop shape={styles.empty} />
-                  <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[m.tab]}</Text>
+              ))
+            ) : m.error ? (
+              <View style={styles.empty}>
+                <Text style={[styles.emptyText, { color: c.muted }]}>{m.error}</Text>
+                <AuthButton label="Try again" variant="secondary" onPress={() => void m.retry()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
+              </View>
+            ) : list.length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[m.tab]}</Text>
+              </View>
+            ) : (
+              list.map((e: ManagedEvent, i) => (
+                <View key={e.id} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+                  <ManageEventRow event={e} now={now} onPress={() => router.push(`/manage/event/${e.id}`)} />
                 </View>
-              ) : (
-                list.map((e: ManagedEvent) => (
-                  <ManageEventRow key={e.id} event={e} now={now} onPress={() => router.push(`/manage/event/${e.id}`)} />
-                ))
-              )}
-            </View>
+              ))
+            )}
           </View>
-        </Section>
+        </View>
 
-        {/* Team — only Space Admins can list members; the server returns null for everyone else. */}
+        {/* Team: only Space Admins can list members; the server returns null for everyone else.
+            Adding someone is an action, so it closes the list in sky. */}
         {m.team ? (
-          <Section title="Team" subtitle={`${m.team.total} ${m.team.total === 1 ? 'member' : 'members'}`} onSeeAll={go('members')}>
-            <SettingsGroup style={styles.group}>
-              {m.team.members.slice(0, 4).map((mem) => {
-                const who = mem.user.fullName || mem.user.username || 'Member';
-                return (
-                  <SettingsRow
-                    key={mem.id}
-                    icon={
-                      mem.user.avatarUrl ? (
-                        <Image source={{ uri: mem.user.avatarUrl }} style={[styles.avatar, { backgroundColor: c.card }]} />
-                      ) : (
-                        <Monogram name={who} size={AVATAR} radius={AVATAR / 2} />
-                      )
-                    }
-                    label={who}
-                    value={mem.role.name}
-                    onPress={go('members')}
-                  />
-                );
-              })}
-            </SettingsGroup>
-          </Section>
+          <SettingsGroup flat title="Team" action={{ label: `See all ${m.team.total}`, onPress: go('members') }} style={styles.group}>
+            {m.team.members.slice(0, 4).map((mem) => {
+              const who = mem.user.fullName || mem.user.username || 'Member';
+              return (
+                <SettingsRow
+                  key={mem.id}
+                  icon={
+                    mem.user.avatarUrl ? (
+                      <Image source={{ uri: mem.user.avatarUrl }} style={[styles.avatar, { backgroundColor: c.card }]} />
+                    ) : (
+                      <Monogram name={who} size={AVATAR} radius={AVATAR / 2} />
+                    )
+                  }
+                  label={who}
+                  value={mem.role.name}
+                  onPress={go('members')}
+                />
+              );
+            })}
+            <SettingsRow icon={<UserPlus size={ICON} color={c.sky} />} label="Add a member" accent={c.sky} onPress={go('add-member')} />
+          </SettingsGroup>
         ) : null}
 
-        {/* Money — every finance endpoint is Space-Admin only, so the rows are too. */}
+        {/* Money: every finance endpoint is Space-Admin only, so the rows are too. Ivory. */}
         {isSpaceAdmin ? (
-          <Section title="Money">
-            <SettingsGroup style={styles.group}>
-              <SettingsRow icon={<Wallet {...glyph} />} label="Finance" onPress={go('finance')} />
-              <SettingsRow icon={<ArrowCounterClockwise {...glyph} />} label="Refund requests" onPress={go('refunds')} />
-            </SettingsGroup>
-          </Section>
+          <SettingsGroup flat title="Money" style={styles.group}>
+            <SettingsRow icon={<Wallet {...ivory} />} label="Finance" onPress={go('finance')} />
+            <SettingsRow icon={<ArrowCounterClockwise {...ivory} />} label="Refund requests" onPress={go('refunds')} />
+          </SettingsGroup>
         ) : null}
 
-        {/* Sponsors — space:manage-sponsors. Only Space Admins pass in practice: the
+        {/* Sponsors: space:manage-sponsors. Only Space Admins pass in practice: the
             Curator grant is event-scoped and can't satisfy this space-level action. */}
         {isSpaceAdmin ? (
-          <Section title="Sponsors">
-            <SettingsGroup style={styles.group}>
-              <SettingsRow icon={<Medal {...glyph} />} label="Sponsors and tiers" onPress={go('sponsors')} />
-              <SettingsRow icon={<Funnel {...glyph} />} label="Leads" onPress={go('leads')} />
-            </SettingsGroup>
-          </Section>
-        ) : null}
-
-        {/* Space setup — profile, branding and plan are Space-Admin capabilities. */}
-        {isSpaceAdmin ? (
-          <Section title="Space setup">
-            <SettingsGroup style={styles.group}>
-              <SettingsRow icon={<IdentificationCard {...glyph} />} label="Profile" onPress={go('settings')} />
-              <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" external onPress={web('/white-label')} />
-              <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" external onPress={web('/billing')} />
-              {/* Only parent (SUPER) spaces have sub-spaces to roll up. */}
-              {m.space?.type === 'SUPER' ? (
-                <SettingsRow icon={<TreeStructure {...glyph} />} label="Sub-spaces" onPress={go('subspaces')} />
-              ) : null}
-            </SettingsGroup>
-          </Section>
-        ) : null}
-
-        <Section title="More">
-          <SettingsGroup style={styles.group}>
-            {/* Tracking — counts only; the server gates it with space:view. */}
-            {m.space ? (
-              <SettingsRow
-                icon={<ChartBar {...glyph} />}
-                label="Tracking"
-                onPress={() =>
-                  router.push({
-                    pathname: `/manage/space/${spaceId}/tracking`,
-                    params: { slug: m.space!.slug ?? '', name: m.space!.name ?? '' },
-                  })
-                }
-              />
-            ) : null}
-            {/* Assist desk: Space Admins and the event support teams. */}
-            {deskUnread !== null ? (
-              <SettingsRow
-                icon={<Lifebuoy {...glyph} />}
-                label="Assist inbox"
-                value={deskUnread ? `${deskUnread} new` : undefined}
-                onPress={go(isSpaceAdmin ? 'support?admin=1' : 'support')}
-              />
-            ) : null}
-            <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={web('')} />
+          <SettingsGroup flat title="Sponsors" style={styles.group}>
+            <SettingsRow icon={<Medal {...glyph} />} label="Sponsors and tiers" onPress={go('sponsors')} />
+            <SettingsRow icon={<Funnel {...glyph} />} label="Leads" onPress={go('leads')} />
           </SettingsGroup>
-        </Section>
+        ) : null}
+
+        {/* Tracking: counts only; the server gates it with space:view. */}
+        {m.space ? (
+          <SettingsGroup flat title="Insights" style={styles.group}>
+            <SettingsRow
+              icon={<ChartBar {...glyph} />}
+              label="Tracking"
+              onPress={() =>
+                router.push({
+                  pathname: `/manage/space/${spaceId}/tracking`,
+                  params: { slug: m.space!.slug ?? '', name: m.space!.name ?? '' },
+                })
+              }
+            />
+          </SettingsGroup>
+        ) : null}
+
+        {/* Assist desk: Space Admins and the event support teams. */}
+        {deskUnread !== null ? (
+          <SettingsGroup flat title="Support" style={styles.group}>
+            <SettingsRow
+              icon={<Lifebuoy {...glyph} />}
+              label="Assist inbox"
+              value={deskUnread ? `${deskUnread} new` : undefined}
+              onPress={go(isSpaceAdmin ? 'support?admin=1' : 'support')}
+            />
+          </SettingsGroup>
+        ) : null}
+
+        {/* Space setup: profile, branding and plan are Space-Admin capabilities. */}
+        {isSpaceAdmin ? (
+          <SettingsGroup flat title="Space setup" style={styles.group}>
+            <SettingsRow icon={<IdentificationCard {...glyph} />} label="Profile" onPress={go('settings')} />
+            <SettingsRow icon={<PaintBrush {...glyph} />} label="Branding" external onPress={web('/white-label')} />
+            <SettingsRow icon={<CreditCard {...glyph} />} label="Plan and billing" external onPress={web('/billing')} />
+            {/* Only parent (SUPER) spaces have sub-spaces to roll up. */}
+            {m.space?.type === 'SUPER' ? (
+              <SettingsRow icon={<TreeStructure {...glyph} />} label="Sub-spaces" onPress={go('subspaces')} />
+            ) : null}
+          </SettingsGroup>
+        ) : null}
+
+        <SettingsGroup flat title="More" style={styles.group}>
+          <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={web('')} />
+        </SettingsGroup>
       </ScrollView>
     </View>
   );
@@ -305,11 +309,14 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   // minHeight, not height: a fixed height clips the label at large Dynamic Type sizes.
   action: { flex: 1, height: undefined, minHeight: 46, paddingVertical: spacing[2], paddingHorizontal: spacing[3] },
-  firstSection: { marginTop: spacing[10] },
-  list: { marginTop: spacing[4], gap: spacing[3] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  events: { marginTop: spacing[8] },
+  // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
+  listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  list: { marginTop: spacing[2] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { paddingVertical: spacing[8], alignItems: 'center' },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  // Section owns the top spacing and the title; the card just needs the gutter.
-  group: { marginTop: 0, marginHorizontal: GUTTER },
+  // Grouped lists: SettingsGroup owns the section spacing and its muted title.
+  group: { marginHorizontal: GUTTER },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
 });

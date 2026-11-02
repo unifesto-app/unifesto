@@ -1,14 +1,14 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarBlank } from '@unifesto/unicon/react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { ManagedEvent } from '../../lib/api/manageSpace';
 import { relativeWhen } from '../../utils/eventFormat';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import Skeleton from '../Skeleton';
-import { CardBackdrop } from '../ui/CardSurface';
 
 const THUMB_W = 88;
 const THUMB_H = 66; // 4:3, never cropped off-ratio
@@ -30,8 +30,14 @@ function statusLine(e: ManagedEvent, now: Date): { text: string; tone: 'live' | 
   return { text: relativeWhen(e.startDateTime, now), tone: 'muted' };
 }
 
+/**
+ * One event in Manage space as a row on the page (the list draws the hairlines):
+ * 4:3 cover (the admin default when it has none), title, status, and the
+ * headcount in sky.
+ */
 export default function ManageEventRow({ event, now, onPress }: Props) {
   const c = useCosmos();
+  const cover = coverOr(useDefaultImages(), event.id, event.coverImageUrl);
   const status = statusLine(event, now);
   const people = event.attendees?.total ?? 0;
   const capacity = event.capacity ? ` / ${event.capacity.toLocaleString('en-IN')}` : '';
@@ -42,16 +48,15 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${event.title}, ${status.text}`}
-      style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
-      <CardBackdrop shape={styles.row} />
-      {event.coverImageUrl ? (
-        <Image source={{ uri: event.coverImageUrl }} style={[styles.thumb, { backgroundColor: c.card }]} />
-      ) : (
-        <View style={[styles.thumb, styles.thumbEmpty, { backgroundColor: c.tint }]}>
-          <CalendarBlank size={24} color={c.muted} />
-        </View>
-      )}
+      <View style={[styles.thumb, { backgroundColor: c.card }]}>
+        {cover ? (
+          <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        )}
+      </View>
       <View style={styles.body}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
           {event.title}
@@ -64,7 +69,7 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
           </Text>
         </View>
         {event.status !== 'DRAFT' ? (
-          <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
+          <Text style={[styles.meta, { color: c.sky }]} numberOfLines={1}>
             {people.toLocaleString('en-IN')}
             {capacity} attending
           </Text>
@@ -76,8 +81,7 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
 
 export function ManageEventRowSkeleton() {
   return (
-    <View style={[styles.row]}>
-      <CardBackdrop shape={styles.row} />
+    <View style={styles.row}>
       <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={THUMB_RADIUS} />
       <View style={[styles.body, { gap: 8 }]}>
         <Skeleton width="80%" height={16} />
@@ -88,15 +92,9 @@ export function ManageEventRowSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    padding: spacing[3],
-    borderRadius: cosmosCardRadius,
-  },
+  // On the page: no side padding, the list draws full hairlines between rows.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: THUMB_RADIUS, overflow: 'hidden' },
-  thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },

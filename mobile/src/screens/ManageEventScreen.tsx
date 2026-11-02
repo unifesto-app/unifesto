@@ -38,7 +38,6 @@ import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { relativeWhen } from '../utils/eventFormat';
@@ -46,6 +45,8 @@ import { useEventCover } from '../lib/defaultImages';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+
+type Row = React.ReactElement | null | false;
 
 const ICON = 28;
 const COVER_W = 120;
@@ -61,8 +62,11 @@ function eventState(e: { status: string; startDateTime: string; endDateTime: str
 }
 
 /**
- * The operator's hub for one event: headcount, live check-in progress and the
- * tools this user is allowed to use. Tools the server would refuse are hidden.
+ * The operator's hub for one event: headcount, live check-in progress, then
+ * the tools this user is allowed to use, one short list per job (check-in,
+ * attendees, money, live, hackathon, insights, then the event's own setup).
+ * Lists are rows on the page with full hairlines; glyphs carry their job's
+ * accent. Tools the server would refuse are hidden, and so is a list left empty.
  */
 export default function ManageEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -93,7 +97,6 @@ export default function ManageEventScreen() {
     return (
       <CosmosScreen contentContainerStyle={styles.content}>
         <View style={styles.empty}>
-          <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyText, { color: c.soft }]}>{h.error || 'Event not found'}</Text>
           <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[4] }} />
         </View>
@@ -117,7 +120,17 @@ export default function ManageEventScreen() {
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
   const ticketCount = ticketTypes.length - rsvpCount;
-  const icon = (I: typeof QrCode) => <I size={ICON} color={c.text} />;
+  const icon = (I: typeof QrCode, color: string = c.text) => <I size={ICON} color={color} />;
+  const hosts = h.access.hosts;
+  // One job's list; skipped when this person can use none of its tools.
+  const section = (title: string, rows: Row[]) => {
+    const shown = rows.filter(Boolean);
+    return shown.length ? (
+      <SettingsGroup flat title={title}>
+        {shown}
+      </SettingsGroup>
+    ) : null;
+  };
 
   return (
     <CosmosScreen refreshing={h.refreshing} onRefresh={h.refresh} contentContainerStyle={styles.content}>
@@ -188,198 +201,201 @@ export default function ManageEventScreen() {
         </View>
       ) : null}
 
-      {/* Tools */}
-      <View style={{ marginTop: spacing[8] }}>
-        <SettingsGroup title="Run this event">
-          {h.access.canScan ? (
-            <SettingsRow
-              icon={icon(QrCode)}
-              label="Scan tickets"
-              onPress={() => router.push({ pathname: `/checkin/${e.id}`, params: scanParams })}
-            />
-          ) : null}
-          {h.access.canViewAttendees ? (
-            <SettingsRow
-              icon={icon(UsersThree)}
-              label="Attendees"
-              value={attending !== null ? attending.toLocaleString('en-IN') : undefined}
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/attendees`, params: { title: e.title } })}
-            />
-          ) : null}
-          {/* Adding people and the waiting list need event:manage-attendees; the server re-checks. */}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(UserPlus)} label="Add attendee" onPress={() => router.push(`/manage/event/${e.id}/add-attendee`)} />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(FileCsv)} label="Import from CSV" external onPress={web('/attendees/import')} />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(HourglassMedium)} label="Waiting list" onPress={() => router.push(`/manage/event/${e.id}/waitlist`)} />
-          ) : null}
-          {h.access.canViewAttendees && h.access.hosts ? (
-            <SettingsRow
-              icon={icon(Receipt)}
-              label="Transactions"
-              onPress={() =>
-                router.push({ pathname: `/manage/event/${e.id}/transactions`, params: { slug: e.slug, spaceId: e.spaceId } })
-              }
-            />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(Bed)}
-              label="Unifesto Stay"
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/stays`, params: { spaceId: e.spaceId } })}
-            />
-          ) : deskOnly && hasStays ? (
-            <SettingsRow
-              icon={icon(Bed)}
-              label="Scan Stay Pass"
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
-            />
-          ) : null}
-          {/* Live polls need event:edit, which hosts have; the server re-checks. */}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(ListChecks)} label="Live polls" onPress={() => router.push(`/manage/event/${e.id}/polls`)} />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(ChatsCircle)} label="Live Q&A" onPress={() => router.push(`/manage/event/${e.id}/questions`)} />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow icon={icon(Timer)} label="Live quizzes" onPress={() => router.push(`/manage/event/${e.id}/quizzes`)} />
-          ) : null}
-          {/* F3: feedback results need event:edit, like the live tools above. */}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(Star)}
-              label="Feedback"
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/feedback`, params: { spaceId: e.spaceId } })}
-            />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(WhatsappLogo)}
-              label="WhatsApp group"
-              onPress={() => router.push(`/manage/event/${e.id}/whatsapp`)}
-            />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(ChartBar)}
-              label="Tracking"
-              onPress={() =>
-                router.push({ pathname: `/manage/event/${e.id}/tracking`, params: { title: e.title, slug: e.slug } })
-              }
-            />
-          ) : null}
-          {h.access.hosts ? (
-            <SettingsRow
-              icon={icon(Trophy)}
-              label="Unifesto Sprint"
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/hackathon`, params: { spaceId: e.spaceId } })}
-            />
-          ) : null}
-          {h.access.canJudge ? (
-            <SettingsRow
-              icon={icon(Gavel)}
-              label="Judging"
-              onPress={() => router.push({ pathname: `/judging/${e.id}`, params: { title: e.title } })}
-            />
-          ) : null}
-        </SettingsGroup>
-      </View>
-
-      {/* Setup — needs event:edit (Curator, Co-Curator, Space Admin); the server re-checks.
-          Editors are desk work, so most of these open the page on Unifesto Space (D3). */}
-      {h.access.hosts ? (
-        <View style={{ marginTop: spacing[6] }}>
-          <SettingsGroup title="Set up">
-            <SettingsRow icon={icon(PencilSimple)} label="Details" external onPress={web('/edit')} />
-            <SettingsRow
-              icon={icon(ListBullets)}
-              label="Agenda, speakers and FAQs"
-              external
-              onPress={web('/content')}
-            />
-            <SettingsRow
-              icon={icon(Ticket)}
-              label="Tickets"
-              value={ticketCount ? String(ticketCount) : undefined}
-              external
-              onPress={web('/tickets')}
-            />
-            <SettingsRow
-              icon={icon(Lightning)}
-              label="RSVPs"
-              value={rsvpCount ? String(rsvpCount) : undefined}
-              external
-              onPress={web('/rsvps')}
-            />
-            {ticketCount > 0 ? (
-              <SettingsRow icon={icon(SealPercent)} label="Discount codes" external onPress={web('/coupons')} />
-            ) : null}
-            <SettingsRow icon={icon(UsersFour)} label="Team" onPress={() => router.push(`/manage/event/${e.id}/team`)} />
-            <SettingsRow icon={icon(ShareNetwork)} label="Co-hosts" external onPress={web('/co-hosting')} />
-            {h.access.canSponsors ? (
-              <SettingsRow
-                icon={icon(Medal)}
-                label="Sponsors"
-                onPress={() => router.push({ pathname: `/manage/event/${e.id}/sponsors`, params: { spaceId: e.spaceId, title: e.title } })}
-              />
-            ) : null}
-            <SettingsRow icon={icon(TreeStructure)} label="Sub-events" external onPress={web('/sub-events')} />
-            {h.access.canPayout ? (
-              <SettingsRow
-                icon={icon(Wallet)}
-                label="Request payout"
-                onPress={() => router.push({ pathname: `/manage/event/${e.id}/payout`, params: { title: e.title } })}
-              />
-            ) : null}
-            <SettingsRow icon={icon(GearSix)} label="Settings" onPress={() => router.push(`/manage/event/${e.id}/settings`)} />
-          </SettingsGroup>
-        </View>
-      ) : null}
-
-      {!h.access.canViewAttendees ? (
-        <Text style={[styles.note, { color: c.muted }]}>
-          The attendee list is only open to Space admins right now.
-        </Text>
-      ) : null}
-
-      {/* Ticket mix */}
-      {h.attendeeStats && h.attendeeStats.byTicketType.length > 0 ? (
-        <View style={{ marginTop: spacing[6] }}>
-          <SettingsGroup title="By ticket">
-            {h.attendeeStats.byTicketType.map((t) => (
+      {/* Tickets sold by type: numbers, so they sit with the numbers. */}
+      {h.attendeeStats && h.attendeeStats.byTicketType.length > 0
+        ? section(
+            'By ticket',
+            h.attendeeStats.byTicketType.map((t) => (
               <SettingsRow
                 key={t.ticketTypeId ?? t.name}
                 icon={<Text style={[styles.count, { color: c.sky }]}>{t.attendees}</Text>}
                 label={t.name}
                 value={t.kind === 'GROUP' ? `${t.bookings} groups` : undefined}
               />
-            ))}
-          </SettingsGroup>
-        </View>
+            )),
+          )
+        : null}
+
+      {/* Mint: the door and anything live. */}
+      {section('Check-in', [
+        h.access.canScan && (
+          <SettingsRow
+            key="scan"
+            icon={icon(QrCode, c.mint)}
+            label="Scan tickets"
+            onPress={() => router.push({ pathname: `/checkin/${e.id}`, params: scanParams })}
+          />
+        ),
+        // Crew don't get the Stay hub; they scan Stay Passes at the property desk.
+        !hosts && deskOnly && hasStays && (
+          <SettingsRow
+            key="stay-scan"
+            icon={icon(Bed, c.mint)}
+            label="Scan Stay Pass"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
+          />
+        ),
+      ])}
+
+      {/* Sky: tickets, registrations, the people who hold them.
+          Adding people and the waiting list need event:manage-attendees; the server re-checks. */}
+      {section('Attendees', [
+        h.access.canViewAttendees && (
+          <SettingsRow
+            key="attendees"
+            icon={icon(UsersThree, c.sky)}
+            label="Attendees"
+            value={attending !== null ? attending.toLocaleString('en-IN') : undefined}
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/attendees`, params: { title: e.title } })}
+          />
+        ),
+        hosts && <SettingsRow key="add" icon={icon(UserPlus, c.sky)} label="Add attendee" onPress={() => router.push(`/manage/event/${e.id}/add-attendee`)} />,
+        hosts && <SettingsRow key="csv" icon={icon(FileCsv, c.sky)} label="Import from CSV" external onPress={web('/attendees/import')} />,
+        hosts && (
+          <SettingsRow key="waitlist" icon={icon(HourglassMedium, c.sky)} label="Waiting list" onPress={() => router.push(`/manage/event/${e.id}/waitlist`)} />
+        ),
+        hosts && (
+          <SettingsRow
+            key="stay"
+            icon={icon(Bed, c.sky)}
+            label="Unifesto Stay"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/stays`, params: { spaceId: e.spaceId } })}
+          />
+        ),
+      ])}
+
+      {!h.access.canViewAttendees ? (
+        <Text style={[styles.note, { color: c.muted }]}>The attendee list is only open to Space admins right now.</Text>
       ) : null}
 
-      <View style={{ marginTop: spacing[6] }}>
-        <SettingsGroup>
-          <SettingsRow icon={icon(Eye)} label="View public page" onPress={() => router.push(`/event/${e.slug || e.id}`)} />
+      {/* Ivory: money. */}
+      {section('Money', [
+        h.access.canViewAttendees && hosts && (
           <SettingsRow
-            icon={icon(Globe)}
-            label="Open in Unifesto Space"
-            external
-            onPress={web()}
+            key="transactions"
+            icon={icon(Receipt, c.ivory)}
+            label="Transactions"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/transactions`, params: { slug: e.slug, spaceId: e.spaceId } })}
           />
-        </SettingsGroup>
-      </View>
+        ),
+        h.access.canPayout && (
+          <SettingsRow
+            key="payout"
+            icon={icon(Wallet, c.ivory)}
+            label="Request payout"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/payout`, params: { title: e.title } })}
+          />
+        ),
+      ])}
+
+      {/* Live polls, Q&A and quizzes need event:edit, which hosts have; the server re-checks. */}
+      {section('Live', [
+        hosts && <SettingsRow key="polls" icon={icon(ListChecks, c.mint)} label="Live polls" onPress={() => router.push(`/manage/event/${e.id}/polls`)} />,
+        hosts && <SettingsRow key="qa" icon={icon(ChatsCircle, c.mint)} label="Live Q&A" onPress={() => router.push(`/manage/event/${e.id}/questions`)} />,
+        hosts && <SettingsRow key="quizzes" icon={icon(Timer, c.mint)} label="Live quizzes" onPress={() => router.push(`/manage/event/${e.id}/quizzes`)} />,
+        hosts && (
+          <SettingsRow key="whatsapp" icon={icon(WhatsappLogo, c.mint)} label="WhatsApp group" onPress={() => router.push(`/manage/event/${e.id}/whatsapp`)} />
+        ),
+      ])}
+
+      {section('Hackathon', [
+        hosts && (
+          <SettingsRow
+            key="sprint"
+            icon={icon(Trophy)}
+            label="Unifesto Sprint"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/hackathon`, params: { spaceId: e.spaceId } })}
+          />
+        ),
+        h.access.canJudge && (
+          <SettingsRow
+            key="judging"
+            icon={icon(Gavel)}
+            label="Judging"
+            onPress={() => router.push({ pathname: `/judging/${e.id}`, params: { title: e.title } })}
+          />
+        ),
+      ])}
+
+      {/* F3: feedback results need event:edit, like the live tools above. */}
+      {section('Insights', [
+        hosts && (
+          <SettingsRow
+            key="feedback"
+            icon={icon(Star, c.ivory)}
+            label="Feedback"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/feedback`, params: { spaceId: e.spaceId } })}
+          />
+        ),
+        hosts && (
+          <SettingsRow
+            key="tracking"
+            icon={icon(ChartBar)}
+            label="Tracking"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/tracking`, params: { title: e.title, slug: e.slug } })}
+          />
+        ),
+      ])}
+
+      {/* Setup needs event:edit (Curator, Co-Curator, Space Admin); the server re-checks.
+          Editors are desk work, so most of these open the page on Unifesto Space (D3). */}
+      {section('Event page', [
+        hosts && <SettingsRow key="details" icon={icon(PencilSimple)} label="Details" external onPress={web('/edit')} />,
+        hosts && <SettingsRow key="content" icon={icon(ListBullets)} label="Agenda, speakers and FAQs" external onPress={web('/content')} />,
+        hosts && <SettingsRow key="sub" icon={icon(TreeStructure)} label="Sub-events" external onPress={web('/sub-events')} />,
+        <SettingsRow key="public" icon={icon(Eye)} label="View public page" onPress={() => router.push(`/event/${e.slug || e.id}`)} />,
+      ])}
+
+      {section('Tickets', [
+        hosts && (
+          <SettingsRow
+            key="tickets"
+            icon={icon(Ticket, c.sky)}
+            label="Tickets"
+            value={ticketCount ? String(ticketCount) : undefined}
+            external
+            onPress={web('/tickets')}
+          />
+        ),
+        hosts && (
+          <SettingsRow
+            key="rsvps"
+            icon={icon(Lightning, c.sky)}
+            label="RSVPs"
+            value={rsvpCount ? String(rsvpCount) : undefined}
+            external
+            onPress={web('/rsvps')}
+          />
+        ),
+        hosts && ticketCount > 0 && (
+          <SettingsRow key="coupons" icon={icon(SealPercent, c.sky)} label="Discount codes" external onPress={web('/coupons')} />
+        ),
+      ])}
+
+      {section('Team', [
+        hosts && <SettingsRow key="team" icon={icon(UsersFour)} label="Team" onPress={() => router.push(`/manage/event/${e.id}/team`)} />,
+        hosts && <SettingsRow key="cohosts" icon={icon(ShareNetwork)} label="Co-hosts" external onPress={web('/co-hosting')} />,
+        hosts && h.access.canSponsors && (
+          <SettingsRow
+            key="sponsors"
+            icon={icon(Medal)}
+            label="Sponsors"
+            onPress={() => router.push({ pathname: `/manage/event/${e.id}/sponsors`, params: { spaceId: e.spaceId, title: e.title } })}
+          />
+        ),
+      ])}
+
+      {section('More', [
+        hosts && <SettingsRow key="settings" icon={icon(GearSix)} label="Settings" onPress={() => router.push(`/manage/event/${e.id}/settings`)} />,
+        <SettingsRow key="space" icon={icon(Globe)} label="Open in Unifesto Space" external onPress={web()} />,
+      ])}
     </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { alignItems: 'center', marginTop: spacing[10] },
   emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', gap: spacing[4], alignItems: 'center' },
   cover: { width: COVER_W, height: COVER_H, borderRadius: cosmosCardRadius },
