@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarX, Ticket as TicketIcon } from '@unifesto/unicon/react-native';
@@ -9,9 +9,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { FlowHeader, GUTTER } from '../components/registration/FlowHeader';
 import { StateView, VerifyingOverlay } from '../components/registration/RegStates';
-import { DetailsStep, PaymentStep, ProfileGate, TicketStep, money } from '../components/registration/Steps';
-import { methodName } from '../lib/pay';
-import { isSliding } from '../components/ui/SlideToPay';
+import { DetailsStep, PayMethodsSheet, PaymentStep, ProfileGate, TicketStep, money, usePayPick } from '../components/registration/Steps';
 import { column, spacing } from '../theme/spacing';
 import { cosmosCardRadius, useCosmos } from '../theme/cosmos';
 
@@ -28,17 +26,18 @@ export default function EventRegistrationScreen() {
   const scroll = useRef<ScrollView>(null);
   // The bar floats over the content; reserve its height so nothing hides under it.
   const barSpace = useActionBarSpace();
+  const pick = usePayPick(r);
+  const [methodsOpen, setMethodsOpen] = useState(false);
 
   // Each step starts at the top.
   useEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }, [r.step]);
 
-  // Android back: step back, else confirm leaving; never during verification,
-  // nor mid-slide (an edge back gesture can fire under the pay slider).
+  // Android back: step back, else confirm leaving; never during verification.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (r.verifying || isSliding()) return true;
+      if (r.verifying) return true;
       if (r.loading || !r.event || r.gate.needed || !r.hasTickets) return false;
       if (r.step !== 'ticket') r.back();
       else r.confirmLeave();
@@ -115,15 +114,18 @@ export default function EventRegistrationScreen() {
   const waitlist = !!r.selectedTicket && isWaitlistOnly(r.selectedTicket);
   const totalLabel = r.total === 0 ? 'Free' : money(r.symbol, r.total);
   const confirming = r.step === 'payment' || r.quickConfirm;
-  // Money moves: the bar names the method and the amount, and the button slides.
+  // Money moves: the bar shows the method (its logo; tap to change it) and the amount beside Pay.
   const paying = r.step === 'payment' && !waitlist && r.total > 0;
-  const cta = paying ? 'Slide to pay' : !confirming ? 'Continue' : waitlist ? 'Join waiting list' : 'Confirm registration';
-  const method = r.payOptions.on ? methodName(r.payOptions.selected, r.payOptions.wallets) : '';
+  const choosing = paying && r.payOptions.on;
+  const cta = paying ? 'Pay' : !confirming ? 'Continue' : waitlist ? 'Join waiting list' : 'Confirm registration';
   const info = paying
     ? {
-        label: method ? `Pay with ${method}` : 'Total',
+        label: choosing ? pick.label : 'Total',
         value: totalLabel,
         was: r.fullTotal > r.total ? money(r.symbol, r.fullTotal) : undefined,
+        icon: choosing ? pick.icon : undefined,
+        onPress: choosing ? () => setMethodsOpen(true) : undefined,
+        warn: choosing && pick.missing,
       }
     : r.selectedTicket && r.step !== 'payment'
       ? { label: 'Total', value: totalLabel }
@@ -154,12 +156,12 @@ export default function EventRegistrationScreen() {
           label={cta}
           disabled={!r.canContinue}
           loading={r.submitting || r.verifying}
-          slide={paying}
           applePay={paying && r.payOptions.selected === 'apple_pay'}
           tone="neutral"
           accent={c.primary}
           onPress={confirming ? r.submit : r.next}
         />
+        {r.payOptions.on ? <PayMethodsSheet r={r} visible={methodsOpen} onClose={() => setMethodsOpen(false)} /> : null}
       </KeyboardAvoidingView>
       <VerifyingOverlay visible={r.verifying} />
     </View>

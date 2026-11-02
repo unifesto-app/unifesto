@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CaretDown } from '@unifesto/unicon/react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import type { RegisterMode } from '../../hooks/useEventDetail';
@@ -9,7 +10,6 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import useContentWidth from '../../hooks/useContentWidth';
-import SlideToPay from '../ui/SlideToPay';
 import { ApplePayButton } from '../../../modules/apple-pay-button';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
@@ -75,13 +75,15 @@ function useBarBottomPad() {
  * button, silver by night and ink by day. Without info the button takes the
  * full row. Shared by the event, space and session pages.
  */
-export function ActionBar({ info, label, onPress, disabled = false, loading = false, slide = false, applePay = false, backdropImage, backdropColor }: {
-  /** `was`: the price before a discount, struck through after the value. */
-  info: { label: string; value: string; was?: string } | null;
+export function ActionBar({ info, label, onPress, disabled = false, loading = false, applePay = false, backdropImage, backdropColor }: {
+  /**
+   * `was`: the price before a discount, struck through after the value.
+   * `icon` sits before it; `onPress` makes it a button (the pay bar's
+   * method: tap to change it); `warn` colours the label as an error.
+   */
+  info: { label: string; value: string; was?: string; icon?: React.ReactNode; onPress?: () => void; warn?: boolean } | null;
   label: string;
   onPress: () => void;
-  /** Slide to pay instead of a tap: for the one press that spends money. */
-  slide?: boolean;
   /** Apple Pay is the pick: Apple's own button pays (Apple allows no other), the spinner while `loading`. */
   applePay?: boolean;
   /** Ignored: the button is always the primary (buttons never take an accent). Kept for callers. */
@@ -129,18 +131,29 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
         </CardSurfaceProvider>
       )}
       {info ? (
-        <View style={styles.priceCol}>
-          <Text style={[styles.barLabel, { color: c.muted }]} numberOfLines={1}>{info.label}</Text>
-          <Text style={[styles.barValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-            {info.value}
-            {info.was ? <Text style={[styles.barWas, { color: c.muted }]}>{`  ${info.was}`}</Text> : null}
-          </Text>
-        </View>
+        <Pressable
+          onPress={info.onPress}
+          disabled={!info.onPress}
+          accessibilityRole={info.onPress ? 'button' : undefined}
+          accessibilityLabel={`${info.label}, ${info.value}${info.was ? `, was ${info.was}` : ''}`}
+          accessibilityHint={info.onPress ? 'Changes how you pay' : undefined}
+          style={({ pressed }) => [styles.priceCol, styles.priceRow, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          {info.icon}
+          <View style={styles.priceCol}>
+            <View style={styles.priceRow}>
+              <Text style={[styles.barLabel, { color: info.warn ? c.danger : c.muted, flexShrink: 1 }]} numberOfLines={1}>{info.label}</Text>
+              {info.onPress ? <CaretDown size={12} color={c.muted} weight="bold" /> : null}
+            </View>
+            <Text style={[styles.barValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {info.value}
+              {info.was ? <Text style={[styles.barWas, { color: c.muted }]}>{`  ${info.was}`}</Text> : null}
+            </Text>
+          </View>
+        </Pressable>
       ) : null}
       {applePay && ApplePayButton && !loading ? (
-        <ApplePayButton type="buy" radius={cosmosRadius} onPress={onPress} style={[styles.cta, styles.slide]} />
-      ) : slide ? (
-        <SlideToPay label={label} onComplete={onPress} disabled={disabled} loading={loading} style={styles.slide} />
+        <ApplePayButton type="buy" radius={cosmosRadius} onPress={onPress} style={[styles.cta, styles.applePay]} />
       ) : (
         <Pressable
           onPress={onPress}
@@ -193,11 +206,12 @@ const styles = StyleSheet.create({
   // Hairline light along the top edge of the frosted Android bar.
   sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth },
   priceCol: { flex: 1, minWidth: 0 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   barLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   barValue: { fontSize: typography.fontSize.xl, marginTop: 1, ...cosmosFont.figure },
   barWas: { fontSize: typography.fontSize.sm, textDecorationLine: 'line-through', ...cosmosFont.body },
-  // Wider than the info beside it: the knob needs room to travel.
-  slide: { flex: 1.5 },
+  // Apple's button reads "Buy with Apple Pay": room for it beside the price.
+  applePay: { flex: 1.5 },
   cta: { height: 52, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   // Sized by its label (never squeezed below a comfortable tap target).
   ctaBeside: { flexShrink: 0, minWidth: 148, paddingHorizontal: spacing[6] },
