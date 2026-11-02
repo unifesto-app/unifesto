@@ -23,7 +23,7 @@ import ApexPanel from '../../src/components/home/ApexPanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
-import { CircleRow, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
+import { MySpacesRows, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
 import TrendingList from '../../src/components/home/TrendingList';
 import HostCta from '../../src/components/home/HostCta';
 import BeyondFeature, { BeyondFeatureSkeleton } from '../../src/components/home/BeyondFeature';
@@ -174,8 +174,8 @@ export default function HomeTab() {
         ) : null}
 
         {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
-          <Section title="My circles" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
-            <CircleRow
+          <Section title="My spaces" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
+            <MySpacesRows
               spaces={data.mySpaces}
               loading={data.isLoadingMySpaces}
               onPress={openSpace}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import SpacesListScreen from '../src/screens/SpacesListScreen';
-import MyCirclesScreen from '../src/screens/MyCirclesScreen';
+import MySpacesScreen from '../src/screens/MySpacesScreen';
 
 export default function Spaces() {
   const { mine } = useLocalSearchParams<{ mine?: string }>();
@@ -11,11 +11,11 @@ export default function Spaces() {
     <>
       <Stack.Screen
         options={{
-          title: isMine ? 'My circles' : 'Spaces',
+          title: isMine ? 'My spaces' : 'Spaces',
           headerShown: true,
         }}
       />
-      {isMine ? <MyCirclesScreen /> : <SpacesListScreen />}
+      {isMine ? <MySpacesScreen /> : <SpacesListScreen />}
     </>
   );
 }

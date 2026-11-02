@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Space } from '../../lib/api/spaces';
@@ -10,17 +10,19 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
-import { ArrowRight } from '@unifesto/unicon/react-native';
+import { CaretRight, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { SPACE_ROLE_LABEL } from '../../lib/api/spaceMembers';
 import PressableScale from '../ui/PressableScale';
+import { SettingsGroup } from '../profile/SettingsGroup';
 
 const CARD_W = 148;
 // Space banners are 4:3; logos are 1:1.
 const LOGO = 44;
 const RING = 3;
-// My circles tiles.
-const TILE_W = 164;
-const TILE_LOGO = 48;
+// My spaces rows.
+const ROW_LOGO = 48;
+/** Home shows this many of my spaces; See all opens the full list. */
+const HOME_SPACES = 3;
 
 export function Monogram({ name, size, radius }: { name: string; size: number; radius: number }) {
   const c = useCosmos();
@@ -131,12 +133,82 @@ export function roleOf(space: Space): string | null {
   return code && code !== 'MEMBER' ? (SPACE_ROLE_LABEL[code] ?? null) : null;
 }
 
+/** One of my spaces as a row on the page: 1:1 logo, name, my role, place · members · events, parent. */
+export function SpaceRow({ space, parent, onPress }: { space: Space; parent?: string | null; onPress: () => void }) {
+  const c = useCosmos();
+  const defaults = useDefaultImages();
+  const logo = logoOr(defaults, space.id, spaceLogo(space));
+  const role = roleOf(space);
+  const members = spaceMembers(space);
+  const events = space._count?.events ?? space.event_count ?? 0;
+  const meta = [
+    space.city,
+    `${compact(members)} ${members === 1 ? 'member' : 'members'}`,
+    `${compact(events)} ${events === 1 ? 'event' : 'events'}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={[space.name, role, meta].filter(Boolean).join(', ')}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+    >
+      {logo ? (
+        <Image source={{ uri: logo }} style={[styles.rowLogo, { backgroundColor: c.card }]} contentFit="cover" />
+      ) : (
+        <Monogram name={space.name} size={ROW_LOGO} radius={borderRadius.md} />
+      )}
+      <View style={styles.rowInfo}>
+        <View style={styles.rowTitle}>
+          <Text style={[styles.rowName, { color: c.text }]} numberOfLines={1}>{space.name}</Text>
+          {role ? <Text style={[styles.rowRole, { color: c.muted }]} numberOfLines={1}>{role}</Text> : null}
+        </View>
+        <Text style={[styles.rowMeta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
+        {parent ? <Text style={[styles.rowMeta, { color: c.muted }]} numberOfLines={1}>Part of {parent}</Text> : null}
+      </View>
+      <CaretRight size={15} color={c.muted} />
+    </Pressable>
+  );
+}
+
+export function SpaceRowSkeleton() {
+  return (
+    <View style={styles.row}>
+      <Skeleton width={ROW_LOGO} height={ROW_LOGO} borderRadius={borderRadius.md} />
+      <View style={[styles.rowInfo, { gap: 8 }]}>
+        <Skeleton width="70%" height={15} borderRadius={6} />
+        <Skeleton width="50%" height={12} borderRadius={6} />
+      </View>
+    </View>
+  );
+}
+
+/** The action that closes a list of my spaces, in sky. */
+export function FindMoreSpacesRow({ onPress }: { onPress: () => void }) {
+  const c = useCosmos();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Find more spaces"
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+    >
+      <View style={styles.rowSlot}>
+        <MagnifyingGlass size={24} color={c.sky} />
+      </View>
+      <Text style={[styles.rowName, { color: c.sky }]}>Find more spaces</Text>
+    </Pressable>
+  );
+}
+
 /**
- * "My circles": a rail of membership tiles. Logo and my role (plain text) up
- * top, then the name, place · members, and the event count in sky, closing
- * with a "Find more circles" link tile so the row always leads somewhere.
+ * "My spaces" on Home and a person's profile: the first few as rows on the
+ * page with full hairlines, like Up next, closed by Find more spaces in sky.
  */
-export function CircleRow({
+export function MySpacesRows({
   spaces,
   loading,
   onPress,
@@ -147,69 +219,13 @@ export function CircleRow({
   onPress: (space: Space) => void;
   onFindMore: () => void;
 }) {
-  const c = useCosmos();
-  const defaults = useDefaultImages();
-
-  if (loading && spaces.length === 0) {
-    return (
-      <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
-        {[0, 1].map((i) => (
-          <View key={i} style={[styles.tile, { backgroundColor: c.raised }]}>
-            <Skeleton width={TILE_LOGO} height={TILE_LOGO} borderRadius={borderRadius.md} />
-            <Skeleton width={TILE_W * 0.7} height={14} borderRadius={6} style={{ marginTop: spacing[4] }} />
-            <Skeleton width={TILE_W * 0.5} height={11} borderRadius={6} style={{ marginTop: 8 }} />
-            <Skeleton width={TILE_W * 0.35} height={14} borderRadius={6} style={{ marginTop: spacing[5] }} />
-          </View>
-        ))}
-      </ScrollView>
-    );
-  }
-
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
-      {spaces.map((space) => {
-        const logo = logoOr(defaults, space.id, spaceLogo(space));
-        const role = roleOf(space);
-        const members = spaceMembers(space);
-        const events = space._count?.events ?? space.event_count ?? 0;
-        const meta = [space.city, `${compact(members)} ${members === 1 ? 'member' : 'members'}`].filter(Boolean).join(' · ');
-        return (
-          <PressableScale
-            key={space.id}
-            onPress={() => onPress(space)}
-            accessibilityRole="button"
-            accessibilityLabel={role ? `${space.name}, ${role}` : space.name}
-            style={[styles.tile, { backgroundColor: c.raised }]}
-          >
-            <View style={styles.tileTop}>
-              {logo ? (
-                <Image source={{ uri: logo }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />
-              ) : (
-                <Monogram name={space.name} size={TILE_LOGO} radius={borderRadius.md} />
-              )}
-              {role ? <Text style={[styles.roleText, { color: c.muted }]}>{role}</Text> : null}
-            </View>
-            <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
-            <Text style={[styles.tileMeta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
-            <View style={styles.tileFoot}>
-              <Text style={[styles.tileCount, { color: c.sky }]}>{compact(events)}</Text>
-              <Text style={[styles.tileMeta, { color: c.muted }]}>{events === 1 ? 'event' : 'events'}</Text>
-            </View>
-          </PressableScale>
-        );
-      })}
-
-      <PressableScale
-        onPress={onFindMore}
-        accessibilityRole="button"
-        accessibilityLabel="Find more circles"
-        style={[styles.tile, styles.more]}
-      >
-        <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
-        <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs, communities and organisers</Text>
-        <ArrowRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
-      </PressableScale>
-    </ScrollView>
+    <SettingsGroup flat style={styles.rows}>
+      {loading && spaces.length === 0
+        ? [0, 1].map((i) => <SpaceRowSkeleton key={i} />)
+        : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} onPress={() => onPress(s)} />)}
+      <FindMoreSpacesRow onPress={onFindMore} />
+    </SettingsGroup>
   );
 }
 
@@ -233,18 +249,15 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
   statValue: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  tileRow: { paddingHorizontal: GUTTER, gap: spacing[3] },
-  tile: { width: TILE_W, borderRadius: cosmosCardRadius, padding: spacing[4] },
-  // The role wraps under the logo rather than truncating ("Space ad…").
-  tileTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
-  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
-  roleText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  tileName: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
-  tileMeta: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  // Pinned to the bottom so counts line up across tiles with one- and two-line names.
-  tileFoot: { marginTop: 'auto', paddingTop: spacing[4], flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  tileCount: { fontSize: 16, ...cosmosFont.figure },
-  // A link, not another circle: no fill, no outline.
-  more: { justifyContent: 'center' },
-  moreTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  // Under a Home section title, so no group margin on top.
+  rows: { marginTop: 0, marginHorizontal: GUTTER },
+  // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
+  rowLogo: { width: ROW_LOGO, height: ROW_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
+  rowSlot: { width: ROW_LOGO, alignItems: 'center' },
+  rowInfo: { flex: 1, gap: 3 },
+  rowTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
+  rowName: { flexShrink: 1, fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.strong },
+  rowRole: { flexShrink: 0, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  rowMeta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });
