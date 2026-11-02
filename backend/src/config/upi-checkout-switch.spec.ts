@@ -10,12 +10,12 @@ describe('UPI checkout switch', () => {
   };
 
   it('serves each platform under the key its client reads', async () => {
-    const { ctrl } = build({ upiCheckoutIos: false, upiCheckoutAndroid: true, upiCheckoutWeb: true });
-    await expect(ctrl.getCheckout()).resolves.toEqual({ ios: false, android: true, web: true });
+    const { ctrl } = build({ upiCheckoutIos: false, upiCheckoutAndroid: true, upiCheckoutWeb: true, applePayIos: true });
+    await expect(ctrl.getCheckout()).resolves.toEqual({ ios: false, android: true, web: true, applePay: true });
   });
 
   it('is off everywhere before the row exists', async () => {
-    await expect(build(null).ctrl.getCheckout()).resolves.toEqual({ ios: false, android: false, web: false });
+    await expect(build(null).ctrl.getCheckout()).resolves.toEqual({ ios: false, android: false, web: false, applePay: false });
   });
 
   it('an admin flip touches only the platform sent', async () => {

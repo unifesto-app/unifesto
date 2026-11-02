@@ -58,7 +58,7 @@ module.exports = () => {
       googleServicesFile: "./GoogleService-Info.plist",
       appStoreUrl: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
       // Q40 Apple Pay. EAS turns the capability on and links this Merchant ID
-      // when it signs; the server's APPLE_PAY_MERCHANT_ID switches it on in the app.
+      // when it signs; Apex's "Apple Pay: iOS app" switch shows it in the app.
       entitlements: {
         "com.apple.developer.in-app-payments": ["merchant.com.unifesto.app"],
       },

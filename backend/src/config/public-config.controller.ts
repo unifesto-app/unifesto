@@ -26,7 +26,8 @@ export class PublicConfigController {
   /**
    * Q40: where the app and site may show their own UPI-first checkout. Off
    * means Razorpay Standard Checkout only (the kill switch). Clients fall back
-   * to Standard Checkout when this can't be read.
+   * to Standard Checkout when this can't be read. `applePay`: the iPhone pay
+   * page may offer Apple Pay.
    */
   @Get('checkout')
   getCheckout() {
@@ -34,18 +35,13 @@ export class PublicConfigController {
   }
 
   /**
-   * Q40: the netbanking banks and wallets the payment page may list; our
+   * Q40: the netbanking banks and wallets the payment page may list, and our
    * public key (every checkout already carries it) so the app can check a
-   * typed UPI ID before an order exists; and the Apple Pay Merchant ID, set
-   * once Razorpay holds its certificate (unset = no Apple Pay).
+   * typed UPI ID before an order exists.
    */
   @Get('payment-methods')
   async getPaymentMethods() {
-    return {
-      ...(await paymentMethods()),
-      keyId: process.env.RAZORPAY_KEY_ID,
-      applePayMerchantId: process.env.APPLE_PAY_MERCHANT_ID || undefined,
-    };
+    return { ...(await paymentMethods()), keyId: process.env.RAZORPAY_KEY_ID };
   }
 
   /**

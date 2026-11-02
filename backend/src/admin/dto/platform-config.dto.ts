@@ -35,6 +35,11 @@ export class UpdatePlatformConfigDto {
   @IsBoolean()
   upiCheckoutWeb?: boolean;
 
+  // Q40: Apple Pay on the iPhone pay page.
+  @IsOptional()
+  @IsBoolean()
+  applePayIos?: boolean;
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()

@@ -273,6 +273,8 @@ export interface PlatformConfig {
   upiCheckoutIos: boolean;
   upiCheckoutAndroid: boolean;
   upiCheckoutWeb: boolean;
+  /** Q40: Apple Pay on the iPhone pay page. */
+  applePayIos: boolean;
   /** Every AI feature the backend knows (read-only). */
   aiFeatures?: string[];
   /** The AI features allowed to run; the rest are off. */

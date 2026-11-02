@@ -38,9 +38,11 @@ export interface UpiCheckoutSwitches {
   upiCheckoutIos: boolean;
   upiCheckoutAndroid: boolean;
   upiCheckoutWeb: boolean;
+  /** Apple Pay on the iPhone pay page. */
+  applePayIos: boolean;
 }
 
-const UPI_CHECKOUT_SELECT = { upiCheckoutIos: true, upiCheckoutAndroid: true, upiCheckoutWeb: true } as const;
+const UPI_CHECKOUT_SELECT = { upiCheckoutIos: true, upiCheckoutAndroid: true, upiCheckoutWeb: true, applePayIos: true } as const;
 
 /**
  * Version policy for one platform, driving the in-app update prompt.
@@ -247,19 +249,26 @@ export class PlatformConfigService implements OnModuleInit {
       upiCheckoutIos: row?.upiCheckoutIos ?? false,
       upiCheckoutAndroid: row?.upiCheckoutAndroid ?? false,
       upiCheckoutWeb: row?.upiCheckoutWeb ?? false,
+      applePayIos: row?.applePayIos ?? false,
     };
   }
 
   /**
-   * Q40: where our UPI-first checkout is on. Read straight from the database
-   * so the kill switch flipped through one replica holds on all of them.
+   * Q40: where our UPI-first checkout is on, and whether the iPhone pay page
+   * offers Apple Pay. Read straight from the database so the kill switch
+   * flipped through one replica holds on all of them.
    */
-  async getUpiCheckout(): Promise<{ ios: boolean; android: boolean; web: boolean }> {
+  async getUpiCheckout(): Promise<{ ios: boolean; android: boolean; web: boolean; applePay: boolean }> {
     const row = await this.prisma.platformConfig.findUnique({ where: { id: CONFIG_ID }, select: UPI_CHECKOUT_SELECT });
-    return { ios: row?.upiCheckoutIos ?? false, android: row?.upiCheckoutAndroid ?? false, web: row?.upiCheckoutWeb ?? false };
+    return {
+      ios: row?.upiCheckoutIos ?? false,
+      android: row?.upiCheckoutAndroid ?? false,
+      web: row?.upiCheckoutWeb ?? false,
+      applePay: row?.applePayIos ?? false,
+    };
   }
 
-  /** Admin switch for Q40, per platform. Off = Razorpay Standard Checkout only. */
+  /** Admin switch for Q40, per platform (off = Razorpay Standard Checkout only), and Apple Pay's. */
   async setUpiCheckout(switches: Partial<UpiCheckoutSwitches>): Promise<void> {
     await this.prisma.platformConfig.upsert({
       where: { id: CONFIG_ID },

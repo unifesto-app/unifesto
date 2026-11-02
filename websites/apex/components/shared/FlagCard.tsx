@@ -20,7 +20,8 @@ export function FlagCard({
     | "customSendingDomainsEnabled"
     | "upiCheckoutIos"
     | "upiCheckoutAndroid"
-    | "upiCheckoutWeb";
+    | "upiCheckoutWeb"
+    | "applePayIos";
   title: string;
   children: ReactNode;
   /** Colour "On" as the dangerous state (otherwise "Off" is). */
