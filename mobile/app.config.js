@@ -6,6 +6,7 @@ const withRemoveSplashScreen = require('./plugins/withRemoveSplashScreen');
 const withSceneDelegate = require('./plugins/withSceneDelegate');
 const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
+const withRazorpayApplePay = require('./plugins/withRazorpayApplePay');
 
 module.exports = () => {
   const config = {
@@ -56,6 +57,11 @@ module.exports = () => {
       },
       googleServicesFile: "./GoogleService-Info.plist",
       appStoreUrl: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
+      // Q40 Apple Pay. EAS turns the capability on and links this Merchant ID
+      // when it signs; the server's APPLE_PAY_MERCHANT_ID switches it on in the app.
+      entitlements: {
+        "com.apple.developer.in-app-payments": ["merchant.com.unifesto.app"],
+      },
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         // Camera, microphone and location strings are set by the expo-camera and
@@ -350,5 +356,7 @@ module.exports = () => {
   modifiedConfig = withPodDeploymentTarget(modifiedConfig);
   // Output-less Run Script phases always run anyway; say so, so Xcode stops warning.
   modifiedConfig = withAlwaysRunScripts(modifiedConfig);
+  // Q40: Razorpay's Apple Pay plugin, which react-native-customui finds at runtime.
+  modifiedConfig = withRazorpayApplePay(modifiedConfig);
   return modifiedConfig;
 };

@@ -34,13 +34,18 @@ export class PublicConfigController {
   }
 
   /**
-   * Q40: the netbanking banks and wallets the payment page may list, and our
+   * Q40: the netbanking banks and wallets the payment page may list; our
    * public key (every checkout already carries it) so the app can check a
-   * typed UPI ID before an order exists.
+   * typed UPI ID before an order exists; and the Apple Pay Merchant ID, set
+   * once Razorpay holds its certificate (unset = no Apple Pay).
    */
   @Get('payment-methods')
   async getPaymentMethods() {
-    return { ...(await paymentMethods()), keyId: process.env.RAZORPAY_KEY_ID };
+    return {
+      ...(await paymentMethods()),
+      keyId: process.env.RAZORPAY_KEY_ID,
+      applePayMerchantId: process.env.APPLE_PAY_MERCHANT_ID || undefined,
+    };
   }
 
   /**

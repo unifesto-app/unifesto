@@ -10,6 +10,7 @@ import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import useContentWidth from '../../hooks/useContentWidth';
 import SlideToPay from '../ui/SlideToPay';
+import { ApplePayButton } from '../../../modules/apple-pay-button';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
@@ -74,13 +75,15 @@ function useBarBottomPad() {
  * button, silver by night and ink by day. Without info the button takes the
  * full row. Shared by the event, space and session pages.
  */
-export function ActionBar({ info, label, onPress, disabled = false, loading = false, slide = false, backdropImage, backdropColor }: {
+export function ActionBar({ info, label, onPress, disabled = false, loading = false, slide = false, applePay = false, backdropImage, backdropColor }: {
   /** `was`: the price before a discount, struck through after the value. */
   info: { label: string; value: string; was?: string } | null;
   label: string;
   onPress: () => void;
   /** Slide to pay instead of a tap: for the one press that spends money. */
   slide?: boolean;
+  /** Apple Pay is the pick: Apple's own button pays (Apple allows no other), the spinner while `loading`. */
+  applePay?: boolean;
   /** Ignored: the button is always the primary (buttons never take an accent). Kept for callers. */
   accent?: string;
   /** Ignored, as `accent`. */
@@ -134,7 +137,9 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
           </Text>
         </View>
       ) : null}
-      {slide ? (
+      {applePay && ApplePayButton && !loading ? (
+        <ApplePayButton type="buy" radius={cosmosRadius} onPress={onPress} style={[styles.cta, styles.slide]} />
+      ) : slide ? (
         <SlideToPay label={label} onComplete={onPress} disabled={disabled} loading={loading} style={styles.slide} />
       ) : (
         <Pressable

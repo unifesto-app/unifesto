@@ -26,6 +26,7 @@ import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketS
 import { relativeWhen } from '../../utils/eventFormat';
 import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, walletLogo, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
+import { ApplePayButton } from '../../../modules/apple-pay-button';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -540,14 +541,14 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
 }
 
 /**
- * Q40: our own payment page. Every UPI app Razorpay finds on the phone (last
+ * Q40: our own payment page. Apple Pay (iPhones that can), every UPI app Razorpay finds on the phone (last
  * used, then GPay, PhonePe, Paytm; four show, the rest under Show more), a
  * typed UPI ID on iOS (Verify shows whose it is), card and the wallets our
  * Razorpay account takes, each its own row. Pay pays with the pick and nothing else.
  */
 function PayWith({ r }: { r: EventRegistration }) {
   const c = useCosmos();
-  const { apps, wallets, selected, keyId } = r.payOptions;
+  const { apps, wallets, selected, keyId, applePay } = r.payOptions;
   const [allApps, setAllApps] = React.useState(false);
   // The last Verify, kept only while the box still holds the ID it checked.
   const [check, setCheck] = React.useState<{ vpa: string; result: Awaited<ReturnType<typeof verifyUpiId>> | 'checking' } | null>(null);
@@ -563,6 +564,10 @@ function PayWith({ r }: { r: EventRegistration }) {
   const icon = (Glyph: typeof CreditCard) => <Glyph size={26} color={c.text} weight="duotone" />;
   // No method = the Show more row.
   const options: { key: string; label: string; method?: PayMethod; icon: React.ReactNode }[] = [
+    // Apple's own mark (its button, untouchable here): Apple Pay may not be drawn any other way.
+    ...(applePay && ApplePayButton
+      ? [{ key: 'apple_pay', label: 'Apple Pay', method: 'apple_pay' as const, icon: <ApplePayButton type="plain" radius={6} pointerEvents="none" style={styles.applePayMark} /> }]
+      : []),
     ...apps.slice(0, apps.length - hidden).map((app) => ({
       key: app.id,
       label: app.name,
@@ -825,6 +830,7 @@ const styles = StyleSheet.create({
   payCard: { paddingVertical: spacing[1] },
   payRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], minHeight: 56 },
   payIcon: { width: 26, height: 26, borderRadius: 7 },
+  applePayMark: { width: 46, height: 30 },
   payLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   payPick: { paddingBottom: spacing[3] },
   verified: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },

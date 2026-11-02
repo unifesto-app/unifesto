@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
 import { AppAlert } from '../components/ui/AppAlert';
 import { makePublicRequest } from './api/helpers';
+import { ApplePayButton } from '../../modules/apple-pay-button';
 import { getUserIdentities } from './api/auth';
 
 /**
@@ -54,9 +55,9 @@ export interface PayOption {
 /**
  * A UPI app; UPI in the sheet ('upi', Android when no app was found); a typed
  * UPI ID (a collect request, iOS only); a card (Razorpay's card form, nothing
- * else); a wallet; or Razorpay's whole sheet ('more').
+ * else); Apple Pay (iOS); a wallet; or Razorpay's whole sheet ('more').
  */
-export type PayMethod = UpiApp | 'upi' | { vpa: string } | 'card' | { wallet: string } | 'more';
+export type PayMethod = UpiApp | 'upi' | { vpa: string } | 'card' | 'apple_pay' | { wallet: string } | 'more';
 
 /** What the payment page offers. `on` = Q40's switch is on and Custom UI is here. */
 export interface CheckoutMethods {
@@ -66,21 +67,24 @@ export interface CheckoutMethods {
   selected: PayMethod;
   /** Our public Razorpay key, to check a typed UPI ID before an order exists. None = no Verify. */
   keyId?: string;
+  /** Apple Pay is on for us and this iPhone can pay with it. */
+  applePay: boolean;
 }
 
-export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more' };
+export const CHECKOUT_OFF: CheckoutMethods = { on: false, apps: [], wallets: [], selected: 'more', applePay: false };
 
 /** The pick in words, for the pay button's bar. '' = Razorpay's sheet, which asks. */
 export function methodName(m: PayMethod, wallets: PayOption[]): string {
   if (m === 'more') return '';
   if (m === 'upi' || m === 'card') return BLOCK_NAMES[m];
+  if (m === 'apple_pay') return 'Apple Pay';
   if ('id' in m) return m.name;
   if ('vpa' in m) return 'UPI ID';
   const wallet = wallets.find((w) => w.code === m.wallet)?.name;
   return wallet ? `${wallet} wallet` : 'Wallet';
 }
 
-/** How a method is remembered: the app id, 'upi', 'vpa:name@bank', 'card', 'more' or 'wallet:phonepe'. */
+/** How a method is remembered: the app id, 'upi', 'vpa:name@bank', 'card', 'apple_pay', 'more' or 'wallet:phonepe'. */
 export const methodKey = (m: PayMethod) =>
   typeof m === 'string' ? m : 'id' in m ? m.id : 'vpa' in m ? `vpa:${m.vpa}` : `wallet:${m.wallet}`;
 
@@ -203,15 +207,19 @@ async function upiCheckoutOn(): Promise<boolean> {
   return Promise.race([read, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
 }
 
-type PayConfig = { wallets: PayOption[]; keyId?: string };
+type PayConfig = { wallets: PayOption[]; keyId?: string; applePayMerchantId?: string };
 
-/** The wallets our Razorpay account takes, and our public key. Unreadable or slow = no wallets (UPI and cards only), no Verify. */
+/**
+ * The wallets our Razorpay account takes, our public key and our Apple Pay
+ * Merchant ID. Unreadable or slow = no wallets (UPI and cards only), no
+ * Verify, no Apple Pay.
+ */
 async function payConfig(): Promise<PayConfig> {
   const none: PayConfig = { wallets: [] };
   const read = makePublicRequest('/config/payment-methods')
     .then(async (res): Promise<PayConfig> => {
       const body = res?.ok ? await res.json() : null;
-      return { wallets: body?.wallets ?? [], keyId: body?.keyId || undefined };
+      return { wallets: body?.wallets ?? [], keyId: body?.keyId || undefined, applePayMerchantId: body?.applePayMerchantId || undefined };
     })
     .catch(() => none);
   return Promise.race([read, new Promise<PayConfig>((resolve) => setTimeout(() => resolve(none), 3000))]);
@@ -243,24 +251,44 @@ export async function verifyUpiId(keyId: string, vpa: string): Promise<{ name: s
 const lastMethodId = () => AsyncStorage.getItem(LAST_METHOD_KEY).catch(() => null);
 
 /** The method paid with last time, while it's still on offer; else the first UPI app, else a UPI ID (iOS) or UPI. */
-function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[]): PayMethod {
+function preselect(last: string | null, apps: UpiApp[], wallets: PayOption[], applePay: boolean): PayMethod {
   const [kind, code] = (last ?? '').split(':');
   if (kind === 'wallet' && wallets.some((w) => w.code === code)) return { wallet: code };
   if (kind === 'vpa' && CAN_TYPE_UPI_ID) return { vpa: code };
   if (last === 'card') return 'card';
+  if (last === 'apple_pay' && applePay) return 'apple_pay';
   return apps[0] ?? (CAN_TYPE_UPI_ID ? { vpa: '' } : 'upi');
 }
 
+// Apple Pay's Merchant ID, from the server: pay() needs it for an Apple Pay pick.
+let applePayMerchantId = '';
+
 /**
- * What checkout can offer: UPI apps (last used first), wallets and the method
- * to preselect. Off = the switch is off, the currency isn't INR, or
- * this binary has no Custom UI: then only the sheet.
+ * Apple Pay on this iPhone: our Merchant ID is set on the server, this build
+ * has Apple's button and Razorpay's plugin, and Wallet holds a card Razorpay
+ * takes. Razorpay's check needs the SDK started with our key. Slow = no.
+ */
+async function applePayReady(merchantId?: string, keyId?: string): Promise<boolean> {
+  applePayMerchantId = merchantId ?? '';
+  if (Platform.OS !== 'ios' || !customUi || !merchantId || !keyId || !ApplePayButton) return false;
+  // Never settles; no payment is in flight while the page loads, so restarting the SDK is safe.
+  void customUi.initRazorpay(keyId);
+  const can = customUi.canMakePayment().catch(() => false);
+  return Promise.race([can, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
+}
+
+/**
+ * What checkout can offer: UPI apps (last used first), Apple Pay, wallets and
+ * the method to preselect. Off = the switch is off, the currency isn't INR,
+ * or this binary has no Custom UI: then only the sheet.
  */
 export async function checkoutMethods(currency = 'INR'): Promise<CheckoutMethods> {
   if (!customUi || currency !== 'INR' || !(await upiCheckoutOn())) return CHECKOUT_OFF;
-  const [found, last, { wallets, keyId }] = await Promise.all([installedUpiApps(), lastMethodId(), payConfig()]);
+  const [found, last, config] = await Promise.all([installedUpiApps(), lastMethodId(), payConfig()]);
+  const { wallets, keyId } = config;
+  const applePay = await applePayReady(config.applePayMerchantId, keyId);
   const apps = [...found].sort((a, b) => Number(b.id === last) - Number(a.id === last) || upiRank(a) - upiRank(b));
-  return { on: true, apps, wallets, keyId, selected: preselect(last, apps, wallets) };
+  return { on: true, apps, wallets, keyId, applePay, selected: preselect(last, apps, wallets, applePay) };
 }
 
 /** Razorpay and the chooser report a dismissed payment as an error; it isn't one. Custom UI's Android back press is code 5. */
@@ -292,8 +320,14 @@ async function myEmail(): Promise<string> {
   }
 }
 
-/** Custom UI's options for a pick it pays without the sheet: a UPI app, a UPI ID or a wallet. */
-function directOptions(m: PayMethod | null): Record<string, string> | null {
+/** Custom UI's options for a pick it pays without the sheet: a UPI app, a UPI ID, Apple Pay or a wallet. */
+function directOptions(m: PayMethod | null): Record<string, unknown> | null {
+  if (m === 'apple_pay') {
+    // Razorpay's form for Apple Pay: a card payment through the apple_pay app, with our Merchant ID.
+    return applePayMerchantId
+      ? { method: 'card', app: { name: 'apple_pay', apple_pay: { merchant_identifier: applePayMerchantId } } }
+      : null;
+  }
   if (!m || typeof m === 'string') return null;
   if ('id' in m) return { method: 'upi', '_[flow]': 'intent', upi_app_package_name: m.id };
   if ('vpa' in m) return isVpa(m.vpa) ? { method: 'upi', '_[flow]': 'collect', vpa: m.vpa } : null;
@@ -303,9 +337,47 @@ function directOptions(m: PayMethod | null): Record<string, string> | null {
 /** The one instrument the sheet shows for a pick it has to take. null = the whole sheet. */
 function onlyInstrument(m: PayMethod | null): { method: string } | null {
   if (!m || m === 'more') return null;
-  if (m === 'card') return { method: 'card' };
+  if (m === 'card' || m === 'apple_pay') return { method: 'card' };
   if (m === 'upi' || 'id' in m || 'vpa' in m) return { method: 'upi' };
   return { method: 'wallet', ...(m.wallet && { wallets: [m.wallet] }) };
+}
+
+// How long the app sits in front, a UPI app's payment still open, before it offers a way out.
+const UPI_WAIT_MS = 8000;
+
+/**
+ * iOS, a UPI app paying: Razorpay's page is invisible (our patch to its
+ * bridge) and that page held the Cancel. So after a quiet spell back in the
+ * app we ask: keep waiting, or cancel. Only time in front counts, so a
+ * payment being made in the UPI app, or iOS asking to open it, is never
+ * interrupted. Builds without the patch still show the page; nothing to do.
+ */
+function waitForUpiApp(chosen: PayMethod | null) {
+  const app = chosen && typeof chosen === 'object' && 'id' in chosen ? chosen : null;
+  const cancel: (() => void) | undefined = Platform.OS === 'ios' && app ? NativeModules.RazorpayCustomui?.cancel : undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let alertId = 0;
+  let over = false;
+  const arm = () => {
+    clearTimeout(timer);
+    if (!cancel || over) return;
+    timer = setTimeout(() => {
+      alertId = AppAlert.alert(`Waiting for ${app!.name}`, 'Finish paying there. If you have paid, it confirms here in a moment.', [
+        { text: 'Keep waiting', style: 'cancel', onPress: arm },
+        { text: 'Cancel payment', style: 'destructive', onPress: () => !over && cancel() },
+      ]);
+    }, UPI_WAIT_MS);
+  };
+  arm();
+  return {
+    appState: (state: string) => (state === 'active' ? arm() : clearTimeout(timer)),
+    // Paid, failed or cancelled: the question is gone.
+    done: () => {
+      over = true;
+      clearTimeout(timer);
+      if (alertId) AppAlert.dismiss(alertId);
+    },
+  };
 }
 
 /**
@@ -323,15 +395,18 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
   if (customUi && direct) {
     // Left for the UPI app (or to approve the UPI ID's request) or wallet: what comes back is the buyer's answer.
     let left = false;
+    const waiting = waitForUpiApp(chosen);
     const away = AppState.addEventListener('change', (state) => {
       if (state === 'background') left = true;
+      waiting.appState(state);
     });
     try {
       payment = await customUi.open({
         key_id: order.razorpayKeyId,
         order_id: order.razorpayOrderId,
         // Razorpay's sample sends paise as a string; the Android bridge turns numbers into doubles.
-        amount: String(order.amount),
+        // Apple Pay (iOS only) takes the number, as in Razorpay's Apple Pay sample.
+        amount: chosen === 'apple_pay' ? order.amount : String(order.amount),
         currency,
         description: details.description,
         email: prefill.email,
@@ -340,19 +415,21 @@ export async function pay(order: PayOrder, details: PayDetails, method?: PayMeth
       });
     } catch (err: any) {
       // Custom UI's own Cancel (iOS) or back press (Android), or an answer from the app or wallet.
-      if (left || /User Cancelled Payment|back button/i.test(err?.description ?? '')) throw err;
+      // Apple Pay's answer is final too: a card form in the sheet is not what they picked.
+      if (left || chosen === 'apple_pay' || /User Cancelled Payment|back button/i.test(err?.description ?? '')) throw err;
       // Custom UI failed before anything opened: say why, then pay the same pick in the sheet.
       console.warn('[pay] Custom UI failed, opening the sheet', err);
       Sentry.captureMessage(`Custom UI failed (${direct.method}): ${err?.code} ${err?.description ?? ''}`, 'warning');
     } finally {
       away.remove();
+      waiting.done();
     }
   }
   if (!payment) {
     const only = onlyInstrument(chosen);
     // A UPI pick (or, with nothing picked, a UPI habit) opens the sheet on UPI.
     const last = chosen ? null : await lastMethodId();
-    const upiHabit = !!last && last !== 'more' && last !== 'card' && !last.includes(':');
+    const upiHabit = !!last && last !== 'more' && last !== 'card' && last !== 'apple_pay' && !last.includes(':');
     const upi = currency === 'INR' && (only?.method === 'upi' || upiHabit);
     payment = (await RazorpayCheckout.open({
       key: order.razorpayKeyId,

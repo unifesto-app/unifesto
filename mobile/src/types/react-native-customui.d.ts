@@ -20,6 +20,10 @@ declare module 'react-native-customui' {
   }
 
   const Razorpay: {
+    /** Starts the SDK with a key, for canMakePayment. Its promise never settles. */
+    initRazorpay(key: string): Promise<never>;
+    /** Apple Pay on this phone (iOS; false without the Apple Pay pod). Never rejects. */
+    canMakePayment(): Promise<boolean>;
     open(options: Record<string, unknown>): Promise<{
       razorpay_payment_id: string;
       razorpay_order_id: string;

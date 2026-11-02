@@ -155,6 +155,7 @@ export default function EventRegistrationScreen() {
           disabled={!r.canContinue}
           loading={r.submitting || r.verifying}
           slide={paying}
+          applePay={paying && r.payOptions.selected === 'apple_pay'}
           tone="neutral"
           accent={c.primary}
           onPress={confirming ? r.submit : r.next}
