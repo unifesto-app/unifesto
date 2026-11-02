@@ -15,7 +15,7 @@ import { GUTTER } from '../../src/components/home/Section';
 import { ActionBar, useActionBarSpace } from '../../src/components/event/EventOverlays';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import FormRow from '../../src/components/profile/FormRow';
-import { getCurrentUser, getUserIdentities } from '../../src/lib/api/auth';
+import { getCurrentUser, getUserIdentities, updateUserProfile } from '../../src/lib/api/auth';
 import { getClaimInfo, claimSeat, declineSeat } from '../../src/lib/api/registrations';
 import { getEventCustomFields, getFieldsForTicket, toCustomField, type CustomField } from '../../src/lib/api/tickets';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
@@ -41,6 +41,12 @@ interface ClaimInfo {
 
 
 type Phase = 'loading' | 'signedOut' | 'ready' | 'already' | 'claimed' | 'declined' | 'error';
+
+// Z11 (DPDP): claiming a seat is taking a ticket for yourself, so it's 18+ like registering.
+const AGES = [
+  { label: '18 or older', value: 'adult' },
+  { label: 'Under 18', value: 'minor' },
+] as const;
 
 /**
  * Group-seat claim, reached from an invite link (unifesto://claim/{token} or
@@ -71,6 +77,9 @@ export default function ClaimSeatRoute() {
   // Which details came from the signed-in profile. Those are shown read-only;
   // only what the profile is missing can be filled in here.
   const [locked, setLocked] = useState({ name: false, mobile: false, gender: false });
+  // Asked once per account: only when the profile has no 18+ confirmation yet.
+  const [askAge, setAskAge] = useState(false);
+  const [age, setAge] = useState<'adult' | 'minor' | null>(null);
   // The organiser's per-member questions for this ticket; team-wide ones were
   // answered by the lead at registration.
   const [fields, setFields] = useState<CustomField[]>([]);
@@ -101,6 +110,7 @@ export default function ClaimSeatRoute() {
         const pGender = profileGenderToAttendeeOption(me.gender);
         const has = { name: !!pName, mobile: /^[0-9]{10}$/.test(pMobile), gender: !!pGender };
         setLocked(has);
+        setAskAge(!me.ageConfirmedAt);
         if (has.name) setName(pName);
         if (has.mobile) setMobile(pMobile);
         if (has.gender) setGender(pGender);
@@ -147,13 +157,17 @@ export default function ClaimSeatRoute() {
   // Same rules the backend enforces on claim (required, formats, show-if).
   const questionProblem = firstFormProblem(fields, answers);
   const questionsDone = !questionProblem;
-  const canClaim = !!name.trim() && mobileValid && !!gender && questionsDone;
+  const canClaim = !!name.trim() && mobileValid && !!gender && questionsDone && (!askAge || age === 'adult');
   const anyLocked = locked.name || locked.mobile || locked.gender || !!email;
 
   const claim = async () => {
     if (!canClaim || submitting) return;
     setSubmitting(true);
     try {
+      if (askAge) {
+        await updateUserProfile({ ageConfirmed: true });
+        setAskAge(false);
+      }
       await claimSeat(token, {
         name: name.trim(),
         mobile: mobile.trim(),
@@ -370,6 +384,33 @@ export default function ClaimSeatRoute() {
                   );
                 })}
               </View>
+            </>
+          ) : null}
+
+          {askAge ? (
+            <>
+              <Text style={[styles.section, { color: c.muted }]}>Age</Text>
+              <View style={styles.chips} accessibilityRole="radiogroup">
+                {AGES.map((o) => {
+                  const active = age === o.value;
+                  return (
+                    <Pressable
+                      key={o.value}
+                      onPress={() => setAge(o.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      style={({ pressed }) => [styles.chip, { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+                    >
+                      <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{o.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {age === 'minor' ? (
+                <Text style={[styles.hint, { color: c.muted }]} accessibilityLiveRegion="polite">
+                  You need to be 18 or older to claim a seat yourself. Ask your team lead to have the organiser add you through a parent or guardian.
+                </Text>
+              ) : null}
             </>
           ) : null}
 

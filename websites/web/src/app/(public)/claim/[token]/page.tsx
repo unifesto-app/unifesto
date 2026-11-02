@@ -13,6 +13,7 @@ import {
   acceptLegal,
   ApiError,
   claimSeat,
+  confirmAge,
   getClaimInfo,
   getEventFields,
   pendingLegal,
@@ -21,6 +22,7 @@ import {
   type ClaimInfo,
   type FormField,
 } from "@/lib/api/registration";
+import { getMe } from "@/lib/api/account";
 
 /**
  * Group-seat claim (Q16). The link is the invite: whoever opens it signs in any
@@ -39,8 +41,18 @@ export default function ClaimPage() {
   const [claimed, setClaimed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Z11: claiming takes a ticket for yourself, so the 18+ box shows until it's on record.
+  const [ageDone, setAgeDone] = useState(false);
 
   const authToken = session?.token;
+  useEffect(() => {
+    if (!authToken) return;
+    let live = true;
+    getMe(authToken).then((m) => live && setAgeDone(!!m.ageConfirmedAt), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [authToken]);
   useEffect(() => {
     if (!authToken) return;
     let live = true;
@@ -80,6 +92,7 @@ export default function ClaimPage() {
         await saveName(name, session.token);
         setSession({ ...session, fullName: name });
       }
+      if (!ageDone) await confirmAge(session.token);
       // Continuing past the Terms line accepts them, as registering does (K12).
       for (const d of await pendingLegal(session.token)) await acceptLegal(d.slug, d.version, session.token);
       await claimSeat(token, session.token, { name, customFields: Object.fromEntries(shown.map((f) => [f.id, answers[f.id]])) });
@@ -187,6 +200,17 @@ export default function ClaimPage() {
         {shown.map((f) => (
           <Question key={f.id} field={f} value={answers[f.id]} onChange={(v) => setAnswers((a) => ({ ...a, [f.id]: v }))} />
         ))}
+        {!ageDone && (
+          <div>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
+              <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
+              <span>I am 18 or older</span>
+            </label>
+            <p className="mt-2 pl-7 text-xs text-paper/55">
+              Under 18? Ask your team lead to have the organiser add you through a parent or guardian.
+            </p>
+          </div>
+        )}
         <p className="text-sm text-paper/65">
           By continuing you agree to the{" "}
           <Link href="/terms" target="_blank" className="underline">
