@@ -1120,3 +1120,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-03** · Z11 group seat claims ask the 18+ confirmation once, on web and in the app (#570)
 - **2026-11-03** · Z7 weekly scorecard leaves the demo space out of event counts (#569)
 - **2026-11-03** · Z2 console fee banner says the fee applies from 3 November (#571)
+- **2026-11-03** · S64 remaining scorecard bugs fixed (Orbit end, monthly summary, A/B stats, Curator grants dropped, app New event, white-label register and banner) (#572)
