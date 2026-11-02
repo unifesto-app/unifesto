@@ -14,7 +14,8 @@ export interface IdentityStat {
   value: number | null;
   /** The figure's colour, by job (sky events, mint done). Defaults to text. */
   accent?: string;
-  onPress: () => void;
+  /** Omit for a read-only number. */
+  onPress?: () => void;
 }
 
 interface IdentityHeaderProps {
@@ -24,8 +25,11 @@ interface IdentityHeaderProps {
   bio?: string | null;
   memberSince?: string | null;
   stats: IdentityStat[];
+  /** Under the bio, e.g. the person's links on View profile. */
+  links?: React.ReactNode;
   onEdit: () => void;
-  onViewPublic: () => void;
+  /** Omit on the public view itself: Edit profile then stands alone. */
+  onViewPublic?: () => void;
 }
 
 const AVATAR = 88;
@@ -46,7 +50,7 @@ const initials = (name: string) =>
  * (Hanken SemiBold; names are never display), handle and bio centred, two
  * outline buttons, then my numbers in a band between full hairlines.
  */
-export default function IdentityHeader({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityHeaderProps) {
+export default function IdentityHeader({ name, username, avatarUrl, bio, memberSince, stats, links, onEdit, onViewPublic }: IdentityHeaderProps) {
   const c = useCosmos();
   const large = useWindowDimensions().fontScale > LARGE_TEXT;
   const joined = memberSince
@@ -72,11 +76,14 @@ export default function IdentityHeader({ name, username, avatarUrl, bio, memberS
           {[username ? `@${username}` : null, joined].filter(Boolean).join('  ·  ')}
         </Text>
         {bio ? <Text style={[styles.bio, { color: c.soft }]} numberOfLines={3}>{bio}</Text> : null}
+        {links}
       </View>
 
       <View style={[styles.actions, large && styles.stackActions]}>
         <AuthButton label="Edit profile" variant="secondary" onPress={onEdit} style={[styles.action, large && styles.actionFull]} />
-        <AuthButton label="View profile" variant="secondary" onPress={onViewPublic} style={[styles.action, large && styles.actionFull]} />
+        {onViewPublic ? (
+          <AuthButton label="View profile" variant="secondary" onPress={onViewPublic} style={[styles.action, large && styles.actionFull]} />
+        ) : null}
       </View>
 
       <View style={[styles.stats, { borderColor: c.border }]}>
@@ -85,8 +92,9 @@ export default function IdentityHeader({ name, username, avatarUrl, bio, memberS
             key={s.label}
             feedback="inline"
             onPress={s.onPress}
+            disabled={!s.onPress}
             hitSlop={8}
-            accessibilityRole="button"
+            accessibilityRole={s.onPress ? 'button' : 'text'}
             accessibilityLabel={s.value == null ? `${s.label}, loading` : `${s.label}, ${s.value}`}
             style={styles.stat}
           >
