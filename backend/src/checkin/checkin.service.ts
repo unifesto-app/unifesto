@@ -1713,6 +1713,7 @@ export class CheckinService {
       { user: { fullName: { contains: q, mode: 'insensitive' } } },
       { user: { username: { contains: q, mode: 'insensitive' } } },
       { user: { mobileNumber: { contains: q } } },
+      { attendeeMobile: { contains: q } },
       { user: { identities: { some: { email: { contains: q, mode: 'insensitive' } } } } },
       { qrCode: { contains: q, mode: 'insensitive' } },
       { tickets: { some: { ticketCode: { contains: q, mode: 'insensitive' } } } },

@@ -32,6 +32,14 @@ export function normalizeMobile(raw: string): string | null {
 }
 
 /**
+ * Not a number anyone answers: the `+0…` an invited or email-only account is
+ * made with (no country code starts with 0), or a closed account's `deleted-…`.
+ */
+export function isPlaceholderMobile(mobile: string): boolean {
+  return mobile.startsWith('+0') || mobile.startsWith('deleted-');
+}
+
+/**
  * Case-insensitive email filter for existing mixed-case rows (written before
  * J17). Prisma's insensitive `equals` is ILIKE on Postgres, so `_` and `%` in
  * an address are wildcards: always re-check the hits with {@link sameEmail}.

@@ -18,7 +18,7 @@ import { resolveRegistrationWhatsAppInvite, WHATSAPP_LINK_SET } from '../common/
 import { seatsFor } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { GroupInviteBlastQueue } from './group-invite-blast.queue';
-import { seatMemberName, seatPhone } from './group-invite.util';
+import { contactMobile, seatMemberName, seatPhone } from './group-invite.util';
 import { inChunks } from '../common/batching';
 
 /** How long a saved link waits before going out, so a quick fix-up save wins. */
@@ -211,6 +211,7 @@ export class RegistrationAttendeesService {
         id: true,
         whatsappInviteSentAt: true,
         whatsappGroupJoinedAt: true,
+        attendeeMobile: true,
         ticketType: { select: { whatsappGroupUrl: true } },
         user: {
           select: { mobileNumber: true, fullName: true, username: true },
@@ -250,7 +251,7 @@ export class RegistrationAttendeesService {
       };
       // Lead (individual attendee, or seat 1 of a group): tracked on the row.
       if (!reg.whatsappInviteSentAt && !reg.whatsappGroupJoinedAt) {
-        consider('reg', reg.id, reg.user?.mobileNumber ?? null, reg.user?.fullName || reg.user?.username || 'there');
+        consider('reg', reg.id, contactMobile(reg.user?.mobileNumber, reg.attendeeMobile), reg.user?.fullName || reg.user?.username || 'there');
       }
       // Group members (seats 2..N): tracked per seat.
       for (const seat of reg.groupSeats) {
@@ -561,6 +562,7 @@ export class RegistrationAttendeesService {
         { user: { fullName: { contains: searchTerm, mode: 'insensitive' } } },
         { user: { username: { contains: searchTerm, mode: 'insensitive' } } },
         { user: { mobileNumber: { contains: searchTerm } } },
+        { attendeeMobile: { contains: searchTerm } },
         { user: { identities: { some: { email: { contains: searchTerm, mode: 'insensitive' } } } } },
       ];
 
@@ -672,6 +674,8 @@ export class RegistrationAttendeesService {
         ...reg,
         user: {
           ...reg.user,
+          // The number to reach them on, never a `+0…` placeholder (A35).
+          mobileNumber: contactMobile(reg.user.mobileNumber, reg.attendeeMobile),
           email: reg.user.identities?.[0]?.email || null,
           identities: undefined, // Remove the identities array from response
         },
@@ -792,7 +796,11 @@ export class RegistrationAttendeesService {
     return {
       ...registration,
       groupSeats,
-      user: { ...user, email: identities?.[0]?.email || null },
+      user: {
+        ...user,
+        mobileNumber: contactMobile(user.mobileNumber, registration.attendeeMobile),
+        email: identities?.[0]?.email || null,
+      },
     };
   }
 

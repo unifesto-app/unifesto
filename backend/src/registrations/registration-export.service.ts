@@ -7,6 +7,7 @@ import { settleRow } from '../payouts/settle';
 import { csvChunks, pdfStream, xlsxChunks, type ExportFormat } from './export.util';
 import { Readable } from 'stream';
 import { pages } from '../common/batching';
+import { contactMobile } from './group-invite.util';
 import { Action, AuthorizationService } from '../auth/authorization';
 
 /** The organiser attendee export (CSV / XLSX / PDF), one row per seat for groups. */
@@ -294,8 +295,8 @@ export class RegistrationExportService {
                   claimer?.identities?.[0]?.email ||
                   (isLead ? reg.user.identities?.[0]?.email || '' : ''),
                 pickMemberField(flat, MEMBER_ALIASES.mobile) ||
-                  claimer?.mobileNumber ||
-                  (isLead ? reg.user.mobileNumber || '' : ''),
+                  contactMobile(claimer?.mobileNumber || (isLead ? reg.user.mobileNumber : null), null) ||
+                  '',
                 reg.ticketType?.name || 'RSVP',
                 '1',
                 reg.status,
@@ -318,7 +319,7 @@ export class RegistrationExportService {
               reg.user.fullName || '',
               reg.user.username || '',
               reg.user.identities?.[0]?.email || '',
-              reg.user.mobileNumber || '',
+              contactMobile(reg.user.mobileNumber, reg.attendeeMobile) || '',
               reg.ticketType?.name || 'RSVP',
               reg.quantity.toString(),
               reg.status,
@@ -361,7 +362,7 @@ export class RegistrationExportService {
         yield regs.map((r) => [
           r.user.fullName || '',
           r.user.identities?.[0]?.email || '',
-          r.user.mobileNumber || '',
+          contactMobile(r.user.mobileNumber, r.attendeeMobile) || '',
           r.ticketType?.name || 'RSVP',
           r.waitlistStatus ?? '',
           iso(r.waitlistedAt),

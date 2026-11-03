@@ -10,6 +10,7 @@
  */
 
 import { MAX_GROUP_SIZE } from './registration.util';
+import { normalizeMobile } from '../auth/identifiers';
 
 export type ImportTicketKind = 'RSVP' | 'INDIVIDUAL' | 'GROUP';
 
@@ -161,6 +162,8 @@ export interface ParsedImportRow {
   formResponses: Record<string, unknown>;
   /** Set when the row is unusable; the service reports it as `errored`. */
   error?: string;
+  /** The row is still added, with this said about it (a mobile left off). */
+  warning?: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -269,7 +272,6 @@ export function parseImportRows(
   const groupSizeCol = col(COL_GROUP_SIZE);
   const slots = extraMemberSlots(shape);
   const { perMember, perGroup } = splitFields(shape);
-  const MOBILE_RE = /^[0-9]{10}$/;
 
   const rows: ParsedImportRow[] = [];
   for (let r = 1; r < matrix.length; r++) {
@@ -277,7 +279,10 @@ export function parseImportRows(
     const line = r + 1; // 1-based, header is line 1
     const name = at(cells, nameCol);
     const email = at(cells, emailCol).toLowerCase();
-    const mobile = mobileCol >= 0 ? at(cells, mobileCol) || null : null;
+    // A35: a missing or unusable mobile no longer fails the row. The person
+    // is added without one and the row says so.
+    const typedMobile = mobileCol >= 0 ? at(cells, mobileCol) : '';
+    const mobile = normalizeMobile(typedMobile) ? typedMobile : null;
 
     // Read a set of custom-field answers. `prefix` is '' for the lead / team and
     // `Member N ` for additional members, matching the template headers. Keyed by
@@ -311,6 +316,11 @@ export function parseImportRows(
       // ticket every field is per-member and lives here.
       formResponses: shape.kind === 'GROUP' ? teamFields.values : leadFields.values,
     };
+    if (!mobile) {
+      base.warning = typedMobile
+        ? `Mobile "${typedMobile}" is not a valid number, so it was left off.`
+        : 'No mobile, so WhatsApp messages will not reach them.';
+    }
 
     if (!name) {
       rows.push({ ...base, error: 'Missing name.' });
@@ -318,11 +328,6 @@ export function parseImportRows(
     }
     if (!email || !EMAIL_RE.test(email)) {
       rows.push({ ...base, error: `Invalid or missing email "${email}".` });
-      continue;
-    }
-    // Mobile is mandatory for the primary attendee.
-    if (!mobile || !MOBILE_RE.test(mobile)) {
-      rows.push({ ...base, error: `Invalid or missing 10-digit mobile "${mobile ?? ''}".` });
       continue;
     }
     // Team-wide required questions must be answered once.

@@ -2138,6 +2138,11 @@ model EventRegistration {
   // Form responses
   formResponses Json? @map("form_responses")
 
+  /// A35: the mobile a curator typed for this attendee on CSV import or manual
+  /// add (E.164). Unverified, so never the account's own: readers use it while
+  /// the account's mobile is a `+0…` placeholder (`contactMobile`).
+  attendeeMobile String? @map("attendee_mobile") @db.VarChar(20)
+
   // Sponsor lead-sharing consent. When true, the attendee agreed at registration
   // to let this event's sponsors receive their contact details — so a booth scan
   // or a sponsor's lead export may include them. Independent of a deliberate

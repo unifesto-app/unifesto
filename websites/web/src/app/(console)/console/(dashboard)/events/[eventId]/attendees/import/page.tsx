@@ -380,9 +380,9 @@ function ImportPreviewView({ preview }: { preview: ImportPreview }) {
                 </td>
                 <td className="py-1 text-muted-foreground">
                   {r.outcome === "create"
-                    ? r.newAccount
-                      ? "New account"
-                      : "Existing account"
+                    ? [r.newAccount ? "New account" : "Existing account", r.warning]
+                        .filter(Boolean)
+                        .join(". ")
                     : r.reason}
                 </td>
               </tr>
@@ -395,7 +395,7 @@ function ImportPreviewView({ preview }: { preview: ImportPreview }) {
 }
 
 function ImportReportView({ report }: { report: ImportReport }) {
-  const problems = report.rows.filter((r) => r.status !== "created");
+  const problems = report.rows.filter((r) => r.status !== "created" || r.warning);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 text-sm">
@@ -424,7 +424,7 @@ function ImportReportView({ report }: { report: ImportReport }) {
                   <td className="py-1 pr-2">{r.line}</td>
                   <td className="py-1 pr-2">{r.email || "—"}</td>
                   <td className="py-1 pr-2 capitalize">{r.status}</td>
-                  <td className="py-1 text-muted-foreground">{r.reason}</td>
+                  <td className="py-1 text-muted-foreground">{r.reason ?? r.warning}</td>
                 </tr>
               ))}
             </tbody>
