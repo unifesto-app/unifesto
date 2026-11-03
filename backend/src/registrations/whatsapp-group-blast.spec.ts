@@ -1,6 +1,6 @@
 import { buildRegistrationsService } from './registrations.testing';
-import { ForbiddenException } from '@nestjs/common';
-import { RegistrationAttendeesService } from './registration-attendees.service';
+import { LINK_SET_SEND_DELAY_MS, RegistrationAttendeesService } from './registration-attendees.service';
+import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
@@ -98,13 +98,17 @@ function makeHarness(plan = 'GROWTH') {
     event: {
       findUnique: async () => event,
     },
-    // Blasts are a plan switch (T9): Growth has them, General doesn't.
+    // Blasts are a plan switch (T9); every plan has them since 3 Nov.
     orgSubscription: { findUnique: async () => ({ plan }) },
     eventTicketType: {
       count: async () => 0, // no ticket-type-specific links in this fixture
     },
     eventRegistration: {
       findMany: async () => registrations, // COUNTS_AS_ATTENDING applied by real DB
+      findUnique: async ({ where }: any) => {
+        const r = registrations.find((x) => x.id === where.id);
+        return r ? { ...r, event } : null;
+      },
       update: async ({ where, data }: any) => {
         const r = registrations.find((x) => x.id === where.id)!;
         Object.assign(r, data);
@@ -122,7 +126,7 @@ function makeHarness(plan = 'GROWTH') {
     },
   };
 
-  const sends: { to: string; userName: string; inviteUrl: string; isCommunity: boolean }[] = [];
+  const sends: { to: string; userName: string; inviteUrl: string }[] = [];
   // Numbers Meta rejects (the send resolves false).
   const rejected = new Set<string>();
   const whatsappService = {
@@ -217,10 +221,56 @@ describe('sendGroupInviteBlast — per-member group invite', () => {
     expect(sends).toHaveLength(3);
   });
 
-  it('is refused on a plan without WhatsApp blasts, and sends nothing (T9)', async () => {
+  it('runs on General too: every plan can reach attendees the invite missed', async () => {
     const { svc, sends } = makeHarness('STARTER');
-    await expect(svc.sendGroupInviteBlast('ev1')).rejects.toThrow(ForbiddenException);
-    await expect(svc.sendGroupInviteBlast('ev1')).rejects.toThrow('Not on the General plan: WhatsApp blasts. It comes with Growth and up.');
-    expect(sends).toHaveLength(0);
+    await expect(svc.sendGroupInviteBlast('ev1')).resolves.toMatchObject({ sent: 3 });
+    expect(sends).toHaveLength(3);
+  });
+});
+
+describe('saving a group link', () => {
+  const attendeesWith = (h: ReturnType<typeof makeHarness>, queue?: unknown) =>
+    new RegistrationAttendeesService(
+      h.prisma as any, h.whatsappService as any, h.groupSeats as any, {} as any, {} as any,
+      new PlanConfigService(h.prisma as any), queue as any,
+    );
+
+  it('queues the send-once run, held back so a quick fix-up save wins', async () => {
+    const h = makeHarness();
+    const queue = { setHandler: jest.fn(), add: jest.fn(async () => true) };
+    await attendeesWith(h, queue).onWhatsAppLinkSet({ eventId: 'ev1' });
+    expect(queue.add).toHaveBeenCalledWith('ev1', LINK_SET_SEND_DELAY_MS);
+    expect(h.sends).toHaveLength(0);
+  });
+
+  it('sends inline when there is no queue', async () => {
+    const h = makeHarness();
+    await attendeesWith(h).onWhatsAppLinkSet({ eventId: 'ev1' });
+    expect(h.sends.map((s) => s.to).sort()).toEqual(['9111111111', '9222222222', '9333333333']);
+  });
+});
+
+describe('sendWhatsAppGroupInvite (registration, manual add, import)', () => {
+  const confirmationsFor = (h: ReturnType<typeof makeHarness>) =>
+    new RegistrationConfirmationsService(h.prisma as any, {} as any, h.whatsappService as any, {} as any, {} as any, {} as any);
+
+  it('invites the lead and each member seat with a phone, once', async () => {
+    const h = makeHarness();
+    const confirmations = confirmationsFor(h);
+    await confirmations.sendWhatsAppGroupInvite('r2');
+    expect(h.sends.map((s) => s.to).sort()).toEqual(['9222222222', '9333333333']);
+    expect(h.sends[0].inviteUrl).toBe('https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv');
+
+    h.sends.length = 0;
+    await confirmations.sendWhatsAppGroupInvite('r2');
+    expect(h.sends).toHaveLength(0);
+  });
+
+  it('leaves a lead Meta rejected open for the blast', async () => {
+    const h = makeHarness();
+    h.rejected.add('9111111111');
+    await confirmationsFor(h).sendWhatsAppGroupInvite('r1');
+    expect(h.sends).toHaveLength(1);
+    expect(h.registrations.find((r) => r.id === 'r1')!.whatsappInviteSentAt).toBeNull();
   });
 });

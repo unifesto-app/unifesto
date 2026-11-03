@@ -61,15 +61,22 @@ export class GroupInviteBlastQueue implements OnModuleInit, OnModuleDestroy {
     for (const c of this.connections) c.disconnect();
   }
 
-  /** False when there is no queue or Redis is down: the caller runs it inline. */
-  async add(eventId: string): Promise<boolean> {
+  /**
+   * False when there is no queue or Redis is down: the caller runs it inline.
+   * `delayMs` holds the run back; saves within it collapse into the one job,
+   * which reads whatever link is current when it runs.
+   */
+  async add(eventId: string, delayMs = 0): Promise<boolean> {
     if (!this.queue || !this.redis.getClient()) return false;
     try {
       await this.queue.add(
         'send',
         { eventId },
         {
-          jobId: `wa-invite:${eventId}`, // a second click while it runs is a no-op
+          // A second click while it runs is a no-op. No ':' in it: BullMQ refuses
+          // custom ids with one, which sent every blast inline until 3 Nov.
+          jobId: `wa-invite-${eventId}`,
+          delay: delayMs,
           attempts: ATTEMPTS,
           backoff: { type: 'exponential', delay: 30_000 },
           removeOnComplete: true, // frees the id for the next blast

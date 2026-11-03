@@ -16,7 +16,7 @@ const migration = (name: string) =>
 
 const num = (v: string) => (v === 'NULL' ? null : Number(v));
 
-/** The plan rows of 20261123090000_fee_live (Z2), by plan. */
+/** The plan rows of 20261123090000_fee_live (Z2), by plan, with later flag updates applied. */
 function seedRows() {
   const sql = migration('20261123090000_fee_live');
   const rows = new Map<string, string[]>();
@@ -24,6 +24,9 @@ function seedRows() {
     // Columns 9 and 12 are retired flags (S58, Huddle) the code no longer reads.
     rows.set(m[1], m[2].split(',').map((v) => v.trim()).filter((_, i) => i !== 9 && i !== 12));
   }
+  // 20261203130000 turned WhatsApp blasts on for the plans it names.
+  const blast = migration('20261203130000_whatsapp_blast_all_plans').match(/IN \(([^)]*)\)/)![1];
+  for (const p of blast.matchAll(/'(\w+)'/g)) rows.get(p[1])![5 + FLAGS.indexOf('hasWhatsappBlast')] = 'true';
   return rows;
 }
 

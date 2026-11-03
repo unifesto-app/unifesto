@@ -44,7 +44,7 @@ import {
   EMPTY_BREAKDOWN,
   type AttendeeBreakdown,
 } from '../common/attendance';
-import { validateWhatsAppInviteLink } from '../common/whatsapp-links';
+import { validateWhatsAppInviteLink, WHATSAPP_LINK_SET } from '../common/whatsapp-links';
 import { publicRating } from '../feedback/public-rating';
 import { resolveEffectiveSponsor } from '../sponsors/sponsors.util';
 import {
@@ -1594,7 +1594,7 @@ export class EventsService {
    */
   private resolveAttendeeGroupUrl(raw: string | undefined): string | null | undefined {
     if (raw === undefined) return undefined;
-    const check = validateWhatsAppInviteLink(raw, 'group');
+    const check = validateWhatsAppInviteLink(raw);
     if (!check.ok) {
       throw new BadRequestException(check.error);
     }
@@ -1604,15 +1604,30 @@ export class EventsService {
   /**
    * Validate + normalise a per-ticket-type WhatsApp group link. Blank (or
    * undefined) means "no ticket-specific group" → null, so the attendee falls
-   * back to the event group/community. A non-WhatsApp link is rejected loudly.
+   * back to the event's group. A non-WhatsApp link is rejected loudly.
    */
   private resolveTicketWhatsAppGroup(raw: string | undefined): string | null {
     if (raw === undefined || raw.trim() === '') return null;
-    const check = validateWhatsAppInviteLink(raw, 'group');
+    const check = validateWhatsAppInviteLink(raw);
     if (!check.ok) {
       throw new BadRequestException(check.error);
     }
     return check.normalized ?? null;
+  }
+
+  /**
+   * A newly saved group link goes out to confirmed attendees who don't have one
+   * yet (the registrations module listens). Only for a new, non-empty link on
+   * an event that hasn't ended.
+   */
+  private announceWhatsAppLink(
+    event: { id: string; endDateTime: Date },
+    before: string | null,
+    after: string | null | undefined,
+  ) {
+    if (after && after !== before && event.endDateTime > new Date()) {
+      this.events.emit(WHATSAPP_LINK_SET, { eventId: event.id });
+    }
   }
 
   async createEvent(userId: string, dto: CreateEventDto) {
@@ -2437,6 +2452,8 @@ export class EventsService {
     if (nextSlug && nextSlug !== event.slug) {
       await rememberOldSlug(this.prisma, SlugKind.EVENT, event.slug, eventId);
     }
+
+    this.announceWhatsAppLink(updated, event.whatsappAttendeeGroupUrl, whatsappAttendeeGroupUrl);
 
     // Check if significant fields changed and notify registered attendees
     const significantChanges: { field: string; oldValue: string; newValue: string }[] = [];
@@ -3319,6 +3336,7 @@ export class EventsService {
       await this.syncTicketBlocks(eventId, typeId, dto.blocksTicketTypeIds);
     }
     await this.cache.invalidateEventCache(event.slug);
+    this.announceWhatsAppLink(event, existing.whatsappGroupUrl, updated.whatsappGroupUrl);
     return updated;
   }
 

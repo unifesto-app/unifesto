@@ -1,28 +1,19 @@
 /**
- * Validation + normalization for organiser-supplied WhatsApp invite links.
+ * Validation + normalization for organiser-supplied WhatsApp group links.
  *
- * The feature: an organiser manually creates a WhatsApp *group* for an event
- * (or a *community* for a big/parent event) inside the WhatsApp app, then pastes
- * the invite link into the event editor. We store it and render a
- * "Join WhatsApp Group" button. Because this string comes straight from a human
- * pasting from their phone, it arrives messy — trailing spaces, an "https://"
- * they may or may not have included, tracking junk, or an entirely wrong URL.
+ * The feature: an organiser creates a WhatsApp group for an event inside the
+ * WhatsApp app, then pastes its invite link into the event (or a ticket type).
+ * We store it privately and send it only to confirmed attendees. Because this
+ * string comes straight from a human pasting from their phone, it arrives
+ * messy: trailing spaces, an "https://" they may or may not have included,
+ * tracking junk, or an entirely wrong URL.
  *
- * WhatsApp invite links come in two shapes we care about:
- *
- *   GROUP:      https://chat.whatsapp.com/<INVITE_CODE>
- *   COMMUNITY:  https://chat.whatsapp.com/<INVITE_CODE>   (same host)
- *
- * NOTE: WhatsApp does NOT expose distinct hostnames for group vs community
- * invite links — both are `chat.whatsapp.com/<code>`. So we cannot tell them
- * apart from the URL alone; the *context* (is this a parent/big event?) decides
- * which field it lands in. The invite code itself is ~22 chars of [A-Za-z0-9].
+ * Every invite link is `https://chat.whatsapp.com/<INVITE_CODE>`, where the code
+ * is ~22 chars of [A-Za-z0-9].
  *
  * A malformed or non-WhatsApp link must be rejected loudly so an organiser never
- * publishes a dead "Join" button to attendees.
+ * sends a dead "Join" link to attendees.
  */
-
-export type WhatsAppLinkKind = 'group' | 'community';
 
 export interface WhatsAppLinkResult {
   /** true when `value` is a usable, canonical invite link. */
@@ -37,26 +28,24 @@ export interface WhatsAppLinkResult {
 const WHATSAPP_INVITE_HOST = 'chat.whatsapp.com';
 
 /**
- * Validate and normalize a pasted WhatsApp group/community invite link.
+ * Emitted with `{ eventId }` when an organiser saves a new group link on an
+ * event or ticket type, so confirmed attendees who don't have it yet get it.
+ */
+export const WHATSAPP_LINK_SET = 'event.whatsapp-link-set';
+
+/**
+ * Validate and normalize a pasted WhatsApp group invite link.
  *
  * @param raw   The raw string an organiser pasted (may be empty/undefined —
  *              clearing the field is allowed and should return ok with no
  *              `normalized` value, i.e. "no link").
- * @param kind  Whether this field is a 'group' (sub/standalone event) or
- *              'community' (big/parent event) link — used only for the wording
- *              of error messages, since the URL shape is identical.
  *
  * Empty input means "no link" (so a saved link can be cleared). A missing
  * scheme is tolerated, the host must be exactly WHATSAPP_INVITE_HOST, the
  * invite code must look sane, and query strings / fragments are dropped. On
  * success `normalized` is the canonical `https://chat.whatsapp.com/<code>`.
  */
-export function validateWhatsAppInviteLink(
-  raw: string | null | undefined,
-  kind: WhatsAppLinkKind,
-): WhatsAppLinkResult {
-  const label = kind === 'community' ? 'community' : 'group';
-
+export function validateWhatsAppInviteLink(raw: string | null | undefined): WhatsAppLinkResult {
   // Empty / whitespace-only means "no link set" — clearing the field is valid.
   const trimmed = (raw ?? '').trim();
   if (trimmed === '') {
@@ -72,15 +61,15 @@ export function validateWhatsAppInviteLink(
   try {
     url = new URL(withScheme);
   } catch {
-    return { ok: false, error: `That is not a valid WhatsApp ${label} link.` };
+    return { ok: false, error: 'That is not a valid WhatsApp group link.' };
   }
 
   // Host must be exactly chat.whatsapp.com — reject wa.me number links,
-  // forms, or any other URL so a dead "Join" button never reaches attendees.
+  // forms, or any other URL so a dead "Join" link never reaches attendees.
   if (url.hostname.toLowerCase() !== WHATSAPP_INVITE_HOST) {
     return {
       ok: false,
-      error: `A WhatsApp ${label} link must look like https://${WHATSAPP_INVITE_HOST}/…`,
+      error: `A WhatsApp group link must look like https://${WHATSAPP_INVITE_HOST}/…`,
     };
   }
 
@@ -92,7 +81,7 @@ export function validateWhatsAppInviteLink(
   if (!/^[A-Za-z0-9]{10,}$/.test(code)) {
     return {
       ok: false,
-      error: `That WhatsApp ${label} link is missing a valid invite code.`,
+      error: 'That WhatsApp group link is missing a valid invite code.',
     };
   }
 
@@ -114,29 +103,18 @@ export interface RegistrationWhatsAppSources {
   parentAttendeeGroupUrl?: string | null;
 }
 
-export interface ResolvedWhatsAppInvite {
-  /** The single link to surface, or null when none is configured. */
-  inviteUrl: string | null;
-  /**
-   * Retained for API/consumer back-compat. The attendee invite is always a
-   * WhatsApp *group* now (the community concept was retired), so this is always
-   * false — existing "group" vs "community" wording resolves to "group".
-   */
-  isCommunity: boolean;
-}
-
 /**
- * Resolve the one WhatsApp invite an attendee should get, in precedence order:
+ * The one WhatsApp group link an attendee should get, in precedence order:
  * their ticket type's group → the event's attendee group → the parent big
- * event's attendee group. Always a group, so `isCommunity` is always false.
+ * event's attendee group. Null when none is set.
  */
 export function resolveRegistrationWhatsAppInvite(
   sources: RegistrationWhatsAppSources,
-): ResolvedWhatsAppInvite {
-  const inviteUrl =
+): string | null {
+  return (
     sources.ticketTypeGroupUrl ||
     sources.eventAttendeeGroupUrl ||
     sources.parentAttendeeGroupUrl ||
-    null;
-  return { inviteUrl, isCommunity: false };
+    null
+  );
 }

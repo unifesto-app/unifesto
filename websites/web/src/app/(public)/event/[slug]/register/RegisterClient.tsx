@@ -418,7 +418,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         {waGroup?.inviteUrl && (
           <a href={waGroup.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-lg btn-secondary mt-3 w-full">
             <WhatsappLogo weight="fill" className="h-5 w-5" aria-hidden />
-            Join the WhatsApp {waGroup.isCommunity ? "community" : "group"}
+            Join the WhatsApp group
           </a>
         )}
         {done.kind === "already" && done.registrationId && session && (

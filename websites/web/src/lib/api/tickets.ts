@@ -101,7 +101,6 @@ export const getCheckins = (token: string, id: string) => call<Checkin[]>("GET",
 
 export interface WhatsappGroup {
   inviteUrl: string | null;
-  isCommunity: boolean;
   joined: boolean;
 }
 export const getWhatsappGroup = (token: string, id: string) =>

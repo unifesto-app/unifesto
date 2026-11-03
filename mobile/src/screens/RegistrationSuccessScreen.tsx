@@ -204,7 +204,7 @@ export default function RegistrationSuccessScreen() {
               {waGroup?.inviteUrl ? (
                 <SettingsRow
                   icon={<BrandIcon brand="whatsapp" size={ICON} />}
-                  label={`Join the WhatsApp ${waGroup.isCommunity ? 'community' : 'group'}`}
+                  label="Join the WhatsApp group"
                   external
                   onPress={() => Linking.openURL(waGroup.inviteUrl!).catch(() => {})}
                 />

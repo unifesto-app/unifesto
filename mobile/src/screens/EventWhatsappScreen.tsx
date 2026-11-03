@@ -163,8 +163,8 @@ export default function EventWhatsappScreen() {
         />
       </SettingsGroup>
       <Text style={[styles.note, { color: c.muted }]}>
-        Create the group in WhatsApp, then paste its invite link. Attendees get it when they register, and it never shows
-        on the public event page.
+        Create the group in WhatsApp, then paste its invite link. Attendees get it when they register, and saving a link
+        sends it to confirmed attendees who don't have it yet. It never shows on the public event page.
       </Text>
       {usingParent ? (
         <Text style={[styles.note, { color: c.muted }]}>

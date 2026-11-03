@@ -108,13 +108,6 @@ export interface Event {
    * Empty/undefined for an ordinary event.
    */
   childEvents?: SubEvent[];
-  /**
-   * Organiser's WhatsApp invite links. `whatsappGroupUrl` for a sub-event or
-   * standalone event; `whatsappCommunityUrl` (the umbrella) for a big event.
-   * Created by hand in WhatsApp and pasted by the organiser — no auto-create.
-   */
-  whatsappGroupUrl?: string | null;
-  whatsappCommunityUrl?: string | null;
   /** Team leads may replace a member of their group (curator switch). */
   allowTeamChanges?: boolean;
   teamChangesUntil?: string | null;
@@ -160,9 +153,6 @@ export interface SubEvent {
   ticketTypes?: { price: string; currency: string }[];
   // `childEvents` > 0 ⇒ this sub-event is itself a nested "big event".
   _count?: { registrations?: number; childEvents?: number };
-  // Present on a parent breadcrumb so a sub-event can fall back to the big
-  // event's WhatsApp community when it has no group link of its own.
-  whatsappCommunityUrl?: string | null;
 }
 
 export interface TicketType {

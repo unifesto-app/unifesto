@@ -133,6 +133,8 @@ export interface RegistrationConfirmationData extends EventWhere {
   venueAddress?: string;
   eventDescription?: string;
   organiserName?: string;
+  /** The organiser's private attendee WhatsApp group, when there is one. */
+  whatsappGroupUrl?: string;
 }
 
 export function registrationConfirmationEmail(d: RegistrationConfirmationData): Email {
@@ -145,6 +147,7 @@ export function registrationConfirmationEmail(d: RegistrationConfirmationData): 
       ${p(`Your spot at ${strong(d.eventTitle)} is confirmed.`)}
       ${eventCard(d)}
       ${qr(d.ticketCode)}
+      ${d.whatsappGroupUrl ? p(`Updates go out in the attendee group. ${link('Join the WhatsApp group', d.whatsappGroupUrl)}`) : ''}
       ${d.eventSlug ? button('View event', `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
       ${appLine('ticket', d.brand)}`,
       `${d.eventDate}, ${d.eventTime}. Your ticket is inside.`,

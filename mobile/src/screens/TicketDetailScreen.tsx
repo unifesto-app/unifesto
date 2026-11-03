@@ -397,10 +397,10 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (
-          <SettingsGroup flat title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
+          <SettingsGroup flat title="WhatsApp group">
             <SettingsRow
               icon={<BrandIcon brand="whatsapp" size={24} />}
-              label={`Join the ${t.waGroup.isCommunity ? 'community' : 'group'}`}
+              label="Join the group"
               external
               onPress={t.openWhatsapp}
             />
