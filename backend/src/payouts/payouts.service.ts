@@ -580,6 +580,22 @@ export class PayoutsService {
   }
 
   /**
+   * A30: why an event's money isn't settled, or null when it is. An event
+   * changes hands only when settled, so no balance, payout, refund or debt
+   * follows it into another space's books.
+   */
+  async unsettledMoney(eventId: string): Promise<string | null> {
+    const pending = await this.prisma.payout.count({ where: { eventId, status: PayoutStatus.PENDING } });
+    if (pending) return 'a payout is still waiting to be paid';
+    const b = await this.computeBalance({ eventId });
+    if (b.cancelledWithPaid) return 'its paid attendees are still to be refunded';
+    if (b.refundHold > 0) return 'a refund request is still open';
+    if (b.available > 0) return `₹${b.available.toFixed(2)} is not paid out yet`;
+    if (b.overdrawn > 0) return `refunds left it overdrawn by ₹${b.overdrawn.toFixed(2)}`;
+    return null;
+  }
+
+  /**
    * `userId` set = operator request (must hold the money capability for the
    * event); omitted = platform-admin route, already role-gated.
    * The old `createdBy` filter only zeroed gross revenue for outsiders while
