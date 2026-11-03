@@ -1128,3 +1128,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-03** · Stay lockups removed from the brand kit, guidelines PDF and press zip rebuilt (#577)
 - **2026-11-03** · S59 contract step: the 5 Unifesto Stay tables and their enums dropped (prod confirmed empty 3 Nov) (#578)
 - **2026-11-03** · S62 the coupon, domain, deletion and blog crons run on one replica (fail-closed except the coupon sweep) (#579)
+- **2026-11-03** · S62 notification fan-out runs on a BullMQ queue, so queued notifications survive a crash or deploy and never send twice (#583)
