@@ -1,4 +1,4 @@
--- S59 contract step: Unifesto Stay was removed in #576. Prod had 0 rows in all
+-- contract-step: S59. Unifesto Stay was removed in #576. Prod had 0 rows in all
 -- five tables on 3 Nov 2026. Refuse to run if any row appeared since.
 DO $$
 BEGIN
