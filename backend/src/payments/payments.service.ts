@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { PrismaClient } from '@prisma/client';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
@@ -83,6 +84,30 @@ export function capturedAmountMatches(
     payment.currency === 'INR' &&
     Number(payment.amount) === Math.round(Number(expectedRupees) * 100)
   );
+}
+
+/**
+ * T11: Razorpay's fee and the GST on it (paise) for a captured payment, onto
+ * the sale it paid: a registration or an add-on seat purchase, matched by
+ * payment id. Razorpay's `fee` already includes its GST (`tax`), so it is
+ * stored split and fee + tax is the whole charge. Fills an empty stamp only:
+ * Razorpay keeps its fee when a payment is refunded, so a replayed capture or
+ * a later refund never rewrites it. A payment with no fee yet (not captured)
+ * is skipped. Returns the rows stamped.
+ */
+export async function stampGatewayFee(
+  prisma: Pick<PrismaClient, 'eventRegistration' | 'groupSeatPurchase'>,
+  payment: { id: string; fee?: unknown; tax?: unknown },
+): Promise<number> {
+  if (payment.fee == null) return 0;
+  const where = { paymentId: payment.id, gatewayFeePaise: null };
+  const tax = Number(payment.tax ?? 0);
+  const data = { gatewayFeePaise: Number(payment.fee) - tax, gatewayTaxPaise: tax };
+  const [regs, seats] = await Promise.all([
+    prisma.eventRegistration.updateMany({ where, data }),
+    prisma.groupSeatPurchase.updateMany({ where, data }),
+  ]);
+  return regs.count + seats.count;
 }
 
 /**
@@ -315,12 +340,20 @@ export class PaymentsService {
    * first. Used to reconcile a registration whose status never updated (e.g. a
    * missed webhook): the caller inspects `status` to decide PAID vs FAILED.
    * `status` is Razorpay's own value — `captured`, `failed`, `authorized`,
-   * `created`, `refunded`. `amount` is in paise.
+   * `created`, `refunded`. `amount`, `fee` and `tax` are in paise (`fee` is
+   * null until captured).
    */
   async fetchOrderPayments(
     orderId: string,
   ): Promise<
-    Array<{ id: string; status: string; amount: number; amountRefunded: number }>
+    Array<{
+      id: string;
+      status: string;
+      amount: number;
+      amountRefunded: number;
+      fee: number | null;
+      tax: number | null;
+    }>
   > {
     const res = await this.razorpay.orders.fetchPayments(orderId);
     const items = res.items ?? [];
@@ -329,6 +362,8 @@ export class PaymentsService {
       status: String(p.status),
       amount: Number(p.amount),
       amountRefunded: Number(p.amount_refunded ?? 0),
+      fee: p.fee == null ? null : Number(p.fee),
+      tax: p.tax == null ? null : Number(p.tax),
     }));
   }
 
@@ -340,6 +375,7 @@ export class PaymentsService {
    * was created with (we store `registrationId`), so the caller can verify the
    * payment really belongs to the registration before acting on it. Amounts are
    * in paise; `amountRefunded` reflects any refund already issued in Razorpay.
+   * `fee`/`tax` are Razorpay's charge on it, null until captured.
    */
   async fetchPayment(paymentId: string): Promise<{
     id: string;
@@ -349,6 +385,8 @@ export class PaymentsService {
     amountRefunded: number;
     currency: string;
     notes: Record<string, string>;
+    fee: number | null;
+    tax: number | null;
   }> {
     const p = await this.razorpay.payments.fetch(paymentId);
     return {
@@ -359,6 +397,8 @@ export class PaymentsService {
       currency: String(p.currency ?? 'INR'),
       amountRefunded: Number(p.amount_refunded ?? 0),
       notes: (p.notes ?? {}) as Record<string, string>,
+      fee: p.fee == null ? null : Number(p.fee),
+      tax: p.tax == null ? null : Number(p.tax),
     };
   }
 

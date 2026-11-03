@@ -362,7 +362,9 @@ export interface PlatformFinancials {
   available: number;
   /** Paid out beyond net owed (refunds after a payout); to recover. */
   overdrawn: number;
-  /** Platform take-home: processing fees + revenue-share cut. */
+  /** Razorpay's fee + GST on sales that carry it (T11). */
+  gatewayFees: number;
+  /** Platform take-home: processing fees + revenue-share cut − gatewayFees. */
   platformEarnings: number;
 }
 
@@ -408,7 +410,9 @@ export interface SpaceFinancials extends FinancialsFigures {
   feePercent: number;
   plan: string | null;
   eventCount: number;
-  /** This space's take-home: processing fees + its platform fee. */
+  /** Razorpay's fee + GST on this space's sales (T11). */
+  gatewayFees: number;
+  /** This space's take-home: processing fees + its platform fee − gatewayFees. */
   platformEarnings: number;
   events: EventFinancials[];
 }

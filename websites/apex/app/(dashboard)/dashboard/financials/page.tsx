@@ -201,7 +201,7 @@ export default function PlatformFinancialsPage() {
               <StatCard
                 title="Platform earnings"
                 value={money(totals.platformEarnings)}
-                hint="App fees + revenue-share cut"
+                hint="App fees + revenue-share cut, less Razorpay's fee and GST"
                 icon={Buildings}
                 tone="brand"
               />
@@ -226,6 +226,13 @@ export default function PlatformFinancialsPage() {
                 value={money(totals.platformFee)}
                 hint="Revenue-share cut across spaces"
                 icon={Coins}
+                tone="neutral"
+              />
+              <StatCard
+                title="Razorpay fees"
+                value={money(totals.gatewayFees)}
+                hint="Gateway fee + GST on sales, out of platform earnings. Older sales count once backfilled"
+                icon={Bank}
                 tone="neutral"
               />
               <StatCard

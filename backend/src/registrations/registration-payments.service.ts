@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
-import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
+import { PaymentsService, capturedAmountMatches, stampGatewayFee } from '../payments/payments.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
@@ -487,6 +487,15 @@ export class RegistrationPaymentsService {
       return { received: true };
     }
     const result = await this.processRazorpayWebhook(rawBody);
+    // T11: Razorpay's fee on whichever sale the capture just settled (or an
+    // earlier verify did). After processing, so the row carries the payment id.
+    const { event, payload } = JSON.parse(rawBody) as {
+      event: string;
+      payload: { payment?: { entity: { id: string; fee?: number | null; tax?: number | null } } };
+    };
+    if (event === 'payment.captured' && payload.payment) {
+      await stampGatewayFee(this.prisma, payload.payment.entity);
+    }
     if (dedupId) {
       await this.prisma.webhookEvent.createMany({
         data: [{ id: dedupId, source: 'razorpay' }],
@@ -913,6 +922,8 @@ export class RegistrationPaymentsService {
           status: payment.status,
           amount: payment.amount,
           amountRefunded: payment.amountRefunded,
+          fee: payment.fee,
+          tax: payment.tax,
         });
       }
       if (!linkedReg) {
@@ -930,6 +941,8 @@ export class RegistrationPaymentsService {
         status: payment.status,
         amount: payment.amount,
         amountRefunded: payment.amountRefunded,
+        fee: payment.fee,
+        tax: payment.tax,
       });
     }
 
@@ -938,12 +951,7 @@ export class RegistrationPaymentsService {
       return unchanged('No Razorpay order on this registration (free/RSVP, or the order was never created)');
     }
 
-    let payments: Array<{
-      id: string;
-      status: string;
-      amount: number;
-      amountRefunded: number;
-    }>;
+    let payments: Awaited<ReturnType<typeof this.payments.fetchOrderPayments>>;
     try {
       payments = await this.payments.fetchOrderPayments(registration.orderId);
     } catch (err) {
@@ -964,6 +972,8 @@ export class RegistrationPaymentsService {
         status: captured.status,
         amount: captured.amount,
         amountRefunded: captured.amountRefunded,
+        fee: captured.fee,
+        tax: captured.tax,
       });
     }
 
@@ -1069,7 +1079,8 @@ export class RegistrationPaymentsService {
    *   - captured, partially refunded → left PENDING and reported (needs a human;
    *     issuing a ticket vs. treating as cancelled is a judgement call)
    *   - failed → FAILED
-   * `amount`/`amountRefunded` are in paise.
+   * `amount`/`amountRefunded`/`fee`/`tax` are in paise. A capture stamps
+   * Razorpay's fee on the row it lands on (T11).
    */
   private async applyReconciledPayment(
     registration: {
@@ -1092,8 +1103,11 @@ export class RegistrationPaymentsService {
       status: string;
       amount: number;
       amountRefunded: number;
+      fee?: number | null;
+      tax?: number | null;
     },
   ) {
+    const gatewayFee = { id: payment.paymentId, fee: payment.fee, tax: payment.tax };
     const result = (
       newStatus: PaymentStatus,
       changed: boolean,
@@ -1134,6 +1148,7 @@ export class RegistrationPaymentsService {
             data: { orderId: payment.orderId },
           });
         }
+        await stampGatewayFee(this.prisma, gatewayFee);
         if (outcome === 'cancelled') {
           return result(
             PaymentStatus.PAID,
@@ -1173,6 +1188,8 @@ export class RegistrationPaymentsService {
             refundedAmount: base,
           },
         });
+        // Razorpay kept its fee on the refunded capture: still our cost.
+        await stampGatewayFee(this.prisma, gatewayFee);
         this.logger.log(
           `Reconcile: payment ${payment.paymentId} captured then fully refunded (₹${refunded}) — registration ${registration.id} marked REFUNDED + CANCELLED`,
         );

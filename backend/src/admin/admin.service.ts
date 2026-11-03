@@ -464,11 +464,12 @@ export class AdminService {
 
     const [regRows, refundRows, payoutRows] = await Promise.all([
       this.prisma.$queryRaw<
-        Array<{ period: string; collected: string; fees: string; registrations: number }>
+        Array<{ period: string; collected: string; fees: string; gateway: string; registrations: number }>
       >(Prisma.sql`
         SELECT ${bucketExpr('registered_at')} AS period,
                SUM(total_amount) AS collected,
                SUM(processing_fee) AS fees,
+               SUM(COALESCE(gateway_fee_paise, 0) + COALESCE(gateway_tax_paise, 0)) / 100.0 AS gateway,
                COUNT(*)::int AS registrations
         FROM event_registrations
         WHERE payment_status::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
@@ -514,6 +515,8 @@ export class AdminService {
         collected: round2(collected),
         ticketRevenue: round2(ticketRevenue),
         processingFees: round2(fees),
+        // T11: Razorpay's fee + GST on these sales, where stamped.
+        gatewayFees: round2(Number(reg?.gateway ?? 0)),
         refunded: round2(refunded),
         netRevenue: round2(ticketRevenue - refunded),
         settled: round2(settled),
