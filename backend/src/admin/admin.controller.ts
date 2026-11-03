@@ -362,11 +362,14 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    /** Q38: ACTIVE, QUIET or DORMANT. */
+    @Query('activity') activity?: string,
   ) {
     return this.adminService.getAllSpacesAdmin({
       page: toPage(page),
       limit: toLimit(limit, 20),
       search,
+      activity,
     });
   }
 

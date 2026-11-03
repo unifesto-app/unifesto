@@ -12,7 +12,7 @@ import { StorageService } from '../storage/storage.service';
 import { NotifyService } from '../notifications/notify.service';
 import { AuthService } from '../auth/auth.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
+import { SpaceActivity, SpaceStatus, PaymentStatus, Prisma, RoleCode, RoleScope, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
 import { PLATFORM_STATUSES, statusChange } from '../spaces/space-lifecycle';
 import { Action, ACTION_SCOPE } from '../auth/authorization';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
@@ -653,11 +653,16 @@ export class AdminService {
     page?: number;
     limit?: number;
     search?: string;
+    activity?: string;
   }) {
-    const { page = 1, limit = 20, search } = params;
+    const { page = 1, limit = 20, search, activity } = params;
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    // Q38: Active / Quiet / Dormant filter (an unknown value is ignored).
+    if (activity && (Object.values(SpaceActivity) as string[]).includes(activity)) {
+      where.activityLevel = activity as SpaceActivity;
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -712,6 +717,9 @@ export class AdminService {
         country: space.country,
         visibility: space.visibility,
         status: space.status,
+        // Q38: a label, never a status.
+        activity_level: space.activityLevel,
+        last_activity_at: space.lastActivityAt,
         // SUPER (parent) or REGULAR (individual / child).
         type: space.type,
         parent_space_id: space.parentSpaceId,

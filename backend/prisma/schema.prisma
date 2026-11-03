@@ -84,6 +84,15 @@ enum SpaceStatus {
   @@map("space_status")
 }
 
+/// Q38: how recently a live space did anything. Never changes SpaceStatus.
+enum SpaceActivity {
+  ACTIVE
+  QUIET
+  DORMANT
+
+  @@map("space_activity")
+}
+
 enum SpaceVisibility {
   PUBLIC
   PRIVATE
@@ -1157,6 +1166,13 @@ model Space {
   // When the owner was told an abandoned space will be archived in 14 days.
   // Cleared by every status change.
   archiveWarnedAt DateTime?   @map("archive_warned_at") @db.Timestamptz(6)
+  // Q38 activity, a label and never a status: the latest event created, edited
+  // or published, or registration or check-in on its events (nightly, and
+  // stamped on publish). Dormant spaces drop out of Explore and search.
+  lastActivityAt DateTime?     @map("last_activity_at") @db.Timestamptz(6)
+  activityLevel  SpaceActivity @default(ACTIVE) @map("activity_level")
+  // When the Quiet nudge went out; activity after it starts a new Quiet spell.
+  quietNudgedAt  DateTime?     @map("quiet_nudged_at") @db.Timestamptz(6)
 
   // Verified = a platform admin confirmed this space is run by (or with the
   // permission of) the organisation it is named after. Unverified spaces show

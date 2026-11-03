@@ -104,14 +104,18 @@ export async function assertCanViewSpace(
 }
 
 /**
- * Prisma filter for listings: public live spaces, plus any the viewer belongs
- * to. Platform admins should skip this filter entirely.
+ * Prisma filter for listings: public live spaces (narrowed by `publicWhere`,
+ * e.g. Q38's not-Dormant for Explore), plus any the viewer belongs to.
+ * Platform admins should skip this filter entirely.
  */
-export function visibleSpacesWhere(viewerId?: string): Prisma.SpaceWhereInput {
-  if (!viewerId) return PUBLIC_LIVE_SPACE_WHERE;
+export function visibleSpacesWhere(
+  viewerId?: string,
+  publicWhere: Prisma.SpaceWhereInput = PUBLIC_LIVE_SPACE_WHERE,
+): Prisma.SpaceWhereInput {
+  if (!viewerId) return publicWhere;
   return {
     OR: [
-      PUBLIC_LIVE_SPACE_WHERE,
+      publicWhere,
       { userRoles: { some: { userId: viewerId } } },
       { events: { some: { userRoles: { some: { userId: viewerId } } } } },
     ],

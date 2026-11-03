@@ -241,6 +241,9 @@ export interface AdminSpace {
   country: string | null;
   visibility: string;
   status: SpaceStatus;
+  /** Q38: a label from recent activity, never a status. Dormant = hidden from Explore. */
+  activity_level: SpaceActivity;
+  last_activity_at: string | null;
   /** SUPER (parent) or REGULAR (individual / child). */
   type: SpaceKind;
   parent_space_id: string | null;
@@ -272,10 +275,13 @@ export interface AdminSpaceListResponse {
   };
 }
 
+export type SpaceActivity = "ACTIVE" | "QUIET" | "DORMANT";
+
 export interface AdminSpaceListParams {
   page?: number;
   limit?: number;
   search?: string;
+  activity?: SpaceActivity;
 }
 
 /**

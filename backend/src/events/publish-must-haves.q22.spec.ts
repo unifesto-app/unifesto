@@ -63,7 +63,10 @@ describe('publishEvent enforces it (Q22)', () => {
     };
     const prisma: any = {
       event: { findUnique: jest.fn(async () => row), update: jest.fn(async () => ({ ...row, status: 'PUBLISHED' })) },
-      space: { findFirst: jest.fn(async () => ({ status: SpaceStatus.ACTIVE })) },
+      space: {
+        findFirst: jest.fn(async () => ({ status: SpaceStatus.ACTIVE })),
+        updateMany: jest.fn(async () => ({ count: 1 })),
+      },
       userRole: { findMany: jest.fn(async () => []) },
     };
     const authz: any = { can: jest.fn(async () => true) };
@@ -90,5 +93,9 @@ describe('publishEvent enforces it (Q22)', () => {
     const { svc, prisma } = build({});
     await expect(svc.publishEvent('curator', 'ev-1')).resolves.toMatchObject({ status: 'PUBLISHED' });
     expect(prisma.event.update).toHaveBeenCalled();
+    // Q38: publishing makes the space Active at once.
+    expect(prisma.space.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ activityLevel: 'ACTIVE' }) }),
+    );
   });
 });
