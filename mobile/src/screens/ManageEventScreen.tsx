@@ -242,7 +242,8 @@ export default function ManageEventScreen() {
 
       {/* Ivory: money. */}
       {section('Money', [
-        h.access.canViewAttendees && hosts && (
+        // Money rows: the event's money (Curator) or the space's (Space Admin), as the server checks.
+        h.access.canPayout && (
           <SettingsRow
             key="transactions"
             icon={icon(Receipt, c.ivory)}

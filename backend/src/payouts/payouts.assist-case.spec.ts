@@ -42,7 +42,7 @@ function setup() {
       findFirst: jest.fn(async () => null),
       findUnique: jest.fn(async ({ where }: any) => payouts.find((p) => p.id === where.id) ?? null),
       create: jest.fn(async ({ data }: any) => {
-        const row = { id: `p${payouts.length}`, ...data, event: { title: 'Hack Day' } };
+        const row = { id: `p${payouts.length}`, ...data, event: { title: 'Hack Day' }, bankAccount: { ...account, mobileNumber: '9800000000', ifscCode: 'HDFC0001' } };
         payouts.push(row);
         return row;
       }),
@@ -99,6 +99,26 @@ describe('payout request ↔ Assist case (D22)', () => {
     const { service, events } = setup();
     await service.createPayoutFor({ eventId: 'ev-1' }, 'admin');
     expect(events.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe('payout request response masks the account (T12)', () => {
+  it("another Space Admin routing to the creator's account sees last 4, masked UPI, no contact", async () => {
+    const { service } = setup();
+    const payout: any = await service.requestPayout('other-admin', { eventId: 'ev-1' });
+    expect(payout.bankAccount).toEqual({ methodType: 'BANK', bankName: 'HDFC', accountNumber: '5678', upiId: null, accountHolderName: 'Asha' });
+  });
+
+  it("the account's owner gets it whole", async () => {
+    const { service } = setup();
+    const payout: any = await service.requestPayout('creator', { eventId: 'ev-1' });
+    expect(payout.bankAccount).toMatchObject({ accountNumber: '50100012345678', ifscCode: 'HDFC0001' });
+  });
+
+  it('a platform admin creating it in Apex gets it whole', async () => {
+    const { service } = setup();
+    const payout: any = await service.createPayoutFor({ eventId: 'ev-1' }, 'admin');
+    expect(payout.bankAccount.accountNumber).toBe('50100012345678');
   });
 });
 

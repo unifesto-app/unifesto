@@ -34,7 +34,7 @@ export default function EventDayScreen() {
   const c = useCosmos();
   const h = useManageEvent(eventId);
   const e = h.event;
-  const day = useEventDay(eventId!, e?.spaceId, { money: h.access.canViewAttendees });
+  const day = useEventDay(eventId!, e?.spaceId, { money: h.access.canPayout });
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
