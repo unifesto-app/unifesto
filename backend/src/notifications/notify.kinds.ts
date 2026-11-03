@@ -67,6 +67,8 @@ export interface NotifyKindData {
   'space.status': SpaceStatusNotice & { status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED'; reason?: string | null; changedAt: Date; bySystem?: boolean };
   /** Q39: an abandoned space is archived in 14 days unless it hosts an event. */
   'space.archive_warning': SpaceStatusNotice & { archiveOnText: string };
+  /** Q38: to the owner and Space Admins when a space turns Quiet. One per Quiet spell. */
+  'space.quiet': SpaceStatusNotice & { nudgedAt: Date };
   /** To each Space Admin: a note from the public space page. One per lead. */
   'space.inquiry': MailData<T.SpaceInquiryData> & { spaceId: string; leadId: string };
   /** F2: to checked-in attendees 2 h after the event ends. Push + inbox only. */
@@ -299,6 +301,26 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
       body: 'It has had no events since it was made. Create an event to keep it, or let it go. You can restore an archived space any time.',
     }),
   ),
+  'space.quiet': {
+    category: 'spaceUpdates',
+    criticality: 'normal',
+    entity: (d) => `${d.spaceId}:${d.nudgedAt.getTime()}`,
+    push: (d) => ({
+      title: `No events at ${d.spaceName} in 2 months`,
+      body: 'Make the next one. It takes three steps.',
+      deepLink: `unifesto://manage/space/${d.spaceId}`,
+      data: { type: 'space_quiet', spaceId: d.spaceId },
+    }),
+    email: (svc, to, d, delivery) => {
+      const title = `No events at ${d.spaceName} in 2 months`;
+      const html =
+        h1(esc(title)) +
+        p('Your members are waiting for the next one. A workshop, an induction or an info session all count, and free events cost nothing.') +
+        button('Create an event', `${SPACE_APP}/events/new?space=${d.spaceId}`) +
+        p('Taking a break? You can pause the space from its settings and resume it any time.');
+      return svc.sendRawEmailTracked(to, title, html, undefined, delivery).then((r) => r.ok);
+    },
+  },
   'space.inquiry': {
     category: 'spaceUpdates',
     criticality: 'normal',

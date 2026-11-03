@@ -54,6 +54,7 @@ import {
   RegistrationStatus,
   Prisma,
   SlugKind,
+  SpaceActivity,
   SupportCaseKind,
   SupportDesk,
   SupportTicketStatus,
@@ -2656,6 +2657,11 @@ export class EventsService {
     });
 
     await this.subscriptionService.incrementEventUsageForSpace(event.spaceId);
+    // Q38: publishing is activity, so the space is Active at once (not after the nightly sweep).
+    await this.prisma.space.updateMany({
+      where: { id: event.spaceId },
+      data: { lastActivityAt: updated.publishedAt, activityLevel: SpaceActivity.ACTIVE },
+    });
 
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);

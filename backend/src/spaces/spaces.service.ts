@@ -55,7 +55,8 @@ import {
 } from '@prisma/client';
 import { assertEventSchedule } from '../events/event-dates';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
-import { assertCanViewSpace, isSpaceLive, visibleSpacesWhere } from './space-access';
+import { assertCanViewSpace, isSpaceLive, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
+import { NOT_DORMANT_WHERE } from './space-activity';
 import { statusChange } from './space-lifecycle';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
@@ -180,9 +181,12 @@ export class SpacesService {
     const skip = (page - 1) * limit;
 
     // Private spaces only list for their members (platform admins see all).
+    // Q38: Explore and search leave Dormant spaces out (a campus's own sub-space
+    // list keeps them); their members still see them.
+    const publicWhere = parentId ? PUBLIC_LIVE_SPACE_WHERE : { ...PUBLIC_LIVE_SPACE_WHERE, ...NOT_DORMANT_WHERE };
     const where: any = (await isPlatformAdmin(this.prisma, viewerId))
       ? {}
-      : { AND: [visibleSpacesWhere(viewerId)] };
+      : { AND: [visibleSpacesWhere(viewerId, publicWhere)] };
 
     if (status) {
       where.status = status;

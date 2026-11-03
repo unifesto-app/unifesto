@@ -8,7 +8,7 @@ import {
   Users,
   Stack,
 } from "@unifesto/unicon/react";
-import { getAllSpacesAdmin, SPACE_STATUS_LABEL, type AdminSpace } from "@/lib/api/spaces-api";
+import { getAllSpacesAdmin, SPACE_STATUS_LABEL, type AdminSpace, type SpaceActivity } from "@/lib/api/spaces-api";
 import type { SpaceStatus } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -37,6 +37,19 @@ const STATUS_VARIANT: Record<
   ARCHIVED: "neutral",
 };
 
+// Q38: activity is a label, not a status: plain text, coloured only when it needs a look.
+const ACTIVITY: Record<SpaceActivity, { label: string; className: string }> = {
+  ACTIVE: { label: "Active", className: "text-muted-foreground" },
+  QUIET: { label: "Quiet", className: "text-amber-600 dark:text-amber-400" },
+  DORMANT: { label: "Dormant", className: "text-muted-foreground/70" },
+};
+const ACTIVITY_FILTERS: Array<{ value: SpaceActivity | null; label: string }> = [
+  { value: null, label: "All" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "QUIET", label: "Quiet" },
+  { value: "DORMANT", label: "Dormant" },
+];
+
 export default function SpacesPage() {
   const [spaces, setSpaces] = useState<AdminSpace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +59,7 @@ export default function SpacesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [activity, setActivity] = useState<SpaceActivity | null>(null);
 
   // Debounce search input to avoid a request per keystroke.
   useEffect(() => {
@@ -63,6 +77,7 @@ export default function SpacesPage() {
       page,
       limit: PAGE_SIZE,
       search: debounced || undefined,
+      activity: activity ?? undefined,
     });
     if (error) setError(error.message);
     else if (data) {
@@ -71,7 +86,7 @@ export default function SpacesPage() {
       setTotal(data.pagination.total);
     }
     setLoading(false);
-  }, [page, debounced]);
+  }, [page, debounced, activity]);
 
   useEffect(() => {
     void loadAdmin();
@@ -94,6 +109,23 @@ export default function SpacesPage() {
           className="pl-9"
           aria-label="Search spaces"
         />
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by activity">
+        {ACTIVITY_FILTERS.map((f) => (
+          <Button
+            key={f.label}
+            size="sm"
+            variant={activity === f.value ? "default" : "outline"}
+            aria-pressed={activity === f.value}
+            onClick={() => {
+              setActivity(f.value);
+              setPage(1);
+            }}
+          >
+            {f.label}
+          </Button>
+        ))}
       </div>
 
       {error && <ErrorNotice message={error} />}
@@ -123,6 +155,7 @@ export default function SpacesPage() {
                     <th className="pb-2 pr-4 font-medium">Parent Space</th>
                     <th className="pb-2 pr-4 font-medium">Members</th>
                     <th className="pb-2 pr-4 font-medium">Sub-spaces</th>
+                    <th className="pb-2 pr-4 font-medium">Activity</th>
                     <th className="pb-2 font-medium">Status</th>
                   </tr>
                 </thead>
@@ -233,6 +266,9 @@ function SpaceRow({ space }: { space: AdminSpace }) {
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
+      </td>
+      <td className={`py-3 pr-4 ${ACTIVITY[space.activity_level]?.className ?? "text-muted-foreground"}`}>
+        {ACTIVITY[space.activity_level]?.label ?? "—"}
       </td>
       <td className="py-3">
         <Badge variant={STATUS_VARIANT[space.status]}>
