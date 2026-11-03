@@ -78,7 +78,9 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
           'send',
           { eventId },
           {
-            jobId: `publish:${eventId}`, // a double publish can't queue twice
+            // A double publish can't queue twice. No ':' in it: BullMQ refuses
+            // custom ids with one, which sent every fan-out inline until 3 Nov.
+            jobId: `publish-${eventId}`,
             attempts: ATTEMPTS,
             backoff: { type: 'exponential', delay: 30_000 },
             removeOnComplete: true,
