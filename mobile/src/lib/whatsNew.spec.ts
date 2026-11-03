@@ -1,5 +1,4 @@
-// Mobile has no jest of its own; run with the backend's (from backend/):
-// npx jest --maxWorkers=1 --config '{"roots":["../mobile/src/lib"],"testRegex":"whatsNew\\.spec\\.ts$","transform":{"^.+\\.ts$":["ts-jest",{"tsconfig":{"module":"commonjs"}}]}}'
+// Runs with mobile's jest: `npm test` (jest.config.js).
 import { WHATS_NEW, shouldShowWhatsNew } from './whatsNew';
 
 describe('shouldShowWhatsNew', () => {

@@ -1,5 +1,4 @@
-// Mobile has no jest of its own; run with the backend's (from backend/):
-// npx jest --maxWorkers=1 --config '{"roots":["../mobile/src/lib"],"testRegex":"\\.spec\\.ts$","transform":{"^.+\\.ts$":["ts-jest",{"tsconfig":{"module":"commonjs"}}]}}'
+// Runs with mobile's jest: `npm test` (jest.config.js).
 import { isEventOver } from './eventEnded';
 
 const now = Date.parse('2026-10-19T12:00:00Z');
