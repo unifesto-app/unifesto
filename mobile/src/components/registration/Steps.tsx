@@ -803,7 +803,7 @@ export function ProfileGate({ r }: { r: EventRegistration }) {
             </View>
             {g.age === 'minor' ? (
               <Text style={[styles.meta, { color: c.muted, marginTop: spacing[2] }]} accessibilityLiveRegion="polite">
-                You need to be 18 or older to register yourself. Ask the organiser to register you through a parent or guardian.
+                You need to be 18 or older to register yourself. Tap Get help on this event to ask the organiser to register you through a parent or guardian.
               </Text>
             ) : null}
           </View>

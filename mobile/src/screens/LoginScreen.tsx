@@ -93,9 +93,12 @@ export default function NewLoginScreen() {
 
   const [step, setStep] = useState<LoginStep>('email');
 
-  // When context sets tempToken (new user after email OTP), move to mobile step
+  // When context sets tempToken (a new user), move to the mobile step. From
+  // 'email-otp' after an email code, and from 'email' after a new Google or
+  // Apple sign-in: those come back with user null (Q35), so the [user] effect
+  // below never fires and the screen used to sit there (Q32).
   useEffect(() => {
-    if (contextTempToken && step === 'email-otp') {
+    if (contextTempToken && (step === 'email' || step === 'email-otp')) {
       setStep('mobile');
     }
   }, [contextTempToken]);
