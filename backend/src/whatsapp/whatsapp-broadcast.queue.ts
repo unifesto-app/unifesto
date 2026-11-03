@@ -77,7 +77,9 @@ export class WhatsappBroadcastQueue implements OnModuleInit, OnModuleDestroy {
         'send',
         { broadcastId },
         {
-          jobId: `broadcast:${broadcastId}`, // re-adding a queued/running one is a no-op
+          // Re-adding a queued/running one is a no-op. No ':' in it: BullMQ refuses
+          // custom ids with one, which sent every broadcast inline until 3 Nov.
+          jobId: `broadcast-${broadcastId}`,
           attempts: 3,
           backoff: { type: 'exponential', delay: 60_000 },
           removeOnComplete: true,
