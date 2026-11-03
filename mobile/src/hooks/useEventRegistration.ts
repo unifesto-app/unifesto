@@ -243,7 +243,7 @@ export function useEventRegistration() {
     if (askName && !name) { setGateError('Please enter your name.'); return; }
     if (askAge && gateAge !== 'adult') {
       setGateError(gateAge === 'minor'
-        ? 'Under 18? Ask the organiser to register you through a parent or guardian.'
+        ? 'Under 18? Tap Get help on this event to ask the organiser to register you through a parent or guardian.'
         : 'Please confirm your age.');
       return;
     }
