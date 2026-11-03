@@ -486,12 +486,15 @@ export class RegistrationPaymentsService {
       this.logger.log(`Razorpay webhook ${razorpayEventId} already processed — skipping`);
       return { received: true };
     }
-    const payload = JSON.parse(rawBody);
-    const result = await this.processRazorpayWebhook(payload);
+    const result = await this.processRazorpayWebhook(rawBody);
     // T11: Razorpay's fee on whichever sale the capture just settled (or an
     // earlier verify did). After processing, so the row carries the payment id.
-    if (payload.event === 'payment.captured') {
-      await stampGatewayFee(this.prisma, payload.payload.payment.entity);
+    const { event, payload } = JSON.parse(rawBody) as {
+      event: string;
+      payload: { payment?: { entity: { id: string; fee?: number | null; tax?: number | null } } };
+    };
+    if (event === 'payment.captured' && payload.payment) {
+      await stampGatewayFee(this.prisma, payload.payment.entity);
     }
     if (dedupId) {
       await this.prisma.webhookEvent.createMany({
@@ -502,7 +505,8 @@ export class RegistrationPaymentsService {
     return result;
   }
 
-  private async processRazorpayWebhook(payload: any) {
+  private async processRazorpayWebhook(rawBody: string) {
+    const payload = JSON.parse(rawBody);
     const event = payload.event;
     const paymentData = payload.payload.payment?.entity;
 
