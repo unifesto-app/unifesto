@@ -1,8 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Action } from '../auth/authorization';
 import { CheckinService } from '../checkin/checkin.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { buildRegistrationsService } from '../registrations/registrations.testing';
+import { REGISTRATION_MONEY_FIELDS } from '../registrations/registration-attendees.service';
 import { PayoutsService } from './payouts.service';
 
 /**
@@ -60,6 +62,65 @@ describe('transactions export (T12)', () => {
     const svc = build(authz);
     await expect(svc.exportRegistrations('sa', 'ev-1', 'csv', 'transactions')).resolves.toBeDefined();
     expect(authz.can).toHaveBeenCalledWith({ id: 'sa' }, Action.SPACE_MANAGE_MONEY, { spaceId: 'sp-1' });
+  });
+});
+
+describe('attendee list money fields (T12 follow-up)', () => {
+  const row = {
+    id: 'r1',
+    status: 'REGISTERED',
+    paymentStatus: 'PAID',
+    paidAt: new Date(),
+    formResponses: { f1: 'Yes' },
+    totalAmount: 102,
+    couponDiscount: 0,
+    razorpayAmount: 102,
+    processingFee: 2,
+    refundedAmount: 0,
+    platformFeePercent: 5,
+    dealId: 'deal-1',
+    refundDueAt: null,
+    paymentId: 'pay_1',
+    orderId: 'order_1',
+    paymentLinkId: 'plink_1',
+    user: { id: 'u1', fullName: 'A', identities: [{ email: 'a@x.in' }] },
+    ticketType: { id: 't1', name: 'GA' },
+    tickets: [],
+  };
+  const list = async (authz: object) => {
+    const prisma: any = {
+      event: { findUnique: jest.fn(async () => event) },
+      eventRegistration: { findMany: jest.fn(async () => [row]), count: jest.fn(async () => 1) },
+    };
+    const svc = buildRegistrationsService(
+      prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+      {} as any, {} as any, {} as any, {} as any, {} as any, authz as any,
+    );
+    return (await svc.getEventRegistrations('u', 'ev-1')).registrations[0] as Record<string, unknown>;
+  };
+
+  it('a Co-Curator gets the row without payment ids, amounts, fees or refund figures', async () => {
+    const reg = await list(authzHolding(Action.EVENT_MANAGE_ATTENDEES));
+    for (const key of REGISTRATION_MONEY_FIELDS) expect(reg).not.toHaveProperty(key);
+    expect(reg).toMatchObject({ id: 'r1', paymentStatus: 'PAID', formResponses: { f1: 'Yes' }, user: { email: 'a@x.in' } });
+  });
+
+  it('the Curator (event money) keeps them', async () => {
+    const reg = await list(authzHolding(Action.EVENT_MANAGE_ATTENDEES, Action.EVENT_MANAGE_MONEY));
+    expect(reg).toMatchObject({ totalAmount: 102, processingFee: 2, paymentId: 'pay_1', orderId: 'order_1' });
+  });
+
+  it("a Space Admin keeps them, checked on the event's space", async () => {
+    const authz = authzHolding(Action.EVENT_MANAGE_ATTENDEES, Action.SPACE_MANAGE_MONEY);
+    const reg = await list(authz);
+    expect(reg).toMatchObject({ totalAmount: 102, paymentId: 'pay_1' });
+    expect(authz.can).toHaveBeenCalledWith({ id: 'u' }, Action.SPACE_MANAGE_MONEY, { spaceId: 'sp-1' });
+  });
+
+  it('every Decimal column on EventRegistration is stripped (a new amount column must be added)', () => {
+    const model = Prisma.dmmf.datamodel.models.find((m) => m.name === 'EventRegistration')!;
+    const decimals = model.fields.filter((f) => f.type === 'Decimal').map((f) => f.name);
+    expect(REGISTRATION_MONEY_FIELDS).toEqual(expect.arrayContaining(decimals));
   });
 });
 
