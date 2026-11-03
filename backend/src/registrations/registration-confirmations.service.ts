@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { RegistrationConfirmedEvent } from '../notifications/notifications.events';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
-import { seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
+import { contactMobile, seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
 import { formatEventDate, formatEventTime, generateQRCode, generateTicketCode } from './registration.util';
 
 /**
@@ -86,7 +86,8 @@ export class RegistrationConfirmationsService {
 
     // Send WhatsApp notification
     try {
-      if (fullRegistration.user?.mobileNumber) {
+      const mobile = contactMobile(fullRegistration.user?.mobileNumber, fullRegistration.attendeeMobile);
+      if (mobile) {
         const eventDate = formatEventDate(fullRegistration.event.startDateTime);
         const eventTime = formatEventTime(
           fullRegistration.event.startDateTime,
@@ -94,7 +95,7 @@ export class RegistrationConfirmationsService {
         );
 
         await this.whatsappService.sendRegistrationConfirmation(
-          fullRegistration.user.mobileNumber,
+          mobile,
           {
             userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
             eventTitle: fullRegistration.event.title,
@@ -196,6 +197,7 @@ export class RegistrationConfirmationsService {
       const reg = await this.prisma.eventRegistration.findUnique({
         where: { id: registrationId },
         select: {
+          attendeeMobile: true,
           user: { select: { mobileNumber: true, fullName: true, username: true } },
           ticketType: { select: { whatsappGroupUrl: true } },
           event: {
@@ -225,12 +227,16 @@ export class RegistrationConfirmationsService {
       if (!inviteUrl) return;
 
       const now = new Date();
-      const claimed = await this.prisma.eventRegistration.updateMany({
-        where: { id: registrationId, whatsappInviteSentAt: null },
-        data: { whatsappInviteSentAt: now },
-      });
-      if (claimed.count) {
-        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(reg.user.mobileNumber, {
+      // No real number (a placeholder account, nothing typed): leave it unsent.
+      const mobile = contactMobile(reg.user.mobileNumber, reg.attendeeMobile);
+      const claimed = mobile
+        ? await this.prisma.eventRegistration.updateMany({
+            where: { id: registrationId, whatsappInviteSentAt: null },
+            data: { whatsappInviteSentAt: now },
+          })
+        : { count: 0 };
+      if (mobile && claimed.count) {
+        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(mobile, {
           userName: reg.user.fullName || reg.user.username || 'there',
           eventTitle: reg.event.title,
           inviteUrl,

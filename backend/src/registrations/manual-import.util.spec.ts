@@ -137,10 +137,18 @@ describe('parseImportRows', () => {
     expect(rows[1].error).toMatch(/Invalid or missing email/);
   });
 
-  it('requires a valid 10-digit mobile', () => {
-    const matrix = parseCsv('Name,Email,Mobile\nAsha,asha@example.com,\n');
+  it('adds a row with a missing or invalid mobile, left off with a warning (A35)', () => {
+    const matrix = parseCsv(
+      'Name,Email,Mobile\nAsha,asha@example.com,\nRavi,ravi@example.com,12ab\nMia,mia@example.com,+91 98765 43210\n',
+    );
     const { rows } = parseImportRows(individual, matrix);
-    expect(rows[0].error).toMatch(/mobile/i);
+    expect(rows.map((r) => r.error)).toEqual([undefined, undefined, undefined]);
+    expect(rows.map((r) => r.mobile)).toEqual([null, null, '+91 98765 43210']);
+    expect(rows.map((r) => r.warning)).toEqual([
+      'No mobile, so WhatsApp messages will not reach them.',
+      'Mobile "12ab" is not a valid number, so it was left off.',
+      undefined,
+    ]);
   });
 
   it('caps one import at MAX_IMPORT_ROWS rows (J5)', () => {
