@@ -72,9 +72,10 @@ describe('space structure (J10)', () => {
         count: jest.fn(async () => 0),
         update: jest.fn(async () => ({})),
       },
-      userRole: { count: jest.fn(async ({ where }: any) => (where.role?.code === 'ADMIN' ? (opts.admin ? 1 : 0) : 0)) },
     };
-    return { svc: new SpacesService(prisma, {} as any, {} as any, {} as any, {} as any), prisma };
+    // platform:manage for the platform admin only; nobody here runs a space.
+    const authz: any = { can: jest.fn(async () => !!opts.admin), canAny: jest.fn(async () => false) };
+    return { svc: new SpacesService(prisma, {} as any, {} as any, {} as any, {} as any, authz), prisma };
   }
 
   it.each([{ type: 'SUPER' }, { parentSpaceId: 'sp-9' }, { coCuratorLimit: 50 }])(

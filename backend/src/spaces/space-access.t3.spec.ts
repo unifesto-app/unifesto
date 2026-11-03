@@ -98,7 +98,7 @@ describe('space access (T3)', () => {
       pendingPlan: null,
     };
     const prisma = { orgSubscription: { findUnique: jest.fn().mockResolvedValue(sub) } };
-    const svc = new SpacesService(prisma as any, {} as any, {} as any, {} as any, planConfig);
+    const svc = new SpacesService(prisma as any, {} as any, {} as any, {} as any, planConfig, {} as any);
     const plan = await svc.getPlanAccess(SPACE);
     const starter = planConfig.getLimits(OrgPlan.STARTER);
     expect(plan?.status).toBe('EXPIRED');

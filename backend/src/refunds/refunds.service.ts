@@ -30,7 +30,6 @@ import {
   SupportTicketStatus,
 } from '@prisma/client';
 import { Action, AuthorizationService } from '../auth/authorization';
-import { isPlatformAdmin } from '../events/event-access';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
@@ -1070,15 +1069,11 @@ export class RefundsService {
     });
     if (!request) throw new NotFoundException('Refund request not found');
 
-    // Visible to the attendee/requester, an organiser of the event, or an admin.
+    // Visible to the attendee/requester, or whoever handles the event's money
+    // (Curator, Space Admin, Platform ADMIN by inheritance); else 403.
     const isOwner =
       request.registration.userId === userId || request.requestedById === userId;
-    if (!isOwner) {
-      if (!(await isPlatformAdmin(this.prisma, userId))) {
-        // Throws ForbiddenException if the user isn't an organiser of the event.
-        await this.assertOrganiser(userId, request.eventId);
-      }
-    }
+    if (!isOwner) await this.assertOrganiser(userId, request.eventId);
     const [withCap] = await this.withRefundCap([request]);
     return withCap;
   }

@@ -202,12 +202,3 @@ export async function assertEventCan<S extends Prisma.EventSelect>(
   }
   return event as unknown as EventWith<S>;
 }
-
-/** Whether the user holds the platform ADMIN role. */
-export async function isPlatformAdmin(prisma: PrismaService, userId?: string | null): Promise<boolean> {
-  if (!userId) return false;
-  const count = await prisma.userRole.count({
-    where: { userId, role: { code: RoleCode.ADMIN } },
-  });
-  return count > 0;
-}

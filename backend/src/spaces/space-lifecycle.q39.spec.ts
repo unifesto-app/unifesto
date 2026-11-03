@@ -235,7 +235,7 @@ describe('status requests are appeals only (Q39)', () => {
         create: jest.fn(async ({ data }: any) => ({ id: 'r1', ...data })),
       },
     };
-    const svc = new SpacesService(prisma, {} as any, {} as any, {} as any, {} as any, { emit: jest.fn() } as any);
+    const svc = new SpacesService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { emit: jest.fn() } as any);
     return { svc, prisma };
   };
 

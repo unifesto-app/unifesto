@@ -15,6 +15,7 @@ describe('SpacesService.searchAddableUsers', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     return { svc, prisma };
   };

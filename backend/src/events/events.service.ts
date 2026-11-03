@@ -11,11 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { deleteWithoutMoney } from '../common/money-records';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionService } from '../subscription/subscription.service';
-import {
-  Action,
-  AuthorizationService,
-  SPACE_ADMIN_ROLE_CODES,
-} from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
 import { esc } from '../email/layout';
@@ -1383,35 +1379,10 @@ export class EventsService {
     }
   }
 
-  /** Event roles by rank. A caller may only grant, change or remove roles ranked below their own. */
-  private static readonly TEAM_RANK: Partial<Record<RoleCode, number>> = {
-    [RoleCode.CREW]: 1,
-    [RoleCode.CO_CURATOR]: 2,
-    [RoleCode.CURATOR]: 3,
-  };
-
-  /**
-   * The caller's rank on an event: Platform ADMIN 5, Space Admin of the owning
-   * space 4, else their own event role (Curator 3, Co-Curator 2, Crew 1).
-   */
-  private async teamRank(userId: string, event: { id: string; spaceId: string }) {
-    const roles = await this.prisma.userRole.findMany({
-      where: { userId },
-      select: { spaceId: true, eventId: true, role: { select: { code: true } } },
-    });
-    let rank = 0;
-    for (const r of roles) {
-      if (r.role.code === RoleCode.ADMIN) rank = Math.max(rank, 5);
-      else if (r.spaceId === event.spaceId && SPACE_ADMIN_ROLE_CODES.includes(r.role.code)) rank = Math.max(rank, 4);
-      else if (r.eventId === event.id) rank = Math.max(rank, EventsService.TEAM_RANK[r.role.code] ?? 0);
-    }
-    return rank;
-  }
-
   /**
    * Team edits (T1): needs EVENT_ASSIGN_CREW on the event (no co-host
-   * fallback), never on yourself, and never on someone ranked at or above you.
-   * Returns the event and the target's current event role, if any.
+   * fallback), never on yourself, and never on someone ranked at or above you
+   * (`canAssign`, T2). Returns the event and the target's current event role.
    */
   private async assertCanEditTeamMember(userId: string, eventId: string, targetUserId: string) {
     const event = await this.prisma.event.findUnique({
@@ -1423,16 +1394,19 @@ export class EventsService {
     if (targetUserId === userId) {
       throw new ForbiddenException('You cannot change your own role on this event');
     }
-    const rank = await this.teamRank(userId, event);
     const current = await this.prisma.userRole.findFirst({
       where: { eventId, userId: targetUserId },
       select: { role: { select: { code: true } } },
     });
     const currentCode = current?.role.code ?? null;
-    if (currentCode && (EventsService.TEAM_RANK[currentCode] ?? 0) >= rank) {
+    if (currentCode && !(await this.canAssignOn(userId, event, currentCode, targetUserId))) {
       throw new ForbiddenException('You cannot change the role of someone at or above your own level');
     }
-    return { event, rank, currentCode };
+    return { event, currentCode };
+  }
+
+  private canAssignOn(userId: string, event: { id: string; spaceId: string }, code: RoleCode, targetUserId: string) {
+    return this.authz.canAssign({ id: userId }, code, { spaceId: event.spaceId, eventId: event.id }, targetUserId);
   }
 
   /** Loads the event (id, spaceId, slug for cache busting) or 404s; 403s unless the caller may manage it. */
@@ -1511,13 +1485,13 @@ export class EventsService {
     targetUserId: string,
     roleCode: EventTeamRole = EventTeamRole.CREW,
   ) {
-    const { event, rank, currentCode } = await this.assertCanEditTeamMember(userId, eventId, targetUserId);
+    const { event, currentCode } = await this.assertCanEditTeamMember(userId, eventId, targetUserId);
     // EventTeamRole is a curated subset of RoleCode with identical values; the
     // cast bridges the two enum types (DTO validation already constrained it).
     const code = roleCode as unknown as RoleCode;
     // Only a Space Admin of the owning space or a Platform ADMIN outranks
     // CURATOR, so only they can hand out the event's money capability.
-    if ((EventsService.TEAM_RANK[code] ?? 0) >= rank) {
+    if (!(await this.canAssignOn(userId, event, code, targetUserId))) {
       throw new ForbiddenException('You can only assign roles below your own');
     }
     const isMember = await this.prisma.userRole.count({
@@ -3396,7 +3370,13 @@ export class EventsService {
             blocks: { select: { blockedId: true } },
           },
         }),
-        this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId }),
+        // D9: Space Admins see the money too, through space:manage-money.
+        this.authz
+          .can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId })
+          .then(
+            (ok) =>
+              ok || this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }),
+          ),
         this.prisma.eventRegistration.groupBy({
           by: ['ticketTypeId'],
           where: { eventId, ...COUNTS_AS_ATTENDING },

@@ -96,7 +96,7 @@ describe('plan enforcement (T9)', () => {
   it('a space and its sub-spaces count toward the plan (Growth: 5)', async () => {
     const withChildren = (n: number) => {
       const prisma: any = onPlan(OrgPlan.GROWTH, { space: { count: jest.fn(async () => n) } });
-      return new SpacesService(prisma, {} as any, {} as any, {} as any, new PlanConfigService(prisma));
+      return new SpacesService(prisma, {} as any, {} as any, {} as any, new PlanConfigService(prisma), {} as any);
     };
     await expect((withChildren(3) as any).assertRoomForSubSpace('sp-1')).resolves.toBeUndefined();
     await expect((withChildren(4) as any).assertRoomForSubSpace('sp-1')).rejects.toThrow(
