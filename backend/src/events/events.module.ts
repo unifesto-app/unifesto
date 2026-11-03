@@ -12,6 +12,7 @@ import { EmailModule } from '../email/email.module';
 import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
 import { AiModule } from '../ai/ai.module';
 import { EventDraftService } from './event-draft';
+import { PayoutsModule } from '../payouts/payouts.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { EventDraftService } from './event-draft';
     EmailModule,
     BannerPaletteModule,
     AiModule,
+    PayoutsModule,
   ],
   controllers: [EventsController],
   providers: [EventsService, EventSchedulerService, EventDraftService, EventPublishFanout],

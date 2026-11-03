@@ -97,6 +97,7 @@ import {
 import slugify from 'slugify';
 import { resolveCategories } from './event-categories';
 import { settle } from '../payouts/settle';
+import { PayoutsService } from '../payouts/payouts.service';
 import {
   checkFieldDefinition,
   sanitizeConfig,
@@ -135,6 +136,7 @@ export class EventsService {
     private readonly events: EventEmitter2,
     private readonly authz: AuthorizationService,
     private readonly publishFanout?: EventPublishFanout,
+    private readonly payouts?: PayoutsService,
   ) {}
 
   /**
@@ -1177,6 +1179,7 @@ export class EventsService {
         'Detach this event from its sub-event hierarchy before transferring ownership',
       );
     }
+    await this.assertMoneySettled(eventId, "Settle this event's money before transferring it");
 
     const existing = await this.prisma.eventOwnershipTransfer.findFirst({
       where: { eventId, status: 'PENDING' },
@@ -1219,12 +1222,26 @@ export class EventsService {
   }
 
   /**
+   * A30: an event changes hands only with its money settled, so no balance,
+   * payout or refund follows it into the receiving space's books.
+   */
+  private async assertMoneySettled(eventId: string, lead: string) {
+    const reason = await this.payouts!.unsettledMoney(eventId);
+    if (reason) throw new BadRequestException(`${lead}: ${reason}.`);
+  }
+
+  /**
    * Accept a pending offer, moving `Event.spaceId` to the target co-host and
    * removing that space's co-host row. The former owner is dropped entirely —
    * it held no co-host row, so losing ownership already ends its access. Space
    * Admins of the receiving space only. The world is re-checked first, since
-   * ownership, the co-host link, or the hierarchy may have shifted since the
-   * offer was made.
+   * ownership, the co-host link, the hierarchy or the money may have shifted
+   * since the offer was made.
+   *
+   * The event is re-homed with it (A30): the acceptor becomes its organiser of
+   * record (`createdBy`, the payout fallback), the old payout account is
+   * cleared for the new space to pick its own, and event roles and check-in
+   * grants of anyone outside the receiving space go.
    */
   async acceptOwnershipTransfer(
     userId: string,
@@ -1281,15 +1298,24 @@ export class EventsService {
         'The receiving space is no longer a co-host of this event.',
       );
     }
+    // ponytail: checked before the write, not under the payout lock. Settled
+    // means nothing is available, so no payout can start; a sale landing in
+    // this instant just goes to the new owner.
+    await this.assertMoneySettled(eventId, "The host space must settle this event's money before the handover");
 
+    // Event roles carry no space, so "from the receiving space" means holding
+    // any role there (the same test addTeamMember uses).
+    const outsiders = { eventId, user: { roles: { none: { spaceId: transfer.toSpaceId } } } };
     await this.prisma.$transaction([
       this.prisma.event.update({
         where: { id: eventId },
-        data: { spaceId: transfer.toSpaceId },
+        data: { spaceId: transfer.toSpaceId, createdBy: userId, payoutBankAccountId: null },
       }),
       this.prisma.eventCoHost.deleteMany({
         where: { eventId, spaceId: transfer.toSpaceId },
       }),
+      this.prisma.userRole.deleteMany({ where: outsiders }),
+      this.prisma.eventCheckinAccess.deleteMany({ where: outsiders }),
       this.prisma.eventOwnershipTransfer.update({
         where: { id: transfer.id },
         data: {
