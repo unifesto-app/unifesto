@@ -6,6 +6,8 @@ describe('isAllowedOrigin', () => {
     'https://unifesto.app',
     'https://apex.unifesto.app',
     'https://a.b.unifesto.app',
+    'https://wegobeyond.in',
+    'https://www.wegobeyond.in',
     'http://localhost',
     'http://localhost:3001',
     'http://127.0.0.1:8080',
@@ -19,6 +21,9 @@ describe('isAllowedOrigin', () => {
     'https://evilunifesto.app',
     'https://unifesto.app.evil.com',
     'https://evil.com/.unifesto.app',
+    'http://wegobeyond.in',
+    'https://evilwegobeyond.in',
+    'https://wegobeyond.in.evil.com',
     'null',
   ])('refuses %s', (o) => expect(isAllowedOrigin(o)).toBe(false));
 });

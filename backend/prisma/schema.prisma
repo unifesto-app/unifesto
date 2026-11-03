@@ -6120,3 +6120,42 @@ model UserCapabilityOverride {
   @@index([userId])
   @@map("user_capability_overrides")
 }
+
+/// WeGoBeyond (wegobeyond.in, Unifesto's events brand) site content, edited in
+/// Apex › WeGoBeyond and read by the site from GET /wegobeyond/content. One row
+/// per document: initiatives, gallery, team, press, crew, settings. Every save
+/// is checked by src/wegobeyond/wegobeyond.schema.ts and names the version it was
+/// made from; a save against an older version is refused (409), so two editors
+/// never overwrite each other.
+model WegobeyondDoc {
+  name        String   @id @db.VarChar(32)
+  data        Json
+  version     Int      @default(1)
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("wegobeyond_docs")
+}
+
+/// A "Join the crew" sign-up from wegobeyond.in, listed and exported in Apex ›
+/// WeGoBeyond › Crew sign-ups. Replaces the Google Sheet the site posted to.
+/// The form is built in Apex: answers to the long-standing questions have
+/// columns, every other answer is in `answers`, keyed by question id.
+model WegobeyondCrewSignup {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @db.Text
+  email        String   @db.Text
+  phone        String   @db.Text
+  city         String   @db.Text
+  organization String   @default("") @db.Text
+  role         String   @default("") @db.Text
+  interests    String[]
+  availability String[]
+  experience   String   @default("") @db.Text
+  links        String   @default("") @db.Text
+  answers      Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("wegobeyond_crew_signups")
+}
