@@ -19,7 +19,7 @@ const figures = (collectedOverall: number): FinancialsFigures => ({
 });
 
 const breakdown: PlatformFinancialsBreakdown = {
-  totals: { ...figures(455000), platformEarnings: 18200 },
+  totals: { ...figures(455000), gatewayFees: 9100, platformEarnings: 9100 },
   spaces: [
     {
       ...figures(300000),
@@ -29,7 +29,8 @@ const breakdown: PlatformFinancialsBreakdown = {
       feePercent: 0,
       plan: null,
       eventCount: 1,
-      platformEarnings: 12000,
+      gatewayFees: 6000,
+      platformEarnings: 6000,
       events: [{ ...figures(300000), eventId: "ev1", title: "Tech Fest 2026", slug: "tech-fest", startDateTime: "2026-11-10T10:00:00.000Z" }],
     },
   ],
