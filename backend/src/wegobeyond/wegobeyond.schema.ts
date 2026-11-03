@@ -180,7 +180,7 @@ export const DOCS: Record<DocName, DocSpec> = {
   team: {
     title: 'The crew',
     blurb:
-      'Everyone who makes the rooms happen: speakers, hosts, mentors, judges, volunteers. Each shows as “Role at Event” (or just the role). Hidden until someone is added; order here is the order on the site.',
+      'Everyone who makes the rooms happen: speakers, hosts, mentors, judges, volunteers. Shown on wegobeyond.in/crew as “Role at Event” (or just the role); order here is the order on the page.',
     fields: [],
     lists: [
       {

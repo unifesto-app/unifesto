@@ -5,7 +5,7 @@ import { adminNav } from "@/components/shell/nav-config";
 const BLURBS: Record<string, string> = {
   "/wegobeyond/initiatives": "The home grid and every /initiative page.",
   "/wegobeyond/gallery": "The photo gallery on the home page.",
-  "/wegobeyond/team": "Speakers, hosts, mentors, judges and volunteers, each as Role at Event.",
+  "/wegobeyond/team": "The /crew page: speakers, hosts, mentors, judges and volunteers, each as Role at Event.",
   "/wegobeyond/press": "Releases, the boilerplate and the press contact.",
   "/wegobeyond/crew": "The Join the crew page and the options on its form.",
   "/wegobeyond/crew-signups": "Everyone who joined the crew, with a CSV export.",
