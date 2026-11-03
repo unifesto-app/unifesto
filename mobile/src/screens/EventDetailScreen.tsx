@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,7 +40,6 @@ import {
 } from '../components/event/EventSections';
 import { RegisterBar, useActionBarSpace } from '../components/event/EventOverlays';
 import NotifySheet from '../components/event/NotifySheet';
-import BrandIcon from '../components/profile/BrandIcon';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
@@ -223,9 +221,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   // The kind of event and where, as plain text over the title (never a tag on the cover).
   const kind = [tag, isOnline ? 'Online' : event.city].filter(Boolean).join(' · ');
   const description = event.description?.trim();
-  const groupUrl = event.whatsappGroupUrl;
-  const communityUrl = event.whatsappCommunityUrl ?? event.parentEvent?.whatsappCommunityUrl ?? null;
-  const whatsappUrl = groupUrl || communityUrl;
   const chip = dateChip(event.startDateTime);
   const when = whenLines(event.startDateTime, event.endDateTime);
   // Countdown only while it's still ahead; the facts card covers ended / cancelled.
@@ -369,18 +364,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               />
             )}
 
-            {/* Opens WhatsApp, so it shows WhatsApp's own mark. */}
-            {whatsappUrl ? (
-              <>
-                <Divider />
-                <Fact
-                  icon={<BrandIcon brand="whatsapp" size={ICON} />}
-                  title={`Join the WhatsApp ${groupUrl ? 'group' : 'community'}`}
-                  onPress={() => Linking.openURL(whatsappUrl)}
-                  external
-                />
-              </>
-            ) : null}
             {/* An action closing the list: sky, no chevron. */}
             {d.user && d.ownsAnyTicket ? (
               <>

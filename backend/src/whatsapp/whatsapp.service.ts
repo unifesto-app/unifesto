@@ -1811,10 +1811,12 @@ export class WhatsAppService {
   }
 
   /**
-   * WhatsApp group / community invite.
-   * Template: event_whatsapp_group (PENDING approval)
+   * WhatsApp attendee-group invite.
+   * Template: event_whatsapp_group (UTILITY, approved)
    * Header: none
    * Body: {{1}}=userName, {{2}}=eventTitle, {{3}}=joinLabel, {{4}}=inviteUrl
+   * {{3}} is always "group": the approved template still carries the slot
+   * from when a community was an option.
    *
    * Sent right after a successful registration when the event (or its parent)
    * has an organiser-supplied invite link. Fail-soft: a missing template or a
@@ -1827,7 +1829,6 @@ export class WhatsAppService {
       userName: string;
       eventTitle: string;
       inviteUrl: string;
-      isCommunity: boolean;
     },
     delivery?: DeliveryOpts,
   ): Promise<boolean> {
@@ -1837,12 +1838,7 @@ export class WhatsAppService {
       return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_WHATSAPP_GROUP,
-        [
-          data.userName,
-          data.eventTitle,
-          data.isCommunity ? 'community' : 'group',
-          data.inviteUrl,
-        ],
+        [data.userName, data.eventTitle, 'group', data.inviteUrl],
         false, // no image header
         undefined,
         'en',

@@ -63,7 +63,7 @@ export class MyRegistrationsService {
       reg.userId === userId ? null : await this.claimedSeatOf(userId, registrationId);
     if (reg.userId !== userId && !seat) throw new ForbiddenException('Unauthorized');
 
-    const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
+    const inviteUrl = resolveRegistrationWhatsAppInvite({
       ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
       eventAttendeeGroupUrl: reg.event.whatsappAttendeeGroupUrl,
       parentAttendeeGroupUrl: reg.event.parentEvent?.whatsappAttendeeGroupUrl,
@@ -72,7 +72,6 @@ export class MyRegistrationsService {
     return {
       registrationId: reg.id,
       inviteUrl,
-      isCommunity,
       joined: seat ? seat.whatsappJoinedAt != null : reg.whatsappGroupJoinedAt != null,
     };
   }
@@ -202,18 +201,14 @@ export class MyRegistrationsService {
 
     return registrations.map((reg) => {
       const ev = reg.event;
-      const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
+      const inviteUrl = resolveRegistrationWhatsAppInvite({
         ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
         eventAttendeeGroupUrl: ev.whatsappAttendeeGroupUrl,
         parentAttendeeGroupUrl: ev.parentEvent?.whatsappAttendeeGroupUrl,
       });
       const base = {
         ...reg,
-        event: {
-          ...ev,
-          whatsappInviteUrl: inviteUrl,
-          whatsappIsCommunity: isCommunity,
-        },
+        event: { ...ev, whatsappInviteUrl: inviteUrl },
       };
       const seat = reg.userId !== userId ? seatByReg.get(reg.id) : undefined;
       if (!seat) return base;

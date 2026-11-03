@@ -425,7 +425,7 @@ export class RegistrationImportService {
           },
         );
         if (state.remaining != null) state.remaining -= verdict.seats;
-        if (sendEmails) toConfirm.push(registrationId);
+        toConfirm.push(registrationId);
         report.push({ ...this.rowHead(row), status: 'created' });
       } catch (err) {
         this.logger.error(
@@ -446,10 +446,15 @@ export class RegistrationImportService {
 
     // Confirmations after the rows, a few at a time in the background (J5): one
     // detached send per row used to fire hundreds of mails in the same tick.
+    // With the ticket email off, the WhatsApp group invite still goes: the
+    // switch only covers the email.
     if (toConfirm.length) {
       void inChunks(toConfirm, (id) =>
-        this.confirmations.sendRegistrationConfirmations(id).catch((err) =>
-          this.logger.error(`sendRegistrationConfirmations(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+        (sendEmails
+          ? this.confirmations.sendRegistrationConfirmations(id)
+          : this.confirmations.sendWhatsAppGroupInvite(id)
+        ).catch((err) =>
+          this.logger.error(`import confirmations(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
         ),
         5,
       );
@@ -708,11 +713,14 @@ export class RegistrationImportService {
         dto.ticketTypeId,
         { groupSize, groupMembers, formResponses, freeAddSeats },
       );
-      if (dto.sendTicketEmail !== false) {
-        void this.confirmations.sendRegistrationConfirmations(registrationId).catch((err) =>
-          this.logger.error(`sendRegistrationConfirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
-        );
-      }
+      // With the ticket email off, the WhatsApp group invite still goes: door
+      // adds are exactly who needs the group, and the switch only covers email.
+      void (dto.sendTicketEmail !== false
+        ? this.confirmations.sendRegistrationConfirmations(registrationId)
+        : this.confirmations.sendWhatsAppGroupInvite(registrationId)
+      ).catch((err) =>
+        this.logger.error(`manual add confirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
       return {
         registrationId,
         paymentStatus: 'PAID' as const,

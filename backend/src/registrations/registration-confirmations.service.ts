@@ -64,19 +64,6 @@ export class RegistrationConfirmationsService {
         ticketType: { select: { whatsappGroupUrl: true } },
         // The holder's own ticket (member seat tickets carry an attendeeEmail).
         tickets: { where: { attendeeEmail: null }, take: 1, select: { ticketCode: true } },
-        // Group member seats, so upfront-filled members are invited alongside the
-        // lead at registration time (late claimers get theirs on claim / blast).
-        groupSeats: {
-          select: {
-            id: true,
-            seatIndex: true,
-            whatsappInviteSentAt: true,
-            memberDetails: true,
-            claimedBy: {
-              select: { mobileNumber: true, fullName: true, username: true },
-            },
-          },
-        },
         // Pull the parent's attendee group too, so a sub-event attendee who has
         // no group link of their own still gets routed into the big event's
         // WhatsApp group.
@@ -124,64 +111,19 @@ export class RegistrationConfirmationsService {
       this.logger.error('Failed to send WhatsApp notification', error);
     }
 
-    // WhatsApp attendee-group invite (Option A + C). Push the organiser's
-    // PRIVATE attendee invite group to the attendee so joining is one tap in the
-    // chat they already have open. Precedence: the ticket type's own group link,
-    // else the event's attendee group, else — for a sub-event — the parent big
-    // event's attendee group. Never the legacy public links. Non-blocking,
-    // fail-soft.
-    try {
-      if (fullRegistration.user?.mobileNumber) {
-        const ev = fullRegistration.event;
-        const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
-          ticketTypeGroupUrl: fullRegistration.ticketType?.whatsappGroupUrl,
-          eventAttendeeGroupUrl: ev.whatsappAttendeeGroupUrl,
-          parentAttendeeGroupUrl: ev.parentEvent?.whatsappAttendeeGroupUrl,
-        });
-
-        if (inviteUrl) {
-          const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
-            fullRegistration.user.mobileNumber,
-            {
-              userName:
-                fullRegistration.user.fullName ||
-                fullRegistration.user.username ||
-                'there',
-              eventTitle: ev.title,
-              inviteUrl,
-              isCommunity,
-            },
-          );
-          // Record that this attendee was invited, so a curator's later manual
-          // blast skips them (send-once dedup). Only when Meta took it: a
-          // rejected send stays eligible for the blast.
-          if (accepted) {
-            await this.prisma.eventRegistration.update({
-              where: { id: fullRegistration.id },
-              data: { whatsappInviteSentAt: new Date() },
-            });
-          }
-        }
-
-        // Invite any group members already on the roster at registration time
-        // (seats 2..N). Late claimers are invited when they claim / on a blast.
-        if (fullRegistration.groupSeats?.length) {
-          await this.sendInviteToGroupMemberSeats(fullRegistration.groupSeats, {
-            inviteUrl,
-            isCommunity,
-            eventTitle: ev.title,
-          });
-        }
-      }
-    } catch (error) {
-      this.logger.error('Failed to send WhatsApp group invite', error);
-    }
+    await this.sendWhatsAppGroupInvite(fullRegistration.id);
 
     // Send email notification (non-blocking). Primary email, else any: a
     // phone-first account's email often sits on a non-primary identity.
     const email = await this.groupSeats.primaryEmail(fullRegistration.userId, null);
 
     if (email) {
+      // The group link rides along too, for anyone the WhatsApp invite missed.
+      const whatsappGroupUrl = resolveRegistrationWhatsAppInvite({
+        ticketTypeGroupUrl: fullRegistration.ticketType?.whatsappGroupUrl,
+        eventAttendeeGroupUrl: fullRegistration.event.whatsappAttendeeGroupUrl,
+        parentAttendeeGroupUrl: fullRegistration.event.parentEvent?.whatsappAttendeeGroupUrl,
+      });
       const eventDate = formatEventDate(fullRegistration.event.startDateTime);
       const eventTime = formatEventTime(
         fullRegistration.event.startDateTime,
@@ -211,6 +153,7 @@ export class RegistrationConfirmationsService {
           venueAddress: fullRegistration.event.venueAddress || undefined,
           eventDescription: fullRegistration.event.description || undefined,
           organiserName: fullRegistration.event.space?.name || undefined,
+          whatsappGroupUrl: whatsappGroupUrl ?? undefined,
         })
         .catch((err) => this.logger.error('Failed to send registration confirmation email', err));
     }
@@ -235,6 +178,77 @@ export class RegistrationConfirmationsService {
       eventTitle: fullRegistration.event.title,
       eventSlug: fullRegistration.event.slug,
     } satisfies RegistrationConfirmedEvent);
+  }
+
+  /**
+   * Push the organiser's PRIVATE attendee group link to one registration: the
+   * lead, then any member seats already on the roster (late claimers get theirs
+   * on claim or from the blast). Precedence: the ticket type's own group link,
+   * else the event's attendee group, else the parent big event's.
+   *
+   * Send-once: the lead is claimed (`whatsappInviteSentAt` set while still
+   * null) before sending and released if Meta rejects it, so it stays open for
+   * the blast and never races one. Fail-soft. Manual adds with the ticket email
+   * switched off call this on its own.
+   */
+  async sendWhatsAppGroupInvite(registrationId: string): Promise<void> {
+    try {
+      const reg = await this.prisma.eventRegistration.findUnique({
+        where: { id: registrationId },
+        select: {
+          user: { select: { mobileNumber: true, fullName: true, username: true } },
+          ticketType: { select: { whatsappGroupUrl: true } },
+          event: {
+            select: {
+              title: true,
+              whatsappAttendeeGroupUrl: true,
+              parentEvent: { select: { whatsappAttendeeGroupUrl: true } },
+            },
+          },
+          groupSeats: {
+            select: {
+              id: true,
+              seatIndex: true,
+              whatsappInviteSentAt: true,
+              memberDetails: true,
+              claimedBy: { select: { mobileNumber: true, fullName: true, username: true } },
+            },
+          },
+        },
+      });
+      if (!reg) return;
+      const inviteUrl = resolveRegistrationWhatsAppInvite({
+        ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
+        eventAttendeeGroupUrl: reg.event.whatsappAttendeeGroupUrl,
+        parentAttendeeGroupUrl: reg.event.parentEvent?.whatsappAttendeeGroupUrl,
+      });
+      if (!inviteUrl) return;
+
+      const now = new Date();
+      const claimed = await this.prisma.eventRegistration.updateMany({
+        where: { id: registrationId, whatsappInviteSentAt: null },
+        data: { whatsappInviteSentAt: now },
+      });
+      if (claimed.count) {
+        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(reg.user.mobileNumber, {
+          userName: reg.user.fullName || reg.user.username || 'there',
+          eventTitle: reg.event.title,
+          inviteUrl,
+        });
+        if (!accepted) {
+          await this.prisma.eventRegistration.updateMany({
+            where: { id: registrationId, whatsappInviteSentAt: now },
+            data: { whatsappInviteSentAt: null },
+          });
+        }
+      }
+
+      if (reg.groupSeats.length) {
+        await this.sendInviteToGroupMemberSeats(reg.groupSeats, { inviteUrl, eventTitle: reg.event.title });
+      }
+    } catch (error) {
+      this.logger.error('Failed to send WhatsApp group invite', error);
+    }
   }
 
   /**
@@ -363,16 +377,6 @@ export class RegistrationConfirmationsService {
   }
 
   /**
-   * Curator / Co-Curator / Space Admin blast: push the event's WhatsApp
-   * group/community invite to every confirmed attendee who has a mobile number
-   * and hasn't already been invited or self-marked as joined.
-   *
-   * "Joined" isn't observable via WhatsApp's API, so the two suppressors are
-   * `whatsappInviteSentAt` (send-once) and the attendee's `whatsappGroupJoinedAt`
-   * self-mark. Delivery is fail-soft per recipient; one bad number never aborts
-   * the run. Returns a per-outcome tally for the curator's toast.
-   */
-  /**
    * Send the WhatsApp group invite to each un-invited group *member* seat (the
    * lead is seat 1 and is handled via the registration row, so it's skipped
    * here). Send-once per seat via `whatsappInviteSentAt`. Fail-soft per seat.
@@ -382,7 +386,7 @@ export class RegistrationConfirmationsService {
     seats: Array<
       SeatLike & { id: string; seatIndex: number; whatsappInviteSentAt: Date | null }
     >,
-    ctx: { inviteUrl: string | null; isCommunity: boolean; eventTitle: string },
+    ctx: { inviteUrl: string | null; eventTitle: string },
   ): Promise<{ sent: number; noPhone: number; noLink: number; failed: number }> {
     let sent = 0;
     let noPhone = 0;
@@ -408,7 +412,6 @@ export class RegistrationConfirmationsService {
           userName: seatMemberName(seat),
           eventTitle: ctx.eventTitle,
           inviteUrl: ctx.inviteUrl,
-          isCommunity: ctx.isCommunity,
         });
         if (!accepted) {
           failed++;

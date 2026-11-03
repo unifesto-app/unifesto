@@ -228,7 +228,7 @@ export default function TicketClient({ id }: { id: string }) {
 
         {wa?.inviteUrl && !cancelled && (
           <section>
-            <h2 className="text-sm font-medium text-muted-foreground">{wa.isCommunity ? "WhatsApp community" : "WhatsApp group"}</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">WhatsApp group</h2>
             <div className="mt-2 flex flex-wrap items-center gap-4">
               <a href={wa.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
                 <WhatsappLogo className="h-4 w-4" aria-hidden /> Join

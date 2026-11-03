@@ -101,3 +101,11 @@ describe('H23 app line', () => {
     expect(reg(brand)).not.toContain('Your ticket is also in the Unifesto app.');
   });
 });
+
+describe('registration mail WhatsApp group', () => {
+  it('links the group only when the event has one', () => {
+    const url = 'https://chat.whatsapp.com/AbCdEfGhIjK12345';
+    expect(T.registrationConfirmationEmail({ ...event, whatsappGroupUrl: url }).html).toContain(`href="${url}"`);
+    expect(T.registrationConfirmationEmail(event).html).not.toContain('Join the WhatsApp group');
+  });
+});

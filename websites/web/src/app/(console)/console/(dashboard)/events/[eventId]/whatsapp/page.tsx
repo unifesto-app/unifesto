@@ -199,8 +199,9 @@ export default function EventWhatsAppPage() {
           <p className="font-medium text-foreground">Private to attendees</p>
           <p className="mt-1">
             Create the group in WhatsApp yourself, then paste its invite link
-            below. We message it to each attendee when they register, and you can
-            send a manual blast anytime. The link is
+            below. We message it to each attendee when they register. Saving a
+            link sends it to confirmed attendees who don&apos;t have it yet, and
+            you can send a manual blast anytime. The link is
             never exposed on the event page or in the app to non-attendees.
           </p>
         </div>

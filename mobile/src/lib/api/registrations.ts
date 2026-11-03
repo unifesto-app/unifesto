@@ -293,9 +293,8 @@ export const updateMyGroupMembers = async (
 /** The WhatsApp group invite for my ticket, plus whether I've marked as joined. */
 export interface TicketWhatsappGroup {
   registrationId: string;
-  /** Resolved link: event group, else event community, else parent community. */
+  /** Resolved link: ticket type's group, else the event's, else the parent event's. */
   inviteUrl: string | null;
-  isCommunity: boolean;
   joined: boolean;
 }
 
@@ -317,7 +316,6 @@ export const getRegistrationWhatsappGroup = async (
   return {
     registrationId: data.registrationId,
     inviteUrl: data.inviteUrl ?? null,
-    isCommunity: !!data.isCommunity,
     joined: !!data.joined,
   };
 };

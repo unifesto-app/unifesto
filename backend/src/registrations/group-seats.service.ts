@@ -1421,7 +1421,7 @@ export class GroupSeatsService {
       ]);
       if (!reg || currentSeat?.whatsappInviteSentAt) return;
 
-      const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
+      const inviteUrl = resolveRegistrationWhatsAppInvite({
         ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
         eventAttendeeGroupUrl: reg.event.whatsappAttendeeGroupUrl,
         parentAttendeeGroupUrl: reg.event.parentEvent?.whatsappAttendeeGroupUrl,
@@ -1441,7 +1441,6 @@ export class GroupSeatsService {
           (typeof details.name === 'string' ? details.name : 'there'),
         eventTitle: reg.event.title,
         inviteUrl,
-        isCommunity,
       });
       // Only a send Meta took counts; a rejected one stays open for the blast.
       if (!accepted) return;

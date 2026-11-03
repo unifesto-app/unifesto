@@ -13,12 +13,16 @@ import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { GroupSeatsService } from './group-seats.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
-import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
+import { OnEvent } from '../common/on-event';
+import { resolveRegistrationWhatsAppInvite, WHATSAPP_LINK_SET } from '../common/whatsapp-links';
 import { seatsFor } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { GroupInviteBlastQueue } from './group-invite-blast.queue';
 import { seatMemberName, seatPhone } from './group-invite.util';
 import { inChunks } from '../common/batching';
+
+/** How long a saved link waits before going out, so a quick fix-up save wins. */
+export const LINK_SET_SEND_DELAY_MS = 2 * 60 * 1000;
 
 interface BlastRecipient {
   kind: 'reg' | 'seat';
@@ -26,7 +30,6 @@ interface BlastRecipient {
   phone: string;
   name: string;
   inviteUrl: string;
-  isCommunity: boolean;
 }
 
 /**
@@ -76,6 +79,17 @@ export class RegistrationAttendeesService {
     @Optional() private readonly blastQueue?: GroupInviteBlastQueue,
   ) {
     blastQueue?.setHandler((eventId) => this.runGroupInviteBlast(eventId));
+  }
+
+  /**
+   * An organiser saved a new group link: send it to confirmed attendees who
+   * don't have one yet, through the same send-once run as the curator's button.
+   * No plan check: this is the automatic catch-up, not a manual blast.
+   */
+  @OnEvent(WHATSAPP_LINK_SET, { async: true })
+  async onWhatsAppLinkSet({ eventId }: { eventId: string }): Promise<void> {
+    if (await this.blastQueue?.add(eventId, LINK_SET_SEND_DELAY_MS)) return;
+    await this.runGroupInviteBlast(eventId);
   }
 
   /**
@@ -140,7 +154,6 @@ export class RegistrationAttendeesService {
             userName: r.name,
             eventTitle: plan.eventTitle,
             inviteUrl: r.inviteUrl,
-            isCommunity: r.isCommunity,
           });
         } catch (error) {
           this.logger.error(`Failed to send WhatsApp group invite to ${r.kind} ${r.id}`, error);
@@ -224,7 +237,7 @@ export class RegistrationAttendeesService {
     let noPhone = 0;
     let noLink = 0;
     for (const reg of registrations) {
-      const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
+      const inviteUrl = resolveRegistrationWhatsAppInvite({
         ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
         eventAttendeeGroupUrl: event.whatsappAttendeeGroupUrl,
         parentAttendeeGroupUrl: event.parentEvent?.whatsappAttendeeGroupUrl,
@@ -233,7 +246,7 @@ export class RegistrationAttendeesService {
         eligible++;
         if (!inviteUrl) noLink++;
         else if (!phone) noPhone++;
-        else recipients.push({ kind, id, phone, name, inviteUrl, isCommunity });
+        else recipients.push({ kind, id, phone, name, inviteUrl });
       };
       // Lead (individual attendee, or seat 1 of a group): tracked on the row.
       if (!reg.whatsappInviteSentAt && !reg.whatsappGroupJoinedAt) {
