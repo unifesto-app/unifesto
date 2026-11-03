@@ -49,6 +49,15 @@ export class RegistrationExportService {
     if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
+    // Money columns and payment ids: the event's Curator or a Space Admin of
+    // its space (D9), never Co-Curator or Crew (T12).
+    if (
+      type === 'transactions' &&
+      !(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId: event.id })) &&
+      !(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }))
+    ) {
+      throw new ForbiddenException('Only an organiser who handles this event’s money can export its transactions');
+    }
 
     // Registrations are read a page at a time (newest first, as before), so a
     // CSV streams out while it is read rather than being built whole.

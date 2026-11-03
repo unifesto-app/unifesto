@@ -57,7 +57,8 @@ function setup(
       findFirst: jest.fn(async () => null),
       findUnique: jest.fn(async ({ where }: any) => payouts.find((p) => p.id === where.id) ?? null),
       create: jest.fn(async ({ data }: any) => {
-        const row = { id: `p${payouts.length}`, ...data };
+        // createPayout includes the account (owner only here; T12 masks it for others).
+        const row = { id: `p${payouts.length}`, ...data, bankAccount: { userId: 'creator', accountNumber: '50100012345678', upiId: null } };
         payouts.push(row);
         return row;
       }),

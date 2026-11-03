@@ -604,17 +604,16 @@ export class PayoutsService {
    * The Transactions page tiles (Space web + mobile) for an event's
    * registrations, optionally one ticket type: settle() on the server, so the
    * Net tile carries each sale's organiser fee like the payout figures do.
-   * Same rows and access as the transactions list and export.
+   * Same rows as the transactions list and export, same access as the export.
    */
   async getEventTransactions(userId: string, eventId: string, ticketTypeId?: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { space: { select: { subscription: true } } },
+      select: { spaceId: true, space: { select: { subscription: true } } },
     });
     if (!event) throw new NotFoundException('Event not found');
-    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId }))) {
-      throw new ForbiddenException('You do not have permission to view this event’s transactions');
-    }
+    // Money figures: the D9 money pair, like the export (T12).
+    await this.assertEventMoney(userId, eventId, event.spaceId, 'view this event’s transactions');
     const rows = await this.prisma.eventRegistration.findMany({
       where: {
         eventId,
@@ -1452,7 +1451,14 @@ export class PayoutsService {
     const event = await this.loadSource(src);
     await this.assertEventMoney(userId, src.eventId, event.spaceId, `request this ${event.noun}’s payout`);
     await assertSpaceLive(this.prisma, { id: event.spaceId });
-    const payout = await this.createPayoutFor(src, userId, netAmount, bankAccountId);
+    const created = await this.createPayoutFor(src, userId, netAmount, bankAccountId);
+    // The account may be another Space Admin's: its full number and contact
+    // stay with its owner and the platform (T12).
+    const { methodType, bankName, accountNumber, upiId, accountHolderName } = created.bankAccount;
+    const payout =
+      created.bankAccount.userId === userId
+        ? created
+        : maskPayoutAccount({ ...created, bankAccount: { methodType, bankName, accountNumber, upiId, accountHolderName } });
     // D22: the request is a Platform case, which alerts platform admins.
     void this.notifyPayoutContacts(payout.id, 'requested');
     openSubjectCase(this.events, {

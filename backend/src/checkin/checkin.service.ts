@@ -973,6 +973,8 @@ export class CheckinService {
 
     // Always read fresh: an hour-long Redis copy went stale on every claim,
     // team change, transfer, waitlist conversion and manual add.
+    // A check-in projection (T12): Crew read this, so no form answers, payment
+    // ids, amounts or ticket codes. It is what pre-4.0.5 apps read for recents.
     const registrations = await this.prisma.eventRegistration.findMany({
       where: {
         eventId,
@@ -980,7 +982,10 @@ export class CheckinService {
           in: [RegistrationStatus.REGISTERED, RegistrationStatus.ATTENDED],
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        checkedInAt: true,
         user: {
           select: {
             id: true,
@@ -989,15 +994,7 @@ export class CheckinService {
             avatarUrl: true,
           },
         },
-        ticketType: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            currency: true,
-          },
-        },
-        tickets: true,
+        ticketType: { select: { id: true, name: true } },
         checkedInByUser: {
           select: {
             id: true,
