@@ -264,7 +264,7 @@ describe('AuthorizationService', () => {
     ])('%s may assign only the roles below it', async (_who, roles, expected) => {
       const svc = build(roles);
       for (const role of [RoleCode.ADMIN, ...ROLES]) {
-        expect([role, await svc.canAssign(user, role, at, 'someone-else')]).toEqual([role, expected.includes(role)]);
+        expect([role, await svc.canAssign(user, role, at, 'someone-else')]).toEqual([role, (expected as RoleCode[]).includes(role)]);
       }
     });
 
