@@ -133,14 +133,39 @@ describe('WeGoBeyond schema', () => {
 
   it('takes an uploaded photo or an https link, nothing else', () => {
     const photo = (src: string) =>
-      validateDoc('gallery', { photos: [{ src, alt: 'A room', caption: '' }] })
-        .ok;
+      validateDoc('gallery', { photos: [{ src, alt: 'A room' }] }).ok;
     expect(
       photo('https://bucket.s3.amazonaws.com/wegobeyond/gallery/a-1.jpg'),
     ).toBe(true);
     expect(photo('/gallery/build-with-aia.webp')).toBe(true);
     expect(photo('javascript:alert(1)')).toBe(false);
     expect(photo('/gallery/../secret.png')).toBe(false);
+  });
+
+  it('reads a missing optional field as empty, a missing required one as an error', () => {
+    // A crew entry saved before `event` existed.
+    const old = validateDoc('team', {
+      members: [{ name: 'A', role: 'Mentor' }],
+    });
+    expect(old).toEqual({
+      ok: true,
+      value: { members: [{ name: 'A', role: 'Mentor', event: '' }] },
+    });
+    const withEvent = validateDoc('team', {
+      members: [{ name: 'A', role: 'Speaker', event: ' Build with AIA ' }],
+    });
+    expect(withEvent.ok && withEvent.value.members).toEqual([
+      { name: 'A', role: 'Speaker', event: 'Build with AIA' },
+    ]);
+    const noName = validateDoc('team', { members: [{ role: 'Mentor' }] });
+    expect(!noName.ok && noName.errors).toEqual([
+      'People #1: Name is required.',
+    ]);
+    // Optional lines come back as [].
+    const [a] = SEED.initiatives.initiatives;
+    const { agenda: _agenda, ...noAgenda } = a;
+    const r = validateDoc('initiatives', { initiatives: [noAgenda] });
+    expect(r.ok && (r.value.initiatives as any[])[0].agenda).toEqual([]);
   });
 });
 

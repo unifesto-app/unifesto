@@ -180,7 +180,7 @@ export const DOCS: Record<DocName, DocSpec> = {
   team: {
     title: 'The crew',
     blurb:
-      'Everyone who makes the rooms happen: speakers, hosts, mentors, judges, volunteers. Shown as credits grouped by role; hidden until someone is added.',
+      'Everyone who makes the rooms happen: speakers, hosts, mentors, judges, volunteers. Each shows as “Role at Event” (or just the role). Hidden until someone is added; order here is the order on the site.',
     fields: [],
     lists: [
       {
@@ -197,6 +197,13 @@ export const DOCS: Record<DocName, DocSpec> = {
             kind: 'select',
             required: true,
             options: CREW_ROLES_SHOWN,
+          },
+          {
+            key: 'event',
+            label: 'Event name',
+            kind: 'text',
+            max: 80,
+            hint: 'Optional, e.g. Build with AIA. Shows as “Speaker at Build with AIA”; leave empty for just the role.',
           },
         ],
       },
@@ -409,6 +416,11 @@ function cleanField(
   f: Field,
   raw: unknown,
 ): { value: unknown } | { error: string } {
+  // A missing optional field (an entry saved before the field existed) is just empty.
+  if (raw === undefined || raw === null) {
+    if (f.required) return { error: 'is required' };
+    return { value: f.kind === 'lines' ? [] : '' };
+  }
   if (f.kind === 'lines') {
     if (!Array.isArray(raw) || raw.some((l) => typeof l !== 'string')) {
       return { error: 'must be a list of lines' };
