@@ -235,7 +235,7 @@ def powered_by(theme, stacked=False):
 
 
 # ── Product lockups: the wordmark + product name, one colour family ──
-PRODUCTS = ("Stay", "Sprint", "Orbit")
+PRODUCTS = ("Sprint", "Orbit")
 LOCKUP_FILLS = {"silver": None, "ink": "#111113", "white": "#ffffff", "black": "#111113"}
 
 
