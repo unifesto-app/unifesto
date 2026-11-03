@@ -1131,6 +1131,10 @@ model Space {
   state   String? @db.VarChar(100)
   country String? @db.VarChar(100)
 
+  // GST registration of the organisation behind the space (T11). Unused until
+  // the CA rules on invoicing in A6.
+  gstin String? @db.VarChar(15)
+
   // Configuration
   tags       String[] // Array of tags
   visibility SpaceVisibility @default(PUBLIC)
@@ -2093,6 +2097,16 @@ model EventRegistration {
   /// Deal whose terms priced this sale (T5); null = rate card.
   dealId             String?       @map("deal_id") @db.Uuid
   platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
+  /// T11 tax snapshot, stamped by the stamp_sale_tax trigger when the sale is
+  /// paid: GST on Unifesto's fee (0 until the CA rules in A6) and the GST state
+  /// code of the place of supply (the event's state; null = unknown).
+  gstPaise           Int?          @map("gst_paise")
+  placeOfSupply      String?       @map("place_of_supply") @db.VarChar(2)
+  /// Razorpay's fee before GST, and the GST on it, for this sale's payment
+  /// (T11), from the payment.captured webhook or reconcile. Their sum is what
+  /// Razorpay kept, paid out of Unifesto's fee.
+  gatewayFeePaise    Int?          @map("gateway_fee_paise")
+  gatewayTaxPaise    Int?          @map("gateway_tax_paise")
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears
   /// it on success; payouts never count such a row.
@@ -2498,6 +2512,11 @@ model GroupSeatPurchase {
   /// Deal whose terms priced this sale (T5); null = rate card.
   dealId             String?       @map("deal_id") @db.Uuid
   platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
+  /// T11 snapshot, same as on EventRegistration.
+  gstPaise           Int?          @map("gst_paise")
+  placeOfSupply      String?       @map("place_of_supply") @db.VarChar(2)
+  gatewayFeePaise    Int?          @map("gateway_fee_paise")
+  gatewayTaxPaise    Int?          @map("gateway_tax_paise")
   paymentStatus      PaymentStatus @default(PENDING) @map("payment_status")
   orderId            String?       @unique @map("order_id") @db.VarChar(255)
   paymentId          String?       @unique @map("payment_id") @db.VarChar(255)

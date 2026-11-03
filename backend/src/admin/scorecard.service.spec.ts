@@ -47,7 +47,12 @@ describe('scorecard aggregation', () => {
       },
       supportTicket: { findFirst: jest.fn().mockResolvedValue({ createdAt: new Date('2026-10-21T06:00:00Z') }) },
     };
-    const months = Array.from({ length: 14 }, (_, i) => ({ collected: i < 7 ? 100 : 200, processingFees: 1 }));
+    // T11: this week Razorpay kept ₹0.25 of each day's ₹1 fee.
+    const months = Array.from({ length: 14 }, (_, i) => ({
+      collected: i < 7 ? 100 : 200,
+      processingFees: 1,
+      gatewayFees: i < 7 ? 0 : 0.25,
+    }));
     const admin: any = { getFinancialTimeseries: jest.fn().mockResolvedValue({ months }) };
     const support: any = { getStats: jest.fn().mockResolvedValue({ open: 4, pending: 2 }) };
 
@@ -64,7 +69,7 @@ describe('scorecard aggregation', () => {
     expect(card.activeOrganisers).toEqual({ current: 2, previous: 1 });
     expect(card.registrations.total).toEqual({ current: 3, previous: 2 });
     expect(card.money.gmv).toEqual({ current: 1400, previous: 700 });
-    expect(card.money.platformFees).toEqual({ current: 7, previous: 7 });
+    expect(card.money.platformFees).toEqual({ current: 5.25, previous: 7 });
     expect(card.support).toEqual({ open: 4, pending: 2, oldestOpenDays: 5 });
     // P23: every event-based count leaves out the demo space.
     const demo = { space: { slug: { not: 'aurora-tech-club' } } };

@@ -161,9 +161,10 @@ export class ScorecardService {
       money: {
         // Ticket money in (incl. the app fee), by sale date; the Analytics series.
         gmv: splitWeeks(money.months, (d) => d.collected),
-        // The app processing fee the platform keeps. Revenue-share cuts are only
-        // computed cumulatively (Financials), so they are not in this weekly figure.
-        platformFees: splitWeeks(money.months, (d) => d.processingFees),
+        // The app processing fee the platform keeps, less Razorpay's fee + GST
+        // on those sales (T11). Revenue-share cuts are only computed
+        // cumulatively (Financials), so they are not in this weekly figure.
+        platformFees: splitWeeks(money.months, (d) => d.processingFees - d.gatewayFees),
       },
       support: {
         open: supportStats.open,
