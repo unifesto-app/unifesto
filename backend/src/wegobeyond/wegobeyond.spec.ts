@@ -136,15 +136,16 @@ describe('WeGoBeyond schema', () => {
     expect(first).not.toHaveProperty('extra');
   });
 
-  it('takes an uploaded photo or an https link, nothing else', () => {
+  it('takes photos as absolute https links only', () => {
     const photo = (src: string) =>
       validateDoc('gallery', { photos: [{ src, alt: 'A room' }] }).ok;
     expect(
       photo('https://bucket.s3.amazonaws.com/wegobeyond/gallery/a-1.jpg'),
     ).toBe(true);
-    expect(photo('/gallery/build-with-aia.webp')).toBe(true);
+    // The site has no /gallery/ folder any more.
+    expect(photo('/gallery/build-with-aia.webp')).toBe(false);
+    expect(photo('http://insecure.example/a.jpg')).toBe(false);
     expect(photo('javascript:alert(1)')).toBe(false);
-    expect(photo('/gallery/../secret.png')).toBe(false);
   });
 
   it('reads a missing optional field as empty, a missing required one as an error', () => {

@@ -259,8 +259,7 @@ function PhotoInput({ id, value, onChange }: { id: string; value: string; onChan
     else setError(error?.message ?? "Couldn't upload that photo.");
   };
 
-  // Site-relative /gallery/ photos live on wegobeyond.in, not here.
-  const preview = value.startsWith("https://") ? value : value.startsWith("/gallery/") ? `https://wegobeyond.in${value}` : null;
+  const preview = value.startsWith("https://") ? value : null;
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">

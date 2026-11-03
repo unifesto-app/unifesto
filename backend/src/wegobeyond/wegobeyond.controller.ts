@@ -55,7 +55,8 @@ export class WegobeyondController {
   /** PUBLIC: a "Join the crew" sign-up from the site. */
   @Post('wegobeyond/crew-signups')
   @HttpCode(200)
-  @Throttle({ default: { limit: 5, ttl: 600000 } })
+  // Per IP: a campus room signs up together behind one Wi-Fi NAT address.
+  @Throttle({ default: { limit: 30, ttl: 600000 } })
   signUp(@Body() body: Record<string, unknown>) {
     return this.wegobeyond.signUp(body ?? {});
   }

@@ -28,9 +28,6 @@ export const CREW_ROLES_SHOWN = [
   'Organiser',
 ] as const;
 
-/** A photo committed to the site itself (its public/gallery folder). */
-export const UPLOAD_PATH = /^\/gallery\/[a-z0-9-]+\.(?:jpg|png|webp)$/;
-
 export type Field = {
   key: string;
   label: string;
@@ -433,11 +430,9 @@ function cleanField(
   if (v.length > max) return { error: `is over ${max} characters` };
   if (f.kind === 'email' && !EMAIL.test(v))
     return { error: "isn't a valid email" };
-  if (f.kind === 'url' && !HTTPS.test(v))
+  // Photos too: the site has no folder of its own, uploads are bucket URLs.
+  if ((f.kind === 'url' || f.kind === 'image') && !HTTPS.test(v))
     return { error: 'must be a full https:// link' };
-  if (f.kind === 'image' && !UPLOAD_PATH.test(v) && !HTTPS.test(v)) {
-    return { error: 'must be an uploaded photo or a full https:// link' };
-  }
   if (f.kind === 'slug' && !SLUG.test(v)) {
     return { error: 'must be lowercase letters, numbers and dashes' };
   }
