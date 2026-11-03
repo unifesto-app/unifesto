@@ -1125,3 +1125,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-03** · Q32 new Google/Apple sign-ups reach the mobile step; Q36 under-18 copy points to Get help (#574)
 - **2026-11-03** · Q38 space activity levels (Active, Quiet, Dormant): nightly sweep, Quiet nudge, Dormant out of Explore, Apex filter (#575)
 - **2026-11-03** · S59 Unifesto Stay removed across backend (module, 2 crons, webhook, refunds, payouts and financials reads), web console and site (/stay redirects to /organisers), Apex and mobile; stay tables drop in a later contract migration (#576)
+- **2026-11-03** · Stay lockups removed from the brand kit, guidelines PDF and press zip rebuilt (#577)
