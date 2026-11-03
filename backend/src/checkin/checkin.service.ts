@@ -16,7 +16,7 @@ import {
   RegistrationStatus,
   TicketStatus,
 } from '@prisma/client';
-import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { assertEventCan } from '../events/event-access';
 import { END_GRACE_MS } from '../events/event-dates';
 import { NOT_DELETED } from '../common/soft-delete';
@@ -2015,47 +2015,39 @@ export class CheckinService {
 
   /**
    * Events the user can work check-in for, each with the specific points they
-   * are allowed to check attendees in at. Organisers get all points.
+   * are allowed to check attendees in at. Whoever the scan lets in at every
+   * point (`event:check-in`, the same `can()` rule, T2) gets all points.
    */
   async getMyCheckinEvents(userId: string) {
-    const [organiserRoles, grants] = await Promise.all([
-      this.prisma.userRole.findMany({
-        where: { userId, role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } } },
-        select: { spaceId: true },
-      }),
+    // Check-in closes once an event is over. Two conditions, because status
+    // alone is unreliable: the markCompletedEvents cron lags by up to an
+    // hour, and an ONGOING event whose end time has passed may never flip.
+    //   • status excludes COMPLETED / CANCELLED (and DRAFT): End event.
+    //   • endDateTime excludes anything finished by the clock, regardless
+    //     of status, after the grace a late-running event gets (Q26).
+    const live: Prisma.EventWhereInput = {
+      ...NOT_DELETED,
+      status: { in: ['PUBLISHED', 'ONGOING'] },
+      endDateTime: { gte: new Date(Date.now() - END_GRACE_MS) },
+    };
+    const [allPointIds, grants] = await Promise.all([
+      this.authz.allowedEventIds({ id: userId }, Action.EVENT_CHECK_IN, live),
       this.prisma.eventCheckinAccess.findMany({
         where: { userId },
         select: { eventId: true, checkinTypeId: true },
       }),
     ]);
-
-    const spaceIds = [
-      ...new Set(organiserRoles.map((r) => r.spaceId).filter(Boolean) as string[]),
-    ];
-    const grantedEventIds = [...new Set(grants.map((g) => g.eventId))];
+    const allPoints = new Set(allPointIds);
+    const eventIds = [...new Set([...allPointIds, ...grants.map((g) => g.eventId)])];
+    if (eventIds.length === 0) return { events: [] };
 
     const events = await this.prisma.event.findMany({
-      where: {
-        ...NOT_DELETED,
-        OR: [
-          spaceIds.length ? { spaceId: { in: spaceIds } } : undefined,
-          grantedEventIds.length ? { id: { in: grantedEventIds } } : undefined,
-        ].filter(Boolean) as any,
-        // Check-in closes once an event is over. Two conditions, because status
-        // alone is unreliable: the markCompletedEvents cron lags by up to an
-        // hour, and an ONGOING event whose end time has passed may never flip.
-        //   • status excludes COMPLETED / CANCELLED (and DRAFT): End event.
-        //   • endDateTime excludes anything finished by the clock, regardless
-        //     of status, after the grace a late-running event gets (Q26).
-        status: { in: ['PUBLISHED', 'ONGOING'] },
-        endDateTime: { gte: new Date(Date.now() - END_GRACE_MS) },
-      },
+      where: { ...live, id: { in: eventIds } },
       orderBy: { startDateTime: 'desc' },
       select: {
         id: true,
         title: true,
         slug: true,
-        spaceId: true,
         startDateTime: true,
         endDateTime: true,
         coverImageUrl: true,
@@ -2077,7 +2069,7 @@ export class CheckinService {
     // surface with zero points and every check-in would fail with "Invalid
     // check-in point". Only a genuinely empty organiser event triggers a write.
     for (const ev of events) {
-      if (ev.checkinTypes.length === 0 && spaceIds.includes(ev.spaceId)) {
+      if (ev.checkinTypes.length === 0 && allPoints.has(ev.id)) {
         await this.ensureDefaultCheckinType(ev.id);
         ev.checkinTypes = await this.prisma.eventCheckinType.findMany({
           where: { eventId: ev.id, deletedAt: null },
@@ -2089,9 +2081,8 @@ export class CheckinService {
 
     // Narrow each event's points to the ones this user may work.
     const withPoints = events.map((ev) => {
-      const isOrganiser = spaceIds.includes(ev.spaceId);
       let allowed = ev.checkinTypes;
-      if (!isOrganiser) {
+      if (!allPoints.has(ev.id)) {
         const myGrants = grants.filter((g) => g.eventId === ev.id);
         const all = myGrants.some((g) => g.checkinTypeId === null);
         if (!all) {
@@ -2101,8 +2092,7 @@ export class CheckinService {
           allowed = ev.checkinTypes.filter((t) => ids.has(t.id));
         }
       }
-      const { spaceId, checkinTypes, ...rest } = ev;
-      void spaceId;
+      const { checkinTypes, ...rest } = ev;
       void checkinTypes;
       // Q26: the app lists the event until here, not until endDateTime.
       const checkinOpenUntil = new Date(ev.endDateTime.getTime() + END_GRACE_MS);

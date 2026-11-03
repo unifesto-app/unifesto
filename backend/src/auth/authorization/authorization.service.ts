@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { RoleCode, RoleScope, User } from '@prisma/client';
+import { Prisma, RoleCode, RoleScope, User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Action, ACTION_SCOPE, AuthResource } from './actions';
 import { CapabilityConfigService } from './capability-config.service';
@@ -106,22 +106,44 @@ export class AuthorizationService {
         scope === RoleScope.EVENT && resource.eventId
           ? await this.resolveEventSpace(resource.eventId)
           : null;
-      const override = overrideFor(
-        overrides,
-        action,
-        scope === RoleScope.SPACE ? resource.spaceId ?? null : eventSpaceId,
-      );
-      if (override === false) continue;
-      if (
-        override === true ||
-        assignments.some((a) =>
-          this.grants(a, action, scope, resource, eventSpaceId),
-        )
-      ) {
-        return true;
-      }
+      if (this.allows(assignments, overrides, action, resource, eventSpaceId)) return true;
     }
     return false;
+  }
+
+  /**
+   * The events matching `where` that the EVENT action `action` is allowed on:
+   * `can()`'s answer for each, from one role load and one event query, so a
+   * list built from it can never disagree with the per-event check (T2). Only
+   * events a role or grant could reach are read: an event role's event, a space
+   * role's or space grant's events, or all of them for a platform role or a
+   * grant that holds everywhere.
+   */
+  async allowedEventIds(
+    user: Pick<User, 'id'>,
+    action: Action,
+    where: Prisma.EventWhereInput,
+  ): Promise<string[]> {
+    const [assignments, overrides] = await Promise.all([
+      this.loadAssignments(user.id),
+      this.loadOverrides(user.id),
+    ]);
+    const grantsOf = overrides.filter((o) => o.allow && o.action === action);
+    const everywhere =
+      assignments.some((a) => a.scope === RoleScope.PLATFORM) ||
+      grantsOf.some((o) => o.spaceId === null);
+    const eventIds = assignments.flatMap((a) => (a.eventId ? [a.eventId] : []));
+    const spaceIds = [...assignments, ...grantsOf].flatMap((x) => (x.spaceId ? [x.spaceId] : []));
+    if (!everywhere && eventIds.length === 0 && spaceIds.length === 0) return [];
+    const events = await this.prisma.event.findMany({
+      where: everywhere
+        ? where
+        : { AND: [where, { OR: [{ id: { in: eventIds } }, { spaceId: { in: spaceIds } }] }] },
+      select: { id: true, spaceId: true },
+    });
+    return events
+      .filter((e) => this.allows(assignments, overrides, action, { eventId: e.id }, e.spaceId))
+      .map((e) => e.id);
   }
 
   async assertCan(
@@ -233,6 +255,23 @@ export class AuthorizationService {
   }
 
   // --- internals -----------------------------------------------------------
+
+  /** One resource's answer: a per-user override (F4) wins, else the roles. */
+  private allows(
+    assignments: Assignment[],
+    overrides: Override[],
+    action: Action,
+    resource: AuthResource,
+    eventSpaceId: string | null,
+  ): boolean {
+    const scope = ACTION_SCOPE[action];
+    const override = overrideFor(
+      overrides,
+      action,
+      scope === RoleScope.SPACE ? resource.spaceId ?? null : eventSpaceId,
+    );
+    return override ?? assignments.some((a) => this.grants(a, action, scope, resource, eventSpaceId));
+  }
 
   /** Does a single assignment grant `action` on `resource`? */
   private grants(
