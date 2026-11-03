@@ -1,12 +1,12 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RoleCode, RoleScope } from '@prisma/client';
 import { SpacesService } from './spaces.service';
 import { AuthorizationService, CapabilityConfigService } from '../auth/authorization';
 
 /**
  * T2: adding, re-roling and removing space members go through `canAssign`.
- * A Space Admin manages Members; only a Platform ADMIN makes or unmakes a
- * Space Admin; nobody edits their own membership. Real AuthorizationService.
+ * A Space Admin manages Members and, co-admins being self-serve, other Space
+ * Admins, but never themselves or the space owner. Real AuthorizationService.
  */
 describe('space members follow canAssign (T2)', () => {
   const ACTORS: Record<string, { role: { code: RoleCode; scope: RoleScope }; spaceId: string | null; eventId: null }[]> = {
@@ -18,6 +18,7 @@ describe('space members follow canAssign (T2)', () => {
     'ur-admin2': { userId: 'admin2', code: RoleCode.SPACE_ADMIN },
     'ur-member2': { userId: 'member2', code: RoleCode.MEMBER },
     'ur-sadmin': { userId: 'sadmin', code: RoleCode.SPACE_ADMIN },
+    'ur-owner': { userId: 'owner', code: RoleCode.SPACE_ADMIN },
   };
 
   const build = () => {
@@ -50,14 +51,23 @@ describe('space members follow canAssign (T2)', () => {
     await expect(svc.removeSpaceMember('s1', 'ur-member2', 'sadmin')).resolves.toEqual({ message: 'Member removed' });
   });
 
-  it('a Space Admin cannot make, demote or remove a Space Admin', async () => {
+  it('a Space Admin makes, promotes, demotes and removes another Space Admin', async () => {
     const { svc, prisma } = build();
-    await expect(svc.addSpaceMember('s1', 'sadmin', 'newbie', RoleCode.SPACE_ADMIN)).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(svc.updateSpaceMemberRole('s1', 'ur-member2', 'sadmin', RoleCode.SPACE_ADMIN)).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(svc.updateSpaceMemberRole('s1', 'ur-admin2', 'sadmin', RoleCode.MEMBER)).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(svc.removeSpaceMember('s1', 'ur-admin2', 'sadmin')).rejects.toBeInstanceOf(ForbiddenException);
+    await svc.addSpaceMember('s1', 'sadmin', 'newbie', RoleCode.SPACE_ADMIN);
+    await svc.updateSpaceMemberRole('s1', 'ur-member2', 'sadmin', RoleCode.SPACE_ADMIN);
+    await svc.updateSpaceMemberRole('s1', 'ur-admin2', 'sadmin', RoleCode.MEMBER);
+    await svc.removeSpaceMember('s1', 'ur-admin2', 'sadmin');
+    expect(prisma.userRole.create).toHaveBeenCalled();
+    expect(prisma.userRole.update).toHaveBeenCalledTimes(2);
+    expect(prisma.userRole.delete).toHaveBeenCalled();
+  });
+
+  it('a Space Admin never touches themselves or the space owner', async () => {
+    const { svc, prisma } = build();
+    await expect(svc.updateSpaceMemberRole('s1', 'ur-sadmin', 'sadmin', RoleCode.MEMBER)).rejects.toBeInstanceOf(ForbiddenException);
     await expect(svc.removeSpaceMember('s1', 'ur-sadmin', 'sadmin')).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.userRole.create).not.toHaveBeenCalled();
+    await expect(svc.updateSpaceMemberRole('s1', 'ur-owner', 'sadmin', RoleCode.MEMBER)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.removeSpaceMember('s1', 'ur-owner', 'sadmin')).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.userRole.update).not.toHaveBeenCalled();
     expect(prisma.userRole.delete).not.toHaveBeenCalled();
   });

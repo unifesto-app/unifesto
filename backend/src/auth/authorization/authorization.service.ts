@@ -23,9 +23,15 @@ const TEAM_RANK: Partial<Record<RoleCode, number>> = {
   [RoleCode.CURATOR]: 3,
 };
 
+const SPACE_ADMIN_RANK = 4;
+
 /** Who may assign whom (`canAssign`): ADMIN 5, Space Admin 4, the event team, everything else 0. */
 const assignRank = (code: RoleCode): number =>
-  code === RoleCode.ADMIN ? 5 : SPACE_ADMIN_ROLE_CODES.includes(code) ? 4 : (TEAM_RANK[code] ?? 0);
+  code === RoleCode.ADMIN
+    ? 5
+    : SPACE_ADMIN_ROLE_CODES.includes(code)
+      ? SPACE_ADMIN_RANK
+      : (TEAM_RANK[code] ?? 0);
 
 /**
  * One role assignment the caller holds, flattened for authorization checks.
@@ -154,8 +160,10 @@ export class AuthorizationService {
    * roles below the actor's own standing there, and never on themselves:
    * Platform ADMIN, then a Space Admin of the space, then the event's Curator,
    * Co-Curator and Crew. So only a Space Admin or ADMIN makes a Curator (who
-   * moves the event's money, D9), and only ADMIN makes a Space Admin. Whether
-   * the actor may edit the team at all is the caller's `@Can` / `assertCan`.
+   * moves the event's money, D9). One exception: co-admins are self-serve, so
+   * in their own space a Space Admin also gives, changes and removes Space
+   * Admin (never their own; the members service guards the space owner).
+   * Whether the actor may edit the team at all is the caller's `@Can`.
    */
   async canAssign(
     actor: Pick<User, 'id'>,
@@ -175,7 +183,11 @@ export class AuthorizationService {
         )
         .map((a) => assignRank(a.code)),
     );
-    return assignRank(role) < standing;
+    const rank = assignRank(role);
+    return (
+      rank < standing ||
+      (!at.eventId && rank === SPACE_ADMIN_RANK && standing === SPACE_ADMIN_RANK)
+    );
   }
 
   /** Every PLATFORM action the caller holds (one role load), for the Apex nav. */

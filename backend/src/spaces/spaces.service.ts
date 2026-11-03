@@ -818,8 +818,8 @@ export class SpacesService {
   /**
    * 403 unless the actor may give `role` in this space, or change or remove it
    * when someone holds it (the one rule, `canAssign`, T2): only roles below
-   * their own, never their own. A Space Admin manages members; only a Platform
-   * ADMIN makes or unmakes a Space Admin.
+   * their own, never their own, except that a Space Admin also manages other
+   * Space Admins. The owner (`createdBy`) is guarded separately below.
    */
   private async assertCanAssign(
     spaceId: string,

@@ -275,6 +275,15 @@ describe('AuthorizationService', () => {
       expect(await admin.canAssign(user, RoleCode.CREW, at, user.id)).toBe(false);
     });
 
+    it('co-admins are self-serve: a Space Admin manages Space Admins in its own space, never itself', async () => {
+      const space = { spaceId: SPACE_A };
+      const svc = build(as(RoleCode.SPACE_ADMIN, RoleScope.SPACE, SPACE_A, null));
+      expect(await svc.canAssign(user, RoleCode.SPACE_ADMIN, space, 'someone-else')).toBe(true);
+      expect(await svc.canAssign(user, RoleCode.SPACE_ADMIN, space, user.id)).toBe(false);
+      expect(await svc.canAssign(user, RoleCode.SPACE_ADMIN, { spaceId: SPACE_B }, 'someone-else')).toBe(false);
+      expect(await svc.canAssign(user, RoleCode.ADMIN, space, 'someone-else')).toBe(false);
+    });
+
     it('event roles carry no standing in the space itself', async () => {
       const svc = build(as(RoleCode.CURATOR, RoleScope.EVENT, null, EVENT_IN_A));
       expect(await svc.canAssign(user, RoleCode.MEMBER, { spaceId: SPACE_A }, 'someone-else')).toBe(false);
