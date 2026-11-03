@@ -10,6 +10,7 @@ import { PushCampaignService } from './push-campaign.service';
 import { PushSchedulerService } from './push-scheduler.service';
 import { PushDeviceService } from './push-device.service';
 import { TransactionalNotificationHandler } from './handlers/transactional-notification.handler';
+import { NotificationFanoutQueue } from './notification-fanout.queue';
 import { UserNotificationsService } from './user-notifications.service';
 import {
   AdminPushController,
@@ -44,6 +45,7 @@ import {
     PushSchedulerService,
     PushDeviceService,
     TransactionalNotificationHandler,
+    NotificationFanoutQueue,
     UserNotificationsService,
     NotifyService,
   ],

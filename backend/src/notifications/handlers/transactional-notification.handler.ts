@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '../../common/on-event';
 import { RoleCode } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications.service';
-import { NotificationEvents } from '../notifications.constants';
 import type {
   RegistrationConfirmedEvent,
   RegistrationUpdateEvent,
@@ -169,6 +167,8 @@ export function hackathonJudgePushCopy(e: HackathonJudgeUpdateEvent): { title: s
 
 /**
  * Simple transactional pushes: emit a domain event, map it to a category, send.
+ * NotificationFanoutQueue queues each NotificationEvents emit and runs the
+ * matching on<Key> method here, so a new event needs a method of that name.
  */
 @Injectable()
 export class TransactionalNotificationHandler {
@@ -182,17 +182,14 @@ export class TransactionalNotificationHandler {
 
   /**
    * notify() per person, in turn (see NotifyBatchEvent). notify() never throws.
-   * In-process: a restart mid-batch drops the rest (accepted; per-person dedup
-   * makes re-triggering the batch safe).
+   * The queue hands it one person per job, so a restart drops at most that one.
    */
-  @OnEvent(NotificationEvents.NotifyBatch, { async: true })
   async onNotifyBatch(e: NotifyBatchEvent): Promise<void> {
     for (const i of e.items) {
       await this.notify.notify(i.userId, e.kind, i.data, { dedupKey: i.dedupKey });
     }
   }
 
-  @OnEvent(NotificationEvents.RegistrationConfirmed, { async: true })
   async onRegistrationConfirmed(e: RegistrationConfirmedEvent): Promise<void> {
     await this.notifications.send([e.userId], {
       category: 'registrationUpdates',
@@ -203,7 +200,6 @@ export class TransactionalNotificationHandler {
     });
   }
 
-  @OnEvent(NotificationEvents.RegistrationUpdate, { async: true })
   async onRegistrationUpdate(e: RegistrationUpdateEvent): Promise<void> {
     const copy = {
       CANCELLED: { title: 'Registration cancelled', body: `Your registration for ${e.eventTitle} was cancelled.` },
@@ -218,7 +214,6 @@ export class TransactionalNotificationHandler {
     });
   }
 
-  @OnEvent(NotificationEvents.NewEvent, { async: true })
   async onNewEvent(e: NewEventEvent): Promise<void> {
     if (!e.recipientUserIds?.length) return;
     await this.notifications.send(e.recipientUserIds, {
@@ -235,7 +230,6 @@ export class TransactionalNotificationHandler {
    * they can answer inside Meta's 24h reply window. Opens the thread in the
    * mobile Apex tab.
    */
-  @OnEvent(NotificationEvents.WhatsappInbound, { async: true })
   async onWhatsappInbound(e: WhatsappInboundEvent): Promise<void> {
     const admins = await this.prisma.userRole.findMany({
       where: { role: { code: RoleCode.ADMIN }, spaceId: null, eventId: null },
@@ -259,7 +253,6 @@ export class TransactionalNotificationHandler {
    * Auto-detected outage opened / recovered, or a sampling gap found after the
    * fact: ping every platform admin. Opens the status board in the mobile Apex tab.
    */
-  @OnEvent(NotificationEvents.StatusIncident, { async: true })
   async onStatusIncident(e: StatusIncidentEvent): Promise<void> {
     const admins = await this.prisma.userRole.findMany({
       where: { role: { code: RoleCode.ADMIN }, spaceId: null, eventId: null },
@@ -278,7 +271,6 @@ export class TransactionalNotificationHandler {
   }
 
   /** Round decisions, feedback reveal and awards for a competition's teams. */
-  @OnEvent(NotificationEvents.CompetitionUpdate, { async: true })
   async onCompetitionUpdate(e: CompetitionUpdateEvent): Promise<void> {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
@@ -291,7 +283,6 @@ export class TransactionalNotificationHandler {
   }
 
   /** Hackathon team updates: always push + in-app, opening the team's hub. */
-  @OnEvent(NotificationEvents.HackathonUpdate, { async: true })
   async onHackathonUpdate(e: HackathonUpdateEvent): Promise<void> {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
@@ -304,7 +295,6 @@ export class TransactionalNotificationHandler {
   }
 
   /** Curator announcements: push + in-app, opening the hackathon updates feed. */
-  @OnEvent(NotificationEvents.HackathonAnnouncement, { async: true })
   async onHackathonAnnouncement(e: HackathonAnnouncementEvent): Promise<void> {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
@@ -318,7 +308,6 @@ export class TransactionalNotificationHandler {
   }
 
   /** Help-desk queries: push + in-app, opening the inbox (staff) or the team's help screen. */
-  @OnEvent(NotificationEvents.HackathonHelpDesk, { async: true })
   async onHackathonHelpDesk(e: HackathonHelpDeskEvent): Promise<void> {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
@@ -334,7 +323,6 @@ export class TransactionalNotificationHandler {
   }
 
   /** Judge updates: push + in-app, opening the judge console. */
-  @OnEvent(NotificationEvents.HackathonJudgeUpdate, { async: true })
   async onHackathonJudgeUpdate(e: HackathonJudgeUpdateEvent): Promise<void> {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
