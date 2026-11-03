@@ -43,7 +43,6 @@ import {
   BillingCycle,
   OrgPlan,
   PaymentStatus,
-  StayPaymentMode,
   EventStatus,
   Prisma,
   RoleCode,
@@ -2709,7 +2708,7 @@ export class SpacesService {
     );
 
     // Revenue per space = Space Financials' "current gross" through settle()
-    // (T6): money still held across tickets, online stays and add-on seats,
+    // (T6): money still held across tickets and add-on seats,
     // net of the buyer fee and refunds. Rows are keyed by event, so each event
     // maps back to its space.
     const revenueEvents = await this.prisma.event.findMany({
@@ -2725,11 +2724,6 @@ export class SpacesService {
       ? (
           await Promise.all([
             this.prisma.eventRegistration.groupBy({ by, where: { ...held, refundDueAt: null }, _sum }),
-            this.prisma.stayBooking.groupBy({
-              by,
-              where: { ...held, refundDueAt: null, paymentMode: StayPaymentMode.ONLINE },
-              _sum,
-            }),
             this.prisma.groupSeatPurchase.groupBy({ by, where: { ...held, seatsAddedAt: { not: null } }, _sum }),
           ])
         ).flat()

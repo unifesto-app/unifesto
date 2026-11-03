@@ -102,7 +102,7 @@ const sections: LegalSection[] = [
           <li>Event records such as registrations, check-ins and stay bookings, which the organisers of those events rely on. Answers you gave to an organiser’s questions stay with that event.</li>
         </ul>
         <p>
-          To also erase your registration answers and stay details, say so in your email to{" "}
+          To also erase your registration answers, say so in your email to{" "}
           {mail(LEGAL.email.privacy, "Delete my account")}. See the <Link href="/privacy">Privacy Policy</Link> for more.
         </p>
       </>

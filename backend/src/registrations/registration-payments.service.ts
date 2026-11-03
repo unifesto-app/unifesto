@@ -4,7 +4,6 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
-import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
@@ -59,7 +58,6 @@ export class RegistrationPaymentsService {
     private readonly waitlist: WaitlistService,
     private readonly groupSeats: GroupSeatsService,
     private readonly coupons: CouponsService,
-    private readonly stayBookings: StayBookingsService,
     private readonly teamChanges: TeamChangesService,
     private readonly confirmations: RegistrationConfirmationsService,
     private readonly notify: NotifyService,
@@ -218,7 +216,7 @@ export class RegistrationPaymentsService {
       throw new BadRequestException('That registration is for a different event.');
     }
     // A retry overwrites orderId; an earlier order that got paid still belongs
-    // to this registration if its notes say so (same as stays).
+    // to this registration if its notes say so.
     if (dto.razorpayOrderId !== registration.orderId) {
       const notes = await this.payments
         .fetchOrderNotes(dto.razorpayOrderId)
@@ -528,11 +526,6 @@ export class RegistrationPaymentsService {
       const registrationId = await this.resolveRegistrationIdForOrder(orderId);
 
       if (!registrationId) {
-        // A Unifesto Stay payment rides the same account-wide webhook; its
-        // order notes carry `stayBookingId` instead of `registrationId`.
-        if (await this.stayBookings.completeFromWebhook(orderId, paymentId, paymentData)) {
-          return { received: true };
-        }
         // Extra seats bought for a group carry `groupSeatPurchaseId`.
         if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData)) {
           return { received: true };
@@ -629,7 +622,7 @@ export class RegistrationPaymentsService {
     const n = refund.notes ?? {};
     const rupees = Number(refund.amount) / 100;
     if (!n.refundRequestId) {
-      // ponytail: auto refunds (sold out, late stay, seat/stay cancel)
+      // ponytail: auto refunds (sold out, seat cancel)
       // have no request to re-drive; their rows already read REFUNDED (so no
       // payout counts them). The desk re-issues from the Razorpay dashboard.
       this.logger.error(
@@ -724,9 +717,7 @@ export class RegistrationPaymentsService {
         ? await this.prisma.groupSeatPurchase.findUnique({ where: { id: n.groupSeatPurchaseId }, select: { userId: true, event: { select: { title: true } } } })
         : n.registrationId
           ? await this.prisma.eventRegistration.findUnique({ where: { id: n.registrationId }, select: { userId: true, event: { select: { title: true } } } })
-          : n.stayBookingId
-            ? await this.prisma.stayBooking.findUnique({ where: { id: n.stayBookingId }, select: { userId: true, event: { select: { title: true } } } })
-            : null;
+          : null;
       const title = owner?.event?.title ?? 'your booking';
       const identity = owner?.userId
         ? await this.prisma.userIdentity.findFirst({

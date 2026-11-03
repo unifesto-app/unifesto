@@ -545,7 +545,7 @@ export default function ApexScreen() {
             {chartCard({
               // B14: the headline is paid ticket bookings (GMV, same as Apex
               // web Overview); the line under it is everything collected in the
-              // range, seats, stays and since-refunded payments included, so it
+              // range, seats and since-refunded payments included, so it
               // can be larger and says so.
               title: 'Gross sales (GMV)',
               value: data ? inrShort(data.revenue.totalPaid) : '–',

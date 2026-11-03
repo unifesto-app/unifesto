@@ -88,10 +88,8 @@ describe('RetentionService personal-data sweeps (I5)', () => {
     expect(reg[0]).toContain('SET form_responses = NULL');
     expect(reg[0]).toContain('end_date_time < $1');
     expect(reg[1]).toEqual(cutoffFor(730));
-    expect(sql('stay_bookings')![0]).toContain('emergency_phone = NULL');
     expect(sql('group_seats')![0]).toContain('member_details = NULL');
     expect(sql('event_tickets')![0]).toContain('attendee_email = NULL');
-    expect(sql('stay_guests')![0]).toContain("name = 'Erased user'");
   });
 
   it('deletes old support threads, résumés and WhatsApp threads with their files', async () => {

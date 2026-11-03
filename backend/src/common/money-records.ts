@@ -18,7 +18,7 @@ const UNPAID = { NOT: PAID };
 
 type Db = Pick<
   Prisma.TransactionClient,
-  'eventRegistration' | 'refundRequest' | 'stayBooking' | 'payout' | 'groupSeatPurchase'
+  'eventRegistration' | 'refundRequest' | 'payout' | 'groupSeatPurchase'
 >;
 
 /** Count of money rows under the events matching `event`, extra-seat payments included. */
@@ -26,7 +26,6 @@ export async function eventMoneyRecords(db: Db, event: Prisma.EventWhereInput): 
   const counts = await Promise.all([
     db.eventRegistration.count({ where: { event, ...PAID } }),
     db.refundRequest.count({ where: { event } }),
-    db.stayBooking.count({ where: { event, ...PAID } }),
     db.groupSeatPurchase.count({ where: { registration: { event }, ...PAID } }),
     db.payout.count({ where: { event } }),
   ]);
@@ -50,7 +49,6 @@ export async function deleteWithoutMoney<T>(
       async (tx) => {
         if ((await eventMoneyRecords(tx, event)) > 0) throw new BadRequestException(message);
         await tx.groupSeatPurchase.deleteMany({ where: { registration: { event }, ...UNPAID } });
-        await tx.stayBooking.deleteMany({ where: { event, ...UNPAID } });
         await tx.eventRegistration.deleteMany({ where: { event, ...UNPAID } });
         return del(tx);
       },

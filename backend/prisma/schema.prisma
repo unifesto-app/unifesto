@@ -2459,7 +2459,7 @@ enum GroupLeadTransferStatus {
 }
 
 /// Extra seats bought for an existing group (PER_PERSON paid tickets), paid as
-/// their own Razorpay payment, like a Unifesto Stay booking. Seats are added
+/// their own Razorpay payment. Seats are added
 /// when the payment settles (`seatsAddedAt`); a payment that arrives after the
 /// seats can no longer fit is refunded in full and never adds seats. Refunds of
 /// the whole group draw on these payments after the registration's own.
@@ -5430,6 +5430,8 @@ model DefaultImage {
 // =====================================================
 // UNIFESTO STAY — accommodation attached to an event
 // =====================================================
+// S59: removal pending contract step. No code reads or writes these models;
+// the tables drop in a later migration once prod confirms they are empty.
 // The event team lists where attendees can stay (a Stay = one property) and
 // what can be booked there (StayOption = a pool of beds: "Boys dorm bed",
 // "Twin room bed"). A registered attendee requests beds for a range of nights;
@@ -6275,8 +6277,8 @@ model OrbitApplication {
 }
 
 /// F1: a curator's own question on an event's feedback form, asked after the
-/// fixed 1-5 rating and NPS. Same shape and rules as EventFormField and
-/// StayQuestion (registrations/form-answers.util.ts); no FILE answers.
+/// fixed 1-5 rating and NPS. Same shape and rules as EventFormField
+/// (registrations/form-answers.util.ts); no FILE answers.
 model EventFeedbackQuestion {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 

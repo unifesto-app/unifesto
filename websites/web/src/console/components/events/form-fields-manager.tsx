@@ -146,7 +146,7 @@ export interface QuestionPayload {
 
 type StoreResult = Promise<{ error: { message: string } | null }>;
 
-/** Where questions are saved. Defaults to the ticket's registration form; stays pass their own. */
+/** Where questions are saved. Defaults to the ticket's registration form; feedback passes its own. */
 export interface QuestionStore {
   create: (body: QuestionPayload) => StoreResult;
   update: (id: string, body: QuestionPayload) => StoreResult;

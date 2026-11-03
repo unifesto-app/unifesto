@@ -25,10 +25,6 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
           { eventId: 'e3', ...sum(2000, 0) }, // net 2000
         ]),
       },
-      stayBooking: {
-        ...zeroAggregate,
-        groupBy: jest.fn().mockResolvedValue([{ eventId: 'e3', ...sum(100, 0) }]),
-      },
       groupSeatPurchase: { ...zeroAggregate, groupBy: jest.fn().mockResolvedValue([]) },
       payout: zeroAggregate,
       refundRequest: zeroAggregate,
@@ -58,8 +54,8 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
   it('charges each space its own percent of its held gross', async () => {
     const { svc } = build();
     const res = await svc.getPlatformFinancials();
-    // s1: (1000 + 500) x 10% = 150; s2: (2000 + 100) x 5% = 105.
-    expect(res.platformFee).toBe(255);
+    // s1: (1000 + 500) x 10% = 150; s2: 2000 x 5% = 100.
+    expect(res.platformFee).toBe(250);
   });
 
   it('looks up events once and groups held money by its frozen rate (A21)', async () => {
@@ -77,7 +73,6 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
       { eventId: 'e1', platformFeePercent: d(2), ...sum(1100, 100) }, // 1000 x 2% = 20
       { eventId: 'e2', platformFeePercent: null, ...sum(520, 20) }, // 500 x 10% = 50
     ]);
-    prisma.stayBooking.groupBy.mockResolvedValue([]);
     const res = await svc.getPlatformFinancials();
     expect(res.platformFee).toBe(70);
   });
@@ -104,7 +99,6 @@ describe('PayoutsService refunded total', () => {
         ),
         groupBy: jest.fn().mockResolvedValue([]),
       },
-      stayBooking: { aggregate: agg({ refundedAmount: d(20) }), groupBy: jest.fn().mockResolvedValue([]) },
       groupSeatPurchase: { aggregate: agg({}), groupBy: jest.fn().mockResolvedValue([]) },
       payout: { aggregate: agg({}) },
       refundRequest: { aggregate: agg({ cashRefunded: d(50) }) },
@@ -113,7 +107,7 @@ describe('PayoutsService refunded total', () => {
     };
     const svc = new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any));
     const res = await svc.getPlatformFinancials();
-    expect(res.refunded).toBe(370);
+    expect(res.refunded).toBe(350);
     expect(prisma.eventRegistration.aggregate).toHaveBeenCalledWith({
       where: { eventId: { in: ['e1'] }, refundedAmount: { gt: 0 }, refundRequests: { none: { status: 'APPROVED' } } },
       _sum: { refundedAmount: true },

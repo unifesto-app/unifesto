@@ -139,7 +139,7 @@ function makeHarness(plan = 'GROWTH') {
   const none = {} as any;
   const svc = buildRegistrationsService(
     prisma, none, whatsappService, none, none, none, none, none, none, groupSeats,
-    none, none, none, none, none,
+    none, none, none, none,
   );
 
   return { svc, registrations, sends, rejected, prisma, whatsappService, groupSeats };

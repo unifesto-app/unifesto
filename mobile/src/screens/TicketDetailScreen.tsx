@@ -11,7 +11,6 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import {
   ArrowCounterClockwise,
   ArrowUpRight,
-  Bed,
   CalendarPlus,
   CaretRight,
   Check,
@@ -35,7 +34,6 @@ import TransferTicket from '../components/tickets/TransferTicket';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
-import { useEventStays } from '../hooks/useEventStays';
 import { useBannerAccent } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
@@ -90,7 +88,6 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   // The pass outline is drawn to its measured size; notchY = centre of the tear line.
   const [passSize, setPassSize] = useState<{ width: number; height: number } | null>(null);
   const [notchY, setNotchY] = useState<number | null>(null);
-  const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
   const cert = useEventCertificate(t.eventId, t.ended);
   const feedback = useEventFeedback(t.eventId, t.ended);
 
@@ -377,14 +374,6 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
                 label="Competition"
                 value={t.competition.status}
                 onPress={() => router.push(`/competition/${t.eventId}` as never)}
-              />
-            ) : null}
-            {stay ? (
-              <SettingsRow
-                icon={<Bed size={24} color={c.sky} />}
-                label={stay.label}
-                value={stay.value}
-                onPress={() => router.push(stay.href as never)}
               />
             ) : null}
           </SettingsGroup>

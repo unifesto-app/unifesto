@@ -94,7 +94,6 @@ export const PLAN_CATALOG: { group: string; rows: PlanCatalogRow[] }[] = [
       { label: 'Badge and pass printing' },
       { label: 'QR, manual and group check-in at many points' },
       { label: 'Offline check-in and event-day view in the app' },
-      { label: 'Unifesto Stay: rooms and bookings' },
       { label: 'Bulk export (CSV, Excel, PDF)', flag: 'hasBulkExport' },
     ],
   },

@@ -5,14 +5,13 @@ import { SpacesService } from '../spaces/spaces.service';
 
 /**
  * S14: deleting a cancelled event, or a space, cascades over paid
- * registrations, refund requests and stay bookings. Refuse while any exist.
+ * registrations and refund requests. Refuse while any exist.
  */
 
-function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'addon', number>> = {}) {
+function db(counts: Partial<Record<'reg' | 'refund' | 'payout' | 'addon', number>> = {}) {
   const prisma = {
     eventRegistration: { count: jest.fn(async () => counts.reg ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     refundRequest: { count: jest.fn(async () => counts.refund ?? 0) },
-    stayBooking: { count: jest.fn(async () => counts.stay ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     payout: { count: jest.fn(async () => counts.payout ?? 0) },
     groupSeatPurchase: { count: jest.fn(async () => counts.addon ?? 0), deleteMany: jest.fn(async () => ({ count: 0 })) },
     event: {
@@ -52,8 +51,8 @@ describe('delete is refused while money rows exist (S14)', () => {
     });
   });
 
-  it('a refund request or a stay booking also blocks it', async () => {
-    for (const counts of [{ refund: 1 }, { stay: 1 }, { addon: 1 }]) {
+  it('a refund request or an extra-seats payment also blocks it', async () => {
+    for (const counts of [{ refund: 1 }, { addon: 1 }]) {
       const prisma = db(counts);
       await expect(events(prisma).permanentDeleteEvent('u', 'ev-1')).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.event.delete).not.toHaveBeenCalled();
@@ -92,7 +91,6 @@ describe('money rows RESTRICT their parents, one guard clears the rest (A29)', (
     await events(prisma).permanentDeleteEvent('u', 'ev-1');
     const scope = { event: { id: 'ev-1' } };
     expect(prisma.groupSeatPurchase.deleteMany).toHaveBeenCalledWith({ where: { registration: scope, ...unpaid } });
-    expect(prisma.stayBooking.deleteMany).toHaveBeenCalledWith({ where: { ...scope, ...unpaid } });
     expect(prisma.eventRegistration.deleteMany).toHaveBeenCalledWith({ where: { ...scope, ...unpaid } });
     const order = (m: jest.Mock) => m.mock.invocationCallOrder[0];
     expect(order(prisma.eventRegistration.deleteMany)).toBeLessThan(order(prisma.event.delete));

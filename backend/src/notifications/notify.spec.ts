@@ -148,31 +148,6 @@ describe('NotifyService.notify', () => {
   });
 });
 
-describe('stay kinds (C2)', () => {
-  const base = { bookingId: 'b-1', eventId: 'ev-1', userName: 'Asha', stayName: 'Hostel' };
-
-  it.each([
-    ['stay.payment_due', { amountText: '₹500', dueText: '2 Dec' }, 'Stay request approved', 'Pay ₹500 by 2 Dec to confirm your bed at Hostel.'],
-    ['stay.confirmed', { note: 'Pay ₹500 at check-in.' }, 'Your stay is confirmed', 'Your Stay Pass for Hostel is ready. Pay ₹500 at check-in.'],
-    ['stay.declined', {}, 'Stay request declined', "Hostel: the event team couldn't fit you in this time."],
-    ['stay.cancelled', { reason: 'Flooded', refundText: '₹500' }, 'Your stay was cancelled', 'Hostel: Flooded. ₹500 is being refunded (5–7 days).'],
-    ['stay.refunded', { amountText: '₹1,020' }, 'Stay payment refunded', 'Your payment for Hostel arrived after the booking closed, so ₹1,020 is on its way back.'],
-    ['stay.expired', {}, 'Stay payment window closed', "Your bed at Hostel was released because it wasn't paid in time."],
-  ] as const)('%s: critical, deduped per booking, email says the push words', async (kind, extra, title, body) => {
-    const def: any = NOTIFY_KINDS[kind];
-    const d = { ...base, ...extra };
-    expect(def.criticality).toBe('critical');
-    expect(def.entity(d)).toBe('b-1');
-    expect(def.push(d)).toMatchObject({ title, body, deepLink: 'unifesto://stay/pass/b-1' });
-    const svc = { sendStayUpdate: jest.fn().mockResolvedValue(true) };
-    await def.email(svc, 'a@x.co', d, {});
-    expect(svc.sendStayUpdate).toHaveBeenCalledWith(
-      { email: 'a@x.co', eventId: 'ev-1', userName: 'Asha', title, body },
-      {},
-    );
-  });
-});
-
 describe('NotifyBatch bus handler', () => {
   it('calls notify() once per person, in turn, with the caller key', async () => {
     const order: string[] = [];

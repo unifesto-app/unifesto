@@ -22,7 +22,6 @@ describe('UsersService.getUserActivityAdmin (F6)', () => {
     groupSeatPurchase: {
       findMany: jest.fn(async () => [{ id: 'g-1', seats: 2, createdAt: new Date(), registration: { event }, ...money(300, '2026-10-03') }]),
     },
-    stayBooking: { findMany: jest.fn(async () => []) },
   };
 
   it('keeps free registrations in the list but only paid rows in payments, newest first', async () => {

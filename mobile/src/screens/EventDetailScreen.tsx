@@ -14,7 +14,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowUpRight,
-  Bed,
   CalendarPlus,
   CaretRight,
   Globe,
@@ -47,7 +46,6 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
 import { useBannerAccent } from '../hooks/useBannerPalette';
-import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { brandHeaderOptions } from '../components/BrandHeaderTitle';
@@ -119,8 +117,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const brandFont = useBrandFont(event?.branding?.font);
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // Unifesto Stay: shown to signed-in viewers when the event offers stays.
-  const stay = useEventStays(event?.id, !!d.user && !!event && event.type !== 'ONLINE');
 
   // Short of the column on a landscape phone, so the name still shows under it.
   const bannerW = Math.min(width - GUTTER * 2, hero);
@@ -328,7 +324,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             </View>
           ) : null}
 
-          {/* ── Facts: a ticket-stub date, then where, entry and stay, as rows on the page
+          {/* ── Facts: a ticket-stub date, then where and entry, as rows on the page
               (full hairlines, no card). Joining the chat and saying I'm going close the list. ── */}
           <View style={styles.facts}>
             <Pressable
@@ -372,18 +368,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                 onPress={d.canAddTicket ? d.addTicket : undefined}
               />
             )}
-
-            {stay && !isCancelled ? (
-              <>
-                <Divider />
-                <Fact
-                  icon={<Bed size={ICON} color={c.sky} />}
-                  title={stay.label}
-                  sub={stay.value}
-                  onPress={() => router.push(stay.href as never)}
-                />
-              </>
-            ) : null}
 
             {/* Opens WhatsApp, so it shows WhatsApp's own mark. */}
             {whatsappUrl ? (

@@ -19,7 +19,7 @@ function setup(flag: boolean | null, ageConfirmedAt: Date | null) {
   const svc = buildRegistrationsService(
     prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
     {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any,
-    {} as any, {} as any, {} as any, { can: async () => true } as any,
+    {} as any, {} as any, { can: async () => true } as any,
   );
   const order = () => svc.createPaymentOrder('ev-1', 'buyer', { ticketTypeId: 'tt-1', quantity: 1 } as any);
   return { svc, prisma, order };

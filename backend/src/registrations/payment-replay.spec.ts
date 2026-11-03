@@ -71,7 +71,7 @@ describe('RegistrationsService payment replay guards', () => {
     const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, { redis: { getClient: () => null } } as any, {} as any, {} as any,
       payments as any, waitlist as any, {} as any, {} as any, {} as any,
-      coupons as any, { completeFromWebhook: jest.fn(async () => false) } as any,
+      coupons as any,
       { completeFromWebhook: jest.fn(async () => false) } as any, { can: async () => true } as any,
     );
     return { svc, prisma, payments };
@@ -326,7 +326,7 @@ describe('paid registration confirmations (C9)', () => {
     const coupons = { confirmByRegistration: jest.fn(async () => undefined) };
     const svc = new RegistrationPaymentsService(
       prisma, email as any, {} as any, cache as any, {} as any, {} as any, groupSeats as any,
-      coupons as any, {} as any, {} as any, confirmations as any, notify as any,
+      coupons as any, {} as any, confirmations as any, notify as any,
     );
     jest.spyOn(svc as any, 'takeSeatsOrQueueRefund').mockResolvedValue(true);
     jest.spyOn(svc as any, 'refundIfDuplicate').mockResolvedValue(undefined);

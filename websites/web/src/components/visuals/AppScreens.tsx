@@ -1,6 +1,6 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
 import type { ReactNode } from "react";
-import { MagnifyingGlass, House, Ticket, UsersThree, User, CalendarPlus, ShareNetwork, WhatsappLogo, Bed, Certificate, Scan, Receipt, Bank, CaretRight, Plus, CellSignalFull, WifiHigh, BatteryFull } from "@unifesto/unicon/react";
+import { MagnifyingGlass, House, Ticket, UsersThree, User, CalendarPlus, ShareNetwork, WhatsappLogo, Certificate, Scan, Receipt, Bank, CaretRight, Plus, CellSignalFull, WifiHigh, BatteryFull } from "@unifesto/unicon/react";
 
 /* The attendee app, drawn in HTML: a phone frame around real screens
    (Home feed, a ticket pass, the event-adjacent extras). No image bytes,
@@ -127,10 +127,9 @@ export function PassScreen() {
   );
 }
 
-/* Extras: stay pass, hackathon team, certificates. */
+/* Extras: hackathon team, certificates. */
 export function ExtrasScreen() {
   const items = [
-    { icon: Bed, title: "Stay · Boys hostel, Block C", meta: "2 nights · pass ready" },
     { icon: UsersThree, title: "Team: Byte Me", meta: "4 of 4 seats claimed" },
     { icon: Certificate, title: "Certificate of merit", meta: "Verifiable link" },
   ];

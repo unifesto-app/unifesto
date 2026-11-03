@@ -11,7 +11,7 @@ jest.mock('@aws-sdk/client-cognito-identity-provider', () => ({
 
 /**
  * closeAccount's DPDP scrub: personal data on the user's registrations, group
- * seats and stay bookings goes, money fields and other people's data stay,
+ * seats goes, money fields and other people's data stay,
  * and referenced private uploads are deleted after the transaction.
  */
 
@@ -19,7 +19,6 @@ const USER = 'user-1';
 const file = (key: string) => ({ key, name: 'x.pdf', size: 1, mime: 'application/pdf' });
 const MY_FORM = 'private/form-uploads/ev1/f1/user-1/a.pdf';
 const MY_MEMBER_FILE = 'private/form-uploads/ev2/f2/lead-2/m.pdf';
-const MY_ID = 'private/form-uploads/ev1/stay-id-s1/user-1/id.jpg';
 
 function makePrisma() {
   // Each write returns a tag so the test can see what went into $transaction.
@@ -55,13 +54,6 @@ function makePrisma() {
       ]),
       updateMany: op('groupSeat.updateMany'),
     },
-    stayBooking: {
-      findMany: jest.fn(async () => [
-        { answers: { diet: 'veg' }, guests: [{ idProof: file(MY_ID) }, { idProof: null }] },
-      ]),
-      updateMany: op('stayBooking.updateMany'),
-    },
-    stayGuest: { updateMany: op('stayGuest.updateMany') },
     sponsorLead: { updateMany: op('sponsorLead.updateMany') },
     refundRequest: { updateMany: op('refundRequest.updateMany') },
     userIdentity: {
@@ -219,20 +211,10 @@ describe('UsersService.closeAccount PII scrub', () => {
     expect(writes('eventRegistration.update')).toEqual([]);
   });
 
-  it('scrubs claimed seats, the user’s stay bookings and their guests', () => {
+  it('scrubs claimed seats', () => {
     expect(writes('groupSeat.updateMany')).toEqual([
       { where: { claimedByUserId: USER }, data: { memberDetails: Prisma.DbNull, inviteEmail: null } },
     ]);
-    expect(writes('stayBooking.updateMany')[0].data).toEqual({
-      emergencyName: null,
-      emergencyPhone: null,
-      note: null,
-      answers: Prisma.DbNull,
-    });
-    expect(writes('stayGuest.updateMany')[0]).toEqual({
-      where: { booking: { userId: USER } },
-      data: { name: ERASED_NAME, phone: null, email: null, idProof: Prisma.DbNull },
-    });
   });
 
   it('deletes the user’s private files, support uploads and certificate files, nobody else’s', () => {
@@ -241,7 +223,6 @@ describe('UsersService.closeAccount PII scrub', () => {
       [
         MY_FORM,
         MY_MEMBER_FILE,
-        MY_ID,
         'private/support/t1/m1/a.png',
         'certificates/v1.pdf',
         'certificates/v1.png',

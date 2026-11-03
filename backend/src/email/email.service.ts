@@ -530,10 +530,6 @@ export class EmailService {
     await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail);
   }
 
-  async sendStayUpdate(data: T.StayUpdateData, delivery?: DeliveryOpts): Promise<boolean> {
-    return this.deliverBranded('resend', data.email, data, T.stayUpdateEmail, delivery);
-  }
-
   /**
    * Email a recipient a link to their freshly issued certificate (verify page +
    * PDF in storage, no attachment). Sent via SES: certificates go out a whole

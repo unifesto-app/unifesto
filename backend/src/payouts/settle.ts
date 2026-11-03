@@ -7,7 +7,7 @@ import { platformShare } from '../subscription/plan-config.service';
  * a sale through here, at the organiser fee frozen on that sale (A21 / T5), so
  * a deal edited later never rewrites the past.
  *
- * A row is a registration, an online stay or an add-on seat purchase, or a
+ * A row is a registration or an add-on seat purchase, or a
  * groupBy of them keyed by paymentStatus + platformFeePercent (sums settle
  * the same way).
  */

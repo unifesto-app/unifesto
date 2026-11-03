@@ -1,5 +1,5 @@
 // Test-only wiring: builds RegistrationsService and its split-out services
-// from the same 15 mocked dependencies the specs always passed.
+// from the same 14 mocked dependencies the specs always passed.
 import { RegistrationsService } from './registrations.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
@@ -26,7 +26,6 @@ export function buildRegistrationsService(
   groupSeats: any,
   redis: any,
   coupons: any,
-  stayBookings: any,
   teamChanges: any,
   authz: any,
   refunds: any = { requestCancellation: jest.fn(async () => ({ id: 'rr-cancel' })) },
@@ -80,7 +79,6 @@ export function buildRegistrationsService(
     waitlist,
     groupSeats,
     coupons,
-    stayBookings,
     teamChanges,
     confirmations,
     { notify: jest.fn(async () => ({})) } as any,

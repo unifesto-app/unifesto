@@ -143,7 +143,6 @@ const SUBJECT_MODELS = {
   ContentReport: 'contentReport',
   PayoutBankAccount: 'payoutBankAccount',
   Payout: 'payout',
-  StayBooking: 'stayBooking',
   // AI3 risk screen and AI19 broadcast holds (staff-only cases).
   Space: 'space',
   Event: 'event',
@@ -606,9 +605,9 @@ export class SupportService {
     if (platform) return { ...ticket, sla, subjects };
     // The space desk gets the requester's email, not their phone number, and of
     // the typed records only the money it acts on: refunds it reviews first
-    // (D6) and stays it cancels and refunds (D23).
+    // (D6).
     const { mobileNumber: _phone, ...requester } = ticket.requester;
-    return { ...ticket, requester, sla, subjects: subjects.filter((x) => x.type === 'RefundRequest' || x.type === 'StayBooking') };
+    return { ...ticket, requester, sla, subjects: subjects.filter((x) => x.type === 'RefundRequest') };
   }
 
   /** The typed records behind a case: its subject, plus refunds raised from it. */

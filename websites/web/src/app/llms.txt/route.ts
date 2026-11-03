@@ -3,9 +3,7 @@ import {
   buyerFeeText,
   FAQ_HOME,
   pricingFaq,
-  FAQ_STAY,
   FAQ_ORBIT, ORBIT_STEPS, ORBIT_TIERS,
-  STAY_STEPS,
   HACKATHON_STAGES,
   PILLARS,
   PLANS,
@@ -42,7 +40,6 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [For organisers](${SITE.url}/organisers): the full platform for clubs, communities and institutions
 - [The Unifesto app](${SITE.url}/app): the free attendee app for iOS and Android
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
-- [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Orbit](${SITE.url}/orbit): the campus programme; one Orbit Lead per campus helps every club run its events on Unifesto
 - [Pricing](${SITE.url}/pricing): plans and platform fees, no monthly fee; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
@@ -57,12 +54,6 @@ ${PILLARS.map((p) => `### ${p.title}\n${p.lede}\n${p.points.map((x) => `- ${x}`)
 ## Unifesto Sprint (hackathons)
 
 ${HACKATHON_STAGES.map((s) => `- ${s.title}: ${s.body}`).join("\n")}
-
-## Unifesto Stay (event accommodation)
-
-${STAY_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
-
-${FAQ_STAY.map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## Unifesto Orbit (campus programme)
 

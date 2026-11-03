@@ -2,7 +2,7 @@ import { DownloadQr } from "@/components/visuals/DownloadQr";
 import type { ReactNode } from "react";
 import type { Shade } from "@/components/site/ShadeCard";
 import { SpaceScreen } from "@/components/visuals/AppScreens";
-import { Check, ScanSmiley, WhatsappLogo, Link as LinkIcon, Certificate, Handshake, FilePdf, Bed } from "@unifesto/unicon/react";
+import { Check, ScanSmiley, WhatsappLogo, Link as LinkIcon, Certificate, Handshake, FilePdf } from "@unifesto/unicon/react";
 
 /* Product fragments for the organiser platform, rebuilt in HTML so they
    cost no image bytes, stay sharp at any density and never shift layout.
@@ -181,12 +181,11 @@ export function ReachVisual() {
   );
 }
 
-/* After: certificates, sponsor leads, report, stays. */
+/* After: certificates, sponsor leads, report. */
 export function AfterVisual() {
   const items = [
     { icon: Certificate, label: "Certificates issued", value: "312" },
     { icon: Handshake, label: "Sponsor leads", value: "48" },
-    { icon: Bed, label: "Stay check-ins", value: "64" },
     { icon: FilePdf, label: "Event report", value: "PDF" },
   ];
   return (

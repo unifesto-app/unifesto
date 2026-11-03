@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/console/components/u
 import { TicketThread, statusBadgeVariant } from "@/console/components/support/TicketThread";
 import { AssistCopilot } from "@/console/components/support/AssistCopilot";
 import { RefundCasePanel } from "@/console/components/support/RefundCasePanel";
-import { StayCasePanel, type StayCaseBooking } from "@/console/components/support/StayCasePanel";
 import type { RefundRequest } from "@/console/lib/api/refunds-api";
 import {
   listSpaceDesk,
@@ -189,9 +188,6 @@ export default function AssistInboxPage() {
     const refunds = (selected.subjects ?? [])
       .filter((s) => s.type === "RefundRequest")
       .map((s) => s.data as unknown as RefundRequest);
-    const stays = (selected.subjects ?? [])
-      .filter((s) => s.type === "StayBooking")
-      .map((s) => s.data as unknown as StayCaseBooking);
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" className="-ml-2 w-fit" onClick={() => setSelected(null)}>
@@ -228,7 +224,7 @@ export default function AssistInboxPage() {
                 {selected.ratingComment ? `: "${selected.ratingComment}"` : ""}
               </p>
               {/* A refund goes to Unifesto by forwarding it, not by escalating the case. */}
-              {!withUnifesto && !closed && refunds.length === 0 && stays.length === 0 && (
+              {!withUnifesto && !closed && refunds.length === 0 && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleEscalate}>
                   <ArrowUpRight className="h-4 w-4" /> Escalate to Unifesto
                 </Button>
@@ -263,9 +259,6 @@ export default function AssistInboxPage() {
 
         {refunds.map((r) => (
           <RefundCasePanel key={r.id} refund={r} onDone={() => Promise.all([openTicket(selected.id), load()])} />
-        ))}
-        {stays.map((b) => (
-          <StayCasePanel key={b.id} booking={b} onDone={() => Promise.all([openTicket(selected.id), load()])} />
         ))}
       </div>
     );

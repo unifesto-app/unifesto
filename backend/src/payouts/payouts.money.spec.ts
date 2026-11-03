@@ -40,7 +40,6 @@ function setup(
     },
     userRole: { findMany: jest.fn(async () => [{ userId: 'space-admin' }]) },
     session: { findMany: jest.fn(async () => []) },
-    stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
     refundRequest: { findMany: jest.fn(async () => []) },
     payoutBankAccount: {
