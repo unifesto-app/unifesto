@@ -2,10 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 
-// No network: the custom-domain lookup is faked. Each test file runs in its own process.
+// No network: the custom-domain and event lookups are faked. Each test file runs in its own process.
 const calls: string[] = [];
+const events: Record<string, string> = { "hack-26": "acme", "other-fest": "other" };
 globalThis.fetch = (async (url: string) => {
   calls.push(url);
+  const event = events[url.split("/events/")[1]];
+  if (event) return new Response(JSON.stringify({ space: { slug: event } }), { status: 200 });
   return url.includes("host=events.acme.edu")
     ? new Response(JSON.stringify({ spaceSlug: "acme" }), { status: 200 })
     : new Response("{}", { status: 404 });
@@ -28,6 +31,13 @@ test("a custom domain serves only its space (H7)", async () => {
   const ev = await run("https://events.acme.edu/event/hack-26");
   assert.equal(ev.headers.get("x-middleware-next"), "1");
   assert.equal(ev.headers.get("x-middleware-request-x-tenant-host"), "events.acme.edu");
+  // Another space's event: 404 here, since the cached page can't see the host (J25).
+  assert.equal((await run("https://events.acme.edu/event/other-fest")).status, 404);
+  assert.equal((await run("https://events.acme.edu/event/other-fest/register")).status, 404);
+  assert.equal((await run("https://www.unifesto.app/event/other-fest")).headers.get("x-middleware-next"), "1");
+  // Looked up once, then remembered.
+  await run("https://events.acme.edu/event/other-fest");
+  assert.equal(calls.filter((c) => c.endsWith("/events/other-fest")).length, 1);
   assert.equal((await run("https://events.acme.edu/space/other")).headers.get("location"), "https://www.unifesto.app/space/other");
   assert.equal((await run("https://events.acme.edu/privacy?a=1")).headers.get("location"), "https://www.unifesto.app/privacy?a=1");
   // Its /console is the main site's.
@@ -61,14 +71,17 @@ test("only the console's CSP lets in Maps", async () => {
 
 test("prerendered pages get a CSP without a nonce; everything else keeps K14's", async () => {
   const csp = async (url: string) => (await run(url)).headers.get("content-security-policy") ?? "";
-  for (const path of ["/", "/pricing", "/blog", "/blog/a-post", "/events", "/help/a-guide"]) {
+  for (const path of ["/", "/pricing", "/blog", "/blog/a-post", "/events", "/help/a-guide", "/event/hack-26"]) {
     assert.match(await csp(`https://www.unifesto.app${path}`), /script-src 'self' 'unsafe-inline';/, path);
   }
-  for (const path of ["/help/contact", "/event/hack-26/register", "/blog/a-post/opengraph-image", "/event/hack-26", "/login", "/console/present/ev1"]) {
+  for (const path of ["/help/contact", "/event/hack-26/register", "/blog/a-post/opengraph-image", "/login", "/console/present/ev1"]) {
     assert.match(await csp(`https://www.unifesto.app${path}`), /'nonce-[^']+' 'strict-dynamic'/, path);
   }
   // A custom domain's / is its space page, never the cached home page.
   assert.match(await csp("https://events.acme.edu/"), /'nonce-/);
+  // Its event page is the same prerendered page as www's.
+  assert.match(await csp("https://events.acme.edu/event/hack-26"), /script-src 'self' 'unsafe-inline';/);
+  assert.match(await csp("https://events.acme.edu/event/hack-26/register"), /'nonce-/);
   // A visitor's own CSP header can't put a nonce into a prerendered page's re-render.
   const res = await proxy(new NextRequest("https://www.unifesto.app/pricing", { headers: { "content-security-policy": "script-src 'nonce-x'", "x-nonce": "x" } }));
   assert.equal(res.headers.get("x-middleware-request-content-security-policy"), null);
