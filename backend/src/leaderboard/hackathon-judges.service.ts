@@ -18,6 +18,7 @@ import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
 import { HackathonTeamsService } from './hackathon-teams.service';
 import { OPEN_EVAL_STATUSES, SLOT_EVAL_STATUSES, cleanName, normalizeMobile } from './hackathon.shared';
+import { isPlaceholderMobile } from '../auth/identifiers';
 import type {
   AddHackathonJudgeDto,
   CreateHackathonPanelDto,
@@ -28,9 +29,6 @@ import type {
 /** '' and whitespace-only become null, so clearing a field in the app clears it here. */
 const blankToNull = (v: string | null | undefined) =>
   v === undefined ? undefined : v === null ? null : v.trim() || null;
-
-/** A placeholder account made for an invite by email has no real phone number. */
-const isPlaceholderMobile = (m: string) => m.startsWith('+0') || m.startsWith('deleted-');
 
 /**
  * Judges and panels on a hackathon (docs/hackathon-mobile-plan.md §2 #11–#14,

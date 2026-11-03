@@ -27,7 +27,7 @@ import { GroupSeatsService } from './group-seats.service';
 import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { TermsService, dealColumns } from '../subscription/terms.service';
-import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
+import { findIdentityByEmail, normalizeEmail, normalizeMobile } from '../auth/identifiers';
 import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
 import { assertSpaceLive } from '../spaces/space-access';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
@@ -174,7 +174,8 @@ export class RegistrationImportService {
    * The shared invite helper (E1) with the import's one extra: an account with
    * no name at all takes the name on the row. The provided mobile is never the
    * account's: it is unverified, and claiming a real number could block that
-   * person's own sign-up. It rides along on the registration/group data only.
+   * person's own sign-up. It rides along on the registration (`attendeeMobile`,
+   * A35) and a group's seat 1 only.
    */
   private findOrCreateUserByEmail(email: string, name: string): Promise<string> {
     return findOrCreateUserByEmail(this.prisma, email, name, { fillMissingName: true });
@@ -293,6 +294,8 @@ export class RegistrationImportService {
       formResponses: Record<string, unknown>;
       /** Paid ticket: tickets to draw from the free-seat quota (A27). */
       freeAddSeats?: number;
+      /** The mobile the curator typed, E.164 (A35). */
+      attendeeMobile: string | null;
     },
   ): Promise<string> {
     const qrCode = generateQRCode();
@@ -312,6 +315,7 @@ export class RegistrationImportService {
           paidAt: new Date(),
           qrCode,
           formResponses: opts.formResponses as Prisma.InputJsonValue,
+          attendeeMobile: opts.attendeeMobile,
         },
       });
 
@@ -359,6 +363,7 @@ export class RegistrationImportService {
       email: string;
       status: 'created' | 'skipped' | 'errored';
       reason?: string;
+      warning?: string;
     }>;
   }> {
     const { event, ticketType } = await this.loadEventTicketForManage(
@@ -388,6 +393,7 @@ export class RegistrationImportService {
       email: string;
       status: 'created' | 'skipped' | 'errored';
       reason?: string;
+      warning?: string;
     }> = [];
     // Shared batch state: `seen` de-dupes emails within the file, `remaining`
     // tracks capacity as we go. Same classifier the preview uses, so the report
@@ -422,11 +428,12 @@ export class RegistrationImportService {
             groupMembers: row.groupMembers,
             formResponses: row.formResponses,
             freeAddSeats: state.ticketsFor?.(row),
+            attendeeMobile: row.mobile ? normalizeMobile(row.mobile) : null,
           },
         );
         if (state.remaining != null) state.remaining -= verdict.seats;
         toConfirm.push(registrationId);
-        report.push({ ...this.rowHead(row), status: 'created' });
+        report.push({ ...this.rowHead(row), status: 'created', warning: row.warning });
       } catch (err) {
         this.logger.error(
           `import: row ${row.line} (${row.email}) failed: ${
@@ -518,6 +525,7 @@ export class RegistrationImportService {
       outcome: 'create' | 'skip' | 'error';
       newAccount?: boolean;
       reason?: string;
+      warning?: string;
     }>;
   }> {
     const { event, ticketType } = await this.loadEventTicketForManage(
@@ -550,6 +558,7 @@ export class RegistrationImportService {
       outcome: 'create' | 'skip' | 'error';
       newAccount?: boolean;
       reason?: string;
+      warning?: string;
     }> = [];
 
     for (const row of parsed) {
@@ -567,6 +576,7 @@ export class RegistrationImportService {
           ...this.rowHead(row),
           outcome: 'create',
           newAccount: verdict.existingUserId == null,
+          warning: row.warning,
         });
       } else {
         rows.push({
@@ -641,6 +651,7 @@ export class RegistrationImportService {
     }
 
     const userId = await this.findOrCreateUserByEmail(dto.email, dto.name);
+    const attendeeMobile = dto.mobile ? normalizeMobile(dto.mobile) : null;
     if (await this.hasActiveRegistration(eventId, userId, dto.ticketTypeId)) {
       throw new ConflictException(
         'This person is already registered for this ticket type.',
@@ -711,7 +722,7 @@ export class RegistrationImportService {
         eventId,
         userId,
         dto.ticketTypeId,
-        { groupSize, groupMembers, formResponses, freeAddSeats },
+        { groupSize, groupMembers, formResponses, freeAddSeats, attendeeMobile },
       );
       // With the ticket email off, the WhatsApp group invite still goes: door
       // adds are exactly who needs the group, and the switch only covers email.
@@ -760,6 +771,7 @@ export class RegistrationImportService {
           paymentStatus: PaymentStatus.PENDING,
           qrCode: generateQRCode(),
           formResponses: formResponses as Prisma.InputJsonValue,
+          attendeeMobile,
         },
       });
       await this.groupSeats.createSeatsForRegistration(tx, {

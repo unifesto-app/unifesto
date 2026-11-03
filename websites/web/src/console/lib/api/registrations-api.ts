@@ -403,6 +403,8 @@ export interface ImportRowResult {
   email: string;
   status: "created" | "skipped" | "errored";
   reason?: string;
+  /** A created row's note, e.g. its mobile was left off (A35). */
+  warning?: string;
 }
 
 /** The result of a bulk CSV import. */
@@ -424,6 +426,8 @@ export interface ImportPreviewRow {
   /** For `create` rows: true when a brand-new account will be minted. */
   newAccount?: boolean;
   reason?: string;
+  /** A `create` row's note, e.g. its mobile will be left off (A35). */
+  warning?: string;
 }
 
 /** The dry-run result of validating a CSV before importing. Creates nothing. */

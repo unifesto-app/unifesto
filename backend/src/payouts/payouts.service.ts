@@ -43,6 +43,23 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+/** Rupees of Razorpay's fee + GST in a sum of the T11 gateway columns. */
+const GATEWAY_SUM = { gatewayFeePaise: true, gatewayTaxPaise: true } as const;
+const gatewayRupees = (s: { gatewayFeePaise?: number | null; gatewayTaxPaise?: number | null }) =>
+  ((s.gatewayFeePaise ?? 0) + (s.gatewayTaxPaise ?? 0)) / 100;
+
+/**
+ * What the platform keeps (T11): buyer fees + the organiser fee, less what
+ * Razorpay charged on those sales (fee + GST, where stamped). The platform
+ * view only: the gateway comes out of our fee, never the organiser's.
+ */
+export function platformTake(reg: { processingFees: number; gatewayFees: number }, platformFee: number) {
+  return {
+    gatewayFees: round2(reg.gatewayFees),
+    platformEarnings: round2(reg.processingFees + platformFee - reg.gatewayFees),
+  };
+}
+
 /** The root client or an interactive transaction's: balance reads run in either. */
 type Db = Prisma.TransactionClient;
 
@@ -646,18 +663,19 @@ export class PayoutsService {
    * "every event" (platform-wide); an empty array short-circuits to zeros.
    *   - collectedOverall: gross ever paid (incl. the app processing fee)
    *   - processingFees:   the app fee the platform keeps
+   *   - gatewayFees:      Razorpay's fee + GST on those sales (T11)
    *   - currentGross:     ticket revenue still held (PAID / PARTIALLY_REFUNDED, net of refunds)
    */
   private async aggregateRegistrations(eventIds?: string[]) {
     if (eventIds && eventIds.length === 0) {
-      return { collectedOverall: 0, processingFees: 0, currentGross: 0 };
+      return { collectedOverall: 0, processingFees: 0, gatewayFees: 0, currentGross: 0 };
     }
     const eventFilter = eventIds ? { eventId: { in: eventIds } } : {};
     const added = this.ADDON_ADDED;
     const [ever, current, addonEver, addonCurrent] = await Promise.all([
       this.prisma.eventRegistration.aggregate({
         where: { ...eventFilter, paymentStatus: { in: this.EVER_PAID } },
-        _sum: { totalAmount: true, processingFee: true },
+        _sum: { totalAmount: true, processingFee: true, ...GATEWAY_SUM },
       }),
       this.prisma.eventRegistration.aggregate({
         where: { ...eventFilter, ...this.HELD },
@@ -666,7 +684,7 @@ export class PayoutsService {
       // Extra group seats bought after booking count with the group's ticket.
       this.prisma.groupSeatPurchase.aggregate({
         where: { ...eventFilter, ...added, paymentStatus: { in: this.EVER_PAID } },
-        _sum: { totalAmount: true, processingFee: true },
+        _sum: { totalAmount: true, processingFee: true, ...GATEWAY_SUM },
       }),
       this.prisma.groupSeatPurchase.aggregate({
         where: { ...eventFilter, ...added, ...this.HELD_ADDON },
@@ -677,6 +695,7 @@ export class PayoutsService {
     return {
       collectedOverall: n(ever._sum.totalAmount) + n(addonEver._sum.totalAmount),
       processingFees: n(ever._sum.processingFee) + n(addonEver._sum.processingFee),
+      gatewayFees: gatewayRupees(ever._sum) + gatewayRupees(addonEver._sum),
       currentGross: [current, addonCurrent].reduce(
         (sum, c) => sum + n(c._sum.totalAmount) - n(c._sum.processingFee) - n(c._sum.refundedAmount),
         0,
@@ -892,9 +911,8 @@ export class PayoutsService {
 
     return {
       ...this.buildFinancials(reg, payouts, refunded, platformFee),
-      // Platform take-home: the app fee it always keeps plus the revenue-share
-      // cut. Surfaced only on the platform view, not the space view.
-      platformEarnings: round2(reg.processingFees + platformFee),
+      // Platform take-home, net of Razorpay. Only on the platform view.
+      ...platformTake(reg, platformFee),
     };
   }
 
@@ -937,7 +955,7 @@ export class PayoutsService {
         this.prisma.eventRegistration.groupBy({
           by: ['eventId'],
           where: { paymentStatus: { in: this.EVER_PAID } },
-          _sum: { totalAmount: true, processingFee: true },
+          _sum: { totalAmount: true, processingFee: true, ...GATEWAY_SUM },
         }),
         this.prisma.eventRegistration.groupBy({
           by: ['eventId'],
@@ -958,7 +976,7 @@ export class PayoutsService {
         this.prisma.groupSeatPurchase.groupBy({
           by: ['eventId'],
           where: { ...this.ADDON_ADDED, paymentStatus: { in: this.EVER_PAID } },
-          _sum: { totalAmount: true, processingFee: true },
+          _sum: { totalAmount: true, processingFee: true, ...GATEWAY_SUM },
         }),
         this.prisma.groupSeatPurchase.groupBy({
           by: ['eventId'],
@@ -978,26 +996,34 @@ export class PayoutsService {
     const feeByEvent = await this.heldFeeByEvent(undefined, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
 
     // Index every aggregate by eventId for O(1) lookup during assembly.
+    type Sums = { total: number; fee: number; gateway: number };
     const addTo = (
-      map: Map<string, { total: number; fee: number }>,
+      map: Map<string, Sums>,
       rows: {
         eventId: string;
-        _sum: { totalAmount: Prisma.Decimal | null; processingFee: Prisma.Decimal | null; refundedAmount?: Prisma.Decimal | null };
+        _sum: {
+          totalAmount: Prisma.Decimal | null;
+          processingFee: Prisma.Decimal | null;
+          refundedAmount?: Prisma.Decimal | null;
+          gatewayFeePaise?: number | null;
+          gatewayTaxPaise?: number | null;
+        };
       }[],
     ) => {
       for (const r of rows) {
-        const prev = map.get(r.eventId) ?? { total: 0, fee: 0 };
+        const prev = map.get(r.eventId) ?? { total: 0, fee: 0, gateway: 0 };
         // Held money nets out what was refunded (only the current-* sums carry it).
         map.set(r.eventId, {
           total: prev.total + Number(r._sum.totalAmount ?? 0) - Number(r._sum.refundedAmount ?? 0),
           fee: prev.fee + Number(r._sum.processingFee ?? 0),
+          gateway: prev.gateway + gatewayRupees(r._sum),
         });
       }
     };
-    const ever = new Map<string, { total: number; fee: number }>();
+    const ever = new Map<string, Sums>();
     addTo(ever, everByEvent);
     addTo(ever, addonEverByEvent);
-    const current = new Map<string, { total: number; fee: number }>();
+    const current = new Map<string, Sums>();
     addTo(current, currentByEvent);
     addTo(current, addonCurrentByEvent);
     const settledByEvent = new Map<string, number>();
@@ -1030,7 +1056,7 @@ export class PayoutsService {
     }
 
     // Platform-level raw accumulators (summed from every space).
-    const platformAcc = { collectedOverall: 0, processingFees: 0, currentGross: 0 };
+    const platformAcc = { collectedOverall: 0, processingFees: 0, gatewayFees: 0, currentGross: 0 };
     let platformSettled = 0;
     let platformPending = 0;
     let platformRefunded = 0;
@@ -1041,18 +1067,19 @@ export class PayoutsService {
       const spaceEvents = eventsBySpace.get(space.id) ?? [];
 
       // Space-level raw accumulators (summed from this space's events).
-      const spaceAcc = { collectedOverall: 0, processingFees: 0, currentGross: 0 };
+      const spaceAcc = { collectedOverall: 0, processingFees: 0, gatewayFees: 0, currentGross: 0 };
       let spaceSettled = 0;
       let spacePending = 0;
       let spaceRefunded = 0;
       let spaceFee = 0;
 
       const eventRows = spaceEvents.map((e) => {
-        const ev = ever.get(e.id) ?? { total: 0, fee: 0 };
-        const cur = current.get(e.id) ?? { total: 0, fee: 0 };
+        const ev = ever.get(e.id) ?? { total: 0, fee: 0, gateway: 0 };
+        const cur = current.get(e.id) ?? { total: 0, fee: 0, gateway: 0 };
         const reg = {
           collectedOverall: ev.total,
           processingFees: ev.fee,
+          gatewayFees: ev.gateway,
           currentGross: cur.total - cur.fee,
         };
         const payouts = {
@@ -1066,6 +1093,7 @@ export class PayoutsService {
         spaceFee += platformFee;
         spaceAcc.collectedOverall += reg.collectedOverall;
         spaceAcc.processingFees += reg.processingFees;
+        spaceAcc.gatewayFees += reg.gatewayFees;
         spaceAcc.currentGross += reg.currentGross;
         spaceSettled += payouts.settled;
         spacePending += payouts.pending;
@@ -1086,6 +1114,7 @@ export class PayoutsService {
       // Fold this space's raw figures into the platform accumulator.
       platformAcc.collectedOverall += spaceAcc.collectedOverall;
       platformAcc.processingFees += spaceAcc.processingFees;
+      platformAcc.gatewayFees += spaceAcc.gatewayFees;
       platformAcc.currentGross += spaceAcc.currentGross;
       platformSettled += spaceSettled;
       platformPending += spacePending;
@@ -1105,7 +1134,7 @@ export class PayoutsService {
           spaceRefunded,
           spaceFee,
         ),
-        platformEarnings: round2(spaceAcc.processingFees + spaceFee),
+        ...platformTake(spaceAcc, spaceFee),
         events: eventRows,
       };
     });
@@ -1117,7 +1146,7 @@ export class PayoutsService {
         platformRefunded,
         platformFeeTotal,
       ),
-      platformEarnings: round2(platformAcc.processingFees + platformFeeTotal),
+      ...platformTake(platformAcc, platformFeeTotal),
     };
 
     return { totals, spaces: spaceRows };

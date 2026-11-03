@@ -130,7 +130,7 @@ export function WeeklyScorecard() {
         <StatCard
           title="GMV · platform fees"
           value={loading ? "—" : `${inr(data?.money.gmv.current)} · ${inr(data?.money.platformFees.current)}`}
-          hint={`GMV ${vs(data?.money.gmv, inr)}; fees ${vs(data?.money.platformFees, inr)}`}
+          hint={`GMV ${vs(data?.money.gmv, inr)}; fees after Razorpay ${vs(data?.money.platformFees, inr)}`}
           icon={CurrencyInr}
           tone="success"
           loading={loading}
