@@ -41,6 +41,13 @@ import {
   Globe,
   Certificate,
   CalendarDots,
+  Sparkle,
+  Camera,
+  UsersThree,
+  Broadcast,
+  IdentificationCard,
+  GearSix,
+  UserPlus,
 } from "@unifesto/unicon/react";
 import type { AppRole } from "@/lib/types/rbac";
 
@@ -130,6 +137,20 @@ export const adminNav: NavGroup[] = [
       { href: "/dashboard/blog", label: "Blog", icon: Article, exact: true },
       { href: "/dashboard/blog/queue", label: "Blog queue", icon: ListChecks, keywords: "auto blog questions search console seo" },
       { href: "/dashboard/careers", label: "Careers", icon: Briefcase, keywords: "jobs hiring" },
+    ],
+  },
+  {
+    // wegobeyond.in, Unifesto's events brand: its site content and crew sign-ups.
+    label: "WeGoBeyond",
+    items: [
+      { href: "/wegobeyond", label: "Overview", icon: Globe, exact: true, keywords: "wegobeyond beyond website site" },
+      { href: "/wegobeyond/initiatives", label: "Initiatives", icon: Sparkle, keywords: "wegobeyond workshops series pages" },
+      { href: "/wegobeyond/gallery", label: "Moments & memories", icon: Camera, keywords: "wegobeyond gallery photos" },
+      { href: "/wegobeyond/team", label: "The crew", icon: UsersThree, keywords: "wegobeyond team speakers hosts mentors judges volunteers credits" },
+      { href: "/wegobeyond/press", label: "Releases & press", icon: Broadcast, keywords: "wegobeyond press releases news" },
+      { href: "/wegobeyond/crew", label: "Crew form", icon: IdentificationCard, keywords: "wegobeyond volunteer join form options" },
+      { href: "/wegobeyond/crew-signups", label: "Crew sign-ups", icon: UserPlus, keywords: "wegobeyond volunteers applications export csv" },
+      { href: "/wegobeyond/settings", label: "Site settings", icon: GearSix, keywords: "wegobeyond hero contacts socials policies footer" },
     ],
   },
   {

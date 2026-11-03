@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 const TOKEN_COOKIE = "unifesto_token";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 40;
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/wegobeyond"];
 
 type RateLimitEntry = { count: number; resetAt: number };
 type RateLimitStore = Map<string, RateLimitEntry>;
