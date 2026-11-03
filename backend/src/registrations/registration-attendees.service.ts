@@ -29,6 +29,25 @@ interface BlastRecipient {
   isCommunity: boolean;
 }
 
+/**
+ * A registration's money (T12): payment ids, amounts, fees and refund figures.
+ * The attendee list leaves them out for callers without the D9 money pair;
+ * clients read an absent field as no amount. paymentStatus stays.
+ */
+export const REGISTRATION_MONEY_FIELDS = [
+  'totalAmount',
+  'couponDiscount',
+  'razorpayAmount',
+  'processingFee',
+  'refundedAmount',
+  'platformFeePercent',
+  'dealId',
+  'refundDueAt',
+  'paymentId',
+  'orderId',
+  'paymentLinkId',
+] as const;
+
 /** The organiser roster's list filters (see RegistrationAttendeesService.rosterWhere). */
 export interface RosterFilters {
   search?: string;
@@ -590,6 +609,10 @@ export class RegistrationAttendeesService {
     if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
+    // D9: the event's Curator or a Space Admin of its space see the money.
+    const seesMoney =
+      (await this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId: event.id })) ||
+      (await this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }));
 
     const skip = (page - 1) * limit;
     const where = await this.rosterWhere(eventId, { search, status, paymentStatus, ticketTypeId, attendingOnly });
@@ -631,14 +654,18 @@ export class RegistrationAttendeesService {
     ]);
 
     // Format the response to include email
-    const formattedRegistrations = registrations.map((reg: any) => ({
-      ...reg,
-      user: {
-        ...reg.user,
-        email: reg.user.identities?.[0]?.email || null,
-        identities: undefined, // Remove the identities array from response
-      },
-    }));
+    const formattedRegistrations = registrations.map((reg: any) => {
+      const row = {
+        ...reg,
+        user: {
+          ...reg.user,
+          email: reg.user.identities?.[0]?.email || null,
+          identities: undefined, // Remove the identities array from response
+        },
+      };
+      if (!seesMoney) for (const key of REGISTRATION_MONEY_FIELDS) delete row[key];
+      return row;
+    });
 
     return {
       registrations: formattedRegistrations,

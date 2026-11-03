@@ -124,6 +124,7 @@ describe('payouts money routes carry @Can (T12)', () => {
 
   it.each([
     ['getEventPayoutSummary', EVENT_MONEY],
+    ['getEventTransactions', EVENT_MONEY],
     ['getEligibleAccounts', EVENT_MONEY],
     ['setEventPayoutAccount', EVENT_MONEY],
     ['requestPayout', EVENT_MONEY],

@@ -54,6 +54,7 @@ export class PayoutsController {
 
   /** Transactions page tiles for an event (optionally one ticket type). */
   @Get('event/:eventId/transactions')
+  @Can(EVENT_MONEY)
   async getEventTransactions(
     @Request() req,
     @Param('eventId') eventId: string,
