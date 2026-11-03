@@ -30,7 +30,6 @@ function setup() {
     },
     eventRegistration: { findMany: jest.fn(async () => [{ totalAmount: 1000, processingFee: 0, refundedAmount: 0, paymentStatus: 'PAID' }]) },
     userRole: { findMany: jest.fn(async () => []) },
-    stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
     refundRequest: { findMany: jest.fn(async () => []) },
     payoutBankAccount: {

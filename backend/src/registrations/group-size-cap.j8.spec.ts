@@ -84,7 +84,7 @@ function build() {
   const svc = buildRegistrationsService(
     prisma, {} as any, {} as any, { invalidateCheckinCache: jest.fn() } as any, {} as any, {} as any,
     payments as any, waitlist, { emit: jest.fn() } as any, groupSeats, {} as any,
-    {} as any, {} as any, {} as any, { can: async () => true } as any,
+    {} as any, {} as any, { can: async () => true } as any,
   );
   (svc.checkout as any).assertMayRegister = jest.fn();
   (svc.checkout as any).assertTicketNotBlocked = jest.fn();

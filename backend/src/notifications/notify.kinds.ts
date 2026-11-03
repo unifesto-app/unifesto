@@ -26,14 +26,6 @@ export interface PushCopy {
 /** Template data minus what notify() fills in itself (the address, the brand). */
 type MailData<D> = Omit<D, 'email' | 'brand'>;
 
-/** Every stay notice: the booking, and the words the push and email share. */
-export interface StayNotice {
-  bookingId: string;
-  eventId?: string;
-  userName: string;
-  stayName: string;
-}
-
 /** What each kind's caller passes to notify(). */
 export interface NotifyKindData {
   'payment.confirmed': MailData<T.PaymentConfirmationData> & { eventId: string; eventSlug?: string };
@@ -45,14 +37,6 @@ export interface NotifyKindData {
    * by default (an event can change twice); pass opts.dedupKey per change.
    */
   'event.updated': MailData<T.EventUpdatedData> & { eventId: string; eventSlug?: string };
-  'stay.payment_due': StayNotice & { amountText: string; dueText: string };
-  'stay.confirmed': StayNotice & { note?: string };
-  'stay.declined': StayNotice & { reason?: string };
-  'stay.cancelled': StayNotice & { reason?: string; refundText?: string };
-  /** A late payment sent back in full. */
-  'stay.refunded': StayNotice & { amountText: string };
-  /** The payment window closed and the bed was released. */
-  'stay.expired': StayNotice;
   /** approvedAt keys the dedup per approval, so approve, reject, approve tells them again. */
   'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string; approvedAt: Date };
   /**
@@ -116,27 +100,6 @@ const eventLink = (d: { eventSlug?: string; eventId: string }) => `unifesto://ev
 export const ticketLink = (eventId: string) => `unifesto://ticket/${eventId}`;
 /** Q10: a waitlist offer opens the Waitlist tab, where its Pay card is. */
 const WAITLIST_PAY = 'unifesto://tickets?tab=waitlist';
-
-/**
- * A stay notice: critical (push + email always, as C9 sent them), deduped per
- * booking (each state is entered once), and the email says the push's words.
- */
-function stayKind<D extends StayNotice>(title: string, body: (d: D) => string): KindDef<D> {
-  const push = (d: D): PushCopy => ({
-    title,
-    body: body(d),
-    deepLink: `unifesto://stay/pass/${d.bookingId}`,
-    data: { type: 'stay', bookingId: d.bookingId },
-  });
-  return {
-    category: 'registrationUpdates',
-    criticality: 'critical',
-    entity: (d) => d.bookingId,
-    push,
-    email: (svc, to, d, delivery) =>
-      svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body: body(d) }, delivery),
-  };
-}
 
 /**
  * A space status notice (Q39): critical, so the email always goes. The email
@@ -251,18 +214,6 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     }),
     email: (svc, to, d, delivery) => svc.sendEventUpdated({ ...d, email: to }, delivery),
   },
-  'stay.payment_due': stayKind('Stay request approved', (d) =>
-    `Pay ${d.amountText} by ${d.dueText} to confirm your bed at ${d.stayName}.`),
-  'stay.confirmed': stayKind('Your stay is confirmed', (d) =>
-    `Your Stay Pass for ${d.stayName} is ready.${d.note ? ` ${d.note}` : ''}`),
-  'stay.declined': stayKind('Stay request declined', (d) =>
-    `${d.stayName}: ${d.reason || "the event team couldn't fit you in this time."}`),
-  'stay.cancelled': stayKind('Your stay was cancelled', (d) =>
-    `${d.stayName}: ${d.reason || 'cancelled by the event team'}.${d.refundText ? ` ${d.refundText} is being refunded (5–7 days).` : ''}`),
-  'stay.refunded': stayKind('Stay payment refunded', (d) =>
-    `Your payment for ${d.stayName} arrived after the booking closed, so ${d.amountText} is on its way back.`),
-  'stay.expired': stayKind('Stay payment window closed', (d) =>
-    `Your bed at ${d.stayName} was released because it wasn't paid in time.`),
   'space.approved': {
     category: 'spaceUpdates',
     criticality: 'critical',

@@ -225,7 +225,7 @@ export class UsersService {
    */
   /**
    * F6: a user's registrations (every status, free ones too) and money they
-   * paid anywhere on the platform (event tickets, extra group seats, stays),
+   * paid anywhere on the platform (event tickets, extra group seats),
    * newest first, for Apex user detail.
    * ponytail: last 100 of each; page it when a single account outgrows that.
    */
@@ -233,7 +233,7 @@ export class UsersService {
     const take = 100;
     const event = { select: { id: true, title: true, slug: true, startDateTime: true, space: { select: { id: true, name: true } } } };
     const money = { totalAmount: true, refundedAmount: true, paymentStatus: true, paymentId: true, paidAt: true } as const;
-    const [registrations, seats, stays] = await Promise.all([
+    const [registrations, seats] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { userId },
         orderBy: { registeredAt: 'desc' },
@@ -256,12 +256,6 @@ export class UsersService {
         take,
         select: { id: true, seats: true, createdAt: true, ...money, registration: { select: { event: { select: { id: true, title: true } } } } },
       }),
-      this.prisma.stayBooking.findMany({
-        where: { userId, totalAmount: { gt: 0 } },
-        orderBy: { createdAt: 'desc' },
-        take,
-        select: { id: true, createdAt: true, ...money, stay: { select: { name: true, event: { select: { id: true, title: true } } } } },
-      }),
     ]);
 
     const payments = [
@@ -269,7 +263,6 @@ export class UsersService {
         .filter((r) => Number(r.totalAmount) > 0)
         .map((r) => ({ kind: 'TICKET' as const, id: r.id, title: r.event.title, eventId: r.event.id, at: r.paidAt ?? r.registeredAt, ...pickMoney(r) })),
       ...seats.map((p) => ({ kind: 'SEATS' as const, id: p.id, title: `${p.registration.event.title} · ${p.seats} extra seat${p.seats === 1 ? '' : 's'}`, eventId: p.registration.event.id, at: p.paidAt ?? p.createdAt, ...pickMoney(p) })),
-      ...stays.map((p) => ({ kind: 'STAY' as const, id: p.id, title: `${p.stay.name} · ${p.stay.event.title}`, eventId: p.stay.event.id, at: p.paidAt ?? p.createdAt, ...pickMoney(p) })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
     return { registrations, payments };
@@ -1089,7 +1082,7 @@ export class UsersService {
     // scrubbed but the members they brought keep their details (they're still
     // attending). As a member of someone else's group, their claimed seat is
     // scrubbed and nothing else on that registration changes.
-    const [regs, seats, bookings, identities] = await Promise.all([
+    const [regs, seats, identities] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { userId },
         select: { id: true, formResponses: true },
@@ -1097,10 +1090,6 @@ export class UsersService {
       this.prisma.groupSeat.findMany({
         where: { claimedByUserId: userId },
         select: { memberDetails: true },
-      }),
-      this.prisma.stayBooking.findMany({
-        where: { userId },
-        select: { answers: true, guests: { select: { idProof: true } } },
       }),
       // Read before the identities are deleted below: the organiser lead
       // funnel, tickets and certificates match on the email someone typed,
@@ -1187,7 +1176,6 @@ export class UsersService {
     const privateKeys = privateFileKeys([
       ...regs.map((r) => r.formResponses),
       ...seats.map((s) => s.memberDetails),
-      ...bookings.flatMap((b) => [b.answers, ...b.guests.map((g) => g.idProof)]),
     ]);
 
     await this.prisma.$transaction([
@@ -1222,27 +1210,6 @@ export class UsersService {
       this.prisma.groupSeat.updateMany({
         where: { claimedByUserId: userId },
         data: { memberDetails: Prisma.DbNull, inviteEmail: null },
-      }),
-      this.prisma.stayBooking.updateMany({
-        where: { userId },
-        data: {
-          emergencyName: null,
-          emergencyPhone: null,
-          note: null,
-          answers: Prisma.DbNull,
-        },
-      }),
-      // Everyone on the user's own bookings: they typed these guests in.
-      // name/gender are NOT NULL; gender alone isn't identifying once the
-      // name, contacts and ID are gone, and keeps bed-allocation counts true.
-      this.prisma.stayGuest.updateMany({
-        where: { booking: { userId } },
-        data: {
-          name: ERASED_NAME,
-          phone: null,
-          email: null,
-          idProof: Prisma.DbNull,
-        },
       }),
       this.prisma.userIdentity.deleteMany({ where: { userId } }),
       this.prisma.userPushDevice.deleteMany({ where: { userId } }),
@@ -1544,7 +1511,7 @@ export class UsersService {
 /**
  * Every private upload key (FileAnswer `{ key, … }` under private/form-uploads/)
  * found anywhere in these JSON values — registration answers, group member
- * details and stay answers/ID proofs all store files that way.
+ * details both store files that way.
  */
 export function privateFileKeys(values: unknown[]): string[] {
   const keys = new Set<string>();

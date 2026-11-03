@@ -1,16 +1,13 @@
 import 'reflect-metadata';
 import { ForbiddenException } from '@nestjs/common';
 import { Action } from './actions';
-import { CAN_ACTION_KEY } from './can.decorator';
 import { CertificatesService } from '../../certificates/certificates.service';
 import { ReportsService } from '../../reports/reports.service';
 import { RefundsService } from '../../refunds/refunds.service';
-import { StaysController } from '../../stays/stays.controller';
 
 /**
  * S23: certificates, reports and refunds ask the IAM instead of hand-rolling a
  * Space Admin role check (which refused platform admins and event curators).
- * S30: marking a stay paid is not a check-in permission.
  */
 
 const event = { id: 'ev-1', spaceId: 'sp-1', title: 'Fest', slug: 'fest', endDateTime: null, space: { name: 'S' } };
@@ -62,12 +59,5 @@ describe('certificates / reports / refunds use the IAM (S23)', () => {
     const s = withAuthz<any>(RefundsService.prototype, () => false);
     s.prisma.userRole.findMany.mockResolvedValue([{ spaceId: 'sp-1', eventId: null }]);
     await expect(s.organiserEventIds('member')).resolves.toEqual([]);
-  });
-});
-
-describe('stay mark-paid permission (S30)', () => {
-  it('needs attendee management, not check-in', () => {
-    const action = Reflect.getMetadata(CAN_ACTION_KEY, StaysController.prototype.markPaid);
-    expect(action).toBe(Action.EVENT_MANAGE_ATTENDEES);
   });
 });

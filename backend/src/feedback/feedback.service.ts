@@ -19,8 +19,7 @@ import {
   showIfOf,
 } from '../registrations/form-answers.util';
 import { toCsv } from '../common/csv';
-import { CreateStayQuestionDto as QuestionDto, UpdateStayQuestionDto as UpdateQuestionDto } from '../stays/dto';
-import { SubmitFeedbackDto } from './feedback.dto';
+import { QuestionDto, SubmitFeedbackDto, UpdateQuestionDto } from './feedback.dto';
 
 const HOUR = 3_600_000;
 /** F2 timing, counted from the event's end. */

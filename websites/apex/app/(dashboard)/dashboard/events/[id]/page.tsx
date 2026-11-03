@@ -149,7 +149,7 @@ export default function AdminEventDetailPage() {
 
   // A cancelled event owes its paid attendees: send them all at once.
   const onRefundAll = useCallback(async () => {
-    if (!window.confirm("Refund every paid attendee? Ticket prices and online stays go back now. The processing fee is kept.")) return;
+    if (!window.confirm("Refund every paid attendee? Ticket prices go back now. The processing fee is kept.")) return;
     setActing(true);
     setActionError("");
     setRefundNotice("");
@@ -160,7 +160,7 @@ export default function AdminEventDetailPage() {
       return;
     }
     if (data) {
-      const sent = `${data.refunded} ticket and ${data.staysRefunded} stay refunds sent.`;
+      const sent = `${data.refunded} refund${data.refunded === 1 ? "" : "s"} sent.`;
       setRefundNotice(
         data.failed.length
           ? `${sent} ${data.failed.length} failed: ${data.failed.map((f) => f.error).join("; ")}. Run it again to retry.`

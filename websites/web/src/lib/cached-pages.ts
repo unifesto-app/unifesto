@@ -45,7 +45,6 @@ export const CACHED_PAGES = [
   '/security',
   '/sponsor-terms',
   '/sprint',
-  '/stay',
   '/subprocessors',
   '/support',
   '/terms',

@@ -180,7 +180,7 @@ export default function PlatformFinancialsPage() {
               <StatCard
                 title="Collected (overall)"
                 value={money(totals.collectedOverall)}
-                hint="Tickets, extra seats and stays ever paid, incl. buyer fees and later refunds. Wider than Overview's Gross sales (paid tickets only)"
+                hint="Tickets and extra seats ever paid, incl. buyer fees and later refunds. Wider than Overview's Gross sales (paid tickets only)"
                 icon={Money}
                 tone="success"
               />

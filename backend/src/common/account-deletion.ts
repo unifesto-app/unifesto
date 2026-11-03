@@ -16,7 +16,7 @@ export const REDACTED_REFUND_REASON = 'Removed when the account was closed';
 
 /**
  * I5: the one placeholder for an erased person's name, wherever a name column
- * can't be null (certificates, stay guests, bank-account holders, tickets).
+ * can't be null (certificates, bank-account holders, tickets).
  */
 export const ERASED_NAME = 'Erased user';
 

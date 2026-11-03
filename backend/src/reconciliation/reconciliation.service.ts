@@ -8,9 +8,9 @@ function r2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-/** A platform payment row, flattened across registrations, stays and extra seats. */
+/** A platform payment row, flattened across registrations and extra seats. */
 interface PlatformPayment {
-  source: 'EVENT' | 'STAY' | 'SEATS';
+  source: 'EVENT' | 'SEATS';
   registrationId: string;
   title: string;
   paymentStatus: PaymentStatus;
@@ -65,11 +65,11 @@ export class ReconciliationService {
     };
   }
 
-  /** Every platform payment (event + stay + extra seats) captured via Razorpay in a window. */
+  /** Every platform payment (event + extra seats) captured via Razorpay in a window. */
   private async platformPayments(fromMs: number, toMs: number): Promise<PlatformPayment[]> {
     const window = { paidAt: { gte: new Date(fromMs), lte: new Date(toMs) } };
 
-    const [events, stays, seats] = await Promise.all([
+    const [events, seats] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { paymentId: { not: null }, ...window },
         select: {
@@ -80,21 +80,6 @@ export class ReconciliationService {
           processingFee: true,
           refundedAmount: true,
           paidAt: true,
-          event: { select: { title: true } },
-        },
-      }),
-      // Unifesto Stay bookings paid online (pay-at-property has no paymentId).
-      this.prisma.stayBooking.findMany({
-        where: { paymentId: { not: null }, ...window },
-        select: {
-          id: true,
-          paymentId: true,
-          paymentStatus: true,
-          totalAmount: true,
-          processingFee: true,
-          refundedAmount: true,
-          paidAt: true,
-          stay: { select: { name: true } },
           event: { select: { title: true } },
         },
       }),
@@ -126,18 +111,6 @@ export class ReconciliationService {
         processingFee: Number(e.processingFee),
         refundedAmount: Number(e.refundedAmount),
         paidAt: e.paidAt,
-      })),
-      ...stays.map((s) => ({
-        source: 'STAY' as const,
-        registrationId: s.id,
-        paymentId: s.paymentId as string,
-        title: `Stay · ${s.stay?.name ?? 'Stay'} · ${s.event?.title ?? 'Event'}`,
-        // A stay payment is always PAID/REFUNDED once it has a paymentId.
-        paymentStatus: s.paymentStatus ?? PaymentStatus.PAID,
-        razorpayAmount: Number(s.totalAmount),
-        processingFee: Number(s.processingFee),
-        refundedAmount: Number(s.refundedAmount),
-        paidAt: s.paidAt,
       })),
       ...seats.map((s) => ({
         source: 'SEATS' as const,
@@ -417,7 +390,7 @@ export class ReconciliationService {
         },
         status: 'MISSING_IN_RAZORPAY' as const,
         amountMismatch: false,
-        // Already a platform EVENT row → link to view it; stays and seats
+        // Already a platform EVENT row → link to view it; extra seats
         // aren't handled by the transactions detail page.
         reconcileRegistrationId: p.source === 'EVENT' ? p.registrationId : null,
       }));
@@ -461,24 +434,17 @@ export class ReconciliationService {
     );
     const capturedIds = captured.map((p) => p.id);
 
-    // Payments already attributed to a registration (event or stay)
-    // are, by definition, not orphaned — skip them regardless of the notes.
-    const [attachedEvents, attachedStays, seatOrders] = await Promise.all([
+    // Payments already attributed to a registration are, by definition, not orphaned — skip them regardless of the notes.
+    const [attachedEvents, seatOrders] = await Promise.all([
       capturedIds.length
         ? this.prisma.eventRegistration.findMany({
             where: { paymentId: { in: capturedIds } },
             select: { paymentId: true },
           })
         : Promise.resolve([]),
-      capturedIds.length
-        ? this.prisma.stayBooking.findMany({
-            where: { paymentId: { in: capturedIds } },
-            select: { paymentId: true },
-          })
-        : Promise.resolve([]),
       // Extra-seat payments belong to their purchase, never to a registration,
       // so attaching one here would be wrong. Matched by order: an unsettled one
-      // is settled by the Razorpay webhook (retried for 24h), like a stay.
+      // is settled by the Razorpay webhook (retried for 24h).
       // ponytail: no manual settle button; add one if a webhook ever stays lost.
       captured.length
         ? this.prisma.groupSeatPurchase.findMany({
@@ -490,7 +456,6 @@ export class ReconciliationService {
     const seatOrderIds = new Set(seatOrders.map((r) => r.orderId));
     const attributed = new Set<string>([
       ...attachedEvents.map((r) => r.paymentId as string),
-      ...attachedStays.map((r) => r.paymentId as string),
       ...captured.filter((p) => p.orderId && seatOrderIds.has(p.orderId)).map((p) => p.id),
     ]);
 

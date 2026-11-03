@@ -100,10 +100,4 @@ describe('H23 app line', () => {
     expect(reg(brand)).toContain('You can also find your ticket in the Unifesto app.');
     expect(reg(brand)).not.toContain('Your ticket is also in the Unifesto app.');
   });
-
-  it('applies the same rule to stay updates', () => {
-    const stay = (b?: typeof brand) => T.stayUpdateEmail({ email: 'a@b.co', userName: 'A', title: 't', body: 'b', brand: b }).html;
-    expect(stay()).toContain('Your Stay Pass and booking details are in the Unifesto app.');
-    expect(stay(brand)).toContain('You can also find your Stay Pass and booking details in the Unifesto app.');
-  });
 });

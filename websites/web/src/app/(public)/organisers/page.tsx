@@ -105,13 +105,7 @@ export default function OrganisersPage() {
                 </ShadeFrame>
               }
               flip={i % 2 === 1}
-            >
-              {p.id === "after" && (
-                <Link href="/stay" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
-                  More on Unifesto Stay <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
-                </Link>
-              )}
-            </FeatureRow>
+            />
           );
         })}
       </Section>

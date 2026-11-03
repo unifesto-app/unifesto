@@ -23,7 +23,6 @@ import {
   WhatsappLogo,
   ChartLineUp,
   Trophy,
-  Bed,
   ArrowCounterClockwise,
   ListChecks,
   ChatsCircle,
@@ -108,8 +107,6 @@ export const EVENT_NAV_GROUPS: EventNavGroup[] = [
       { href: "/feedback", label: "Feedback", icon: Star, requires: "event:edit" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
       { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-leaderboard" },
-      // Unifesto Stay. Crew get the property desk; setup and approvals are gated in-page.
-      { href: "/stays", label: "Stay", icon: Bed, requires: "event:check-in" },
     ],
   },
   {

@@ -17,7 +17,7 @@ describe('auto-refund alerting (J2)', () => {
   });
 
   it('reports every failure when Redis is down', async () => {
-    await noteRefundFailure({ getClient: () => null } as any, 'auto:stay:b1', new Error('x'));
+    await noteRefundFailure({ getClient: () => null } as any, 'auto:seat:b1', new Error('x'));
     expect(reportError).toHaveBeenCalledTimes(1);
   });
 

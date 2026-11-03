@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
       // Unifesto Huddle (online sessions) was retired; keep its old links alive.
       { source: '/huddle', destination: '/organisers', permanent: true },
       { source: '/session/:slug*', destination: '/events', permanent: true },
+      // Unifesto Stay (event accommodation) was retired (S59).
+      { source: '/stay', destination: '/organisers', permanent: true },
       // There is no public API yet; the old /docs page described one.
       { source: '/docs', destination: '/help', permanent: true },
       // One sign-in for everyone (Track V8): the console's own login is gone.

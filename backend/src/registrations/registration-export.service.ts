@@ -127,7 +127,7 @@ export class RegistrationExportService {
       ];
       // settleRow: the payout figures' own rule, at the fee frozen on each
       // sale, so the Net column sums to the event's netEntitlement (bar add-on
-      // seats, stays and a paisa of per-row rounding).
+      // seats and a paisa of per-row rounding).
       const sharePercent = this.planConfig.resolvePlatformFeePercent(subscription);
       const toRow = (reg: any) => {
         const { collected, buyerFee: feeCharged, refunded, platformFee: platformCut, net } =

@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Bed,
   ChartBar,
   ChatsCircle,
   Eye,
@@ -33,7 +32,6 @@ import {
   WhatsappLogo,
 } from '@unifesto/unicon/react-native';
 import { useManageEvent } from '../hooks/useManageEvent';
-import { getTeamStays } from '../lib/api/stays';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -73,15 +71,6 @@ export default function ManageEventScreen() {
   const router = useRouter();
   const c = useCosmos();
   const h = useManageEvent(eventId);
-  // Crew don't get the Stay hub; they get the property desk (scan a Stay Pass,
-  // take payment, check in) when the event has a published stay.
-  const deskOnly = h.access.canScan && !h.access.hosts;
-  const [hasStays, setHasStays] = useState(false);
-  useEffect(() => {
-    if (!eventId || !deskOnly) return;
-    void getTeamStays(eventId).then((r) => setHasStays(r.ok && r.data.stays.some((s) => s.isPublished)));
-  }, [eventId, deskOnly]);
-
   // The admin-set default banner when the event has none: never an icon in a tile.
   const cover = useEventCover(h.event);
 
@@ -226,15 +215,6 @@ export default function ManageEventScreen() {
             onPress={() => router.push({ pathname: `/checkin/${e.id}`, params: scanParams })}
           />
         ),
-        // Crew don't get the Stay hub; they scan Stay Passes at the property desk.
-        !hosts && deskOnly && hasStays && (
-          <SettingsRow
-            key="stay-scan"
-            icon={icon(Bed, c.mint)}
-            label="Scan Stay Pass"
-            onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
-          />
-        ),
       ])}
 
       {/* Sky: tickets, registrations, the people who hold them.
@@ -253,14 +233,6 @@ export default function ManageEventScreen() {
         hosts && <SettingsRow key="csv" icon={icon(FileCsv, c.sky)} label="Import from CSV" external onPress={web('/attendees/import')} />,
         hosts && (
           <SettingsRow key="waitlist" icon={icon(HourglassMedium, c.sky)} label="Waiting list" onPress={() => router.push(`/manage/event/${e.id}/waitlist`)} />
-        ),
-        hosts && (
-          <SettingsRow
-            key="stay"
-            icon={icon(Bed, c.sky)}
-            label="Unifesto Stay"
-            onPress={() => router.push({ pathname: `/manage/event/${e.id}/stays`, params: { spaceId: e.spaceId } })}
-          />
         ),
       ])}
 

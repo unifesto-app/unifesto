@@ -1,7 +1,6 @@
-import { PaymentStatus, RegistrationStatus, StayBookingStatus } from '@prisma/client';
+import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { buildRegistrationsService } from '../registrations/registrations.testing';
-import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from '../registrations/team-changes.service';
 import { rateCardTerms } from '../subscription/terms.testing';
 
@@ -11,7 +10,7 @@ jest.mock('../registrations/form-answers.policy', () => ({
 
 /**
  * A22: a second capture on a row another payment already paid (two tabs on one
- * waiting list offer, one stay, one seat add-on) is refunded in full, once.
+ * waiting list offer, one seat add-on) is refunded in full, once.
  * The same payment replayed stays a no-op.
  */
 describe('PaymentsService.refundIfDuplicate', () => {
@@ -105,7 +104,7 @@ describe('event registrations refund a duplicate capture (A22)', () => {
     const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, { redis: { getClient: () => null } } as any, {} as any, {} as any,
       payments as any, { convert: jest.fn() } as any, {} as any, {} as any, {} as any,
-      {} as any, {} as any, {} as any, { can: async () => true } as any,
+      {} as any, {} as any, { can: async () => true } as any,
     );
     return { svc, prisma, payments };
   };
@@ -157,40 +156,6 @@ describe('event registrations refund a duplicate capture (A22)', () => {
     prisma.eventRegistration.findUnique.mockResolvedValue({ ...row, paymentStatus: PaymentStatus.REFUNDED });
     await (svc.settlement as any).refundIfDuplicate('reg-1', 'pay_2');
     expect(payments.refundIfDuplicate).not.toHaveBeenCalled();
-  });
-});
-
-describe('stays refund a duplicate capture (A22)', () => {
-  const build = (fresh: Record<string, unknown>) => {
-    const prisma: any = {
-      $executeRaw: jest.fn(async () => 1),
-      stayBooking: {
-        findUniqueOrThrow: jest.fn(async () => ({ id: 'b-1', optionId: 'o-1', ...fresh })),
-        update: jest.fn(async () => ({})),
-      },
-    };
-    prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
-    const payments = { refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, rateCardTerms());
-    jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
-    return { svc, prisma, payments };
-  };
-
-  it('a second payment on a paid stay goes back; the booking is untouched', async () => {
-    const { svc, prisma, payments } = build({ paymentStatus: PaymentStatus.PAID, paymentId: 'pay_1', status: StayBookingStatus.CONFIRMED });
-    await (svc as any).settle('b-1', 'pay_2', 'order_2');
-    expect(payments.refundIfDuplicate).toHaveBeenCalledWith('pay_1', 'pay_2', 'stay booking b-1');
-    expect(prisma.stayBooking.update).not.toHaveBeenCalled();
-  });
-
-  it("a failed refund doesn't fail the payer's verify, but does fail the webhook", async () => {
-    const paid = { paymentStatus: PaymentStatus.PAID, paymentId: 'pay_1' };
-    const client = build(paid);
-    client.payments.refundIfDuplicate.mockRejectedValue(new Error('timeout'));
-    await expect((client.svc as any).settle('b-1', 'pay_2', 'order_2', true)).resolves.toBeUndefined();
-    const hook = build(paid);
-    hook.payments.refundIfDuplicate.mockRejectedValue(new Error('timeout'));
-    await expect((hook.svc as any).settle('b-1', 'pay_2', 'order_2')).rejects.toThrow('timeout');
   });
 });
 

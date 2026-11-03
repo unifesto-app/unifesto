@@ -28,7 +28,7 @@ export const FORM_UPLOAD_RETENTION_DAYS = 180;
 /** How long a "view file" link works. */
 const VIEW_LINK_SECONDS = 5 * 60;
 
-/** File extension stored for each accepted type (Stay uploads reuse it). */
+/** File extension stored for each accepted type. */
 export const UPLOAD_EXT: Record<string, string> = {
   'application/pdf': 'pdf',
   'image/jpeg': 'jpg',
@@ -215,11 +215,7 @@ export class FormUploadsService {
       where: {
         endDateTime: { lt: cutoff },
         formUploadsPurgedAt: null,
-        // Stay bookings keep guests' photo IDs under the same prefix.
-        OR: [
-          { formFields: { some: { type: 'FILE' } } },
-          { stayBookings: { some: {} } },
-        ],
+        formFields: { some: { type: 'FILE' } },
       },
       select: { id: true },
       take: 200,

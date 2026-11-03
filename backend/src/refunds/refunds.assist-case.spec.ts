@@ -49,7 +49,7 @@ function setup(opts: { status?: RefundStatus; ownCase?: boolean } = {}) {
   };
   const events = { emit: jest.fn() };
   const authz = { can: jest.fn(async () => true) };
-  const service = new RefundsService(prisma, {} as any, events as any, authz as any, {} as any, {} as any);
+  const service = new RefundsService(prisma, {} as any, events as any, authz as any, {} as any);
   const s = service as any;
   s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
   s.notifyEmail = jest.fn();

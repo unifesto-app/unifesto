@@ -36,9 +36,9 @@ export const RETENTION: ReadonlyArray<{
  * RETENTION_DAYS_<NAME> (e.g. RETENTION_DAYS_RESUMES=180).
  */
 export const PERSONAL_DATA_RETENTION_DAYS = {
-  /** Registration and stay-booking answers, after the event ends. */
+  /** Registration answers, after the event ends. */
   REGISTRATION_ANSWERS: 730,
-  /** Group members, stay guests and ticket holder names/emails, after the event ends. */
+  /** Group members and ticket holder names/emails, after the event ends. */
   GUEST_DETAILS: 730,
   /** Organiser and sponsor leads, after capture. */
   LEADS: 730,
@@ -74,13 +74,6 @@ const SWEEPS: Sweep[] = [
     set: `form_responses = NULL`,
   },
   {
-    name: 'REGISTRATION_ANSWERS',
-    table: 'stay_bookings',
-    where: `(answers IS NOT NULL OR emergency_name IS NOT NULL OR emergency_phone IS NOT NULL OR note IS NOT NULL)
-      AND event_id IN (${EVENT_ENDED})`,
-    set: `answers = NULL, emergency_name = NULL, emergency_phone = NULL, note = NULL`,
-  },
-  {
     name: 'GUEST_DETAILS',
     table: 'group_seats',
     where: `(member_details IS NOT NULL OR invite_email IS NOT NULL)
@@ -93,14 +86,6 @@ const SWEEPS: Sweep[] = [
     where: `(attendee_name IS NOT NULL OR attendee_email IS NOT NULL)
       AND registration_id IN (SELECT id FROM event_registrations WHERE event_id IN (${EVENT_ENDED}))`,
     set: `attendee_name = NULL, attendee_email = NULL`,
-  },
-  {
-    // name/gender are NOT NULL; gender alone keeps bed counts true.
-    name: 'GUEST_DETAILS',
-    table: 'stay_guests',
-    where: `name <> '${ERASED_NAME}'
-      AND booking_id IN (SELECT id FROM stay_bookings WHERE event_id IN (${EVENT_ENDED}))`,
-    set: `name = '${ERASED_NAME}', phone = NULL, email = NULL, id_proof = NULL`,
   },
   { name: 'LEADS', table: 'leads', where: `created_at < $1` },
   { name: 'LEADS', table: 'sponsor_leads', where: `created_at < $1` },

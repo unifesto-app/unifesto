@@ -41,7 +41,7 @@ export async function getProcessingFeeTerms(): Promise<ProcessingFeeTerms> {
  * The buyer fee exactly as the backend computes it (PaymentsService
  * .computeProcessingFee): the percent of the base, rounded to the paise, never
  * more than the cap per ticket. A ticket is one priced unit: each per-person
- * seat, a flat-priced group as one, each guest of a stay.
+ * seat, a flat-priced group as one.
  */
 export function buyerFee(base: number, terms: ProcessingFeeTerms, tickets = 1): number {
   const fee = Math.round(base * terms.percent + 1e-9) / 100;

@@ -126,14 +126,13 @@ export async function adminRefund(payload: {
 
 /**
  * Send every refund a cancelled event owes: ticket prices (extra seats
- * included) and stays paid online. Safe to run again: it retries what failed.
+ * included). Safe to run again: it retries what failed.
  * `POST /refunds/admin/event/:eventId/refund-all`.
  */
 export async function refundCancelledEvent(eventId: string): Promise<{
   data: {
     refunded: number;
-    staysRefunded: number;
-    failed: { id: string; kind: "ticket" | "stay"; error: string }[];
+    failed: { id: string; error: string }[];
   } | null;
   error: ApiError | null;
 }> {

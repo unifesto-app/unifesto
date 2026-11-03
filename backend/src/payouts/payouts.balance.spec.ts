@@ -21,7 +21,6 @@ describe('PayoutsService event balance', () => {
         })),
       },
       eventRegistration: { findMany: jest.fn(async () => regs) },
-      stayBooking: { findMany: jest.fn(async () => []) },
       groupSeatPurchase: { findMany: jest.fn(async () => []) },
       refundRequest: { findMany: jest.fn(async () => []) },
       payout: { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) },

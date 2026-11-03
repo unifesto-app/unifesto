@@ -161,7 +161,6 @@ export const PILLARS: Pillar[] = [
       "Certificates from your own template, verifiable by anyone online",
       "Sponsor roster, sponsor portal and booth-scan lead capture",
       "Formatted PDF event reports and attendance analytics",
-      "Unifesto Stay: room options, approvals and a Stay Pass scanned at arrival",
     ],
   },
 ];
@@ -190,43 +189,6 @@ export const HACKATHON_STAGES = [
     body: "Scores roll into a live leaderboard, winners and awards are published, and certificates go out to every team.",
   },
 ] as const;
-
-/* ── Unifesto Stay (event accommodation) ────────────────────────────── */
-/* Checked against backend/src/stays + the Stay* models: stays per event,
-   room options with beds/gender/price/payment mode, custom questions,
-   per-guest photo ID, team approval, payment window, allocation, and a
-   Stay Pass scanned at arrival. Not plan-gated. */
-
-export const STAY_STEPS = [
-  { title: "Register for the event", body: "Stays open to registered attendees only, so every bed goes to someone actually coming." },
-  { title: "Request a room", body: "Pick a room option and dates, add your group, upload each guest's photo ID and answer the team's questions." },
-  { title: "Team approves", body: "The event team reviews the request, assigns a room or bed, and approves. Beds are held only from here." },
-  { title: "Pay if needed", body: "Free stays confirm at once. Online stays are paid in the app within the payment window; others pay at the property." },
-  { title: "Show the Stay Pass", body: "The pass appears in the app. The team scans it at arrival to check you in, and again when you leave." },
-] as const;
-
-export const FAQ_STAY: Faq[] = [
-  {
-    q: "What is Unifesto Stay?",
-    a: "Unifesto Stay is accommodation booking built into Unifesto events. Organisers list hostels, hotels or homestays for their event; registered attendees request a room in the Unifesto app, the team approves it, and the guest checks in with a Stay Pass.",
-  },
-  {
-    q: "Who can book a stay?",
-    a: "Only people registered for the event. Each person can hold one open stay booking per event, and can book for a group up to the size the room option allows.",
-  },
-  {
-    q: "How is payment handled?",
-    a: "Each room option is free, paid at the property, or paid online through Razorpay. Online bookings are paid after approval, within a payment window (48 hours by default); unpaid beds are released.",
-  },
-  {
-    q: "Why does Unifesto ask for a photo ID?",
-    a: "Event teams usually need ID for every guest staying on campus or at a property. IDs are uploaded with the request, kept in private storage and visible only to the event team. Organisers can turn the requirement off.",
-  },
-  {
-    q: "Can organisers separate rooms by gender?",
-    a: "Yes. Each room option can be open to anyone, men only or women only, and every guest's gender is recorded with the request.",
-  },
-];
 
 /* ── Unifesto Orbit (campus programme) ─────────────────────────────────── */
 /* One Orbit Lead per campus. Rewards are recognition, not cash. The tier
@@ -352,7 +314,7 @@ export const APP_FEATURES = [
   {
     id: "more",
     title: "Everything around the event",
-    body: "Book a stay, follow your hackathon team, and keep every certificate you earn in one place.",
+    body: "Follow your hackathon team and keep every certificate you earn in one place.",
   },
 ] as const;
 
@@ -615,7 +577,7 @@ export const FAQ_ORGANISERS: Faq[] = [
   },
   {
     q: "Can I run events from my phone?",
-    a: "Yes. The Unifesto app includes event management: attendees, tickets, coupons, check-in scanning, WhatsApp links, sponsors, stays and payouts. The full console is also available at unifesto.app/console.",
+    a: "Yes. The Unifesto app includes event management: attendees, tickets, coupons, check-in scanning, WhatsApp links, sponsors and payouts. The full console is also available at unifesto.app/console.",
   },
   {
     q: "What happens when someone asks for a refund?",

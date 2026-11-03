@@ -169,7 +169,7 @@ export class PaymentsService {
    * The buyer fee on `basePrice` covering `tickets` tickets: the percent of the
    * base, capped per ticket (A34: min(4%, ₹99)). A ticket is one priced unit:
    * each of a quantity, each seat of a per-person group, a flat-priced group as
-   * one, a session seat, a stay guest.
+   * one, a session seat.
    */
   computeProcessingFee(basePrice: number, tickets = 1, terms?: FeeTerms): number {
     return this.priceSale(basePrice, tickets, false, terms).fee;

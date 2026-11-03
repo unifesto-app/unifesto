@@ -105,7 +105,7 @@ describe('events of a space that is not publicly live (J16)', () => {
     const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
       payments as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any,
-      {} as any, {} as any, {} as any, { can: async () => true } as any,
+      {} as any, {} as any, { can: async () => true } as any,
     );
     await expect(svc.createPaymentOrder('ev-1', 'buyer', { ticketTypeId: 'tt-1', quantity: 1 } as any)).rejects.toThrow(
       'This space is temporarily unavailable',

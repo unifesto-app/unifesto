@@ -3,8 +3,7 @@ import type { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { Action, Can, CanGuard } from '../auth/authorization';
-import { CreateStayQuestionDto as QuestionDto, UpdateStayQuestionDto as UpdateQuestionDto } from '../stays/dto';
-import { FeedbackSettingsDto, SubmitFeedbackDto } from './feedback.dto';
+import { FeedbackSettingsDto, QuestionDto, SubmitFeedbackDto, UpdateQuestionDto } from './feedback.dto';
 import { FeedbackService } from './feedback.service';
 
 const uuid = new ParseUUIDPipe({ version: '4' });

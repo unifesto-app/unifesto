@@ -36,7 +36,6 @@ const moreEvents = (brand?: EmailBrand | null) =>
  */
 const APP_LINES = {
   ticket: ['Your ticket is also in the Unifesto app. See you there.', 'You can also find your ticket in the Unifesto app. See you there.'],
-  stay: ['Your Stay Pass and booking details are in the Unifesto app.', 'You can also find your Stay Pass and booking details in the Unifesto app.'],
 } as const;
 
 export const appLine = (kind: keyof typeof APP_LINES, brand?: EmailBrand | null) =>
@@ -559,36 +558,6 @@ export function waitlistRevokedEmail(d: WaitlistRevokedData): Email {
       ${p(`A spot at ${strong(d.eventTitle)} on ${esc(d.eventDate)} was held for you, but it went unpaid, so the organiser released it to someone else.`)}
       ${p("Nothing was charged. If you still want to go, you can join the waiting list again.")}
       ${button('View the event', d.registrationUrl)}`,
-      '',
-      d.brand,
-    ),
-  };
-}
-
-// =====================================================
-// STAYS
-// =====================================================
-
-export interface StayUpdateData {
-  /** Space theme for the header, button and footer (gated by EmailService). */
-  brand?: EmailBrand | null;
-  /** The stay's event, so EmailService resolves the brand + sender. */
-  eventId?: string;
-  email: string;
-  userName: string;
-  /** Same words as the push: the title is the heading and subject. */
-  title: string;
-  body: string;
-}
-
-export function stayUpdateEmail(d: StayUpdateData): Email {
-  return {
-    subject: d.title,
-    html: layout(
-      `${h1(esc(d.title))}
-      ${greet(d.userName)}
-      ${p(esc(d.body))}
-      ${appLine('stay', d.brand)}`,
       '',
       d.brand,
     ),

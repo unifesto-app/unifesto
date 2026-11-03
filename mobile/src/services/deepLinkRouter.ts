@@ -50,7 +50,6 @@ const ALLOWED_PREFIXES = new Set([
   'judging', // a judge's console (hackathon queue pushes); screens re-check the panel server-side
   'group', // Manage group (team changes: lead handover requests, seats added)
   'manage', // support case threads (Assist pushes); screens re-check access server-side
-  'stay', // stay booking passes (booking-confirmed pushes: unifesto://stay/pass/:id)
   'feedback', // event feedback form (F2 request/reminder pushes: unifesto://feedback/:eventId)
   'space-request', // start a space (Q19 push from older rejections: unifesto://space-request)
 ]);
@@ -72,7 +71,6 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'judging',
   'group',
   'manage',
-  'stay',
   'feedback',
   'space-request',
 ]);
