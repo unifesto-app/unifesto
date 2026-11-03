@@ -102,18 +102,42 @@ async function tenantSlug(host: string): Promise<string | null> {
   return slug;
 }
 
+// event slug -> its space's slug, for a custom domain's /event/* (J25: the
+// prerendered page can't see the host, so the proxy checks it). A minute, like
+// the host lookup. Unknown or failing lookups pass: the page 404s a missing one.
+// ponytail: per-process; wiped at 1000 entries so junk slugs can't grow it.
+const eventSpaces = new Map<string, { slug: string | null; until: number }>();
+
+async function eventSpace(eventSlug: string): Promise<string | null> {
+  const hit = eventSpaces.get(eventSlug);
+  if (hit && hit.until > Date.now()) return hit.slug;
+  try {
+    // The segment comes from nextUrl.pathname, so it's already URL-encoded.
+    const res = await fetch(`${API}/events/${eventSlug}`, withInternal());
+    if (!res.ok) return hit?.slug ?? null;
+    const slug: string | null = (await res.json()).space?.slug ?? null;
+    if (eventSpaces.size >= 1000) eventSpaces.clear();
+    eventSpaces.set(eventSlug, { slug, until: Date.now() + 60_000 });
+    return slug;
+  } catch {
+    return hit?.slug ?? null;
+  }
+}
+
 /**
  * 1. .well-known paths pass untouched (App/Universal Links need a plain 200).
  * 2. unifesto.app → www.unifesto.app.
  * 3. On our own hosts, /console/** goes through the console gate.
  * 4. A space's custom domain serves only that space: `/` is its space page,
- *    `/event/*` its events (the page 404s other spaces' events), its sign-in
+ *    `/event/*` its events (other spaces' events 404 here), its sign-in
  *    session routes and static files pass, and every other path goes to the
  *    main site.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const cached = isOwnHost(hostOf(request)) && isCachedPage(pathname);
+  // A custom domain's / is its space page (rendered per request), not our
+  // cached home page; its /event/* pages are the same prerendered ones as www's.
+  const cached = isCachedPage(pathname) && (pathname !== '/' || isOwnHost(hostOf(request)));
   const nonce = cached ? null : Buffer.from(crypto.randomUUID()).toString('base64');
   const policy = csp(nonce, under(pathname, '/console'));
   // Next reads the nonce from the request's CSP header while rendering. A
@@ -171,8 +195,12 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
     url.pathname = `/space/${slug}${pathname}`;
     return NextResponse.rewrite(url, { request: { headers } });
   }
+  if (pathname.startsWith('/event/')) {
+    const owner = await eventSpace(pathname.split('/')[2] ?? '');
+    if (owner && owner !== slug) return new NextResponse('Not found', { status: 404 });
+    return NextResponse.next({ request: { headers } });
+  }
   if (
-    pathname.startsWith('/event/') ||
     // K18: the email-code session (host-only cookie on this domain). Google
     // sign-in stays on our own hosts: Cognito can't list every client domain.
     pathname === '/auth/session' ||

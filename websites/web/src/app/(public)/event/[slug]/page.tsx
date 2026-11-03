@@ -8,12 +8,20 @@ import { getEventBySlug as fetchEvent, registrationState, UnavailableError, type
 import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
-import { getTenant } from "@/lib/tenant";
 import EventDetailClient from "./EventDetailClient";
 import { getRateCard } from "@/lib/api/rate-card";
 import { buyerFeeText } from "@/lib/site";
 
-// One fetch per request, shared by generateMetadata and the page. An event
+// J25: one render per event a minute, served to every visitor (and cached by
+// Cloudflare), so a link shared in a big group can't swamp the web server.
+// The render is anonymous: the API only gives it what a signed-out visitor
+// may see, and the visitor's own ticket loads client-side (EventDetailClient).
+// Nothing here may read headers() or cookies() (they're empty under
+// force-static): the custom-domain check is in src/proxy.ts.
+export const revalidate = 60;
+export const dynamic = "force-static"; // prerendered, CDN-cacheable: lib/cached-pages.ts
+
+// One fetch per render, shared by generateMetadata and the page. An event
 // whose space is taken down for now comes back as "unavailable" (J16).
 const getEventBySlug = cache((slug: string) =>
   fetchEvent(slug).catch((e) => {
@@ -52,13 +60,6 @@ function toSummary(input: string | undefined, max = 180): string | undefined {
  * the sibling `opengraph-image.tsx` route (banner when present, branded card
  * otherwise) and injected automatically by the App Router file convention.
  */
-/** On a space's custom domain, only that space's events exist. */
-async function assertOnTenant(event: Event) {
-  const tenant = await getTenant();
-  if (tenant && (event.space?.slug ?? event.organization?.slug) !== tenant.spaceSlug) notFound();
-  return tenant;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
@@ -66,11 +67,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // A real 404 (not a 200 + noindex soft-404) so Google drops deleted events.
   if (!isPublic(event)) notFound();
-  const tenant = await assertOnTenant(event);
 
   // A space with a live custom domain is canonical there, so search engines
-  // index one address; www links keep working (no redirect).
-  const home = tenant?.host ?? event.branding?.customDomain ?? null;
+  // index one address; www links keep working (no redirect). It's the domain
+  // the proxy serves this space on, so the HTML is the same on either host.
+  const home = event.branding?.customDomain ?? null;
 
   // White-labelled: the space's name replaces ours in titles and share cards.
   const brand = event.branding?.name ?? null;
@@ -178,7 +179,6 @@ export default async function EventDetailPage({ params }: Props) {
   if (!isPublic(event)) notFound();
   // An old slug (renamed event) or an id resolves too: go to the current address.
   if (event.slug && event.slug !== slug) redirect(`/event/${event.slug}`);
-  await assertOnTenant(event);
   const { buyerFee, buyerFeeCap } = await getRateCard();
   // The poster is the LCP element but only appears after the client fetch;
   // preloading it from the server HTML starts the download immediately.
