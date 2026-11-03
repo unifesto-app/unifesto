@@ -66,6 +66,8 @@ jobs:
           # main already passed these on its PR's merge ref; push only needs the install for the OTA report.
           [ "$GITHUB_EVENT_NAME" = pull_request ] || exit 0
           echo "::group::Type-check"; npx tsc --noEmit; echo "::endgroup::"
+          # S65: login, ticket and scanner smoke tests, plus the src/lib unit specs.
+          echo "::group::Tests"; npx jest --ci --maxWorkers=2; echo "::endgroup::"
           # Bundle from a clean checkout: catches source files that exist
           # locally but were never committed (e.g. gitignored
           # src/widgets/android), which only fail on EAS.
@@ -155,6 +157,8 @@ jobs:
           npm run lint -- --quiet
           npm audit --omit=dev --audit-level=critical
           npm test
+          # S65 smoke: event page, checkout, login and the console's create event, attendees, check-in.
+          npm run test:smoke
           # Legal pages prerender from the API and throw when it's unreachable
           # (on purpose: keep the cached page). A stub that 404s everything
           # builds them as not-found instead.
@@ -187,6 +191,8 @@ jobs:
           npx tsc --noEmit -p .
           npm run lint -- --quiet
           npm audit --omit=dev --audit-level=critical
+          # S65 smoke: space approvals and financials.
+          npm run test:smoke
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
