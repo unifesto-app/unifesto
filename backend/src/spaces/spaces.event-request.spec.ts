@@ -44,7 +44,7 @@ describe('SpacesService event requests', () => {
       $transaction: jest.fn((fn) => fn(tx)),
     };
     const events = { emit: jest.fn() };
-    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, events as never);
+    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, events as never);
     return { svc, prisma, tx, events };
   }
 

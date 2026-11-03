@@ -1,7 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { RoleCode } from '@prisma/client';
 import { Action } from '../auth/authorization';
-import { assertEventCan, isPlatformAdmin } from './event-access';
+import { assertEventCan } from './event-access';
 
 function prismaWith(event: object | null, roleCount: number) {
   return {
@@ -35,16 +34,6 @@ describe('event-access gates', () => {
     expect(prisma.event.findUnique).toHaveBeenCalledWith({
       where: { id: 'e1' },
       select: { title: true, id: true, spaceId: true },
-    });
-  });
-
-  it('isPlatformAdmin is false without a user and checks the ADMIN role otherwise', async () => {
-    const prisma = prismaWith(null, 1);
-    expect(await isPlatformAdmin(prisma, undefined)).toBe(false);
-    expect(prisma.userRole.count).not.toHaveBeenCalled();
-    expect(await isPlatformAdmin(prisma, 'u1')).toBe(true);
-    expect(prisma.userRole.count).toHaveBeenCalledWith({
-      where: { userId: 'u1', role: { code: RoleCode.ADMIN } },
     });
   });
 });

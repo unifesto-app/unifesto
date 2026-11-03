@@ -137,9 +137,11 @@ export interface CapabilityMatrix {
  * now editable. This mirrors `PlanConfigService`, which did the same for plan
  * feature flags.
  *
- * Safety net: if a role has NO rows in the table (fresh/partial DB, or the
- * migration seed hasn't run), that role falls back to the compiled matrix. So
- * the platform is never left with an empty, deny-all matrix by accident.
+ * Safety net: only while the table is empty (fresh DB, the migration seed
+ * hasn't run, or unit tests that never load it) does every role read the
+ * compiled matrix. Once it has rows they are authoritative: revoking a role's
+ * last grant leaves that role with nothing (T2), it does not bring the
+ * compiled defaults back.
  *
  * Cache scope: per-process. The replica that takes an edit reloads at once;
  * the others follow within ~2s via RedisService.syncCache.
@@ -152,6 +154,9 @@ export class CapabilityConfigService implements OnModuleInit {
 
   /** role code -> set of granted action strings. The live, in-memory matrix. */
   private cache = new Map<RoleCode, Set<string>>();
+
+  /** False until a load finds rows; until then the compiled matrix answers. */
+  private dbBacked = false;
 
   /**
    * spaceId -> role -> set of granted actions. Per-space overrides. Sparse: only
@@ -191,6 +196,7 @@ export class CapabilityConfigService implements OnModuleInit {
       next.set(row.code, set);
     }
     this.cache = next;
+    this.dbBacked = rows.length > 0;
 
     const nextSpace = new Map<string, Map<RoleCode, Set<string>>>();
     for (const row of spaceRows) {
@@ -210,13 +216,12 @@ export class CapabilityConfigService implements OnModuleInit {
   }
 
   /**
-   * The set of actions `code` may perform directly. Returns the DB-backed set
-   * when the role has any rows; otherwise falls back to the compiled matrix so a
-   * missing seed never silently denies everything.
+   * The set of actions `code` may perform directly: its DB rows, so a role
+   * whose last grant was revoked has none. The compiled matrix answers only
+   * while the table is empty (see the safety net above).
    */
   capabilitiesFor(code: RoleCode): ReadonlySet<string> {
-    const fromDb = this.cache.get(code);
-    if (fromDb && fromDb.size > 0) return fromDb;
+    if (this.dbBacked) return this.cache.get(code) ?? new Set<string>();
     return new Set<string>(CAPABILITIES[code] ?? []);
   }
 

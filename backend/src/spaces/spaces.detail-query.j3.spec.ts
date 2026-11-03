@@ -18,7 +18,7 @@ describe('SpacesService.getSpaceById membership load', () => {
       },
       userRole: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
     };
-    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     return { svc, prisma };
   };
 

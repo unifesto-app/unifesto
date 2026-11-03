@@ -8,7 +8,7 @@ describe('discovery (K1)', () => {
       space: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
       userRole: { findFirst: jest.fn(async () => null) },
     };
-    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     await svc.getAllSpaces({ city: 'Vijayawada' });
     const q = prisma.space.findMany.mock.calls[0][0];
     expect(q.where.city).toEqual({ equals: 'Vijayawada', mode: 'insensitive' });

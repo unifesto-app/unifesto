@@ -33,7 +33,7 @@ describe('SpacesService space request decisions', () => {
       $transaction: jest.fn((fn) => fn(tx)),
     };
     const events = { emit: jest.fn() };
-    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, events as never);
+    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, events as never);
     const batch = () => events.emit.mock.calls.find(([name]) => name === NotificationEvents.NotifyBatch)?.[1];
     const emitted = (name: string) => events.emit.mock.calls.filter(([n]) => n === name).map(([, e]) => e);
     return { svc, tx, batch, emitted };

@@ -7,9 +7,7 @@ import { SpacesService } from './spaces.service';
 function setup(existing: { userId: string } | null = null) {
   const prisma: any = {
     space: { findUnique: jest.fn().mockResolvedValue({ id: 's1', name: 'Robotics Club', slug: 'robotics' }) },
-    // The actor is the space's Space Admin.
     userRole: {
-      findMany: jest.fn().mockResolvedValue([{ spaceId: 's1', role: { code: RoleCode.SPACE_ADMIN } }]),
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn(async ({ data }: any) => ({ id: 'ur-1', ...data })),
     },
@@ -28,8 +26,10 @@ function setup(existing: { userId: string } | null = null) {
     },
   };
   const email: any = { sendCollaboratorInvite: jest.fn().mockResolvedValue(undefined) };
-  const svc = new SpacesService(prisma, {} as any, email, {} as any, {} as any);
-  return { svc, prisma, email };
+  // The actor may assign the role (canAssign, T2) unless a test says otherwise.
+  const authz: any = { canAssign: jest.fn().mockResolvedValue(true) };
+  const svc = new SpacesService(prisma, {} as any, email, {} as any, {} as any, authz);
+  return { svc, prisma, email, authz };
 }
 
 describe('Q31: invite a space member by email', () => {
@@ -57,8 +57,8 @@ describe('Q31: invite a space member by email', () => {
   });
 
   it("a role I can't assign mints no account", async () => {
-    const { svc, prisma } = setup();
-    prisma.userRole.findMany.mockResolvedValue([{ spaceId: 's1', role: { code: RoleCode.MEMBER } }]);
+    const { svc, prisma, authz } = setup();
+    authz.canAssign.mockResolvedValue(false);
     await expect(
       svc.addSpaceMember('s1', 'actor', { email: 'ravi@college.edu' }, RoleCode.MEMBER),
     ).rejects.toBeInstanceOf(ForbiddenException);

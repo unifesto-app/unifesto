@@ -239,4 +239,45 @@ describe('AuthorizationService', () => {
       expect(prisma.event.findUnique).not.toHaveBeenCalled();
     });
   });
+
+  describe('canAssign (T2: one role-assignment rule)', () => {
+    const at = { spaceId: SPACE_A, eventId: EVENT_IN_A };
+    const ROLES = [
+      RoleCode.SPACE_ADMIN,
+      RoleCode.CURATOR,
+      RoleCode.CO_CURATOR,
+      RoleCode.CREW,
+      RoleCode.MEMBER,
+    ];
+    const as = (code: RoleCode, scope: RoleScope, spaceId: string | null, eventId: string | null) => [
+      { code, scope, spaceId, eventId },
+    ];
+
+    it.each([
+      ['Platform ADMIN', as(RoleCode.ADMIN, RoleScope.PLATFORM, null, null), ROLES],
+      ['Space Admin of the space', as(RoleCode.SPACE_ADMIN, RoleScope.SPACE, SPACE_A, null), ROLES.slice(1)],
+      ['Space Admin of another space', as(RoleCode.SPACE_ADMIN, RoleScope.SPACE, SPACE_B, null), []],
+      ['Curator', as(RoleCode.CURATOR, RoleScope.EVENT, null, EVENT_IN_A), [RoleCode.CO_CURATOR, RoleCode.CREW, RoleCode.MEMBER]],
+      ['Co-Curator', as(RoleCode.CO_CURATOR, RoleScope.EVENT, null, EVENT_IN_A), [RoleCode.CREW, RoleCode.MEMBER]],
+      ['Crew', as(RoleCode.CREW, RoleScope.EVENT, null, EVENT_IN_A), [RoleCode.MEMBER]],
+      ['space Member', as(RoleCode.MEMBER, RoleScope.SPACE, SPACE_A, null), []],
+    ])('%s may assign only the roles below it', async (_who, roles, expected) => {
+      const svc = build(roles);
+      for (const role of [RoleCode.ADMIN, ...ROLES]) {
+        expect([role, await svc.canAssign(user, role, at, 'someone-else')]).toEqual([role, expected.includes(role)]);
+      }
+    });
+
+    it('only ADMIN or a Space Admin makes a Curator; nobody edits their own role', async () => {
+      expect(await build(as(RoleCode.CO_CURATOR, RoleScope.EVENT, null, EVENT_IN_A)).canAssign(user, RoleCode.CURATOR, at)).toBe(false);
+      const admin = build(as(RoleCode.ADMIN, RoleScope.PLATFORM, null, null));
+      expect(await admin.canAssign(user, RoleCode.CURATOR, at, 'someone-else')).toBe(true);
+      expect(await admin.canAssign(user, RoleCode.CREW, at, user.id)).toBe(false);
+    });
+
+    it('event roles carry no standing in the space itself', async () => {
+      const svc = build(as(RoleCode.CURATOR, RoleScope.EVENT, null, EVENT_IN_A));
+      expect(await svc.canAssign(user, RoleCode.MEMBER, { spaceId: SPACE_A }, 'someone-else')).toBe(false);
+    });
+  });
 });

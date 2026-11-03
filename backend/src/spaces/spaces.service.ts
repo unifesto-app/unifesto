@@ -57,8 +57,7 @@ import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, isSpaceLive, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
 import { NOT_DORMANT_WHERE } from './space-activity';
 import { statusChange } from './space-lifecycle';
-import { isPlatformAdmin } from '../events/event-access';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { settle, SettleRow } from '../payouts/settle';
 import { emailFilter, sameEmail } from '../auth/identifiers';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
@@ -93,6 +92,7 @@ export class SpacesService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly planConfig: PlanConfigService,
+    private readonly authz: AuthorizationService,
     private readonly events?: EventEmitter2,
   ) {}
 
@@ -183,7 +183,7 @@ export class SpacesService {
     // Q38: Explore and search leave Dormant spaces out (a campus's own sub-space
     // list keeps them); their members still see them.
     const publicWhere = parentId ? PUBLIC_LIVE_SPACE_WHERE : { ...PUBLIC_LIVE_SPACE_WHERE, ...NOT_DORMANT_WHERE };
-    const where: any = (await isPlatformAdmin(this.prisma, viewerId))
+    const where: any = viewerId && (await this.authz.can({ id: viewerId }, Action.PLATFORM_MANAGE))
       ? {}
       : { AND: [visibleSpacesWhere(viewerId, publicWhere)] };
 
@@ -470,7 +470,7 @@ export class SpacesService {
     // through the reviewed sub-space request flow instead.
     if (
       (dto.type !== undefined || dto.parentSpaceId !== undefined || dto.coCuratorLimit !== undefined) &&
-      !(await isPlatformAdmin(this.prisma, actorId))
+      !(await this.authz.can({ id: actorId }, Action.PLATFORM_MANAGE))
     ) {
       throw new ForbiddenException('Only Unifesto can change a space type, parent or co-curator limit');
     }
@@ -816,47 +816,26 @@ export class SpacesService {
   }
 
   /**
-   * Space roles whose holder runs the space (can manage members). The canonical
-   * (and only) admin code is SPACE_ADMIN.
+   * 403 unless the actor may give `role` in this space, or change or remove it
+   * when someone holds it (the one rule, `canAssign`, T2): only roles below
+   * their own, never their own. A Space Admin manages members; only a Platform
+   * ADMIN makes or unmakes a Space Admin.
    */
-  private static readonly SPACE_ADMIN_TIER: RoleCode[] = [RoleCode.SPACE_ADMIN];
-
-  /** Space roles a Space Admin may assign/change/remove. Flat admin model: an
-   * admin can manage other admins and members (the creator stays protected in
-   * the update/remove guards). */
-  private static readonly MANAGEABLE_SPACE_ROLES: RoleCode[] = [
-    RoleCode.SPACE_ADMIN,
-    RoleCode.MEMBER,
-  ];
-
-  private manageableRolesFor(
-    isAdmin: boolean,
-    actorRoleCode: RoleCode | null,
-  ): RoleCode[] {
-    const isSpaceAdmin =
-      !!actorRoleCode &&
-      SpacesService.SPACE_ADMIN_TIER.includes(actorRoleCode);
-    if (isAdmin || isSpaceAdmin) {
-      return [...SpacesService.MANAGEABLE_SPACE_ROLES];
+  private async assertCanAssign(
+    spaceId: string,
+    actingUserId: string,
+    role: RoleCode,
+    targetUserId: string | undefined,
+    message: string,
+  ) {
+    if (!(await this.authz.canAssign({ id: actingUserId }, role, { spaceId }, targetUserId))) {
+      throw new ForbiddenException(message);
     }
-    return [];
-  }
-
-  /** Resolve the acting user's tier within a space (admin flag + space role). */
-  private async resolveActor(spaceId: string, actingUserId: string) {
-    const roles = await this.prisma.userRole.findMany({
-      where: { userId: actingUserId },
-      include: { role: true },
-    });
-    const isAdmin = roles.some((r) => r.role.code === RoleCode.ADMIN);
-    const spaceRole =
-      roles.find((r) => r.spaceId === spaceId)?.role.code ?? null;
-    return { isAdmin, spaceRole };
   }
 
   /**
-   * Add a member to a space with a specific role. The acting user must be a
-   * platform admin or a Space Admin, and may only assign manageable roles.
+   * Add a member to a space with a specific role. The route needs
+   * space:manage-members; the role must pass `assertCanAssign`.
    * Q31: `{ email }` adds someone who may not have an account yet. E1 makes
    * them a claimable one (the same answer either way), and signing in with
    * that email later is the claim.
@@ -874,16 +853,13 @@ export class SpacesService {
       throw new NotFoundException('Space not found');
     }
 
-    const { isAdmin, spaceRole } = await this.resolveActor(
+    await this.assertCanAssign(
       spaceId,
       actingUserId,
+      roleCode,
+      typeof target === 'string' ? target : undefined,
+      'You are not allowed to assign this role in this space',
     );
-    const allowed = this.manageableRolesFor(isAdmin, spaceRole);
-    if (!allowed.includes(roleCode)) {
-      throw new ForbiddenException(
-        'You are not allowed to assign this role in this space',
-      );
-    }
 
     const role = await this.prisma.role.findFirst({
       where: { code: roleCode, scope: 'SPACE' },
@@ -981,17 +957,13 @@ export class SpacesService {
       throw new NotFoundException('Member not found in this space');
     }
 
-    const { isAdmin, spaceRole } = await this.resolveActor(
-      spaceId,
-      actingUserId,
-    );
-    const allowed = this.manageableRolesFor(isAdmin, spaceRole);
     // Must be allowed to manage both the current role and the target role.
-    if (
-      !allowed.includes(membership.role.code) ||
-      !allowed.includes(roleCode)
-    ) {
-      throw new ForbiddenException(
+    for (const code of [membership.role.code, roleCode]) {
+      await this.assertCanAssign(
+        spaceId,
+        actingUserId,
+        code,
+        membership.userId,
         'You are not allowed to change this member’s role',
       );
     }
@@ -1003,7 +975,7 @@ export class SpacesService {
     // Prevent demoting the space creator (accountable payer) below admin.
     if (
       space.createdBy === membership.userId &&
-      !SpacesService.SPACE_ADMIN_TIER.includes(roleCode)
+      !SPACE_ADMIN_ROLE_CODES.includes(roleCode)
     ) {
       throw new BadRequestException(
         'The space creator must remain a Space Admin',
@@ -1071,16 +1043,13 @@ export class SpacesService {
       );
     }
 
-    const { isAdmin, spaceRole } = await this.resolveActor(
+    await this.assertCanAssign(
       spaceId,
       actingUserId,
+      membership.role.code,
+      membership.userId,
+      'You are not allowed to remove this member',
     );
-    const allowed = this.manageableRolesFor(isAdmin, spaceRole);
-    if (!allowed.includes(membership.role.code)) {
-      throw new ForbiddenException(
-        'You are not allowed to remove this member',
-      );
-    }
 
     await this.prisma.userRole.delete({ where: { id: userRoleId } });
 
@@ -2210,16 +2179,11 @@ export class SpacesService {
     const { requestType, subSpaceId, targetSpaceId, reason } = dto;
 
     // Only someone who runs one of the spaces involved may ask (Unifesto still reviews it).
-    const runsOne =
-      (await isPlatformAdmin(this.prisma, userId)) ||
-      (await this.prisma.userRole.count({
-        where: {
-          userId,
-          eventId: null,
-          spaceId: { in: [targetSpaceId, subSpaceId].filter((id): id is string => !!id) },
-          role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-        },
-      })) > 0;
+    const runsOne = await this.authz.canAny(
+      { id: userId },
+      Action.SPACE_MANAGE_SETTINGS,
+      [targetSpaceId, subSpaceId].filter((id): id is string => !!id).map((spaceId) => ({ spaceId })),
+    );
     if (!runsOne) {
       throw new ForbiddenException('Only a Space Admin of one of these spaces can ask for this');
     }

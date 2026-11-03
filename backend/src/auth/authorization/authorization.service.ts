@@ -16,6 +16,17 @@ const ROLE_RANK: RoleCode[] = [
   RoleCode.MEMBER,
 ];
 
+/** Event team standing for role assignment (T1); Space and Platform Admins sit above. */
+const TEAM_RANK: Partial<Record<RoleCode, number>> = {
+  [RoleCode.CREW]: 1,
+  [RoleCode.CO_CURATOR]: 2,
+  [RoleCode.CURATOR]: 3,
+};
+
+/** Who may assign whom (`canAssign`): ADMIN 5, Space Admin 4, the event team, everything else 0. */
+const assignRank = (code: RoleCode): number =>
+  code === RoleCode.ADMIN ? 5 : SPACE_ADMIN_ROLE_CODES.includes(code) ? 4 : (TEAM_RANK[code] ?? 0);
+
 /**
  * One role assignment the caller holds, flattened for authorization checks.
  */
@@ -134,6 +145,37 @@ export class AuthorizationService {
         `You do not have permission to ${action} this resource`,
       );
     }
+  }
+
+  /**
+   * The one role-assignment rule (T2): may `actor` give `role` in the space
+   * `at.spaceId`, or on the event `at.eventId` that lives in it? Pass the role
+   * someone holds now to ask whether the actor may change or remove it. Only
+   * roles below the actor's own standing there, and never on themselves:
+   * Platform ADMIN, then a Space Admin of the space, then the event's Curator,
+   * Co-Curator and Crew. So only a Space Admin or ADMIN makes a Curator (who
+   * moves the event's money, D9), and only ADMIN makes a Space Admin. Whether
+   * the actor may edit the team at all is the caller's `@Can` / `assertCan`.
+   */
+  async canAssign(
+    actor: Pick<User, 'id'>,
+    role: RoleCode,
+    at: { spaceId: string; eventId?: string },
+    targetUserId?: string,
+  ): Promise<boolean> {
+    if (targetUserId === actor.id) return false;
+    const standing = Math.max(
+      0,
+      ...(await this.loadAssignments(actor.id))
+        .filter(
+          (a) =>
+            a.scope === RoleScope.PLATFORM ||
+            (a.scope === RoleScope.SPACE && a.spaceId === at.spaceId) ||
+            (!!at.eventId && a.eventId === at.eventId),
+        )
+        .map((a) => assignRank(a.code)),
+    );
+    return assignRank(role) < standing;
   }
 
   /** Every PLATFORM action the caller holds (one role load), for the Apex nav. */
@@ -327,12 +369,16 @@ export class AuthorizationService {
  * Return true to GRANT via inheritance; false to fall through (deny unless the
  * direct matrix already matched).
  *
- * POLICY (locked 2026-08-09):
+ * POLICY (locked 2026-08-09, money restated for D9 by T2):
  *   (a) Platform ADMIN is a blanket superuser.
- *   (b) A Space Admin of the event's owning space inherits EVERY event action
- *       EXCEPT money (`event:manage-money`) — separation of duty: they can run
- *       the event but cannot unilaterally move its funds; that still needs an
- *       explicit Curator.
+ *   (b) A Space Admin of the event's owning space inherits every event action
+ *       except `event:manage-money`. That is not a money ban: D9 says Space
+ *       Admin and Curator both move event money (payouts, refund approvals;
+ *       it lands in the space's bank account). Space Admins move it through
+ *       `space:manage-money` on the owning space, which every money check
+ *       accepts beside `event:manage-money`, so their money power stays one
+ *       editable grant. Curators hold `event:manage-money` directly;
+ *       Co-Curator and Crew never move money.
  *
  * Pure function (no DB) so it stays trivially unit-testable.
  */
@@ -357,7 +403,7 @@ function grantsByInheritance(
     assignment.spaceId === eventSpaceId &&
     SPACE_ADMIN_ROLE_CODES.includes(assignment.code)
   ) {
-    // Everything except moving the event's money.
+    // Everything except event:manage-money; their money is space:manage-money (D9).
     return action !== Action.EVENT_MANAGE_MONEY;
   }
 

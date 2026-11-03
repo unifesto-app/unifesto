@@ -843,11 +843,9 @@ export class PayoutsService {
     return { payouts: payouts.map(maskPayoutAccount) };
   }
 
-  /** Financials for one space. Viewable by the space's admins (or a platform admin). */
-  async getSpaceFinancials(userId: string, spaceId: string, isPlatformAdmin = false) {
-    if (!isPlatformAdmin) {
-      await this.assertSpaceAdmin(userId, spaceId, 'view this space’s financials');
-    }
+  /** Financials for one space. Viewable by the space's admins (Platform ADMIN inherits). */
+  async getSpaceFinancials(userId: string, spaceId: string) {
+    await this.assertSpaceAdmin(userId, spaceId, 'view this space’s financials');
     const space = await this.prisma.space.findUnique({
       where: { id: spaceId },
       select: { subscription: true },

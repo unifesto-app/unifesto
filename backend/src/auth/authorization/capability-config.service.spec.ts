@@ -105,6 +105,23 @@ describe('CapabilityConfigService.setGrant', () => {
       where: { code: RoleCode.CREW, action: Action.EVENT_CHECK_IN },
     });
   });
+
+  it("revoking a role's last grant leaves it empty, not back on the compiled defaults (T2)", async () => {
+    const { svc, prisma } = build();
+    // After the revoke CREW has no rows; other roles still do.
+    prisma.roleCapability.findMany.mockResolvedValue([{ code: RoleCode.CURATOR, action: Action.EVENT_VIEW }]);
+    await svc.setGrant(RoleCode.CREW, Action.EVENT_CHECK_IN, false);
+    expect(svc.has(RoleCode.CREW, Action.EVENT_CHECK_IN)).toBe(false);
+    expect(svc.has(RoleCode.CREW, Action.EVENT_VIEW)).toBe(false);
+    expect(svc.has(RoleCode.CURATOR, Action.EVENT_VIEW)).toBe(true);
+  });
+
+  it('reads the compiled matrix only while the table is empty', async () => {
+    const { svc } = build();
+    expect(svc.has(RoleCode.CREW, Action.EVENT_CHECK_IN)).toBe(true); // never loaded
+    await svc.reload(); // loaded, but no rows yet (fresh DB)
+    expect(svc.has(RoleCode.CREW, Action.EVENT_CHECK_IN)).toBe(true);
+  });
 });
 
 /**
