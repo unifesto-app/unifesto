@@ -16,21 +16,22 @@ export class AccountDeletionSchedulerService {
     private readonly redis: RedisService,
   ) {}
 
-  /**
-   * Daily at 03:30 IST. All replicas fire this tick together, so a setNx
-   * lease lets exactly one replica run the purge.
-   */
+  /** Daily at 03:30 IST, one replica. */
   @Cron('30 3 * * *', { timeZone: 'Asia/Kolkata' })
   async purge(): Promise<void> {
-    const leader = await this.redis.setNx('users:deletion:purge', '1', 3600);
-    if (!leader) return;
-    try {
-      const { closed, blocked } = await this.users.purgeDueDeletions();
-      if (closed || blocked) {
-        this.logger.log(`Account deletion purge: ${closed} closed, ${blocked} blocked`);
-      }
-    } catch (err) {
-      this.logger.error('Account deletion purge failed', err as Error);
-    }
+    // Fail closed: a Redis outage delays a purge by a night rather than running it three times at once.
+    await this.redis.runExclusive(
+      'users:deletion:purge',
+      60 * 60,
+      async () => {
+        const { closed, blocked } = await this.users.purgeDueDeletions();
+        if (closed || blocked) {
+          this.logger.log(
+            `Account deletion purge: ${closed} closed, ${blocked} blocked`,
+          );
+        }
+      },
+      { failOpen: false },
+    );
   }
 }
