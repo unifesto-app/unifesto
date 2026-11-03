@@ -17,15 +17,18 @@ export class WhiteLabelSchedulerService {
     private readonly redis: RedisService,
   ) {}
 
-  /** Every replica fires; a setNx lease lets one run the sweep. */
+  /** Hourly, one replica. Fails closed: a Redis outage skips an hour rather than calling Cloudflare and Resend three times. */
   @Cron(CronExpression.EVERY_HOUR)
   async sweep(): Promise<void> {
-    if (!(await this.redis.setNx('white-label:domain:sweep', '1', 50 * 60))) return;
-    try {
-      const r = await this.whiteLabel.sweepDomains();
-      if (r.expired || r.lapsed) this.logger.log(`Domain sweep: ${JSON.stringify(r)}`);
-    } catch (err) {
-      this.logger.error('Domain sweep failed', err as Error);
-    }
+    await this.redis.runExclusive(
+      'white-label:domain:sweep',
+      50 * 60,
+      async () => {
+        const r = await this.whiteLabel.sweepDomains();
+        if (r.expired || r.lapsed)
+          this.logger.log(`Domain sweep: ${JSON.stringify(r)}`);
+      },
+      { failOpen: false },
+    );
   }
 }

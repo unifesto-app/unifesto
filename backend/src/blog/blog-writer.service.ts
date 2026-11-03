@@ -4,6 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { BlogQuestion, BlogQuestionSource, BlogQuestionStatus, BlogStatus } from '@prisma/client';
 import { AiResult, AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { BlogService } from './blog.service';
 import {
   APP_PAGES,
@@ -69,12 +70,21 @@ export class BlogWriterService {
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
     private readonly blog: BlogService,
+    private readonly redis: RedisService,
   ) {}
 
   @Cron('0 6,14,22 * * *', { timeZone: 'Asia/Kolkata' })
   async scheduled() {
-    const r = await this.generate();
-    this.logger.log(`Auto-blog run: ${JSON.stringify(r)}`);
+    // One replica per slot. Fail closed: a Redis outage skips a slot rather than publishing three posts.
+    await this.redis.runExclusive(
+      'cron:blogWriter',
+      2 * 60 * 60,
+      async () => {
+        const r = await this.generate();
+        this.logger.log(`Auto-blog run: ${JSON.stringify(r)}`);
+      },
+      { failOpen: false },
+    );
   }
 
   async generate(): Promise<GenerateResult> {

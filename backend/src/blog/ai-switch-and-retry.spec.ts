@@ -21,7 +21,7 @@ describe('Blog question retry', () => {
   const build = (count: number) => {
     const updateMany = jest.fn(async () => ({ count }));
     const prisma: any = { blogQuestion: { updateMany, findUnique: jest.fn(async () => ({ id: 'q1' })) } };
-    return { updateMany, svc: new BlogWriterService(prisma, {} as any, {} as any) };
+    return { updateMany, svc: new BlogWriterService(prisma, {} as any, {} as any, {} as any) };
   };
 
   it('re-queues only a FAILED question and clears the reason', async () => {
@@ -43,7 +43,7 @@ describe('Blog question start', () => {
   const build = (count: number) => {
     const updateMany = jest.fn(async () => ({ count }));
     const prisma: any = { blogQuestion: { updateMany, findUniqueOrThrow: jest.fn(async () => ({ id: 'q1' })) } };
-    const svc = new BlogWriterService(prisma, {} as any, {} as any);
+    const svc = new BlogWriterService(prisma, {} as any, {} as any, {} as any);
     const run = jest.spyOn(svc as any, 'run').mockResolvedValue({ status: 'published', slug: 's' });
     return { updateMany, run, svc };
   };
@@ -69,7 +69,7 @@ describe('Blog question stop', () => {
   const build = (count: number) => {
     const updateMany = jest.fn(async () => ({ count }));
     const prisma: any = { blogQuestion: { updateMany, findUnique: jest.fn(async () => ({ id: 'q1' })) } };
-    return { updateMany, svc: new BlogWriterService(prisma, {} as any, {} as any) };
+    return { updateMany, svc: new BlogWriterService(prisma, {} as any, {} as any, {} as any) };
   };
 
   it('marks only a WRITING question failed as stopped', async () => {
@@ -134,7 +134,7 @@ describe('Blog writer fix rounds', () => {
       },
     };
     const blog: any = { create: jest.fn(async (d: any) => ({ id: 'p1', slug: d.slug })) };
-    const svc = new BlogWriterService(prisma, { run } as any, blog);
+    const svc = new BlogWriterService(prisma, { run } as any, blog, {} as any);
     const q = { id: 'q1', question: 'How do I run a hackathon?', intent: 'how-to', angle: null, appLink: '/sprint' };
     return { writerTurns, prisma, blog, go: () => (svc as any).run(q) };
   };
