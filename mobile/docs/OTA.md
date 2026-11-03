@@ -24,7 +24,7 @@ When unsure: `npm run ota:preflight`, or
 
 ## Native PRs and store-build windows
 
-From **2 Dec 2026** (5.0.0 live) on:
+From **15 Nov 2026** (5.0.0 live) on:
 
 - A PR that changes the runtime gets the `native` label and stays open until the
   next store-build window. At the window, all `native` PRs merge together right
@@ -33,7 +33,7 @@ From **2 Dec 2026** (5.0.0 live) on:
 - All PRs still base on `main` (no stacking).
 - The PR template's "Ships as" is the CI result (OTA-safe / store build), not a guess.
 
-Before 2 Dec, native PRs merge normally; they ride the 5.0.0 store build.
+Before 15 Nov, native PRs merge normally; they ride the 5.0.0 store build.
 
 ## After every store build goes live
 
@@ -101,8 +101,10 @@ an internal preview build) before relying on them.
 
 ## Store launch (5.0.0, and every store build after it)
 
-Nothing reaches the stores' users until you press release. Freeze Fri 20 Nov,
-submit Wed 25 Nov, release Wed 2 Dec (version-5 D6, R1–R5, Z10).
+Nothing reaches the stores' users until you press release. Freeze and
+production EAS build Fri 6 Nov, device QA by Sun 8 Nov, submit Mon 9 Nov,
+review buffer to Sat 14 Nov, release Sun 15 Nov (version-5 D6, R and O tracks,
+Z10).
 
 1. **Before submit:** give the production build to organisers and Crew on
    TestFlight and Play internal testing; each runs create event → register →
@@ -117,12 +119,49 @@ submit Wed 25 Nov, release Wed 2 Dec (version-5 D6, R1–R5, Z10).
    rollout 10% → 50% (day 2) → 100% (day 3).
 4. **Pause rule:** crash-free sessions under 99% in Sentry (`unifesto-mobile`),
    or a spike in registration or payment errors. App Store: pause phased
-   release. Play: halt the rollout. Ship the fix as an OTA once the new runtime is
-   recorded (below), else as a new build. The app has no feature flags, so the
-   OTA is the only switch.
+   release. Play: halt the rollout. If the broken part has a switch (Rollback
+   switches, below), turn it off in Apex first: no release needed. Everything
+   else ships as an OTA once the new runtime is recorded (below), else as a new
+   build.
 5. **Same day:** `npm run ota:record-build`, publish a tiny 5.0.1 OTA at 20% and
    confirm a phone shows its update id in Profile › About. Set the latest version
    in Apex › App version to turn on the soft update prompt.
+
+## Rollback switches (5.0.0)
+
+These turn a 5.0.0 surface off for everyone without an OTA, a store build or a
+backend deploy. All live on **Apex › App version** (also the phone's Apex ›
+App version for the version policy).
+
+| Switch (Apex card, `platform_config` column) | What it turns off | What people see when it's off | Takes effect |
+|---|---|---|---|
+| **UPI checkout: iOS app** / **Android app** (`upi_checkout_ios`, `upi_checkout_android`) | The 5.0.0 pay page: installed UPI apps on the order summary, typed UPI ID, wallets, and opening the picked app with no sheet (Razorpay Custom UI). Apple Pay goes with it. | Razorpay's sheet, UPI first, as in 4.x. The money path is the same either way. | Next checkout. Read from the database on every request, no cache. A failed or slow read (3 s) also means off. |
+| **Apple Pay: iOS app** (`apple_pay_ios`) | The Apple Pay row and the Apple Pay button on the iPhone pay page. | UPI apps, cards and the sheet; no Apple Pay. | Next checkout, same as above. |
+| **AI features › Assist bot** (`ai_enabled_features`, key `bot`) | Assist's answers in Get help and My help. | The request goes straight to a person: "I can't help with this one, so I've passed it to a person. They'll reply here." | Next message. Read from the database on every call. |
+| **18+ confirmation** (`require_age_confirmation`) | The server refusing self-registration without the 18+ confirmation (Z11). | Nobody is refused. The 5.0.0 app still asks the 18+ question once in the registration gate: that part is OTA only. | Next registration. Read from the database on every request. |
+| **Latest / minimum version**, per store (`ios_*`, `android_*` version columns) | Latest empty turns off the soft "update available" prompt. Minimum 0.0.0 turns off the forced one. | No update prompt. On, the soft prompt can be dismissed; the forced one blocks the app until the store update. | Every replica within about 2 s (Redis stamp; full reload every 30 s). The app checks on cold start and on return to the foreground. |
+
+How to use the version policy in a rollback:
+
+- Keep the minimum at 0.0.0 until 5.0.0 has held for a few days. Never raise it
+  to 5.0.0 during the phased release.
+- Paused the rollout? Clear the latest version so 4.x users stop being sent to
+  the store. The App Store's phased release only paces automatic updates, so
+  anyone who taps the prompt gets 5.0.0 straight away.
+- Fixed in a new store build (5.0.1)? Once it's live, raise the minimum to it to
+  move everyone off the broken one. The server refuses a minimum above the
+  latest version.
+
+**OTA only (no switch).** These new 5.0.0 surfaces have no server switch. A bad
+one is fixed by an OTA once the runtime is recorded, or by a new store build:
+
+- Redesigned Home, Tickets and Profile; the bell and quiet hours.
+- The registration gate (name and the 18+ question) and the order summary layout.
+- Live polls, Q&A and quizzes on the ticket and in Manage event. An organiser can
+  simply not start one, but nothing turns them off platform-wide.
+- Offline door tools: the scanner and guest list offline, group check-in by
+  person, undo a scan.
+- The Get help and My help screens (the bot's answers switch off; the screens don't).
 
 ## What a phone does with an update
 
