@@ -6139,6 +6139,8 @@ model WegobeyondDoc {
 
 /// A "Join the crew" sign-up from wegobeyond.in, listed and exported in Apex ›
 /// WeGoBeyond › Crew sign-ups. Replaces the Google Sheet the site posted to.
+/// The form is built in Apex: answers to the long-standing questions have
+/// columns, every other answer is in `answers`, keyed by question id.
 model WegobeyondCrewSignup {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String   @db.Text
@@ -6151,6 +6153,7 @@ model WegobeyondCrewSignup {
   availability String[]
   experience   String   @default("") @db.Text
   links        String   @default("") @db.Text
+  answers      Json     @default("{}")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([createdAt])

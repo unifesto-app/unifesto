@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocEditor } from "@/components/wegobeyond/DocEditor";
+import { CrewFormBuilder } from "@/components/wegobeyond/CrewFormBuilder";
 import { getWegobeyondDoc, WEGOBEYOND_DOCS, type WegobeyondDoc, type WegobeyondDocName } from "@/lib/api/wegobeyond-api";
 
 /** Apex › WeGoBeyond › one site document (initiatives, gallery, team, press, crew, settings). */
@@ -30,7 +31,11 @@ export default function WegobeyondDocPage() {
       <PageHeader title={doc?.spec.title ?? "WeGoBeyond"} subtitle={doc?.spec.blurb} />
       {error && <ErrorNotice message={error} />}
       {doc ? (
-        <DocEditor key={doc.name} doc={doc} onSaved={setDoc} />
+        doc.name === "crew" ? (
+          <CrewFormBuilder doc={doc} onSaved={setDoc} />
+        ) : (
+          <DocEditor key={doc.name} doc={doc} onSaved={setDoc} />
+        )
       ) : (
         !error && <Skeleton className="h-64 w-full rounded-xl" />
       )}

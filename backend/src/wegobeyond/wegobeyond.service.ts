@@ -16,16 +16,16 @@ import {
   validateDoc,
   type DocName,
 } from './wegobeyond.schema';
+import {
+  COLUMN_FIELDS,
+  validateSubmission,
+  type CrewFormDef,
+} from './crew-form';
 
 /** The image types a gallery photo may be, read from its bytes. */
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-const strs = (v: unknown): string[] =>
-  Array.isArray(v)
-    ? v.filter((x): x is string => typeof x === 'string').map((s) => s.trim())
-    : [];
 
 /**
  * WeGoBeyond (wegobeyond.in) site content and crew sign-ups. The site reads the
@@ -121,66 +121,50 @@ export class WegobeyondService {
   }
 
   /**
-   * PUBLIC: a "Join the crew" sign-up. Ways to help, availability and role must
-   * be options from the crew document, so a crafted request can't store
-   * arbitrary values. Field errors come back as a 422 `message` map.
+   * PUBLIC: a "Join the crew" sign-up, checked against the form's current
+   * questions (validateSubmission: choices must be the question's own options,
+   * formats and lengths are capped). Field errors come back as a 422 `message`
+   * map keyed by question id. Answers to questions without their own column go
+   * in `answers`, keyed by question id.
    */
   async signUp(body: Record<string, unknown>) {
     // Honeypot: real people never see company_website. Accept bots so they don't
     // retry, and store nothing.
     if (str(body.company_website)) return { ok: true };
 
-    const crew = (await this.publicDoc('crew')) as {
-      teams: { name: string }[];
-      availability: string[];
-      roles: string[];
-    };
-    const teams = new Set(crew.teams.map((t) => t.name));
-    const availabilityOptions = new Set(crew.availability);
-    const roles = new Set(crew.roles);
-
-    const row = {
-      name: str(body.name),
-      email: str(body.email),
-      phone: str(body.phone),
-      city: str(body.city),
-      organization: str(body.organization),
-      role: str(body.role),
-      interests: strs(body.interests).filter((i) => teams.has(i)),
-      availability: strs(body.availability).filter((a) =>
-        availabilityOptions.has(a),
-      ),
-      experience: str(body.experience),
-      links: str(body.links),
-    };
-
-    const errors: Record<string, string> = {};
-    if (!row.name) errors.name = 'Name is required.';
-    else if (row.name.length > 120) errors.name = 'That name is too long.';
-    if (!row.email) errors.email = 'Email is required.';
-    else if (!EMAIL.test(row.email) || row.email.length > 254) {
-      errors.email = 'That email doesn’t look right.';
-    }
-    if (!row.phone) errors.phone = 'A contact number is required.';
-    else if (row.phone.length > 40) errors.phone = 'That number is too long.';
-    if (!row.city) errors.city = 'City is required.';
-    else if (row.city.length > 120) errors.city = 'That city name is too long.';
-    if (row.organization.length > 200)
-      errors.organization = 'Please keep this under 200 characters.';
-    if (row.role && !roles.has(row.role)) errors.role = 'Pick a valid role.';
-    if (row.interests.length === 0)
-      errors.interests = 'Pick at least one way you’d help.';
-    if (row.availability.length === 0)
-      errors.availability = 'Let us know when you can help.';
-    if (row.experience.length > 2000)
-      errors.experience = 'Please keep this under 2000 characters.';
-    if (row.links.length > 1000)
-      errors.links = 'Please keep this under 1000 characters.';
+    const form = (await this.publicDoc('crew')) as unknown as CrewFormDef;
+    const { errors, clean } = validateSubmission(form, body);
     if (body.consent !== true) errors.consent = 'Please agree to be contacted.';
-
     if (Object.keys(errors).length)
       throw new UnprocessableEntityException({ message: errors });
-    await this.prisma.wegobeyondCrewSignup.create({ data: row });
+
+    // A column question an admin re-typed (say, role as pick-any) still fits.
+    const one = (id: string) => {
+      const v = clean[id] ?? '';
+      return Array.isArray(v) ? v.join(', ') : v;
+    };
+    const many = (id: string) => {
+      const v = clean[id] ?? [];
+      return Array.isArray(v) ? v : v ? [v] : [];
+    };
+    const columns = new Set<string>(COLUMN_FIELDS);
+    await this.prisma.wegobeyondCrewSignup.create({
+      data: {
+        name: one('name'),
+        email: one('email'),
+        phone: one('phone'),
+        city: one('city'),
+        organization: one('organization'),
+        role: one('role'),
+        interests: many('interests'),
+        availability: many('availability'),
+        experience: one('experience'),
+        links: one('links'),
+        answers: Object.fromEntries(
+          Object.entries(clean).filter(([id]) => !columns.has(id)),
+        ),
+      },
+    });
     return { ok: true };
   }
 

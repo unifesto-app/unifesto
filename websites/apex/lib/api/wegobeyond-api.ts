@@ -48,6 +48,58 @@ export interface WegobeyondDoc {
   updatedAt: string;
 }
 
+/** The crew sign-up form (the `crew` document's `fields`); see the backend's crew-form.ts. */
+export type QuestionType =
+  | "short"
+  | "long"
+  | "email"
+  | "phone"
+  | "url"
+  | "number"
+  | "date"
+  | "choice"
+  | "multi"
+  | "yesno"
+  | "heading";
+export type QuestionWidth = "full" | "half" | "third";
+export type ChoiceDisplay = "dropdown" | "pills" | "tiles" | "list";
+
+export interface FormQuestion {
+  /** Stable answer key; locked once saved. */
+  id: string;
+  type: QuestionType;
+  label: string;
+  help: string;
+  placeholder: string;
+  required: boolean;
+  /** Choice / multi only: one per line, optional hint after " | ". */
+  options: string[];
+  width: QuestionWidth;
+  display: ChoiceDisplay;
+}
+
+export interface CrewForm {
+  intro: string;
+  consent: string;
+  submitLabel: string;
+  successTitle: string;
+  successBody: string;
+  fields: FormQuestion[];
+}
+
+/** Always asked (contact details): type and required are fixed, they can't be removed. */
+export const CORE_QUESTIONS = ["name", "email", "phone", "city"];
+/** Keys a sign-up uses for itself; no question may take one. */
+export const RESERVED_IDS = ["consent", "company_website", "timestamp", "event", "answers"];
+/** Answers with their own sign-up column; the rest are in `answers`. */
+export const COLUMN_FIELDS = ["name", "email", "phone", "city", "organization", "role", "interests", "availability", "experience", "links"];
+
+/** "Label | hint" → { label, hint }. The stored answer is always the label. */
+export function parseOption(line: string) {
+  const [label, ...rest] = line.split(" | ");
+  return { label: label.trim(), hint: rest.join(" | ").trim() };
+}
+
 export interface CrewSignup {
   id: string;
   name: string;
@@ -60,6 +112,8 @@ export interface CrewSignup {
   availability: string[];
   experience: string;
   links: string;
+  /** Answers to every other question, keyed by question id. */
+  answers: Record<string, string | string[]>;
   createdAt: string;
 }
 

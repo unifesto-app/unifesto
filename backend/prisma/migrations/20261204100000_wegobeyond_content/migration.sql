@@ -22,6 +22,7 @@ CREATE TABLE "wegobeyond_crew_signups" (
     "availability" TEXT[],
     "experience" TEXT NOT NULL DEFAULT '',
     "links" TEXT NOT NULL DEFAULT '',
+    "answers" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "wegobeyond_crew_signups_pkey" PRIMARY KEY ("id")
@@ -161,58 +162,140 @@ INSERT INTO "wegobeyond_docs" ("name", "data") VALUES
 ('crew', $json${
   "intro": "Volunteer, speak, mentor or host. It takes a couple of minutes, and we’ll reach out when there’s a room to run.",
   "consent": "I agree to be contacted by the WeGoBeyond team about joining the crew, and for my details to be stored to coordinate.",
-  "availability": [
-    "Weekends",
-    "Weekday evenings",
-    "Remote"
-  ],
-  "roles": [
-    "Student",
-    "Working professional",
-    "Founder",
-    "Freelancer",
-    "Other"
-  ],
-  "teams": [
+  "submitLabel": "Join the crew",
+  "successTitle": "You’re on the crew list.",
+  "successBody": "Thanks for signing up. We’ve recorded your details and the team will reach out over email when there’s a room to run.",
+  "fields": [
     {
-      "name": "Promotions & Marketing",
-      "blurb": "Campaigns, campus drives and posts."
+      "id": "name",
+      "type": "short",
+      "label": "Full name",
+      "help": "",
+      "placeholder": "",
+      "required": true,
+      "options": [],
+      "width": "third",
+      "display": "pills"
     },
     {
-      "name": "Campus & Community Outreach",
-      "blurb": "Bring colleges, clubs and communities in."
+      "id": "email",
+      "type": "email",
+      "label": "Email",
+      "help": "",
+      "placeholder": "",
+      "required": true,
+      "options": [],
+      "width": "third",
+      "display": "pills"
     },
     {
-      "name": "Registration & Check-in",
-      "blurb": "Front desk and first impressions."
+      "id": "phone",
+      "type": "phone",
+      "label": "Phone / WhatsApp",
+      "help": "",
+      "placeholder": "",
+      "required": true,
+      "options": [],
+      "width": "third",
+      "display": "pills"
     },
     {
-      "name": "Logistics & Operations",
-      "blurb": "Setup, supplies and keeping things moving."
+      "id": "city",
+      "type": "short",
+      "label": "City",
+      "help": "",
+      "placeholder": "",
+      "required": true,
+      "options": [],
+      "width": "third",
+      "display": "pills"
     },
     {
-      "name": "Speaking",
-      "blurb": "Give a talk or join a panel."
+      "id": "organization",
+      "type": "short",
+      "label": "College / Organisation",
+      "help": "",
+      "placeholder": "",
+      "required": false,
+      "options": [],
+      "width": "third",
+      "display": "pills"
     },
     {
-      "name": "Mentoring",
-      "blurb": "Help attendees and teams get unstuck."
+      "id": "role",
+      "type": "choice",
+      "label": "Current role",
+      "help": "",
+      "placeholder": "",
+      "required": false,
+      "options": [
+        "Student",
+        "Working professional",
+        "Founder",
+        "Freelancer",
+        "Other"
+      ],
+      "width": "third",
+      "display": "dropdown"
     },
     {
-      "name": "Social Media & Content",
-      "blurb": "Live coverage, stories and updates."
+      "id": "interests",
+      "type": "multi",
+      "label": "How would you like to help?",
+      "help": "Pick any.",
+      "placeholder": "",
+      "required": true,
+      "options": [
+        "Promotions & Marketing | Campaigns, campus drives and posts.",
+        "Campus & Community Outreach | Bring colleges, clubs and communities in.",
+        "Registration & Check-in | Front desk and first impressions.",
+        "Logistics & Operations | Setup, supplies and keeping things moving.",
+        "Speaking | Give a talk or join a panel.",
+        "Mentoring | Help attendees and teams get unstuck.",
+        "Social Media & Content | Live coverage, stories and updates.",
+        "Photography & Video | Capture the room on camera.",
+        "Design | Posters, signage and graphics.",
+        "Hosting & Emcee | Run the stage and keep the energy up."
+      ],
+      "width": "full",
+      "display": "tiles"
     },
     {
-      "name": "Photography & Video",
-      "blurb": "Capture the room on camera."
+      "id": "availability",
+      "type": "multi",
+      "label": "When can you help?",
+      "help": "Pick any.",
+      "placeholder": "",
+      "required": true,
+      "options": [
+        "Weekends",
+        "Weekday evenings",
+        "Remote"
+      ],
+      "width": "full",
+      "display": "pills"
     },
     {
-      "name": "Design",
-      "blurb": "Posters, signage and graphics."
+      "id": "experience",
+      "type": "long",
+      "label": "Anything we should know?",
+      "help": "",
+      "placeholder": "Past events, what you’d like to talk about, or what you’re hoping to get out of it.",
+      "required": false,
+      "options": [],
+      "width": "full",
+      "display": "pills"
     },
     {
-      "name": "Hosting & Emcee",
-      "blurb": "Run the stage and keep the energy up."
+      "id": "links",
+      "type": "url",
+      "label": "Portfolio / LinkedIn / GitHub",
+      "help": "",
+      "placeholder": "https://",
+      "required": false,
+      "options": [],
+      "width": "full",
+      "display": "pills"
     }
   ]
 }$json$::jsonb),

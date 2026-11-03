@@ -31,6 +31,35 @@ const blank = (fields: Field[]): DocData =>
  */
 export function DocEditor({ doc, onSaved }: { doc: WegobeyondDoc; onSaved: (doc: WegobeyondDoc) => void }) {
   const { spec } = doc;
+  const draft = useDocDraft(doc, onSaved);
+  const { data, change } = draft;
+
+  return (
+    <div className="space-y-10 pb-4">
+      {spec.fields.length > 0 && (
+        <div className="grid gap-5 md:grid-cols-2">
+          {spec.fields.map((f) => (
+            <FieldInput key={f.key} field={f} value={data[f.key]} onChange={(v) => change({ ...data, [f.key]: v })} />
+          ))}
+        </div>
+      )}
+
+      {spec.lists.map((list) => (
+        <ListEditor
+          key={list.key}
+          spec={list}
+          items={(data[list.key] as DocData[]) ?? []}
+          onChange={(items) => change({ ...data, [list.key]: items })}
+        />
+      ))}
+
+      <SaveBar draft={draft} />
+    </div>
+  );
+}
+
+/** A document being edited: its working copy, and a save that names the loaded version. */
+export function useDocDraft(doc: WegobeyondDoc, onSaved: (doc: WegobeyondDoc) => void) {
   const [data, setData] = useState<DocData>(doc.data);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -58,41 +87,27 @@ export function DocEditor({ doc, onSaved }: { doc: WegobeyondDoc; onSaved: (doc:
     }
   };
 
+  return { data, change, save, saving, dirty, status };
+}
+
+export function SaveBar({ draft }: { draft: ReturnType<typeof useDocDraft> }) {
+  const { status, dirty, saving, save } = draft;
   return (
-    <div className="space-y-10 pb-4">
-      {spec.fields.length > 0 && (
-        <div className="grid gap-5 md:grid-cols-2">
-          {spec.fields.map((f) => (
-            <FieldInput key={f.key} field={f} value={data[f.key]} onChange={(v) => change({ ...data, [f.key]: v })} />
-          ))}
-        </div>
-      )}
-
-      {spec.lists.map((list) => (
-        <ListEditor
-          key={list.key}
-          spec={list}
-          items={(data[list.key] as DocData[]) ?? []}
-          onChange={(items) => change({ ...data, [list.key]: items })}
-        />
-      ))}
-
-      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 text-sm" role="status" aria-live="polite">
-          {status && !status.ok ? (
-            <ul className="space-y-1 text-destructive">
-              {status.messages.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">{status?.messages[0] ?? (dirty ? "Unsaved changes." : "All changes saved.")}</p>
-          )}
-        </div>
-        <Button onClick={() => void save()} disabled={!dirty || saving} className="shrink-0">
-          {saving ? "Saving…" : "Save changes"}
-        </Button>
+    <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-md sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 text-sm" role="status" aria-live="polite">
+        {status && !status.ok ? (
+          <ul className="space-y-1 text-destructive">
+            {status.messages.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">{status?.messages[0] ?? (dirty ? "Unsaved changes." : "All changes saved.")}</p>
+        )}
       </div>
+      <Button onClick={() => void save()} disabled={!dirty || saving} className="shrink-0">
+        {saving ? "Saving…" : "Save changes"}
+      </Button>
     </div>
   );
 }
@@ -183,7 +198,7 @@ function ListEditor({ spec, items, onChange }: { spec: ListSpec; items: DocData[
   );
 }
 
-function FieldInput({ field, value, onChange }: { field: Field; value: unknown; onChange: (v: unknown) => void }) {
+export function FieldInput({ field, value, onChange }: { field: Field; value: unknown; onChange: (v: unknown) => void }) {
   const id = useId();
   const wide = field.kind === "textarea" || field.kind === "lines" || field.kind === "image";
   const text = typeof value === "string" ? value : "";

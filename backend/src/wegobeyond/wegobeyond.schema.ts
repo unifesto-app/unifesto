@@ -5,6 +5,8 @@
  * reaches wegobeyond_docs without passing validateDoc.
  */
 
+import { cleanFormFields } from './crew-form';
+
 export type FieldKind =
   | 'text'
   | 'textarea'
@@ -258,7 +260,8 @@ export const DOCS: Record<DocName, DocSpec> = {
   crew: {
     title: 'Crew form',
     blurb:
-      'The Join the crew page and its sign-up form. The form and the sign-up check both follow these options.',
+      'The Join the crew page and its sign-up form: page text, then the questions in order. Every sign-up is checked against these questions.',
+    // The questions (`fields`) have their own shape and checks: crew-form.ts.
     fields: [
       {
         key: 'intro',
@@ -275,40 +278,28 @@ export const DOCS: Record<DocName, DocSpec> = {
         max: 300,
       },
       {
-        key: 'availability',
-        label: 'When can you help? (options)',
-        kind: 'lines',
+        key: 'submitLabel',
+        label: 'Submit button',
+        kind: 'text',
         required: true,
-        hint: 'One option per line.',
+        max: 300,
       },
       {
-        key: 'roles',
-        label: 'Current role (options)',
-        kind: 'lines',
+        key: 'successTitle',
+        label: 'After sending: title',
+        kind: 'text',
         required: true,
-        hint: 'One option per line.',
+        max: 300,
       },
-    ],
-    lists: [
       {
-        key: 'teams',
-        title: 'Ways to help',
-        itemLabel: 'way to help',
-        titleKey: 'name',
-        unique: 'name',
-        max: 30,
-        fields: [
-          { key: 'name', label: 'Name', kind: 'text', required: true, max: 60 },
-          {
-            key: 'blurb',
-            label: 'One line',
-            kind: 'text',
-            required: true,
-            max: 100,
-          },
-        ],
+        key: 'successBody',
+        label: 'After sending: text',
+        kind: 'textarea',
+        required: true,
+        max: 300,
       },
     ],
+    lists: [],
   },
   settings: {
     title: 'Site settings',
@@ -520,6 +511,8 @@ export function validateDoc(
     }
     value[list.key] = cleaned;
   }
+
+  if (name === 'crew') value.fields = cleanFormFields(obj.fields, errors);
 
   return errors.length ? { ok: false, errors } : { ok: true, value };
 }

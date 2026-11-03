@@ -21,11 +21,16 @@ const SEED = Object.fromEntries(
   ].map(([, name, json]) => [name, JSON.parse(json)]),
 ) as Record<DocName, any>;
 
-function build() {
+function build(data: Partial<Record<DocName, any>> = {}) {
   const docs = new Map<string, any>(
     DOC_NAMES.map((name) => [
       name,
-      { name, data: SEED[name], version: 1, updatedAt: new Date() },
+      {
+        name,
+        data: data[name] ?? SEED[name],
+        version: 1,
+        updatedAt: new Date(),
+      },
     ]),
   );
   const signups: any[] = [];
@@ -272,5 +277,142 @@ describe('WegobeyondService', () => {
       ).resolves.toEqual({ ok: true });
       expect(signups).toHaveLength(0);
     });
+
+    it('keeps answers to built questions in `answers`, checked by type', async () => {
+      const crew = {
+        ...SEED.crew,
+        fields: [
+          ...SEED.crew.fields,
+          q({
+            id: 'tshirt',
+            type: 'choice',
+            label: 'T-shirt',
+            options: ['S', 'M | Medium', 'L'],
+          }),
+          q({
+            id: 'first-time',
+            type: 'yesno',
+            label: 'First time?',
+            required: true,
+          }),
+          q({ id: 'age', type: 'number', label: 'Age' }),
+          q({ id: 'about', type: 'heading', label: 'A bit more' }),
+        ],
+      };
+      const { service, signups } = build({ crew });
+      await service.signUp({
+        ...form,
+        tshirt: 'M',
+        'first-time': 'Yes',
+        age: '',
+      });
+      expect(signups[0].answers).toEqual({
+        tshirt: 'M',
+        'first-time': 'Yes',
+        age: '',
+      });
+
+      const err = await service
+        .signUp({ ...form, tshirt: 'XXL', 'first-time': 'Maybe', age: 'ten' })
+        .catch((e) => e);
+      expect(err.getResponse().message).toEqual({
+        tshirt: 'Pick one of the options.',
+        'first-time': 'Pick yes or no.',
+        age: 'Use a number.',
+      });
+    });
+  });
+});
+
+/** A question with the defaults the builder fills in. */
+const q = (f: Record<string, unknown>) => ({
+  help: '',
+  placeholder: '',
+  required: false,
+  options: [],
+  width: 'full',
+  display: 'pills',
+  ...f,
+});
+
+describe('crew form definition', () => {
+  const save = (fields: unknown[]) =>
+    validateDoc('crew', { ...SEED.crew, fields });
+  const errorsFor = (fields: unknown[]) => {
+    const r = save(fields);
+    return r.ok ? [] : r.errors;
+  };
+  const core = () => SEED.crew.fields.slice(0, 4);
+
+  it('keeps the four contact questions, their types and required', () => {
+    expect(save(core()).ok).toBe(true);
+    expect(errorsFor(core().slice(1)).join()).toContain('"name" question');
+    expect(
+      errorsFor([{ ...core()[0], type: 'long' }, ...core().slice(1)]).join(),
+    ).toContain('must stay a short question');
+    expect(
+      errorsFor([{ ...core()[0], required: false }, ...core().slice(1)]).join(),
+    ).toContain('must stay required');
+  });
+
+  it('refuses bad, reserved or repeated answer keys', () => {
+    const add = (f: Record<string, unknown>) =>
+      errorsFor([...core(), q({ label: 'X', type: 'short', ...f })]).join();
+    expect(add({ id: 'Not A Key' })).toContain('lowercase letters');
+    expect(add({ id: 'consent' })).toContain('reserved');
+    expect(add({ id: 'email' })).toContain('used twice');
+  });
+
+  it('needs options for choices, each label once, within the caps', () => {
+    const add = (f: Record<string, unknown>) =>
+      errorsFor([...core(), q({ id: 'x', label: 'X', ...f })]).join();
+    expect(add({ type: 'choice', options: [] })).toContain(
+      'at least one option',
+    );
+    expect(add({ type: 'multi', options: ['A | one', 'A | two'] })).toContain(
+      'same option twice',
+    );
+    expect(add({ type: 'multi', options: [`${'a'.repeat(201)}`] })).toContain(
+      'over 200',
+    );
+    expect(add({ type: 'colour' })).toContain('question type');
+    expect(add({ type: 'short', width: 'wide' })).toContain('width');
+    expect(add({ type: 'short', label: 'x'.repeat(121) })).toContain(
+      'label is over 120',
+    );
+    const many = Array.from({ length: 37 }, (_, i) =>
+      q({ id: `q${i}`, label: `Q${i}`, type: 'short' }),
+    );
+    expect(errorsFor([...core(), ...many]).join()).toContain('more than 40');
+  });
+
+  it('normalises: no dropdown for pick-any, headings never required, options only on choices', () => {
+    const r = save([
+      ...core(),
+      q({
+        id: 'a',
+        type: 'multi',
+        label: 'A',
+        options: [' One ', '', 'Two'],
+        display: 'dropdown',
+        extra: 1,
+      }),
+      q({ id: 'b', type: 'heading', label: 'B', required: true }),
+      q({ id: 'c', type: 'short', label: 'C', options: ['stray'] }),
+    ]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [a, b, c] = (r.value.fields as any[]).slice(4);
+    expect(a).toEqual(
+      q({
+        id: 'a',
+        type: 'multi',
+        label: 'A',
+        options: ['One', 'Two'],
+        display: 'pills',
+      }),
+    );
+    expect(b.required).toBe(false);
+    expect(c.options).toEqual([]);
   });
 });

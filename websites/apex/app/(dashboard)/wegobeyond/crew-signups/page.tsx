@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DownloadSimple, UserPlus } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -8,28 +8,60 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadCsv } from "@/lib/utils/csv";
-import { listCrewSignups, type CrewSignup } from "@/lib/api/wegobeyond-api";
+import { COLUMN_FIELDS, getWegobeyondDoc, listCrewSignups, type CrewForm, type CrewSignup } from "@/lib/api/wegobeyond-api";
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 
-/** Apex › WeGoBeyond › Crew sign-ups: everyone who filled in wegobeyond.in's Join the crew form. */
+const show = (v: string | string[] | undefined) => (Array.isArray(v) ? v.join(", ") : (v ?? ""));
+
+/**
+ * Apex › WeGoBeyond › Crew sign-ups: everyone who filled in wegobeyond.in's Join
+ * the crew form. Built questions get a column each, headed by their current
+ * label; answers to questions since removed show under their answer key.
+ */
 export default function CrewSignupsPage() {
   const [rows, setRows] = useState<CrewSignup[] | null>(null);
+  const [form, setForm] = useState<CrewForm | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void listCrewSignups().then(({ data, error }) => {
-      if (data) setRows(data);
-      else setError(error?.message ?? "Couldn't load sign-ups.");
+    void Promise.all([listCrewSignups(), getWegobeyondDoc("crew")]).then(([signups, crew]) => {
+      if (signups.data && crew.data) {
+        setRows(signups.data);
+        setForm(crew.data.data as unknown as CrewForm);
+      } else setError((signups.error ?? crew.error)?.message ?? "Couldn't load sign-ups.");
     });
   }, []);
+
+  const extra = useMemo(() => {
+    if (!rows || !form) return [];
+    const current = form.fields
+      .filter((f) => f.type !== "heading" && !COLUMN_FIELDS.includes(f.id))
+      .map((f) => ({ id: f.id, header: f.label }));
+    const known = new Set(current.map((c) => c.id));
+    const gone = [...new Set(rows.flatMap((r) => Object.keys(r.answers ?? {})))].filter((id) => !known.has(id));
+    return [...current, ...gone.map((id) => ({ id, header: id }))];
+  }, [rows, form]);
 
   const exportCsv = () =>
     rows &&
     downloadCsv(
       `wegobeyond-crew-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Signed up", "Name", "Email", "Phone", "City", "Organisation", "Role", "Ways to help", "Availability", "Experience", "Links"],
+      [
+        "Signed up",
+        "Name",
+        "Email",
+        "Phone",
+        "City",
+        "Organisation",
+        "Role",
+        "Ways to help",
+        "Availability",
+        "Experience",
+        "Links",
+        ...extra.map((c) => c.header),
+      ],
       rows.map((r) => [
         r.createdAt,
         r.name,
@@ -42,6 +74,7 @@ export default function CrewSignupsPage() {
         r.availability.join(", "),
         r.experience,
         r.links,
+        ...extra.map((c) => show(r.answers?.[c.id])),
       ])
     );
 
@@ -74,6 +107,11 @@ export default function CrewSignupsPage() {
                 <th className="px-3 py-2">Ways to help</th>
                 <th className="px-3 py-2">Availability</th>
                 <th className="px-3 py-2">Experience and links</th>
+                {extra.map((c) => (
+                  <th key={c.id} className="px-3 py-2">
+                    {c.header}
+                  </th>
+                ))}
                 <th className="px-3 py-2">Signed up</th>
               </tr>
             </thead>
@@ -99,6 +137,11 @@ export default function CrewSignupsPage() {
                     {r.links && <p className="mt-1 break-all">{r.links}</p>}
                     {!r.experience && !r.links && "—"}
                   </td>
+                  {extra.map((c) => (
+                    <td key={c.id} className="max-w-xs px-3 py-2">
+                      <p className="line-clamp-3 whitespace-pre-line">{show(r.answers?.[c.id]) || "—"}</p>
+                    </td>
+                  ))}
                   <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{when(r.createdAt)}</td>
                 </tr>
               ))}
