@@ -1075,7 +1075,9 @@ model UserRole {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  // Constraints
+  // Constraints. The unique is NULLS NOT DISTINCT in the database (T12,
+  // 20261203120000), which Prisma can't express: one row per grant even when
+  // spaceId/eventId are null.
   @@unique([userId, roleId, spaceId, eventId], name: "unique_user_role_scope")
   @@index([roleId])
   @@index([spaceId])

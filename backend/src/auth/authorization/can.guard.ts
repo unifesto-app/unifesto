@@ -28,11 +28,12 @@ export class CanGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const action = this.reflector.getAllAndOverride<Action | undefined>(
+    const action = this.reflector.getAllAndOverride<Action | readonly Action[] | undefined>(
       CAN_ACTION_KEY,
       [context.getHandler(), context.getClass()],
     );
     if (!action) return true; // no @Can() on this route
+    const actions: readonly Action[] = typeof action === 'string' ? [action] : action;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
@@ -44,23 +45,32 @@ export class CanGuard implements CanActivate {
         context.getClass(),
       ]) ?? {};
 
-    const resource = this.locateResource(request, action, locator);
-    await this.authz.assertCan(user, action, resource);
-    return true;
+    for (const a of actions) {
+      if (await this.authz.can(user, a, await this.locateResource(request, a, locator))) {
+        return true;
+      }
+    }
+    throw new ForbiddenException(
+      `You do not have permission to ${actions.join(' or ')} this resource`,
+    );
   }
 
   /** Pull the spaceId / eventId the action needs off the request. */
-  private locateResource(
+  private async locateResource(
     request: any,
     action: Action,
     locator: CanLocator,
-  ): AuthResource {
+  ): Promise<AuthResource> {
     const scope = ACTION_SCOPE[action];
     const bag = request[locator.source ?? 'params'] ?? {};
 
     if (scope === RoleScope.SPACE) {
       const key = locator.spaceKey;
-      return { spaceId: key ? bag[key] : (bag.spaceId ?? bag.id) };
+      const spaceId = key ? bag[key] : (bag.spaceId ?? bag.id);
+      const eventId = bag[locator.eventKey ?? 'eventId'];
+      if (spaceId || !eventId) return { spaceId };
+      // An event route asking a SPACE action: the event's owning space.
+      return { spaceId: (await this.authz.resolveEventSpace(eventId)) ?? undefined };
     }
     if (scope === RoleScope.EVENT) {
       const key = locator.eventKey;
