@@ -319,7 +319,12 @@ export class AuthorizationService {
       where: { userId },
       include: { role: true },
     });
-    return rows.map((r) => ({
+    // A platform role (ADMIN, EMPLOYEE) counts only on a platform row (T12),
+    // the same rule RolesGuard applies.
+    const held = rows.filter(
+      (r) => r.role.scope !== RoleScope.PLATFORM || (!r.spaceId && !r.eventId),
+    );
+    return held.map((r) => ({
       code: r.role.code,
       scope: r.role.scope,
       spaceId: r.spaceId,
@@ -334,7 +339,8 @@ export class AuthorizationService {
     });
   }
 
-  private async resolveEventSpace(eventId: string): Promise<string | null> {
+  /** The event's owning space (null if there is no such event). */
+  async resolveEventSpace(eventId: string): Promise<string | null> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { spaceId: true },

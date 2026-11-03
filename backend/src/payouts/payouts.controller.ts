@@ -5,12 +5,17 @@ import {
 import { PayoutsService } from './payouts.service';
 import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, RevokeBankAccountDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Action, Can, CanGuard } from '../auth/authorization';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
 
-@UseGuards(JwtAuthGuard)
+/** D9: an event's money is its Curator's or its owning space's Space Admins'. */
+const EVENT_MONEY = [Action.EVENT_MANAGE_MONEY, Action.SPACE_MANAGE_MONEY] as const;
+
+// CanGuard only acts on routes with @Can (T12: on top of the service checks).
+@UseGuards(JwtAuthGuard, CanGuard)
 @Controller('payouts')
 export class PayoutsController {
   constructor(private readonly payoutsService: PayoutsService) {}
@@ -42,6 +47,7 @@ export class PayoutsController {
   }
 
   @Get('event/:eventId/summary')
+  @Can(EVENT_MONEY)
   async getEventPayoutSummary(@Request() req, @Param('eventId') eventId: string) {
     return this.payoutsService.getPayoutSummary({ eventId }, req.user.id);
   }
@@ -58,24 +64,28 @@ export class PayoutsController {
 
   /** Every payout for a space's events (space admins only, not just own). */
   @Get('space/:spaceId')
+  @Can(Action.SPACE_MANAGE_MONEY)
   async getSpacePayouts(@Request() req, @Param('spaceId') spaceId: string) {
     return this.payoutsService.getSpacePayouts(req.user.id, spaceId);
   }
 
   /** Cash-accurate financials roll-up for one space (space admins only). */
   @Get('space/:spaceId/financials')
+  @Can(Action.SPACE_MANAGE_MONEY)
   async getSpaceFinancials(@Request() req, @Param('spaceId') spaceId: string) {
     return this.payoutsService.getSpaceFinancials(req.user.id, spaceId);
   }
 
   /** Accounts this event's payout may be routed to (own + other Space Admins'). */
   @Get('event/:eventId/eligible-accounts')
+  @Can(EVENT_MONEY)
   async getEligibleAccounts(@Request() req, @Param('eventId') eventId: string) {
     return this.payoutsService.getEligibleAccounts({ eventId }, req.user.id);
   }
 
   /** Set (or clear, with bankAccountId: null) the event's default payout account. */
   @Patch('event/:eventId/payout-account')
+  @Can(EVENT_MONEY)
   async setEventPayoutAccount(
     @Request() req,
     @Param('eventId') eventId: string,
@@ -89,6 +99,7 @@ export class PayoutsController {
   }
 
   @Post('request')
+  @Can(EVENT_MONEY, { source: 'body' })
   async requestPayout(
     @Request() req,
     @Body() body: RequestPayoutDto,

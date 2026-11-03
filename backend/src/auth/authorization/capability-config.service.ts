@@ -18,10 +18,7 @@ import { CAPABILITIES } from './capabilities';
  *
  * Only the current vocabulary is listed. The legacy codes
  * (ORGANISER / CO_ORGANISER / VOLUNTEER) are intentionally absent: the P2.2
- * backfill retired them, so surfacing them as editable rows would only be
- * confusing. Their compiled shims in capabilities.ts still keep any stray
- * un-migrated assignment working — authorization reads the capability cache,
- * not this catalogue — but they are no longer managed from the console.
+ * backfill retired them and no role row or assignment uses them any more.
  *
  * ADMIN is present only so the console can *explain* platform-admin power; its
  * grants come from the inheritance rule in AuthorizationService, never from this

@@ -1353,8 +1353,8 @@ export class AdminService {
 
   /**
    * Make a user an Employee (platform-scoped, spaceId/eventId null) or remove it.
-   * findFirst before create: the user_roles unique treats NULL scope ids as
-   * distinct, so a plain create could stack duplicate rows (T12).
+   * findFirst before create keeps it idempotent: the user_roles unique is
+   * NULLS NOT DISTINCT (T12), so a second plain create would throw.
    */
   async setEmployee(userId: string, enabled: boolean, adminId: string) {
     const [user, role] = await Promise.all([

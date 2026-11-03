@@ -34,9 +34,10 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Fetch user roles from database
+    // Platform rows only (T12): every @Roles() route names a platform role
+    // (ADMIN), and a role row tied to a space or event must not unlock them.
     const userRoles = await this.prisma.userRole.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, spaceId: null, eventId: null },
       include: {
         role: true,
       },
