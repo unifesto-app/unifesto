@@ -291,7 +291,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | A32 | **Add UTR, payer record and notices to manual payouts.** Manual payouts (RazorpayX was removed) lack basics. | done (#341) |
 | A33 | **Organisers can absorb the buyer fee, per event.** "Include the fee in my ticket price": the buyer pays the listed price and the fee comes out of the organiser's share (₹500 → base ₹476.19). Refunds stay base-only. After A31; mobile parts before the 20 Nov freeze (D11) | done (#215), live 19 Oct; mobile part must merge before the 20 Nov freeze |
 | A34 | **Cap the buyer fee at ₹99 per ticket.** min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; applies above a ₹1,980 ticket (D11) | done (#202), live 19 Oct |
-| A35 | **Keep the mobile a curator types for imported and manually added attendees.** New accounts get a placeholder mobile and the typed one is dropped, so lists, exports and WhatsApp use a fake number. Store it on the registration and prefer it where the account mobile is a placeholder; never make it the account mobile. Split from A27 | planned |
+| A35 | **Keep the mobile a curator types for imported and manually added attendees.** New accounts get a placeholder mobile and the typed one is dropped, so lists, exports and WhatsApp use a fake number. Store it on the registration and prefer it where the account mobile is a placeholder; never make it the account mobile. Split from A27 | in review (#589) |
 
 ### B · Operator productivity
 
@@ -1136,3 +1136,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-03** · T12 follow-up: the attendee list leaves out payment ids, amounts, fees and refund figures for callers without event or space money (D9), and the transactions tiles route gets the D9 any-of @Can (#586)
 - **2026-11-03** · WhatsApp group invite now reaches manual adds and imports, sends on link save, is in the confirmation email, and send-to-all is on every plan; dead public/community link code removed (#587)
 - **2026-11-03** · the publish fan-out email and Apex WhatsApp broadcasts now actually queue in BullMQ (their jobIds had a ':', which BullMQ refuses, so both always ran inline), and the stale-broadcast sweep works for the first time (#588)
+- **2026-11-03** · A35 curator-typed attendee mobile kept on the registration (attendee_mobile); list, detail, export and WhatsApp use it over a +0 placeholder; bad import mobiles are row warnings (#589)
