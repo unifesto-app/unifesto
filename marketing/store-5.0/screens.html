@@ -4,46 +4,7 @@
 <meta charset="utf-8">
 <title>Unifesto 5.0 store screenshots</title>
 <link rel="stylesheet" href="app.css">
-<style>
-/* ---------- the store frame: Horizon sky, a caption, the app on a device ---------- */
-@font-face { font-family: "DM Sans"; font-weight: 500; src: url("../../mobile/assets/fonts/dm-sans/static/dm-sans-latin-500-normal.ttf"); }
-@font-face { font-family: "Hanken Grotesk"; font-weight: 100 900; src: url("../brand-2026/HankenGrotesk.ttf"); }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: #000; }
-body { font-family: "Hanken Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-
-.page { position: relative; overflow: hidden; background: #000; width: var(--w); height: var(--h); }
-.page > * { position: absolute; }
-
-/* sky: two layers of 1 px stars, two orbit hairlines, Horizon blue rising from the bottom right, grain */
-.stars, .stars-far { inset: 0; background-size: 380px 380px; background-image:
-  radial-gradient(1.3px 1.3px at 12% 18%, rgb(255 255 255 / .6), transparent 60%),
-  radial-gradient(1.1px 1.1px at 68% 8%, rgb(255 255 255 / .5), transparent 60%),
-  radial-gradient(1.5px 1.5px at 82% 42%, rgb(255 255 255 / .45), transparent 60%),
-  radial-gradient(1.1px 1.1px at 34% 52%, rgb(255 255 255 / .3), transparent 60%),
-  radial-gradient(1.1px 1.1px at 54% 28%, rgb(255 255 255 / .4), transparent 60%),
-  radial-gradient(1.1px 1.1px at 22% 80%, rgb(255 255 255 / .22), transparent 60%); }
-.stars-far { background-size: 230px 230px; background-position: 60px 40px; opacity: .45; }
-.orbit { border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .07); }
-.orbit.a { width: 150%; aspect-ratio: 1; top: -62%; right: -78%; }
-.orbit.b { width: 190%; aspect-ratio: 1.6; left: -70%; bottom: -34%; transform: rotate(-8deg); }
-.glow { inset: 0; background:
-  radial-gradient(70% 38% at 100% 100%, rgb(77 141 255 / .42), transparent 72%),
-  radial-gradient(120% 16% at 50% 104%, rgb(77 141 255 / .22), transparent 70%); }
-.edge { inset: 0 calc(var(--w) * .028); box-shadow: inset 1.5px 0 rgb(255 255 255 / .05), inset -1.5px 0 rgb(255 255 255 / .05); }
-.grain { inset: 0; opacity: .12; mix-blend-mode: overlay; background-size: 256px 256px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E"); }
-
-/* caption: DM Sans 500, silver, the second clause dimmed. No caps. */
-.cap { left: var(--pad); right: var(--pad); top: var(--cap-top); font-family: "DM Sans"; font-weight: 500; font-size: var(--cap); line-height: 1.06;
-  letter-spacing: -0.035em; color: #ececee; text-wrap: balance; }
-.cap em { font-style: normal; color: rgb(255 255 255 / .5); }
-
-/* device: a plain dark bezel; the app is laid out in iPhone points and scaled to fit */
-.device { left: 50%; top: var(--dev-top); transform: translateX(-50%); padding: var(--bezel); border-radius: var(--dev-r); background: #0d0d0f;
-  box-shadow: 0 0 0 2px rgb(255 255 255 / .14), inset 0 0 0 1.5px rgb(255 255 255 / .06), 0 60px 140px rgb(0 0 0 / .85); }
-.screen { position: relative; overflow: hidden; width: calc(var(--pt-w) * var(--k) * 1px); height: calc(var(--pt-h) * var(--k) * 1px); border-radius: calc(var(--dev-r) - var(--bezel)); }
-.screen > .app { position: absolute; top: 0; left: 0; width: calc(var(--pt-w) * 1px); height: calc(var(--pt-h) * 1px); transform: scale(var(--k)); transform-origin: 0 0; }
-</style>
+<link rel="stylesheet" href="frame.css">
 </head>
 <body>
 <script src="glyphs.js"></script>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto 5.0 launch posts</title>
+<link rel="stylesheet" href="../store-5.0/app.css">
+<link rel="stylesheet" href="../store-5.0/frame.css">
+<style>
+/* launch posts: the store frame's Horizon sky, with a horizon line the phones rise from */
+.page { break-after: page; }
+.horizon { left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .2) 22%, rgb(255 255 255 / .75) 50%, rgb(255 255 255 / .2) 78%, transparent); }
+.bloom { left: 0; right: 0; height: 22%; background: radial-gradient(50% 50% at 50% 50%, rgb(255 255 255 / .07), transparent 70%); transform: translateY(-50%); }
+.wm { height: var(--wm, 34px); }
+.head { font-family: "DM Sans"; font-weight: 500; line-height: 1; letter-spacing: -0.045em; color: #ececee; }
+.head em, .line em { font-style: normal; color: rgb(255 255 255 / .5); }
+.line { font-family: "DM Sans"; font-weight: 500; line-height: 1.12; letter-spacing: -0.03em; color: #ececee; text-wrap: balance; }
+.note { font-weight: 500; color: rgb(255 255 255 / .62); letter-spacing: -0.01em; }
+.list { display: flex; flex-direction: column; gap: .55em; font-weight: 500; color: #ececee; }
+.list span { display: flex; gap: .6em; align-items: baseline; }
+.app .shade.ivory { background: #22201b; }
+.app .shade.ivory > .shapes { background: linear-gradient(135deg, transparent 40%, #f7f0e0 60%, transparent 80%), radial-gradient(34% 34% at 86% 86%, #9a7444, transparent 72%); }
+.list span::before { content: ""; width: .32em; height: .32em; border-radius: 50%; background: #90e4c1; flex: none; transform: translateY(-.12em); }
+</style>
+</head>
+<body>
+<script src="../store-5.0/glyphs.js"></script>
+<script src="../store-5.0/qr.js"></script>
+<script src="../store-5.0/app.js"></script>
+<script>
+const WM = '../brand-2026/png/wordmark-silver-2400.png';
+const dim = (s) => s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+/* a phone with the app screen in it; x is its centre, y its top */
+const phone = (id, k, x, y, dim = 1) => `<div class="device" style="left:${x}px;top:${y}px;transform:translateX(-50%);--bezel:${Math.round(14 * k)}px;--dev-r:${Math.round(68 * k)}px;filter:brightness(${dim})">
+  <div class="screen" style="--pt-w:440;--pt-h:956;--k:${k}"><div class="app">${App.render(id, 'iphone')}</div></div></div>`;
+const sky = (horizon) => `<div class="stars"></div><div class="stars-far"></div><div class="orbit a"></div><div class="orbit b"></div><div class="glow"></div>
+  <div class="bloom" style="top:${horizon}%"></div><div class="horizon" style="top:${horizon}%"></div><div class="edge"></div>`;
+const page = (w, h, inner) => {
+  const el = document.createElement('section');
+  el.className = 'page';
+  el.style.cssText = `--w:${w}px;--h:${h}px;background:#0a0a0b`;
+  el.innerHTML = inner + '<div class="grain"></div>';
+  return el;
+};
+
+/* ---------- the pieces ---------- */
+const cover = () => page(1080, 1350, `${sky(70)}
+  <img class="wm" src="${WM}" style="left:84px;top:96px;--wm:32px">
+  <div class="head" style="left:80px;top:196px;font-size:170px">5.0 is here.</div>
+  <div class="line" style="left:84px;top:400px;font-size:58px">Book events, <em>run them live.</em></div>
+  ${phone('home', 1.32, 540, 560)}`);
+
+const square = () => page(1080, 1080, `${sky(74)}
+  <img class="wm" src="${WM}" style="left:80px;top:84px;--wm:28px">
+  <div class="head" style="left:76px;top:160px;font-size:112px">Unifesto <em>5.0</em></div>
+  <div class="list" style="left:80px;top:320px;font-size:34px">
+    <span>Live polls, Q&amp;A and quizzes</span><span>Check-in that works offline</span><span>A fresh look, top to bottom</span></div>
+  ${phone('ticket', 1.02, 395, 560, 0.75)}${phone('live', 1.1, 720, 500)}`);
+
+const story = () => page(1080, 1920, `${sky(66)}
+  <img class="wm" src="${WM}" style="left:50%;top:300px;--wm:34px;transform:translateX(-50%)">
+  <div class="head" style="left:0;right:0;top:380px;font-size:150px;text-align:center">5.0 is here.</div>
+  <div class="line" style="left:0;right:0;top:560px;font-size:54px;text-align:center">Polls, Q&amp;A and quizzes, <em>live.</em></div>
+  ${phone('live', 1.42, 540, 720)}
+  <div style="left:0;right:0;top:1300px;bottom:0;background:linear-gradient(rgb(10 10 11 / 0), #0a0a0b 46%)"></div>
+  <div class="line" style="left:0;right:0;top:1590px;font-size:50px;text-align:center">Update now</div>
+  <div class="note" style="left:0;right:0;top:1662px;font-size:30px;text-align:center">Free on the App Store and Google Play</div>`);
+
+/* carousel: the cover, five features, the update card (1080x1350) */
+const feature = (id, head, sub) => () => page(1080, 1350, `${sky(76)}
+  <img class="wm" src="${WM}" style="left:84px;top:96px;--wm:28px">
+  <div class="line" style="left:80px;right:80px;top:170px;font-size:92px;line-height:1.02;letter-spacing:-0.04em">${dim(head)}</div>
+  <div class="note" style="left:84px;right:120px;top:390px;font-size:34px;line-height:1.35">${sub}</div>
+  ${phone(id, 1.3, 540, 560)}`);
+const update = (w, h, s) => () => page(w, h, `${sky(72)}
+  <img src="../brand-2026/png/app-icon-dark-rounded-1024.png" style="left:50%;top:${s.icon}px;width:${s.iconW}px;transform:translateX(-50%);border-radius:22%;box-shadow:0 0 0 2px rgb(255 255 255 / .12), 0 40px 120px rgb(0 0 0 / .8)">
+  <div class="head" style="left:0;right:0;top:${s.head}px;font-size:${s.headSize}px;text-align:center">Update to <em>5.0.</em></div>
+  <div class="line" style="left:0;right:0;top:${s.sub}px;font-size:${s.subSize}px;text-align:center">Free on the App Store <em>and Google Play.</em></div>
+  <div class="note" style="left:0;right:0;top:${s.url}px;font-size:${s.urlSize}px;text-align:center">unifesto.app</div>`);
+const carousel = [cover,
+  feature('live', 'Polls, Q&amp;A and quizzes, *live.*', 'Vote, ask and play from your ticket while the event is on.'),
+  feature('sprint', 'Your hackathon, *in one hub.*', 'Rooms, problem statements, judging and results for every team.'),
+  feature('scan', 'Check in fast, *even offline.*', 'The scanner and guest list keep working without signal.'),
+  feature('manage', 'Run the whole event *from Space.*', 'Live numbers, check-in, polls and payouts in one place.'),
+  feature('past', 'Results and certificates, *after.*', 'Past tickets show the winners and your certificate.'),
+  update(1080, 1350, { icon: 330, iconW: 300, head: 720, headSize: 130, sub: 880, subSize: 52, url: 1010, urlSize: 34 })];
+
+/* second square: the organiser angle */
+const square2 = () => page(1080, 1080, `${sky(74)}
+  <img class="wm" src="${WM}" style="left:80px;top:84px;--wm:28px">
+  <div class="head" style="left:76px;top:160px;font-size:104px">Run the room <em>live.</em></div>
+  <div class="list" style="left:80px;top:310px;font-size:32px">
+    <span>Polls, Q&amp;A and quizzes on a projector</span><span>Group check-in by person, even offline</span><span>Badges on A4 or label printers</span></div>
+  ${phone('scan', 1.0, 395, 580, 0.75)}${phone('manage', 1.08, 720, 520)}`);
+
+/* stories (1080x1920): text stays clear of the top 250 px and bottom 250 px the apps draw over */
+const storyFeature = (id, label, head) => () => page(1080, 1920, `${sky(66)}
+  <div class="note" style="left:0;right:0;top:300px;font-size:32px;text-align:center">${label}</div>
+  <div class="line" style="left:90px;right:90px;top:360px;font-size:96px;line-height:1.02;letter-spacing:-0.04em;text-align:center">${dim(head)}</div>
+  ${phone(id, 1.42, 540, 640)}
+  <div style="left:0;right:0;top:1300px;bottom:0;background:linear-gradient(rgb(10 10 11 / 0), #0a0a0b 46%)"></div>
+  <div class="note" style="left:0;right:0;top:1640px;font-size:32px;text-align:center">Unifesto 5.0 · out now</div>`);
+const stories = [story,
+  storyFeature('scan', 'For organisers', 'Check in fast, *even offline.*'),
+  update(1080, 1920, { icon: 520, iconW: 340, head: 960, headSize: 140, sub: 1130, subSize: 54, url: 1250, urlSize: 34 })];
+
+/* channel banners: evergreen, the phones rising out of the horizon; each keeps clear of where the
+   platform draws the profile picture and inside the area every device shows */
+const banner = (w, h, o) => () => page(w, h, `${sky(o.horizon)}
+  ${(o.phones || []).map(([id, k, x, y, d]) => phone(id, k, x, y, d)).join('')}
+  <img class="wm" src="${WM}" style="left:${o.x}px;top:${o.wmTop}px;--wm:${o.wm}px;${o.center ? 'transform:translateX(-50%)' : ''}">
+  <div class="line" style="left:${o.x}px;top:${o.lineTop}px;font-size:${o.line}px;white-space:nowrap;${o.center ? 'transform:translateX(-50%);text-align:center' : ''}">Book events, <em>run them live.</em></div>
+  ${o.note ? `<div class="note" style="left:${o.x}px;top:${o.noteTop}px;font-size:${o.noteSize}px;white-space:nowrap;${o.center ? 'transform:translateX(-50%)' : ''}">${o.note}</div>` : ''}`);
+const banners = [
+  // LinkedIn company cover, 1128x191 shown, rendered at 2x; the logo sits below its left edge
+  banner(2256, 382, { horizon: 80, center: true, x: 1128, wmTop: 92, wm: 64, lineTop: 190, line: 52 }),
+  // LinkedIn personal background, 1584x396; the round photo covers the lower left
+  banner(1584, 396, { horizon: 84, x: 620, wmTop: 120, wm: 40, lineTop: 186, line: 56, note: 'Events, tickets and check-in for clubs, colleges and communities', noteTop: 266, noteSize: 24,
+    phones: [['home', 0.62, 1250, 170, 0.8], ['live', 0.66, 1430, 130]] }),
+  // YouTube, 2560x1440; text inside the 1546x423 area every device shows, phones only on TV and desktop
+  banner(2560, 1440, { horizon: 64, center: true, x: 1280, wmTop: 560, wm: 96, lineTop: 700, line: 76, note: 'Events, tickets and check-in for clubs, colleges and communities', noteTop: 810, noteSize: 34,
+    phones: [['ticket', 0.9, 300, 600, 0.8], ['home', 0.9, 2260, 600, 0.8]] }),
+  // X header, 1500x500; the photo overlaps the lower left
+  banner(1500, 500, { horizon: 80, x: 480, wmTop: 150, wm: 40, lineTop: 214, line: 58, note: 'Events, tickets and check-in for clubs, colleges and communities', noteTop: 296, noteSize: 24,
+    phones: [['home', 0.62, 1200, 210, 0.8], ['live', 0.66, 1370, 170]] }),
+];
+
+/* ---------- event-day banners: the horizon is the day's timeline, real app cards sit on it ---------- */
+const g = (name, size, weight = 'regular', cls = '') =>
+  `<svg class="g ${cls}" width="${size}" height="${size}" viewBox="0 0 256 256">${(GLYPHS[name][weight] || GLYPHS[name].regular).map((d) => `<path d="${d}"/>`).join('')}</svg>`;
+const bar = (label, pct, mine) => `<div style="position:relative;height:36px;border-radius:12px;box-shadow:inset 0 0 0 1px ${mine ? 'var(--primary)' : 'var(--border)'};overflow:hidden">
+  <div style="position:absolute;inset:0 auto 0 0;width:${pct}%;background:var(--tint)"></div>
+  <div class="row" style="position:relative;height:36px;padding:0 12px;gap:6px"><span class="S grow" style="font-size:12px">${label}</span>${mine ? g('check-circle', 15, 'fill', 'mint') : ''}<span class="F mint" style="font-size:11px">${pct}%</span></div></div>`;
+const head = (t) => `<div class="row" style="gap:7px"><span class="dot mint"></span><span class="S" style="font-size:14px">${t}</span></div>`;
+const CARDS = {
+  checkin: { w: 230, html: `<div class="shade mint" style="padding:16px"><div class="shapes"></div>
+    <div class="S soft" style="font-size:12px">Checked in · Main gate</div>
+    <div class="row" style="align-items:baseline;gap:6px;margin-top:2px"><span class="F mint" style="font-size:42px;line-height:50px">219</span><span class="S muted" style="font-size:15px">of 412</span></div>
+    <div style="height:7px;border-radius:4px;background:var(--border);margin-top:8px;overflow:hidden"><div style="width:53%;height:100%;background:var(--mint)"></div></div>
+    <div class="row S warn" style="gap:5px;font-size:11px;margin-top:10px">${g('wifi-slash', 13, 'bold')}Offline · list saved 8:52 AM</div></div>` },
+  poll: { w: 250, html: `<div class="card" style="padding:15px">${head('Live poll')}
+    <div class="S" style="font-size:12px;margin-top:8px">Which act should close the night?</div>
+    <div class="col" style="gap:6px;margin-top:8px">${bar('Lost Signals', 48, true)}${bar('Night Owls', 31)}${bar('Paper Planes', 21)}</div></div>` },
+  qa: { w: 250, html: `<div class="card" style="padding:15px">${head('Q&amp;A')}
+    ${[[42, 'Will the main stage set be recorded?', 'Answered · Priya', true], [17, 'Is there a re-entry after 9 PM?', 'Kabir']].map(([n, q, m, on]) => `<div class="row" style="gap:10px;padding:9px 0 3px;align-items:flex-start">
+      <div class="col" style="width:38px;height:38px;border-radius:12px;background:var(--tint);align-items:center;justify-content:center;flex:none;${on ? 'color:var(--mint)' : ''}">${g('caret-up', 14, 'bold')}<span class="F" style="font-size:11px">${n}</span></div>
+      <div class="col grow"><span class="B" style="font-size:12px;line-height:1.3">${q}</span><span class="B muted" style="font-size:10px;margin-top:2px">${m}</span></div></div>`).join('')}</div>` },
+  winners: { w: 230, html: `<div class="shade blue" style="padding:15px"><div class="shapes"></div>
+    <div class="S soft" style="font-size:12px">Build Night · winners</div>
+    ${[['1', 'Byte Me', '92.4'], ['2', 'Null Pointers', '89.1'], ['3', 'Kernel Panic', '86.7']].map(([r, n, s]) => `<div class="row" style="gap:9px;padding:7px 0;box-shadow:inset 0 -1px var(--border)">
+      <span class="ivory">${g('trophy', 16, 'fill')}</span><span class="F muted" style="font-size:12px">${r}</span><span class="S grow" style="font-size:13px">${n}</span><span class="F" style="font-size:12px">${s}</span></div>`).join('')}</div>` },
+};
+/* one card on the timeline: bottom on the line at x (its centre), a dot, and the time under the line */
+const onLine = (key, x, line, k, time) => {
+  const c = CARDS[key];
+  return `<div class="app" style="position:absolute;left:${x - (c.w * k) / 2}px;top:${line - 24}px;width:${c.w}px;height:auto;background:transparent;overflow:visible;transform:translateY(-100%) scale(${k});transform-origin:0 100%">${c.html}</div>
+    <div style="position:absolute;left:${x - 5}px;top:${line - 5}px;width:10px;height:10px;border-radius:5px;background:#ececee;box-shadow:0 0 14px rgb(255 255 255 / .6)"></div>
+    <div class="note" style="position:absolute;left:${x}px;top:${line + 16}px;transform:translateX(-50%);font-size:${Math.round(15 * k)}px;white-space:nowrap">${time}</div>`;
+};
+const DAY = [['checkin', '9:00 AM · doors'], ['poll', '11:30 AM · live poll'], ['qa', '2:15 PM · Q&amp;A'], ['winners', '6:40 PM · winners']];
+const eventDay = (w, h, o) => () => page(w, h, `${sky((o.line / h) * 100)}
+  ${DAY.map(([key, time], i) => onLine(key, o.xs[i], o.line, o.k, time)).join('')}
+  ${o.wm ? `<img class="wm" src="${WM}" style="left:${o.wm[0]}px;top:${o.wm[1]}px;--wm:${o.wm[2]}px">` : ''}
+  ${o.proof ? `<div class="note" style="left:${o.proof[0]}px;top:${o.proof[1]}px;font-size:${o.proof[2]}px;white-space:nowrap">10,000+ people checked in · 70 live Spaces</div>` : ''}`);
+
+// LinkedIn personal background, 1584x396: the round photo covers the lower left, so the day starts right of it
+const linkedinMe = eventDay(1584, 396, { line: 318, k: 0.98, xs: [530, 820, 1110, 1400], wm: [64, 58, 30], proof: [64, 102, 20] });
+
+/* personal banner options, 1584x396; the photo covers the lower left */
+// 1. numbers: the public proof (PROOF in websites/web/src/lib/site.ts) as the hero
+const meNumbers = () => page(1584, 396, `${sky(86)}
+  <img class="wm" src="${WM}" style="left:64px;top:58px;--wm:28px">
+  <div style="left:470px;top:96px;display:flex;gap:64px">
+  ${[['10,000+', 'people checked in'], ['70', 'live Spaces'], ['25+', 'events run']].map(([n, l], i) => `
+    <div style="position:relative;${i ? 'padding-left:64px;box-shadow:inset 1px 0 rgb(255 255 255 / .12)' : ''}">
+      <div class="head" style="position:static;font-size:104px;letter-spacing:-0.05em">${n}</div>
+      <div class="note" style="position:static;font-size:26px;margin-top:12px">${l}</div></div>`).join('')}
+  </div>
+  <div class="note" style="left:470px;top:300px;font-size:18px;color:rgb(255 255 255 / .4)">Hyderabad · as of October 2026</div>`);
+// 2. phones: five screens rising out of the horizon
+const mePhones = () => page(1584, 396, `${sky(92)}
+  ${[['home', 560], ['ticket', 760], ['live', 960], ['sprint', 1160], ['scan', 1360]].map(([id, x], i) => phone(id, 0.5, x, i % 2 ? 70 : 40, i % 2 ? 0.8 : 1)).join('')}
+  <img class="wm" src="${WM}" style="left:64px;top:58px;--wm:28px">`);
+// 3. organiser cards: the brand's product-on-a-shade set (marketing/brand-2026 guidelines, section 08)
+const shadeCard = (tone, w, title, body) => `<div class="app" style="position:static;width:${w}px;height:auto;background:transparent;overflow:visible">
+  <div class="shade ${tone}" style="padding:16px;height:178px"><div class="shapes" style="opacity:.16"></div>
+  <div class="S soft" style="font-size:12px">${title}</div>${body}</div></div>`;
+const row = (a, b, c = '') => `<div class="row" style="padding:6px 0;box-shadow:inset 0 -1px var(--border);font-size:12px"><span class="S grow">${a}</span><span class="F" style="font-size:12px">${b}</span>${c}</div>`;
+const meCards = () => page(1584, 396, `${sky(90)}
+  <img class="wm" src="${WM}" style="left:64px;top:58px;--wm:28px">
+  <div style="left:430px;top:96px;display:flex;gap:22px;transform:scale(1.04);transform-origin:0 0">
+  ${shadeCard('sky', 250, 'Hack League 2026 · Tickets', `<div style="margin-top:8px">${row('Early bird · ₹199', 'Sold out')}${row('Regular · ₹349', '212 left')}${row('Team of 4 · ₹1,099', '38 left')}</div>`)}
+  ${shadeCard('mint', 230, 'Live check-in', `<div class="row" style="align-items:baseline;gap:6px;margin-top:4px"><span class="F mint" style="font-size:40px;line-height:48px">387</span><span class="S muted" style="font-size:15px">of 412</span></div>
+    <div style="height:7px;border-radius:4px;background:var(--border);margin-top:6px;overflow:hidden"><div style="width:94%;height:100%;background:var(--mint)"></div></div>
+    <div style="margin-top:8px">${row('Main gate', '241')}${row('Lunch', '198')}</div>`)}
+  ${shadeCard('ivory', 250, 'Financials · Nav Nirman 4.0', `<div style="margin-top:8px">${row('Collected', '₹1,42,650')}${row('Refunds', '−₹2,097')}${row('Net payout', '<span class="ivory">₹1,38,413</span>')}</div>`)}
+  ${shadeCard('blue', 230, 'Leaderboard · Finals', `<div style="margin-top:8px">${row('1 · Byte Me', '92.4')}${row('2 · Null Pointers', '89.1')}${row('3 · Kernel Panic', '86.7')}</div>`)}
+  </div>`);
+
+/* channel banners, picked direction: a row of app screens rising out of the horizon, alternate ones
+   set back and dimmed. Each keeps clear of where the platform draws the profile picture. */
+const ROW = ['home', 'ticket', 'live', 'book', 'sprint', 'manage', 'scan', 'past'];
+const phonesBanner = (w, h, o) => () => page(w, h, `${sky(o.horizon)}
+  ${o.ids.map((id, i) => phone(id, o.k, o.x0 + i * o.dx, o.top + (i % 2 ? o.drop : 0), i % 2 ? 0.8 : 1)).join('')}
+  <img class="wm" src="${WM}" style="left:${o.wm[0]}px;top:${o.wm[1]}px;--wm:${o.wm[2]}px;${o.wm[3] ? 'transform:translateX(-50%)' : ''}">`);
+const channelBanners = [
+  // LinkedIn personal, 1584x396: the round photo covers the lower left
+  mePhones,
+  // LinkedIn company cover, 1128x191 shown, rendered at 2x; the logo overlaps the lower left
+  phonesBanner(2256, 382, { horizon: 92, ids: ROW.slice(0, 7), k: 0.5, x0: 640, dx: 250, top: 44, drop: 30, wm: [64, 58, 30] }),
+  // YouTube, 2560x1440: desktop shows the middle 2560x423 band, phones show the middle 1546x423
+  phonesBanner(2560, 1440, { horizon: 65, ids: ROW, k: 0.74, x0: 300, dx: 280, top: 616, drop: 34, wm: [1280, 540, 40, true] }),
+  // X header, 1500x500: the photo overlaps the lower left
+  phonesBanner(1500, 500, { horizon: 92, ids: ROW.slice(0, 5), k: 0.56, x0: 560, dx: 220, top: 70, drop: 34, wm: [60, 60, 30] }),
+];
+
+/* launch video layers (1080x1920), composed by reel.sh over the store app preview:
+   01 the sky, 02 the phone frame with a see-through screen, 03-10 one caption per scene */
+const REEL = { screen: [220, 498, 640, 1386], bezel: 20, r: 99 };
+const clear = (inner) => () => {
+  const el = document.createElement('section');
+  el.className = 'page';
+  el.style.cssText = '--w:1080px;--h:1920px;background:transparent';
+  el.innerHTML = inner;
+  return el;
+};
+const reelSky = () => page(1080, 1920, sky(74));
+const reelFrame = clear(`<div style="left:${REEL.screen[0] - REEL.bezel}px;top:${REEL.screen[1] - REEL.bezel}px;width:${REEL.screen[2] + 2 * REEL.bezel}px;height:${REEL.screen[3] + 2 * REEL.bezel}px;
+  border:${REEL.bezel}px solid #0d0d0f;border-radius:${REEL.r}px;box-shadow:0 0 0 2px rgb(255 255 255 / .14), 0 60px 140px rgb(0 0 0 / .85)"></div>`);
+const SCENES = ["Find what's on. *Near you, this week.*", 'Your ticket, *ready at the door.*', 'Polls, Q&amp;A and quizzes, *live.*',
+  'Book in seconds. *Solo or as a team.*', 'Your hackathon, *in one hub.*', 'Run the whole event *from Space.*',
+  'Check in fast, *even offline.*', 'Results and certificates, *after.*'];
+const reelCaption = (t) => clear(`<div class="line" style="left:90px;right:90px;top:250px;font-size:74px;line-height:1.04;letter-spacing:-0.04em;text-align:center">${dim(t)}</div>`);
+
+const PIECES = { concept: [cover, square, story], carousel, square: [square, square2], story: stories, banner: channelBanners, me: [linkedinMe], meOptions: [meNumbers, mePhones, meCards],
+  reel: [reelSky, reelFrame, ...SCENES.map(reelCaption)] };
+
+const piece = new URLSearchParams(location.search).get('piece') || 'concept';
+for (const make of PIECES[piece]) document.body.appendChild(make());
+if (piece === 'reel') document.documentElement.style.background = document.body.style.background = 'transparent';
+document.fonts.ready.then(() => { window.ready = true; });
+</script>
+</body>
+</html>
