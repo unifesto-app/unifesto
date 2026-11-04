@@ -1,0 +1,7 @@
+# What EAS Build uploads. mobile/eas.json has requireCommit, so EAS clones the
+# committed tree (never local worktrees, .env or untracked files), then drops
+# everything matched here: the app needs only mobile/ (no root package.json).
+# This file replaces .gitignore for EAS.
+/*
+!/mobile/
+!/.git
