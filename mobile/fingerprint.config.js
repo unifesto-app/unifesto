@@ -26,6 +26,11 @@ const config = {
     // Gradle/CMake output from local Android builds.
     'node_modules/**/android/build/**',
     'node_modules/**/android/.cxx/**',
+    // iOS App Shortcuts: Spotlight/Siri entry points that only open links.
+    // JS never calls into them, so a binary with or without them runs the same
+    // bundles; they ride the next store build without moving either runtime.
+    'plugins/withAppShortcuts.js',
+    'plugins/AppShortcuts.swift',
   ],
 };
 module.exports = config;
