@@ -213,7 +213,9 @@ export default function SpaceSettingsPage() {
     if (error) {
       setSaveError(error.message);
     } else if (data) {
-      setSpace(data);
+      // PATCH returns the raw row: no _count or the snake_case fields getSpace
+      // derives, so merge it over what we have rather than replace.
+      setSpace((prev) => (prev ? { ...prev, ...data } : data));
       setSaveSuccess(true);
       // Refresh session to update space name in sidebar
       await refreshSession();
