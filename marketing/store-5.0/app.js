@@ -287,5 +287,30 @@ const App = (() => {
     return el;
   };
 
-  return { screens, render, feature };
+  /* App Store creative assets: the product page header (21:9) and the search result (3:2).
+     Apple draws the app name and Get button over these, so the header carries no text, and
+     neither shows prices, URLs or a copyright mark (App Store asset best practices). */
+  const phone = (id, k, x, y, dim = 1) => `<div class="device" style="left:${x}px;top:${y}px;transform:translateX(-50%);--bezel:${Math.round(14 * k)}px;--dev-r:${Math.round(68 * k)}px;filter:brightness(${dim})">
+      <div class="screen" style="--pt-w:440;--pt-h:956;--k:${k}"><div class="app">${noPrices(render(id, 'iphone'))}</div></div></div>`;
+  // creative assets may not show prices: drop the ticket price and the "From ₹" lines
+  const noPrices = (html) => html.replace(/Regular · ₹[\d,]+/g, 'Regular').replace(/ · <span class="muted">From<\/span> <span class="F">₹[\d,]+<\/span>/g, '');
+  const sky = (horizonY) => `<div class="stars"></div><div class="stars-far"></div><div class="orbit a"></div><div class="orbit b"></div>
+      <div style="position:absolute;inset:0;background:radial-gradient(40% 50% at 70% 100%, rgb(77 141 255 / .32), transparent 72%), radial-gradient(60% 22% at 50% ${horizonY}%, rgb(255 255 255 / .06), transparent 70%)"></div>
+      <div style="position:absolute;left:0;right:0;top:${horizonY}%;height:2px;background:linear-gradient(90deg, transparent, rgb(255 255 255 / .2) 22%, rgb(255 255 255 / .75) 50%, rgb(255 255 255 / .2) 78%, transparent)"></div>
+      <div class="edge"></div>`;
+  const creative = (kind) => {
+    const el = document.createElement('section');
+    el.className = 'page';
+    if (kind === 'header') {
+      el.style.cssText = '--w:3840px;--h:1646px;background:#0a0a0b';
+      el.innerHTML = `${sky(64)}${phone('ticket', 1.4, 1220, 520, 0.72)}${phone('live', 1.4, 2620, 520, 0.72)}${phone('home', 1.62, 1920, 330)}<div class="grain"></div>`;
+    } else {
+      el.style.cssText = '--w:3840px;--h:2560px;background:#0a0a0b';
+      el.innerHTML = `${sky(78)}<div class="cap" style="left:0;right:0;top:250px;text-align:center;--cap:170px">Book events, <em>run them live.</em></div>
+        ${phone('home', 1.7, 1920 - 932, 720)}${phone('ticket', 1.7, 1920, 720)}${phone('live', 1.7, 1920 + 932, 720)}<div class="grain"></div>`;
+    }
+    return el;
+  };
+
+  return { screens, render, feature, creative };
 })();

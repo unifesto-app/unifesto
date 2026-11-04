@@ -8,6 +8,8 @@ Each <section class="page"> is one screenshot, drawn at the store's exact pixel 
   play     1080x1920  Google Play phone (9:16)
   tab      1440x2560  Google Play 7-inch and 10-inch tablet (9:16)
   feature  1024x500   Google Play feature graphic
+  header   3840x1646  App Store product page header (21:9)
+  search   3840x2560  App Store search result (3:2)
 
   python3 render.py                 # every size -> out/<size>/01.png ...
   python3 render.py iphone 3        # one size, only screen 3 (to check an edit)
@@ -18,7 +20,8 @@ import sys, pathlib
 from playwright.sync_api import sync_playwright
 
 HERE = pathlib.Path(__file__).resolve().parent
-SIZES = {"iphone": (1320, 2868), "ipad": (2064, 2752), "play": (1080, 1920), "tab": (1440, 2560), "feature": (1024, 500)}
+SIZES = {"iphone": (1320, 2868), "ipad": (2064, 2752), "play": (1080, 1920), "tab": (1440, 2560), "feature": (1024, 500),
+         "header": (3840, 1646), "search": (3840, 2560)}
 
 def main():
     sizes = [a for a in sys.argv[1:] if a in SIZES] or list(SIZES)

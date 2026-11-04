@@ -76,6 +76,7 @@ function page(s, screen) {
 const s = SIZES[size];
 if (s) for (const screen of App.screens) document.body.appendChild(page(s, screen));
 if (size === 'feature') document.body.appendChild(App.feature());
+if (size === 'header' || size === 'search') document.body.appendChild(App.creative(size));
 document.fonts.ready.then(() => { window.ready = true; });
 </script>
 </body>
