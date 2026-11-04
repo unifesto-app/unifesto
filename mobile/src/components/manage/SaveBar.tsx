@@ -4,10 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthButton from '../auth/AuthButton';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
-import useContentWidth from '../../hooks/useContentWidth';
 
 interface SaveBarProps {
   /** Slides in when true (something changed, saving, or an error to show). */
@@ -28,7 +27,6 @@ interface SaveBarProps {
 export default function SaveBar({ visible, label, onPress, loading, disabled, error }: SaveBarProps) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { inset } = useContentWidth();
   const shown = visible || !!loading || !!error;
 
   const style = useAnimatedStyle(() => ({
@@ -38,7 +36,7 @@ export default function SaveBar({ visible, label, onPress, loading, disabled, er
 
   return (
     <Animated.View
-      style={[styles.bar, { left: inset, right: inset, paddingBottom: Math.max(insets.bottom, spacing[4]), pointerEvents: shown ? 'auto' : 'none' }, style]}
+      style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]), pointerEvents: shown ? 'auto' : 'none' }, style]}
     >
       <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
       {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
@@ -48,6 +46,6 @@ export default function SaveBar({ visible, label, onPress, loading, disabled, er
 }
 
 const styles = StyleSheet.create({
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing[6], paddingTop: spacing[6] },
+  bar: { position: 'absolute', bottom: 0, ...column, paddingHorizontal: spacing[6], paddingTop: spacing[6] },
   error: { marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

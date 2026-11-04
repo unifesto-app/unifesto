@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Easing,
@@ -50,6 +50,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   const c = cosmosFor(launchScheme);
   const isDark = c.scheme === 'dark';
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const mountedAt = useRef(Date.now());
   const [ready, setReady] = useState(false);
 
@@ -158,7 +159,10 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
         Every fest. One app.
       </Animated.Text>
 
-      <Animated.View style={[styles.track, { backgroundColor: c.border }, trackStyle]}>
+      {/* 14% up, but always above the footer: a landscape phone ran the line through it. */}
+      <Animated.View
+        style={[styles.track, { backgroundColor: c.border, bottom: Math.max(height * 0.14, insets.bottom + 72) }, trackStyle]}
+      >
         <Animated.View style={[styles.runner, { backgroundColor: c.primary }, runnerStyle]} />
       </Animated.View>
 
@@ -178,7 +182,6 @@ const styles = StyleSheet.create({
   tagline: { marginTop: 18, fontSize: 12, ...cosmosFont.strong },
   track: {
     position: 'absolute',
-    bottom: '14%',
     width: TRACK_W,
     height: 3,
     borderRadius: 2,

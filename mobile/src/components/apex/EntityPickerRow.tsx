@@ -2,11 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDown, Check, MagnifyingGlass, Plus } from '@unifesto/unicon/react-native';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { borderRadius, column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
-import useContentWidth from '../../hooks/useContentWidth';
 import Modal from '../ui/Modal';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
@@ -39,7 +38,6 @@ interface EntityPickerRowProps {
 export default function EntityPickerRow({ label, value, placeholder = 'Choose', search, onPick, pickedIds, add }: EntityPickerRowProps) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { inset } = useContentWidth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<PickerItem[]>([]);
@@ -93,7 +91,7 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
 
       <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: OVERLAY }]} onPress={close} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { left: inset, right: inset, paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
           <SheetBackdrop radius={borderRadius.xl} />
           <Text style={[styles.title, { color: c.text }]}>{label}</Text>
           <View style={[styles.search, { backgroundColor: c.tint }]}>
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
+  sheet: { position: 'absolute', bottom: 0, ...column, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
   title: { paddingHorizontal: spacing[6], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
   searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },

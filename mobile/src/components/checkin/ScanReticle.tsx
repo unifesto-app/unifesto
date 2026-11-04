@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   cancelAnimation,
   interpolateColor,
@@ -59,9 +59,11 @@ export default function ScanReticle({ state }: { state: ReticleState }) {
       ORDER.map((s) => COLORS[s]),
     ),
   }));
+  // Smaller on a landscape phone, so it sits between the point label and the tools.
+  const size = Math.min(SIZE, Math.round(useWindowDimensions().height * 0.4));
 
   return (
-    <Animated.View style={[styles.frame, frame]} pointerEvents="none">
+    <Animated.View style={[{ width: size, height: size }, frame]} pointerEvents="none">
       <Animated.View style={[styles.corner, styles.tl, corner]} />
       <Animated.View style={[styles.corner, styles.tr, corner]} />
       <Animated.View style={[styles.corner, styles.bl, corner]} />
@@ -71,7 +73,6 @@ export default function ScanReticle({ state }: { state: ReticleState }) {
 }
 
 const styles = StyleSheet.create({
-  frame: { width: SIZE, height: SIZE },
   corner: { position: 'absolute', width: ARM, height: ARM, borderColor: night.text },
   tl: { top: 0, left: 0, borderTopWidth: STROKE, borderLeftWidth: STROKE, borderTopLeftRadius: RADIUS },
   tr: { top: 0, right: 0, borderTopWidth: STROKE, borderRightWidth: STROKE, borderTopRightRadius: RADIUS },
