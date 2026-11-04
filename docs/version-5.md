@@ -1155,3 +1155,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-04** · Android release builds use R8 (minify + obfuscation) for Play's "DEX code optimisation" warning, with Razorpay/passkeys keep rules and Crashlytics mapping upload; native, needs a new store build on both platforms (#607)
 - **2026-11-04** · iOS App Shortcuts (My tickets, Find events, Scan tickets) so Spotlight and Siri find Unifesto for "tickets", "events" and "scan"; OTA-neutral, ships with the next iOS store build (#608)
 - **2026-11-04** · App size for the 5.0.0 rebuild: iOS frameworks stripped of local symbols, alternate icons at real sizes (thinned iPhone ~84 → ~60 MB install, 32.6 → ~23 MB download), expo-widgets out of Android (#609)
+- **2026-11-04** · Mobile: tablets fill the width in both orientations (phones keep the 672 column; sheets and alerts stay 672 everywhere) (#610)
