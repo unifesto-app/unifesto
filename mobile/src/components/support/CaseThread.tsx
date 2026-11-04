@@ -4,7 +4,7 @@ import { PaperPlaneRight } from '@unifesto/unicon/react-native';
 import type { SupportMessage, SupportMessageSide } from '../../lib/api/support';
 import ChipPicker from '../manage/ChipPicker';
 import { CardBackdrop } from '../ui/CardSurface';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   right: { alignSelf: 'flex-end' },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  composerWrap: { paddingHorizontal: GUTTER, paddingTop: spacing[3], gap: spacing[2] },
+  composerWrap: { ...column, paddingHorizontal: GUTTER, paddingTop: spacing[3], gap: spacing[2] },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[3] },
   inputWrap: { flex: 1, borderRadius: cosmosRadius, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
   input: { fontSize: typography.fontSize.base, maxHeight: 120, ...cosmosFont.body },

@@ -2,11 +2,12 @@ import { useWindowDimensions } from 'react-native';
 import { CONTENT_MAX } from '../theme/spacing';
 
 /**
- * Width of the content column (the window, capped at CONTENT_MAX on tablets)
- * and the empty margin either side of it. Use in place of
- * `useWindowDimensions().width` for anything sized to fit the content, and
- * `inset` as left/right for absolutely positioned bars. It follows the window,
- * so rotation, Split View, Slide Over and floating windows just re-render.
+ * Width of the content column (the window, capped at CONTENT_MAX on tablets).
+ * Use in place of `useWindowDimensions().width` for anything sized to fit the
+ * content. It follows the window, so rotation, Split View, Slide Over and
+ * floating windows just re-render. Absolutely positioned bars and sheets take
+ * the `column` style instead: it centres them in whatever holds them, which on
+ * iPad may be a page sheet narrower than the window.
  *
  * `hero` is the widest a 4:3 hero (poster, banner) should be: at that width it
  * stays under ~60% of the window's height, so a landscape phone or a short
@@ -14,6 +15,5 @@ import { CONTENT_MAX } from '../theme/spacing';
  */
 export default function useContentWidth() {
   const { width: window, height } = useWindowDimensions();
-  const width = Math.min(window, CONTENT_MAX);
-  return { width, inset: (window - width) / 2, hero: Math.round(height * 0.8) };
+  return { width: Math.min(window, CONTENT_MAX), hero: Math.round(height * 0.8) };
 }

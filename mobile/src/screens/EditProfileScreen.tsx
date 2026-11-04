@@ -24,7 +24,6 @@ import Skeleton from '../components/Skeleton';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
-import useContentWidth from '../hooks/useContentWidth';
 
 const AVATAR = 88;
 
@@ -53,7 +52,6 @@ const initials = (name: string) =>
 export default function EditProfileScreen() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { inset } = useContentWidth();
   const topSpacing = useTopSpacing();
   const p = useEditProfile();
   const { fields, set } = p;
@@ -230,7 +228,7 @@ export default function EditProfileScreen() {
       {/* Save bar: slides up only when there is something to save */}
       <Animated.View
         pointerEvents={barVisible ? 'auto' : 'none'}
-        style={[styles.bar, { left: inset, right: inset, paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}
+        style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}
       >
         <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <AuthButton
@@ -282,9 +280,8 @@ const styles = StyleSheet.create({
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 0,
+    ...column,
     paddingHorizontal: GUTTER,
     paddingTop: spacing[6],
   },

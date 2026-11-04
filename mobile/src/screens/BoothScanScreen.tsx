@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
@@ -240,14 +240,15 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: NIGHT.bg },
   shell: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], gap: spacing[3] },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.25)' },
-  top: { position: 'absolute', left: spacing[5], right: spacing[5], zIndex: 2 },
+  top: { position: 'absolute', ...column, paddingHorizontal: spacing[5], zIndex: 2 },
   // A label, not a pill: a glyph and plain text over the scrim.
   label: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   // A soft shadow keeps the label readable over a bright camera feed.
   labelText: { flexShrink: 1, color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong, textShadowColor: 'rgba(0, 0, 0, 0.6)', textShadowRadius: 6 },
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
   hint: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
+  // Phone-width on a tablet, like the rest of the app; the camera stays full-bleed.
+  bottom: { position: 'absolute', bottom: 0, ...column, paddingHorizontal: spacing[4], gap: spacing[3], zIndex: 3 },
   tools: { flexDirection: 'row', gap: spacing[3] },
   tool: { height: 52, width: 52, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
   toolWide: { flex: 1, width: undefined, paddingHorizontal: spacing[4], backgroundColor: GLASS },

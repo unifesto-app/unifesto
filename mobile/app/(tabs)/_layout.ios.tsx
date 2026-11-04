@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { PixelRatio, StyleSheet, View } from 'react-native';
+import { PixelRatio, Platform, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { captureRef } from 'react-native-view-shot';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
@@ -9,6 +9,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import usePlatformAdmin from '../../src/hooks/usePlatformAdmin';
 
 const AVATAR = 28;
+const IS_PAD = Platform.OS === 'ios' && Platform.isPad;
 
 /**
  * Native tab icons are images, not views, so a photo can't be rounded with
@@ -53,27 +54,28 @@ export default function TabsLayout() {
         tintColor={c.primary}
         iconColor={{ default: c.muted, selected: c.primary }}
         labelStyle={{
-          default: { fontFamily: cosmosFont.strong.fontFamily, fontSize: 10, color: c.muted },
-          selected: { fontFamily: cosmosFont.strong.fontFamily, fontSize: 10, color: c.primary },
+          default: { fontFamily: cosmosFont.strong.fontFamily, color: c.muted },
+          selected: { fontFamily: cosmosFont.strong.fontFamily, color: c.primary },
         }}
         minimizeBehavior="onScrollDown"
       >
-        {/* Icon-only tabs: labels are hidden but kept for VoiceOver. */}
+        {/* Icon-only on iPhone: labels are hidden but kept for VoiceOver. iPad puts the bar
+            at the top, built around titles (blank with none), so there they show. */}
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Icon sf={{ default: 'rectangle.stack', selected: 'rectangle.stack.fill' }} />
-          <NativeTabs.Trigger.Label hidden>Home</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!IS_PAD}>Home</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="tickets">
           <NativeTabs.Trigger.Icon sf={{ default: 'wallet.pass', selected: 'wallet.pass.fill' }} />
-          <NativeTabs.Trigger.Label hidden>Tickets</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!IS_PAD}>Tickets</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="space" hidden={sections.length === 0}>
           <NativeTabs.Trigger.Icon sf={{ default: 'square.stack.3d.up', selected: 'square.stack.3d.up.fill' }} />
-          <NativeTabs.Trigger.Label hidden>Space</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!IS_PAD}>Space</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="apex" hidden={!isPlatformAdmin}>
           <NativeTabs.Trigger.Icon sf={{ default: 'crown', selected: 'crown.fill' }} />
-          <NativeTabs.Trigger.Label hidden>Apex</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!IS_PAD}>Apex</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">
           {avatar.src ? (
@@ -81,7 +83,7 @@ export default function TabsLayout() {
           ) : (
             <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
           )}
-          <NativeTabs.Trigger.Label hidden>Profile</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label hidden={!IS_PAD}>Profile</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
       {avatar.node}

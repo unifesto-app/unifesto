@@ -4,7 +4,7 @@ import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
-import SegmentedTabs from '../../components/ui/SegmentedTabs';
+import TabPager from '../../components/ui/TabPager';
 import { ApexRow } from '../../components/apex/ApexRow';
 import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -34,11 +34,29 @@ type Filter = RequestSource | 'all';
  */
 export default function RequestsScreen() {
   const params = useLocalSearchParams<{ type?: string }>();
-  const router = useRouter();
   const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [tab, setTab] = useState<RequestTab>('open');
   const [filter, setFilter] = useState<Filter>(params.type && sourceDef(params.type) ? (params.type as RequestSource) : 'all');
+
+  return (
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <TabPager
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        tabsStyle={[column, styles.tabs, { paddingTop: topSpacing }]}
+        renderPage={(t) => <RequestList tab={t} filter={filter} setFilter={setFilter} />}
+      />
+    </View>
+  );
+}
+
+/** One tab's requests (Review, Approved, Rejected): its own load and pull-to-refresh. */
+function RequestList({ tab, filter, setFilter }: { tab: RequestTab; filter: Filter; setFilter: (f: Filter) => void }) {
+  const router = useRouter();
+  const c = useCosmos();
   const [results, setResults] = useState<SourceResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +69,7 @@ export default function RequestsScreen() {
     setResults(next);
   }, [tab]);
 
-  // Reload on tab change and whenever we come back from a review.
+  // Reload whenever we come back from a review.
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -83,83 +101,80 @@ export default function RequestsScreen() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
-      <CosmosBackdrop horizon={false} />
-      <SectionList
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        contentContainerStyle={[column, styles.content]}
-        sections={loading ? [] : sections}
-        keyExtractor={(r) => r.key}
-        stickySectionHeadersEnabled={false}
-        ListHeaderComponent={
-          <View style={{ paddingTop: topSpacing }}>
-            <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chips}>
-              {chips.map((chip) => {
-                const on = chip.key === filter;
-                return (
-                  <Pressable
-                    key={chip.key}
-                    onPress={() => setFilter(chip.key)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    style={({ pressed }) => [
-                      styles.chip,
-                      { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                    ]}
-                  >
-                    {!on ? <CardBackdrop shape={styles.chip} /> : null}
-                    <Text style={[styles.chipLabel, { color: on ? c.primaryFg : c.text }]}>
-                      {chip.label}
-                      {!loading && chip.count > 0 ? <Text style={[cosmosFont.figure, { color: on ? c.primaryFg : c.muted }]}>{`  ${chip.count}`}</Text> : null}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            {failNote ? <Text style={[styles.fail, { color: c.danger }]}>{failNote}</Text> : null}
+    <SectionList
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
+      contentContainerStyle={[column, styles.content]}
+      sections={loading ? [] : sections}
+      keyExtractor={(r) => r.key}
+      stickySectionHeadersEnabled={false}
+      ListHeaderComponent={
+        <View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chips}>
+            {chips.map((chip) => {
+              const on = chip.key === filter;
+              return (
+                <Pressable
+                  key={chip.key}
+                  onPress={() => setFilter(chip.key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                  ]}
+                >
+                  {!on ? <CardBackdrop shape={styles.chip} /> : null}
+                  <Text style={[styles.chipLabel, { color: on ? c.primaryFg : c.text }]}>
+                    {chip.label}
+                    {!loading && chip.count > 0 ? <Text style={[cosmosFont.figure, { color: on ? c.primaryFg : c.muted }]}>{`  ${chip.count}`}</Text> : null}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {failNote ? <Text style={[styles.fail, { color: c.danger }]}>{failNote}</Text> : null}
+        </View>
+      }
+      renderSectionHeader={({ section }) =>
+        filter === 'all' || section.error ? (
+          <View style={styles.sectionHead}>
+            {filter === 'all' ? (
+              <Text style={[styles.sectionTitle, { color: c.muted }]}>
+                {section.title}  ·  {section.data.length}
+              </Text>
+            ) : null}
+            {section.error ? <Text style={[styles.fail, { color: c.danger }]}>{section.error}</Text> : null}
           </View>
-        }
-        renderSectionHeader={({ section }) =>
-          filter === 'all' || section.error ? (
-            <View style={styles.sectionHead}>
-              {filter === 'all' ? (
-                <Text style={[styles.sectionTitle, { color: c.muted }]}>
-                  {section.title}  ·  {section.data.length}
-                </Text>
-              ) : null}
-              {section.error ? <Text style={[styles.fail, { color: c.danger }]}>{section.error}</Text> : null}
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          loading ? (
-            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
-          ) : (
-            <View style={styles.empty}>
-              <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
-            </View>
-          )
-        }
-        // Each section reads as one card.
-        renderItem={({ item, index, section }) => (
-          <View>
-            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
-            <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
+        ) : null
+      }
+      ListEmptyComponent={
+        loading ? (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        ) : (
+          <View style={styles.empty}>
+            <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
           </View>
-        )}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />
-        }
-      />
-    </View>
+        )
+      }
+      // Each section reads as one card.
+      renderItem={({ item, index, section }) => (
+        <View>
+          {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+          <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
+        </View>
+      )}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} />
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  tabs: { paddingHorizontal: GUTTER },
   content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
   chipScroll: { marginTop: spacing[4], marginHorizontal: -GUTTER },
   chips: { gap: spacing[2], paddingHorizontal: GUTTER },

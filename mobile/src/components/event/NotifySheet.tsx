@@ -1,6 +1,6 @@
 import { EMAIL_RE } from '../../lib/constants';
 import React, { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { BellRinging, CheckCircle, EnvelopeSimple, User, X } from '@unifesto/unicon/react-native';
@@ -86,7 +86,7 @@ export default function NotifySheet({
                 <Button label="Done" size="lg" onPress={close} style={styles.button} />
               </View>
             ) : (
-              <>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
                 <View style={styles.head}>
                   <BellRinging size={30} color={c.text} weight="duotone" />
                   <View style={{ flex: 1 }}>
@@ -141,7 +141,7 @@ export default function NotifySheet({
                   disabled={!canSubmit}
                   style={styles.button}
                 />
-              </>
+              </ScrollView>
             )}
           </Animated.View>
         </View>
@@ -156,6 +156,8 @@ const styles = StyleSheet.create({
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
     ...column,
+    // A short landscape window: the sheet scrolls inside instead of running off the top.
+    maxHeight: '88%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

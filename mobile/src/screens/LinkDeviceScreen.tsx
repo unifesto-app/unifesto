@@ -12,7 +12,7 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { AppAlert } from '../components/ui/AppAlert';
 import { Button } from '../components/ui';
 import { approveDeviceLink, previewDeviceLink } from '../lib/api/auth';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
 
@@ -170,7 +170,8 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowRadius: 6,
   },
-  bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
+  // Phone-width on a tablet, like the rest of the app; the camera stays full-bleed.
+  bottom: { position: 'absolute', bottom: 0, ...column, paddingHorizontal: spacing[4], gap: spacing[3], zIndex: 3 },
   msgTitle: { fontSize: typography.fontSize.lg, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
   msgBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });
