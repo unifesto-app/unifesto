@@ -16,7 +16,6 @@ import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosRadius, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import useContentWidth from '../hooks/useContentWidth';
 
 const FORMATS = [
   { value: 'IN_PERSON', label: 'In person' },
@@ -39,7 +38,6 @@ const HOURS_2 = 2 * 3600_000;
 export default function EventRequestScreen() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { inset } = useContentWidth();
   const topSpacing = useTopSpacing();
 
   const [title, setTitle] = useState('');
@@ -152,7 +150,7 @@ export default function EventRequestScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={[styles.bar, { left: inset, right: inset, paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
+      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
         <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <AuthButton label="Create event" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
         {!ready ? (
@@ -176,6 +174,6 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: cosmosRadius, justifyContent: 'center' },
   chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
+  bar: { position: 'absolute', bottom: 0, ...column, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
   hint: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

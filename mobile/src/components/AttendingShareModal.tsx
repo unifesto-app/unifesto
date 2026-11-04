@@ -18,7 +18,7 @@ import { ShareNetwork, UserCircle, X } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
-import { borderRadius, spacing } from '../theme/spacing';
+import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 import Modal from './ui/Modal';
@@ -253,9 +253,11 @@ export default function AttendingShareModal({
   const ready = bannerReady && avatarReady && logoReady;
 
   // Preview sized to fit the screen: width-capped, and a Story preview is
-  // also height-capped so the switch + button stay on screen.
+  // also height-capped so the switch + button stay on screen. Not below 240,
+  // though: a landscape phone scrolls to the switch rather than shrink the card
+  // to a thumbnail.
   const format = SHARE_FORMATS.find((f) => f.key === formatKey) ?? SHARE_FORMATS[0];
-  const maxH = screenH - insets.top - insets.bottom - 260;
+  const maxH = Math.max(240, screenH - insets.top - insets.bottom - 260);
   const cardWidth = Math.round(Math.min(screenW - spacing[6] * 2, 320, maxH * format.ratio));
   const cardHeight = Math.round(cardWidth / format.ratio);
 
@@ -364,8 +366,8 @@ const modalStyles = StyleSheet.create({
   preview: { borderRadius: cosmosRadius },
   switch: { width: 220 },
   error: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  footer: { paddingHorizontal: spacing[6], paddingTop: spacing[3] },
-  gate: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], paddingBottom: spacing[16], gap: spacing[2] },
+  footer: { ...column, paddingHorizontal: spacing[6], paddingTop: spacing[3] },
+  gate: { ...column, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], paddingBottom: spacing[16], gap: spacing[2] },
   gateTitle: { marginTop: spacing[3], fontSize: 22, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   gateBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', maxWidth: 300, ...cosmosFont.body },
 });

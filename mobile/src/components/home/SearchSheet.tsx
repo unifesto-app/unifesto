@@ -16,7 +16,7 @@ import { useStableTopInset } from '../CustomHeader';
 import Skeleton from '../Skeleton';
 import type { Event } from '../../lib/api/events';
 import type { HomeSearch } from '../../hooks/useHomeSearch';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { borderRadius, column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { relativeWhen, shortPrice, spaceLogo } from '../../utils/eventFormat';
@@ -147,11 +147,15 @@ export default function SearchSheet({
       presentationStyle="pageSheet"
       onRequestClose={s.closeSheet}
       statusBarTranslucent
+      // Paints the sheet edge to edge; the content keeps to the column (clear of a
+      // landscape iPhone's notch, phone-width on a tablet).
+      backdropColor={c.bg}
     >
       <View
         style={[
+          column,
           styles.container,
-          { backgroundColor: c.bg, paddingTop: Platform.OS === 'ios' ? spacing[4] : topInset + spacing[2] },
+          { paddingTop: Platform.OS === 'ios' ? spacing[4] : topInset + spacing[2] },
         ]}
       >
         <View style={styles.header}>

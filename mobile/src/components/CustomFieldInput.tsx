@@ -15,7 +15,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import * as DocumentPicker from 'expo-document-picker';
 import { CaretDown, Check, CheckCircle, MagnifyingGlass, Paperclip, X } from '@unifesto/unicon/react-native';
 import { CustomField, uploadFormFieldFile } from '../lib/api/tickets';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../theme/cosmos';
 import { selectionTick } from '../lib/haptics';
 import { typography } from '../theme/typography';
@@ -382,8 +382,9 @@ export function OptionPicker({
         </Text>
         <CaretDown size={18} color={k.muted} />
       </Pressable>
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-        <View style={[styles.sheet, { backgroundColor: k.bg }]}>
+      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close} backdropColor={k.bg}>
+        {/* The Modal paints edge to edge; the list keeps to the column (clear of a landscape notch). */}
+        <View style={[column, styles.sheet]}>
           <View style={styles.sheetHead}>
             <Text style={[styles.sectionTitle, { color: k.text, flex: 1 }]} numberOfLines={2} accessibilityRole="header">
               {title}

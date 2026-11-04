@@ -6,10 +6,9 @@ import { CaretDown } from '@unifesto/unicon/react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import type { RegisterMode } from '../../hooks/useEventDetail';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { borderRadius, column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
-import useContentWidth from '../../hooks/useContentWidth';
 import { ApplePayButton } from '../../../modules/apple-pay-button';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
@@ -100,7 +99,6 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
   const { tokens, isDark } = useTheme();
   const c = useCosmos();
   const bottomPad = useBarBottomPad();
-  const { inset } = useContentWidth();
   // iOS: glass (Liquid Glass on 26+, frosted below). Android can't live-blur what
   // scrolls under the bar, so it uses the frosted branch below.
   const glass = Platform.OS === 'ios';
@@ -108,7 +106,7 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
     <View
       style={[
         styles.bar,
-        { left: inset, right: inset, paddingBottom: bottomPad },
+        { paddingBottom: bottomPad },
       ]}
     >
       {Platform.OS === 'android' ? (
@@ -186,9 +184,8 @@ export function ActionBar({ info, label, onPress, disabled = false, loading = fa
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 0,
+    ...column,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],

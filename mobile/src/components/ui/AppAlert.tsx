@@ -5,6 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTim
 import { WarningCircle } from '@unifesto/unicon/react-native';
 import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
 import { spacing } from '../../theme/spacing';
+import useContentWidth from '../../hooks/useContentWidth';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { TopLayer } from './TopLayer';
 
@@ -111,6 +112,7 @@ const SLIDE = 420;
 export function AppAlertHost() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
+  const { width } = useContentWidth();
   const [queue, setQueue] = useState<AlertRequest[]>([]);
   const closing = useRef(false);
   const progress = useSharedValue(0);
@@ -176,7 +178,7 @@ export function AppAlertHost() {
         </Animated.View>
 
         <Animated.View
-          style={[styles.card, { marginBottom: insets.bottom + spacing[3] }, cardStyle]}
+          style={[styles.card, { width: width - spacing[3] * 2, marginBottom: insets.bottom + spacing[3] }, cardStyle]}
           accessibilityViewIsModal
           accessibilityRole="alert"
         >
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   // Lighter than a solid-card scrim so the screen still shows through the glass.
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
-  card: { marginHorizontal: spacing[3], borderRadius: cosmosCardRadius },
+  card: { alignSelf: 'center', borderRadius: cosmosCardRadius },
   body: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[6], paddingBottom: spacing[5] },
   glyph: { marginBottom: spacing[3] },
   title: { fontSize: 18, lineHeight: 26, textAlign: 'center', ...cosmosFont.strong },

@@ -3,11 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '@unifesto/unicon/react-native';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { borderRadius, column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
-import useContentWidth from '../../hooks/useContentWidth';
 import Modal from '../ui/Modal';
 
 const OVERLAY = 'rgba(0, 0, 0, 0.6)';
@@ -20,11 +19,10 @@ const wrap = (html: string) =>
 export default function HtmlPreviewSheet({ html, title, onClose }: { html: string | null; title: string; onClose: () => void }) {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { inset } = useContentWidth();
   return (
     <Modal visible={html !== null} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: OVERLAY }]} onPress={onClose} accessibilityLabel="Close" />
-      <View style={[styles.sheet, { left: inset, right: inset, top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
+      <View style={[styles.sheet, { top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
         <SheetBackdrop radius={borderRadius.xl} />
         <View style={styles.head}>
           <Text style={[styles.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">
@@ -49,7 +47,7 @@ export default function HtmlPreviewSheet({ html, title, onClose }: { html: strin
 }
 
 const styles = StyleSheet.create({
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
+  sheet: { position: 'absolute', bottom: 0, ...column, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[6], paddingVertical: spacing[4] },
   title: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   // The email's own white canvas, like the ticket's QR panel.

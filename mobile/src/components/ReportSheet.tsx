@@ -210,6 +210,8 @@ const styles = StyleSheet.create({
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
     ...column,
+    // A short landscape window: the sheet scrolls inside instead of running off the top.
+    maxHeight: '88%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

@@ -130,6 +130,8 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.4)' },
   sheet: {
     ...column,
+    // A short landscape window: the list scrolls inside instead of the sheet running off the top.
+    maxHeight: '88%',
     borderTopLeftRadius: cosmosCardRadius,
     borderTopRightRadius: cosmosCardRadius,
     paddingHorizontal: spacing[5],
