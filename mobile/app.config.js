@@ -7,6 +7,7 @@ const withSceneDelegate = require('./plugins/withSceneDelegate');
 const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
 const withRazorpayApplePay = require('./plugins/withRazorpayApplePay');
+const withAppShortcuts = require('./plugins/withAppShortcuts');
 
 module.exports = () => {
   const config = {
@@ -382,5 +383,7 @@ module.exports = () => {
   modifiedConfig = withAlwaysRunScripts(modifiedConfig);
   // Q40: Razorpay's Apple Pay plugin, which react-native-customui finds at runtime.
   modifiedConfig = withRazorpayApplePay(modifiedConfig);
+  // iOS App Shortcuts: "tickets", "events" and "scan" in Spotlight and Siri.
+  modifiedConfig = withAppShortcuts(modifiedConfig);
   return modifiedConfig;
 };
