@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto 5.0 app preview</title>
+<link rel="stylesheet" href="app.css">
+<style>
+/* App Store app preview, 886x1920: the app full screen, as a screen capture would show it.
+   window.seek(t) draws the frame at t seconds; preview.py steps through it. */
+@font-face { font-family: "Hanken Grotesk"; font-weight: 100 900; src: url("../brand-2026/HankenGrotesk.ttf"); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 886px; height: 1920px; overflow: hidden; background: #17171b; font-family: "Hanken Grotesk"; -webkit-font-smoothing: antialiased; }
+.layer { position: absolute; inset: 0; overflow: hidden; background: #17171b; visibility: hidden; will-change: transform; }
+.layer > .app { position: absolute; top: 0; left: 0; width: 440px; height: 956px; transform: scale(calc(886 / 440)); transform-origin: 0 0; }
+.tap { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: rgb(255 255 255 / .35);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / .5); z-index: 99; visibility: hidden; }
+</style>
+</head>
+<body>
+<script src="glyphs.js"></script>
+<script src="qr.js"></script>
+<script src="app.js"></script>
+<script>
+const K = 886 / 440;
+const T = 0.55;          // transition length, seconds
+const DURATION = 29;     // Apple allows 15 to 30 s; stay under 30
+/* how each screen arrives, and where the tap that opens it lands (in points, on the screen before) */
+const FLOW = [
+  { id: 'home',   at: 0 },
+  { id: 'ticket', at: 3.6,  enter: 'push',   tap: [357, 416] },
+  { id: 'live',   at: 7.2,  enter: 'rise' },
+  { id: 'book',   at: 10.9, enter: 'sheet' },
+  { id: 'sprint', at: 14.4, enter: 'fade' },
+  { id: 'manage', at: 17.9, enter: 'fade' },
+  { id: 'scan',   at: 21.6, enter: 'push',   tap: [120, 488] },
+  { id: 'past',   at: 25.6, enter: 'fade' },
+];
+
+const layers = FLOW.map((f, i) => {
+  const el = document.createElement('div');
+  el.className = 'layer';
+  el.style.zIndex = i;
+  el.innerHTML = `<div class="app">${App.render(f.id, 'iphone')}</div>`;
+  document.body.appendChild(el);
+  return el;
+});
+const tap = document.createElement('div');
+tap.className = 'tap';
+document.body.appendChild(tap);
+
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const out = (x) => 1 - Math.pow(1 - x, 3);
+
+/* in-screen moments, by seconds since the screen arrived: poll bars, check-in progress, the scan result */
+const MOMENTS = { live: [0.9, 1.1], manage: [0.9, 1.2], scan: [1.2, 0.5] };
+
+window.seek = (t) => {
+  tap.style.visibility = 'hidden';
+  FLOW.forEach((f, i) => {
+    const el = layers[i];
+    const next = FLOW[i + 1];
+    const shown = t >= f.at && !(next && t >= next.at + T);
+    el.style.visibility = shown ? 'visible' : 'hidden';
+    if (!shown) return;
+    let tf = '', op = 1, fl = '';
+    // arriving
+    const pIn = f.enter ? ease(clamp((t - f.at) / T)) : 1;
+    if (f.enter === 'push') tf = `translateX(${(1 - pIn) * 100}%)`;
+    if (f.enter === 'rise') { tf = `translateY(${(1 - pIn) * 5}%)`; op = pIn; }
+    if (f.enter === 'sheet') tf = `translateY(${(1 - pIn) * 100}%)`;
+    if (f.enter === 'fade') op = pIn;
+    // leaving, as the next screen arrives over it
+    if (next && t >= next.at) {
+      const p = ease(clamp((t - next.at) / T));
+      if (next.enter === 'push') { tf = `translateX(${-30 * p}%)`; fl = `brightness(${1 - 0.35 * p})`; }
+      if (next.enter === 'sheet') { tf = `scale(${1 - 0.05 * p})`; fl = `brightness(${1 - 0.4 * p})`; }
+    }
+    el.style.transform = tf;
+    el.style.opacity = op;
+    el.style.filter = fl;
+    const m = MOMENTS[f.id];
+    if (m) el.firstChild.style.setProperty('--p', out(clamp((t - f.at - m[0]) / m[1])));
+    // the tap that opens the next screen: shown for the 0.35 s before it
+    if (next && next.tap && t >= next.at - 0.35 && t < next.at) {
+      const p = clamp((t - (next.at - 0.35)) / 0.35);
+      tap.style.visibility = 'visible';
+      tap.style.left = next.tap[0] * K + 'px';
+      tap.style.top = next.tap[1] * K + 'px';
+      tap.style.opacity = 1 - p * 0.6;
+      tap.style.transform = `scale(${0.8 + 0.3 * p})`;
+    }
+  });
+};
+window.DURATION = DURATION;
+document.fonts.ready.then(() => { window.seek(0); window.ready = true; });
+</script>
+</body>
+</html>
