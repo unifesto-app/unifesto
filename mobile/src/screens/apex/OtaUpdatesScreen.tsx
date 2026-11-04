@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import CosmosScreen from '../../components/ui/CosmosScreen';
 import { GUTTER } from '../../components/home/Section';
-import SegmentedTabs from '../../components/ui/SegmentedTabs';
+import TabPager from '../../components/ui/TabPager';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { Badge, Button, type BadgeTone } from '../../components/ui';
 import { buildInfo } from '../../lib/appBuild';
@@ -67,8 +67,8 @@ export default function OtaUpdatesScreen() {
   const c = useCosmos();
   const mine = buildInfo();
   const [channel, setChannel] = useState<OtaChannel>('production');
-  const [groups, setGroups] = useState<OtaGroup[] | null>(null);
-  const [error, setError] = useState('');
+  // Each channel keeps its own list, so the pager can show both side by side.
+  const [byChannel, setByChannel] = useState<Partial<Record<OtaChannel, { groups: OtaGroup[] | null; error: string }>>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [stale, setStale] = useState<OtaStaleness | null>(null);
@@ -76,14 +76,12 @@ export default function OtaUpdatesScreen() {
 
   const load = useCallback(async (ch: OtaChannel) => {
     const res = await getOtaGroups(ch);
-    if (res.ok) {
-      setGroups(res.data.groups);
-      setError('');
-    } else {
-      setGroups(null);
-      setError(res.denied ? 'Only Unifesto platform admins can see this.' : res.message);
-    }
+    const next = res.ok
+      ? { groups: res.data.groups, error: '' }
+      : { groups: null, error: res.denied ? 'Only Unifesto platform admins can see this.' : res.message };
+    setByChannel((prev) => ({ ...prev, [ch]: next }));
   }, []);
+  const loadAll = useCallback(() => Promise.all(CHANNELS.map((ch) => load(ch.key))), [load]);
 
   /** Channel-independent: the alarm and adoption. Failures just hide the cards. */
   const loadHealth = useCallback(async () => {
@@ -94,8 +92,8 @@ export default function OtaUpdatesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void load(channel);
-    }, [load, channel]),
+      void loadAll();
+    }, [loadAll]),
   );
   useFocusEffect(
     useCallback(() => {
@@ -103,15 +101,9 @@ export default function OtaUpdatesScreen() {
     }, [loadHealth]),
   );
 
-  const switchChannel = (ch: OtaChannel) => {
-    setGroups(null);
-    setError('');
-    setChannel(ch);
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([load(channel), loadHealth()]);
+    await Promise.all([loadAll(), loadHealth()]);
     setRefreshing(false);
   };
 
@@ -132,7 +124,6 @@ export default function OtaUpdatesScreen() {
       },
     ]);
 
-  const states = groups ? labelGroups(groups) : new Map<string, State>();
   const badge = (s: State, g: OtaGroup): { label: string; tone: BadgeTone } =>
     s === 'rollout'
       ? { label: `Rolling out · ${g.rolloutPercentage}%`, tone: 'warning' }
@@ -142,126 +133,136 @@ export default function OtaUpdatesScreen() {
           ? { label: 'Rolled back to store build', tone: 'danger' }
           : { label: 'Past', tone: 'neutral' };
 
-  return (
-    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
-      {stale ? <StaleCard s={stale} /> : null}
-      {adoption ? <AdoptionCard a={adoption} groups={channel === 'production' ? groups : null} /> : null}
-
-      <SegmentedTabs tabs={CHANNELS} value={channel} onChange={switchChannel} />
-      <Text style={[styles.hint, { color: c.muted }]}>
-        This phone: {mine.channel ?? 'no channel'} · runtime {mine.runtimeVersion?.slice(0, 7) ?? '–'} ·{' '}
-        {mine.updateId ? `update ${mine.updateId.slice(0, 7)}` : 'store build code'}
-      </Text>
-
-      {!groups ? (
-        error ? (
+  /** One channel's page: its updates, newest first, with the rollout controls. */
+  const renderChannel = (ch: OtaChannel) => {
+    const groups = byChannel[ch]?.groups ?? null;
+    const error = byChannel[ch]?.error ?? '';
+    const states = groups ? labelGroups(groups) : new Map<string, State>();
+    return (
+      <>
+        <Text style={[styles.hint, { color: c.muted }]}>
+          This phone: {mine.channel ?? 'no channel'} · runtime {mine.runtimeVersion?.slice(0, 7) ?? '–'} ·{' '}
+          {mine.updateId ? `update ${mine.updateId.slice(0, 7)}` : 'store build code'}
+        </Text>
+        {!groups ? (
+          error ? (
+            <View style={styles.empty}>
+              <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+              <Button variant="secondary" label="Try again" onPress={() => void load(ch)} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <ActivityIndicator color={c.text} style={styles.center} />
+          )
+        ) : groups.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
-            <Button variant="secondary" label="Try again" onPress={() => void load(channel)} style={{ marginTop: spacing[4] }} />
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>Nothing published on {ch} yet.</Text>
           </View>
         ) : (
-          <ActivityIndicator color={c.text} style={styles.center} />
-        )
-      ) : groups.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>Nothing published on {channel} yet.</Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {groups.map((g, n) => {
-            const s = states.get(g.group) ?? 'past';
-            const b = badge(s, g);
-            const pct = g.rolloutPercentage ?? 0;
-            const isMine = !!mine.updateId && g.updateIds.includes(mine.updateId);
-            return (
-              <View key={g.group} style={[styles.card, n > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
-                <View style={styles.head}>
-                  <Badge label={b.label} tone={b.tone} />
-                  {isMine ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
-                  {isMine ? <Badge label="This phone" tone="accent" /> : null}
-                </View>
-                <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
-                  {g.isRollBackToEmbedded ? 'Roll back to the store build’s code' : g.message || 'No message'}
-                </Text>
-                <Text style={[styles.small, { color: c.muted }]}>
-                  {when(g.createdAt)}
-                  {g.publishedBy ? ` · ${g.publishedBy}` : ''} · {platformLabel(g.platforms)}
-                </Text>
-                <Text style={[styles.small, { color: c.muted }]}>
-                  Runtime {g.runtimeVersion.slice(0, 7)} · group {g.group.slice(0, 8)}
-                  {g.gitCommitHash ? ` · ${g.gitCommitHash.slice(0, 7)}` : ''}
-                </Text>
+          <View style={styles.list}>
+            {groups.map((g, n) => {
+              const s = states.get(g.group) ?? 'past';
+              const b = badge(s, g);
+              const pct = g.rolloutPercentage ?? 0;
+              const isMine = !!mine.updateId && g.updateIds.includes(mine.updateId);
+              return (
+                <View key={g.group} style={[styles.card, n > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
+                  <View style={styles.head}>
+                    <Badge label={b.label} tone={b.tone} />
+                    {isMine ? <Text style={[styles.sep, { color: c.muted }]}>·</Text> : null}
+                    {isMine ? <Badge label="This phone" tone="accent" /> : null}
+                  </View>
+                  <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
+                    {g.isRollBackToEmbedded ? 'Roll back to the store build’s code' : g.message || 'No message'}
+                  </Text>
+                  <Text style={[styles.small, { color: c.muted }]}>
+                    {when(g.createdAt)}
+                    {g.publishedBy ? ` · ${g.publishedBy}` : ''} · {platformLabel(g.platforms)}
+                  </Text>
+                  <Text style={[styles.small, { color: c.muted }]}>
+                    Runtime {g.runtimeVersion.slice(0, 7)} · group {g.group.slice(0, 8)}
+                    {g.gitCommitHash ? ` · ${g.gitCommitHash.slice(0, 7)}` : ''}
+                  </Text>
 
-                {s === 'rollout' ? (
-                  <>
-                    <View style={[styles.track, { backgroundColor: c.tint }]}>
-                      <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.warn }]} />
-                    </View>
-                    <View style={styles.actions}>
-                      {pct < 50 ? (
+                  {s === 'rollout' ? (
+                    <>
+                      <View style={[styles.track, { backgroundColor: c.tint }]}>
+                        <View style={[styles.fill, { width: `${pct}%`, backgroundColor: c.warn }]} />
+                      </View>
+                      <View style={styles.actions}>
+                        {pct < 50 ? (
+                          <Button
+                            label="50%"
+                            size="sm"
+                            variant="secondary"
+                            disabled={!!busy}
+                            onPress={() => act(g, 'Raise to 50%?', 'Half of the phones on this runtime will get it.', 'Raise', () => setOtaRollout(g.group, 50))}
+                          />
+                        ) : null}
                         <Button
-                          label="50%"
+                          label="Promote to 100%"
                           size="sm"
-                          variant="secondary"
+                          loading={busy === g.group}
                           disabled={!!busy}
-                          onPress={() => act(g, 'Raise to 50%?', 'Half of the phones on this runtime will get it.', 'Raise', () => setOtaRollout(g.group, 50))}
+                          onPress={() =>
+                            act(g, 'Promote to everyone?', 'Check Crashlytics (filter by update_id) first. Every phone on this runtime will get it.', 'Promote', () =>
+                              setOtaRollout(g.group, 100),
+                            )
+                          }
                         />
-                      ) : null}
+                        <Button
+                          label="Revert"
+                          size="sm"
+                          variant="danger"
+                          disabled={!!busy}
+                          onPress={() =>
+                            act(
+                              g,
+                              'Revert this rollout?',
+                              'Deletes it and republishes the update before it, so phones that got it go back. Takes up to a minute.',
+                              'Revert',
+                              () => revertOtaRollout(g.group),
+                              true,
+                            )
+                          }
+                        />
+                      </View>
+                    </>
+                  ) : s === 'past' && !g.isRollBackToEmbedded ? (
+                    <View style={styles.actions}>
                       <Button
-                        label="Promote to 100%"
+                        label="Roll back to this"
                         size="sm"
+                        variant="secondary"
                         loading={busy === g.group}
-                        disabled={!!busy}
-                        onPress={() =>
-                          act(g, 'Promote to everyone?', 'Check Crashlytics (filter by update_id) first. Every phone on this runtime will get it.', 'Promote', () =>
-                            setOtaRollout(g.group, 100),
-                          )
-                        }
-                      />
-                      <Button
-                        label="Revert"
-                        size="sm"
-                        variant="danger"
                         disabled={!!busy}
                         onPress={() =>
                           act(
                             g,
-                            'Revert this rollout?',
-                            'Deletes it and republishes the update before it, so phones that got it go back. Takes up to a minute.',
-                            'Revert',
-                            () => revertOtaRollout(g.group),
+                            'Roll back to this update?',
+                            `Republishes it as the newest update on ${ch}. Every phone on runtime ${g.runtimeVersion.slice(0, 7)} moves to it.`,
+                            'Roll back',
+                            () => republishOtaGroup(g.group),
                             true,
                           )
                         }
                       />
                     </View>
-                  </>
-                ) : s === 'past' && !g.isRollBackToEmbedded ? (
-                  <View style={styles.actions}>
-                    <Button
-                      label="Roll back to this"
-                      size="sm"
-                      variant="secondary"
-                      loading={busy === g.group}
-                      disabled={!!busy}
-                      onPress={() =>
-                        act(
-                          g,
-                          'Roll back to this update?',
-                          `Republishes it as the newest update on ${channel}. Every phone on runtime ${g.runtimeVersion.slice(0, 7)} moves to it.`,
-                          'Roll back',
-                          () => republishOtaGroup(g.group),
-                          true,
-                        )
-                      }
-                    />
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      )}
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
+      {stale ? <StaleCard s={stale} /> : null}
+      {adoption ? <AdoptionCard a={adoption} groups={byChannel.production?.groups ?? null} /> : null}
+
+      <TabPager inline tabs={CHANNELS} value={channel} onChange={setChannel} renderPage={renderChannel} />
 
       <Text style={[styles.hint, { color: c.muted }]}>
         Publish new updates with `npm run update:production` (starts at 20%). Rolling back to the store build is CLI-only:

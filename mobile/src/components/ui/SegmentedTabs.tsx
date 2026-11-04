@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { GlassFill, LIQUID_GLASS } from './CardSurface';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 const PAD = 4;
+// A tap glides the thumb like the Tickets pager's slide: eased, no overshoot.
+const GLIDE = { duration: 280, easing: Easing.out(Easing.cubic) };
 
 export interface SegmentedTabsProps<K extends string> {
   tabs: { key: K; label: string }[];
@@ -20,7 +22,7 @@ export interface SegmentedTabsProps<K extends string> {
   glass?: boolean;
 }
 
-/** Segmented control (radius 14) with a silver thumb that springs between tabs. Monochrome. */
+/** Segmented control (radius 14) with a silver thumb that glides between tabs. Monochrome. */
 export default function SegmentedTabs<K extends string>({ tabs, value, onChange, position, glass = true }: SegmentedTabsProps<K>) {
   const c = useCosmos();
   const useGlass = glass && LIQUID_GLASS;
@@ -28,10 +30,13 @@ export default function SegmentedTabs<K extends string>({ tabs, value, onChange,
   const segW = width > 0 ? (width - PAD * 2) / tabs.length : 0;
   const index = tabs.findIndex((t) => t.key === value);
   const x = useSharedValue(0);
+  const laidOutW = useRef(0);
 
   useEffect(() => {
     if (position) return;
-    x.value = withSpring(index * segW, { damping: 20, stiffness: 220 });
+    // First layout or a resize: sit on the picked tab. Only a new pick moves.
+    x.value = segW === laidOutW.current ? withTiming(index * segW, GLIDE) : index * segW;
+    laidOutW.current = segW;
   }, [index, segW, x, position]);
 
   const pill = useAnimatedStyle(() => ({

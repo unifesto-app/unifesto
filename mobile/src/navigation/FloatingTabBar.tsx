@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Cards, Crown, Stack, User, Wallet, type Icon } from '@unifesto/unicon/react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
@@ -19,14 +19,15 @@ export const TAB_META: Record<string, { label: string; icon: Icon }> = {
 
 const ITEM_W = 64;
 const GAP = spacing[1];
-const INDICATOR_W = 18;
+const DOT = 5;
 const SPRING = { damping: 18, stiffness: 240 };
 
 /**
  * Floating tab bar for Android (iOS uses the native Liquid Glass bar).
  * A glass capsule (solid base + veil, untinted) off the bottom edge, monochrome:
- * the active tab is a silver (ink by day), filled glyph with a short bar that
- * slides between tabs; inactive glyphs are muted. Nothing behind icons.
+ * the active tab is a silver (ink by day), filled glyph with a small dot under
+ * it that fades in place (never slides); inactive glyphs are muted. Nothing
+ * behind icons.
  */
 export default function FloatingTabBar({
   state,
@@ -39,13 +40,6 @@ export default function FloatingTabBar({
   const insets = useSafeAreaInsets();
 
   const visible = state.routes.filter((r) => TAB_META[r.name] && !hiddenRoutes.includes(r.name));
-  const activeSlot = Math.max(0, visible.findIndex((r) => r.key === state.routes[state.index]?.key));
-
-  const x = useSharedValue(activeSlot * (ITEM_W + GAP));
-  useEffect(() => {
-    x.value = withSpring(activeSlot * (ITEM_W + GAP), SPRING);
-  }, [activeSlot, x]);
-  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) + 4 }]}>
@@ -70,14 +64,11 @@ export default function FloatingTabBar({
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               color={focused ? c.primary : c.muted}
+              dotColor={c.primary}
               rippleColor={rippleColor}
             />
           );
         })}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.indicator, { backgroundColor: c.primary }, indicatorStyle]}
-        />
       </View>
     </View>
   );
@@ -91,6 +82,7 @@ function TabItem({
   onPress,
   onLongPress,
   color,
+  dotColor,
   rippleColor,
 }: {
   label: string;
@@ -101,11 +93,13 @@ function TabItem({
   onPress: () => void;
   onLongPress: () => void;
   color: string;
+  dotColor: string;
   rippleColor: string;
 }) {
   const iconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: withSpring(focused ? 1.06 : 1, SPRING) }],
   }));
+  const dotStyle = useAnimatedStyle(() => ({ opacity: withTiming(focused ? 1 : 0, { duration: 150 }) }));
 
   return (
     <Pressable
@@ -125,6 +119,7 @@ function TabItem({
           <Icon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
         )}
       </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.dot, { backgroundColor: dotColor }, dotStyle]} />
     </Pressable>
   );
 }
@@ -143,12 +138,6 @@ const styles = StyleSheet.create({
   },
   item: { width: ITEM_W, height: 40, alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5 },
-  indicator: {
-    position: 'absolute',
-    bottom: spacing[2],
-    left: spacing[2] + (ITEM_W - INDICATOR_W) / 2,
-    width: INDICATOR_W,
-    height: 3,
-    borderRadius: 2,
-  },
+  // Sits where the old sliding bar did: 8pt above the capsule's bottom edge.
+  dot: { position: 'absolute', bottom: -spacing[1], left: (ITEM_W - DOT) / 2, width: DOT, height: DOT, borderRadius: DOT / 2 },
 });

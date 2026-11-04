@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +21,7 @@ import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { relativeWhen, shortPrice, spaceLogo } from '../../utils/eventFormat';
 import PressableScale from '../ui/PressableScale';
+import SegmentedTabs from '../ui/SegmentedTabs';
 import Modal from '../ui/Modal';
 
 interface SearchSheetProps {
@@ -193,26 +193,15 @@ export default function SearchSheet({
           </PressableScale>
         </View>
 
-        <View style={[styles.segment, { backgroundColor: LIQUID_GLASS ? undefined : c.card }]}>
-          <GlassFill interactive />
-          {(['events', 'spaces'] as const).map((t) => {
-            const active = s.type === t;
-            const count = t === 'events' ? s.eventResults.length : s.spaceResults.length;
-            return (
-              <Pressable
-                key={t}
-                onPress={() => s.setType(t)}
-                style={[styles.segmentBtn, active && { backgroundColor: c.card }]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[styles.segmentText, { color: active ? c.text : c.muted }]}>
-                  {t === 'events' ? 'Events' : 'Spaces'}
-                  {s.isSearching && !s.loading && count > 0 ? `  ${count}` : ''}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.segment}>
+          <SegmentedTabs
+            tabs={(['events', 'spaces'] as const).map((t) => {
+              const count = t === 'events' ? s.eventResults.length : s.spaceResults.length;
+              return { key: t, label: `${t === 'events' ? 'Events' : 'Spaces'}${s.isSearching && !s.loading && count > 0 ? `  ${count}` : ''}` };
+            })}
+            value={s.type}
+            onChange={s.setType}
+          />
         </View>
 
         <ScrollView
@@ -337,15 +326,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
   clear: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  segment: {
-    flexDirection: 'row',
-    marginHorizontal: spacing[5],
-    marginTop: spacing[4],
-    padding: 4,
-    borderRadius: cosmosRadius + 4,
-  },
-  segmentBtn: { flex: 1, height: 36, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  segment: { marginHorizontal: spacing[5], marginTop: spacing[4] },
   body: { paddingHorizontal: spacing[5], paddingTop: spacing[4], paddingBottom: spacing[16] },
   block: { marginBottom: spacing[6] },
   blockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },

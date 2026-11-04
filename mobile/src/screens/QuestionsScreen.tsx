@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import { getQaBoard, moderateQuestion, setQaPremoderated, type QaBoard, type Question, type QuestionStatus } from '../lib/api/questions';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import TabPager from '../components/ui/TabPager';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { SwitchRow } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
@@ -78,7 +78,6 @@ export default function QuestionsScreen() {
 
   const act = (q: Question, change: Parameters<typeof moderateQuestion>[2]) => void run(q.id, () => moderateQuestion(eventId!, q.id, change));
   const count = (s: QuestionStatus) => board.questions.filter((q) => q.status === s).length;
-  const shown = board.questions.filter((q) => q.status === tab);
 
   return (
     <CosmosScreen
@@ -105,44 +104,50 @@ export default function QuestionsScreen() {
         />
       </SettingsGroup>
 
-      <SegmentedTabs tabs={TABS.map((t) => ({ key: t.key, label: `${t.label} ${count(t.key)}` }))} value={tab} onChange={setTab} />
-
-      {shown.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
-        </View>
-      ) : null}
-      {shown.length ? (
-      <View>
-      {shown.map((q, idx) => (
-          <View key={q.id} style={[styles.question, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
-            <Text style={[styles.text, { color: c.text }]}>{q.text}</Text>
-            <Text style={[styles.meta, { color: c.muted }]}>
-              <Text style={[styles.votes, { color: c.text }]}>{q.votes}</Text>
-              {` ${[`upvote${q.votes === 1 ? '' : 's'}`, q.pinned ? 'Pinned' : null, q.author, q.agendaTitle].filter(Boolean).join(' · ')}`}
-            </Text>
-            <View style={styles.actions}>
-              {q.status !== 'APPROVED' ? (
-                <Button
-                  label={q.status === 'PENDING' ? 'Approve' : q.status === 'ANSWERED' ? 'Reopen' : 'Show'}
-                  size="sm"
-                  variant="secondary"
-                  loading={busy === q.id}
-                  onPress={() => act(q, { status: 'APPROVED' })}
-                />
-              ) : null}
-              {q.status === 'PENDING' || q.status === 'APPROVED' ? (
-                <Button label="Answered" size="sm" variant="secondary" onPress={() => act(q, { status: 'ANSWERED' })} />
-              ) : null}
-              {q.status === 'APPROVED' || q.status === 'ANSWERED' ? (
-                <Button label={q.pinned ? 'Unpin' : 'Pin'} size="sm" variant="secondary" onPress={() => act(q, { pinned: !q.pinned })} />
-              ) : null}
-              {q.status !== 'HIDDEN' ? <Button label="Hide" size="sm" variant="ghost" onPress={() => act(q, { status: 'HIDDEN' })} /> : null}
+      <TabPager
+        inline
+        tabs={TABS.map((t) => ({ key: t.key, label: `${t.label} ${count(t.key)}` }))}
+        value={tab}
+        onChange={setTab}
+        renderPage={(status) => {
+          const shown = board.questions.filter((q) => q.status === status);
+          return shown.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[status]}</Text>
             </View>
-          </View>
-      ))}
-      </View>
-      ) : null}
+          ) : (
+            <View>
+              {shown.map((q, idx) => (
+                <View key={q.id} style={[styles.question, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}>
+                  <Text style={[styles.text, { color: c.text }]}>{q.text}</Text>
+                  <Text style={[styles.meta, { color: c.muted }]}>
+                    <Text style={[styles.votes, { color: c.text }]}>{q.votes}</Text>
+                    {` ${[`upvote${q.votes === 1 ? '' : 's'}`, q.pinned ? 'Pinned' : null, q.author, q.agendaTitle].filter(Boolean).join(' · ')}`}
+                  </Text>
+                  <View style={styles.actions}>
+                    {q.status !== 'APPROVED' ? (
+                      <Button
+                        label={q.status === 'PENDING' ? 'Approve' : q.status === 'ANSWERED' ? 'Reopen' : 'Show'}
+                        size="sm"
+                        variant="secondary"
+                        loading={busy === q.id}
+                        onPress={() => act(q, { status: 'APPROVED' })}
+                      />
+                    ) : null}
+                    {q.status === 'PENDING' || q.status === 'APPROVED' ? (
+                      <Button label="Answered" size="sm" variant="secondary" onPress={() => act(q, { status: 'ANSWERED' })} />
+                    ) : null}
+                    {q.status === 'APPROVED' || q.status === 'ANSWERED' ? (
+                      <Button label={q.pinned ? 'Unpin' : 'Pin'} size="sm" variant="secondary" onPress={() => act(q, { pinned: !q.pinned })} />
+                    ) : null}
+                    {q.status !== 'HIDDEN' ? <Button label="Hide" size="sm" variant="ghost" onPress={() => act(q, { status: 'HIDDEN' })} /> : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+        }}
+      />
     </CosmosScreen>
   );
 }

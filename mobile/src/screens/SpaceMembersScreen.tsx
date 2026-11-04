@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,7 +10,7 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useSpaceMembers, type MemberFilter } from '../hooks/useSpaceMembers';
 import useTopSpacing from '../hooks/useTopSpacing';
 import MemberRow from '../components/manage/MemberRow';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import TabPager from '../components/ui/TabPager';
 import { AppAlert, type AppAlertButton } from '../components/ui/AppAlert';
 import { SPACE_ROLE_LABEL, type SpaceMember } from '../lib/api/spaceMembers';
 import { column, spacing } from '../theme/spacing';
@@ -37,7 +37,12 @@ export default function SpaceMembersScreen() {
   const topSpacing = useTopSpacing();
   const { user } = useAuth();
   const { spaces, refresh: refreshAccess } = useSpaceAccess();
-  const m = useSpaceMembers(spaceId);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<MemberFilter>('all');
+  // Bumped after a role change or removal so the other tabs reload too.
+  const [stamp, setStamp] = useState(0);
+  const [denied, setDenied] = useState(false);
+  const onDenied = useCallback(() => setDenied(true), []);
   const creatorId = spaces.find((s) => s.id === spaceId)?.creator?.id;
 
   const openAdd = () => router.push(`/manage/space/${spaceId}/add-member`);
@@ -45,9 +50,10 @@ export default function SpaceMembersScreen() {
   const act = async (run: () => Promise<string | null>) => {
     const problem = await run();
     if (problem) AppAlert.alert("Couldn't update", problem);
+    else setStamp((n) => n + 1);
   };
 
-  const openMember = (member: SpaceMember) => {
+  const openMember = (m: Members, member: SpaceMember) => {
     const isCreator = member.userId === creatorId;
     const isMe = member.userId === user?.id;
     const name = member.user.fullName || member.user.username || 'This person';
@@ -126,37 +132,11 @@ export default function SpaceMembersScreen() {
     AppAlert.alert(name, `${SPACE_ROLE_LABEL[member.role.code] ?? member.role.name}${isMe ? ' · You' : ''}`, buttons);
   };
 
-  const header = (
-    <View style={{ paddingTop: topSpacing }}>
-      <SearchField value={m.query} onChangeText={m.setQuery} placeholder="Name, username or email" />
-      <View style={{ marginTop: spacing[4] }}>
-        <SegmentedTabs tabs={TABS} value={m.filter} onChange={m.setFilter} />
-      </View>
-      {!m.loading && !m.error ? (
-        <Text style={[styles.count, { color: c.muted }]} accessibilityRole="header">
-          {m.total.toLocaleString('en-IN')} {m.total === 1 ? 'person' : 'people'}
-        </Text>
-      ) : null}
-    </View>
-  );
-
-  const empty = m.loading ? (
-    <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
-  ) : (
-    <View style={styles.empty}>
-      <Text style={[styles.emptyText, { color: c.muted }]}>
-        {m.denied ? 'Only Space admins can manage members.' : m.error || (m.query ? 'No one matches that search.' : 'No one here yet.')}
-      </Text>
-    </View>
-  );
-
-  const rows = m.loading || m.error ? [] : m.rows;
-
   return (
     <>
       <Stack.Screen
         options={{
-          headerRight: m.denied
+          headerRight: denied
             ? undefined
             : () => (
                 <Pressable onPress={openAdd} hitSlop={10} accessibilityRole="button" accessibilityLabel="Add member">
@@ -165,45 +145,118 @@ export default function SpaceMembersScreen() {
               ),
         }}
       />
+      {/* Search and tabs stay put; each role is its own page of the pager. */}
       <View style={[styles.container, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
-        <FlatList
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false}
-          contentContainerStyle={[column, styles.content]}
-          data={rows}
-          keyExtractor={(r) => r.id}
-          ListHeaderComponent={header}
-          ListEmptyComponent={empty}
-          // Rows on the page: a full hairline between people, no card.
-          renderItem={({ item, index }) => (
-            <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
-              <MemberRow
-                user={item.user}
-                trailing={SPACE_ROLE_LABEL[item.role.code] ?? item.role.name}
-                tags={[item.userId === creatorId ? 'Owner' : '', item.userId === user?.id ? 'You' : ''].filter(Boolean)}
-                busy={m.busyId === item.id}
-                onPress={() => openMember(item)}
-              />
-            </View>
+        <View style={[column, styles.head, { paddingTop: topSpacing }]}>
+          <SearchField value={query} onChangeText={setQuery} placeholder="Name, username or email" />
+        </View>
+        <TabPager
+          tabs={TABS}
+          value={filter}
+          onChange={setFilter}
+          tabsStyle={[column, styles.head, { marginTop: spacing[4] }]}
+          renderPage={(f) => (
+            <MemberList
+              spaceId={spaceId}
+              filter={f}
+              query={query}
+              stamp={stamp}
+              creatorId={creatorId}
+              myId={user?.id}
+              onOpen={openMember}
+              onDenied={onDenied}
+            />
           )}
-          onEndReached={() => void m.loadMore()}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={m.loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={m.refreshing} onRefresh={m.refresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />
-          }
         />
       </View>
     </>
   );
 }
 
+type Members = ReturnType<typeof useSpaceMembers>;
+
+/** One role tab's roster: its own paging and pull-to-refresh. */
+function MemberList({
+  spaceId,
+  filter,
+  query,
+  stamp,
+  creatorId,
+  myId,
+  onOpen,
+  onDenied,
+}: {
+  spaceId: string | undefined;
+  filter: MemberFilter;
+  query: string;
+  stamp: number;
+  creatorId: string | undefined;
+  myId: string | undefined;
+  onOpen: (m: Members, member: SpaceMember) => void;
+  onDenied: () => void;
+}) {
+  const c = useCosmos();
+  const m = useSpaceMembers(spaceId, filter, query, stamp);
+
+  useEffect(() => {
+    if (m.denied) onDenied();
+  }, [m.denied, onDenied]);
+
+  const header =
+    !m.loading && !m.error ? (
+      <Text style={[styles.count, { color: c.muted }]} accessibilityRole="header">
+        {m.total.toLocaleString('en-IN')} {m.total === 1 ? 'person' : 'people'}
+      </Text>
+    ) : null;
+
+  const empty = m.loading ? (
+    <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+  ) : (
+    <View style={styles.empty}>
+      <Text style={[styles.emptyText, { color: c.muted }]}>
+        {m.denied ? 'Only Space admins can manage members.' : m.error || (query ? 'No one matches that search.' : 'No one here yet.')}
+      </Text>
+    </View>
+  );
+
+  const rows = m.loading || m.error ? [] : m.rows;
+
+  return (
+    <FlatList
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
+      contentContainerStyle={[column, styles.content]}
+      data={rows}
+      keyExtractor={(r) => r.id}
+      ListHeaderComponent={header}
+      ListEmptyComponent={empty}
+      // Rows on the page: a full hairline between people, no card.
+      renderItem={({ item, index }) => (
+        <View style={index > 0 && [styles.divider, { borderTopColor: c.border }]}>
+          <MemberRow
+            user={item.user}
+            trailing={SPACE_ROLE_LABEL[item.role.code] ?? item.role.name}
+            tags={[item.userId === creatorId ? 'Owner' : '', item.userId === myId ? 'You' : ''].filter(Boolean)}
+            busy={m.busyId === item.id}
+            onPress={() => onOpen(m, item)}
+          />
+        </View>
+      )}
+      onEndReached={() => void m.loadMore()}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={m.loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={m.refreshing} onRefresh={m.refresh} tintColor={c.text} colors={[c.text]} />}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  head: { paddingHorizontal: GUTTER },
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   divider: { borderTopWidth: StyleSheet.hairlineWidth },

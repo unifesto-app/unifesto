@@ -1149,3 +1149,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-04** · recorded the 5.0.0 iOS (40) and Android (50) store runtimes from EAS build metadata (#601)
 - **2026-11-04** · 5.0.0 store listing assets (copy, screenshots for iPhone/iPad/Play phone/tablet, feature graphic, App Store header and search, 29 s preview) in marketing/store-5.0 (#602)
 - **2026-11-04** · 5.0 launch kit in marketing/launch-5.0: carousel, squares, stories, channel banners, profile pictures, 31.5 s launch video and captions for every channel (#603)
+- **2026-11-04** · Android tab bar marks the active tab with a static dot instead of a sliding bar; every in-screen tab switcher (attendees, members, refunds, Apex requests, Q&A, sponsors, manage space events, inbox, OTA) now swipes and tracks like My tickets via a shared TabPager. (#605)
