@@ -19,7 +19,7 @@ import {
 } from '../lib/api/spaceSponsors';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { shareCsv, slugPart } from '../lib/csvShare';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import TabPager from '../components/ui/TabPager';
 import ChipPicker from '../components/manage/ChipPicker';
 import SelectRow from '../components/manage/SelectRow';
 import SponsorMark from '../components/manage/SponsorMark';
@@ -190,105 +190,109 @@ export default function EventSponsorsScreen() {
       }}
     >
       {error ? <Text style={[styles.intro, { color: c.danger, marginBottom: spacing[3] }]}>{error}</Text> : null}
-      <SegmentedTabs tabs={tabs} value={tab} onChange={setTab} />
-
-      {tab === 'sponsors' ? (
-        <>
-          {attached.map((es) => (
-            <View key={es.id} style={{ marginTop: spacing[5] }}>
-              <SettingsGroup plain>
-                <SettingsRow
-                  icon={<SponsorMark name={es.sponsor.name} logoUrl={es.overrideLogoUrl || es.sponsor.logoUrl} />}
-                  label={es.sponsor.name}
-                  onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: es.sponsorId } })}
-                />
-                {tiers.length ? (
-                  <SelectRow
-                    label="Tier"
-                    value={es.tier?.name ?? ''}
-                    options={tierNames}
-                    placeholder="No tier"
-                    clearable
-                    onChange={(name) => void patch(es, { tierId: tiers.find((t) => t.name === name)?.id ?? null })}
+      <TabPager
+        inline
+        tabs={tabs}
+        value={tab}
+        onChange={setTab}
+        renderPage={(page) => page === 'sponsors' ? (
+          <>
+            {attached.map((es) => (
+              <View key={es.id} style={{ marginTop: spacing[5] }}>
+                <SettingsGroup plain>
+                  <SettingsRow
+                    icon={<SponsorMark name={es.sponsor.name} logoUrl={es.overrideLogoUrl || es.sponsor.logoUrl} />}
+                    label={es.sponsor.name}
+                    onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: es.sponsorId } })}
                   />
-                ) : null}
-                <SwitchRow
-                  label="Lead capture"
-                  hint="Attendees can opt in; the sponsor can scan tickets at the booth."
-                  value={es.leadCaptureEnabled}
-                  disabled={busy === es.id}
-                  onValueChange={(v) => void patch(es, { leadCaptureEnabled: v })}
-                />
+                  {tiers.length ? (
+                    <SelectRow
+                      label="Tier"
+                      value={es.tier?.name ?? ''}
+                      options={tierNames}
+                      placeholder="No tier"
+                      clearable
+                      onChange={(name) => void patch(es, { tierId: tiers.find((t) => t.name === name)?.id ?? null })}
+                    />
+                  ) : null}
+                  <SwitchRow
+                    label="Lead capture"
+                    hint="Attendees can opt in; the sponsor can scan tickets at the booth."
+                    value={es.leadCaptureEnabled}
+                    disabled={busy === es.id}
+                    onValueChange={(v) => void patch(es, { leadCaptureEnabled: v })}
+                  />
+                  <SettingsRow
+                    label="Leads"
+                    value={String(es._count?.leads ?? 0)}
+                    onPress={() => {
+                      setSponsorFilter(es.sponsorId);
+                      setTab('leads');
+                    }}
+                  />
+                  <SettingsRow label="Remove from event" danger onPress={() => detach(es)} />
+                </SettingsGroup>
+              </View>
+            ))}
+
+            <View style={{ marginTop: spacing[6] }}>
+              {unattached.length ? (
+                <SettingsGroup title="Add a sponsor" plain>
+                  <SelectRow label="From your roster" value="" options={unattached.map(rosterLabel)} placeholder="Choose" onChange={(v) => void attach(v)} />
+                </SettingsGroup>
+              ) : (
+                <Text style={[styles.intro, { color: c.muted }]}>
+                  {roster.length ? 'Every sponsor in your roster is on this event.' : 'Your roster is empty. Add a sponsor first.'}
+                </Text>
+              )}
+              {busy === 'attach' ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3] }} /> : null}
+              <SettingsGroup flat style={{ marginTop: spacing[3] }}>
                 <SettingsRow
-                  label="Leads"
-                  value={String(es._count?.leads ?? 0)}
-                  onPress={() => {
-                    setSponsorFilter(es.sponsorId);
-                    setTab('leads');
-                  }}
+                  icon={<Plus size={28} color={c.sky} />}
+                  label="New sponsor"
+                  accent={c.sky}
+                  onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
                 />
-                <SettingsRow label="Remove from event" danger onPress={() => detach(es)} />
               </SettingsGroup>
             </View>
-          ))}
+          </>
+        ) : (
+          <>
+            {attached.length > 1 ? (
+              <View style={{ marginTop: spacing[4] }}>
+                <ChipPicker
+                  options={attached.map((a) => ({ value: a.sponsorId, label: a.sponsor.name }))}
+                  value={sponsorFilter}
+                  onChange={setSponsorFilter}
+                  clearable
+                />
+              </View>
+            ) : null}
 
-          <View style={{ marginTop: spacing[6] }}>
-            {unattached.length ? (
-              <SettingsGroup title="Add a sponsor" plain>
-                <SelectRow label="From your roster" value="" options={unattached.map(rosterLabel)} placeholder="Choose" onChange={(v) => void attach(v)} />
-              </SettingsGroup>
-            ) : (
-              <Text style={[styles.intro, { color: c.muted }]}>
-                {roster.length ? 'Every sponsor in your roster is on this event.' : 'Your roster is empty. Add a sponsor first.'}
-              </Text>
-            )}
-            {busy === 'attach' ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3] }} /> : null}
-            <SettingsGroup flat style={{ marginTop: spacing[3] }}>
-              <SettingsRow
-                icon={<Plus size={28} color={c.sky} />}
-                label="New sponsor"
-                accent={c.sky}
-                onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
-              />
-            </SettingsGroup>
-          </View>
-        </>
-      ) : (
-        <>
-          {attached.length > 1 ? (
             <View style={{ marginTop: spacing[4] }}>
-              <ChipPicker
-                options={attached.map((a) => ({ value: a.sponsorId, label: a.sponsor.name }))}
-                value={sponsorFilter}
-                onChange={setSponsorFilter}
-                clearable
-              />
+              <SettingsGroup flat plain style={{ marginTop: 0 }}>
+                {shownLeads.length === 0 ? (
+                  <SettingsRow label="No leads yet" value={attached.some((a) => a.leadCaptureEnabled) ? undefined : 'Lead capture is off'} />
+                ) : null}
+                {shownLeads.map((l) => (
+                  <View key={l.id}>
+                    <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
+                    <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)}>
+                      {[attached.length > 1 && !sponsorFilter ? l.sponsorName : null, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, l.email]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Text>
+                  </View>
+                ))}
+                {/* Exporting is an action, so it closes the list in sky. */}
+                {shownLeads.length ? (
+                  <SettingsRow icon={<Export size={28} color={c.sky} />} label="Export CSV" accent={c.sky} onPress={() => void exportLeads()} />
+                ) : null}
+              </SettingsGroup>
             </View>
-          ) : null}
-
-          <View style={{ marginTop: spacing[4] }}>
-            <SettingsGroup flat plain style={{ marginTop: 0 }}>
-              {shownLeads.length === 0 ? (
-                <SettingsRow label="No leads yet" value={attached.some((a) => a.leadCaptureEnabled) ? undefined : 'Lead capture is off'} />
-              ) : null}
-              {shownLeads.map((l) => (
-                <View key={l.id}>
-                  <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
-                  <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)}>
-                    {[attached.length > 1 && !sponsorFilter ? l.sponsorName : null, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, l.email]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                </View>
-              ))}
-              {/* Exporting is an action, so it closes the list in sky. */}
-              {shownLeads.length ? (
-                <SettingsRow icon={<Export size={28} color={c.sky} />} label="Export CSV" accent={c.sky} onPress={() => void exportLeads()} />
-              ) : null}
-            </SettingsGroup>
-          </View>
-        </>
-      )}
+          </>
+        )}
+      />
     </CosmosScreen>
   );
 }

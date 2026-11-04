@@ -30,7 +30,7 @@ import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { Monogram } from '../components/home/SpaceCards';
 import ManageEventRow, { ManageEventRowSkeleton } from '../components/manage/ManageEventRow';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import TabPager from '../components/ui/TabPager';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { borderRadius, column, spacing } from '../theme/spacing';
@@ -64,7 +64,6 @@ export default function ManageSpaceScreen() {
   const m = useManageSpace(spaceId);
 
   const now = new Date();
-  const list = m.buckets[m.tab];
   const isSpaceAdmin = m.space?.userRole?.code === 'SPACE_ADMIN';
   const go = (path: string) => () => router.push(`/manage/space/${spaceId}/${path}` as never);
   // Desk work (creating events, branding, billing) opens on Unifesto Space (D3).
@@ -176,31 +175,38 @@ export default function ManageSpaceScreen() {
         {/* Events: the state tabs, then rows on the page with full hairlines. */}
         <View style={[styles.pad, styles.events]}>
           <Text accessibilityRole="header" style={[styles.listTitle, { color: c.muted }]}>Events</Text>
-          <SegmentedTabs tabs={tabs} value={m.tab} onChange={m.setTab} />
-          <View style={styles.list}>
-            {m.loading ? (
-              [0, 1, 2].map((i) => (
-                <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
-                  <ManageEventRowSkeleton />
-                </View>
-              ))
-            ) : m.error ? (
-              <View style={styles.empty}>
-                <Text style={[styles.emptyText, { color: c.muted }]}>{m.error}</Text>
-                <AuthButton label="Try again" variant="secondary" onPress={() => void m.retry()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
+          <TabPager
+            inline
+            tabs={tabs}
+            value={m.tab}
+            onChange={m.setTab}
+            renderPage={(tab) => (
+              <View style={styles.list}>
+                {m.loading ? (
+                  [0, 1, 2].map((i) => (
+                    <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+                      <ManageEventRowSkeleton />
+                    </View>
+                  ))
+                ) : m.error ? (
+                  <View style={styles.empty}>
+                    <Text style={[styles.emptyText, { color: c.muted }]}>{m.error}</Text>
+                    <AuthButton label="Try again" variant="secondary" onPress={() => void m.retry()} style={{ marginTop: spacing[4], alignSelf: 'stretch' }} />
+                  </View>
+                ) : m.buckets[tab].length === 0 ? (
+                  <View style={styles.empty}>
+                    <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[tab]}</Text>
+                  </View>
+                ) : (
+                  m.buckets[tab].map((e: ManagedEvent, i) => (
+                    <View key={e.id} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
+                      <ManageEventRow event={e} now={now} onPress={() => router.push(`/manage/event/${e.id}`)} />
+                    </View>
+                  ))
+                )}
               </View>
-            ) : list.length === 0 ? (
-              <View style={styles.empty}>
-                <Text style={[styles.emptyText, { color: c.muted }]}>{EMPTY[m.tab]}</Text>
-              </View>
-            ) : (
-              list.map((e: ManagedEvent, i) => (
-                <View key={e.id} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
-                  <ManageEventRow event={e} now={now} onPress={() => router.push(`/manage/event/${e.id}`)} />
-                </View>
-              ))
             )}
-          </View>
+          />
         </View>
 
         {/* Team: only Space Admins can list members; the server returns null for everyone else.

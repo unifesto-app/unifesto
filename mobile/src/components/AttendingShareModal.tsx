@@ -1,6 +1,5 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useRef, useState } from 'react';
 import {
-  LayoutChangeEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +8,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
@@ -22,9 +20,9 @@ import { Button } from './ui';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { CardBackdrop } from './ui/CardSurface';
 import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 import Modal from './ui/Modal';
+import SegmentedTabs from './ui/SegmentedTabs';
 
 /** Event fields the share card needs — resolved by the caller from whatever
  *  shape it has (event detail, ticket, etc.). */
@@ -220,37 +218,6 @@ const cardStyles = StyleSheet.create({
   site: { color: SOFT, fontSize: 11, ...cosmosFont.strong },
 });
 
-/** Two-option segmented switch with a sliding thumb (Story / Post). */
-function FormatSwitch({ value, onChange }: { value: ShareFormatKey; onChange: (k: ShareFormatKey) => void }) {
-  const c = useCosmos();
-  const [w, setW] = useState(0);
-  const segW = w > 0 ? (w - 8) / SHARE_FORMATS.length : 0;
-  const x = useSharedValue(0);
-  const index = SHARE_FORMATS.findIndex((f) => f.key === value);
-  useEffect(() => {
-    x.value = withSpring(index * segW, { damping: 20, stiffness: 220 });
-  }, [index, segW, x]);
-  const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
-  return (
-    <View
-      style={modalStyles.switch}
-      onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
-      accessibilityRole="tablist"
-    >
-      <CardBackdrop shape={modalStyles.switch} />
-      {segW > 0 ? <Animated.View style={[modalStyles.switchPill, { width: segW, backgroundColor: c.text }, pill]} /> : null}
-      {SHARE_FORMATS.map((f) => {
-        const active = f.key === value;
-        return (
-          <Pressable key={f.key} onPress={() => onChange(f.key)} style={modalStyles.switchSeg} accessibilityRole="tab" accessibilityState={{ selected: active }}>
-            <Text style={[modalStyles.switchText, { color: active ? c.bg : c.soft }]}>{f.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 /**
  * "I'm going" — a shareable card for ticket holders. Needs a name AND a photo
  * (both are on the card); otherwise it routes to Edit profile. The card is
@@ -358,7 +325,9 @@ export default function AttendingShareModal({
                   />
                 </View>
               </View>
-              <FormatSwitch value={formatKey} onChange={setFormatKey} />
+              <View style={modalStyles.switch}>
+                <SegmentedTabs tabs={SHARE_FORMATS} value={formatKey} onChange={setFormatKey} />
+              </View>
               {error ? <Text style={[modalStyles.error, { color: c.danger }]}>{error}</Text> : null}
             </ScrollView>
 
@@ -393,10 +362,7 @@ const modalStyles = StyleSheet.create({
   headerTitle: { fontSize: 17, ...cosmosFont.strong },
   body: { alignItems: 'center', paddingHorizontal: spacing[6], paddingTop: spacing[4], paddingBottom: spacing[6], gap: spacing[6] },
   preview: { borderRadius: cosmosRadius },
-  switch: { flexDirection: 'row', padding: 4, borderRadius: cosmosRadius, width: 220 },
-  switchPill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: cosmosRadius - 4 },
-  switchSeg: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center' },
-  switchText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  switch: { width: 220 },
   error: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   footer: { paddingHorizontal: spacing[6], paddingTop: spacing[3] },
   gate: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], paddingBottom: spacing[16], gap: spacing[2] },

@@ -8,13 +8,11 @@ const SEARCH_DEBOUNCE_MS = 300;
  * Paged, searchable attendee list for one event: one page of PAGE_SIZE at a
  * time, with numbered navigation. Search is debounced and every request carries
  * a generation number, so a slow response for an old query or page can never
- * overwrite the rows for what the user is looking at now. A new search or tab
- * starts again from page 1.
+ * overwrite the rows for what the user is looking at now. One list per tab
+ * (the screen's pager keeps each mounted); a new search starts again from page 1.
  */
-export function useEventAttendees(eventId: string | undefined) {
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [filter, setFilter] = useState<AttendeeFilter>('attending');
+export function useEventAttendees(eventId: string | undefined, filter: AttendeeFilter, query: string) {
+  const [debounced, setDebounced] = useState(query);
   const [rows, setRows] = useState<AttendeeRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -74,10 +72,6 @@ export function useEventAttendees(eventId: string | undefined) {
   }, [fetchPage, page]);
 
   return {
-    query,
-    setQuery,
-    filter,
-    setFilter,
     rows,
     total,
     page,
