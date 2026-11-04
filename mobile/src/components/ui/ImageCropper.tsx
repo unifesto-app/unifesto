@@ -79,8 +79,11 @@ function Cropper({ req, onDone }: { req: CropRequest; onDone: (rect: CropRect | 
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
 
-  const frameW = screenW - spacing[4] * 2;
+  // Fits both ways: on a landscape phone or a tablet a full-width frame came out
+  // taller than the window and pushed Done off the bottom.
+  const frameW = Math.min(screenW - spacing[4] * 2, (screenH - insets.top - insets.bottom - 140) * req.aspect);
   const frameH = frameW / req.aspect;
+  const side = (screenW - frameW) / 2; // dimmed margin either side of the frame
   // Scale at which the image exactly covers the frame (zoom 1).
   const base = Math.max(frameW / req.width, frameH / req.height);
   const baseW = req.width * base;
@@ -151,7 +154,7 @@ function Cropper({ req, onDone }: { req: CropRequest; onDone: (rect: CropRect | 
         pointerEvents="none"
         style={{
           position: 'absolute',
-          left: spacing[4] + (frameW - baseW) / 2,
+          left: side + (frameW - baseW) / 2,
           top: top + (frameH - baseH) / 2,
           width: baseW,
           height: baseH,
@@ -164,11 +167,11 @@ function Cropper({ req, onDone }: { req: CropRequest; onDone: (rect: CropRect | 
       {/* Dim everything outside the frame. */}
       <View pointerEvents="none" style={[styles.dim, { top: 0, left: 0, right: 0, height: top }]} />
       <View pointerEvents="none" style={[styles.dim, { top: top + frameH, left: 0, right: 0, bottom: 0 }]} />
-      <View pointerEvents="none" style={[styles.dim, { top, left: 0, width: spacing[4], height: frameH }]} />
-      <View pointerEvents="none" style={[styles.dim, { top, right: 0, width: spacing[4], height: frameH }]} />
+      <View pointerEvents="none" style={[styles.dim, { top, left: 0, width: side, height: frameH }]} />
+      <View pointerEvents="none" style={[styles.dim, { top, right: 0, width: side, height: frameH }]} />
 
       {/* Frame + rule-of-thirds guides. */}
-      <View pointerEvents="none" style={[styles.frame, { top, left: spacing[4], width: frameW, height: frameH }]}>
+      <View pointerEvents="none" style={[styles.frame, { top, left: side, width: frameW, height: frameH }]}>
         <View style={[styles.guideV, { left: frameW / 3 }]} />
         <View style={[styles.guideV, { left: (frameW * 2) / 3 }]} />
         <View style={[styles.guideH, { top: frameH / 3 }]} />

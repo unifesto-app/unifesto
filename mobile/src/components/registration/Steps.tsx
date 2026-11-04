@@ -29,7 +29,7 @@ import { relativeWhen } from '../../utils/eventFormat';
 import { CAN_TYPE_UPI_ID, isVpa, methodKey, verifyUpiId, walletLogo, type PayMethod } from '../../lib/pay';
 import { selectionTick } from '../../lib/haptics';
 import { ApplePayButton } from '../../../modules/apple-pay-button';
-import { spacing } from '../../theme/spacing';
+import { column, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
@@ -723,8 +723,9 @@ export function PayMethodsSheet({ r, visible, onClose }: { r: EventRegistration;
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={[styles.sheet, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} backdropColor={c.bg}>
+      {/* The Modal paints edge to edge; the list keeps to the column (clear of a landscape notch). */}
+      <KeyboardAvoidingView style={[column, styles.sheet]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.sheetHead}>
           <Text style={[styles.sheetTitle, { color: c.text }]} accessibilityRole="header">Pay with</Text>
           <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">

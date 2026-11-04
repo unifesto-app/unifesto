@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -34,7 +34,7 @@ import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticl
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
 import GroupCheckinSheet from '../components/checkin/GroupCheckinSheet';
 import { attendeeName } from '../utils/checkinFormat';
-import { spacing } from '../theme/spacing';
+import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, cosmosFor, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
@@ -363,7 +363,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
         <Text style={[styles.chooseTitle, { color: c.text }]} accessibilityRole="header">Where are you scanning?</Text>
         <Text style={[styles.chooseBody, { color: c.soft }]}>Check-ins are recorded against this point.</Text>
         {/* The points as rows on the page with full hairlines; mint, the door's accent. */}
-        <View style={styles.chooseList}>
+        <ScrollView style={styles.chooseList} showsVerticalScrollIndicator={false}>
           {points.map((p, i) => (
             <Pressable
               key={p.id}
@@ -383,7 +383,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
               <CaretRight size={16} color={c.muted} />
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       </Shell>
     );
   }
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   shell: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[8], gap: spacing[4] },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.25)' },
 
-  top: { position: 'absolute', left: 0, right: 0, gap: spacing[3], zIndex: 2 },
+  top: { position: 'absolute', ...column, gap: spacing[3], zIndex: 2 },
   // The point is a label, not a pill: a glyph and plain text over the scrim.
   point: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: spacing[5] },
   // A soft shadow keeps the label readable over a bright camera feed.
@@ -557,7 +557,8 @@ const styles = StyleSheet.create({
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
   hint: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
 
-  bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
+  // Phone-width on a tablet, like the rest of the app; the camera stays full-bleed.
+  bottom: { position: 'absolute', bottom: 0, ...column, paddingHorizontal: spacing[4], gap: spacing[3], zIndex: 3 },
   tools: { flexDirection: 'row', gap: spacing[3] },
   tool: {
     height: 52,
@@ -571,7 +572,8 @@ const styles = StyleSheet.create({
 
   chooseTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
   chooseBody: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
-  chooseList: { alignSelf: 'stretch', marginTop: spacing[4] },
+  // Scrolls when the points outgrow a landscape phone.
+  chooseList: { ...column, marginTop: spacing[4] },
   chooseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 60 },
   chooseName: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
 

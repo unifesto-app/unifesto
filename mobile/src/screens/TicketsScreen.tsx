@@ -1,9 +1,7 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Animated, { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
@@ -11,7 +9,7 @@ import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { ALL_TABS, canDeleteTicket, useMyTickets, type MyTicket, type TicketTab } from '../hooks/useMyTickets';
-import TicketTabs from '../components/tickets/TicketTabs';
+import TabPager from '../components/ui/TabPager';
 import TicketCard, { TicketCardSkeleton } from '../components/tickets/TicketCard';
 import NextPassCard, { NextPassCardSkeleton } from '../components/tickets/NextPassCard';
 import WaitlistCard from '../components/tickets/WaitlistCard';
@@ -30,6 +28,13 @@ function groupByMonth(tickets: MyTicket[]) {
   }
   return groups;
 }
+
+const TICKET_TABS: { key: TicketTab; label: string }[] = [
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'waitlist', label: 'Waitlist' },
+  { key: 'past', label: 'Past' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
 
 const EMPTY: Record<TicketTab, { icon: React.ComponentType<any>; title: string; body: string; cta?: string }> = {
   upcoming: { icon: Ticket, title: 'No tickets yet', body: 'Register for an event and your pass shows up here, ready for the door.', cta: 'Find events' },
@@ -53,63 +58,6 @@ export default function TicketsScreen() {
     router.setParams({ tab: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedTab]);
-  const { width } = useWindowDimensions();
-  const pager = useAnimatedRef<Animated.ScrollView>();
-  // Fractional page index, written on the UI thread as the pager scrolls; the
-  // tab pill reads it so it tracks the finger frame by frame.
-  const position = useSharedValue(0);
-  const lastIndex = useSharedValue(0);
-  // Page the pager is showing, and the page a tab tap is scrolling towards
-  // (while set, pages passed on the way don't flip the selected tab).
-  const shownIndex = useRef(0);
-  const scrollTarget = useRef<number | null>(null);
-
-  // Tab changed from outside a drag (tap, offer nudge, or "Spot confirmed" → Upcoming).
-  useEffect(() => {
-    const index = ALL_TABS.indexOf(t.tab);
-    if (index === shownIndex.current) return;
-    scrollTarget.current = index;
-    pager.current?.scrollTo({ x: index * width, animated: true });
-  }, [t.tab, width, pager]);
-
-  // Rotation or a window resize (Split View, floating window): the page in view
-  // stays lined up at the new width instead of showing half of two.
-  useEffect(() => {
-    pager.current?.scrollTo({ x: shownIndex.current * width, animated: false });
-  }, [width, pager]);
-
-  // Runs on the JS thread only when the nearest page changes, not per frame.
-  const onPageChange = useRef((_index: number) => {});
-  onPageChange.current = (index: number) => {
-    shownIndex.current = index;
-    if (scrollTarget.current !== null) {
-      if (index === scrollTarget.current) scrollTarget.current = null;
-      return;
-    }
-    // Past halfway through a drag: select the incoming tab (label colours).
-    if (ALL_TABS[index] !== t.tab) t.setTab(ALL_TABS[index]);
-  };
-  const pageChanged = useCallback((index: number) => onPageChange.current(index), []);
-  const dragStarted = useCallback(() => {
-    scrollTarget.current = null;
-  }, []);
-
-  const onPagerScroll = useAnimatedScrollHandler({
-    onBeginDrag: () => {
-      scheduleOnRN(dragStarted);
-    },
-    onScroll: (e) => {
-      if (width <= 0) return;
-      const p = Math.max(0, Math.min(ALL_TABS.length - 1, e.contentOffset.x / width));
-      position.value = p;
-      const index = Math.round(p);
-      if (index !== lastIndex.value) {
-        lastIndex.value = index;
-        scheduleOnRN(pageChanged, index);
-      }
-    },
-  });
-
   const openTicket = (ticket: MyTicket) =>
     router.push({
       pathname: '/ticket/[id]',
@@ -262,26 +210,13 @@ export default function TicketsScreen() {
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
       {header}
-      <View style={[column, { paddingHorizontal: GUTTER, marginTop: spacing[5], marginBottom: spacing[2] }]}>
-        <TicketTabs value={t.tab} onChange={t.setTab} position={position} />
-      </View>
-      <Animated.ScrollView
-        ref={pager}
-        horizontal
-        pagingEnabled
-        bounces={false}
-        showsHorizontalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={onPagerScroll}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-      >
-        {ALL_TABS.map((tab) => (
+      <TabPager
+        tabs={TICKET_TABS}
+        value={t.tab}
+        onChange={t.setTab}
+        tabsStyle={[column, { paddingHorizontal: GUTTER, marginTop: spacing[5], marginBottom: spacing[2] }]}
+        renderPage={(tab) => (
           <ScrollView
-            key={tab}
-            style={{ width }}
             contentInsetAdjustmentBehavior="never"
             automaticallyAdjustContentInsets={false}
             showsVerticalScrollIndicator={false}
@@ -302,8 +237,8 @@ export default function TicketsScreen() {
           >
             {renderBody(tab)}
           </ScrollView>
-        ))}
-      </Animated.ScrollView>
+        )}
+      />
     </View>
   );
 }

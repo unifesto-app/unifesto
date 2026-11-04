@@ -17,12 +17,11 @@ const SEARCH_DEBOUNCE_MS = 300;
  * A space's roster: debounced search, role filter, paging, plus role change and
  * removal. Mutations update the loaded rows in place (no full reload), and
  * every fetch carries a generation number so a slow old response can't
- * overwrite a newer one.
+ * overwrite a newer one. One roster per role tab; a new `stamp` (a change made
+ * from another tab) reloads it quietly.
  */
-export function useSpaceMembers(spaceId: string | undefined) {
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [filter, setFilter] = useState<MemberFilter>('all');
+export function useSpaceMembers(spaceId: string | undefined, filter: MemberFilter, query: string, stamp = 0) {
+  const [debounced, setDebounced] = useState(query);
   const [rows, setRows] = useState<SpaceMember[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -69,6 +68,13 @@ export function useSpaceMembers(spaceId: string | undefined) {
     setLoading(true);
     void fetchPage(1).finally(() => setLoading(false));
   }, [fetchPage]);
+
+  const lastStamp = useRef(stamp);
+  useEffect(() => {
+    if (stamp === lastStamp.current) return;
+    lastStamp.current = stamp;
+    void fetchPage(1);
+  }, [stamp, fetchPage]);
 
   // Coming back from "Add member" should show the new person.
   const firstFocus = useRef(true);
@@ -130,7 +136,6 @@ export function useSpaceMembers(spaceId: string | undefined) {
   );
 
   return {
-    query, setQuery, filter, setFilter,
     rows, total, loading, loadingMore, refreshing, error, denied, busyId,
     loadMore, refresh, changeRole, remove,
   };

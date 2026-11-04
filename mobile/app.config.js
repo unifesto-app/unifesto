@@ -334,6 +334,30 @@ module.exports = () => {
         {
           androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY || ""
         }
+      ],
+      // R8 shrinks and obfuscates Android release builds (Play vitals flagged
+      // 1% obfuscation on 5.0.0). React Native, Expo modules, Firebase, OneSignal,
+      // ML Kit, Maps, WorkManager and androidx.credentials ship their own keep
+      // rules; these cover the rest. The Crashlytics Gradle plugin uploads the
+      // mapping file with each minified release. Needs a native rebuild.
+      [
+        "expo-build-properties",
+        {
+          android: {
+            enableMinifyInReleaseBuilds: true,
+            extraProguardRules: [
+              // Line numbers in Crashlytics stack traces.
+              "-keepattributes SourceFile,LineNumberTable",
+              // react-native-passkeys round-trips its Records through Gson.
+              "-keepattributes Signature",
+              // Razorpay Checkout and Custom UI (react-native-razorpay README).
+              "-keepattributes *Annotation*",
+              "-dontwarn com.razorpay.**",
+              "-keep class com.razorpay.** { *; }",
+              "-keepclasseswithmembers class * { public void onPayment*(...); }",
+            ].join("\n")
+          }
+        }
       ]
     ],
     extra: {

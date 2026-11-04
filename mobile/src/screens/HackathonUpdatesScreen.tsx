@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Button } from '../components/ui';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import TabPager from '../components/ui/TabPager';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import { useAuth } from '../context/AuthContext';
@@ -37,60 +37,63 @@ const TABS: { key: InboxTab; label: string }[] = [
  * push was off or the notification was swiped away. Each one is a row on the
  * page with full hairlines between them (a sky dot while unread), no cards.
  */
+type Feed = { items: InAppNotification[] | null; nextBefore: string | null };
+const NO_FEED: Feed = { items: null, nextBefore: null };
+
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
   const { isAuthenticated } = useAuth();
-  const [items, setItems] = useState<InAppNotification[] | null>(null);
-  const [nextBefore, setNextBefore] = useState<string | null>(null);
+  // One feed per tab, so the pager can show both side by side. A hackathon's
+  // updates use just 'mine'.
+  const [feeds, setFeeds] = useState<Record<InboxTab, Feed>>({ mine: NO_FEED, staff: NO_FEED });
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<InboxTab>('mine');
   const [hasStaff, setHasStaff] = useState(false);
-  // Bumped by every reload and tab switch; a response from an older one is dropped.
+  // Bumped by every reload; a response from an older one is dropped.
   const gen = useRef(0);
 
-  const scope: FeedScope = eventId
-    ? { eventId }
-    : tab === 'staff'
-      ? { type: STAFF_NOTIFICATION_TYPE }
-      : { excludeType: STAFF_NOTIFICATION_TYPE };
-  const scopeKey = JSON.stringify(scope);
+  const scopeOf = useCallback(
+    (t: InboxTab): FeedScope =>
+      eventId ? { eventId } : t === 'staff' ? { type: STAFF_NOTIFICATION_TYPE } : { excludeType: STAFF_NOTIFICATION_TYPE },
+    [eventId],
+  );
+  const setFeed = (t: InboxTab, next: (f: Feed) => Feed) => setFeeds((prev) => ({ ...prev, [t]: next(prev[t]) }));
 
   const load = useCallback(async () => {
-    const current = JSON.parse(scopeKey) as FeedScope;
     const mine = ++gen.current;
     const [res, staff] = await Promise.all([
-      getNotifications(current),
-      // Inbox only: whether this person gets staff queries at all (shows the tabs).
-      eventId ? null : getNotifications({ type: STAFF_NOTIFICATION_TYPE, limit: 1 }),
+      getNotifications(scopeOf('mine')),
+      // Inbox only: the staff queries, which also decide whether the tabs show.
+      eventId ? null : getNotifications(scopeOf('staff')),
     ]);
     if (staff?.ok) setHasStaff(staff.data.items.length > 0);
     if (mine !== gen.current) return;
+    if (staff?.ok) setFeeds((prev) => ({ ...prev, staff: { items: staff.data.items, nextBefore: staff.data.nextBefore } }));
     if (!res.ok) {
       setError(res.message);
-      setItems((i) => i ?? []);
+      setFeeds((prev) => ({ ...prev, mine: { ...prev.mine, items: prev.mine.items ?? [] } }));
       return;
     }
-    setItems(res.data.items);
-    setNextBefore(res.data.nextBefore);
+    setFeeds((prev) => ({ ...prev, mine: { items: res.data.items, nextBefore: res.data.nextBefore } }));
     setError('');
     if (eventId && res.data.items.some((n) => !n.readAt)) void markNotificationsRead({ eventId });
-  }, [eventId, scopeKey]);
+  }, [eventId, scopeOf]);
 
-  const markAllRead = async () => {
-    const res = await markNotificationsRead(scope);
+  const markAllRead = async (t: InboxTab) => {
+    const res = await markNotificationsRead(scopeOf(t));
     if (!res.ok) return setError(res.message);
     const now = new Date().toISOString();
-    setItems((i) => i?.map((n) => (n.readAt ? n : { ...n, readAt: now })) ?? i);
+    setFeed(t, (f) => ({ ...f, items: f.items?.map((n) => (n.readAt ? n : { ...n, readAt: now })) ?? f.items }));
   };
 
-  const open = (n: InAppNotification, target: string | null) => {
+  const open = (t: InboxTab, n: InAppNotification, target: string | null) => {
     if (!n.readAt) {
       void markNotificationsRead({ ids: [n.id] });
       const now = new Date().toISOString();
-      setItems((i) => i?.map((x) => (x.id === n.id ? { ...x, readAt: now } : x)) ?? i);
+      setFeed(t, (f) => ({ ...f, items: f.items?.map((x) => (x.id === n.id ? { ...x, readAt: now } : x)) ?? f.items }));
     }
     if (target) routeToDeepLink(target, { isAuthenticated });
   };
@@ -109,19 +112,19 @@ export default function HackathonUpdatesScreen() {
     [eventId, load],
   );
 
-  const more = async () => {
-    if (!nextBefore) return;
+  const more = async (t: InboxTab) => {
+    const before = feeds[t].nextBefore;
+    if (!before) return;
     setLoadingMore(true);
     const mine = gen.current;
-    const res = await getNotifications({ ...scope, before: nextBefore });
+    const res = await getNotifications({ ...scopeOf(t), before });
     setLoadingMore(false);
     if (!res.ok || mine !== gen.current) return;
-    setItems((i) => [...(i ?? []), ...res.data.items]);
-    setNextBefore(res.data.nextBefore);
+    setFeed(t, (f) => ({ items: [...(f.items ?? []), ...res.data.items], nextBefore: res.data.nextBefore }));
   };
 
   const showTabs = !eventId && (hasStaff || tab === 'staff');
-  if (!items && !showTabs) {
+  if (!feeds.mine.items && !showTabs) {
     return (
       <CosmosScreen>
         <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
@@ -130,7 +133,71 @@ export default function HackathonUpdatesScreen() {
   }
 
   const hub = eventId ? `/hackathon/${eventId}` : null;
-  const anyUnread = !eventId && !!items?.some((n) => !n.readAt);
+
+  const renderFeed = (t: InboxTab) => {
+    const { items, nextBefore } = feeds[t];
+    const anyUnread = !eventId && !!items?.some((n) => !n.readAt);
+    return (
+      <>
+        {anyUnread ? (
+          <Pressable onPress={() => void markAllRead(t)} style={styles.markAll} accessibilityRole="button" hitSlop={8}>
+            <Text style={[styles.markAllText, { color: c.text }]}>Mark all as read</Text>
+          </Pressable>
+        ) : null}
+
+        {!items ? (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        ) : items.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
+              {eventId ? 'No updates yet' : t === 'staff' ? 'No staff queries' : 'No notifications yet'}
+            </Text>
+            <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
+              {eventId
+                ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
+                : t === 'staff'
+                  ? 'Help-desk queries from teams at events you staff will appear here.'
+                  : 'Registrations, reminders and updates from organisers will appear here.'}
+            </Text>
+          </View>
+        ) : null}
+
+        <View>
+          {(items ?? []).map((n, i) => {
+            const path = normalizeDeepLink(n.deepLink);
+            // Updates that point back at the hub have nowhere else to go.
+            const target = path && path !== hub ? n.deepLink : null;
+            return (
+              <Pressable
+                key={n.id}
+                disabled={!target && (!!eventId || !!n.readAt)}
+                onPress={() => open(t, n, target)}
+                style={({ pressed }) => [
+                  styles.card,
+                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityRole={target ? 'button' : 'text'}
+              >
+                <View style={styles.cardHead}>
+                  {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.sky }]} accessibilityLabel="Unread" /> : null}
+                  <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
+                    {n.title}
+                  </Text>
+                </View>
+                <Text style={[styles.body, { color: c.soft }]}>{n.body}</Text>
+                <Text style={[styles.time, { color: c.muted }]}>{when(n.createdAt)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {nextBefore ? (
+          <Button label="Show older" variant="secondary" loading={loadingMore} onPress={() => void more(t)} style={{ marginTop: spacing[5] }} />
+        ) : null}
+      </>
+    );
+  };
 
   return (
     <CosmosScreen
@@ -144,76 +211,10 @@ export default function HackathonUpdatesScreen() {
       }}
     >
       {showTabs ? (
-        <View style={{ marginBottom: spacing[4] }}>
-          <SegmentedTabs
-            tabs={TABS}
-            value={tab}
-            onChange={(t) => {
-              gen.current += 1;
-              setTab(t);
-              setItems(null);
-              setNextBefore(null);
-            }}
-          />
-        </View>
-      ) : null}
-
-      {anyUnread ? (
-        <Pressable onPress={() => void markAllRead()} style={styles.markAll} accessibilityRole="button" hitSlop={8}>
-          <Text style={[styles.markAllText, { color: c.text }]}>Mark all as read</Text>
-        </Pressable>
-      ) : null}
-
-      {!items ? (
-        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
-      ) : items.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
-            {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
-          </Text>
-          <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
-            {eventId
-              ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
-              : tab === 'staff'
-                ? 'Help-desk queries from teams at events you staff will appear here.'
-                : 'Registrations, reminders and updates from organisers will appear here.'}
-          </Text>
-        </View>
-      ) : null}
-
-      <View>
-        {(items ?? []).map((n, i) => {
-          const path = normalizeDeepLink(n.deepLink);
-          // Updates that point back at the hub have nowhere else to go.
-          const target = path && path !== hub ? n.deepLink : null;
-          return (
-            <Pressable
-              key={n.id}
-              disabled={!target && (!!eventId || !!n.readAt)}
-              onPress={() => open(n, target)}
-              style={({ pressed }) => [
-                styles.card,
-                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
-                pressed && { opacity: 0.6 },
-              ]}
-              accessibilityRole={target ? 'button' : 'text'}
-            >
-              <View style={styles.cardHead}>
-                {!n.readAt ? <View style={[styles.dot, { backgroundColor: c.sky }]} accessibilityLabel="Unread" /> : null}
-                <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
-                  {n.title}
-                </Text>
-              </View>
-              <Text style={[styles.body, { color: c.soft }]}>{n.body}</Text>
-              <Text style={[styles.time, { color: c.muted }]}>{when(n.createdAt)}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {nextBefore ? (
-        <Button label="Show older" variant="secondary" loading={loadingMore} onPress={() => void more()} style={{ marginTop: spacing[5] }} />
-      ) : null}
+        <TabPager inline tabs={TABS} value={tab} onChange={setTab} tabsStyle={{ marginBottom: spacing[4] }} renderPage={renderFeed} />
+      ) : (
+        renderFeed('mine')
+      )}
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
     </CosmosScreen>
   );

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Appearance, useColorScheme } from 'react-native';
+import { Appearance, Platform, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { darkTokens, lightTokens, type Tokens } from '../theme/tokens';
@@ -57,7 +57,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Pin native chrome (menus, alerts, keyboard, the iOS tab bar's glass) to the
   // choice. `unspecified` hands control back to the OS, which is also what lets
   // useColorScheme() report the real system value again after a forced mode.
+  // iOS only. On Android this is AppCompat's night mode: once a non-default app
+  // icon has disabled MainActivity, AppCompat can't read its uiMode configChanges
+  // and recreates the activity on every change, and expo-system-ui puts it back
+  // to the system on each create. Light on a dark phone looped on a white screen
+  // (5.0.0). The JS UI is all tokens, so only Android dialogs keep the OS theme.
   useEffect(() => {
+    if (Platform.OS !== 'ios') return;
     Appearance.setColorScheme(theme === 'system' ? 'unspecified' : theme);
   }, [theme]);
 
