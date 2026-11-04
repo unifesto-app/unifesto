@@ -1151,3 +1151,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-04** · 5.0 launch kit in marketing/launch-5.0: carousel, squares, stories, channel banners, profile pictures, 31.5 s launch video and captions for every channel (#603)
 - **2026-11-04** · Android tab bar marks the active tab with a static dot instead of a sliding bar; every in-screen tab switcher (attendees, members, refunds, Apex requests, Q&A, sponsors, manage space events, inbox, OTA) now swipes and tracks like My tickets via a shared TabPager. (#605)
 - **2026-11-04** · Mobile tablet and landscape pass for 5.0.0: bars and sheets centre in their container (iPad checkout bar in page sheets), sheets cap at 88% height, scanners, cropper, share card, alerts and search keep to the column, iPad tab labels (#606)
+- **2026-11-04** · Android 5.0.0 fixes: Light theme restart loop with a non-default icon, Google sign-in leaving login open (#604)
