@@ -12,7 +12,12 @@ const QR_LAUNCH_KEY = 'qr.launchCode';
  * whose link no longer works. Those replays go home; everything else is
  * routed as usual.
  */
-export async function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): Promise<string> {
+export async function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): Promise<string | null> {
+  // Android hands the Google sign-in redirect to the router as well as to the
+  // auth session waiting for it. Routed, auth/callback sat on top of login, and
+  // login's signed-in back() popped it instead of itself (5.0.0). The session
+  // already has the code; only a cold-start redirect still opens the screen.
+  if (!initial && /^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)auth\/callback(?:[/?#]|$)/i.test(path)) return null;
   // Tagged event/space links (utm_*) are remembered for registration attribution.
   await captureUtmFromLink(path);
   // AASA + Android intent filters still hand /signup links to the app; the
