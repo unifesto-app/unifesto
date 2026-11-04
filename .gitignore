@@ -45,3 +45,6 @@ coverage/
 
 # ── Company documents & brand assets (never commit) ───────
 /_company/
+
+# Claude Code session worktrees (EAS packs anything .gitignore does not exclude)
+.claude/worktrees/
