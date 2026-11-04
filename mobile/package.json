@@ -1,6 +1,6 @@
 {
   "name": "unifesto",
-  "version": "4.0.5",
+  "version": "5.0.0",
   "main": "./entry.js",
   "scripts": {
     "postinstall": "patch-package",
