@@ -7,6 +7,7 @@ const withSceneDelegate = require('./plugins/withSceneDelegate');
 const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
 const withRazorpayApplePay = require('./plugins/withRazorpayApplePay');
+const withAppShortcuts = require('./plugins/withAppShortcuts');
 const withStripFrameworkSymbols = require('./plugins/withStripFrameworkSymbols');
 const withSizedAlternateIcons = require('./plugins/withSizedAlternateIcons');
 
@@ -386,6 +387,8 @@ module.exports = () => {
   modifiedConfig = withAlwaysRunScripts(modifiedConfig);
   // Q40: Razorpay's Apple Pay plugin, which react-native-customui finds at runtime.
   modifiedConfig = withRazorpayApplePay(modifiedConfig);
+  // iOS App Shortcuts: "tickets", "events" and "scan" in Spotlight and Siri.
+  modifiedConfig = withAppShortcuts(modifiedConfig);
   // App size (5.0.0 store build): 16 MB of unstripped framework symbols and
   // 8 MB of 1024 px alternate icons per iPhone install.
   modifiedConfig = withStripFrameworkSymbols(modifiedConfig);
