@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '@unifesto/unicon/react-native';
-import { borderRadius, column, spacing } from '../../theme/spacing';
+import { borderRadius, sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -47,7 +47,7 @@ export default function HtmlPreviewSheet({ html, title, onClose }: { html: strin
 }
 
 const styles = StyleSheet.create({
-  sheet: { position: 'absolute', bottom: 0, ...column, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
+  sheet: { position: 'absolute', bottom: 0, ...sheet, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[6], paddingVertical: spacing[4] },
   title: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   // The email's own white canvas, like the ticket's QR panel.

@@ -6,7 +6,7 @@ import { BellRinging } from '@unifesto/unicon/react-native';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { cosmosCardRadius, useCosmos } from '../../theme/cosmos';
-import { column } from '../../theme/spacing';
+import { sheet } from '../../theme/spacing';
 
 const SHOW_MS = 6_000;
 
@@ -99,6 +99,6 @@ const styles = StyleSheet.create({
     zIndex: 1001,
   },
   // Frosted glass, no shadow (Horizon: no shadows).
-  card: { ...column, borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  card: { ...sheet, borderRadius: cosmosCardRadius, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
 });

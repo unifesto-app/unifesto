@@ -2,7 +2,8 @@ import { useWindowDimensions } from 'react-native';
 import { CONTENT_MAX } from '../theme/spacing';
 
 /**
- * Width of the content column (the window, capped at CONTENT_MAX on tablets).
+ * Width of the content column: the window on a tablet, capped at CONTENT_MAX on a
+ * phone.
  * Use in place of `useWindowDimensions().width` for anything sized to fit the
  * content. It follows the window, so rotation, Split View, Slide Over and
  * floating windows just re-render. Absolutely positioned bars and sheets take

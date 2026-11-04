@@ -8,7 +8,7 @@ import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { TopLayer } from './ui/TopLayer';
 import { SheetBackdrop } from './ui/CardSurface';
 import { WHATS_NEW, sectionsFor, shouldShowWhatsNew } from '../lib/whatsNew';
-import { column, spacing } from '../theme/spacing';
+import { sheet, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
   card: {
-    ...column,
+    ...sheet,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing[6],

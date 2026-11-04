@@ -1,3 +1,5 @@
+import { Dimensions } from 'react-native';
+
 // Unifesto Spacing System
 //
 // Every margin/padding/gap in the app is a multiple of this scale. The whole
@@ -61,10 +63,18 @@ export const shadows = {
   },
 };
 
-// Tablets and landscape: screen content sits in a centred column no wider than
-// UIKit's readable content width, so cards, posters and lines keep phone
-// proportions instead of stretching edge to edge. Backdrops stay full-bleed.
-export const CONTENT_MAX = 672;
-export const column = { width: '100%', maxWidth: CONTENT_MAX, alignSelf: 'center' } as const;
-// Card grids (events, saved, spaces) may run wider and take more columns.
-export const GRID_MAX = 1200;
+// A tablet: the screen's shortest side is at least 600 (Android's sw600dp; every
+// iPad, no phone). The screen, not the window, so Split View doesn't flip it.
+const screen = Dimensions.get('screen');
+export const TABLET = Math.min(screen.width, screen.height) >= 600;
+
+// Sheets, alerts and other floating cards: never wider than UIKit's readable
+// content width, on any device.
+export const SHEET_MAX = 672;
+export const sheet = { width: '100%', maxWidth: SHEET_MAX, alignSelf: 'center' } as const;
+
+// Screen content. Phones keep it in that centred column (which also clears a
+// landscape notch); tablets fill the window in both orientations. Backdrops
+// stay full-bleed.
+export const CONTENT_MAX = TABLET ? Infinity : SHEET_MAX;
+export const column = TABLET ? ({ width: '100%' } as const) : sheet;

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import { SheetBackdrop } from './ui/CardSurface';
 import { acceptLegal, getPendingLegal, type PendingLegalDoc } from '../lib/api/legal';
-import { column, spacing } from '../theme/spacing';
+import { sheet, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 import Modal from './ui/Modal';
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.5)' },
   card: {
-    ...column,
+    ...sheet,
     // A short landscape window: the sheet scrolls inside instead of running off the top.
     maxHeight: '88%',
     borderTopLeftRadius: 28,

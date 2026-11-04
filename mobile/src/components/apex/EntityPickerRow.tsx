@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDown, Check, MagnifyingGlass, Plus } from '@unifesto/unicon/react-native';
-import { borderRadius, column, spacing } from '../../theme/spacing';
+import { borderRadius, sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
   label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  sheet: { position: 'absolute', bottom: 0, ...column, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
+  sheet: { position: 'absolute', bottom: 0, ...sheet, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
   title: { paddingHorizontal: spacing[6], fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
   searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },

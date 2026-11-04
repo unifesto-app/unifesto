@@ -9,7 +9,7 @@ import { SettingsGroup } from '../profile/SettingsGroup';
 import { CardSurfaceProvider, SheetBackdrop } from '../ui/CardSurface';
 import FormRow from '../profile/FormRow';
 import type { EventDetail } from '../../hooks/useEventDetail';
-import { column, spacing } from '../../theme/spacing';
+import { sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import Modal from '../ui/Modal';
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   card: {
-    ...column,
+    ...sheet,
     // A short landscape window: the sheet scrolls inside instead of running off the top.
     maxHeight: '88%',
     borderTopLeftRadius: 28,

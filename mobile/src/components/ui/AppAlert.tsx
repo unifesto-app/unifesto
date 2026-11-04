@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { WarningCircle } from '@unifesto/unicon/react-native';
 import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
-import { spacing } from '../../theme/spacing';
-import useContentWidth from '../../hooks/useContentWidth';
+import { SHEET_MAX, spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { TopLayer } from './TopLayer';
 
@@ -112,7 +111,7 @@ const SLIDE = 420;
 export function AppAlertHost() {
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const { width } = useContentWidth();
+  const width = Math.min(useWindowDimensions().width, SHEET_MAX);
   const [queue, setQueue] = useState<AlertRequest[]>([]);
   const closing = useRef(false);
   const progress = useSharedValue(0);

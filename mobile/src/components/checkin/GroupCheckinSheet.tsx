@@ -7,7 +7,7 @@ import { Button } from '../ui';
 import { Badge } from '../ui/Badge';
 import { SheetBackdrop } from '../ui/CardSurface';
 import { Avatar } from './PersonRow';
-import { column, spacing } from '../../theme/spacing';
+import { sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import Modal from '../ui/Modal';
@@ -129,7 +129,7 @@ export default function GroupCheckinSheet({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.4)' },
   sheet: {
-    ...column,
+    ...sheet,
     // A short landscape window: the list scrolls inside instead of the sheet running off the top.
     maxHeight: '88%',
     borderTopLeftRadius: cosmosCardRadius,
