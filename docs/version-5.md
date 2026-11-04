@@ -1153,3 +1153,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-04** · Mobile tablet and landscape pass for 5.0.0: bars and sheets centre in their container (iPad checkout bar in page sheets), sheets cap at 88% height, scanners, cropper, share card, alerts and search keep to the column, iPad tab labels (#606)
 - **2026-11-04** · Android 5.0.0 fixes: Light theme restart loop with a non-default icon, Google sign-in leaving login open (#604)
 - **2026-11-04** · Android release builds use R8 (minify + obfuscation) for Play's "DEX code optimisation" warning, with Razorpay/passkeys keep rules and Crashlytics mapping upload; native, needs a new store build on both platforms (#607)
+- **2026-11-04** · iOS App Shortcuts (My tickets, Find events, Scan tickets) so Spotlight and Siri find Unifesto for "tickets", "events" and "scan"; OTA-neutral, ships with the next iOS store build (#608)
