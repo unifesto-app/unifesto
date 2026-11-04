@@ -7,6 +7,8 @@ const withSceneDelegate = require('./plugins/withSceneDelegate');
 const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
 const withRazorpayApplePay = require('./plugins/withRazorpayApplePay');
+const withStripFrameworkSymbols = require('./plugins/withStripFrameworkSymbols');
+const withSizedAlternateIcons = require('./plugins/withSizedAlternateIcons');
 
 module.exports = () => {
   const config = {
@@ -273,6 +275,8 @@ module.exports = () => {
       // src/widgets/ios (expo-widgets). Android: AppWidget rendered by
       // react-native-android-widget from src/widgets/android. Both read what
       // the Home tab syncs (src/widgets/sync.ts). Needs a native rebuild.
+      // expo-widgets is iOS-only here, so package.json excludes it from Android
+      // autolinking (it only added Jetpack Glance to the Android DEX).
       [
         "expo-widgets",
         {
@@ -358,5 +362,9 @@ module.exports = () => {
   modifiedConfig = withAlwaysRunScripts(modifiedConfig);
   // Q40: Razorpay's Apple Pay plugin, which react-native-customui finds at runtime.
   modifiedConfig = withRazorpayApplePay(modifiedConfig);
+  // App size (5.0.0 store build): 16 MB of unstripped framework symbols and
+  // 8 MB of 1024 px alternate icons per iPhone install.
+  modifiedConfig = withStripFrameworkSymbols(modifiedConfig);
+  modifiedConfig = withSizedAlternateIcons(modifiedConfig);
   return modifiedConfig;
 };
