@@ -79,19 +79,21 @@ export default function BrandingStudioPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const load = useCallback(async () => {
+  // `reset` re-seeds the form from the server. Without it, unsaved edits
+  // survive the refetch after an upload, a removal or an event colour change.
+  const load = useCallback(async (reset = false) => {
     const { data, error } = await getWhiteLabelOverview(spaceId);
     if (error) setError(error.message);
     else if (data) {
       setError("");
       setData(data);
-      setDraft(toDraft(data.space));
+      setDraft((d) => (d && !reset ? d : toDraft(data.space)));
     }
     setLoading(false);
   }, [spaceId]);
 
   useEffect(() => {
-    void load();
+    void load(true);
   }, [load]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -110,7 +112,7 @@ export default function BrandingStudioPage() {
     if (error) setError(error.message);
     else {
       setSaved(true);
-      await load();
+      await load(true);
     }
     setBusy(false);
   };
