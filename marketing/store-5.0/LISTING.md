@@ -68,6 +68,8 @@ For everyone
 • Ask for help from Profile and follow every request in My help
 • The bell on Home keeps every update, and quiet hours hold notifications overnight
 • A fresh look for Home, Tickets and Profile, with Up next at the top of My tickets
+• Made for iPad: every screen fills the display, in portrait and landscape
+• Type "tickets" or "events" in iPhone search, or ask Siri, to jump straight in
 • Long lists scroll smoothly, and tickets keep their last copy when the signal drops
 
 For organisers
@@ -76,6 +78,8 @@ For organisers
 • The scanner and guest list keep working offline and sync when you are back
 • Print badges and passes from the attendee list
 • Attendee requests land in the Space Assist inbox
+• Swipe between tabs in Manage event and Space, like in My tickets
+• Start check-in from iPhone search, or ask Siri to "Scan tickets in Unifesto"
 ```
 
 ## Google Play
@@ -91,6 +95,7 @@ Unifesto 5.0, our biggest update yet:
 • Sprint hub for hackathon teams
 • Ask for help from Profile
 • A fresh look for Home, Tickets and Profile
+• Made for tablets, in portrait and landscape
 • Organisers: offline door tools, group check-in by person, badge printing and the Assist inbox
 ```
 

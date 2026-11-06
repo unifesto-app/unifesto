@@ -19,6 +19,7 @@ The same app now runs the room:
 • Group check-in, one person at a time, with undo
 • Badges printed straight from the attendee list
 • A hackathon hub with rooms, judging and results
+• All of it on iPad and Android tablets, in portrait and landscape
 
 When the event ends, results and certificates land on that same ticket.
 
@@ -38,9 +39,9 @@ If you run events for a club, college or community, what should we build next?
 ```
 Unifesto 5.0 is here. Book events, run them live.
 
-For attendees: live polls, Q&A and quizzes from your ticket, a hackathon team hub, and results and certificates once it ends.
+For attendees: live polls, Q&A and quizzes from your ticket, a hackathon team hub, and results and certificates once it ends. On iPhone, type "tickets" in search to open yours.
 
-For organisers: check-in that works offline, group check-in by person, badge printing, and every attendee request in one Assist inbox.
+For organisers: check-in that works offline on phones and tablets, group check-in by person, badge printing, and every attendee request in one Assist inbox.
 
 Free on the App Store and Google Play.
 ```
@@ -57,7 +58,7 @@ Free on the App Store and Google Play.
 Running an event this season? Three things in Unifesto 5.0 built for the door and the room:
 
 1. Polls, Q&A and quizzes you launch from Manage event and put on a projector
-2. Group check-in by person, and a scanner that keeps working offline
+2. Group check-in by person, and a scanner that keeps working offline, on a phone or a tablet
 3. Badges and passes on A4 or label printers, straight from the attendee list
 
 Your Space, your team, one app.
@@ -74,7 +75,7 @@ Your Space, your team, one app.
 ```
 Unifesto 5.0 is out on iOS and Android.
 
-Live polls, Q&A and quizzes. Check-in that works offline. A fresh look, top to bottom.
+Live polls, Q&A and quizzes. Check-in that works offline. A fresh look, top to bottom, now made for iPad and tablets too.
 
 https://www.unifesto.app/links?utm_source=x&utm_campaign=v5-launch
 ```
@@ -91,7 +92,10 @@ https://www.unifesto.app/links?utm_source=x&utm_campaign=v5-launch
 4/ Hackathons get a team hub: rooms, problem statements, judging and results. When it ends, winners and certificates show up on the ticket.
 ```
 ```
-5/ Free on the App Store and Google Play. Update now.
+5/ Every screen now fills iPad and Android tablets, in portrait and landscape. On iPhone, type "tickets" in search or ask Siri to open yours.
+```
+```
+6/ Free on the App Store and Google Play. Update now.
 ```
 
 ---
@@ -109,6 +113,8 @@ Unifesto 5.0 is here 🚀 Swipe to see what's new.
 📶 Check-in that works even offline
 🎛️ Run the whole event from Space
 🏆 Results and certificates after it ends
+📱 Made for iPad and tablets too
+🔎 Type "tickets" in iPhone search to open yours
 
 Free on the App Store and Google Play. Link in bio.
 
@@ -144,7 +150,7 @@ Post `out/story/01.png`, `02.png`, `03.png` in order. On 03 add a link sticker t
 **Description:**
 
 ```
-Unifesto 5.0: live polls, Q&A and quizzes, a hackathon team hub, check-in that works offline, and results and certificates after the event.
+Unifesto 5.0: live polls, Q&A and quizzes, a hackathon team hub, check-in that works offline, results and certificates after the event, and screens made for iPad and tablets.
 
 Free on the App Store and Google Play: https://www.unifesto.app/links?utm_source=youtube&utm_campaign=v5-launch
 ```
@@ -168,7 +174,7 @@ Unifesto 5.0 is live 🎉
 
 • Live polls, Q&A and quizzes from your ticket
 • Check-in that works even offline
-• A fresh look, top to bottom
+• A fresh look, top to bottom, made for iPad and tablets too
 
 Update now: https://www.unifesto.app/links?utm_source=whatsapp&utm_campaign=v5-launch
 ```
