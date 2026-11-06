@@ -1157,3 +1157,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-04** · App size for the 5.0.0 rebuild: iOS frameworks stripped of local symbols, alternate icons at real sizes (thinned iPhone ~84 → ~60 MB install, 32.6 → ~23 MB download), expo-widgets out of Android (#609)
 - **2026-11-04** · Mobile: tablets fill the width in both orientations (phones keep the 672 column; sheets and alerts stay 672 everywhere) (#610)
 - **2026-11-05** · Console settings: General keeps Status, Members and Created after Save; Branding keeps unsaved colour, font and theme through logo and favicon uploads (#611)
+- **2026-11-06** · 5.0 launch captions and store notes updated for tablets, iPhone search/Siri and swipe switchers; Android tab art uses the dot (#612)
