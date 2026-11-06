@@ -31,6 +31,10 @@ const config = {
     // bundles; they ride the next store build without moving either runtime.
     'plugins/withAppShortcuts.js',
     'plugins/AppShortcuts.swift',
+    // Android-only: bumps androidx.credentials in react-native-passkeys' build.gradle.
+    // The patched node_modules/react-native-passkeys/android is still hashed, so
+    // Android's runtime moves; skipping the patch file keeps iOS's from moving too.
+    'patches/react-native-passkeys+0.4.2.patch',
   ],
 };
 module.exports = config;
