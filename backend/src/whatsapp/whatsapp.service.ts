@@ -1393,7 +1393,7 @@ export class WhatsAppService {
         false,
         undefined,
         b.languageCode,
-        { kind: 'broadcast', userId: r.userId, dedupKey: `broadcast:${broadcastId}:${r.userId}` },
+        { kind: 'broadcast', userId: r.userId, dedupKey: `broadcast:${broadcastId}:${r.userId}`, campaignId: broadcastId },
       );
       if (ok) sent += 1;
       else failed += 1;
@@ -1421,7 +1421,7 @@ export class WhatsAppService {
     bodyParams?: string[];
     languageCode?: string;
     test?: boolean;
-  }): Promise<{ audience: string; recipientCount: number; status: 'started' }> {
+  }): Promise<{ audience: string; recipientCount: number; status: 'started'; broadcastId: string }> {
     if (!this.isConfigured()) {
       throw new BadRequestException('WhatsApp is not configured on the server.');
     }
@@ -1486,6 +1486,7 @@ export class WhatsAppService {
       audience: params.audience,
       recipientCount: recipients.length,
       status: 'started',
+      broadcastId: broadcast.id,
     };
   }
 

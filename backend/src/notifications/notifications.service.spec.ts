@@ -365,6 +365,12 @@ describe('NotificationsService native push (C12)', () => {
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['moved']);
   });
 
+  it("stamps a campaign's push delivery rows with its id (C17 counts)", async () => {
+    const { svc, prisma } = build([device('u1', 'tok-1')]);
+    await svc.send(['u1'], { ...opts, campaignId: 'p1' });
+    expect(deliveries(prisma)[0]).toMatchObject({ userId: 'u1', campaignId: 'p1', status: 'SENT' });
+  });
+
   it('holds back the push for someone at the daily cap, logged SKIPPED, inbox kept (C16)', async () => {
     const { svc, prisma, oneSignal, pushSender } = build([device('full', 'tok-full'), device('room', 'tok-room')]);
     prisma.messageDelivery.groupBy = jest.fn().mockResolvedValue([{ userId: 'full', _count: { _all: 99 } }]);
