@@ -1159,3 +1159,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-05** · Console settings: General keeps Status, Members and Created after Save; Branding keeps unsaved colour, font and theme through logo and favicon uploads (#611)
 - **2026-11-06** · 5.0 launch captions and store notes updated for tablets, iPhone search/Siri and swipe switchers; Android tab art uses the dot (#612)
 - **2026-11-06** · Android passkeys: androidx.credentials 1.3.0-alpha01 → 1.6.0 so Android 14+ phones without the framework Credential Manager fall back to Play services instead of "NotSupported"; Android-only runtime change (#613)
+- **2026-11-07** · C12 own push: backend sends straight to APNs/FCM for installs with a native token, OneSignal only for old installs; inert until the expo-notifications build ships (#614)
