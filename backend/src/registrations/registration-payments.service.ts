@@ -844,7 +844,7 @@ export class RegistrationPaymentsService {
           amount: Number(registration.razorpayAmount),
           reason: 'Payment was declined. Please try again.',
           retryUrl: `https://unifesto.app/event/${registration.event.slug}`,
-        })
+        }, { kind: 'payment.failed' })
         .catch((err) => this.logger.error('Failed to send payment failed email', err));
     }
   }

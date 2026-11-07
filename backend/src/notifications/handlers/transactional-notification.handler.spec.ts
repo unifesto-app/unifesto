@@ -1,0 +1,32 @@
+import { TransactionalNotificationHandler } from './transactional-notification.handler';
+
+// C18: each automatic push logs its own kind, so the automation list can count it.
+describe('TransactionalNotificationHandler kinds', () => {
+  const build = () => {
+    const notifications: any = { send: jest.fn().mockResolvedValue({ sent: 1, failed: 0, skipped: 0 }) };
+    return { handler: new TransactionalNotificationHandler(notifications, {} as any, {} as any), notifications };
+  };
+  const kindOf = (n: any) => n.send.mock.calls[0][1].kind;
+
+  it('a booking update says which update it is', async () => {
+    for (const [kind, expected] of [
+      ['CANCELLED', 'registration.cancelled'],
+      ['REFUND_APPROVED', 'refund.approved'],
+      ['REFUND_DECLINED', 'refund.declined'],
+    ] as const) {
+      const { handler, notifications } = build();
+      await handler.onRegistrationUpdate({ userId: 'u1', eventId: 'e1', eventTitle: 'Hack Night', kind });
+      expect(kindOf(notifications)).toBe(expected);
+      expect(notifications.send.mock.calls[0][1].category).toBe('registrationUpdates');
+    }
+  });
+
+  it("the booking confirmation and a new event's push carry their kinds", async () => {
+    const a = build();
+    await a.handler.onRegistrationConfirmed({ userId: 'u1', eventId: 'e1', eventTitle: 'Hack Night' });
+    expect(kindOf(a.notifications)).toBe('registration.confirmed');
+    const b = build();
+    await b.handler.onNewEvent({ eventId: 'e1', eventTitle: 'Hack Night', spaceId: 's1', recipientUserIds: ['u2'] });
+    expect(kindOf(b.notifications)).toBe('event.published');
+  });
+});

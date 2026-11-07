@@ -38,6 +38,7 @@ import { openCancelledEventRefunds } from './cancelled-event-refunds';
 import { openRefundCase, updateRefundCase, withNote } from './refund-cases';
 import { RefundAlreadyIssuedError, isRazorpayRejection, razorpayErrorText, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
+import type { DeliveryOpts } from '../notifications/message-delivery';
 
 /** Round to 2 decimal places (money). */
 function money(n: number): number {
@@ -201,10 +202,10 @@ export class RefundsService {
     return h1(esc(heading)) + body;
   }
 
-  private notifyEmail(email: string | null, subject: string, html: string): void {
+  private notifyEmail(email: string | null, subject: string, html: string, delivery?: DeliveryOpts): void {
     if (!email) return;
     this.email
-      .sendRawEmail(email, subject, html)
+      .sendRawEmail(email, subject, html, undefined, delivery)
       .catch((err) => this.logger.error(`Refund email failed to ${email}`, err));
   }
 
@@ -351,6 +352,7 @@ export class RefundsService {
           'We received your refund request',
           `<p>Hi ${esc(attendee.name)}, your refund request for ${strong(eventTitle)} has been sent to the organiser for review. We'll email you once there's an update.</p>`,
         ),
+        { kind: 'refund.requested', userId: registration.userId },
       );
       const organiser = await this.userContact(registration.event.createdBy);
       this.notifyEmail(
@@ -360,6 +362,7 @@ export class RefundsService {
           'A refund request needs your review',
           `<p>An attendee requested a refund for ${strong(eventTitle)}.</p><p>Reason: &ldquo;${esc(dto.reason)}&rdquo;</p><p>Review it in the Space dashboard to forward it to Unifesto or reject it.</p>`,
         ),
+        { kind: 'refund.review', userId: registration.event.createdBy },
       );
     } else {
       // Organiser-initiated goes straight to admin.
@@ -437,6 +440,7 @@ export class RefundsService {
             dto.note?.trim() ? `<p>Reason: &ldquo;${esc(dto.note.trim())}&rdquo;</p>` : ''
           }`,
         ),
+        { kind: 'refund.declined', userId: request.registration.userId },
       );
       this.events.emit(NotificationEvents.RegistrationUpdate, {
         userId: request.registration.userId,
@@ -490,6 +494,7 @@ export class RefundsService {
             dto.note?.trim() ? `<p>Reason: &ldquo;${esc(dto.note.trim())}&rdquo;</p>` : ''
           }`,
         ),
+        { kind: 'refund.declined', userId: request.registration.userId },
       );
       this.events.emit(NotificationEvents.RegistrationUpdate, {
         userId: request.registration.userId,
@@ -800,6 +805,7 @@ export class RefundsService {
           fullyRefunded ? '<p>Your registration has been cancelled.</p>' : ''
         }${small('The booking processing fee is non-refundable.')}`,
       ),
+      { kind: 'refund.approved', userId: reg.userId },
     );
     this.events.emit(NotificationEvents.RegistrationUpdate, {
       userId: reg.userId,
@@ -860,6 +866,7 @@ export class RefundsService {
             'A refund is on its way to you',
             `<p>Hi ${esc(who.name)}, your team's booking for ${strong(eventTitle)} was refunded. ₹${cash} goes back to the card or account you paid with, within 5–7 business days.</p>`,
           ),
+          { kind: 'refund.approved', userId },
         );
       }
     } catch (err) {

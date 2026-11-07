@@ -271,7 +271,7 @@ export class RegistrationCancellationService {
         razorpayRefundAmount: razorpayRefundInitiated ? Number(registration.razorpayAmount) : undefined,
         // Only an organiser's reason is news to the attendee; their own isn't echoed back.
         organiserReason: opts.byOrganiser ? reason?.trim() || undefined : undefined,
-      }).catch(err => this.logger.error('Failed to send cancellation confirmation email', err));
+      }, { kind: 'registration.cancelled', userId }).catch(err => this.logger.error('Failed to send cancellation confirmation email', err));
     }
 
     // Notify any claimed group members that the lead cancelled the booking.

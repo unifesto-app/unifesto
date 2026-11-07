@@ -193,6 +193,7 @@ export class TransactionalNotificationHandler {
   async onRegistrationConfirmed(e: RegistrationConfirmedEvent): Promise<void> {
     await this.notifications.send([e.userId], {
       category: 'registrationUpdates',
+      kind: 'registration.confirmed',
       title: "You're in!",
       body: `Your spot for ${e.eventTitle} is confirmed.`,
       deepLink: ticketLink(e.eventId),
@@ -206,8 +207,10 @@ export class TransactionalNotificationHandler {
       REFUND_APPROVED: { title: 'Refund approved', body: `Your refund${e.amount ? ` of ${e.amount}` : ''} for ${e.eventTitle} has been approved.` },
       REFUND_DECLINED: { title: 'Refund request declined', body: `Your refund request for ${e.eventTitle} wasn't approved.` },
     }[e.kind];
+    const kind = { CANCELLED: 'registration.cancelled', REFUND_APPROVED: 'refund.approved', REFUND_DECLINED: 'refund.declined' }[e.kind];
     await this.notifications.send([e.userId], {
       category: 'registrationUpdates',
+      kind,
       ...copy,
       deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
       data: { type: 'registration_update', eventId: e.eventId },
@@ -218,6 +221,7 @@ export class TransactionalNotificationHandler {
     if (!e.recipientUserIds?.length) return;
     await this.notifications.send(e.recipientUserIds, {
       category: 'newEvents',
+      kind: 'event.published',
       title: 'New event',
       body: `${e.eventTitle} just went live.`,
       deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
@@ -275,6 +279,7 @@ export class TransactionalNotificationHandler {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
+      kind: 'competition.update',
       ...competitionPushCopy(e),
       deepLink: `unifesto://competition/${e.eventId}`,
       data: { type: 'competition', kind: e.kind, eventId: e.eventId },
@@ -287,6 +292,7 @@ export class TransactionalNotificationHandler {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
+      kind: 'hackathon.update',
       ...hackathonPushCopy(e),
       deepLink: hackathonDeepLink(e),
       data: { type: 'hackathon', kind: e.kind, eventId: e.eventId },
@@ -299,6 +305,7 @@ export class TransactionalNotificationHandler {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
+      kind: 'hackathon.announcement',
       title: `${e.eventTitle}: ${e.title}`,
       body: e.body,
       deepLink: `unifesto://hackathon/${e.eventId}/updates`,
@@ -312,6 +319,7 @@ export class TransactionalNotificationHandler {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
+      kind: 'hackathon.help_desk',
       title: e.title,
       body: e.body,
       deepLink: e.deepLink,
@@ -327,6 +335,7 @@ export class TransactionalNotificationHandler {
     if (!e.userIds?.length) return;
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
+      kind: 'hackathon.judge_update',
       ...hackathonJudgePushCopy(e),
       deepLink: e.kind === 'WINNERS_ANNOUNCED' ? `unifesto://hackathon/${e.eventId}/results` : `unifesto://judging/${e.eventId}`,
       data: { type: 'hackathon', audience: 'judge', kind: e.kind, eventId: e.eventId },

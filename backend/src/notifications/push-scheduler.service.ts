@@ -71,6 +71,7 @@ export class PushSchedulerService {
 
       await this.notifications.send(userIds, {
         category: 'eventReminders',
+        kind: 'event.reminder',
         title: `Tomorrow: ${event.title}`,
         body: `${event.title} starts in about 24 hours. See you there!`,
         deepLink: ticketLink(event.id),

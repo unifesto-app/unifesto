@@ -208,6 +208,8 @@ describe('GroupSeatsService — seats as source of truth', () => {
       'dinesh@x.com',
       expect.stringContaining('Hack Night'),
       expect.any(String),
+      undefined,
+      { kind: 'seat.invite' },
     );
 
     // 4) Dinesh claims seat 4 → own ticket, seat CLAIMED to their account.
@@ -242,7 +244,10 @@ describe('GroupSeatsService — seats as source of truth', () => {
     await expect(svc.claim(token, 'user-dinesh')).rejects.toThrow(/already been claimed/);
 
     await new Promise((r) => setImmediate(r));
-    expect(email.sendRawEmail).toHaveBeenCalledWith('lead@x.com', expect.stringContaining('Eve'), expect.stringContaining('Eve'));
+    expect(email.sendRawEmail).toHaveBeenCalledWith('lead@x.com', expect.stringContaining('Eve'), expect.stringContaining('Eve'), undefined, {
+      kind: 'seat.claimed',
+      userId: 'user-lead',
+    });
   });
 
   it("claim info carries the claimer's own questions (a private space's event 404s for them)", async () => {
@@ -451,7 +456,7 @@ describe('GroupSeatsService — linking a typed-in teammate', () => {
     expect(invited).toEqual([{ seatIndex: 2, email: 'bimal@x.com' }]);
     expect(seats[1]).toMatchObject({ status: 'CLAIMED', claimedByUserId: null, inviteEmail: 'bimal@x.com' });
     expect(seats[1].memberDetails).toMatchObject({ name: 'Bimal' });
-    expect(email.sendRawEmail).toHaveBeenCalledWith('bimal@x.com', expect.any(String), expect.any(String));
+    expect(email.sendRawEmail).toHaveBeenCalledWith('bimal@x.com', expect.any(String), expect.any(String), undefined, { kind: 'seat.invite' });
   });
 
   it('never picks a typed-in seat when no seat number is given', async () => {
