@@ -1168,3 +1168,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-07** · C17 part 1: one Campaign over push, in-app, email and WhatsApp for Apex. One audience resolved at send time, each channel sent by its own engine, per-channel counts from message_deliveries.campaign_id (#620)
 - **2026-11-07** · C17 part 2: Apex Campaigns composer (push/in-app, email, WhatsApp with per-channel previews, reach and test-to-me) and a Pause sending switch that holds every bulk send (#621)
 - **2026-11-08** · C17 part 3: space and event campaigns in the console (push/in-app and email, no WhatsApp for organisers), AI19 checks the whole campaign once, Email page keeps history while Campaigns sends, Announce dialog can also email (#622)
+- **2026-11-08** · C17 part 4: Write with AI in the campaign composers. One line becomes push, in-app, email (and Apex WhatsApp variables) drafts, grounded in the line and event (AI10), sent only by a person (#623)
