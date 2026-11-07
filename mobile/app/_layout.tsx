@@ -22,7 +22,7 @@ import { AppAlertHost } from '../src/components/ui/AppAlert';
 import { InAppNoticeHost } from '../src/components/ui/InAppNotice';
 import { ImageCropHost } from '../src/components/ui/ImageCropper';
 import { OfflineBanner } from '../src/components/ui/OfflineBanner';
-import OneSignalService from '../src/services/OneSignalService';
+import PushService from '../src/services/PushService';
 import { checkForAppUpdate } from '../src/lib/appUpdate';
 import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
 import { tagCrashReports } from '../src/lib/appBuild';
@@ -226,7 +226,7 @@ export default function RootLayout() {
     // Enable crash reporting (separate from analytics, ATT-safe).
     setCrashlyticsCollectionEnabled(getCrashlytics(), true).catch(() => {});
     // Push is a core feature (tickets, updates), not tracking: start it at launch.
-    OneSignalService.initialize();
+    PushService.initialize();
   }, []);
 
   useEffect(() => {

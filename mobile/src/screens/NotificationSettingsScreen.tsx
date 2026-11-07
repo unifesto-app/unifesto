@@ -3,7 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import DateTimeRow from '../components/manage/DateTimeRow';
@@ -94,7 +94,7 @@ export default function NotificationSettingsScreen() {
       // Re-check OS push permission and correct pushEnabled if out of sync.
       let osGranted = false;
       try {
-        osGranted = await OneSignalService.hasPermission();
+        osGranted = await PushService.hasPermission();
       } catch {
         osGranted = false;
       }
@@ -149,31 +149,21 @@ export default function NotificationSettingsScreen() {
     const turningOn = !notifsRef.current.pushEnabled;
 
     if (!turningOn) {
-      // Turning off always succeeds: opt out of the push subscription and
-      // persist. OS-level permission can't be revoked from within the app.
-      try {
-        OneSignalService.optOutOfPush();
-      } catch {
-        // Ignore — still persist the user's off preference.
-      }
+      // Turning off always succeeds: the server stops sending once pushEnabled
+      // is saved. OS-level permission can't be revoked from within the app.
       void commit({ pushEnabled: false });
       return;
     }
 
     try {
-      // If the OS permission is already granted, just opt back in.
+      // If the OS permission is already granted, just turn it back on.
       // Otherwise request it (shows the OS prompt on first ask).
-      let granted = await OneSignalService.hasPermission();
+      let granted = await PushService.hasPermission();
       if (!granted) {
-        granted = await OneSignalService.requestPermission();
+        granted = await PushService.requestPermission();
       }
 
       if (granted) {
-        try {
-          OneSignalService.optInToPush();
-        } catch {
-          // Ignore — still persist the user's on preference.
-        }
         void commit({ pushEnabled: true });
       } else {
         // Keep OFF and guide the user to system settings.
