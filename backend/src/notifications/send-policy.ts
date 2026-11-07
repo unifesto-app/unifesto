@@ -47,8 +47,8 @@ export interface SendDecision {
 export const DAILY_CAP = 5;
 
 /**
- * Whether a send kind counts toward the cap and is held by it.
- * TODO(owner): the cap number above and these exemptions are the product call.
+ * Whether a send kind counts toward the cap and is held by it. The cap and
+ * these exemptions are the owner's call (confirmed 7 Nov 2026).
  */
 function countsTowardCap(kind: string, m: KindInfo): boolean {
   if (m.critical) return false;
