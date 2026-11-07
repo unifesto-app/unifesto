@@ -59,6 +59,8 @@ export interface NotifyKindData {
   'feedback.request': FeedbackNotice;
   /** F2: the same, at 48 h, to those who haven't answered. */
   'feedback.reminder': FeedbackNotice & { closesText: string };
+  /** C15: a checkout the attendee started and didn't pay. */
+  'checkout.unpaid': { registrationId: string; eventId: string; eventSlug?: string; eventTitle: string };
 }
 
 export interface SpaceStatusNotice {
@@ -292,4 +294,18 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     (d) => `Rate ${d.eventTitle}`,
     (d) => `Feedback closes ${d.closesText}. It takes under a minute.`,
   ),
+  // Low: push + inbox, no email, once per checkout. An event reminder, so the
+  // person's reminder switch and quiet hours apply. The copy promises no seat:
+  // nothing is held for an unpaid checkout, and the event page says if it sold out.
+  'checkout.unpaid': {
+    category: 'eventReminders',
+    criticality: 'low',
+    entity: (d) => d.registrationId,
+    push: (d) => ({
+      title: `Finish booking ${d.eventTitle}`,
+      body: "You started checkout but didn't pay. Tap to pick up where you left off.",
+      deepLink: eventLink(d),
+      data: { type: 'checkout_unpaid', eventId: d.eventId },
+    }),
+  },
 };
