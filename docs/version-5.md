@@ -1166,3 +1166,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-07** · C14 the app moves push to expo-notifications: reports its own APNs/FCM token, replaces its old OneSignal subscription once, OneSignal SDK and extension removed; needs a 5.0.1 store build after C12 is deployed (#618)
 - **2026-11-07** · C16 one send check: canSend() gates every optional push, email and WhatsApp send on the person's switches, unsubscribes and a daily cap of 5 non-critical messages per person, logged SKIPPED when held (#619)
 - **2026-11-07** · C17 part 1: one Campaign over push, in-app, email and WhatsApp for Apex. One audience resolved at send time, each channel sent by its own engine, per-channel counts from message_deliveries.campaign_id (#620)
+- **2026-11-07** · C17 part 2: Apex Campaigns composer (push/in-app, email, WhatsApp with per-channel previews, reach and test-to-me) and a Pause sending switch that holds every bulk send (#621)
