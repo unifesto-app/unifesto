@@ -1162,3 +1162,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-07** · C12 own push: backend sends straight to APNs/FCM for installs with a native token, OneSignal only for old installs; inert until the expo-notifications build ships (#614)
 - **2026-11-07** · C13 live in-app notifications: a signed-in /notifications socket delivers each notification as it's written, the app shows it once (socket or push), and the app icon badge follows the bell (#616)
 - **2026-11-07** · Visibility gaps: .ics for link-only/running events, category and space counts, curator team, sub-event/co-host host check, Explore filters admins and non-live member spaces (#615)
+- **2026-11-07** · C15 unpaid-checkout nudge: one push + in-app notice ~45 min after an attendee's own checkout goes unpaid, for events still ahead, never twice (#617)
