@@ -11,6 +11,7 @@ import { RedisService } from '../redis/redis.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 import { CouponsService } from '../coupons/coupons.service';
 import {
+  EventStatus,
   PaymentStatus,
   RefundStatus,
   RegistrationStatus,
@@ -39,6 +40,9 @@ import {
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { NotifyService } from '../notifications/notify.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+
+/** C15: how long a checkout sits unpaid before its one nudge (owner's call). */
+export const UNPAID_NUDGE_AFTER_MS = 45 * 60_000;
 
 /**
  * Settling payments: client verify, the Razorpay webhook, admin reconcile /
@@ -146,6 +150,52 @@ export class RegistrationPaymentsService {
       });
       for (const r of due) await this.refundDue(r.id);
     });
+  }
+
+  /**
+   * C15: one nudge (push + in-app) for a checkout left unpaid about 45 minutes.
+   * Only the attendee's own checkouts (a Razorpay order; not a curator's
+   * payment link, an import or a waitlist offer), checked when the sweep runs:
+   * still PENDING, the event still ahead, and no paid ticket for it since.
+   * notify() dedups on the registration, so nobody is nudged twice.
+   */
+  @Cron('*/15 * * * *')
+  async nudgeUnpaidCheckouts(now = new Date()): Promise<number> {
+    let sent = 0;
+    const sweep = async () => {
+      const rows = await this.prisma.eventRegistration.findMany({
+        where: {
+          paymentStatus: PaymentStatus.PENDING,
+          status: { not: RegistrationStatus.CANCELLED },
+          waitlistStatus: null,
+          orderId: { not: null },
+          paymentLinkId: null,
+          // Two sweeps wide, so a missed run (a deploy) loses nobody.
+          createdAt: { lte: new Date(now.getTime() - UNPAID_NUDGE_AFTER_MS), gt: new Date(now.getTime() - UNPAID_NUDGE_AFTER_MS - 30 * 60_000) },
+          event: { status: EventStatus.PUBLISHED, startDateTime: { gt: now } },
+        },
+        select: { id: true, userId: true, eventId: true, event: { select: { title: true, slug: true } } },
+        take: 500,
+      });
+      for (const r of rows) {
+        // Bought since: another ticket type, or a group seat on someone's order.
+        const paid = await this.prisma.eventRegistration.count({
+          where: { userId: r.userId, eventId: r.eventId, paymentStatus: PaymentStatus.PAID, status: { not: RegistrationStatus.CANCELLED } },
+        });
+        if (paid) continue;
+        const res = await this.notify.notify(r.userId, 'checkout.unpaid', {
+          registrationId: r.id,
+          eventId: r.eventId,
+          eventSlug: r.event.slug,
+          eventTitle: r.event.title,
+        });
+        if (res.push === 'sent') sent++;
+      }
+    };
+    if (this.redis) await this.redis.runExclusive('cron:unpaidNudge', 14 * 60, sweep);
+    else await sweep();
+    if (sent) this.logger.log(`Unpaid checkout nudges sent: ${sent}`);
+    return sent;
   }
 
   /**
