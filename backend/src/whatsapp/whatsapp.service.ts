@@ -1370,6 +1370,9 @@ export class WhatsAppService {
   async runBroadcastById(broadcastId: string): Promise<{ sent: number; failed: number }> {
     const b = await this.prisma.whatsappBroadcast.findUnique({ where: { id: broadcastId } });
     if (!b || b.finishedAt) return { sent: b?.sentCount ?? 0, failed: b?.failedCount ?? 0 };
+    // Paused (C17): left unfinished; the stale sweep re-queues it (within a
+    // day of its start) and the dedup keys skip anyone already messaged.
+    if (await this.platformConfig.isCommsPaused()) return { sent: b.sentCount, failed: b.failedCount };
     const recipients = await this.resolveBroadcastRecipients({
       audience: b.audience as 'ALL' | 'SPACE' | 'USER' | 'STAFF',
       spaceId: b.spaceId ?? undefined,
@@ -1397,7 +1400,13 @@ export class WhatsAppService {
       );
       if (ok) sent += 1;
       else failed += 1;
-      if ((sent + failed) % 50 === 0) await tally({ sentCount: sent, failedCount: failed });
+      if ((sent + failed) % 50 === 0) {
+        await tally({ sentCount: sent, failedCount: failed });
+        if (await this.platformConfig.isCommsPaused()) {
+          this.logger.warn(`WhatsApp broadcast ${broadcastId}: paused after ${sent + failed} of ${recipients.length}`);
+          return { sent, failed };
+        }
+      }
     }
     this.logger.log(
       `WhatsApp broadcast "${b.templateName}" finished: ${sent} sent, ${failed} failed of ${recipients.length}.`,
@@ -1428,6 +1437,7 @@ export class WhatsAppService {
     if (!params.templateName?.trim()) {
       throw new BadRequestException('A template name is required.');
     }
+    if (!params.test) await this.platformConfig.assertCommsOpen();
 
     const templateName = params.templateName.trim();
     const bodyParams = (params.bodyParams ?? []).map((p) => String(p));

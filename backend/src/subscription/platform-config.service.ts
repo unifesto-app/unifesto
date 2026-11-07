@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, OnModuleInit, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { AI_FEATURE_KEYS, type AiFeature } from '../ai/ai-features';
 import { PrismaService } from '../prisma/prisma.service';
@@ -229,12 +229,13 @@ export class PlatformConfigService implements OnModuleInit {
     appReviewLoginEnabled: boolean;
     requireAgeConfirmation: boolean;
     customSendingDomainsEnabled: boolean;
+    commsPaused: boolean;
     aiFeatures: AiFeature[];
     aiEnabledFeatures: string[];
   } & UpiCheckoutSwitches> {
     const row = await this.prisma.platformConfig.findUnique({
       where: { id: CONFIG_ID },
-      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true, aiEnabledFeatures: true, ...UPI_CHECKOUT_SELECT },
+      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true, commsPaused: true, aiEnabledFeatures: true, ...UPI_CHECKOUT_SELECT },
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
@@ -244,6 +245,7 @@ export class PlatformConfigService implements OnModuleInit {
       appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
       requireAgeConfirmation: row?.requireAgeConfirmation ?? false,
       customSendingDomainsEnabled: row?.customSendingDomainsEnabled ?? false,
+      commsPaused: row?.commsPaused ?? false,
       aiFeatures: AI_FEATURE_KEYS,
       aiEnabledFeatures: row?.aiEnabledFeatures ?? [],
       upiCheckoutIos: row?.upiCheckoutIos ?? false,
@@ -307,6 +309,32 @@ export class PlatformConfigService implements OnModuleInit {
       update: { customSendingDomainsEnabled: enabled },
     });
     this.logger.warn(`Custom sending domains turned ${enabled ? 'ON' : 'OFF'}`);
+  }
+
+  /** Throws while bulk sends are paused: a send asked for now can't start. */
+  async assertCommsOpen(): Promise<void> {
+    if (await this.isCommsPaused()) {
+      throw new ServiceUnavailableException('Sending is paused on Unifesto right now. Try again later.');
+    }
+  }
+
+  /** C17: the Apex brake on bulk sends (see schema). */
+  async setCommsPaused(paused: boolean): Promise<void> {
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, commsPaused: paused },
+      update: { commsPaused: paused },
+    });
+    this.logger.warn(`Bulk sends ${paused ? 'PAUSED' : 'resumed'}`);
+  }
+
+  /**
+   * Whether bulk sends are paused. Read straight from the database, like the
+   * AI switch, so the brake pulled through one replica holds on all of them.
+   */
+  async isCommsPaused(): Promise<boolean> {
+    const row = await this.prisma.platformConfig.findUnique({ where: { id: CONFIG_ID }, select: { commsPaused: true } });
+    return row?.commsPaused ?? false;
   }
 
   /** Admin switch for the App Review test login (see auth.service). */

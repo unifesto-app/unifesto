@@ -18,6 +18,7 @@ export function FlagCard({
     | "appReviewLoginEnabled"
     | "requireAgeConfirmation"
     | "customSendingDomainsEnabled"
+    | "commsPaused"
     | "upiCheckoutIos"
     | "upiCheckoutAndroid"
     | "upiCheckoutWeb"

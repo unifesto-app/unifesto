@@ -21,7 +21,7 @@ describe('CampaignsService (C17)', () => {
     ...over,
   });
 
-  const build = (campaign = row(), users = ['u1', 'u2']) => {
+  const build = (campaign = row(), users = ['u1', 'u2'], paused = false) => {
     const prisma: any = {
       campaign: {
         create: jest.fn(async ({ data }: any) => ({ ...campaign, ...data })),
@@ -47,7 +47,13 @@ describe('CampaignsService (C17)', () => {
       sendBroadcastTemplate: jest.fn().mockResolvedValue({ broadcastId: 'w1' }),
       resolveBroadcastRecipients: jest.fn().mockResolvedValue([{ userId: 'u1' }]),
     };
-    const svc = new CampaignsService(prisma, notifications, push, email, whatsapp);
+    const platformConfig: any = {
+      isCommsPaused: async () => paused,
+      assertCommsOpen: async () => {
+        if (paused) throw new Error('Sending is paused');
+      },
+    };
+    const svc = new CampaignsService(prisma, notifications, push, email, whatsapp, platformConfig);
     return { svc, prisma, notifications, push, email, whatsapp };
   };
   const finished = (prisma: any) => prisma.campaign.update.mock.calls[0][0].data;
@@ -129,6 +135,17 @@ describe('CampaignsService (C17)', () => {
     await expect(
       svc.create('admin', { channels: ['push'], push: { title: 'a', body: 'b' }, audience: { type: 'all' }, scheduledAt: '2020-01-01T00:00:00Z' }),
     ).rejects.toThrow('That time has passed.');
+  });
+
+  it('while paused, send-now is refused and a due campaign stays scheduled', async () => {
+    const { svc, prisma, push } = build(row({ status: 'SCHEDULED' }), ['u1'], true);
+    await expect(
+      svc.create('admin', { channels: ['push'], push: { title: 'a', body: 'b' }, audience: { type: 'all' } }),
+    ).rejects.toThrow('Sending is paused');
+    expect(prisma.campaign.create).not.toHaveBeenCalled();
+    await svc.dispatch('c1');
+    expect(prisma.campaign.updateMany).not.toHaveBeenCalled();
+    expect(push.createBroadcast).not.toHaveBeenCalled();
   });
 
   it('counts each channel after its own opt-outs', async () => {
