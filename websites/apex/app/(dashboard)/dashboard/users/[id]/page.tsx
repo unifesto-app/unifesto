@@ -678,22 +678,26 @@ export default function UserDetailPage() {
                         </p>
                         <p
                           className="truncate font-mono text-xs text-muted-foreground"
-                          title="OneSignal subscription id"
+                          title={d.token ? "Native push token (last 12)" : "OneSignal subscription id"}
                         >
-                          {d.subscriptionId}
+                          {d.token
+                            ? `${d.platform === "ios" ? "APNs" : "FCM"}${d.sandbox ? " sandbox" : ""} …${d.token.slice(-12)}`
+                            : d.subscriptionId}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Last seen {fmtDate(d.lastSeenAt)}
                           {d.linkedAt && ` · linked ${fmtDate(d.linkedAt)}`}
                         </p>
-                        {!d.linkedAt && d.linkError && (
+                        {!d.token && !d.linkedAt && d.linkError && (
                           <p className="truncate text-xs text-destructive" title={d.linkError}>
                             Link failed: {d.linkError}
                           </p>
                         )}
                       </div>
                       <div className="flex flex-shrink-0 items-center gap-2">
-                        {d.linkedAt ? (
+                        {d.token ? (
+                          <Badge variant="success">native push</Badge>
+                        ) : d.linkedAt ? (
                           <Badge variant="success">linked</Badge>
                         ) : (
                           <Badge variant="warning">not linked</Badge>

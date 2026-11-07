@@ -1,13 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { Queue, Worker } from 'bullmq';
+import type Redis from 'ioredis';
 import { MessageChannel, MessageDeliveryStatus, Prisma, PushLogStatus } from '@prisma/client';
+import { inChunks } from '../common/batching';
+import { reportError } from '../common/observability';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { OneSignalService } from './onesignal.service';
+import { DirectDevice, PushMessage, PushSender, providerOf } from './push-sender';
 import { NotificationCategory } from './notifications.constants';
 import { quietHoursDeferral } from './quiet-hours';
 import {
   AttemptResult,
   DeliveryMeta,
+  DeliveryProvider,
   claimDelivery,
   finishDelivery,
   logDeliveries,
@@ -45,6 +52,11 @@ export interface SendOptions {
    * ignored. For a notice whose buzz another push already gives.
    */
   inboxOnly?: boolean;
+  /**
+   * Native-push installs only, no OneSignal: the all-users broadcast, whose
+   * OneSignal half already went to a segment.
+   */
+  directOnly?: boolean;
 }
 
 export interface SendSummary {
@@ -53,9 +65,33 @@ export interface SendSummary {
   skipped: number;
 }
 
+/** How one person's push went, and through which provider. */
+interface Outcome {
+  result: AttemptResult;
+  attempts: number;
+  provider: DeliveryProvider;
+}
+
+/** A user's native-push installs (C12), and whether OneSignal still has any of theirs. */
+interface UserDevices {
+  direct: DirectDevice[];
+  /** Every install reports a token: their OneSignal subscriptions are gone, skip it. */
+  movedOff: boolean;
+  provider: DeliveryProvider;
+}
+
+interface DeferredPush {
+  userIds: string[];
+  msg: PushMessage;
+}
+
 // OneSignal caps aliases per request; chunk large fan-outs (broadcasts) so one
 // request never carries the whole user base.
 const SEND_BATCH_SIZE = 2000;
+
+// HTTP/2 multiplexes these on one APNs connection.
+const DIRECT_CONCURRENCY = 50;
+const DEFERRED_QUEUE = 'push-deferred';
 
 // Opt-IN categories: off by default, so a user with no NotificationSettings row
 // is NOT sent these until they explicitly enable them. Everything else is opt-out
@@ -86,20 +122,56 @@ function isCategoryAllowedByDefault(category: NotificationCategory): boolean {
 }
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
+  private deferred: Queue<DeferredPush> | null = null;
+  private worker: Worker<DeferredPush> | null = null;
+  private connections: Redis[] = [];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly oneSignal: OneSignalService,
+    @Optional() private readonly pushSender?: PushSender,
+    @Optional() private readonly redis?: RedisService,
   ) {}
+
+  /** Quiet hours for native push: a delayed job (OneSignal had send_after). */
+  onModuleInit() {
+    if (!this.pushSender?.isConfigured()) return;
+    const queueConn = this.redis?.createClient();
+    const workerConn = this.redis?.createClient();
+    if (!queueConn || !workerConn) {
+      queueConn?.disconnect();
+      workerConn?.disconnect();
+      return;
+    }
+    this.connections = [queueConn, workerConn];
+    this.deferred = new Queue<DeferredPush>(DEFERRED_QUEUE, { connection: queueConn });
+    this.worker = new Worker<DeferredPush>(
+      DEFERRED_QUEUE,
+      // Devices are read when it fires, so an install signed out meanwhile gets nothing.
+      async (job) => {
+        const devices = await this.devicesFor(job.data.userIds);
+        await this.sendDirect([...devices.values()].flatMap((d) => d.direct), job.data.msg);
+      },
+      { connection: workerConn, concurrency: 2 },
+    );
+    this.worker.on('failed', (_job, err) => reportError(err, { queue: DEFERRED_QUEUE }));
+  }
+
+  async onModuleDestroy() {
+    await this.worker?.close();
+    await this.deferred?.close();
+    for (const c of this.connections) c.disconnect();
+  }
 
   /**
    * Pref-aware fan-out to a set of users.
    *
    * For each user: skip (and log SKIPPED_PREF) unless `pushEnabled` AND the
-   * category switch are on. Allowed users are sent in a single OneSignal request
-   * and each gets a PushLog row (SENT/FAILED).
+   * category switch are on. Allowed users go out by native push (their
+   * APNs/FCM installs) and/or one OneSignal request per batch, and each gets a
+   * PushLog row (SENT/FAILED).
    *
    * Best-effort: never throws. Callers run off the domain request path (event
    * bus / scheduler), so a push failure can never break a registration
@@ -156,8 +228,8 @@ export class NotificationsService {
         ...(opts.deepLink ? { deepLink: opts.deepLink } : {}),
       };
 
-      // Quiet hours (C4): one OneSignal request per delivery time; the inbox
-      // copy above is already written.
+      // Quiet hours (C4): one batch per delivery time; the inbox copy above is
+      // already written.
       const now = new Date();
       const deferrable = !opts.urgent && !NEVER_DEFER.has(opts.category);
       const groups = new Map<number, string[]>(); // 0 = now
@@ -176,24 +248,27 @@ export class NotificationsService {
         }
       }
 
+      // C12: installs on native push are sent directly. OneSignal still gets
+      // everyone else by external_id until every install has moved (C20).
+      const devices = await this.devicesFor(allowed);
+      const msg: PushMessage = { title: opts.title, body: opts.body, data };
+
       for (const { batch, sendAfter } of batches) {
-        // Same key on every retry: OneSignal drops the duplicate.
-        const idempotencyKey = randomUUID();
-        const { result, attempts } = await withRetry(() =>
-          this.oneSignal.send({ externalIds: batch, title: opts.title, body: opts.body, data, idempotencyKey, sendAfter }),
-        );
-        const status = result.id ? PushLogStatus.SENT : PushLogStatus.FAILED;
-        await this.logMany(batch, opts.category, status, opts.campaignId, result.id, result.error);
-        await this.logDeliveries(
-          batch,
-          opts,
-          claimed,
-          result.id ? MessageDeliveryStatus.SENT : MessageDeliveryStatus.FAILED,
-          result,
-          attempts,
-        );
-        if (result.id) summary.sent += batch.length;
-        else summary.failed += batch.length;
+        const outcomes = new Map<string, Outcome>();
+        const viaOneSignal = opts.directOnly ? [] : batch.filter((u) => !devices.get(u)?.movedOff);
+        if (viaOneSignal.length) {
+          // Same key on every retry: OneSignal drops the duplicate.
+          const idempotencyKey = randomUUID();
+          const { result, attempts } = await withRetry(() =>
+            this.oneSignal.send({ externalIds: viaOneSignal, title: opts.title, body: opts.body, data, idempotencyKey, sendAfter }),
+          );
+          for (const u of viaOneSignal) outcomes.set(u, { result, attempts, provider: 'onesignal' });
+        }
+        const direct = batch.flatMap((u) => devices.get(u)?.direct ?? []);
+        for (const [u, o] of await this.sendDirect(direct, msg, sendAfter)) {
+          if (!outcomes.get(u)?.result.id) outcomes.set(u, o);
+        }
+        await this.logOutcomes(batch, outcomes, devices, opts, claimed, summary);
       }
       claimed = false; // finished above
     } catch (err: any) {
@@ -257,6 +332,129 @@ export class NotificationsService {
     return summary;
   }
 
+  /** Users with an opted-in native-push install, for the all-users broadcast (C12). */
+  async directUserIds(): Promise<string[]> {
+    if (!this.pushSender?.isConfigured()) return [];
+    const rows = await this.prisma.userPushDevice.findMany({
+      where: { token: { not: null }, optedIn: true },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    return rows.map((r) => r.userId);
+  }
+
+  /** Each user's native-push installs. Empty until APNs or FCM is configured. */
+  private async devicesFor(userIds: string[]): Promise<Map<string, UserDevices>> {
+    const byUser = new Map<string, UserDevices>();
+    if (!this.pushSender?.isConfigured() || userIds.length === 0) return byUser;
+    const rows = await this.prisma.userPushDevice.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, token: true, platform: true, sandbox: true, optedIn: true },
+    });
+    for (const r of rows) {
+      const entry = byUser.get(r.userId) ?? { direct: [], movedOff: true, provider: providerOf(r.platform) };
+      if (!r.token) entry.movedOff = false;
+      else if (r.optedIn) entry.direct.push({ userId: r.userId, token: r.token, platform: r.platform, sandbox: r.sandbox });
+      byUser.set(r.userId, entry);
+    }
+    return byUser;
+  }
+
+  /**
+   * Push to native installs. A person counts as reached when any of their
+   * devices accepted it. Dead tokens (app uninstalled) are deleted. Inside
+   * quiet hours it becomes a delayed job, counted SENT once queued, as
+   * OneSignal's send_after was; without Redis it goes now.
+   */
+  private async sendDirect(devices: DirectDevice[], msg: PushMessage, sendAfter?: Date): Promise<Map<string, Outcome>> {
+    const out = new Map<string, Outcome>();
+    if (!devices.length || !this.pushSender) return out;
+    if (sendAfter && (await this.deferDirect([...new Set(devices.map((d) => d.userId))], msg, sendAfter))) {
+      for (const d of devices) out.set(d.userId, { result: { id: 'queued' }, attempts: 0, provider: providerOf(d.platform) });
+      return out;
+    }
+    const sender = this.pushSender;
+    const dead: string[] = [];
+    await inChunks(
+      devices,
+      async (d) => {
+        const { result, attempts } = await withRetry(() => sender.send(d, msg));
+        if (result.dead) dead.push(d.token);
+        if (!out.get(d.userId)?.result.id) out.set(d.userId, { result, attempts, provider: providerOf(d.platform) });
+      },
+      DIRECT_CONCURRENCY,
+    );
+    if (dead.length) {
+      await this.prisma.userPushDevice
+        .deleteMany({ where: { token: { in: dead } } })
+        .catch((err) => this.logger.warn(`Failed to drop ${dead.length} dead push tokens: ${err?.message ?? err}`));
+    }
+    return out;
+  }
+
+  private async deferDirect(userIds: string[], msg: PushMessage, at: Date): Promise<boolean> {
+    // A dead Redis makes `queue.add` hang, so only use the queue while the client is up.
+    if (!this.deferred || !this.redis?.getClient()) return false;
+    try {
+      await this.deferred.add(
+        'push',
+        { userIds, msg },
+        { delay: Math.max(0, at.getTime() - Date.now()), removeOnComplete: true, removeOnFail: { age: 86_400 } },
+      );
+      return true;
+    } catch (err: any) {
+      this.logger.warn(`Deferred push queue unavailable, sending now: ${err?.message ?? err}`);
+      return false;
+    }
+  }
+
+  /**
+   * PushLog + message_deliveries rows for one batch, one write per outcome
+   * group. Someone with no outcome had no install that could take it (every
+   * install on native push, none with permission on).
+   */
+  private async logOutcomes(
+    batch: string[],
+    outcomes: Map<string, Outcome>,
+    devices: Map<string, UserDevices>,
+    opts: SendOptions,
+    claimed: boolean,
+    summary: SendSummary,
+  ): Promise<void> {
+    const groups = new Map<string, { users: string[]; sent: boolean; outcome: Outcome }>();
+    for (const userId of batch) {
+      const o: Outcome = outcomes.get(userId) ?? {
+        result: { id: null, error: 'no_opted_in_device' },
+        attempts: 0,
+        provider: devices.get(userId)?.provider ?? 'onesignal',
+      };
+      const sent = !!o.result.id;
+      // Native-push ids are per device: keep OneSignal's (one per batch) only.
+      const result: AttemptResult = {
+        id: sent && o.provider === 'onesignal' ? o.result.id : null,
+        error: sent ? undefined : o.result.error,
+      };
+      const key = [sent, o.provider, result.id, result.error, o.attempts].join('|');
+      const group = groups.get(key) ?? { users: [], sent, outcome: { ...o, result } };
+      group.users.push(userId);
+      groups.set(key, group);
+      if (sent) summary.sent++;
+      else summary.failed++;
+    }
+    for (const { users, sent, outcome } of groups.values()) {
+      await this.logMany(users, opts.category, sent ? PushLogStatus.SENT : PushLogStatus.FAILED, opts.campaignId, outcome.result.id, outcome.result.error);
+      await this.logDeliveries(
+        users,
+        opts,
+        claimed,
+        sent ? MessageDeliveryStatus.SENT : MessageDeliveryStatus.FAILED,
+        outcome.result,
+        outcome.attempts,
+        outcome.provider,
+      );
+    }
+  }
+
   /** The in-app copy. Its own try so a failed insert never costs the push. */
   private async writeInbox(userIds: string[], opts: SendOptions): Promise<void> {
     if (!userIds.length) return;
@@ -301,10 +499,10 @@ export class NotificationsService {
     return !!settings[category];
   }
 
-  private deliveryMeta(userId: string, opts: SendOptions): DeliveryMeta {
+  private deliveryMeta(userId: string, opts: SendOptions, provider: DeliveryProvider = 'onesignal'): DeliveryMeta {
     return {
       channel: MessageChannel.PUSH,
-      provider: 'onesignal',
+      provider,
       kind: opts.kind ?? opts.category,
       label: opts.title,
       recipient: userId,
@@ -325,15 +523,16 @@ export class NotificationsService {
     status: MessageDeliveryStatus,
     result?: AttemptResult,
     attempts = 0,
+    provider: DeliveryProvider = 'onesignal',
   ): Promise<void> {
     if (claimed) {
-      await finishDelivery(this.prisma, this.deliveryMeta(userIds[0], opts), true, status, result, attempts);
+      await finishDelivery(this.prisma, this.deliveryMeta(userIds[0], opts, provider), true, status, result, attempts);
       return;
     }
     await logDeliveries(
       this.prisma,
       userIds.map((userId) => {
-        const { dedupKey: _ignored, ...meta } = this.deliveryMeta(userId, opts);
+        const { dedupKey: _ignored, ...meta } = this.deliveryMeta(userId, opts, provider);
         return {
           ...meta,
           label: meta.label.slice(0, 255),

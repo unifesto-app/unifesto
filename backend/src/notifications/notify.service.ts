@@ -68,7 +68,10 @@ export class NotifyService {
 
       const [allowedCount, devices, optedOut] = await Promise.all([
         this.notifications.countAllowed([userId], def.category),
-        this.prisma.userPushDevice.count({ where: { userId, optedIn: true, linkedAt: { not: null } } }),
+        // Reachable: linked to OneSignal, or on native push (C12, no link needed).
+        this.prisma.userPushDevice.count({
+          where: { userId, optedIn: true, OR: [{ linkedAt: { not: null } }, { token: { not: null } }] },
+        }),
         emailOptedOutUserIds(this.prisma, [userId], def.category),
       ]);
       const plan = channelsFor(def, {

@@ -25,7 +25,7 @@ export interface DeliveryOpts {
   userId?: string;
 }
 
-export type DeliveryProvider = 'resend' | 'ses' | 'meta' | 'onesignal';
+export type DeliveryProvider = 'resend' | 'ses' | 'meta' | 'onesignal' | 'apns' | 'fcm';
 
 export interface DeliveryMeta extends DeliveryOpts {
   channel: MessageChannel;

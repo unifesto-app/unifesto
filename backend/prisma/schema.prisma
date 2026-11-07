@@ -5036,17 +5036,23 @@ model EmailSuppression {
   @@map("email_suppressions")
 }
 
-// One row per app install that can receive push. `subscriptionId` is OneSignal's
-// push subscription id (the device id); it moves to whichever user last signed
-// in on that device. `linkedAt` = server confirmed OneSignal external_id = userId.
+// One row per app install that can receive push; it moves to whichever user
+// last signed in on that device. Old builds report OneSignal's push
+// subscription id (`subscriptionId`; `linkedAt` = server confirmed OneSignal
+// external_id = userId). Builds on native push (C12) report the APNs or FCM
+// `token` instead (iOS = APNs, Android = FCM) and need no link. A row has one
+// or the other (CHECK constraint in the migration).
 model UserPushDevice {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   userId String @map("user_id") @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  subscriptionId String  @unique @map("subscription_id") @db.VarChar(64)
-  oneSignalId    String? @map("one_signal_id") @db.VarChar(64)
+  subscriptionId String?  @unique @map("subscription_id") @db.VarChar(64)
+  token          String?  @unique @db.VarChar(512)
+  // APNs development environment (a dev build's token only works there).
+  sandbox        Boolean  @default(false)
+  oneSignalId    String?  @map("one_signal_id") @db.VarChar(64)
   platform       String  @db.VarChar(10)
   deviceModel    String? @map("device_model") @db.VarChar(120)
   appVersion     String? @map("app_version") @db.VarChar(20)

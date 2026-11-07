@@ -228,3 +228,105 @@ describe('NotificationsService quiet hours (C4)', () => {
     expect(oneSignal.send).toHaveBeenCalledTimes(4);
   });
 });
+
+describe('NotificationsService native push (C12)', () => {
+  const opts = { category: 'productUpdates' as const, title: 'New', body: 'Fresh events', deepLink: 'unifesto://explore', inbox: false as const };
+  const device = (userId: string, token: string | null, extra: object = {}) => ({
+    userId, token, platform: 'ios', sandbox: false, optedIn: true, ...extra,
+  });
+
+  const build = (rows: any[], send = jest.fn().mockResolvedValue({ id: 'apns-1' })) => {
+    const prisma: any = {
+      notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+      pushLog: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      messageDelivery: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      userNotification: { createMany: jest.fn() },
+      userPushDevice: {
+        findMany: jest.fn().mockResolvedValue(rows),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const oneSignal: any = { send: jest.fn().mockResolvedValue({ id: 'os-1' }) };
+    const pushSender: any = { isConfigured: () => true, send };
+    return { svc: new NotificationsService(prisma, oneSignal, pushSender), prisma, oneSignal, pushSender };
+  };
+  const deliveries = (prisma: any) => prisma.messageDelivery.createMany.mock.calls.flatMap((c: any) => c[0].data);
+
+  it('sends native installs directly and keeps OneSignal only for people still on it', async () => {
+    const { svc, prisma, oneSignal, pushSender } = build([
+      device('moved', 'tok-moved'), // every install on native push
+      device('both', 'tok-both'), // new phone on native push…
+      device('both', null), // …old phone still on OneSignal
+    ]);
+    const summary = await svc.send(['moved', 'both', 'legacy'], opts);
+
+    expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['both', 'legacy']);
+    expect(pushSender.send.mock.calls.map((c: any) => c[0].token).sort()).toEqual(['tok-both', 'tok-moved']);
+    expect(pushSender.send.mock.calls[0][1]).toEqual({ title: 'New', body: 'Fresh events', data: { deepLink: 'unifesto://explore' } });
+    expect(summary).toEqual({ sent: 3, failed: 0, skipped: 0 });
+    const byUser = Object.fromEntries(deliveries(prisma).map((d: any) => [d.userId, d.provider]));
+    expect(byUser).toEqual({ moved: 'apns', both: 'onesignal', legacy: 'onesignal' });
+  });
+
+  it('counts a person reached when any device took it, and drops dead tokens', async () => {
+    const send = jest.fn(async (d: any) =>
+      d.token === 'live' ? { id: 'ok' } : { id: null, error: d.token === 'gone' ? '410 Unregistered' : '404 UNREGISTERED', dead: true },
+    );
+    const { svc, prisma, oneSignal } = build(
+      [device('u', 'gone'), device('u', 'live'), device('v', 'gone2', { platform: 'android' })],
+      send,
+    );
+    const summary = await svc.send(['u', 'v'], opts);
+
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(summary).toEqual({ sent: 1, failed: 1, skipped: 0 });
+    expect(prisma.userPushDevice.deleteMany).toHaveBeenCalledWith({ where: { token: { in: expect.arrayContaining(['gone', 'gone2']) } } });
+    expect(deliveries(prisma).find((d: any) => d.userId === 'v')).toMatchObject({ status: 'FAILED', provider: 'fcm', error: '404 UNREGISTERED' });
+  });
+
+  it('someone on native push with permission off is logged FAILED, not sent to OneSignal', async () => {
+    const { svc, prisma, oneSignal, pushSender } = build([device('off', 'tok', { optedIn: false })]);
+    const summary = await svc.send(['off'], opts);
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(pushSender.send).not.toHaveBeenCalled();
+    expect(summary.failed).toBe(1);
+    expect(prisma.pushLog.createMany.mock.calls[0][0].data[0]).toMatchObject({ status: 'FAILED', error: 'no_opted_in_device' });
+  });
+
+  it('directOnly skips OneSignal (the all-users broadcast already sent its segment)', async () => {
+    const { svc, oneSignal, pushSender } = build([device('both', 'tok'), device('both', null)]);
+    await svc.send(['both'], { ...opts, directOnly: true });
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(pushSender.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('quiet hours: native installs become a delayed job, counted SENT once queued', async () => {
+    const { svc, prisma, pushSender } = build([device('quiet', 'tok')]);
+    // A window that starts now (IST) and lasts an hour.
+    const start = Math.floor((Date.now() / 60_000 + 330) % 1440);
+    prisma.notificationSettings.findMany.mockResolvedValue([
+      { userId: 'quiet', pushEnabled: true, productUpdates: true, quietHoursStart: start, quietHoursEnd: (start + 60) % 1440 },
+    ]);
+    const add = jest.fn().mockResolvedValue({});
+    (svc as any).deferred = { add };
+    (svc as any).redis = { getClient: () => ({}) };
+    const summary = await svc.send(['quiet'], opts);
+
+    expect(pushSender.send).not.toHaveBeenCalled();
+    expect(add).toHaveBeenCalledWith(
+      'push',
+      { userIds: ['quiet'], msg: expect.objectContaining({ title: 'New' }) },
+      expect.objectContaining({ delay: expect.any(Number) }),
+    );
+    expect(add.mock.calls[0][2].delay).toBeGreaterThan(0);
+    expect(summary.sent).toBe(1);
+  });
+
+  it('without APNs/FCM configured nothing changes: everyone goes to OneSignal', async () => {
+    const { svc, prisma, oneSignal } = build([device('moved', 'tok')]);
+    (svc as any).pushSender = { isConfigured: () => false, send: jest.fn() };
+    await svc.send(['moved'], opts);
+    expect(prisma.userPushDevice.findMany).not.toHaveBeenCalled();
+    expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['moved']);
+  });
+});
