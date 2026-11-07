@@ -53,6 +53,6 @@ import {
     UserNotificationsService,
     NotifyService,
   ],
-  exports: [NotificationsService, OneSignalService, UserNotificationsService, NotifyService],
+  exports: [NotificationsService, OneSignalService, UserNotificationsService, NotifyService, PushCampaignService],
 })
 export class NotificationsModule {}

@@ -23,6 +23,8 @@ export interface DeliveryOpts {
   kind?: string;
   /** The user this message is for, when known (per-user history). */
   userId?: string;
+  /** The push, email or WhatsApp campaign it belongs to (C17 counts). */
+  campaignId?: string;
 }
 
 export type DeliveryProvider = 'resend' | 'ses' | 'meta' | 'onesignal' | 'apns' | 'fcm';
@@ -232,6 +234,7 @@ function rowBase(meta: DeliveryMeta) {
     label: clip(meta.label, 255) ?? '',
     recipient: clip(meta.recipient, 320) ?? '',
     userId: meta.userId ?? null,
+    campaignId: meta.campaignId ?? null,
   };
 }
 

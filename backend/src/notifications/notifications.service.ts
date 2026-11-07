@@ -519,6 +519,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       recipient: userId,
       userId,
       dedupKey: opts.dedupKey,
+      campaignId: opts.campaignId,
     };
   }
 

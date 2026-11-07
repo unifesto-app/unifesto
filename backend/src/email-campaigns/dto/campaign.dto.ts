@@ -40,6 +40,12 @@ export class SegmentFiltersDto {
   @IsOptional()
   @IsBoolean()
   hasRegistrations?: boolean;
+
+  /** Exactly these accounts: a C17 campaign hands email its resolved audience. */
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  userIds?: string[];
 }
 
 /**

@@ -787,6 +787,9 @@ export class EmailCampaignsService {
     if (filters.hasRegistrations) {
       where.registrations = { some: {} };
     }
+    if (filters.userIds) {
+      where.id = { in: filters.userIds };
+    }
     return where;
   }
 

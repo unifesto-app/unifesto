@@ -4999,6 +4999,9 @@ model MessageDelivery {
   // Optional idempotency key: a second send with the same key is skipped once
   // the first is SENT/DELIVERED/OPENED, retried when it FAILED.
   dedupKey          String?               @unique @map("dedup_key") @db.VarChar(255)
+  // The channel campaign it belongs to (C17): a push_campaigns, email_campaigns
+  // or whatsapp_broadcasts id, so no FK. Per-channel counts group by it.
+  campaignId        String?               @map("campaign_id") @db.Uuid
 
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -5010,6 +5013,7 @@ model MessageDelivery {
   @@index([providerMessageId]) // provider webhooks update by it (C5)
   @@index([status, createdAt]) // failure dashboard (C6)
   @@index([createdAt]) // retention sweep (RetentionService)
+  @@index([campaignId]) // campaign counts (C17)
   @@map("message_deliveries")
 }
 
@@ -5242,6 +5246,65 @@ model WhatsappBroadcast {
 
   @@index([createdAt])
   @@map("whatsapp_broadcasts")
+}
+
+enum CampaignScope {
+  PLATFORM
+  SPACE
+  EVENT
+
+  @@map("campaign_scope")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING // handing each channel to its sender
+  SENT // every channel handed off; per-channel progress is in message_deliveries
+  FAILED
+  CANCELLED
+  HELD // AI19 broadcast check: waiting for staff
+
+  @@map("campaign_status")
+}
+
+// C17: one message to many people on several channels, written once. A layer
+// over the channel campaigns: each channel still sends through its own row
+// (push_campaigns, email_campaigns, whatsapp_broadcasts), linked here by plain
+// uuid. The audience is resolved once, at send time, and each channel gets the
+// same people.
+model Campaign {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  scope       CampaignScope
+  spaceId     String?       @map("space_id") @db.Uuid
+  eventId     String?       @map("event_id") @db.Uuid
+  createdById String        @map("created_by_id") @db.Uuid
+
+  channels String[] // push (with its in-app copy) | inapp (in-app only) | email | whatsapp
+  category String   @db.VarChar(32) // push + in-app NotificationCategory
+  audience Json // { type, eventId?, spaceId?, userIds? }
+  content  Json // { push?: { title, body, deepLink? }, email?: { subject, html }, whatsapp?: { templateName, languageCode, bodyParams } }
+  brief    String? @db.Text // the one line the AI draft started from (C17 Write with AI)
+
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?      @map("scheduled_at") @db.Timestamptz(6)
+  sentAt      DateTime?      @map("sent_at") @db.Timestamptz(6)
+  error       String?        @db.Text // channels that couldn't be handed off
+
+  recipientCount Int @default(0) @map("recipient_count") // the resolved audience
+  inAppCount     Int @default(0) @map("in_app_count") // in-app only: copies written (no delivery rows)
+
+  pushCampaignId      String? @unique @map("push_campaign_id") @db.Uuid
+  emailCampaignId     String? @unique @map("email_campaign_id") @db.Uuid
+  whatsappBroadcastId String? @unique @map("whatsapp_broadcast_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, scheduledAt])
+  @@index([spaceId, createdAt(sort: Desc)])
+  @@map("campaigns")
 }
 
 /// What a content report points at. Polymorphic (no FK): the target is looked

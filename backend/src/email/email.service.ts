@@ -651,7 +651,7 @@ export class EmailService {
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               })
             : this.sendViaSES(to, data.subject, data.html),
-        { kind: 'campaign', userId: data.userId },
+        { kind: 'campaign', userId: data.userId, campaignId: data.campaignId },
       );
       return { messageId: res.id, ...(res.error ? { error: res.error } : {}) };
     } catch (error) {
