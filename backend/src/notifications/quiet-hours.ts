@@ -22,6 +22,13 @@ export function quietHoursDeferral(
   return new Date((nowMin + wait) * 60_000);
 }
 
+/** Midnight IST that began `now`'s day (the daily cap's day, C16). */
+export function istDayStart(now: Date): Date {
+  const offset = IST_OFFSET_MIN * 60_000;
+  const day = DAY_MIN * 60_000;
+  return new Date(Math.floor((now.getTime() + offset) / day) * day - offset);
+}
+
 /** Quiet hours are either off (both null) or a real window (both set, different). */
 export function validQuietHours(start: number | null | undefined, end: number | null | undefined): boolean {
   return start == null ? end == null : end != null && start !== end;

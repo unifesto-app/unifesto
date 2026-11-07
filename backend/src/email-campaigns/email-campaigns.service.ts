@@ -21,13 +21,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { sanitizeEmailHtml } from '../email/sanitize-email-html';
-import { emailOptedOutUserIds } from '../email/email-preferences';
 import { withoutSuppressed } from '../email/email-suppression';
+import { canSend } from '../notifications/send-policy';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
   MARKETABLE_USER,
-  marketingOptOuts,
-  promotionsOptedInUserIds,
   recordMarketingOptOut,
   signUnsubscribeToken,
   verifyUnsubscribeToken,
@@ -435,6 +433,7 @@ export class EmailCampaignsService {
       const allowed = await this.withConsent(
         campaign,
         await this.getRecipients(campaign).then((r) => withoutSuppressed(this.prisma, r)),
+        true,
       );
       // Checkpoint: everyone with a log row has been handled already.
       const done = new Set(
@@ -564,6 +563,7 @@ export class EmailCampaignsService {
           html,
           campaignId: campaign.id,
           unsubscribeUrl,
+          userId: recipient.userId,
         });
 
         const ok = !!result.messageId;
@@ -613,26 +613,27 @@ export class EmailCampaignsService {
    * the unsubscribe. The count and the send both run through here.
    */
   private async withConsent(
-    campaign: Pick<EmailCampaign, 'spaceId' | 'targetType'>,
+    campaign: Pick<EmailCampaign, 'spaceId' | 'targetType'> & { subject?: string },
     resolved: Recipient[],
+    /** The send itself (not the count): log anyone over the daily cap. */
+    sending = false,
   ): Promise<Recipient[]> {
-    const ids = resolved.flatMap((r) => (r.userId ? [r.userId] : []));
     // 1:1 mail and the staff test list aren't bulk marketing.
     const needsOptIn =
       !campaign.spaceId &&
       campaign.targetType !== EmailTargetType.SINGLE_USER &&
       campaign.targetType !== EmailTargetType.STAFF;
-    const [emailOff, optOuts, promotionsOn] = await Promise.all([
-      emailOptedOutUserIds(this.prisma, ids),
-      marketingOptOuts(this.prisma, MarketingChannel.EMAIL, campaign.spaceId),
-      needsOptIn ? promotionsOptedInUserIds(this.prisma, ids) : null,
-    ]);
-    return resolved.filter(
-      (r) =>
-        !optOuts.addresses.has(r.email.toLowerCase()) &&
-        !(r.userId && (emailOff.has(r.userId) || optOuts.userIds.has(r.userId))) &&
-        (!promotionsOn || (!!r.userId && promotionsOn.has(r.userId))),
-    );
+    const users = resolved.filter((r): r is Recipient & { userId: string } => !!r.userId);
+    const { allowed } = await canSend(this.prisma, users.map((r) => r.userId), {
+      kind: 'campaign',
+      // Only promotions needs the opt-in; organiser mail has no switch but email itself.
+      category: needsOptIn ? 'promotions' : 'organiserAnnouncements',
+      channel: 'email',
+      marketing: { spaceId: campaign.spaceId },
+      addresses: new Map(users.map((r) => [r.userId, r.email])),
+      ...(sending ? { log: { provider: 'ses' as const, label: campaign.subject ?? 'campaign' } } : {}),
+    });
+    return users.filter((r) => allowed.has(r.userId));
   }
 
   private async getRecipients(
