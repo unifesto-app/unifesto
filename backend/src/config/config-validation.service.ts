@@ -74,6 +74,29 @@ export class ConfigValidationService implements OnModuleInit {
     );
     this.logger.log(`OneSignal (push notifications) configured: ${oneSignalConfigured}`);
 
+    // C12 native push: optional until the app build that reports tokens ships.
+    // Checked for shape only (a live call at boot would slow every deploy); a
+    // bad key shows up as the push-health Sentry alert on the first sends.
+    const apnsSet = ['APNS_KEY_P8', 'APNS_KEY_ID'].filter((key) => process.env[key]);
+    if (apnsSet.length === 1) this.logger.warn('APNs half set: needs both APNS_KEY_P8 and APNS_KEY_ID');
+    if (apnsSet.length === 2 && !(process.env.APNS_TEAM_ID || process.env.APPLE_TEAM_ID)) {
+      this.logger.warn('APNs needs APNS_TEAM_ID (or APPLE_TEAM_ID)');
+    }
+    if (process.env.APNS_KEY_P8 && !process.env.APNS_KEY_P8.includes('PRIVATE KEY')) {
+      this.logger.warn('APNS_KEY_P8 is not a .p8 key (no PRIVATE KEY header)');
+    }
+    let fcmReady = false;
+    if (process.env.FCM_SERVICE_ACCOUNT_JSON) {
+      try {
+        const sa = JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON);
+        fcmReady = !!(sa.project_id && sa.client_email && sa.private_key);
+      } catch {
+        // reported below
+      }
+      if (!fcmReady) this.logger.warn('FCM_SERVICE_ACCOUNT_JSON is not a service account key (project_id, client_email, private_key)');
+    }
+    this.logger.log(`Native push configured: APNs ${apnsSet.length === 2}, FCM ${fcmReady}`);
+
     // O17: unset = Apple sign-ins store no refresh token and account deletion
     // can't revoke at Apple (App Store 5.1.1(v)). Required before 5.0.0 submit.
     const appleMissing = ['APPLE_CLIENT_ID', 'APPLE_TEAM_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY'].filter(

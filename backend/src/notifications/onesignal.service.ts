@@ -121,19 +121,23 @@ export class OneSignalService {
 
   /**
    * Stop pushes to one app install now (it was signed out from another
-   * device). If the app opens again OneSignal may make it a new subscription,
-   * which the app registers on its next sign-in. Best-effort, like linking.
+   * device, or moved to native push). If the app opens again OneSignal may
+   * make it a new subscription, which the app registers on its next sign-in.
+   * Best-effort, like linking: true when it's gone (or OneSignal isn't set up,
+   * so it can't push it anyway).
    */
-  async deleteSubscription(subscriptionId: string): Promise<void> {
-    if (!this.isConfigured()) return;
+  async deleteSubscription(subscriptionId: string): Promise<boolean> {
+    if (!this.isConfigured()) return true;
     try {
       await axios.delete(
         `https://api.onesignal.com/apps/${this.appId}/subscriptions/${encodeURIComponent(subscriptionId)}`,
         { headers: this.headers, timeout: 10_000 },
       );
+      return true;
     } catch (err: any) {
-      if (err?.response?.status === 404) return;
+      if (err?.response?.status === 404) return true;
       this.logger.warn(`OneSignal delete ${subscriptionId} failed (${err?.response?.status ?? 'network'})`);
+      return false;
     }
   }
 

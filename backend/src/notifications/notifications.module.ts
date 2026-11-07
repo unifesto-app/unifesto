@@ -9,6 +9,7 @@ import { NotificationsService } from './notifications.service';
 import { PushCampaignService } from './push-campaign.service';
 import { PushSchedulerService } from './push-scheduler.service';
 import { PushDeviceService } from './push-device.service';
+import { PushSender } from './push-sender';
 import { TransactionalNotificationHandler } from './handlers/transactional-notification.handler';
 import { NotificationFanoutQueue } from './notification-fanout.queue';
 import { UserNotificationsService } from './user-notifications.service';
@@ -20,9 +21,9 @@ import {
 } from './notifications.controller';
 
 /**
- * Server-side push platform. Owns the OneSignal REST client, the pref-aware send
- * path, campaign management + scheduler, and the transactional event-bus
- * handlers.
+ * Server-side push platform. Owns the APNs/FCM sender and the OneSignal REST
+ * client (old builds), the pref-aware send path, campaign management +
+ * scheduler, and the transactional event-bus handlers.
  *
  * Imports EventsModule (organiser scoped-auth via canManageEvent). It is
  * one-directional — that module emits via EventEmitter2 and never imports this
@@ -40,6 +41,7 @@ import {
   ],
   providers: [
     OneSignalService,
+    PushSender,
     NotificationsService,
     PushCampaignService,
     PushSchedulerService,

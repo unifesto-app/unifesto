@@ -965,8 +965,10 @@ export class AuthService {
     await this.prisma.authSession.deleteMany({
       where: ids === 'all' ? { userId } : { userId, id: { in: ids } },
     });
-    if (installs.length) {
-      this.events?.emit(PUSH_INSTALLS_SIGNED_OUT, installs.map((i) => i.subscriptionId));
+    // Native-push installs (token, no subscription) stop with their row.
+    const subscriptions = installs.flatMap((i) => (i.subscriptionId ? [i.subscriptionId] : []));
+    if (subscriptions.length) {
+      this.events?.emit(PUSH_INSTALLS_SIGNED_OUT, subscriptions);
     }
   }
 

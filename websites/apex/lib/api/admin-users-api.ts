@@ -26,7 +26,7 @@ export interface User {
   lastSeenAt: string | null;
   roles: string[];
   identitiesCount: number;
-  /** OneSignal devices; reachable = linked to the user AND push permission on. */
+  /** Push devices; reachable = push permission on AND linked (OneSignal) or on native push. */
   pushDevices: { total: number; reachable: number };
   createdAt: string;
   updatedAt: string;
@@ -59,11 +59,15 @@ export interface UserRoleAssignment {
   assignedAt: string;
 }
 
-/** A OneSignal push subscription (app install) linked to the account. */
+/** An app install that can get push: OneSignal (old builds) or native APNs/FCM. */
 export interface UserPushDevice {
   id: string;
-  /** OneSignal push subscription id — the "device id". */
-  subscriptionId: string;
+  /** OneSignal push subscription id (old builds); null on native push. */
+  subscriptionId: string | null;
+  /** APNs (iOS) or FCM (Android) token on native push; null on OneSignal. */
+  token: string | null;
+  /** APNs development environment (a dev build). */
+  sandbox: boolean;
   platform: string;
   deviceModel: string | null;
   appVersion: string | null;

@@ -230,8 +230,14 @@ export class PushCampaignService {
         this.statsReadAt.set(c.id, now);
         const stats = await this.oneSignal.getDeliveryStats(c.oneSignalId!);
         if (!stats) return;
-        const sentCount = stats.successful;
-        const failedCount = stats.failed + stats.errored;
+        // Installs on native push left the segment (C12): their PushLog rows add on.
+        const [directSent, directFailed] = await Promise.all(
+          [PushLogStatus.SENT, PushLogStatus.FAILED].map((status) =>
+            this.prisma.pushLog.count({ where: { campaignId: c.id, status } }),
+          ),
+        );
+        const sentCount = stats.successful + directSent;
+        const failedCount = stats.failed + stats.errored + directFailed;
         if (sentCount === c.sentCount && failedCount === c.failedCount) return;
         await this.prisma.pushCampaign.update({ where: { id: c.id }, data: { sentCount, failedCount } });
       }),
@@ -350,6 +356,18 @@ export class PushCampaignService {
       // as a staff alert so the admins' own category prefs can't swallow it.
       const staffTest = segment.type === 'staff';
 
+      // A resend skips whoever this campaign already reached.
+      const reached = new Set(
+        resend
+          ? (
+              await this.prisma.pushLog.findMany({
+                where: { campaignId, status: PushLogStatus.SENT },
+                select: { userId: true },
+              })
+            ).map((l) => l.userId)
+          : [],
+      );
+
       let summary: SendSummary & { oneSignalId?: string | null };
       if (useSegment) {
         summary = await this.notifications.sendToSegments([BROADCAST_SEGMENT], {
@@ -358,16 +376,23 @@ export class PushCampaignService {
           data,
           deepLink,
         });
+        // Installs on native push left OneSignal, so the segment misses them (C12).
+        const directIds = (await this.notifications.directUserIds()).filter((id) => !reached.has(id));
+        const direct = await this.notifications.send(directIds, {
+          category,
+          title: campaign.title,
+          body: campaign.body,
+          data,
+          deepLink,
+          campaignId: campaign.id,
+          inbox: false,
+          directOnly: true,
+        });
+        summary.sent += direct.sent;
+        summary.failed += direct.failed;
+        summary.skipped += direct.skipped;
       } else {
-        let userIds = await this.resolveRecipients(campaign);
-        if (resend) {
-          const reached = await this.prisma.pushLog.findMany({
-            where: { campaignId, status: PushLogStatus.SENT },
-            select: { userId: true },
-          });
-          const skip = new Set(reached.map((l) => l.userId));
-          userIds = userIds.filter((id) => !skip.has(id));
-        }
+        const userIds = (await this.resolveRecipients(campaign)).filter((id) => !reached.has(id));
         summary = await this.notifications.send(userIds, {
           category: staffTest ? 'adminAlerts' : category,
           title: staffTest ? `[Test] ${campaign.title}` : campaign.title,

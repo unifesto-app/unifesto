@@ -44,6 +44,7 @@ describe('PushCampaignService confirm step', () => {
         count: jest.fn().mockResolvedValue(items.length),
         update: jest.fn().mockResolvedValue({}),
       },
+      pushLog: { count: jest.fn().mockResolvedValue(0) },
     };
     const svc = build(prisma, {}, oneSignal);
     // The list doesn't wait on OneSignal.
@@ -74,9 +75,50 @@ describe('PushCampaignService confirm step', () => {
     };
     const notifications = {
       sendToSegments: jest.fn().mockResolvedValue({ sent: 0, failed: 0, skipped: 0, oneSignalId: null }),
+      directUserIds: jest.fn().mockResolvedValue([]),
+      send: jest.fn().mockResolvedValue({ sent: 0, failed: 0, skipped: 0 }),
     };
     await build(prisma, notifications).dispatch('c1');
     expect(prisma.pushCampaign.update.mock.calls[0][0].data).toMatchObject({ status: 'FAILED', sentAt: null });
+  });
+
+  it('a segment broadcast also sends native-push installs directly, skipping those a resend already reached (C12)', async () => {
+    const campaign = {
+      id: 'c2', scope: 'PLATFORM', category: 'productUpdates', title: 'T', body: 'B', data: null, targetSegment: { type: 'all' },
+    };
+    const prisma = {
+      pushCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(campaign),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      pushLog: { findMany: jest.fn().mockResolvedValue([{ userId: 'n1' }]) },
+    };
+    const notifications = {
+      sendToSegments: jest.fn().mockResolvedValue({ sent: 0, failed: 0, skipped: 0, oneSignalId: 'os-1' }),
+      directUserIds: jest.fn().mockResolvedValue(['n1', 'n2']),
+      send: jest.fn().mockResolvedValue({ sent: 1, failed: 0, skipped: 0 }),
+    };
+    await build(prisma, notifications).dispatch('c2', true);
+    expect(notifications.send).toHaveBeenCalledWith(
+      ['n2'],
+      expect.objectContaining({ campaignId: 'c2', category: 'productUpdates', inbox: false, directOnly: true }),
+    );
+    expect(prisma.pushCampaign.update.mock.calls[0][0].data).toMatchObject({ status: 'SENT', sentCount: 1, oneSignalId: 'os-1' });
+  });
+
+  it("a segment broadcast's refreshed counts add its native-push PushLog rows", async () => {
+    const H = 60 * 60 * 1000;
+    const item = {
+      id: 'c4', status: 'SENT', oneSignalId: 'os-4', sentAt: new Date(Date.now() - H), updatedAt: new Date(Date.now() - H), sentCount: 0, failedCount: 0,
+    };
+    const prisma = {
+      pushCampaign: { update: jest.fn().mockResolvedValue({}) },
+      pushLog: { count: jest.fn(async ({ where }: any) => (where.status === 'SENT' ? 40 : 2)) },
+    };
+    const oneSignal = { getDeliveryStats: jest.fn().mockResolvedValue({ successful: 100, failed: 3, errored: 1 }) };
+    await build(prisma, {}, oneSignal).refreshSegmentStats([item] as any);
+    expect(prisma.pushCampaign.update).toHaveBeenCalledWith({ where: { id: 'c4' }, data: { sentCount: 140, failedCount: 6 } });
   });
 
   it("holds an organiser announcement the broadcast check flags; staff release sends it (AI19)", async () => {

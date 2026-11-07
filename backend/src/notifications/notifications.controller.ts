@@ -102,8 +102,9 @@ export class OrganiserAnnouncementController {
 }
 
 /**
- * The signed-in user's push devices (OneSignal subscriptions). The app calls PUT
- * after sign-in / session restore / subscription change and DELETE on sign-out.
+ * The signed-in user's push devices (OneSignal subscriptions on old builds,
+ * APNs/FCM tokens on native push). The app calls PUT after sign-in / session
+ * restore / subscription change and DELETE (subscription id or token) on sign-out.
  */
 @Controller('users/me/push-devices')
 @UseGuards(JwtAuthGuard)
@@ -124,9 +125,9 @@ export class PushDeviceController {
     return this.devices.listMine(user.id);
   }
 
-  @Delete(':subscriptionId')
-  unregister(@CurrentUser() user: User, @Param('subscriptionId') subscriptionId: string) {
-    return this.devices.unregister(user.id, subscriptionId);
+  @Delete(':id')
+  unregister(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.devices.unregister(user.id, id);
   }
 }
 

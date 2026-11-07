@@ -169,7 +169,7 @@ export class UsersService {
               role: true,
             },
           },
-          pushDevices: { select: { linkedAt: true, optedIn: true } },
+          pushDevices: { select: { linkedAt: true, token: true, optedIn: true } },
         },
         orderBy: {
           createdAt: 'desc',
@@ -202,10 +202,10 @@ export class UsersService {
         user.identities.find((i) => i.email)?.emailVerified || false,
       roles: user.roles.map((ur) => ur.role.code),
       identitiesCount: user.identities.length,
-      // Reachable = linked to external_id AND push permission on.
+      // Reachable = push permission on AND linked to external_id or on native push.
       pushDevices: {
         total: user.pushDevices.length,
-        reachable: user.pushDevices.filter((d) => d.linkedAt && d.optedIn).length,
+        reachable: user.pushDevices.filter((d) => (d.linkedAt || d.token) && d.optedIn).length,
       },
     }));
 
@@ -317,6 +317,8 @@ export class UsersService {
           select: {
             id: true,
             subscriptionId: true,
+            token: true,
+            sandbox: true,
             platform: true,
             deviceModel: true,
             appVersion: true,
