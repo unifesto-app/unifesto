@@ -325,11 +325,15 @@ export interface AdminUserRow {
   createdAt: string;
 }
 
-/** A OneSignal push subscription (one app install) linked to the account. */
+/** An app install that can get push: OneSignal (5.0.0 and older) or native APNs/FCM. */
 export interface AdminUserPushDevice {
   id: string;
-  /** OneSignal push subscription id: the "device id". */
-  subscriptionId: string;
+  /** OneSignal push subscription id (old builds); null on native push. */
+  subscriptionId: string | null;
+  /** APNs (iOS) or FCM (Android) token on native push; null on OneSignal. */
+  token: string | null;
+  /** APNs development environment (a dev build). */
+  sandbox: boolean;
   platform: string;
   deviceModel: string | null;
   appVersion: string | null;

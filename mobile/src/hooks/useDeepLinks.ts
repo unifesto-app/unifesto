@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 import {
   routeToDeepLink,
   extractPushDeepLink,
@@ -45,10 +45,10 @@ function presentInApp(n: Arrived, open: () => void): boolean {
 /**
  * Wires the app's deep-link entry points once, near the navigation root.
  *
- * - OneSignal push taps → route to the notification's deepLink. OneSignal also
- *   fires this click listener for a tap that cold-starts the app, so this covers
- *   both foreground and cold-start push (no separate getInitialURL needed); a
- *   cold-start tap waits for the session restore before it routes.
+ * - Push taps → route to the notification's deepLink. PushService also reads
+ *   the tap that cold-started the app, so this covers both foreground and
+ *   cold-start push (no separate getInitialURL needed); a cold-start tap waits
+ *   for the session restore before it routes.
  * - Notifications that land while the app is open, live over the socket (C13)
  *   or as a foreground push, show through `presentInApp`, never twice.
  * - After the user authenticates, replay any link that was queued behind the
@@ -74,8 +74,8 @@ export function useDeepLinks(): void {
     routeToDeepLink(deepLink, { isAuthenticated: authRef.current });
 
   useEffect(() => {
-    OneSignalService.addNotificationClickListener((event: any) => {
-      const link = extractPushDeepLink(event);
+    const offTap = PushService.addTapListener((p) => {
+      const link = extractPushDeepLink(p.data);
       if (loadingRef.current) {
         coldStartLink.current = link;
         return;
@@ -83,21 +83,15 @@ export function useDeepLinks(): void {
       routeToDeepLink(link, { isAuthenticated: authRef.current });
     });
     // A push that lands while the app is open: a card instead of the system
-    // banner for in-app types. preventDefault has to run synchronously inside
-    // this listener.
-    OneSignalService.addNotificationForegroundListener((event: any) => {
-      const notification = event?.getNotification?.() ?? event?.notification;
-      const data = (notification?.additionalData ?? {}) as { type?: string; eventId?: string; kind?: string };
-      const n = { ...data, title: notification?.title, body: notification?.body, deepLink: extractPushDeepLink({ notification }) };
+    // banner for in-app types (returning true holds the banner back).
+    PushService.setForegroundHandler((p) => {
+      const data = p.data as { type?: string; eventId?: string; kind?: string };
+      const n = { ...data, title: p.title, body: p.body };
       // The live socket already showed it (it goes out before the push): no second card.
-      if (seenLive(n)) {
-        if (n.type && IN_APP_TYPES.has(n.type)) event?.preventDefault?.();
-        return;
-      }
-      if (presentInApp(n, openLink(n.deepLink))) event?.preventDefault?.();
+      if (seenLive(n)) return !!n.type && IN_APP_TYPES.has(n.type);
+      return presentInApp(n, openLink(extractPushDeepLink(p.data)));
     });
-    // OneSignalService owns the underlying listeners for the app's lifetime;
-    // they are registered at the root and never need teardown.
+    return offTap;
   }, []);
 
   // C13: notifications delivered live while the app is open, push or not.

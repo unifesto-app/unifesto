@@ -5,7 +5,7 @@ import * as Passkeys from 'react-native-passkeys';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
 import { getToken, getRefreshToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest, onSessionEnded, readJson, errorFrom } from '../lib/api/helpers';
 import { readCache } from '../lib/offline/responseCache';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 import { maybeReportAppVersion } from '../lib/appVersionReport';
 import { syncPushDevice, unregisterPushDevice } from '../lib/pushDeviceReport';
 import { cancelAccountDeletion } from '../lib/api/profile';
@@ -90,14 +90,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => sub.remove();
   }, [user?.id, token]);
 
-  // Link this install's OneSignal push subscription (device id) to the user on
-  // the backend, now and whenever the subscription changes (id issued late on
-  // first launch, opt-in toggled), so per-user pushes can reach this device.
+  // Link this install's push token to the user on the backend, now and
+  // whenever something changes (new token, permission answered, back from
+  // Settings), so per-user pushes can reach this device.
   useEffect(() => {
     if (!user?.id) return;
     const userId = user.id;
     void syncPushDevice(userId);
-    return OneSignalService.onPushSubscriptionChange(() => {
+    return PushService.onChange(() => {
       void syncPushDevice(userId);
     });
   }, [user?.id]);
@@ -155,17 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(await getToken());
           setUser(userData);
           await setCrashlyticsUserId(getCrashlytics(), userData.id);
-          // Re-link this device to the user in OneSignal on every startup, not
-          // just at interactive login. Without this, returning users (restored
-          // session, reinstall, or anyone who first authenticated before
-          // identity-linking shipped) keep a blank external_id and the backend
-          // can't target them by external_id. login() is idempotent; we don't
-          // re-prompt for permission here (that stays in handleAuthSuccess).
-          try {
-            OneSignalService.login(userData.id);
-          } catch {
-            // Non-fatal: push is optional and must never block session restore.
-          }
+          // The device report (effect on user.id above) links this install.
         }
       }
     } catch (error) {
@@ -180,14 +170,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(accessToken);
     setUser(userData);
     await setCrashlyticsUserId(getCrashlytics(), userData.id);
-
-    // Link this device to the user in OneSignal. The permission prompt waits
-    // for the first booking, where there is a reason to give (RegistrationSuccessScreen).
-    try {
-      OneSignalService.login(userData.id);
-    } catch (error) {
-      // Non-fatal: notifications are optional and shouldn't block login.
-    }
+    // The device report links this install; the permission prompt waits for
+    // the first booking, where there is a reason to give (RegistrationSuccessScreen).
   };
 
   const sendMobileOtp = async (mobileNumber: string) => {
@@ -311,11 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     setTempToken(null);
-    try {
-      OneSignalService.logout();
-    } catch (error) {
-      // Non-fatal.
-    }
+    // Push: unregisterPushDevice (before the token is cleared) removed this install.
     // Wipe tickets off the home-screen widget; the Home tab may never remount to do it.
     await syncUpNextWidget(null);
     await setCrashlyticsUserId(getCrashlytics(), '');

@@ -6,13 +6,13 @@ import { claimTokenFrom, isClaimLinkHandled, seenClaimLinkBefore } from './claim
  *
  * ONE place that turns an arbitrary link string into an in-app navigation.
  * Three producers feed it (P1 plan, item 6):
- *   1. OneSignal push taps  — data.deepLink / launchURL on the click event.
+ *   1. Push taps            — data.deepLink on the tapped notification.
  *   2. Content/share links  — unifesto:// or https://unifesto.app/… URLs.
  *   3. Claim/invite links   — group-registration claim links (P2 consumers).
  *
  * Why centralize instead of letting expo-router auto-handle every URL:
- *   - Push taps never reach expo-router's Linking listener (OneSignal intercepts
- *     the tap), so the routing has to be driven manually from the click event.
+ *   - Push taps never reach expo-router's Linking listener (the deep link is in
+ *     the push's data), so the routing has to be driven manually from the tap.
  *   - We want a single allowlist + auth gate so a crafted push/link can't drive
  *     navigation to arbitrary internal paths or into gated screens while logged out.
  *
@@ -125,18 +125,10 @@ export function isAuthRequired(path: string): boolean {
   return AUTH_REQUIRED_PREFIXES.has(headSegment(path));
 }
 
-/**
- * Read the deep link off a OneSignal notification-click event.
- * OneSignal v5 shape: `{ notification: { additionalData, launchURL } }`.
- */
-export function extractPushDeepLink(clickEvent: any): string | null {
-  const n = clickEvent?.notification ?? clickEvent;
-  return (
-    n?.additionalData?.deepLink ??
-    n?.additionalData?.deep_link ??
-    n?.launchURL ??
-    null
-  );
+/** Read the deep link off a push's data (the backend puts it at `deepLink`). */
+export function extractPushDeepLink(data: Record<string, unknown>): string | null {
+  const link = data.deepLink ?? data.deep_link;
+  return typeof link === 'string' ? link : null;
 }
 
 // ── Auth-gated deferral ───────────────────────────────────────────────────────
@@ -176,7 +168,7 @@ export function routeToDeepLink(
   const claimToken = claimTokenFrom(path);
   if (claimToken) {
     // Push taps: drop links already finished on this device, and pushes for a
-    // link we've already opened (OneSignal can re-fire the launch tap).
+    // link we've already opened (a relaunch can replay the launch tap).
     Promise.all([isClaimLinkHandled(claimToken), seenClaimLinkBefore(claimToken)])
       .then(([handled, seen]) => {
         if (!handled && !seen) router.push(path as any);

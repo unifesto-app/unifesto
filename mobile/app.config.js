@@ -8,6 +8,7 @@ const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 const withAlwaysRunScripts = require('./plugins/withAlwaysRunScripts');
 const withRazorpayApplePay = require('./plugins/withRazorpayApplePay');
 const withAppShortcuts = require('./plugins/withAppShortcuts');
+const withApsProduction = require('./plugins/withApsProduction');
 const withStripFrameworkSymbols = require('./plugins/withStripFrameworkSymbols');
 const withSizedAlternateIcons = require('./plugins/withSizedAlternateIcons');
 
@@ -71,7 +72,7 @@ module.exports = () => {
         // expo-location plugins below (a plugin overwrites these keys at prebuild).
         NSPhotoLibraryUsageDescription: "Unifesto uses your photo library so you can choose a profile photo, event covers, space logos and banners, and images for registration questions.",
         NSPhotoLibraryAddUsageDescription: "Unifesto needs permission to save event tickets and QR codes to your photo library.",
-        // Push goes through OneSignal, so Firebase must not swizzle the app delegate.
+        // Push goes through expo-notifications, so Firebase must not swizzle the app delegate.
         FirebaseAppDelegateProxyEnabled: false,
         // Q40: Razorpay Custom UI checks these to list the UPI apps installed
         // at checkout (Razorpay's iOS list). Android's upi:// <queries> come
@@ -228,13 +229,15 @@ module.exports = () => {
         }
       ],
       [
-        "onesignal-expo-plugin",
+        "expo-notifications",
         {
+          // The APNs entitlement (plugins/withApsProduction.js makes sure of it,
+          // since expo-widgets writes "development").
           mode: "production",
-          // Must match the app's minimum iOS (16.4 since Expo SDK 56). The
-          // plugin otherwise defaults the extension to 11.0, which current
-          // OneSignalXCFramework pods refuse to install against.
-          iPhoneDeploymentTarget: "16.4"
+          // Android status bar + notification header: the themed-icon "u",
+          // cropped to fill the 24dp box (owner's pick, 7 Nov). White on
+          // transparent; the system tints it.
+          icon: "./assets/notification-icon.png"
         }
       ],
       "@react-native-firebase/app",
@@ -340,7 +343,7 @@ module.exports = () => {
         }
       ],
       // R8 shrinks and obfuscates Android release builds (Play vitals flagged
-      // 1% obfuscation on 5.0.0). React Native, Expo modules, Firebase, OneSignal,
+      // 1% obfuscation on 5.0.0). React Native, Expo modules, Firebase,
       // ML Kit, Maps, WorkManager and androidx.credentials ship their own keep
       // rules; these cover the rest. The Crashlytics Gradle plugin uploads the
       // mapping file with each minified release. Needs a native rebuild.
@@ -393,5 +396,7 @@ module.exports = () => {
   // 8 MB of 1024 px alternate icons per iPhone install.
   modifiedConfig = withStripFrameworkSymbols(modifiedConfig);
   modifiedConfig = withSizedAlternateIcons(modifiedConfig);
+  // C14: production APNs entitlement, over expo-widgets' "development".
+  modifiedConfig = withApsProduction(modifiedConfig);
   return modifiedConfig;
 };

@@ -3,14 +3,13 @@ import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { makeAuthenticatedRequest } from './api/helpers';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 
 /**
- * Links this install to the signed-in user on the backend: reports the OneSignal
- * push subscription id (the device id) via PUT /users/me/push-devices. The
- * backend stores user ↔ device and links OneSignal external_id = user.id
- * server-side, so per-user pushes (registration, reminders) reach this
- * device even if the SDK's own login() was missed.
+ * Links this install to the signed-in user on the backend: reports its native
+ * push token (APNs on iOS, FCM on Android) via PUT /users/me/push-devices, and
+ * the backend sends to it directly (C12). Per-user pushes (registration,
+ * reminders) reach this device from then on.
  */
 
 const LAST_REPORTED_KEY = 'unifesto_last_reported_push_device';
@@ -18,15 +17,20 @@ const LAST_REPORTED_KEY = 'unifesto_last_reported_push_device';
 /** What we cache locally after a successful report. */
 interface LastReport {
   userId: string;
-  subscriptionId: string;
+  token: string;
   optedIn: boolean;
   /** ISO timestamp of when we last reported. */
   at: string;
+  /**
+   * This install's OneSignal subscription from 5.0.0 and older, kept until the
+   * backend confirms it deleted it (so the phone never gets a push twice).
+   */
+  replaces?: string;
 }
 
 interface CurrentDevice {
   userId: string;
-  subscriptionId: string;
+  token: string;
   optedIn: boolean;
 }
 
@@ -34,42 +38,31 @@ interface CurrentDevice {
 const REPORT_STALE_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Runs on every session start AND every OneSignal subscription change. Report
- * when anything identifying changed (user, subscription id, opt-in); otherwise
- * refresh once a day, like appVersionReport. A bad timestamp counts as stale.
+ * Runs on every session start and every PushService change. Report when
+ * anything identifying changed (user, token, opt-in) or an old OneSignal
+ * subscription still needs replacing; otherwise refresh once a day, like
+ * appVersionReport. A bad timestamp counts as stale.
  */
 function shouldReport(current: CurrentDevice, last: LastReport | null): boolean {
-  if (!last) return true;
+  if (!last || last.replaces) return true;
   if (last.userId !== current.userId) return true;
-  if (last.subscriptionId !== current.subscriptionId) return true;
+  if (last.token !== current.token) return true;
   if (last.optedIn !== current.optedIn) return true;
   const lastAt = Date.parse(last.at);
   return Number.isNaN(lastAt) || Date.now() - lastAt >= REPORT_STALE_MS;
 }
 
-/**
- * On first launch (and sometimes on a cold start) OneSignal hands out the
- * subscription id a few seconds after init, and an already-existing id fires no
- * 'change' event. Poll briefly instead of giving up on the first null.
- */
-const IDENTITY_RETRY_DELAYS_MS = [2000, 5000, 15000];
-
-async function waitForDeviceIdentity() {
-  let identity = await OneSignalService.getDeviceIdentity();
-  for (const delay of IDENTITY_RETRY_DELAYS_MS) {
-    if (identity) break;
-    await new Promise((resolve) => setTimeout(resolve, delay));
-    identity = await OneSignalService.getDeviceIdentity();
-  }
-  return identity;
-}
-
+/** The cached report. A 5.0.0 OneSignal one becomes "replace this subscription". */
 async function readLastReport(): Promise<LastReport | null> {
   try {
     const raw = await AsyncStorage.getItem(LAST_REPORTED_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as LastReport;
-    return parsed?.subscriptionId ? parsed : null;
+    const parsed = JSON.parse(raw) as Partial<LastReport> & { subscriptionId?: string };
+    if (parsed?.token && parsed.userId) return parsed as LastReport;
+    if (parsed?.subscriptionId && parsed.userId) {
+      return { userId: parsed.userId, token: '', optedIn: !!parsed.optedIn, at: '', replaces: parsed.subscriptionId };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -77,29 +70,25 @@ async function readLastReport(): Promise<LastReport | null> {
 
 /**
  * Report this device for `userId` if the gate allows it. Best-effort: never
- * throws. No-op on web, or before OneSignal has issued a subscription id — the
- * subscription-change listener calls this again once it has.
+ * throws. No-op off iOS/Android or when the OS gives no token; PushService's
+ * change listener calls this again later.
  */
 export async function syncPushDevice(userId: string): Promise<void> {
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
-
   try {
-    const identity = await waitForDeviceIdentity();
+    const identity = await PushService.getDeviceIdentity();
     if (!identity) return;
 
-    const current: CurrentDevice = {
-      userId,
-      subscriptionId: identity.subscriptionId,
-      optedIn: identity.optedIn,
-    };
-    if (!shouldReport(current, await readLastReport())) return;
+    const current: CurrentDevice = { userId, token: identity.token, optedIn: identity.optedIn };
+    const last = await readLastReport();
+    if (!shouldReport(current, last)) return;
 
     const response = await makeAuthenticatedRequest('/users/me/push-devices', {
       method: 'PUT',
       body: JSON.stringify({
-        subscriptionId: identity.subscriptionId,
-        oneSignalId: identity.oneSignalId ?? undefined,
+        token: identity.token,
         platform: Platform.OS,
+        apnsEnv: identity.apnsEnv ?? undefined,
+        replacesSubscriptionId: last?.replaces,
         deviceModel: Device.modelName ?? undefined,
         appVersion: Application.nativeApplicationVersion ?? undefined,
         optedIn: identity.optedIn,
@@ -108,7 +97,12 @@ export async function syncPushDevice(userId: string): Promise<void> {
 
     if (response?.ok) {
       // Only cache once the server accepted it, so a failure retries next time.
-      const record: LastReport = { ...current, at: new Date().toISOString() };
+      const { replaced } = ((await response.json().catch(() => ({}))) ?? {}) as { replaced?: boolean };
+      const record: LastReport = {
+        ...current,
+        at: new Date().toISOString(),
+        ...(last?.replaces && replaced === false ? { replaces: last.replaces } : {}),
+      };
       await AsyncStorage.setItem(LAST_REPORTED_KEY, JSON.stringify(record)).catch(() => {});
     }
   } catch (error) {
@@ -123,14 +117,10 @@ export async function syncPushDevice(userId: string): Promise<void> {
 export async function unregisterPushDevice(): Promise<void> {
   try {
     const last = await readLastReport();
-    const identity = await OneSignalService.getDeviceIdentity();
-    const subscriptionId = identity?.subscriptionId ?? last?.subscriptionId;
     await AsyncStorage.removeItem(LAST_REPORTED_KEY).catch(() => {});
-    if (!subscriptionId) return;
-    await makeAuthenticatedRequest(
-      `/users/me/push-devices/${encodeURIComponent(subscriptionId)}`,
-      { method: 'DELETE' },
-    );
+    const id = last?.token || last?.replaces;
+    if (!id) return;
+    await makeAuthenticatedRequest(`/users/me/push-devices/${encodeURIComponent(id)}`, { method: 'DELETE' });
   } catch {
     // Non-fatal: sign-out must never be blocked by this.
   }

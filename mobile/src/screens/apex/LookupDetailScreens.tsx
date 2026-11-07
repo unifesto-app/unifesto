@@ -181,7 +181,7 @@ export function UserDetailScreen() {
           <SettingsGroup title="Reach out" flat plain>
             <SettingsRow
               label="Send a push notification"
-              value={u.pushDevices && !u.pushDevices.some((d) => d.linkedAt && d.optedIn) ? 'No linked device' : undefined}
+              value={u.pushDevices && !u.pushDevices.some((d) => (d.linkedAt || d.token) && d.optedIn) ? 'No linked device' : undefined}
               onPress={() => router.push({ pathname: '/apex/push/new', params: { userId: u.id, name: nameOf(u) } })}
             />
           </SettingsGroup>
@@ -226,20 +226,26 @@ export function UserDetailScreen() {
                   key={d.id}
                   title={[d.deviceModel || 'Unknown device', platformLabel(d.platform), d.appVersion ? `v${d.appVersion}` : null].filter(Boolean).join(' · ')}
                   subtitle={[
-                    d.linkedAt ? 'Linked' : 'Not linked',
+                    d.token ? 'Native push' : d.linkedAt ? 'Linked' : 'Not linked',
                     d.optedIn ? 'push on' : 'push off',
                     `last seen ${shortDate(d.lastSeenAt)}`,
                   ].join(' · ')}
-                  detail={!d.linkedAt && d.linkError ? `Link failed: ${d.linkError}` : d.subscriptionId}
-                  detailDanger={!d.linkedAt && !!d.linkError}
+                  detail={
+                    d.token
+                      ? `${d.platform === 'ios' ? 'APNs' : 'FCM'}${d.sandbox ? ' sandbox' : ''} …${d.token.slice(-12)}`
+                      : !d.linkedAt && d.linkError
+                        ? `Link failed: ${d.linkError}`
+                        : (d.subscriptionId ?? undefined)
+                  }
+                  detailDanger={!d.token && !d.linkedAt && !!d.linkError}
                   trailing={
-                    d.linkedAt && d.optedIn ? (
+                    (d.linkedAt || d.token) && d.optedIn ? (
                       <CheckCircle size={20} color={c.success} weight="fill" />
                     ) : (
                       <WarningCircle size={20} color={c.warn} weight="fill" />
                     )
                   }
-                  onLongPress={() => copy('Subscription id', d.subscriptionId)}
+                  onLongPress={() => copy(d.token ? 'Push token' : 'Subscription id', d.token ?? d.subscriptionId ?? '')}
                 />
               ))}
             </SettingsGroup>

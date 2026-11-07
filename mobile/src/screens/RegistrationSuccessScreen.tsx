@@ -15,7 +15,7 @@ import { SheetTop, GUTTER } from '../components/registration/FlowHeader';
 import { money } from '../components/registration/Steps';
 import { getEventById, getMyRegistrationForEvent } from '../lib/api/events';
 import { getRegistrationWhatsappGroup, type TicketWhatsappGroup } from '../lib/api/registrations';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 import { googleCalendarUrl, icsAvailable, icsDownloadUrl, outlookCalendarUrl } from '../lib/calendar';
 import { relativeWhen } from '../utils/eventFormat';
 import { borderRadius, column, spacing } from '../theme/spacing';
@@ -69,17 +69,11 @@ export default function RegistrationSuccessScreen() {
   // reason. Only while the OS prompt is still unanswered; after the check pops.
   useEffect(() => {
     const t = setTimeout(async () => {
-      if ((await OneSignalService.hasPermission()) || !(await OneSignalService.canRequestPermission())) return;
+      if ((await PushService.hasPermission()) || !(await PushService.canRequestPermission())) return;
       AppAlert.alert('Get gate updates for this event?', "We'll tell you when entry opens and if the time or venue changes.", [
         { text: 'Not now', style: 'cancel' },
-        {
-          text: 'Turn on',
-          onPress: async () => {
-            if (!(await OneSignalService.requestPermission())) return;
-            OneSignalService.optInToPush();
-            OneSignalService.setTags({ push_notifications: 'true' });
-          },
-        },
+        // The answer is reported to the backend with this install's token.
+        { text: 'Turn on', onPress: () => void PushService.requestPermission() },
       ]);
     }, 1200);
     return () => clearTimeout(t);

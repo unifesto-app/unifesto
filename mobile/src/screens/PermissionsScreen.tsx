@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { CheckCircle } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
-import OneSignalService from '../services/OneSignalService';
+import PushService from '../services/PushService';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { GUTTER, Section } from '../components/home/Section';
@@ -36,8 +36,8 @@ const PERMISSIONS: {
     why: 'Waitlist spots, reminders and word from hosts',
     icon: 'bell',
     get: Notifications.getPermissionsAsync,
-    // Through OneSignal so the push subscription opts in along with the OS.
-    request: () => OneSignalService.requestPermission(),
+    // Through PushService so the answer is reported to the backend.
+    request: () => PushService.requestPermission(),
   },
   {
     key: 'camera',

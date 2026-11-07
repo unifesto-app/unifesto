@@ -18,11 +18,11 @@ function mockNativeSdk(): unknown {
 jest.mock('react-native-passkeys', () => mockNativeSdk());
 jest.mock('@react-native-firebase/app', () => mockNativeSdk());
 jest.mock('@react-native-firebase/crashlytics', () => mockNativeSdk());
-jest.mock('react-native-onesignal', () => mockNativeSdk());
+jest.mock('expo-notifications', () => mockNativeSdk());
 jest.mock('expo-widgets', () => mockNativeSdk());
 jest.mock('react-native-android-widget', () => mockNativeSdk());
 jest.mock('react-native-image-colors', () => ({ getColors: async () => ({}) }));
-// Sign-in links the push device; with no OneSignal id it polls for 22 s and holds jest open.
+// Sign-in links the push device; jest has no push token to report.
 jest.mock('../../src/lib/pushDeviceReport', () => ({ syncPushDevice: async () => {}, unregisterPushDevice: async () => {} }));
 
 // The Google/Apple browser sheet: it needs an app manifest jest doesn't have, and isn't opened here.
