@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Campaign, CampaignScope, CampaignStatus, EmailTargetType, Prisma } from '@prisma/client';
 import { attendingUserIds } from '../common/attendance';
@@ -8,6 +8,7 @@ import { EmailCampaignsService } from '../email-campaigns/email-campaigns.servic
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushCampaignService } from '../notifications/push-campaign.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlatformConfigService } from '../subscription/platform-config.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import {
   CampaignAudienceDto,
@@ -50,6 +51,7 @@ export class CampaignsService {
     private readonly push: PushCampaignService,
     private readonly email: EmailCampaignsService,
     private readonly whatsapp: WhatsAppService,
+    @Optional() private readonly platformConfig?: PlatformConfigService,
   ) {}
 
   /** Save it, then send now (awaited, so the reply says what went) or leave it SCHEDULED. */
@@ -58,6 +60,7 @@ export class CampaignsService {
     if (scheduledAt && scheduledAt.getTime() < Date.now() - 60_000) {
       throw new BadRequestException('That time has passed.');
     }
+    if (!scheduledAt) await this.platformConfig?.assertCommsOpen();
     const campaign = await this.prisma.campaign.create({
       data: {
         scope: CampaignScope.PLATFORM,
@@ -138,6 +141,8 @@ export class CampaignsService {
    * a guarded update, so a double click or two replicas' sweeps send once.
    */
   async dispatch(id: string): Promise<void> {
+    // Paused: a scheduled one stays SCHEDULED and goes when sends resume.
+    if (await this.platformConfig?.isCommsPaused()) return;
     const claim = await this.prisma.campaign.updateMany({
       where: { id, status: { in: [CampaignStatus.DRAFT, CampaignStatus.SCHEDULED] } },
       data: { status: CampaignStatus.SENDING },

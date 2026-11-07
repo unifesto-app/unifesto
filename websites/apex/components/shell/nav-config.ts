@@ -31,6 +31,7 @@ import {
   EnvelopeSimple,
   WhatsappLogo,
   Megaphone,
+  PaperPlaneTilt,
   LinkBreak,
   Flag,
   Coins,
@@ -129,6 +130,7 @@ export const adminNav: NavGroup[] = [
   {
     label: "Reach",
     items: [
+      { href: "/dashboard/campaigns", label: "Campaigns", icon: PaperPlaneTilt, keywords: "announce compose push email whatsapp in-app pause" },
       { href: "/dashboard/notifications", label: "Push", icon: BellRinging, keywords: "notifications onesignal broadcast" },
       { href: "/dashboard/email", label: "Email", icon: EnvelopeSimple, keywords: "campaigns templates" },
       { href: "/dashboard/whatsapp", label: "WhatsApp inbox", icon: WhatsappLogo, exact: true },

@@ -23,6 +23,7 @@ import { OneSignalService } from './onesignal.service';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { NotificationCategory } from './notifications.constants';
 import { attendingUserIds } from '../common/attendance';
+import { PlatformConfigService } from '../subscription/platform-config.service';
 import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
@@ -66,6 +67,7 @@ export class PushCampaignService {
     private readonly events: EventsService,
     private readonly oneSignal: OneSignalService,
     @Optional() private readonly broadcastCheck?: BroadcastCheck,
+    @Optional() private readonly platformConfig?: PlatformConfigService,
   ) {}
 
   // ── Admin broadcasts ────────────────────────────────────────────────────────
@@ -76,6 +78,7 @@ export class PushCampaignService {
       ...(dto.deepLink ? { deepLink: dto.deepLink } : {}),
     };
     const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+    if (!scheduledAt) await this.platformConfig?.assertCommsOpen();
 
     const campaign = await this.prisma.pushCampaign.create({
       data: {
@@ -147,6 +150,7 @@ export class PushCampaignService {
     if (!sendable.includes(campaign.status)) {
       throw new BadRequestException(`Campaign is ${campaign.status}, cannot send`);
     }
+    await this.platformConfig?.assertCommsOpen();
     void this.dispatch(id, campaign.status === PushCampaignStatus.FAILED).catch((err) =>
       this.logger.error(`dispatch(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
     );
@@ -268,6 +272,7 @@ export class PushCampaignService {
     if (!canManage) {
       throw new ForbiddenException('You cannot announce to this event');
     }
+    await this.platformConfig?.assertCommsOpen();
 
     // N4 rate limit: per-event per-24h cap.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -308,6 +313,8 @@ export class PushCampaignService {
    * backstops per-recipient duplication.
    */
   async dispatch(campaignId: string, resend = false): Promise<void> {
+    // Paused (C17): a scheduled one stays SCHEDULED and goes when it resumes.
+    if (await this.platformConfig?.isCommsPaused()) return;
     const claim = await this.prisma.pushCampaign.updateMany({
       where: {
         id: campaignId,
