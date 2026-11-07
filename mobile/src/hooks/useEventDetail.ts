@@ -6,7 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../context/AuthContext';
 import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
-import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from '../lib/calendar';
+import { googleCalendarUrl, outlookCalendarUrl, icsAvailable, icsDownloadUrl } from '../lib/calendar';
 import {
   getEventById,
   getEventBySlug,
@@ -350,7 +350,7 @@ export function useEventDetail(eventId: string | undefined) {
     AppAlert.alert('Add to calendar', event.title, [
       { text: 'Google Calendar', onPress: () => Linking.openURL(googleCalendarUrl(cal)) },
       { text: 'Outlook', onPress: () => Linking.openURL(outlookCalendarUrl(cal)) },
-      { text: 'Apple / Download (.ics)', onPress: () => Linking.openURL(icsDownloadUrl(event.slug)) },
+      ...(icsAvailable(event) ? [{ text: 'Apple / Download (.ics)', onPress: () => Linking.openURL(icsDownloadUrl(event.slug)) }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   }, [event]);

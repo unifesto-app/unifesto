@@ -45,12 +45,14 @@ import { publicRating } from '../feedback/public-rating';
 import { resolveEffectiveSponsor } from '../sponsors/sponsors.util';
 import {
   EventStatus,
+  EventVisibility,
   RoleCode,
   PaymentStatus,
   RegistrationStatus,
   Prisma,
   SlugKind,
   SpaceActivity,
+  SpaceVisibility,
   SupportCaseKind,
   SupportDesk,
   SupportTicketStatus,
@@ -1892,11 +1894,11 @@ export class EventsService {
   }
 
   /**
-   * Build the RFC-5545 `.ics` document for a single public event (calendar P1).
+   * Build the RFC-5545 `.ics` document for a single event (calendar P1).
    *
-   * Only PUBLIC + PUBLISHED events are exportable — anything else 404s, so a
-   * draft/private/space-only event is never leaked through the unauthenticated
-   * download route. Uses a targeted select (not the heavy cached getEventBySlug)
+   * Live (published or running), not hidden, PUBLIC or link-only PRIVATE, in a
+   * public live space; anything else 404s, so a draft, hidden or space-only
+   * event is never leaked through the unauthenticated download route. Uses a targeted select (not the heavy cached getEventBySlug)
    * because the ICS needs only a handful of fields plus the organiser name.
    */
   async getEventIcs(slug: string): Promise<string> {
@@ -1916,16 +1918,21 @@ export class EventsService {
         city: true,
         visibility: true,
         status: true,
+        deletedAt: true,
         space: { select: { subscription: true, ...BRANDING_SPACE_SELECT, visibility: true, status: true } },
         creator: { select: { fullName: true } },
       },
     });
 
+    // PRIVATE means "anyone with the link", and this route is reached by the
+    // link, so it serves. SPACE_ONLY and private-space events need a viewer,
+    // which a plain download can't carry: those stay 404 (apps hide the option).
     if (
       !event ||
-      event.visibility !== 'PUBLIC' ||
-      event.status !== EventStatus.PUBLISHED ||
-      event.space.visibility !== 'PUBLIC' ||
+      event.deletedAt ||
+      event.visibility === EventVisibility.SPACE_ONLY ||
+      !LIVE_EVENT_STATUSES.includes(event.status) ||
+      event.space.visibility !== SpaceVisibility.PUBLIC ||
       !isSpaceLive(event.space.status)
     ) {
       throw new NotFoundException('Event not found');

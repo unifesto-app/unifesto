@@ -1,6 +1,6 @@
 import { SpaceActivity } from '@prisma/client';
 import { activityLevel, SpaceActivityService } from './space-activity';
-import { visibleSpacesWhere, PUBLIC_LIVE_SPACE_WHERE } from './space-access';
+import { LIVE_SPACE_WHERE, visibleSpacesWhere, PUBLIC_LIVE_SPACE_WHERE } from './space-access';
 import { NOT_DORMANT_WHERE } from './space-activity';
 
 const NOW = new Date('2026-11-03T00:00:00Z');
@@ -111,6 +111,6 @@ describe('Explore leaves Dormant spaces out (Q38)', () => {
     expect(visibleSpacesWhere(undefined, listed)).toEqual(listed);
     const signedIn = visibleSpacesWhere('u1', listed) as any;
     expect(signedIn.OR[0]).toEqual(listed);
-    expect(signedIn.OR[1]).toEqual({ userRoles: { some: { userId: 'u1' } } });
+    expect(signedIn.OR[1]).toEqual({ ...LIVE_SPACE_WHERE, userRoles: { some: { userId: 'u1' } } });
   });
 });

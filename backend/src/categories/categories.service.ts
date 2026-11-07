@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_SPACE_STATUSES } from '../spaces/space-access';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
@@ -24,14 +26,20 @@ export class CategoriesService {
       select: { id: true, name: true, slug: true, description: true, iconUrl: true, bannerUrl: true, order: true },
     });
 
-    // Upcoming/ongoing published events per category (soft-deleted ones
-    // excluded); an event counts once in each category it's in.
+    // Not-yet-ended events per category, counted by the same rule as the
+    // GET /events feed the tile opens: live, PUBLIC, top-level, not hidden, in
+    // a public live space. An event counts once in each category it's in.
     const counts = await this.prisma.$queryRaw<{ name: string; count: bigint }[]>`
       SELECT c AS name, COUNT(*) AS count
-      FROM "events" e, unnest(e."categories") AS c
-      WHERE e."status" = 'PUBLISHED'
+      FROM "events" e
+      JOIN "spaces" s ON s."id" = e."space_id", unnest(e."categories") AS c
+      WHERE e."status" IN ('PUBLISHED', 'ONGOING')
+        AND e."visibility" = 'PUBLIC'
+        AND e."parent_event_id" IS NULL
         AND e."end_date_time" >= now()
         AND e."deleted_at" IS NULL
+        AND s."visibility" = 'PUBLIC'
+        AND s."status"::text IN (${Prisma.join(PUBLIC_SPACE_STATUSES)})
       GROUP BY c
     `;
     const countMap = new Map(counts.map((c) => [c.name, Number(c.count)]));

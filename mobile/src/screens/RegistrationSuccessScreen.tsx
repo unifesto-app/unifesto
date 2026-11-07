@@ -16,7 +16,7 @@ import { money } from '../components/registration/Steps';
 import { getEventById, getMyRegistrationForEvent } from '../lib/api/events';
 import { getRegistrationWhatsappGroup, type TicketWhatsappGroup } from '../lib/api/registrations';
 import OneSignalService from '../services/OneSignalService';
-import { googleCalendarUrl, icsDownloadUrl, outlookCalendarUrl } from '../lib/calendar';
+import { googleCalendarUrl, icsAvailable, icsDownloadUrl, outlookCalendarUrl } from '../lib/calendar';
 import { relativeWhen } from '../utils/eventFormat';
 import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -141,7 +141,7 @@ export default function RegistrationSuccessScreen() {
     AppAlert.alert('Add to calendar', event.title, [
       { text: 'Google Calendar', onPress: () => Linking.openURL(googleCalendarUrl(cal)) },
       { text: 'Outlook', onPress: () => Linking.openURL(outlookCalendarUrl(cal)) },
-      { text: 'Apple / Download (.ics)', onPress: () => Linking.openURL(icsDownloadUrl(event.slug)) },
+      ...(icsAvailable(event) ? [{ text: 'Apple / Download (.ics)', onPress: () => Linking.openURL(icsDownloadUrl(event.slug)) }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   };

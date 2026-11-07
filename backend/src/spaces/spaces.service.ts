@@ -44,6 +44,7 @@ import {
   OrgPlan,
   PaymentStatus,
   EventStatus,
+  EventVisibility,
   Prisma,
   RoleCode,
   SpaceStatus,
@@ -64,6 +65,17 @@ import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/lay
 
 /** Deepest sub-space level the analytics walk follows (J10 cycle bound). */
 const MAX_SPACE_DEPTH = 20;
+
+/**
+ * A space's events as an outsider sees them: published, running or past,
+ * PUBLIC, not hidden. Backs the public event count and the curator team, so
+ * neither reveals drafts, link-only or space-only events.
+ */
+const SHOWN_EVENTS_WHERE = {
+  ...NOT_DELETED,
+  visibility: EventVisibility.PUBLIC,
+  status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED] },
+} satisfies Prisma.EventWhereInput;
 
 /** Q29: the SYSTEM note on a request that went live without a reviewer. */
 const INSTANT_NOTE = 'Spaces now go live at once, marked Unverified until Unifesto verifies them.';
@@ -179,13 +191,12 @@ export class SpacesService {
     const { page = 1, limit = 10, status, visibility, search, parentId, city, viewerId } = params;
     const skip = (page - 1) * limit;
 
-    // Private spaces only list for their members (platform admins see all).
+    // Private spaces only list for their members, platform admins included:
+    // this is the consumer Explore/search list, Apex has its own.
     // Q38: Explore and search leave Dormant spaces out (a campus's own sub-space
     // list keeps them); their members still see them.
     const publicWhere = parentId ? PUBLIC_LIVE_SPACE_WHERE : { ...PUBLIC_LIVE_SPACE_WHERE, ...NOT_DORMANT_WHERE };
-    const where: any = viewerId && (await this.authz.can({ id: viewerId }, Action.PLATFORM_MANAGE))
-      ? {}
-      : { AND: [visibleSpacesWhere(viewerId, publicWhere)] };
+    const where: any = { AND: [visibleSpacesWhere(viewerId, publicWhere)] };
 
     if (status) {
       where.status = status;
@@ -223,7 +234,7 @@ export class SpacesService {
           _count: {
             select: {
               userRoles: true,
-              events: { where: NOT_DELETED },
+              events: { where: SHOWN_EVENTS_WHERE },
             },
           },
           domains: CUSTOM_DOMAIN_SPACE_SELECT.domains,
@@ -345,7 +356,7 @@ export class SpacesService {
         _count: {
           select: {
             userRoles: true,
-            events: { where: NOT_DELETED },
+            events: { where: SHOWN_EVENTS_WHERE },
             childSpaces: true,
           },
         },
@@ -389,11 +400,7 @@ export class SpacesService {
     const curatorRoles = await this.prisma.userRole.findMany({
       where: {
         role: { code: { in: [RoleCode.CURATOR, RoleCode.CO_CURATOR] } },
-        event: {
-          spaceId: id,
-          ...NOT_DELETED,
-          status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED] },
-        },
+        event: { spaceId: id, ...SHOWN_EVENTS_WHERE },
       },
       orderBy: { createdAt: 'asc' },
       take: 200,

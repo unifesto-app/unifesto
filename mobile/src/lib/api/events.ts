@@ -60,6 +60,7 @@ export interface Event {
     slug: string;
     logoUrl: string | null;
     bannerUrl?: string | null;
+    visibility?: 'PUBLIC' | 'PRIVATE';
   };
   /**
    * Spaces co-hosting this event alongside the owning `space`. Surfaced on the

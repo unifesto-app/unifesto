@@ -3,6 +3,7 @@ import { EventVisibility, Prisma, RoleCode } from '@prisma/client';
 import { Action } from '../auth/authorization/actions';
 import type { AuthorizationService } from '../auth/authorization/authorization.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_LIVE_SPACE_WHERE } from '../spaces/space-access';
 
 /**
  * SPACE_ONLY events are for members of the hosting space(s) — the owning space
@@ -65,7 +66,9 @@ export function spaceOnlyVisibleWhere(
  * Filter for event LISTS shown to non-operators (a space's event list, a big
  * event's sub-events). PRIVATE means "only people with the link", so it is
  * never listed; the event page itself still opens by direct link. SPACE_ONLY
- * events are listed to members only.
+ * events are listed to members only. The hosting space must be one the viewer
+ * may see (J16): a co-hosted or attached event whose own space is private or
+ * taken down drops out, as its page would refuse them anyway.
  */
 export function listableEventsWhere(
   memberIds: string[] | 'ALL',
@@ -74,6 +77,9 @@ export function listableEventsWhere(
     AND: [
       { visibility: { not: EventVisibility.PRIVATE } },
       spaceOnlyVisibleWhere(memberIds),
+      memberIds === 'ALL'
+        ? {}
+        : { OR: [{ space: PUBLIC_LIVE_SPACE_WHERE }, { spaceId: { in: memberIds } }] },
     ],
   };
 }
