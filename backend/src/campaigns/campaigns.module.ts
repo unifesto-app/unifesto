@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailCampaignsModule } from '../email-campaigns/email-campaigns.module';
+import { EventsModule } from '../events/events.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
-import { AdminCampaignsController } from './campaigns.controller';
+import { AdminCampaignsController, EventCampaignsController, SpaceCampaignsController } from './campaigns.controller';
 import { CampaignsService } from './campaigns.service';
 
 /**
@@ -11,8 +13,8 @@ import { CampaignsService } from './campaigns.service';
  * nothing imports this one, so there's no cycle.
  */
 @Module({
-  imports: [AuthModule, NotificationsModule, EmailCampaignsModule, WhatsAppModule],
-  controllers: [AdminCampaignsController],
+  imports: [AuthModule, AiModule, EventsModule, NotificationsModule, EmailCampaignsModule, WhatsAppModule],
+  controllers: [AdminCampaignsController, SpaceCampaignsController, EventCampaignsController],
   providers: [CampaignsService],
 })
 export class CampaignsModule {}

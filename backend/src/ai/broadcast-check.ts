@@ -30,7 +30,7 @@ export interface BroadcastDecided {
 
 export interface Broadcast {
   kind: BroadcastKind;
-  /** The EmailCampaign, PushCampaign or HackathonAnnouncement id. */
+  /** The EmailCampaign, PushCampaign, HackathonAnnouncement or Campaign id. */
   refId: string;
   /** Null for Unifesto's own broadcasts, which are never checked. */
   spaceId: string | null;
@@ -46,6 +46,7 @@ const KIND_NAME: Record<BroadcastKind, string> = {
   EMAIL: 'email campaign',
   PUSH: 'push announcement',
   HACKATHON: 'hackathon announcement',
+  CAMPAIGN: 'campaign',
 };
 
 /**

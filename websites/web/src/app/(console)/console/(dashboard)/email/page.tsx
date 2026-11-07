@@ -138,8 +138,8 @@ export default function SpaceEmailPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Campaigns"
-        subtitle="Broadcast to your members and event audiences, with open and click tracking."
+        title="Email"
+        subtitle="Every email your space sent, with opens and clicks. New ones are sent from Campaigns."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
@@ -148,7 +148,7 @@ export default function SpaceEmailPage() {
               </Link>
             </Button>
             <Button asChild>
-              <Link href="/console/email/new">
+              <Link href="/console/campaigns/new">
                 <Plus className="mr-1.5 h-4 w-4" weight="bold" /> Compose
               </Link>
             </Button>
@@ -221,7 +221,7 @@ export default function SpaceEmailPage() {
               description="Compose your first broadcast to your members or an event's audience. You'll see opens and clicks here once it sends."
               action={
                 <Button asChild>
-                  <Link href="/console/email/new">
+                  <Link href="/console/campaigns/new">
                     <Plus className="mr-1.5 h-4 w-4" weight="bold" /> Compose
                   </Link>
                 </Button>
