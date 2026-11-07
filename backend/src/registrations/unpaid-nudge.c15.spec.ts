@@ -10,7 +10,20 @@ describe('Unpaid checkout nudge (C15)', () => {
       },
     };
     const notify = { notify: jest.fn().mockResolvedValue({ push: 'sent' }) };
-    const svc = new RegistrationPaymentsService(prisma, ...(Array(9).fill({}) as []), notify as any);
+    const unused = {} as any; // email, WhatsApp, cache, payments, waitlist, group seats, coupons, team changes, confirmations
+    const svc = new RegistrationPaymentsService(
+      prisma,
+      unused,
+      unused,
+      unused,
+      unused,
+      unused,
+      unused,
+      unused,
+      unused,
+      unused,
+      notify as any,
+    );
     return { svc, prisma, notify };
   };
   const row = (id: string, userId: string) => ({ id, userId, eventId: 'e1', event: { title: 'Hack Night', slug: 'hack-night' } });
