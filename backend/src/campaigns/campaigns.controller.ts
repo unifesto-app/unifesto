@@ -12,6 +12,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { RoleCode } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { Action } from '../auth/authorization/actions';
@@ -24,7 +25,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { EventsService } from '../events/events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignOwner, CampaignsService } from './campaigns.service';
-import { CampaignCountDto, CreateCampaignDto, TestCampaignDto } from './dto/campaign.dto';
+import { CampaignCountDto, CreateCampaignDto, DraftCampaignDto, TestCampaignDto } from './dto/campaign.dto';
 
 const PLATFORM: CampaignOwner = { scope: 'PLATFORM' };
 
@@ -44,6 +45,13 @@ export class AdminCampaignsController {
   @Post('audience')
   count(@Body() dto: CampaignCountDto) {
     return this.campaigns.count(PLATFORM, dto);
+  }
+
+  /** Write with AI: words for the composer from one line. Sends nothing. */
+  @Post('draft')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
+  draft(@CurrentUser() user: User, @Body() dto: DraftCampaignDto) {
+    return this.campaigns.draft(PLATFORM, user.id, dto);
   }
 
   /** Each chosen channel to the signed-in admin only. */
@@ -96,6 +104,14 @@ export class SpaceCampaignsController {
   @Can(Action.SPACE_MANAGE_EMAIL)
   test(@Param('spaceId', ParseUUIDPipe) spaceId: string, @CurrentUser() user: User, @Body() dto: TestCampaignDto) {
     return this.campaigns.sendTest({ scope: 'SPACE', spaceId }, user.id, dto);
+  }
+
+  /** Write with AI: words for the composer from one line. Sends nothing. */
+  @Post('draft')
+  @Can(Action.SPACE_MANAGE_EMAIL)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // AI9 burst limit
+  draft(@Param('spaceId', ParseUUIDPipe) spaceId: string, @CurrentUser() user: User, @Body() dto: DraftCampaignDto) {
+    return this.campaigns.draft({ scope: 'SPACE', spaceId }, user.id, dto);
   }
 
   @Get()

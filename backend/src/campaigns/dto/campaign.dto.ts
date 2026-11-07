@@ -6,8 +6,11 @@ import {
   ArrayUnique,
   IsArray,
   IsIn,
+  IsInt,
   IsISO8601,
   IsObject,
+  Max,
+  Min,
   IsOptional,
   IsString,
   IsUUID,
@@ -148,6 +151,43 @@ export class CreateCampaignDto extends CampaignMessageDto {
   @IsString()
   @MaxLength(2000)
   brief?: string;
+}
+
+/** The approved template a WhatsApp draft fills: its body and how many variables it has. */
+export class DraftWhatsappTemplateDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1024)
+  bodyText!: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  paramCount!: number;
+}
+
+/** Write with AI: the sender's one line, the channels to draft, and the event it's about. */
+export class DraftCampaignDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  line!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsIn(CAMPAIGN_CHANNELS, { each: true })
+  channels!: CampaignChannel[];
+
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
+
+  @ValidateIf((o) => wants(o, 'whatsapp'))
+  @IsObject()
+  @ValidateNested()
+  @Type(() => DraftWhatsappTemplateDto)
+  whatsapp?: DraftWhatsappTemplateDto;
 }
 
 /** Per-channel counts for the confirm step (WhatsApp needs the template for its consent rule). */

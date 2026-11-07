@@ -13,6 +13,7 @@ export const AI_FEATURES = {
   desk: { maxTokens: 2048, dailyCapPerUser: 200, dailyUsd: 0.2 }, // D15
   event_draft: { maxTokens: 4096, dailyCapPerUser: 20, dailyUsd: 0.2 }, // M1
   report_summary: { maxTokens: 1024, dailyCapPerUser: 20, dailyUsd: 0.1 }, // M3
+  comms_draft: { maxTokens: 4096, dailyCapPerUser: 30, dailyUsd: 0.2 }, // C17 Write with AI (was AI6)
   // Haiku 5.5 thinks by default and thinking counts toward max_tokens: a 1,000-word
   // post as JSON ran out at 8192, then at 16k. The SDK's non-streaming limit only
   // applies without a timeout, and AiService always sets one.
