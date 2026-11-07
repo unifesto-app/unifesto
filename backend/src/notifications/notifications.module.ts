@@ -10,6 +10,7 @@ import { PushCampaignService } from './push-campaign.service';
 import { PushSchedulerService } from './push-scheduler.service';
 import { PushDeviceService } from './push-device.service';
 import { PushSender } from './push-sender';
+import { NotificationsGateway } from './notifications.gateway';
 import { TransactionalNotificationHandler } from './handlers/transactional-notification.handler';
 import { NotificationFanoutQueue } from './notification-fanout.queue';
 import { UserNotificationsService } from './user-notifications.service';
@@ -42,6 +43,7 @@ import {
   providers: [
     OneSignalService,
     PushSender,
+    NotificationsGateway,
     NotificationsService,
     PushCampaignService,
     PushSchedulerService,

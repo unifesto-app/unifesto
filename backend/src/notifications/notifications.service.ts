@@ -8,6 +8,7 @@ import { reportError } from '../common/observability';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { OneSignalService } from './onesignal.service';
+import { NotificationsGateway } from './notifications.gateway';
 import { DirectDevice, PushMessage, PushSender, providerOf } from './push-sender';
 import { NotificationCategory } from './notifications.constants';
 import { quietHoursDeferral } from './quiet-hours';
@@ -133,6 +134,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     private readonly oneSignal: OneSignalService,
     @Optional() private readonly pushSender?: PushSender,
     @Optional() private readonly redis?: RedisService,
+    @Optional() private readonly gateway?: NotificationsGateway,
   ) {}
 
   /** Quiet hours for native push: a delayed job (OneSignal had send_after). */
@@ -374,11 +376,14 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       return out;
     }
     const sender = this.pushSender;
+    // The app icon shows the bell's unread count (C13).
+    const badges = await this.unreadCounts([...new Set(devices.map((d) => d.userId))]);
     const dead: string[] = [];
     await inChunks(
       devices,
       async (d) => {
-        const { result, attempts } = await withRetry(() => sender.send(d, msg));
+        const badge = badges ? (badges.get(d.userId) ?? 0) : undefined;
+        const { result, attempts } = await withRetry(() => sender.send(d, { ...msg, badge }));
         if (result.dead) dead.push(d.token);
         if (!out.get(d.userId)?.result.id) out.set(d.userId, { result, attempts, provider: providerOf(d.platform) });
       },
@@ -455,26 +460,49 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** The in-app copy. Its own try so a failed insert never costs the push. */
+  /**
+   * The in-app copy, also sent live to each person's open app (C13) before
+   * the push goes out. Its own try so a failed insert never costs the push.
+   */
   private async writeInbox(userIds: string[], opts: SendOptions): Promise<void> {
     if (!userIds.length) return;
     const inbox = opts.inbox || undefined;
     const type = inbox?.type ?? (typeof opts.data?.type === 'string' ? opts.data.type : opts.category);
     const dataEventId = typeof opts.data?.eventId === 'string' ? opts.data.eventId : null;
+    const row = {
+      eventId: inbox?.eventId ?? dataEventId,
+      type: type.slice(0, 40),
+      title: opts.title.slice(0, 200), // VarChar(200); a longer title failed the whole insert
+      body: opts.body,
+      deepLink: opts.deepLink ?? null,
+    };
     try {
       await this.prisma.userNotification.createMany({
         data: userIds.map((userId) => ({
           userId,
-          eventId: inbox?.eventId ?? dataEventId,
-          type: type.slice(0, 40),
-          title: opts.title.slice(0, 200), // VarChar(200); a longer title failed the whole insert
-          body: opts.body,
-          deepLink: opts.deepLink ?? null,
+          ...row,
           data: (opts.data ?? undefined) as Prisma.InputJsonValue | undefined,
         })),
       });
     } catch (err: any) {
       this.logger.warn(`Failed to write in-app notifications: ${err?.message ?? err}`);
+      return;
+    }
+    this.gateway?.toUsers(userIds, { ...row, data: opts.data ?? null });
+  }
+
+  /** Unread in-app notifications per user, for the app icon badge. Null (badge untouched) on failure. */
+  private async unreadCounts(userIds: string[]): Promise<Map<string, number> | null> {
+    try {
+      const rows = await this.prisma.userNotification.groupBy({
+        by: ['userId'],
+        where: { userId: { in: userIds }, readAt: null },
+        _count: { _all: true },
+      });
+      return new Map(rows.map((r) => [r.userId, r._count._all]));
+    } catch (err: any) {
+      this.logger.warn(`Unread counts for the badge failed: ${err?.message ?? err}`);
+      return null;
     }
   }
 

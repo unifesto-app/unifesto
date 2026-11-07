@@ -34,6 +34,32 @@ describe('NotificationsService in-app copy', () => {
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['u-on']);
   });
 
+  it('sends the in-app copy live to every recipient, push off included (C13)', async () => {
+    const { prisma, oneSignal } = build();
+    const gateway: any = { toUsers: jest.fn() };
+    const svc = new NotificationsService(prisma, oneSignal, undefined, undefined, gateway);
+    prisma.notificationSettings.findMany.mockResolvedValue([{ userId: 'u-off', pushEnabled: false, registrationUpdates: true }]);
+    await svc.send(['u-on', 'u-off'], opts);
+    expect(gateway.toUsers).toHaveBeenCalledWith(['u-on', 'u-off'], {
+      eventId: 'e1',
+      type: 'hackathon',
+      title: opts.title,
+      body: opts.body,
+      deepLink: opts.deepLink,
+      data: opts.data,
+    });
+    // The live copy goes out before the push, so the app can tell a repeat.
+    expect(gateway.toUsers.mock.invocationCallOrder[0]).toBeLessThan(oneSignal.send.mock.invocationCallOrder[0]);
+  });
+
+  it('sends nothing live when the in-app copy failed to save', async () => {
+    const { prisma, oneSignal } = build();
+    prisma.userNotification.createMany.mockRejectedValue(new Error('db down'));
+    const gateway: any = { toUsers: jest.fn() };
+    await new NotificationsService(prisma, oneSignal, undefined, undefined, gateway).send(['u-on'], opts);
+    expect(gateway.toUsers).not.toHaveBeenCalled();
+  });
+
   it('cuts an over-long title to the column size instead of losing the in-app copy', async () => {
     const { svc, prisma } = build();
     await svc.send(['u-on'], { ...opts, title: 'x'.repeat(250) });
@@ -320,6 +346,15 @@ describe('NotificationsService native push (C12)', () => {
     );
     expect(add.mock.calls[0][2].delay).toBeGreaterThan(0);
     expect(summary.sent).toBe(1);
+  });
+
+  it("sets the app icon badge to each person's unread count, 0 when none (C13)", async () => {
+    const { svc, prisma, pushSender } = build([device('a', 'tok-a'), device('b', 'tok-b')]);
+    prisma.userNotification.groupBy = jest.fn().mockResolvedValue([{ userId: 'a', _count: { _all: 4 } }]);
+    await svc.send(['a', 'b'], opts);
+    const badges = Object.fromEntries(pushSender.send.mock.calls.map((c: any) => [c[0].userId, c[1].badge]));
+    expect(badges).toEqual({ a: 4, b: 0 });
+    expect(prisma.userNotification.groupBy.mock.calls[0][0].where).toEqual({ userId: { in: ['a', 'b'] }, readAt: null });
   });
 
   it('without APNs/FCM configured nothing changes: everyone goes to OneSignal', async () => {

@@ -10,6 +10,8 @@ export interface PushMessage {
   body: string;
   /** deepLink, type, eventId…: what the app reads on tap. */
   data?: Record<string, unknown>;
+  /** App icon badge: the person's unread in-app count. Unset = leave it. */
+  badge?: number;
 }
 
 /** An install on native push: iOS tokens are APNs, Android tokens are FCM. */
@@ -93,7 +95,11 @@ export class PushSender implements OnModuleDestroy {
     const bearer = this.apnsToken();
     if (!bearer) return { id: null, error: 'not_configured' };
     const payload = JSON.stringify({
-      aps: { alert: { title: msg.title, body: msg.body }, sound: 'default' },
+      aps: {
+        alert: { title: msg.title, body: msg.body },
+        sound: 'default',
+        ...(msg.badge !== undefined ? { badge: msg.badge } : {}),
+      },
       body: msg.data ?? {},
     });
     const res = await this.h2(d.sandbox ? APNS_SANDBOX : APNS_PRODUCTION, {
@@ -132,6 +138,7 @@ export class PushSender implements OnModuleDestroy {
             message: msg.body,
             body: JSON.stringify(msg.data ?? {}),
             channelId: ANDROID_CHANNEL,
+            ...(msg.badge !== undefined ? { badge: String(msg.badge) } : {}),
           },
           android: { priority: 'HIGH' },
         },

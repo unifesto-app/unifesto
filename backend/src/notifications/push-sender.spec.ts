@@ -52,6 +52,18 @@ describe('PushSender (C12)', () => {
     expect(h2.mock.calls[1][0]).toBe('https://api.push.apple.com');
   });
 
+  it('carries the unread badge on both platforms when given (C13)', async () => {
+    const { sender, h2 } = withApns(200);
+    await sender.send(ios, { ...msg, badge: 3 });
+    expect(JSON.parse(h2.mock.calls[0][2] as string).aps.badge).toBe(3);
+
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, text: async () => '{}' });
+    (global as any).fetch = fetchMock;
+    jest.spyOn(sender as any, 'fcmClient').mockReturnValue({ auth: { getAccessToken: async () => 't' }, project: 'p' });
+    await sender.send(android, { ...msg, badge: 0 });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).message.data.badge).toBe('0');
+  });
+
   it('APNs: 410 marks the token dead, 429 is retried, a bad token is neither', async () => {
     await expect(withApns(410, '{"reason":"Unregistered"}').sender.send(ios, msg)).resolves.toEqual({
       id: null, error: '410 Unregistered', dead: true, retryable: false,
