@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { NOT_DELETED } from '../common/soft-delete';
-import { emailOptedOutUserIds } from '../email/email-preferences';
+import { canSend } from '../notifications/send-policy';
 import { forEachPage, inChunks } from '../common/batching';
 import { CLAIMED_MEMBER_SEAT, COUNTS_AS_ATTENDING } from '../common/attendance';
 import { emailInterestLeads } from '../sponsors/interest-fanout';
@@ -158,15 +158,11 @@ export class EventSchedulerService {
           }),
         async (registrations) => {
           const people = registrations.flatMap(reminderRecipients);
-          const optedOut = await emailOptedOutUserIds(
-            this.prisma,
-            people.map((r) => r.userId),
-            'eventReminders',
-          );
+          const allowed = await this.emailable('event.reminder', event.title, people);
           sent += people.length;
 
           await inChunks(people, async (to) => {
-            const email = optedOut.has(to.userId) ? undefined : to.email;
+            const email = allowed.has(to.userId) ? to.email : undefined;
 
             // Email reminder
             if (email) {
@@ -187,7 +183,7 @@ export class EventSchedulerService {
                   onlineUrl: event.onlineUrl || undefined,
                   qrCode: to.qrCode,
                   ticketCode: to.ticketCode,
-                })
+                }, { kind: 'event.reminder', userId: to.userId })
                 .catch((err) =>
                   this.logger.error('Event reminder email failed', err),
                 );
@@ -255,15 +251,11 @@ export class EventSchedulerService {
           }),
         async (registrations) => {
           const people = registrations.flatMap(reminderRecipients);
-          const optedOut = await emailOptedOutUserIds(
-            this.prisma,
-            people.map((r) => r.userId),
-            'eventReminders',
-          );
+          const allowed = await this.emailable('event.starting_soon', event.title, people);
           sent += people.length;
 
           await inChunks(people, async (to) => {
-            const email = optedOut.has(to.userId) ? undefined : to.email;
+            const email = allowed.has(to.userId) ? to.email : undefined;
             if (email) {
               await this.emailService
                 .sendEventStartingSoon({
@@ -279,7 +271,7 @@ export class EventSchedulerService {
                   isOnline: event.type === 'ONLINE',
                   onlineUrl: event.onlineUrl || undefined,
                   qrCode: to.qrCode,
-                })
+                }, { kind: 'event.starting_soon', userId: to.userId })
                 .catch((err) =>
                   this.logger.error('Event starting soon email failed', err),
                 );
@@ -402,17 +394,17 @@ export class EventSchedulerService {
             },
           }),
         async (attendees) => {
-          const optedOut = await emailOptedOutUserIds(
-            this.prisma,
-            attendees.map((r) => r.userId),
-            'eventReminders',
+          const allowed = await this.emailable(
+            'event.summary',
+            event.title,
+            attendees.map((r) => ({ userId: r.userId, email: r.user.identities[0]?.email })),
           );
           sent += attendees.length;
 
           await inChunks(attendees, async (reg) => {
-            const email = optedOut.has(reg.userId)
-              ? undefined
-              : reg.user.identities[0]?.email;
+            const email = allowed.has(reg.userId)
+              ? reg.user.identities[0]?.email
+              : undefined;
             if (email) {
               await this.emailService
                 .sendEventSummary({
@@ -421,7 +413,7 @@ export class EventSchedulerService {
                   eventTitle: event.title,
                   attendeeCount: event.registeredCount,
                   ...links,
-                })
+                }, { kind: 'event.summary', userId: reg.userId })
                 .catch((err) =>
                   this.logger.error('Event summary email failed', err),
                 );
@@ -438,6 +430,26 @@ export class EventSchedulerService {
     this.logger.log(
       `Event summary job completed. Processed ${completedEvents.length} events`,
     );
+  }
+
+  /**
+   * Who of `people` gets this event email: the send check (C16) on their
+   * switches and the daily cap. Anyone capped is logged SKIPPED.
+   */
+  private async emailable(
+    kind: string,
+    label: string,
+    people: Array<{ userId: string; email?: string | null }>,
+  ): Promise<Set<string>> {
+    const withEmail = people.filter((p) => p.email);
+    const { allowed } = await canSend(this.prisma, withEmail.map((p) => p.userId), {
+      kind,
+      category: 'eventReminders',
+      channel: 'email',
+      addresses: new Map(withEmail.map((p) => [p.userId, p.email!])),
+      log: { provider: 'resend', label },
+    });
+    return allowed;
   }
 
   /**

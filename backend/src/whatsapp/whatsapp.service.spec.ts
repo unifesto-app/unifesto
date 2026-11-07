@@ -42,6 +42,11 @@ describe('WhatsAppService marketing consent', () => {
           .mockResolvedValue([user('a', '+919876543210'), user('b', '+919876543211'), user('c', '+919876543212')]),
       },
       marketingOptOut: { findMany: jest.fn().mockResolvedValue(optOuts) },
+      // The user query already filtered on promotions: everyone it returns opted in.
+      notificationSettings: {
+        findMany: jest.fn(({ where }: any) => Promise.resolve(where.userId.in.map((userId: string) => ({ userId })))),
+      },
+      messageDelivery: { groupBy: jest.fn().mockResolvedValue([]) },
     });
 
     it('marketing: only opted-in, open accounts, minus anyone who sent STOP', async () => {

@@ -37,6 +37,8 @@ interface CustomCampaignData {
   campaignId: string;
   /** Marketing mail: sent with List-Unsubscribe + one-click headers. */
   unsubscribeUrl?: string;
+  /** The recipient's account: the daily cap (C16) counts campaign mail by it. */
+  userId?: string;
 }
 
 // contentId makes it inline, shown where the html says `cid:<contentId>`.
@@ -514,8 +516,8 @@ export class EmailService {
     return this.deliver('resend', data.email, T.eventPublishedEmail(data), { delivery });
   }
 
-  async sendEventSummary(data: T.EventSummaryData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventSummaryEmail(data));
+  async sendEventSummary(data: T.EventSummaryData, delivery?: DeliveryOpts): Promise<void> {
+    await this.deliver('resend', data.email, T.eventSummaryEmail(data), { delivery });
   }
 
   async sendWaitlistConfirmation(data: T.WaitlistConfirmationData): Promise<void> {
@@ -649,7 +651,7 @@ export class EmailService {
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               })
             : this.sendViaSES(to, data.subject, data.html),
-        { kind: 'campaign' },
+        { kind: 'campaign', userId: data.userId },
       );
       return { messageId: res.id, ...(res.error ? { error: res.error } : {}) };
     } catch (error) {

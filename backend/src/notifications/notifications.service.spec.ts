@@ -364,4 +364,17 @@ describe('NotificationsService native push (C12)', () => {
     expect(prisma.userPushDevice.findMany).not.toHaveBeenCalled();
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['moved']);
   });
+
+  it('holds back the push for someone at the daily cap, logged SKIPPED, inbox kept (C16)', async () => {
+    const { svc, prisma, oneSignal, pushSender } = build([device('full', 'tok-full'), device('room', 'tok-room')]);
+    prisma.messageDelivery.groupBy = jest.fn().mockResolvedValue([{ userId: 'full', _count: { _all: 99 } }]);
+    const summary = await svc.send(['full', 'room'], { ...opts, inbox: { type: 'news' } });
+
+    expect(pushSender.send.mock.calls.map((c: any) => c[0].token)).toEqual(['tok-room']);
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(summary).toEqual({ sent: 1, failed: 0, skipped: 1 });
+    expect(deliveries(prisma).find((d: any) => d.userId === 'full')).toMatchObject({ status: 'SKIPPED', error: 'daily cap' });
+    expect(prisma.pushLog.createMany.mock.calls[0][0].data[0]).toMatchObject({ userId: 'full', status: 'SKIPPED_PREF', error: 'daily cap' });
+    expect(prisma.userNotification.createMany.mock.calls[0][0].data.map((r: any) => r.userId)).toEqual(['full', 'room']);
+  });
 });

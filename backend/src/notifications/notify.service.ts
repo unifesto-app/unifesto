@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmailService } from '../email/email.service';
-import { emailOptedOutUserIds } from '../email/email-preferences';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
 import { KindDef, NOTIFY_KINDS, NotifyKind, NotifyKindData } from './notify.kinds';
 import { ChannelPlan, channelsFor } from './notify.policy';
+import { canSend } from './send-policy';
 
 export type ChannelOutcome = 'sent' | 'failed' | 'skipped';
 
@@ -66,18 +66,19 @@ export class NotifyService {
         user.identities.find((i) => i.email)?.email ??
         null;
 
-      const [allowedCount, devices, optedOut] = await Promise.all([
-        this.notifications.countAllowed([userId], def.category),
+      const critical = def.criticality === 'critical';
+      const [allowedCount, devices, mail] = await Promise.all([
+        this.notifications.countAllowed([userId], def.category, kind),
         // Reachable: linked to OneSignal, or on native push (C12, no link needed).
         this.prisma.userPushDevice.count({
           where: { userId, optedIn: true, OR: [{ linkedAt: { not: null } }, { token: { not: null } }] },
         }),
-        emailOptedOutUserIds(this.prisma, [userId], def.category),
+        canSend(this.prisma, [userId], { kind, category: def.category, channel: 'email', critical }),
       ]);
       const plan = channelsFor(def, {
         pushAllowed: allowedCount > 0,
         hasPushDevice: devices > 0,
-        emailOptedOut: optedOut.has(userId),
+        emailOptedOut: !mail.allowed.has(userId),
         hasEmail: !!to,
       });
       result.plan = plan;
@@ -89,7 +90,7 @@ export class NotifyService {
         ...def.push(data),
         kind,
         dedupKey: key('push'),
-        urgent: def.criticality === 'critical',
+        urgent: critical,
         inboxOnly: def.inboxOnly,
       });
       result.push = push.sent ? 'sent' : push.failed ? 'failed' : 'skipped';

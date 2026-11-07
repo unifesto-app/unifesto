@@ -13,9 +13,9 @@ import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WhatsappInboundEvent } from '../notifications/notifications.events';
 import {
   MARKETABLE_USER,
-  marketingOptOuts,
   recordMarketingOptOut,
 } from '../common/marketing-opt-out';
+import { canSend } from '../notifications/send-policy';
 import {
   applyProviderEvent,
   AttemptResult,
@@ -1236,6 +1236,8 @@ export class WhatsAppService {
     category?: string;
     /** The admin's send-to-me test: their own prefs don't apply. */
     test?: boolean;
+    /** The send itself (not the count): log anyone over the daily cap. */
+    sending?: boolean;
   }): Promise<Array<{ userId: string; name: string; mobileNumber: string }>> {
     // Consent: never closed or closing accounts; marketing templates only to
     // people who opted in to promotions; nobody who replied STOP. A test (to
@@ -1297,17 +1299,31 @@ export class WhatsAppService {
       });
     }
 
-    const stopped = consent
-      ? await marketingOptOuts(this.prisma, MarketingChannel.WHATSAPP, null)
+    const dials = new Map(users.flatMap((u) => {
+      const dial = this.formatPhoneNumber(u.mobileNumber);
+      return dial ? [[u.id, dial] as const] : [];
+    }));
+    // C16: STOP replies and the daily cap.
+    const allowed = consent
+      ? (
+          await canSend(this.prisma, [...dials.keys()], {
+            kind: 'broadcast',
+            category: marketing ? 'promotions' : 'productUpdates',
+            channel: 'whatsapp',
+            marketing: { spaceId: null },
+            addresses: dials,
+            ...(params.sending ? { log: { provider: 'meta' as const, label: params.templateName ?? 'broadcast' } } : {}),
+          })
+        ).allowed
       : null;
 
     // De-dupe by the number we'll actually dial.
     const seen = new Set<string>();
     const recipients: Array<{ userId: string; name: string; mobileNumber: string }> = [];
     for (const u of users) {
-      const dial = this.formatPhoneNumber(u.mobileNumber);
+      const dial = dials.get(u.id);
       if (!dial || seen.has(dial)) continue;
-      if (stopped && (stopped.addresses.has(dial) || stopped.userIds.has(u.id))) continue;
+      if (allowed && !allowed.has(u.id)) continue;
       seen.add(dial);
       recipients.push(this.mapRecipient(u));
     }
@@ -1358,8 +1374,10 @@ export class WhatsAppService {
       audience: b.audience as 'ALL' | 'SPACE' | 'USER' | 'STAFF',
       spaceId: b.spaceId ?? undefined,
       userIds: b.userIds,
+      templateName: b.templateName,
       category: b.category,
       test: b.isTest,
+      sending: true,
     });
     const tally = (data: { sentCount: number; failedCount: number; finishedAt?: Date }) =>
       this.prisma.whatsappBroadcast

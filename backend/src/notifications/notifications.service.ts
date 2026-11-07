@@ -12,6 +12,7 @@ import { NotificationsGateway } from './notifications.gateway';
 import { DirectDevice, PushMessage, PushSender, providerOf } from './push-sender';
 import { NotificationCategory } from './notifications.constants';
 import { quietHoursDeferral } from './quiet-hours';
+import { canSend, OPT_IN_CATEGORIES } from './send-policy';
 import {
   AttemptResult,
   DeliveryMeta,
@@ -94,18 +95,8 @@ const SEND_BATCH_SIZE = 2000;
 const DIRECT_CONCURRENCY = 50;
 const DEFERRED_QUEUE = 'push-deferred';
 
-// Opt-IN categories: off by default, so a user with no NotificationSettings row
-// is NOT sent these until they explicitly enable them. Everything else is opt-out
-// (on by default). Mirrors the Prisma schema @default values.
-const OPT_IN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['promotions']);
-
-// Staff-only categories have no NotificationSettings column: only the global
-// `pushEnabled` switch applies, so an admin can't silently lose ops alerts.
+// Staff alerts stay out of the in-app feed.
 const STAFF_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts']);
-
-// No NotificationSettings column: only `pushEnabled` applies. Staff alerts, and
-// support replies the person is waiting on.
-const NO_COLUMN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts', 'support']);
 
 // Never held back by quiet hours (C4): tickets and payments someone is waiting
 // on, hosts messaging live during an event, staff alerts, support replies.
@@ -116,11 +107,6 @@ const NEVER_DEFER: ReadonlySet<NotificationCategory> = new Set([
   'adminAlerts',
   'support',
 ]);
-
-// Category defaults for users with no NotificationSettings row yet.
-function isCategoryAllowedByDefault(category: NotificationCategory): boolean {
-  return !OPT_IN_CATEGORIES.has(category);
-}
 
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
@@ -170,8 +156,9 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Pref-aware fan-out to a set of users.
    *
-   * For each user: skip (and log SKIPPED_PREF) unless `pushEnabled` AND the
-   * category switch are on. Allowed users go out by native push (their
+   * For each user: skip (and log SKIPPED_PREF) unless canSend() lets it
+   * through: `pushEnabled` AND the category switch on, and not over the daily
+   * cap (C16, logged with error "daily cap"). Allowed users go out by native push (their
    * APNs/FCM installs) and/or one OneSignal request per batch, and each gets a
    * PushLog row (SENT/FAILED).
    *
@@ -198,20 +185,20 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         claimedUser = unique[0];
       }
 
-      const settings = await this.prisma.notificationSettings.findMany({
-        where: { userId: { in: unique } },
+      const decision = await canSend(this.prisma, unique, {
+        kind: opts.kind ?? opts.category,
+        category: opts.category,
+        channel: 'push',
+        critical: opts.urgent,
       });
-      const byUser = new Map(settings.map((s) => [s.userId, s]));
+      const allowed = unique.filter((u) => decision.allowed.has(u));
+      const capped = unique.filter((u) => decision.capped.has(u));
+      const skipped = unique.filter((u) => !decision.allowed.has(u) && !decision.capped.has(u));
 
-      const allowed: string[] = [];
-      const skipped: string[] = [];
-      for (const userId of unique) {
-        (this.isAllowed(byUser.get(userId), opts.category) ? allowed : skipped).push(userId);
-      }
-
-      // Staff alerts stay out of the feed; opt-in marketing only reaches those who opted in.
+      // Staff alerts stay out of the feed; opt-in marketing only reaches those
+      // who opted in. The cap holds back the push, not the in-app copy.
       if (opts.inbox !== false && !STAFF_CATEGORIES.has(opts.category)) {
-        await this.writeInbox(OPT_IN_CATEGORIES.has(opts.category) ? allowed : unique, opts);
+        await this.writeInbox(OPT_IN_CATEGORIES.has(opts.category) ? [...allowed, ...capped] : unique, opts);
       }
       if (opts.inboxOnly) {
         summary.skipped = unique.length;
@@ -222,6 +209,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         await this.logMany(skipped, opts.category, PushLogStatus.SKIPPED_PREF, opts.campaignId);
         await this.logDeliveries(skipped, opts, claimed, MessageDeliveryStatus.SKIPPED);
         summary.skipped += skipped.length;
+      }
+      if (capped.length) {
+        const why = { id: null, error: 'daily cap' };
+        await this.logMany(capped, opts.category, PushLogStatus.SKIPPED_PREF, opts.campaignId, null, why.error);
+        await this.logDeliveries(capped, opts, claimed, MessageDeliveryStatus.SKIPPED, why);
+        summary.skipped += capped.length;
       }
       if (allowed.length === 0) return summary;
 
@@ -234,6 +227,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       // already written.
       const now = new Date();
       const deferrable = !opts.urgent && !NEVER_DEFER.has(opts.category);
+      const byUser = new Map(
+        deferrable
+          ? (await this.prisma.notificationSettings.findMany({ where: { userId: { in: allowed } } })).map((s) => [s.userId, s])
+          : [],
+      );
       const groups = new Map<number, string[]>(); // 0 = now
       for (const userId of allowed) {
         const s = byUser.get(userId);
@@ -506,25 +504,10 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** How many of `userIds` the pref filter in `send` would let through right now. */
-  async countAllowed(userIds: string[], category: NotificationCategory): Promise<number> {
-    const unique = [...new Set(userIds)].filter(Boolean);
-    if (unique.length === 0) return 0;
-    const settings = await this.prisma.notificationSettings.findMany({
-      where: { userId: { in: unique } },
-    });
-    const byUser = new Map(settings.map((s) => [s.userId, s]));
-    return unique.filter((id) => this.isAllowed(byUser.get(id), category)).length;
-  }
-
-  private isAllowed(
-    settings: { pushEnabled: boolean; [k: string]: any } | undefined,
-    category: NotificationCategory,
-  ): boolean {
-    if (!settings) return isCategoryAllowedByDefault(category);
-    if (!settings.pushEnabled) return false;
-    if (NO_COLUMN_CATEGORIES.has(category)) return true;
-    return !!settings[category];
+  /** How many of `userIds` the check in `send` would let through right now. */
+  async countAllowed(userIds: string[], category: NotificationCategory, kind: string = category): Promise<number> {
+    const { allowed } = await canSend(this.prisma, userIds, { kind, category, channel: 'push' });
+    return allowed.size;
   }
 
   private deliveryMeta(userId: string, opts: SendOptions, provider: DeliveryProvider = 'onesignal'): DeliveryMeta {

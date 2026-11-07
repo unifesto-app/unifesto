@@ -4,7 +4,7 @@ import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { EmailService } from '../email/email.service';
-import { emailOptedOutUserIds } from '../email/email-preferences';
+import { canSend } from '../notifications/send-policy';
 import { forEachPage, inChunks } from '../common/batching';
 import { reportError } from '../common/observability';
 import { formatEventDate, formatEventTime } from './event-dates';
@@ -131,10 +131,18 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
           },
         }),
       async (rows) => {
-        const fresh = rows.filter((r) => !seen.has(r.userId) && seen.add(r.userId));
-        const optedOut = await emailOptedOutUserIds(this.prisma, fresh.map((r) => r.userId), 'newEvents');
+        const fresh = rows.filter(
+          (r) => r.user.identities[0]?.email && !seen.has(r.userId) && seen.add(r.userId),
+        );
+        const { allowed } = await canSend(this.prisma, fresh.map((r) => r.userId), {
+          kind: 'event.published',
+          category: 'newEvents',
+          channel: 'email',
+          addresses: new Map(fresh.map((r) => [r.userId, r.user.identities[0].email!])),
+          log: { provider: 'resend', label: event.title },
+        });
         await inChunks(
-          fresh.filter((r) => r.user.identities[0]?.email && !optedOut.has(r.userId)),
+          fresh.filter((r) => allowed.has(r.userId)),
           (r) =>
             this.email.sendEventPublished(
               {
