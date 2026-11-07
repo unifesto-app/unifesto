@@ -153,11 +153,11 @@ export class RegistrationAttendeesService {
         if ((await claim).count === 0) return; // another run has them
         let ok = false;
         try {
-          ok = await this.whatsappService.sendEventWhatsAppGroupInvite(r.phone, {
-            userName: r.name,
-            eventTitle: plan.eventTitle,
-            inviteUrl: r.inviteUrl,
-          });
+          ok = await this.whatsappService.sendEventWhatsAppGroupInvite(
+            r.phone,
+            { userName: r.name, eventTitle: plan.eventTitle, inviteUrl: r.inviteUrl },
+            { kind: 'registration.group_invite' },
+          );
         } catch (error) {
           this.logger.error(`Failed to send WhatsApp group invite to ${r.kind} ${r.id}`, error);
         }

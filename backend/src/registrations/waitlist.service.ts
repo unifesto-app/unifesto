@@ -951,7 +951,7 @@ export class WaitlistService {
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime),
       waitlistPosition: position,
-    });
+    }, { kind: 'waitlist.joined', userId });
   }
 
   private async notifyRevoked(
@@ -972,7 +972,7 @@ export class WaitlistService {
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime, full?.timezone),
       registrationUrl: `${process.env.WEB_URL || ''}/events/${full?.slug ?? event.id}`,
-    });
+    }, { kind: 'waitlist.revoked', userId });
   }
 
   /** Push + email (critical): a seat is held for them until they pay. */

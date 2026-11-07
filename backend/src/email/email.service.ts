@@ -488,8 +488,8 @@ export class EmailService {
     return this.deliverBranded('resend', data.email, data, T.paymentConfirmationEmail, delivery);
   }
 
-  async sendCancellationConfirmation(data: T.CancellationConfirmationData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.cancellationConfirmationEmail);
+  async sendCancellationConfirmation(data: T.CancellationConfirmationData, delivery?: DeliveryOpts): Promise<void> {
+    await this.deliverBranded('resend', data.email, data, T.cancellationConfirmationEmail, delivery);
   }
 
   async sendEventReminder(data: T.EventReminderData, delivery?: DeliveryOpts): Promise<boolean> {
@@ -520,16 +520,16 @@ export class EmailService {
     await this.deliver('resend', data.email, T.eventSummaryEmail(data), { delivery });
   }
 
-  async sendWaitlistConfirmation(data: T.WaitlistConfirmationData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.waitlistConfirmationEmail);
+  async sendWaitlistConfirmation(data: T.WaitlistConfirmationData, delivery?: DeliveryOpts): Promise<void> {
+    await this.deliverBranded('resend', data.email, data, T.waitlistConfirmationEmail, delivery);
   }
 
   async sendWaitlistPromoted(data: T.WaitlistPromotedData, delivery?: DeliveryOpts): Promise<boolean> {
     return this.deliverBranded('resend', data.email, data, T.waitlistPromotedEmail, delivery);
   }
 
-  async sendWaitlistRevoked(data: T.WaitlistRevokedData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail);
+  async sendWaitlistRevoked(data: T.WaitlistRevokedData, delivery?: DeliveryOpts): Promise<void> {
+    await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail, delivery);
   }
 
   /**
@@ -542,18 +542,18 @@ export class EmailService {
    * whether the send was accepted, so the caller stamps `emailedAt` only on
    * success (a failed send leaves it null, meaning "needs resend").
    */
-  async sendCertificateIssued(data: T.CertificateIssuedData): Promise<boolean> {
+  async sendCertificateIssued(data: T.CertificateIssuedData, delivery?: DeliveryOpts): Promise<boolean> {
     const { brand, sender } = await this.brandFor(data.eventId);
     const via = sender?.fromAddress ? 'resend' : 'ses';
-    return this.deliver(via, data.email, T.certificateIssuedEmail({ ...data, brand }), { sender });
+    return this.deliver(via, data.email, T.certificateIssuedEmail({ ...data, brand }), { sender, delivery });
   }
 
   // =====================================================
   // PAYMENTS
   // =====================================================
 
-  async sendPaymentFailed(data: T.PaymentFailedData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.paymentFailedEmail);
+  async sendPaymentFailed(data: T.PaymentFailedData, delivery?: DeliveryOpts): Promise<void> {
+    await this.deliverBranded('resend', data.email, data, T.paymentFailedEmail, delivery);
   }
 
   async sendBankAccountRejected(data: T.BankAccountRejectedData): Promise<void> {

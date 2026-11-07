@@ -239,7 +239,9 @@ export class GroupSeatsService {
     });
     for (const seat of seats) {
       this.email
-        .sendRawEmail(seat.inviteEmail!, `You're invited to ${eventTitle}`, this.inviteHtml(eventTitle, this.claimUrl(seat.inviteToken)))
+        .sendRawEmail(seat.inviteEmail!, `You're invited to ${eventTitle}`, this.inviteHtml(eventTitle, this.claimUrl(seat.inviteToken)), undefined, {
+          kind: 'seat.invite',
+        })
         .catch((err) => this.logger.error(`Invite email failed to ${seat.inviteEmail}`, err));
     }
   }
@@ -553,6 +555,8 @@ export class GroupSeatsService {
           email,
           `You're invited to ${reg.event.title}`,
           this.inviteHtml(reg.event.title, this.claimUrl(seat.inviteToken)),
+          undefined,
+          { kind: 'seat.invite' },
         )
         .catch((err) => this.logger.error(`Invite email failed to ${email}`, err));
     }
@@ -807,12 +811,16 @@ export class GroupSeatsService {
           `Your seat for ${reg.event.title} was given to someone else`,
           h1('Your seat went to someone else') +
             p(`Your team's seat for ${strong(reg.event.title)} was given to someone else, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.`),
+          undefined,
+          { kind: 'seat.replaced' },
         )
         .catch((err) => this.logger.error(`Replacement notice failed to ${oldEmail}`, err));
     }
     if (email) {
       this.email
-        .sendRawEmail(email, `You're invited to ${reg.event.title}`, this.inviteHtml(reg.event.title, this.claimUrl(newToken)))
+        .sendRawEmail(email, `You're invited to ${reg.event.title}`, this.inviteHtml(reg.event.title, this.claimUrl(newToken)), undefined, {
+          kind: 'seat.invite',
+        })
         .catch((err) => this.logger.error(`Invite email failed to ${email}`, err));
     }
 
@@ -1191,6 +1199,8 @@ export class GroupSeatsService {
       h1('A seat was claimed') +
         p(`${strong(who)} claimed a seat in your team for ${strong(eventTitle)}.`) +
         p('Not who you meant? Open your ticket in the Unifesto app, go to Manage group and give the seat to someone else.'),
+      undefined,
+      { kind: 'seat.claimed', userId: reg.userId },
     );
   }
 
@@ -1434,14 +1444,18 @@ export class GroupSeatsService {
         (typeof details.mobile === 'string' ? details.mobile : null);
       if (!mobile) return;
 
-      const accepted = await this.whatsapp.sendEventWhatsAppGroupInvite(mobile, {
-        userName:
-          claimer?.fullName ||
-          claimer?.username ||
-          (typeof details.name === 'string' ? details.name : 'there'),
-        eventTitle: reg.event.title,
-        inviteUrl,
-      });
+      const accepted = await this.whatsapp.sendEventWhatsAppGroupInvite(
+        mobile,
+        {
+          userName:
+            claimer?.fullName ||
+            claimer?.username ||
+            (typeof details.name === 'string' ? details.name : 'there'),
+          eventTitle: reg.event.title,
+          inviteUrl,
+        },
+        { kind: 'registration.group_invite', userId: claimerUserId },
+      );
       // Only a send Meta took counts; a rejected one stays open for the blast.
       if (!accepted) return;
       await this.prisma.groupSeat.update({
@@ -1501,6 +1515,8 @@ export class GroupSeatsService {
             `A seat re-opened for ${lead.event.title}`,
             h1('A seat is open again') +
               p(`An invited member declined their seat for ${strong(lead.event.title)}. You can invite someone else from your ticket in the Unifesto app.`),
+            undefined,
+            { kind: 'seat.declined', userId: lead.userId },
           )
           .catch(() => undefined);
       }
@@ -1534,6 +1550,8 @@ export class GroupSeatsService {
           `Your seat for ${eventTitle} was cancelled`,
           h1('Your seat was cancelled') +
             p(`The group booking for ${strong(eventTitle)} was cancelled, so your ticket is no longer valid. If you think this is a mistake, contact the person who invited you.`),
+          undefined,
+          { kind: 'registration.cancelled' },
         )
         .catch((err) => this.logger.error(`Group-cancel email failed to ${email}`, err));
     }
@@ -1591,6 +1609,8 @@ export class GroupSeatsService {
             seat.registration.event.title,
             this.claimUrl(seat.inviteToken),
           ),
+          undefined,
+          { kind: 'seat.reminder' },
         );
         sent++;
       } catch (err) {

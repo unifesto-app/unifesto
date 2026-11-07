@@ -1047,7 +1047,7 @@ export class CertificatesService {
       certificateNumber: cert.certificateNumber,
       verifyUrl: `${this.webUrl}/verify/${cert.verificationCode}`,
       pdfUrl: cert.pdfUrl,
-    });
+    }, { kind: 'certificate.issued' });
 
     if (sent) {
       await this.prisma.certificate.update({

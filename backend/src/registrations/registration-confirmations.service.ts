@@ -106,6 +106,7 @@ export class RegistrationConfirmationsService {
             isOnline: fullRegistration.event.type === 'ONLINE',
             onlineUrl: fullRegistration.event.onlineUrl || undefined,
           },
+          { kind: 'registration.confirmed', userId: fullRegistration.userId },
         );
       }
     } catch (error) {
@@ -155,7 +156,7 @@ export class RegistrationConfirmationsService {
           eventDescription: fullRegistration.event.description || undefined,
           organiserName: fullRegistration.event.space?.name || undefined,
           whatsappGroupUrl: whatsappGroupUrl ?? undefined,
-        })
+        }, { kind: 'registration.confirmed', userId: fullRegistration.userId })
         .catch((err) => this.logger.error('Failed to send registration confirmation email', err));
     }
 
@@ -197,6 +198,7 @@ export class RegistrationConfirmationsService {
       const reg = await this.prisma.eventRegistration.findUnique({
         where: { id: registrationId },
         select: {
+          userId: true,
           attendeeMobile: true,
           user: { select: { mobileNumber: true, fullName: true, username: true } },
           ticketType: { select: { whatsappGroupUrl: true } },
@@ -236,11 +238,15 @@ export class RegistrationConfirmationsService {
           })
         : { count: 0 };
       if (mobile && claimed.count) {
-        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(mobile, {
-          userName: reg.user.fullName || reg.user.username || 'there',
-          eventTitle: reg.event.title,
-          inviteUrl,
-        });
+        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
+          mobile,
+          {
+            userName: reg.user.fullName || reg.user.username || 'there',
+            eventTitle: reg.event.title,
+            inviteUrl,
+          },
+          { kind: 'registration.group_invite', userId: reg.userId },
+        );
         if (!accepted) {
           await this.prisma.eventRegistration.updateMany({
             where: { id: registrationId, whatsappInviteSentAt: now },
@@ -334,7 +340,7 @@ export class RegistrationConfirmationsService {
           venueAddress: event.venueAddress || undefined,
           eventDescription: event.description || undefined,
           organiserName: event.space?.name || undefined,
-        })
+        }, { kind: 'registration.confirmed' })
         .catch((err) =>
           this.logger.error('Failed to send group member ticket email', err),
         );
@@ -354,7 +360,7 @@ export class RegistrationConfirmationsService {
             city: event.city || undefined,
             isOnline: event.type === 'ONLINE',
             onlineUrl: event.onlineUrl || undefined,
-          })
+          }, { kind: 'registration.confirmed' })
           .catch((err) =>
             this.logger.error('Failed to send group member WhatsApp', err),
           );
@@ -414,11 +420,11 @@ export class RegistrationConfirmationsService {
         continue;
       }
       try {
-        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(mobile, {
-          userName: seatMemberName(seat),
-          eventTitle: ctx.eventTitle,
-          inviteUrl: ctx.inviteUrl,
-        });
+        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
+          mobile,
+          { userName: seatMemberName(seat), eventTitle: ctx.eventTitle, inviteUrl: ctx.inviteUrl },
+          { kind: 'registration.group_invite' },
+        );
         if (!accepted) {
           failed++;
           continue;
