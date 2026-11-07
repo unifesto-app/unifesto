@@ -38,6 +38,7 @@ import {
 } from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
 import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
+import { PlatformConfigService } from '../subscription/platform-config.service';
 import { emailText } from '../ai/risk';
 import { OnEvent } from '../common/on-event';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
@@ -95,6 +96,7 @@ export class EmailCampaignsService {
     private readonly configService: ConfigService,
     private readonly queue: EmailCampaignQueue,
     @Optional() private readonly broadcastCheck?: BroadcastCheck,
+    @Optional() private readonly platformConfig?: PlatformConfigService,
   ) {
     // Public host that serves the tracking endpoints (must be reachable by
     // recipients' mail clients, so it is the API's public URL, not localhost).
@@ -126,6 +128,7 @@ export class EmailCampaignsService {
     dto: CreateCampaignDto,
   ): Promise<{ success: true; campaignId: string }> {
     const targetId = await this.resolveTarget(scope, dto);
+    if (!dto.scheduledAt) await this.platformConfig?.assertCommsOpen();
 
     const campaign = await this.prisma.emailCampaign.create({
       data: {
@@ -356,6 +359,8 @@ export class EmailCampaignsService {
    * retry) reach the same row together.
    */
   private async startCampaign(campaignId: string): Promise<void> {
+    // Paused (C17): a scheduled one stays SCHEDULED and goes when it resumes.
+    if (await this.platformConfig?.isCommsPaused()) return;
     const claim = await this.prisma.emailCampaign.updateMany({
       where: {
         id: campaignId,
@@ -428,6 +433,9 @@ export class EmailCampaignsService {
         where: { id: campaignId },
       });
       if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
+      // Paused (C17): left SENDING. The stale sweep keeps re-checking it and
+      // it resumes from the checkpoint once sends are back on.
+      if (await this.platformConfig?.isCommsPaused()) return;
       if (!(await this.cleared(campaign))) return;
 
       const allowed = await this.withConsent(
@@ -452,6 +460,11 @@ export class EmailCampaignsService {
       );
 
       for (let i = 0; i < recipients.length; i += this.BATCH_SIZE) {
+        // Paused mid-send (C17): stop here, still SENDING (see above).
+        if (await this.platformConfig?.isCommsPaused()) {
+          this.logger.warn(`Campaign ${campaignId}: paused after ${i} of ${recipients.length}`);
+          return;
+        }
         const batch = recipients.slice(i, i + this.BATCH_SIZE);
         const batchVariants = variants.slice(i, i + this.BATCH_SIZE);
         const results = await this.sendBatch(campaign, batch, batchVariants);

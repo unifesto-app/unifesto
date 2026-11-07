@@ -13,7 +13,7 @@ describe('WhatsApp broadcast runs', () => {
     spaceId: null, userIds: ['u1', 'u2'], bodyParams: ['Hi {name}'], isTest: false,
     sentCount: 0, failedCount: 0, finishedAt: null as Date | null,
   };
-  const build = (queue?: unknown) => {
+  const build = (queue?: unknown, paused = false) => {
     const prisma = {
       whatsappBroadcast: {
         findUnique: jest.fn(async () => row),
@@ -21,7 +21,13 @@ describe('WhatsApp broadcast runs', () => {
         create: jest.fn(async () => ({ id: 'b1' })),
       },
     };
-    const svc = new WhatsAppService(config as any, prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, queue as any);
+    const platformConfig = {
+      isCommsPaused: async () => paused,
+      assertCommsOpen: async () => {
+        if (paused) throw new Error('Sending is paused');
+      },
+    };
+    const svc = new WhatsAppService(config as any, prisma as any, {} as any, { emit: jest.fn() } as any, platformConfig as any, queue as any);
     const sends: any[] = [];
     (svc as any).resolveBroadcastRecipients = jest.fn(async () => [
       { userId: 'u1', name: 'Asha', mobileNumber: '+919876543210' },
@@ -65,5 +71,18 @@ describe('WhatsApp broadcast runs', () => {
     expect(res).toMatchObject({ recipientCount: 2, status: 'started' });
     expect(queue.add).toHaveBeenCalledWith('b1');
     expect(sends).toHaveLength(0);
+  });
+
+  it('while sends are paused (C17), a run sends nothing and stays unfinished, and a new one is refused', async () => {
+    const queue = { setHandler: jest.fn(), add: jest.fn(async () => true) };
+    const { svc, prisma, sends } = build(queue, true);
+    await svc.runBroadcastById('b1');
+    expect(sends).toHaveLength(0);
+    expect(prisma.whatsappBroadcast.update).not.toHaveBeenCalled();
+    (svc as any).isConfigured = () => true;
+    await expect(
+      svc.sendBroadcastTemplate({ adminUserId: 'a1', audience: 'USER', userIds: ['u1'], templateName: 'promo' }),
+    ).rejects.toThrow('Sending is paused');
+    expect(queue.add).not.toHaveBeenCalled();
   });
 });

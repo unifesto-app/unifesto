@@ -286,6 +286,16 @@ describe('EmailCampaignsService', () => {
       expect(prisma.emailCampaign.updateMany).toHaveBeenLastCalledWith({ where: { id: 'c1', status: 'HELD' }, data: { status: 'CANCELLED' } });
     });
 
+    it('while sends are paused (C17), a run stops before working out recipients and stays SENDING', async () => {
+      const prisma = prismaFor([]);
+      const paused = { isCommsPaused: async () => true, assertCommsOpen: async () => {} };
+      const svc = new EmailCampaignsService(prisma as any, email as any, config as any, queue as any, undefined, paused as any);
+      await runAll(svc.runCampaign('c1', { lastAttempt: true }));
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(email.sendCustomCampaignEmail).not.toHaveBeenCalled();
+      expect(prisma.emailCampaign.update).not.toHaveBeenCalled();
+    });
+
     it('stale sweep fails day-old SENDING rows and re-queues recent stalls', async () => {
       const prisma = prismaFor([]);
       prisma.emailCampaign.findMany.mockResolvedValue([{ id: 'c1' }]);

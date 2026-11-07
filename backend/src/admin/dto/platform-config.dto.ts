@@ -22,6 +22,11 @@ export class UpdatePlatformConfigDto {
   @IsBoolean()
   customSendingDomainsEnabled?: boolean;
 
+  // C17: pause bulk sends.
+  @IsOptional()
+  @IsBoolean()
+  commsPaused?: boolean;
+
   // Q40: our UPI-first checkout, per platform (off = Razorpay Standard Checkout).
   @IsOptional()
   @IsBoolean()
