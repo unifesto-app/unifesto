@@ -77,6 +77,42 @@ export function countCampaignReach(
   return apiCall<ChannelReach>(backendClient.post("/admin/campaigns/audience", payload));
 }
 
+/** What Write with AI hands back: words for the chosen channels, never a send. */
+export type CampaignDraftResult =
+  | {
+      ok: true;
+      draft: { push?: { title: string; body: string }; email?: { subject: string; html: string }; whatsappParams?: string[] };
+      /** Channels left out because they quoted a fact the line and event never gave (AI10). */
+      dropped?: string[];
+    }
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" | "held"; why?: string };
+
+/** `POST /admin/campaigns/draft`: Haiku drafts the chosen channels from one line. */
+export function draftCampaign(payload: {
+  line: string;
+  channels: CampaignChannel[];
+  eventId?: string;
+  whatsapp?: { bodyText: string; paramCount: number };
+}): Result<CampaignDraftResult> {
+  return apiCall<CampaignDraftResult>(backendClient.post("/admin/campaigns/draft", payload));
+}
+
+/** What to tell the sender when a draft didn't come back. */
+export function draftProblem(res: Extract<CampaignDraftResult, { ok: false }>): string {
+  switch (res.reason) {
+    case "disabled":
+      return "Write with AI is off right now.";
+    case "capped":
+      return "That's today's drafts used up. Try again tomorrow.";
+    case "held":
+      return `The draft quoted something you didn't give (${res.why ?? "a detail"}). Add it to your line, or write it yourself.`;
+    case "empty":
+      return "There wasn't enough in your line to draft from. Say what's happening.";
+    default:
+      return "The draft didn't come through. Try again.";
+  }
+}
+
 /** `POST /admin/campaigns/test`: each chosen channel to the signed-in admin only. */
 export function sendCampaignTest(payload: CampaignMessage): Result<{ sent: CampaignChannel[]; errors: string[] }> {
   return apiCall(backendClient.post("/admin/campaigns/test", payload));

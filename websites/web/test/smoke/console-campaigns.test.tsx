@@ -35,3 +35,34 @@ test("console sends a space campaign as a notification to its members", async ()
     audience: { type: "space" },
   });
 });
+
+test("Write with AI fills the organiser's notification from one line", async () => {
+  const { calls, adapter } = mockApi({
+    "POST /auth/session": { accessToken: "tok", email: "asha@example.com", fullName: "Asha Rao" },
+    "GET /users/me": { id: "u1", username: "asha", fullName: "Asha Rao", avatarUrl: null, mobileNumber: "+919999999999" },
+    "GET /users/me/spaces": [{ id: "s1", name: "Robotics Club", userRole: { code: "SPACE_ADMIN" } }],
+    "GET /spaces/s1/access": { spaceRole: "SPACE_ADMIN", eventRole: null, capabilities: ["space:manage-email"], plan: null },
+    "POST /spaces/s1/campaigns/draft": {
+      ok: true,
+      draft: { push: { title: "Build night moves to Lab 2", body: "Same time, 6 PM. See you there." } },
+    },
+  });
+  backendClient.defaults.adapter = adapter;
+
+  render(
+    <SessionProvider>
+      <NewCampaignPage />
+    </SessionProvider>,
+  );
+
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Also send it as an email" }));
+  fireEvent.change(screen.getByLabelText("What to tell people"), { target: { value: "build night moved to lab 2" } });
+  fireEvent.click(screen.getByRole("button", { name: "Draft it" }));
+
+  expect(await screen.findByDisplayValue("Build night moves to Lab 2")).toBeTruthy();
+  expect(screen.getByDisplayValue("Same time, 6 PM. See you there.")).toBeTruthy();
+  expect(calls.find((c) => c.path === "/spaces/s1/campaigns/draft")?.body).toEqual({
+    line: "build night moved to lab 2",
+    channels: ["push"],
+  });
+});

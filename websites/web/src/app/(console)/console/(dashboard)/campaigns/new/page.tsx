@@ -11,11 +11,14 @@ import {
   Clock,
   BellRinging,
   EnvelopeSimple,
+  Sparkle,
 } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import {
   countCampaignReach,
   createCampaign,
+  draftCampaign,
+  draftProblem,
   sendCampaignTest,
   type CampaignAudience,
   type CampaignChannel,
@@ -89,6 +92,11 @@ export default function SpaceComposeCampaignPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Write with AI: the line it drafted from (kept as the campaign's brief) and what it said.
+  const [line, setLine] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [aiNote, setAiNote] = useState<string[]>([]);
+
   const targetDef = TARGETS.find((t) => t.value === target)!;
   const channels: CampaignChannel[] = [...(inApp !== "off" ? [inApp] : []), ...(useEmail ? (["email"] as const) : [])];
 
@@ -132,6 +140,33 @@ export default function SpaceComposeCampaignPage() {
       : {}),
     ...(useEmail ? { email: { subject: subject.trim(), html: body } } : {}),
   });
+
+  /** Fill the chosen channels from the line. Nothing is sent: the organiser reads and edits first. */
+  const writeWithAi = async () => {
+    setDrafting(true);
+    setError(null);
+    setAiNote([]);
+    const { data, error } = await draftCampaign(spaceId, {
+      line: line.trim(),
+      channels,
+      ...(targetDef.needs === "event" && targetId ? { eventId: targetId } : {}),
+    });
+    setDrafting(false);
+    if (error || !data) return setError(error?.message ?? "The draft didn't come through. Try again.");
+    if (!data.ok) return setError(draftProblem(data));
+    if (data.draft.push) {
+      setTitle(data.draft.push.title);
+      setMessage(data.draft.push.body);
+    }
+    if (data.draft.email) {
+      setSubject(data.draft.email.subject);
+      setBody(data.draft.email.html);
+    }
+    setAiNote([
+      "Drafted by AI from your line. Read every word before you send.",
+      ...(data.dropped ?? []).map((d) => `Left out ${d}`),
+    ]);
+  };
 
   const doPreview = async () => {
     if (!spaceId) return;
@@ -210,6 +245,7 @@ export default function SpaceComposeCampaignPage() {
       ...msg,
       audience: audience(),
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      brief: aiNote.length ? line.trim() : undefined,
     });
     setSubmitting(false);
     if (error || !data) setError(error?.message ?? "It didn't send.");
@@ -329,6 +365,46 @@ export default function SpaceComposeCampaignPage() {
               <p className="text-xs text-muted-foreground">
                 Each channel leaves out people who switched it off or unsubscribed. Attendees means confirmed attendees only.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkle className="h-4 w-4 text-primary" weight="duotone" />
+                Write with AI
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={line}
+                  onChange={(e) => setLine(e.target.value)}
+                  placeholder="One line, e.g. Hack Night moved to Hall B, same time"
+                  aria-label="What to tell people"
+                  maxLength={500}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={writeWithAi}
+                  disabled={drafting || line.trim().length < 3 || channels.length === 0}
+                >
+                  {drafting ? "Drafting…" : "Draft it"}
+                </Button>
+              </div>
+              {aiNote.length > 0 ? (
+                <ul className="space-y-0.5 text-xs text-muted-foreground">
+                  {aiNote.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  It fills your channels from your line and the event, and adds no dates, prices or links you
+                  didn&apos;t give. You still read and send it. Each draft uses one AI request.
+                </p>
+              )}
             </CardContent>
           </Card>
 

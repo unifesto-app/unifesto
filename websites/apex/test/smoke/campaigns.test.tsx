@@ -48,3 +48,35 @@ test("Apex sends one campaign and shows each channel's counts", async () => {
     audience: { type: "all" },
   });
 });
+
+test("Write with AI fills the push from one line, and the line is kept as the brief", async () => {
+  const { calls, adapter } = mockApi({
+    "GET /admin/campaigns": { campaigns: [], total: 0, page: 1, limit: 20 },
+    "GET /admin/platform-config": { commsPaused: false },
+    "POST /admin/campaigns/draft": {
+      ok: true,
+      draft: { push: { title: "Orbit Summit closes Sunday", body: "Register before Sunday to get your pass." } },
+      dropped: ['Email: amount "₹499" isn\'t in your line or the event'],
+    },
+    "POST /admin/campaigns": { ...sent, id: "c3" },
+  });
+  backendClient.defaults.adapter = adapter;
+  vi.stubGlobal("confirm", () => true);
+
+  render(<CampaignsPage />);
+  fireEvent.click((await screen.findAllByRole("button", { name: /New campaign/ }))[0]);
+  fireEvent.change(await screen.findByLabelText("What to tell people"), { target: { value: "orbit summit closes sunday" } });
+  fireEvent.click(screen.getByRole("button", { name: "Draft it" }));
+
+  expect(await screen.findByDisplayValue("Orbit Summit closes Sunday")).toBeTruthy();
+  expect(screen.getByText(/Read every word before you send/)).toBeTruthy();
+  expect(screen.getByText(/Left out Email: amount "₹499"/)).toBeTruthy();
+  expect(calls.find((c) => c.path === "/admin/campaigns/draft")?.body).toEqual({ line: "orbit summit closes sunday", channels: ["push"] });
+
+  fireEvent.click(screen.getByRole("button", { name: "Send now" }));
+  await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/admin/campaigns")).toBe(true));
+  expect(calls.find((c) => c.method === "POST" && c.path === "/admin/campaigns")?.body).toMatchObject({
+    push: { title: "Orbit Summit closes Sunday", body: "Register before Sunday to get your pass." },
+    brief: "orbit summit closes sunday",
+  });
+});

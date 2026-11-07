@@ -1,8 +1,18 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BroadcastKind, Campaign, CampaignScope, CampaignStatus, EmailTargetType, Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
 import { emailText } from '../ai/risk';
+import { formatEventDate, formatEventTime } from '../events/event-dates';
+import {
+  commsDraftRequest,
+  commsDraftSource,
+  groundCommsDraft,
+  parseCommsDraft,
+  type CommsDraftInput,
+  type CommsDraftResult,
+} from './campaign-draft';
 import { attendingUserIds } from '../common/attendance';
 import { MARKETABLE_USER, promotionsOptedInUserIds } from '../common/marketing-opt-out';
 import { OnEvent } from '../common/on-event';
@@ -20,6 +30,7 @@ import {
   CampaignCountDto,
   CampaignMessageDto,
   CreateCampaignDto,
+  DraftCampaignDto,
   TestCampaignDto,
 } from './dto/campaign.dto';
 
@@ -76,7 +87,69 @@ export class CampaignsService {
     private readonly whatsapp: WhatsAppService,
     @Optional() private readonly platformConfig?: PlatformConfigService,
     @Optional() private readonly broadcastCheck?: BroadcastCheck,
+    @Optional() private readonly ai?: AiService,
   ) {}
+
+  /**
+   * Write with AI: Haiku drafts the chosen channels from the sender's line and
+   * the event's own facts. Returns words for the composer; sends nothing.
+   * A channel that quotes something it wasn't given is left out (AI10).
+   */
+  async draft(owner: CampaignOwner, userId: string, dto: DraftCampaignDto): Promise<CommsDraftResult> {
+    if (owner.scope !== 'PLATFORM') assertNoWhatsapp(dto);
+    if (!this.ai) return { ok: false, reason: 'disabled' };
+    const eventId = owner.scope === 'EVENT' ? owner.eventId : (dto.eventId ?? null);
+    const [event, space] = await Promise.all([
+      eventId
+        ? this.prisma.event.findFirst({
+            where: { id: eventId, ...(owner.scope === 'PLATFORM' ? {} : { spaceId: owner.spaceId }) },
+            select: {
+              title: true,
+              slug: true,
+              type: true,
+              timezone: true,
+              startDateTime: true,
+              endDateTime: true,
+              venueName: true,
+              city: true,
+              ticketTypes: { select: { name: true, price: true } },
+            },
+          })
+        : null,
+      owner.scope === 'PLATFORM' ? null : this.prisma.space.findUnique({ where: { id: owner.spaceId }, select: { name: true } }),
+    ]);
+    if (eventId && !event) throw new ForbiddenException('That event is not in this space.');
+
+    const input: CommsDraftInput = {
+      line: dto.line,
+      from: space?.name ?? 'Unifesto',
+      push: dto.channels.includes('push') || dto.channels.includes('inapp'),
+      email: dto.channels.includes('email'),
+      whatsapp: owner.scope === 'PLATFORM' && dto.channels.includes('whatsapp') ? (dto.whatsapp ?? null) : null,
+      event: event && {
+        title: event.title,
+        when: `${formatEventDate(event.startDateTime, event.timezone)}, ${formatEventTime(event.startDateTime, event.endDateTime, event.timezone)}`,
+        venue: event.type === 'ONLINE' ? 'Online' : [event.venueName, event.city].filter(Boolean).join(', ') || null,
+        tickets: event.ticketTypes.length
+          ? event.ticketTypes.map((t) => `${t.name} ${Number(t.price) > 0 ? `₹${Number(t.price)}` : 'free'}`).join(', ')
+          : null,
+        link: `https://unifesto.app/event/${event.slug}`,
+      },
+      today: new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+    };
+    const res = await this.ai.run('comms_draft', {
+      ...commsDraftRequest(input),
+      userId,
+      subject: `campaign-draft:${owner.scope === 'PLATFORM' ? 'platform' : owner.spaceId}`,
+      ...(owner.scope === 'PLATFORM' ? {} : { spaceId: owner.spaceId, billable: true }),
+    });
+    if (!res.ok) return { ok: false, reason: res.reason };
+    const parsed = parseCommsDraft(res.json, input);
+    if (!parsed) return { ok: false, reason: 'empty' };
+    const { draft, dropped } = groundCommsDraft(parsed, commsDraftSource(input));
+    if (!draft.push && !draft.email && !draft.whatsappParams) return { ok: false, reason: 'held', why: dropped[0] };
+    return { ok: true, draft, ...(dropped.length ? { dropped } : {}) };
+  }
 
   /** Save it, then send now (awaited, so the reply says what went) or leave it SCHEDULED. */
   async create(owner: CampaignOwner, createdById: string, dto: CreateCampaignDto): Promise<Campaign> {

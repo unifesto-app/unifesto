@@ -6,6 +6,8 @@ import {
   cancelCampaign,
   countCampaignReach,
   createCampaign,
+  draftCampaign,
+  draftProblem,
   listCampaigns,
   sendCampaignTest,
   type Campaign,
@@ -280,6 +282,11 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Write with AI: the line it drafted from (kept as the campaign's brief) and what it said.
+  const [line, setLine] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [aiNote, setAiNote] = useState<string[]>([]);
+
   const template = templates?.find((t) => t.name === templateName);
 
   useEffect(() => {
@@ -314,6 +321,40 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     setParams([]);
     setScheduledAt("");
     setError("");
+    setLine("");
+    setAiNote([]);
+  };
+
+  /** Fill the chosen channels from the line. Nothing is sent: the admin reads and edits first. */
+  const writeWithAi = async () => {
+    setDrafting(true);
+    setError("");
+    setAiNote([]);
+    const wantsWhatsapp = useWhatsapp && !!template;
+    const { data, error } = await draftCampaign({
+      line: line.trim(),
+      channels: [...channels.filter((c) => c !== "whatsapp"), ...(wantsWhatsapp ? (["whatsapp"] as const) : [])],
+      ...((audienceType === "event" || audienceType === "waitlist") && target ? { eventId: target.id } : {}),
+      ...(wantsWhatsapp ? { whatsapp: { bodyText: template.bodyText ?? "", paramCount: template.bodyParamCount } } : {}),
+    });
+    setDrafting(false);
+    if (error || !data) return setError(error?.message ?? "The draft didn't come through. Try again.");
+    if (!data.ok) return setError(draftProblem(data));
+    const { push, email, whatsappParams } = data.draft;
+    if (push) {
+      setTitle(push.title);
+      setBody(push.body);
+    }
+    if (email) {
+      setSubject(email.subject);
+      setHtml(email.html);
+      setEmailPreview(null);
+    }
+    if (whatsappParams) setParams(whatsappParams);
+    setAiNote([
+      "Drafted by AI from your line. Read every word before you send.",
+      ...(data.dropped ?? []).map((d) => `Left out ${d}`),
+    ]);
   };
 
   const message = (): CampaignMessage => ({
@@ -397,6 +438,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
       ...msg,
       audience: audience(),
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      brief: aiNote.length ? line.trim() : undefined,
     });
     setSaving(false);
     if (error || !data) {
@@ -559,6 +601,39 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
             </p>
           </section>
 
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium">Write with AI</h3>
+            <div className="flex gap-2">
+              <Input
+                value={line}
+                onChange={(e) => setLine(e.target.value)}
+                placeholder="One line, e.g. Orbit Summit registrations close this Sunday"
+                aria-label="What to tell people"
+                maxLength={500}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={writeWithAi}
+                disabled={drafting || line.trim().length < 3 || channels.length === 0}
+              >
+                {drafting ? "Drafting…" : "Draft it"}
+              </Button>
+            </div>
+            {aiNote.length > 0 ? (
+              <ul className="space-y-0.5 text-xs text-muted-foreground">
+                {aiNote.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Pick the channels first. It fills each one from your line and the event, and adds no dates, prices or links you didn&apos;t
+                give. You still read and send it.
+              </p>
+            )}
+          </section>
+
           {deliverAs !== "off" && (
             <section className="space-y-2">
               <h3 className="text-sm font-medium">{deliverAs === "push" ? "Push and in-app" : "In-app"}</h3>
@@ -584,7 +659,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
                   setHtml(e.target.value);
                   setEmailPreview(null);
                 }}
-                placeholder="Body (HTML). {name} becomes each person's name."
+                placeholder="Body (HTML). {{firstName}} becomes each person's first name."
                 rows={6}
                 aria-label="Email body"
                 className="font-mono text-xs"

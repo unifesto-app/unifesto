@@ -33,6 +33,42 @@ export interface CreateCampaign extends CampaignMessage {
   audience: CampaignAudience;
   /** ISO time; leave out to send now. */
   scheduledAt?: string;
+  /** The line Write with AI drafted it from. */
+  brief?: string;
+}
+
+/** What Write with AI hands back: words for the chosen channels, never a send. */
+export type CampaignDraftResult =
+  | {
+      ok: true;
+      draft: { push?: { title: string; body: string }; email?: { subject: string; html: string } };
+      /** Channels left out because they quoted a fact the line and event never gave. */
+      dropped?: string[];
+    }
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" | "held"; why?: string };
+
+/** Haiku drafts the chosen channels from one line and the event's own facts. Uses one AI request. */
+export function draftCampaign(
+  spaceId: string,
+  payload: { line: string; channels: CampaignChannel[]; eventId?: string }
+): Result<CampaignDraftResult> {
+  return apiCall<CampaignDraftResult>(backendClient.post(`/spaces/${spaceId}/campaigns/draft`, payload));
+}
+
+/** What to tell the organiser when a draft didn't come back. */
+export function draftProblem(res: Extract<CampaignDraftResult, { ok: false }>): string {
+  switch (res.reason) {
+    case "disabled":
+      return "Write with AI is off right now.";
+    case "capped":
+      return "That's today's drafts used up. Try again tomorrow.";
+    case "held":
+      return `The draft quoted something you didn't give (${res.why ?? "a detail"}). Add it to your line, or write it yourself.`;
+    case "empty":
+      return "There wasn't enough in your line to draft from. Say what's happening.";
+    default:
+      return "The draft didn't come through. Try again.";
+  }
 }
 
 /** message_deliveries rows by status per channel; in-app only is a count. */
