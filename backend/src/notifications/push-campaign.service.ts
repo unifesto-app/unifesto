@@ -72,7 +72,15 @@ export class PushCampaignService {
 
   // ── Admin broadcasts ────────────────────────────────────────────────────────
 
-  async createBroadcast(adminId: string, dto: CreatePushBroadcastDto): Promise<PushCampaign> {
+  /**
+   * A platform push. A C17 campaign also sends through here, with an
+   * organiser category (organiserAnnouncements, spaceUpdates) and the event
+   * it's about; its AI19 check ran on the whole message first.
+   */
+  async createBroadcast(
+    adminId: string,
+    dto: Omit<CreatePushBroadcastDto, 'category'> & { category?: NotificationCategory; eventId?: string | null },
+  ): Promise<PushCampaign> {
     const data = {
       ...(dto.data ?? {}),
       ...(dto.deepLink ? { deepLink: dto.deepLink } : {}),
@@ -83,6 +91,7 @@ export class PushCampaignService {
     const campaign = await this.prisma.pushCampaign.create({
       data: {
         scope: PushScope.PLATFORM,
+        eventId: dto.eventId ?? null,
         createdById: adminId,
         title: dto.title,
         body: dto.body,

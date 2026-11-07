@@ -2829,6 +2829,10 @@ model EmailCampaign {
   // Template this campaign was composed from (advisory; body is snapshotted).
   templateId String? @map("template_id") @db.Uuid
 
+  // The C17 campaign that made it (set by the server only). That campaign's
+  // AI19 check already read this email, so it isn't checked again.
+  campaignId String? @map("campaign_id") @db.Uuid
+
   // Admin who sent
   sentBy     String @map("sent_by") @db.Uuid
   sentByUser User   @relation("EmailCampaignsSent", fields: [sentBy], references: [id])
@@ -5785,6 +5789,7 @@ enum BroadcastKind {
   EMAIL
   PUSH
   HACKATHON
+  CAMPAIGN // C17: an organiser campaign, checked once across its channels
 
   @@map("broadcast_kind")
 }

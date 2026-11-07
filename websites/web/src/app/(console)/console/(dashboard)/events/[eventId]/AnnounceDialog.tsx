@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { announceToAttendees } from "@/console/lib/api/events-api";
+import { announceToEvent } from "@/console/lib/api/campaigns-api";
 import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { Label } from "@/console/components/ui/label";
@@ -16,7 +16,16 @@ import {
   DialogTitle,
 } from "@/console/components/ui/dialog";
 
-/** Push notification to every attendee of the event. */
+/** The message as email HTML: escaped, one paragraph per blank-line block. */
+function asEmailHtml(text: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+/** An event campaign (C17): a push with its in-app copy to every attendee, and an email if asked. */
 export function AnnounceDialog({
   eventId,
   open,
@@ -28,17 +37,19 @@ export function AnnounceDialog({
 }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [alsoEmail, setAlsoEmail] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<"sent" | "held" | null>(null);
 
   const close = (next: boolean) => {
     if (sending) return;
     if (!next) {
       setTitle("");
       setBody("");
+      setAlsoEmail(false);
       setError("");
-      setSent(false);
+      setSent(null);
     }
     onOpenChange(next);
   };
@@ -47,13 +58,16 @@ export function AnnounceDialog({
     if (!window.confirm("Send this to every attendee now? It can't be recalled.")) return;
     setSending(true);
     setError("");
-    const { error } = await announceToAttendees(eventId, {
-      title: title.trim(),
-      body: body.trim(),
+    const { data, error } = await announceToEvent(eventId, {
+      channels: alsoEmail ? ["push", "email"] : ["push"],
+      audience: { type: "event", eventId },
+      push: { title: title.trim(), body: body.trim(), deepLink: `unifesto://event/${eventId}` },
+      ...(alsoEmail ? { email: { subject: title.trim(), html: asEmailHtml(body.trim()) } } : {}),
     });
     setSending(false);
-    if (error) setError(error.message);
-    else setSent(true);
+    if (error || !data) setError(error?.message ?? "It didn't send.");
+    else if (data.status === "FAILED") setError(data.error ?? "It didn't send.");
+    else setSent(data.status === "HELD" ? "held" : "sent");
   };
 
   return (
@@ -62,12 +76,16 @@ export function AnnounceDialog({
         <DialogHeader>
           <DialogTitle>Announce to attendees</DialogTitle>
           <DialogDescription>
-            Sends a push notification to everyone registered. Up to 3 per event
-            per day.
+            A notification to everyone registered, and in their app inbox. Up
+            to 3 per event per day.
           </DialogDescription>
         </DialogHeader>
 
-        {sent ? (
+        {sent === "held" ? (
+          <p className="text-sm text-foreground">
+            Unifesto is checking it before it goes out. Nothing has been sent yet.
+          </p>
+        ) : sent ? (
           <p className="text-sm text-foreground">
             Sent. Attendees will get it in the next minute or so.
           </p>
@@ -95,6 +113,15 @@ export function AnnounceDialog({
                 placeholder="Bring your ticket QR. Entry is through Gate 2."
               />
             </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={alsoEmail}
+                onChange={(e) => setAlsoEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              Also email it
+            </label>
           </div>
         )}
 

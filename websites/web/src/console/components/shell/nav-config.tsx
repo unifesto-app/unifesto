@@ -13,6 +13,7 @@ import {
   CreditCard,
   ShieldCheck,
   EnvelopeSimple,
+  PaperPlaneTilt,
   Handshake,
   Funnel,
   ChartLineUp,
@@ -79,7 +80,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Community",
     items: [
       { href: "/members", label: "Members", icon: Users, requires: "space:manage-members", keywords: "team people crew" },
-      { href: "/email", label: "Email", icon: EnvelopeSimple, requires: "space:manage-email", keywords: "campaigns templates marketing" },
+      { href: "/campaigns", label: "Campaigns", icon: PaperPlaneTilt, requires: "space:manage-email", keywords: "announce send notification push email members attendees" },
+      { href: "/email", label: "Email", icon: EnvelopeSimple, requires: "space:manage-email", keywords: "email history opens clicks templates" },
       { href: "/sponsors", label: "Sponsors", icon: Handshake, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "sponsors partners tiers" },
       { href: "/leads", label: "Leads", icon: Funnel, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "leads funnel interest inquiry notify crm" },
       { href: "/tracking", label: "Tracking", icon: ChartLineUp, keywords: "traffic utm sources analytics views" },

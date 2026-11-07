@@ -424,16 +424,6 @@ export async function publishEvent(
   return apiCall<Event>(backendClient.patch(`/events/${id}/publish`));
 }
 
-/**
- * Push an announcement to everyone registered for the event.
- * Backed by `POST /events/:eventId/announcements` (3 per event per 24h).
- */
-export async function announceToAttendees(
-  eventId: string,
-  input: { title: string; body: string }
-): Promise<{ data: unknown; error: ApiError | null }> {
-  return apiCall(backendClient.post(`/events/${eventId}/announcements`, input));
-}
 
 /**
  * End a live event now (Q26): completes it and closes check-in, instead of

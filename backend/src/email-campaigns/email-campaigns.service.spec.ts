@@ -286,6 +286,16 @@ describe('EmailCampaignsService', () => {
       expect(prisma.emailCampaign.updateMany).toHaveBeenLastCalledWith({ where: { id: 'c1', status: 'HELD' }, data: { status: 'CANCELLED' } });
     });
 
+    it("a campaign's email isn't checked again: the campaign's AI19 check read it (C17)", async () => {
+      const prisma = prismaFor([]);
+      prisma.emailCampaign.findUnique.mockResolvedValue({ ...campaignRow, spaceId: 's1', sentBy: 'org', campaignId: 'c9' });
+      const check = { clear: jest.fn().mockResolvedValue(false) };
+      const svc = new EmailCampaignsService(prisma as any, email as any, config as any, queue as any, check as any);
+      await runAll(svc.runCampaign('c1', { lastAttempt: true }));
+      expect(check.clear).not.toHaveBeenCalled();
+      expect(email.sendCustomCampaignEmail).toHaveBeenCalled();
+    });
+
     it('while sends are paused (C17), a run stops before working out recipients and stays SENDING', async () => {
       const prisma = prismaFor([]);
       const paused = { isCommsPaused: async () => true, assertCommsOpen: async () => {} };

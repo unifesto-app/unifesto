@@ -142,14 +142,19 @@ export function riskScreenRequest(l: RiskListing): Request {
 }
 
 export interface BroadcastMessage {
-  kind: 'EMAIL' | 'PUSH' | 'HACKATHON';
+  kind: 'EMAIL' | 'PUSH' | 'HACKATHON' | 'CAMPAIGN';
   space: string;
   event?: string | null;
   /** Subject or title, then the body as text. */
   text: string;
 }
 
-const KIND_LABEL = { EMAIL: 'email campaign', PUSH: 'push announcement', HACKATHON: 'hackathon announcement' };
+const KIND_LABEL = {
+  EMAIL: 'email campaign',
+  PUSH: 'push announcement',
+  HACKATHON: 'hackathon announcement',
+  CAMPAIGN: 'campaign (push, in-app and email)',
+};
 
 export function broadcastCheckRequest(m: BroadcastMessage): Request {
   const head = [`kind: ${KIND_LABEL[m.kind]}`, `space: ${cut(m.space, 255)}`, ...(m.event ? [`event: ${cut(m.event, 255)}`] : [])];

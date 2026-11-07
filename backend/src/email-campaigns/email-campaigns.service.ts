@@ -126,8 +126,13 @@ export class EmailCampaignsService {
     scope: CampaignScope,
     actorId: string,
     dto: CreateCampaignDto,
+    /**
+     * The C17 campaign handing email its resolved list. It already checked the
+     * audience against the scope and ran AI19 on the whole message. Server only.
+     */
+    fromCampaign?: string,
   ): Promise<{ success: true; campaignId: string }> {
-    const targetId = await this.resolveTarget(scope, dto);
+    const targetId = fromCampaign ? null : await this.resolveTarget(scope, dto);
     if (!dto.scheduledAt) await this.platformConfig?.assertCommsOpen();
 
     const campaign = await this.prisma.emailCampaign.create({
@@ -138,6 +143,7 @@ export class EmailCampaignsService {
         abSplitPct: dto.subjectB ? (dto.abSplitPct ?? 50) : null,
         body: sanitizeEmailHtml(dto.body),
         templateId: dto.templateId ?? null,
+        campaignId: fromCampaign ?? null,
         sentBy: actorId,
         targetType: dto.targetType,
         targetId,
@@ -233,8 +239,10 @@ export class EmailCampaignsService {
   async countAudience(
     scope: CampaignScope,
     dto: CampaignAudienceDto,
+    /** A C17 campaign's resolved list: it checked the audience against the scope itself. */
+    fromCampaign = false,
   ): Promise<{ recipientCount: number }> {
-    const targetId = await this.resolveTarget(scope, dto);
+    const targetId = fromCampaign ? null : await this.resolveTarget(scope, dto);
     const resolved = await this.getRecipients({
       targetType: dto.targetType,
       targetId,
@@ -518,7 +526,8 @@ export class EmailCampaignsService {
    * one waits as HELD until staff release or block it (onBroadcastDecided).
    */
   private async cleared(campaign: EmailCampaign): Promise<boolean> {
-    if (!campaign.spaceId || !this.broadcastCheck) return true;
+    // A campaign's email: its AI19 check read the whole message before this was made.
+    if (!campaign.spaceId || !this.broadcastCheck || campaign.campaignId) return true;
     if (await this.prisma.emailCampaignLog.count({ where: { campaignId: campaign.id } })) return true;
     const ok = await this.broadcastCheck.clear({
       kind: BroadcastKind.EMAIL,
