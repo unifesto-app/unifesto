@@ -72,3 +72,8 @@ export function outlookCalendarUrl(event: CalendarEvent): string {
 export function icsDownloadUrl(slug: string): string {
   return `${API_URL}/events/${slug}/calendar.ics`;
 }
+
+/** The `.ics` route can't tell who's asking, so it 404s for space-only events and private spaces. */
+export function icsAvailable(e: { visibility?: string; space?: { visibility?: string } | null }): boolean {
+  return e.visibility !== 'SPACE_ONLY' && e.space?.visibility !== 'PRIVATE';
+}

@@ -39,4 +39,13 @@ describe('SpacesService.getSpaceById membership load', () => {
     expect(rolesWhere(prisma).OR).toContainEqual({ userId: 'u1' });
     expect(rolesWhere(prisma).OR).toHaveLength(2);
   });
+
+  it('leaves link-only, space-only and draft events out of the team and the count', async () => {
+    const { svc, prisma } = build();
+    await svc.getSpaceById('s1');
+    const shown = prisma.space.findUnique.mock.calls[0][0].include._count.select.events.where;
+    expect(shown).toMatchObject({ visibility: 'PUBLIC', deletedAt: null });
+    expect(shown.status.in).not.toContain('DRAFT');
+    expect(prisma.userRole.findMany.mock.calls[0][0].where.event).toMatchObject({ spaceId: 's1', ...shown });
+  });
 });

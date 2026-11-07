@@ -4,7 +4,8 @@ import { EventsService } from '../events/events.service';
 import { buildRegistrationsService } from '../registrations/registrations.testing';
 import { RegistrationImportService } from '../registrations/registration-import.service';
 import { FreeAttendeeAddService } from '../free-attendee-add/free-attendee-add.service';
-import { canViewSpace, isSpaceLive, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
+import { canViewSpace, isSpaceLive, LIVE_SPACE_WHERE, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
+import { listableEventsWhere } from '../events/event-access';
 import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
@@ -139,5 +140,45 @@ describe('curator attendee adds in a suspended space (J16)', () => {
     const svc = new FreeAttendeeAddService(prisma);
     await expect(svc.createRequest('curator', { eventId: 'ev-1' } as any)).rejects.toThrow(UNAVAILABLE);
     expect(prisma.freeAttendeeAddRequest.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('lists only show what the viewer could open (J16)', () => {
+  it("a member's own spaces list only while live; paused or archived ones stay in their switcher", () => {
+    const w = visibleSpacesWhere('u1') as any;
+    expect(w.OR[1]).toEqual({ ...LIVE_SPACE_WHERE, userRoles: { some: { userId: 'u1' } } });
+    expect(w.OR[2]).toMatchObject(LIVE_SPACE_WHERE);
+  });
+
+  it('a co-hosted or attached event lists only when its own space is one the viewer may see', () => {
+    const host = (w: any) => w.AND[2];
+    expect(host(listableEventsWhere([]))).toEqual({ OR: [{ space: PUBLIC_LIVE_SPACE_WHERE }, { spaceId: { in: [] } }] });
+    expect(host(listableEventsWhere(['sp-9'])).OR[1]).toEqual({ spaceId: { in: ['sp-9'] } });
+    expect(host(listableEventsWhere('ALL'))).toEqual({});
+  });
+});
+
+describe('calendar download (.ics)', () => {
+  const ics = (event: Record<string, unknown>, space = { visibility: 'PUBLIC', status: SpaceStatus.ACTIVE }) =>
+    events(space, {
+      title: 'Fest',
+      startDateTime: new Date('2026-12-01T10:00:00Z'),
+      endDateTime: new Date('2026-12-01T12:00:00Z'),
+      timezone: 'Asia/Kolkata',
+      type: 'IN_PERSON',
+      space: { ...space, name: 'Club', subscription: null },
+      ...event,
+    }).svc.getEventIcs('fest');
+
+  it('serves link-only and running events, since the download is reached by the link', async () => {
+    await expect(ics({ visibility: 'PRIVATE' })).resolves.toContain('BEGIN:VCALENDAR');
+    await expect(ics({ status: 'ONGOING' })).resolves.toContain('BEGIN:VCALENDAR');
+  });
+
+  it('404s for space-only, hidden, draft and private-space events', async () => {
+    await expect(ics({ visibility: 'SPACE_ONLY' })).rejects.toThrow(NotFoundException);
+    await expect(ics({ deletedAt: new Date() })).rejects.toThrow(NotFoundException);
+    await expect(ics({ status: 'DRAFT' })).rejects.toThrow(NotFoundException);
+    await expect(ics({}, { visibility: 'PRIVATE', status: SpaceStatus.ACTIVE })).rejects.toThrow(NotFoundException);
   });
 });

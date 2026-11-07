@@ -16,6 +16,29 @@ describe('discovery (K1)', () => {
     expect(q.orderBy[1]).toEqual({ events: { _count: 'desc' } });
   });
 
+  it('gives platform admins the same filtered list (Apex has its own)', async () => {
+    const prisma: any = {
+      space: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
+    };
+    const authz = { can: jest.fn(async () => true) };
+    const svc = new SpacesService(prisma as never, {} as never, {} as never, {} as never, {} as never, authz as never);
+    await svc.getAllSpaces({ viewerId: 'admin' });
+    expect(prisma.space.findMany.mock.calls[0][0].where.AND[0].OR).toHaveLength(3);
+  });
+
+  it('counts a category tile by the same rule as the feed it opens', async () => {
+    const prisma: any = {
+      eventCategory: { findMany: jest.fn(async () => [{ id: 'c1', name: 'Tech' }]) },
+      $queryRaw: jest.fn(async () => [{ name: 'Tech', count: BigInt(2) }]),
+    };
+    const [tech] = await new CategoriesService(prisma, {} as never).getAll();
+    expect(tech.event_count).toBe(2);
+    const sql = prisma.$queryRaw.mock.calls[0][0].join('?');
+    expect(sql).toContain(`e."visibility" = 'PUBLIC'`);
+    expect(sql).toContain(`e."parent_event_id" IS NULL`);
+    expect(sql).toContain(`s."visibility" = 'PUBLIC'`);
+  });
+
   it('carries a category rename over to its events', async () => {
     const prisma: any = {
       eventCategory: {

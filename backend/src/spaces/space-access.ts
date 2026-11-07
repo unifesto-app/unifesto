@@ -104,9 +104,11 @@ export async function assertCanViewSpace(
 }
 
 /**
- * Prisma filter for listings: public live spaces (narrowed by `publicWhere`,
- * e.g. Q38's not-Dormant for Explore), plus any the viewer belongs to.
- * Platform admins should skip this filter entirely.
+ * Prisma filter for listings (Explore, search, a campus's sub-spaces): public
+ * live spaces (narrowed by `publicWhere`, e.g. Q38's not-Dormant for Explore),
+ * plus the viewer's own live ones, PRIVATE included. A space of theirs that is
+ * pending, paused or archived stays in their switcher, not in listings.
+ * Applies to platform admins too: Apex has its own all-spaces list.
  */
 export function visibleSpacesWhere(
   viewerId?: string,
@@ -116,8 +118,8 @@ export function visibleSpacesWhere(
   return {
     OR: [
       publicWhere,
-      { userRoles: { some: { userId: viewerId } } },
-      { events: { some: { userRoles: { some: { userId: viewerId } } } } },
+      { ...LIVE_SPACE_WHERE, userRoles: { some: { userId: viewerId } } },
+      { ...LIVE_SPACE_WHERE, events: { some: { userRoles: { some: { userId: viewerId } } } } },
     ],
   };
 }
