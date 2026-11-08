@@ -39,21 +39,47 @@ export function withUtm(url: string, utm: Utm): string {
   return hash ? `${joined}#${hash}` : joined;
 }
 
-/** Read utm_* from any link form: https://…/event/x?utm_source=…, unifesto://event/x?…, /event/x?… */
-function parseUtm(pathOrUrl: string): Utm | null {
+/** One query param from any link form: https://…/event/x?k=…, unifesto://event/x?…, /event/x?… */
+function queryParam(pathOrUrl: string, k: string): string | undefined {
   const q = pathOrUrl.split('#')[0].split('?')[1];
-  if (!q) return null;
-  const get = (k: string) => {
-    const m = new RegExp(`(?:^|&)${k}=([^&]*)`).exec(q);
-    if (!m) return undefined;
-    try {
-      return decodeURIComponent(m[1].replace(/\+/g, ' ')).trim().slice(0, 100) || undefined;
-    } catch {
-      return undefined;
-    }
-  };
+  const m = q ? new RegExp(`(?:^|&)${k}=([^&]*)`).exec(q) : null;
+  if (!m) return undefined;
+  try {
+    return decodeURIComponent(m[1].replace(/\+/g, ' ')).trim().slice(0, 100) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseUtm(pathOrUrl: string): Utm | null {
+  const get = (k: string) => queryParam(pathOrUrl, k);
   const source = get('utm_source');
   return source ? { source, medium: get('utm_medium'), campaign: get('utm_campaign') } : null;
+}
+
+/**
+ * C19: the push, in-app notice or email link last opened (its `nid`, as the
+ * backend wrote it). Unlike utm touches it isn't tied to one event: whatever I
+ * book within 24 h is credited to it, the last one opened winning.
+ */
+const NID_KEY = 'utm.nid';
+const NID_WINDOW_MS = 24 * 60 * 60 * 1000;
+const NID_PATTERN = /^[pie]:[\w.-]{1,64}$/;
+
+export async function rememberNid(nid: unknown): Promise<void> {
+  if (typeof nid !== 'string' || !NID_PATTERN.test(nid)) return;
+  try {
+    await AsyncStorage.setItem(NID_KEY, JSON.stringify({ nid, at: Date.now() }));
+  } catch {}
+}
+
+async function recentNid(): Promise<string | undefined> {
+  try {
+    const t = JSON.parse((await AsyncStorage.getItem(NID_KEY)) ?? 'null');
+    return typeof t?.nid === 'string' && Date.now() - t.at <= NID_WINDOW_MS ? t.nid : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** `event/<slug>` (also legacy `events/<slug>`) or `space/<slug>`, from any link form. */
@@ -87,6 +113,7 @@ const sameTarget = (a: UtmTouch['target'], b: UtmTouch['target']) =>
  */
 export async function captureUtmFromLink(pathOrUrl: string | null | undefined): Promise<void> {
   if (!pathOrUrl) return;
+  await rememberNid(queryParam(pathOrUrl, 'nid'));
   const utm = parseUtm(pathOrUrl);
   const target = parseTarget(pathOrUrl);
   if (!utm || !target) return;
@@ -138,13 +165,16 @@ export async function recentTouch(
   return hit ? { source: hit.source, medium: hit.medium, campaign: hit.campaign } : null;
 }
 
-/** The utm fields to send with a registration for this event (empty when none apply). */
+/** The utm fields and notification to send with a registration for this event (empty when none apply). */
 export async function attributionFor(event: {
   id?: string;
   slug?: string | null;
   spaceSlug?: string | null;
-}): Promise<{ utmSource?: string; utmMedium?: string; utmCampaign?: string }> {
-  const utm = pickAttribution(await readTouches(), event, Date.now());
-  if (!utm) return {};
-  return { utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign };
+}): Promise<{ utmSource?: string; utmMedium?: string; utmCampaign?: string; sourceNid?: string }> {
+  const [touches, sourceNid] = await Promise.all([readTouches(), recentNid()]);
+  const utm = pickAttribution(touches, event, Date.now());
+  return {
+    ...(utm ? { utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign } : {}),
+    ...(sourceNid ? { sourceNid } : {}),
+  };
 }

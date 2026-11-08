@@ -13,13 +13,14 @@ import {
   type CommsDraftInput,
   type CommsDraftResult,
 } from './campaign-draft';
-import { attendingUserIds, notCheckedInUserIds } from '../common/attendance';
+import { attendingUserIds, COUNTS_AS_ATTENDING, notCheckedInUserIds } from '../common/attendance';
 import { MARKETABLE_USER, promotionsOptedInUserIds } from '../common/marketing-opt-out';
 import { OnEvent } from '../common/on-event';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { EmailCampaignsService } from '../email-campaigns/email-campaigns.service';
 import { NotificationCategory } from '../notifications/notifications.constants';
 import { NotificationsService } from '../notifications/notifications.service';
+import { nid } from '../notifications/nid';
 import { PushCampaignService } from '../notifications/push-campaign.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
@@ -49,6 +50,8 @@ export interface ChannelCounts {
   email?: Record<string, number>;
   whatsapp?: Record<string, number>;
   inapp?: number;
+  /** C19: confirmed tickets booked within 24 h of a tap or click, per channel. */
+  tickets?: Partial<Record<'push' | 'inapp' | 'email', number>>;
 }
 
 /** What an organiser campaign may do, once checked against its owner. */
@@ -306,6 +309,8 @@ export class CampaignsService {
             ...push,
             data: { type: 'campaign', ...(campaign.eventId ? { eventId: campaign.eventId } : {}) },
             inboxOnly: true,
+            // No channel campaign behind it, so a tap is credited to this row (C19).
+            campaignId: campaign.id,
           });
           linked.inAppCount = summary.skipped;
         });
@@ -511,29 +516,55 @@ export class CampaignsService {
     }
   }
 
-  /** Each channel campaign's delivery rows by status, in one query. */
+  /** Each channel campaign's delivery rows by status, and the tickets each channel led to (C19). */
   private async countsFor(rows: Campaign[]): Promise<Map<string, ChannelCounts>> {
     const owner = new Map<string, { campaignId: string; channel: 'push' | 'email' | 'whatsapp' }>();
+    const byNid = new Map<string, { campaignId: string; channel: 'push' | 'inapp' | 'email' }>();
     for (const r of rows) {
-      if (r.pushCampaignId) owner.set(r.pushCampaignId, { campaignId: r.id, channel: 'push' });
-      if (r.emailCampaignId) owner.set(r.emailCampaignId, { campaignId: r.id, channel: 'email' });
+      if (r.pushCampaignId) {
+        owner.set(r.pushCampaignId, { campaignId: r.id, channel: 'push' });
+        byNid.set(nid('p', r.pushCampaignId), { campaignId: r.id, channel: 'push' });
+        byNid.set(nid('i', r.pushCampaignId), { campaignId: r.id, channel: 'inapp' });
+      } else if (r.channels.includes('inapp')) {
+        byNid.set(nid('i', r.id), { campaignId: r.id, channel: 'inapp' });
+      }
+      if (r.emailCampaignId) {
+        owner.set(r.emailCampaignId, { campaignId: r.id, channel: 'email' });
+        byNid.set(nid('e', r.emailCampaignId), { campaignId: r.id, channel: 'email' });
+      }
       if (r.whatsappBroadcastId) owner.set(r.whatsappBroadcastId, { campaignId: r.id, channel: 'whatsapp' });
     }
     const out = new Map<string, ChannelCounts>(
       rows.map((r) => [r.id, r.channels.includes('inapp') && !r.channels.includes('push') ? { inapp: r.inAppCount } : {}]),
     );
-    if (owner.size === 0) return out;
-    const groups = await this.prisma.messageDelivery.groupBy({
-      by: ['campaignId', 'status'],
-      where: { campaignId: { in: [...owner.keys()] } },
-      _count: { _all: true },
-    });
+    const [groups, booked] = await Promise.all([
+      owner.size
+        ? this.prisma.messageDelivery.groupBy({
+            by: ['campaignId', 'status'],
+            where: { campaignId: { in: [...owner.keys()] } },
+            _count: { _all: true },
+          })
+        : [],
+      byNid.size
+        ? this.prisma.eventRegistration.groupBy({
+            by: ['sourceNid'],
+            where: { sourceNid: { in: [...byNid.keys()] }, ...COUNTS_AS_ATTENDING },
+            _count: { _all: true },
+          })
+        : [],
+    ]);
     for (const g of groups) {
       const o = g.campaignId ? owner.get(g.campaignId) : undefined;
       if (!o) continue;
       const counts = out.get(o.campaignId)!;
       const byStatus = (counts[o.channel] ??= {});
       byStatus[g.status] = (byStatus[g.status] ?? 0) + g._count._all;
+    }
+    for (const b of booked) {
+      const o = b.sourceNid ? byNid.get(b.sourceNid) : undefined;
+      if (!o) continue;
+      const tickets = (out.get(o.campaignId)!.tickets ??= {});
+      tickets[o.channel] = (tickets[o.channel] ?? 0) + b._count._all;
     }
     return out;
   }

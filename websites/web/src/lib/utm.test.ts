@@ -33,6 +33,18 @@ test("storedUtm is empty with nothing stored or junk stored", () => {
   assert.deepEqual(storedUtm(), {});
 });
 
+test("an email click's nid rides with the order and into the app, apart from the utm tags (C19)", () => {
+  visit("?utm_source=insta");
+  captureUtm();
+  visit("?nid=e%3Ac1");
+  captureUtm();
+  assert.deepEqual(storedUtm(), { utmSource: "insta", utmMedium: undefined, utmCampaign: undefined, sourceNid: "e:c1" });
+  assert.equal(withStoredUtm("unifesto://event/x"), "unifesto://event/x?utm_source=insta&nid=e%3Ac1");
+  visit("?nid=%3Cscript%3E");
+  captureUtm();
+  assert.equal(storedUtm().sourceNid, "e:c1");
+});
+
 test("withStoredUtm appends with ? or &, and leaves untagged links alone", () => {
   assert.equal(withStoredUtm("unifesto://event/x"), "unifesto://event/x");
   visit("?utm_source=wa&utm_campaign=fest");

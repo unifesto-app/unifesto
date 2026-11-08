@@ -79,6 +79,8 @@ export interface CampaignCounts {
   push?: Record<string, number>;
   email?: Record<string, number>;
   inapp?: number;
+  /** Confirmed tickets booked within 24 h of a tap or click, per channel. */
+  tickets?: Partial<Record<CampaignChannel, number>>;
 }
 
 export interface Campaign {

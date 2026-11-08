@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { MessageChannel, MessageDeliveryStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_PAGE = 30;
@@ -75,4 +75,33 @@ export class UserNotificationsService {
     });
     return { updated: res.count };
   }
+
+  /**
+   * C19: the app opened a push, so its delivery row counts as opened (in-app
+   * copies have readAt, emails their pixel). The ref is a campaign id or, for
+   * automatic sends, the kind; the latest matching push from the last week wins.
+   */
+  async opened(userId: string, nid: string): Promise<{ opened: boolean }> {
+    if (!nid.startsWith('p:')) return { opened: false };
+    const ref = nid.slice(2);
+    const row = await this.prisma.messageDelivery.findFirst({
+      where: {
+        userId,
+        channel: MessageChannel.PUSH,
+        status: { in: [MessageDeliveryStatus.SENT, MessageDeliveryStatus.DELIVERED] },
+        createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
+        ...(UUID.test(ref) ? { campaignId: ref } : { kind: ref, campaignId: null }),
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (!row) return { opened: false };
+    await this.prisma.messageDelivery.update({
+      where: { id: row.id },
+      data: { status: MessageDeliveryStatus.OPENED, openedAt: new Date() },
+    });
+    return { opened: true };
+  }
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

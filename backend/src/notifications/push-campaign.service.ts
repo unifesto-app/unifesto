@@ -23,6 +23,7 @@ import { OneSignalService } from './onesignal.service';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { NotificationCategory } from './notifications.constants';
 import { attendingUserIds } from '../common/attendance';
+import { nid } from './nid';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import {
   CreateOrganiserAnnouncementDto,
@@ -389,7 +390,7 @@ export class PushCampaignService {
         summary = await this.notifications.sendToSegments([BROADCAST_SEGMENT], {
           title: campaign.title,
           body: campaign.body,
-          data,
+          data: { ...data, nid: nid('p', campaign.id) },
           deepLink,
         });
         // Installs on native push left OneSignal, so the segment misses them (C12).

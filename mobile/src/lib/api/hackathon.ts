@@ -395,6 +395,10 @@ export const getUnreadNotificationCount = () => call<{ count: number }>('/users/
 export const markNotificationsRead = (scope: FeedScope & { ids?: string[] }): Promise<Result<{ updated: number }>> =>
   call<{ updated: number }>('/users/me/notifications/read', json('POST', scope));
 
+/** C19: a push was opened, so its delivery counts as opened on the campaign or automation. */
+export const reportNotificationOpened = (nid: string): Promise<Result<{ opened: boolean }>> =>
+  call<{ opened: boolean }>('/users/me/notifications/opened', json('POST', { nid }));
+
 // ── Judging: rounds, criteria, judges, panels, queues (Phase 3) ──────────────
 
 export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';

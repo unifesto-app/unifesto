@@ -18,7 +18,11 @@ const sent = {
   error: null,
   recipientCount: 150,
   createdAt: "2026-11-07T10:00:00.000Z",
-  counts: { push: { SENT: 120, SKIPPED: 30 }, email: { DELIVERED: 60, OPENED: 40, FAILED: 2 } },
+  counts: {
+    push: { SENT: 110, OPENED: 10, SKIPPED: 30 },
+    email: { DELIVERED: 60, OPENED: 40, FAILED: 2 },
+    tickets: { push: 1, inapp: 2 },
+  },
 } as Campaign;
 
 test("Apex sends one campaign and shows each channel's counts", async () => {
@@ -33,7 +37,9 @@ test("Apex sends one campaign and shows each channel's counts", async () => {
   render(<CampaignsPage />);
 
   expect(await screen.findByText("Hack Night is on")).toBeTruthy();
-  expect(screen.getByText("120 sent · 30 skipped")).toBeTruthy();
+  // C19: push opens reported by the app, and the tickets each channel led to.
+  expect(screen.getByText("120 sent · 10 opened · 30 skipped · 1 ticket")).toBeTruthy();
+  expect(screen.getByText("2 tickets")).toBeTruthy();
   expect(screen.getByText("100 sent · 40 opened · 2 failed")).toBeTruthy();
 
   fireEvent.click(screen.getAllByRole("button", { name: /New campaign/ })[0]);

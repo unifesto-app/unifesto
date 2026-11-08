@@ -19,6 +19,7 @@ test("Apex lists automatic messages by stage, with each channel's counts", async
           kinds: ["event.reminder"],
           switchable: "event",
           counts: { email: { DELIVERED: 900, OPENED: 300, FAILED: 3 }, push: { SENT: 1100, SKIPPED: 40 } },
+          tickets: { push: 2, inapp: 1 },
         },
         {
           key: "payment.failed",
@@ -29,6 +30,7 @@ test("Apex lists automatic messages by stage, with each channel's counts", async
           channels: ["email"],
           kinds: ["payment.failed"],
           counts: {},
+          tickets: {},
         },
       ],
     },
@@ -41,7 +43,9 @@ test("Apex lists automatic messages by stage, with each channel's counts", async
   expect(screen.getByText("Before the event")).toBeTruthy();
   expect(screen.getByText("Optional per event")).toBeTruthy();
   expect(screen.getByText("1,200 sent · 300 opened · 3 failed")).toBeTruthy();
-  expect(screen.getByText("1,100 sent · 40 skipped")).toBeTruthy();
+  // C19: tickets booked from a tap, the in-app copy on a row of its own.
+  expect(screen.getByText("1,100 sent · 40 skipped · 2 tickets")).toBeTruthy();
+  expect(screen.getByText("1 ticket")).toBeTruthy();
   expect(screen.getByText("Nothing sent in this period.")).toBeTruthy();
   expect(calls.find((c) => c.path === "/admin/automations")).toBeTruthy();
 });

@@ -94,8 +94,10 @@ function titleOf(c: Campaign): string {
   return c.content.push?.title ?? c.content.email?.subject ?? c.content.whatsapp?.templateName ?? "Campaign";
 }
 
-/** "120 sent · 40 opened · 2 failed" from one channel's delivery rows. */
-function deliveryLine(s: Record<string, number> | undefined, opened?: string): string | null {
+const ticketCount = (n?: number) => (n ? `${n} ${n === 1 ? "ticket" : "tickets"}` : null);
+
+/** "120 sent · 40 opened · 2 failed · 3 tickets" from one channel's delivery rows. */
+function deliveryLine(s: Record<string, number> | undefined, opened?: string, tickets?: number): string | null {
   if (!s) return null;
   const sent = (s.SENT ?? 0) + (s.DELIVERED ?? 0) + (s.OPENED ?? 0);
   const skipped = (s.SKIPPED ?? 0) + (s.SUPPRESSED ?? 0);
@@ -105,6 +107,7 @@ function deliveryLine(s: Record<string, number> | undefined, opened?: string): s
     s.FAILED ? `${s.FAILED} failed` : null,
     skipped ? `${skipped} skipped` : null,
     s.QUEUED ? `${s.QUEUED} in flight` : null,
+    ticketCount(tickets),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -220,10 +223,12 @@ export default function CampaignsPage() {
 }
 
 function CampaignCard({ c, onCancel }: { c: Campaign; onCancel: () => void }) {
+  const t = c.counts.tickets ?? {};
+  const inApp = [c.counts.inapp !== undefined ? `${c.counts.inapp} delivered` : null, ticketCount(t.inapp)];
   const lines: Array<[string, string | null]> = [
-    ["Push", deliveryLine(c.counts.push)],
-    ["In-app", c.counts.inapp !== undefined ? `${c.counts.inapp} delivered` : null],
-    ["Email", deliveryLine(c.counts.email, "opened")],
+    ["Push", deliveryLine(c.counts.push, "opened", t.push)],
+    ["In-app", inApp.filter(Boolean).join(" · ") || null],
+    ["Email", deliveryLine(c.counts.email, "opened", t.email)],
     ["WhatsApp", deliveryLine(c.counts.whatsapp, "read")],
   ];
   return (
