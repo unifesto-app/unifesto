@@ -49,6 +49,8 @@ export interface CampaignCounts {
   email?: Record<string, number>;
   whatsapp?: Record<string, number>;
   inapp?: number;
+  /** Confirmed tickets booked within 24 h of a tap or click, per channel. */
+  tickets?: Partial<Record<"push" | "inapp" | "email", number>>;
 }
 
 export interface Campaign {

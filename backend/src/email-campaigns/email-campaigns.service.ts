@@ -43,6 +43,7 @@ import { emailText } from '../ai/risk';
 import { OnEvent } from '../common/on-event';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { findIdentityByEmail } from '../auth/identifiers';
+import { nid, withNid } from '../notifications/nid';
 
 /** A SENDING campaign with no progress for this long is treated as stranded. */
 export const STALE_SENDING_MS = 15 * 60 * 1000;
@@ -975,7 +976,8 @@ export class EmailCampaignsService {
         data: { clickCount: { increment: 1 } },
       });
     }
-    return url;
+    // C19: a booking made from this click is credited to the campaign.
+    return withNid(url, nid('e', log.campaignId));
   }
 
   // ==========================================================================

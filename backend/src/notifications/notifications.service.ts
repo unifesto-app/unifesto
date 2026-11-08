@@ -13,6 +13,7 @@ import { DirectDevice, PushMessage, PushSender, providerOf } from './push-sender
 import { NotificationCategory } from './notifications.constants';
 import { quietHoursDeferral } from './quiet-hours';
 import { canSend, OPT_IN_CATEGORIES } from './send-policy';
+import { nid } from './nid';
 import {
   AttemptResult,
   DeliveryMeta,
@@ -60,6 +61,9 @@ export interface SendOptions {
    */
   directOnly?: boolean;
 }
+
+/** C19: what a tap on this send is credited to: its campaign, else its kind. */
+const nidRef = (opts: SendOptions) => opts.campaignId ?? opts.kind ?? opts.category;
 
 export interface SendSummary {
   sent: number;
@@ -221,6 +225,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       const data = {
         ...(opts.data ?? {}),
         ...(opts.deepLink ? { deepLink: opts.deepLink } : {}),
+        nid: nid('p', nidRef(opts)),
       };
 
       // Quiet hours (C4): one batch per delivery time; the inbox copy above is
@@ -474,19 +479,16 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       body: opts.body,
       deepLink: opts.deepLink ?? null,
     };
+    const data = { ...(opts.data ?? {}), nid: nid('i', nidRef(opts)) };
     try {
       await this.prisma.userNotification.createMany({
-        data: userIds.map((userId) => ({
-          userId,
-          ...row,
-          data: (opts.data ?? undefined) as Prisma.InputJsonValue | undefined,
-        })),
+        data: userIds.map((userId) => ({ userId, ...row, data: data as Prisma.InputJsonValue })),
       });
     } catch (err: any) {
       this.logger.warn(`Failed to write in-app notifications: ${err?.message ?? err}`);
       return;
     }
-    this.gateway?.toUsers(userIds, { ...row, data: opts.data ?? null });
+    this.gateway?.toUsers(userIds, { ...row, data });
   }
 
   /** Unread in-app notifications per user, for the app icon badge. Null (badge untouched) on failure. */

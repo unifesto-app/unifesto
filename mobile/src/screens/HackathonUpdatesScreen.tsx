@@ -14,6 +14,7 @@ import {
   type InAppNotification,
 } from '../lib/api/hackathon';
 import { normalizeDeepLink, routeToDeepLink } from '../services/deepLinkRouter';
+import { rememberNid } from '../services/utm';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -95,6 +96,8 @@ export default function HackathonUpdatesScreen() {
       const now = new Date().toISOString();
       setFeed(t, (f) => ({ ...f, items: f.items?.map((x) => (x.id === n.id ? { ...x, readAt: now } : x)) ?? f.items }));
     }
+    // C19: a booking in the next 24 h is credited to this notice.
+    void rememberNid(n.data?.nid);
     if (target) routeToDeepLink(target, { isAuthenticated });
   };
 

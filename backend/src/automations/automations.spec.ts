@@ -29,6 +29,12 @@ describe('AutomationsService', () => {
           { kind: 'seat.declined', channel: 'EMAIL', status: 'SENT', _count: { _all: 1 } },
         ]),
       },
+      eventRegistration: {
+        groupBy: jest.fn().mockResolvedValue([
+          { sourceNid: 'p:checkout.unpaid', _count: { _all: 3 } },
+          { sourceNid: 'i:checkout.unpaid', _count: { _all: 1 } },
+        ]),
+      },
       event: {
         findUnique: jest.fn().mockResolvedValue(event),
         update: jest.fn().mockResolvedValue({}),
@@ -46,6 +52,15 @@ describe('AutomationsService', () => {
     expect(byKey['seat.lead']).toEqual({ email: { SENT: 3 } });
     expect(byKey['payment.failed']).toEqual({});
     expect(prisma.messageDelivery.groupBy.mock.calls[0][0].where.kind.in).toContain('certificate.issued');
+  });
+
+  it('counts the tickets booked from a tap on its push or in-app copy (C19)', async () => {
+    const { svc, prisma } = build();
+    const { automations } = await svc.list(30);
+    const tickets = Object.fromEntries(automations.map((a) => [a.key, a.tickets]));
+    expect(tickets['checkout.unpaid']).toEqual({ push: 3, inapp: 1 });
+    expect(tickets['event.reminder']).toEqual({});
+    expect(prisma.eventRegistration.groupBy.mock.calls[0][0].where.sourceNid.in).toContain('i:event.reminder');
   });
 
   it("switches one off for an event and back on, and feedback flips the event's own switch", async () => {

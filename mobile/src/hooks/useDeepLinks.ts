@@ -10,6 +10,8 @@ import { showInAppNotice } from '../components/ui/InAppNotice';
 import { AppAlert } from '../components/ui/AppAlert';
 import { notificationArrived } from '../lib/notificationBus';
 import { seenLive, useNotificationSocket } from './useNotificationSocket';
+import { rememberNid } from '../services/utm';
+import { reportNotificationOpened } from '../lib/api/hackathon';
 
 /** Push types shown as an in-app card when the app is open (they also land in the in-app feed). */
 const IN_APP_TYPES = new Set(['hackathon', 'competition']);
@@ -70,16 +72,25 @@ export function useDeepLinks(): void {
   // read; routing it then would treat a signed-in user as signed out and
   // bounce them through /login. Held here until auth settles.
   const coldStartLink = useRef<string | null>(null);
-  const openLink = (deepLink: string | null | undefined) => () =>
+  // C19: the opened push's nid, reported once the session is known.
+  const coldStartOpen = useRef<string | null>(null);
+  const openLink = (deepLink: string | null | undefined, nid?: unknown) => () => {
+    void rememberNid(nid);
     routeToDeepLink(deepLink, { isAuthenticated: authRef.current });
+  };
 
   useEffect(() => {
     const offTap = PushService.addTapListener((p) => {
       const link = extractPushDeepLink(p.data);
+      // C19: a booking in the next 24 h is credited to this push.
+      const nid = typeof p.data.nid === 'string' ? p.data.nid : null;
+      void rememberNid(nid);
       if (loadingRef.current) {
         coldStartLink.current = link;
+        coldStartOpen.current = nid;
         return;
       }
+      if (nid && authRef.current) void reportNotificationOpened(nid);
       routeToDeepLink(link, { isAuthenticated: authRef.current });
     });
     // A push that lands while the app is open: a card instead of the system
@@ -89,20 +100,23 @@ export function useDeepLinks(): void {
       const n = { ...data, title: p.title, body: p.body };
       // The live socket already showed it (it goes out before the push): no second card.
       if (seenLive(n)) return !!n.type && IN_APP_TYPES.has(n.type);
-      return presentInApp(n, openLink(extractPushDeepLink(p.data)));
+      return presentInApp(n, openLink(extractPushDeepLink(p.data), p.data.nid));
     });
     return offTap;
   }, []);
 
   // C13: notifications delivered live while the app is open, push or not.
   useNotificationSocket((n) => {
-    presentInApp({ ...(n.data ?? {}), ...n }, openLink(n.deepLink));
+    presentInApp({ ...(n.data ?? {}), ...n }, openLink(n.deepLink, n.data?.nid));
   });
 
   useEffect(() => {
     if (isLoading) return;
     const held = coldStartLink.current;
     coldStartLink.current = null;
+    const opened = coldStartOpen.current;
+    coldStartOpen.current = null;
+    if (opened && isAuthenticated) void reportNotificationOpened(opened);
     if (held) routeToDeepLink(held, { isAuthenticated });
     if (!isAuthenticated) return;
     const pending = consumePendingDeepLink();

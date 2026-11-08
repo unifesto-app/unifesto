@@ -46,7 +46,8 @@ describe('NotificationsService in-app copy', () => {
       title: opts.title,
       body: opts.body,
       deepLink: opts.deepLink,
-      data: opts.data,
+      // C19: a tap on the in-app copy is credited to its kind (here the category).
+      data: { ...opts.data, nid: 'i:registrationUpdates' },
     });
     // The live copy goes out before the push, so the app can tell a repeat.
     expect(gateway.toUsers.mock.invocationCallOrder[0]).toBeLessThan(oneSignal.send.mock.invocationCallOrder[0]);
@@ -288,7 +289,11 @@ describe('NotificationsService native push (C12)', () => {
 
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['both', 'legacy']);
     expect(pushSender.send.mock.calls.map((c: any) => c[0].token).sort()).toEqual(['tok-both', 'tok-moved']);
-    expect(pushSender.send.mock.calls[0][1]).toEqual({ title: 'New', body: 'Fresh events', data: { deepLink: 'unifesto://explore' } });
+    expect(pushSender.send.mock.calls[0][1]).toEqual({
+      title: 'New',
+      body: 'Fresh events',
+      data: { deepLink: 'unifesto://explore', nid: 'p:productUpdates' },
+    });
     expect(summary).toEqual({ sent: 3, failed: 0, skipped: 0 });
     const byUser = Object.fromEntries(deliveries(prisma).map((d: any) => [d.userId, d.provider]));
     expect(byUser).toEqual({ moved: 'apns', both: 'onesignal', legacy: 'onesignal' });

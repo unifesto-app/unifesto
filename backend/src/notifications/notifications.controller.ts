@@ -24,6 +24,7 @@ import { RegisterPushDeviceDto } from './dto/push-device.dto';
 import {
   ListUserNotificationsQueryDto,
   MarkNotificationsReadDto,
+  NotificationOpenedDto,
   NotificationScopeQueryDto,
 } from './dto/user-notifications.dto';
 import {
@@ -153,5 +154,11 @@ export class UserNotificationsController {
   @Post('read')
   markRead(@CurrentUser() user: User, @Body() dto: MarkNotificationsReadDto) {
     return this.feed.markRead(user.id, dto);
+  }
+
+  /** C19: the app opened a push; its delivery counts as opened. */
+  @Post('opened')
+  opened(@CurrentUser() user: User, @Body() dto: NotificationOpenedDto) {
+    return this.feed.opened(user.id, dto.nid);
   }
 }

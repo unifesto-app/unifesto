@@ -22,6 +22,8 @@ export interface Automation {
   switchable?: "event" | "feedback";
   /** message_deliveries rows by status, per channel that logs them. */
   counts: Partial<Record<AutomationChannel, Record<string, number>>>;
+  /** Confirmed tickets booked within 24 h of a tap on its push or in-app copy. */
+  tickets: Partial<Record<AutomationChannel, number>>;
 }
 
 export function listAutomations(days = 30): Result<{ days: number; automations: Automation[] }> {

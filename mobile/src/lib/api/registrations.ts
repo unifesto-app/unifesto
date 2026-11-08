@@ -32,6 +32,8 @@ export const createPaymentOrder = async (eventId: string, data: {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  /** C19: the push, in-app notice or email tapped in the last 24 h. */
+  sourceNid?: string;
 }) => {
   const response = await makeAuthenticatedRequest(`/events/${eventId}/register/create-order`, {
     method: 'POST',

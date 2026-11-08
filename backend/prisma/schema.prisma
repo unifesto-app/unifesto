@@ -2183,6 +2183,10 @@ model EventRegistration {
   utmSource   String? @map("utm_source") @db.VarChar(100)
   utmMedium   String? @map("utm_medium") @db.VarChar(100)
   utmCampaign String? @map("utm_campaign") @db.VarChar(100)
+  // C19: the push, in-app notice or email tapped in the 24 h before booking
+  // (`p:<push campaign id>`, `i:<kind>`, `e:<email campaign id>`, see
+  // notifications/nid.ts). Campaign and automation pages count tickets by it.
+  sourceNid   String? @map("source_nid") @db.VarChar(80)
 
   // WhatsApp group-invite delivery tracking, per attendee per event.
   //
@@ -2230,6 +2234,7 @@ model EventRegistration {
   @@index([ticketTypeId, waitlistStatus, waitlistedAt])
   @@index([waitlistStatus, waitlistOfferExpiresAt])
   @@index([refundDueAt]) // J2: refund-retry cron
+  @@index([sourceNid]) // C19: tickets per campaign / automation
   @@map("event_registrations")
 }
 

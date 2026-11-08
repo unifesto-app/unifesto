@@ -73,6 +73,12 @@ export class UtmAttributionDto {
   @IsString()
   @MaxLength(200)
   utmCampaign?: string;
+
+  /** C19: the push, in-app notice or email tapped in the last 24 h (`p:<id>`). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  sourceNid?: string;
 }
 
 /**

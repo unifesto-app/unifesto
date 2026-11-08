@@ -27,6 +27,20 @@ function deliveryLine(s: Record<string, number>, opened: string | null): string 
     .join(" · ");
 }
 
+const ticketCount = (n?: number) => (n ? `${n} ${n === 1 ? "ticket" : "tickets"}` : null);
+
+/** Each channel's line, with the tickets a tap on it led to. In-app copies log no rows, only tickets. */
+function channelLines(a: Automation): Array<[AutomationChannel, string]> {
+  const lines = (Object.entries(a.counts) as [AutomationChannel, Record<string, number>][]).map(
+    ([ch, s]): [AutomationChannel, string] => [
+      ch,
+      [deliveryLine(s, ch === "whatsapp" ? "read" : "opened"), ticketCount(a.tickets[ch])].filter(Boolean).join(" · "),
+    ],
+  );
+  const inApp = ticketCount(a.tickets.inapp);
+  return inApp && !a.counts.inapp ? [...lines, ["inapp", inApp]] : lines;
+}
+
 export default function AutomationsPage() {
   const [days, setDays] = useState(30);
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -108,12 +122,12 @@ export default function AutomationsPage() {
                       <p className="text-xs text-muted-foreground">
                         {a.when}. To {a.to.charAt(0).toLowerCase() + a.to.slice(1)}.
                       </p>
-                      {Object.keys(a.counts).length > 0 ? (
+                      {channelLines(a).length > 0 ? (
                         <dl className="grid gap-x-4 gap-y-0.5 text-xs sm:grid-cols-[auto_1fr]">
-                          {(Object.entries(a.counts) as [AutomationChannel, Record<string, number>][]).map(([ch, s]) => (
+                          {channelLines(a).map(([ch, line]) => (
                             <div key={ch} className="contents">
                               <dt className="text-muted-foreground">{CHANNEL[ch]}</dt>
-                              <dd className="text-foreground">{deliveryLine(s, ch === "email" ? "opened" : ch === "whatsapp" ? "read" : null)}</dd>
+                              <dd className="text-foreground">{line}</dd>
                             </div>
                           ))}
                         </dl>

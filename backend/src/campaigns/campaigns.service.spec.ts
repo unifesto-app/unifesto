@@ -42,6 +42,7 @@ describe('CampaignsService (C17)', () => {
       },
       user: { findMany: jest.fn().mockResolvedValue(users.map((id) => ({ id }))) },
       messageDelivery: { groupBy: jest.fn().mockResolvedValue([]) },
+      eventRegistration: { groupBy: jest.fn().mockResolvedValue([]) },
     };
     const check: any = { clear: jest.fn().mockResolvedValue(cleared) };
     const notifications: any = { send: jest.fn().mockResolvedValue({ sent: 0, failed: 0, skipped: 2 }) };
@@ -181,6 +182,18 @@ describe('CampaignsService (C17)', () => {
     const got = await svc.get(PLATFORM, 'c1');
     expect(got.counts).toEqual({ push: { SENT: 2, SKIPPED: 1 }, email: { DELIVERED: 1 } });
     expect(prisma.messageDelivery.groupBy.mock.calls[0][0].where).toEqual({ campaignId: { in: ['p1', 'e1'] } });
+  });
+
+  it('a push opened and followed by a booking shows 1 ticket on that campaign (C19)', async () => {
+    const { svc, prisma } = build(row({ pushCampaignId: 'p1', emailCampaignId: 'e1' }));
+    prisma.messageDelivery.groupBy.mockResolvedValue([{ campaignId: 'p1', status: 'OPENED', _count: { _all: 1 } }]);
+    prisma.eventRegistration.groupBy.mockResolvedValue([{ sourceNid: 'p:p1', _count: { _all: 1 } }]);
+    const got = await svc.get(PLATFORM, 'c1');
+    expect(got.counts).toEqual({ push: { OPENED: 1 }, tickets: { push: 1 } });
+    const where = prisma.eventRegistration.groupBy.mock.calls[0][0].where;
+    expect(where.sourceNid.in.sort()).toEqual(['e:e1', 'i:p1', 'p:p1']);
+    // Only bookings that count as attending: not cancelled, not waitlisted, paid.
+    expect(where).toMatchObject({ status: { not: 'CANCELLED' }, isWaitlisted: false });
   });
 
   describe('timed to the event (C18)', () => {

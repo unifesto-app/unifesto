@@ -212,6 +212,8 @@ export const createOrder = (
     utmSource?: string;
     utmMedium?: string;
     utmCampaign?: string;
+    /** C19: the email campaign whose link brought them here. */
+    sourceNid?: string;
   },
 ) => call<RegisterResult>("POST", `/events/${eventId}/register/create-order`, { ...body, quantity: 1 }, token);
 

@@ -5,12 +5,14 @@ import {
   IsInt,
   IsISO8601,
   IsOptional,
+  Matches,
   IsString,
   IsUUID,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
+import { NID_PATTERN } from '../nid';
 
 /** Which slice of the in-app feed: optionally one event and/or one type (or all but one). */
 export class NotificationScopeQueryDto {
@@ -51,4 +53,10 @@ export class MarkNotificationsReadDto extends NotificationScopeQueryDto {
   @ArrayMaxSize(200)
   @IsUUID('all', { each: true })
   ids?: string[];
+}
+
+/** C19: a push the app opened, by the nid it carried. */
+export class NotificationOpenedDto {
+  @Matches(NID_PATTERN)
+  nid!: string;
 }
