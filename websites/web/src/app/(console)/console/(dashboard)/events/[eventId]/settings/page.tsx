@@ -22,6 +22,7 @@ import {
 } from "@/console/lib/api/events-api";
 import { toLocalDatetime } from "@/console/lib/constants/event-form";
 import { Toggle } from "@/console/components/hackathon/HackParts";
+import { getEventAutomations, setEventAutomation, type EventAutomation } from "@/console/lib/api/automations-api";
 import { useAccess } from "@/console/lib/context/SessionContext";
 import { useLayoutEvent } from "@/console/components/events/EventLayoutContext";
 import { ShareDialog } from "../ShareDialog";
@@ -313,6 +314,8 @@ export default function EventSettingsPage() {
           onSaved={(c) => setEvent((e) => (e ? { ...e, ...c } : e))}
         />
       )}
+
+      {!isCancelled && can("event:edit") && <AutomationsCard eventId={eventId} />}
 
       {/* Payout account — default destination for this event's earnings. */}
       {(can("event:manage-money") || can("space:manage-money")) && (
@@ -620,6 +623,53 @@ type ControlsPatch = Parameters<typeof setAttendeeControls>[1];
  * Team-change and detail-edit switches (same as mobile Event settings). Each
  * change saves at once; the card shows what the server returned.
  */
+/** C18: the automatic messages this event can do without, each switched on or off for it alone. */
+function AutomationsCard({ eventId }: { eventId: string }) {
+  const [items, setItems] = useState<EventAutomation[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void getEventAutomations(eventId).then(({ data, error }) => {
+      if (error) setError(error.message);
+      else setItems(data);
+    });
+  }, [eventId]);
+
+  async function flip(key: string, on: boolean) {
+    setBusy(true);
+    setError("");
+    const { data, error } = await setEventAutomation(eventId, key, on);
+    setBusy(false);
+    if (error) setError(error.message);
+    else if (data) setItems(data);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Automatic messages</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 px-4 py-4">
+        {error && <ErrorNotice message={error} />}
+        {items === null && !error ? (
+          <Skeleton className="h-24 w-full" />
+        ) : (
+          (items ?? []).map((a, i) => (
+            <div key={a.key} className={i > 0 ? "border-t border-border pt-4" : undefined}>
+              <Toggle label={a.name} hint={a.when} checked={a.on} disabled={busy} onChange={(v) => flip(a.key, v)} />
+            </div>
+          ))
+        )}
+        <p className="text-xs text-muted-foreground">
+          Unifesto sends these for you. Switch one off if you&apos;re sending your own, so people don&apos;t get it twice.
+          Booking confirmations, receipts and changes to the event always go.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AttendeeControlsCard({
   event,
   onSaved,

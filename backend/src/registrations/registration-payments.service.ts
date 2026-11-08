@@ -172,7 +172,8 @@ export class RegistrationPaymentsService {
           paymentLinkId: null,
           // Two sweeps wide, so a missed run (a deploy) loses nobody.
           createdAt: { lte: new Date(now.getTime() - UNPAID_NUDGE_AFTER_MS), gt: new Date(now.getTime() - UNPAID_NUDGE_AFTER_MS - 30 * 60_000) },
-          event: { status: EventStatus.PUBLISHED, startDateTime: { gt: now } },
+          // C18: not for an event whose managers switched the nudge off.
+          event: { status: EventStatus.PUBLISHED, startDateTime: { gt: now }, NOT: { automationsOff: { has: 'checkout.unpaid' } } },
         },
         select: { id: true, userId: true, eventId: true, event: { select: { title: true, slug: true } } },
         take: 500,

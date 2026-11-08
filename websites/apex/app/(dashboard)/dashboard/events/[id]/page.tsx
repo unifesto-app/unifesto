@@ -35,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { StatCard } from "@/components/shared/StatCard";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { EventAutomationsCard } from "@/components/shared/EventAutomationsCard";
 import {
   Card,
   CardContent,
@@ -368,6 +369,8 @@ export default function AdminEventDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <EventAutomationsCard eventId={id} />
 
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-base">Location</CardTitle></CardHeader>
