@@ -1174,3 +1174,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-08** · C18 part 3: campaigns timed to their event (start ± hours, moves and cancels with the event) and a "not checked in yet" audience, in Apex and console (#626)
 - **2026-11-08** · C19: ticket attribution: pushes, in-app notices and campaign email links carry a nid; bookings within 24 h store it; campaigns and automations show opens and tickets per channel (#627)
 - **2026-11-08** · C15 fix: the unpaid-checkout nudge filtered on a column bookings don't have (createdAt) and never sent; now registeredAt, with a spec that checks every query key is a real field (#628)
+- **2026-11-08** · C17 polish: Write with AI never asks readers to reply to a push, the eval's venue-change rule allows "instead of Block C", and Apex names comms_draft "Write with AI"; eval 6/6 (#629)
