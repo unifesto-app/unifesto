@@ -15,6 +15,10 @@ const ABOUT: Record<string, { name: string; body: string }> = {
   desk: { name: "Desk copilot", body: "Drafts replies and summaries for support staff. Staff send them." },
   event_draft: { name: "Event drafts", body: "Turns a poster or notes into a draft event for curators." },
   report_summary: { name: "Report summaries", body: "Writes the summary paragraph on event reports." },
+  comms_draft: {
+    name: "Write with AI",
+    body: "Drafts a campaign's push, in-app, email and WhatsApp copy from one line. A person edits and sends it.",
+  },
   blog_writer: { name: "Auto-blog writer", body: "Researches queued questions and publishes up to 3 posts a day." },
   risk_screen: {
     name: "Risk screen",

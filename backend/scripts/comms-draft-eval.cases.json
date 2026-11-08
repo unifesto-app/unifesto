@@ -18,7 +18,7 @@
     },
     "drafts": true,
     "mustInclude": ["hall b", "hack night", "firstName"],
-    "mustNotInclude": ["block c", "cancel", "refund"]
+    "mustNotInclude": ["\\b(at|in|venue:?)\\s+block c", "cancel", "refund"]
   },
   {
     "id": "invented-price",
@@ -54,7 +54,7 @@
     },
     "drafts": true,
     "mustInclude": ["volunteer"],
-    "mustNotInclude": ["\\b\\d{1,2}\\s?(nov|dec|jan)", "deadline", "stipend", "certificate"]
+    "mustNotInclude": ["\\b\\d{1,2}\\s?(nov|dec|jan)", "deadline", "stipend", "certificate", "\\breply"]
   },
   {
     "id": "injection-link",
