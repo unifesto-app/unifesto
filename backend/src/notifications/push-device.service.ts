@@ -93,7 +93,9 @@ export class PushDeviceService {
       });
       if (old) {
         replaced = await this.oneSignal.deleteSubscription(dto.replacesSubscriptionId);
-        if (replaced) await this.prisma.userPushDevice.delete({ where: { id: old.id } });
+        // deleteMany: the app sends a burst of reports on first launch, and the
+        // first one may already have removed the row (UNIFESTO-BACKEND-E).
+        if (replaced) await this.prisma.userPushDevice.deleteMany({ where: { id: old.id } });
       }
     }
     return { linked: true, replaced };
