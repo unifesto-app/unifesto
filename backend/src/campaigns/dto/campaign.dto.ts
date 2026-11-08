@@ -24,8 +24,15 @@ import {
 export const CAMPAIGN_CHANNELS = ['push', 'inapp', 'email', 'whatsapp'] as const;
 export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
 
-export const AUDIENCE_TYPES = ['all', 'space', 'event', 'waitlist', 'organisers', 'staff', 'users'] as const;
+export const AUDIENCE_TYPES = ['all', 'space', 'event', 'not_checked_in', 'waitlist', 'organisers', 'staff', 'users'] as const;
 export type AudienceType = (typeof AUDIENCE_TYPES)[number];
+
+/** Audiences of one event: the only ones a campaign can be timed to. */
+export const EVENT_AUDIENCES: ReadonlySet<AudienceType> = new Set(['event', 'not_checked_in', 'waitlist']);
+
+/** How far from the event's start a timed campaign may go: a week before to three days after. */
+export const OFFSET_MIN = -7 * 24 * 60;
+export const OFFSET_MAX = 3 * 24 * 60;
 
 export const MAX_PICKED_USERS = 500;
 
@@ -37,7 +44,7 @@ export class CampaignAudienceDto {
   @IsUUID()
   spaceId?: string;
 
-  @ValidateIf((o) => o.type === 'event' || o.type === 'waitlist')
+  @ValidateIf((o) => EVENT_AUDIENCES.has(o.type))
   @IsUUID()
   eventId?: string;
 
@@ -145,6 +152,16 @@ export class CreateCampaignDto extends CampaignMessageDto {
   @IsOptional()
   @IsISO8601()
   scheduledAt?: string;
+
+  /**
+   * Timed to the event instead: minutes from its start, negative before
+   * (-120 = 2 hours before). Moves when the event moves. Needs an event audience.
+   */
+  @ValidateIf((o) => o.offsetMinutes !== undefined)
+  @IsInt()
+  @Min(OFFSET_MIN)
+  @Max(OFFSET_MAX)
+  offsetMinutes?: number;
 
   /** The one line an AI draft started from. */
   @IsOptional()

@@ -57,6 +57,33 @@ export async function attendingUserIds(
   ];
 }
 
+/**
+ * Attendees who haven't checked in yet (C18 "start - 2h, to people not
+ * checked in"): booking holders whose booking has no check-in, and group
+ * members whose seat has none. The inverse of who feedback asks.
+ */
+export async function notCheckedInUserIds(
+  prisma: Pick<PrismaClient, 'eventRegistration' | 'groupSeat'>,
+  eventId: string,
+): Promise<string[]> {
+  const [regs, seats] = await Promise.all([
+    prisma.eventRegistration.findMany({
+      where: { eventId, ...COUNTS_AS_ATTENDING, checkedInAt: null },
+      select: { userId: true },
+    }),
+    prisma.groupSeat.findMany({
+      where: { ...CLAIMED_MEMBER_SEAT, registration: { eventId, ...COUNTS_AS_ATTENDING }, checkins: { none: {} } },
+      select: { claimedByUserId: true },
+    }),
+  ]);
+  return [
+    ...new Set([
+      ...regs.map((r) => r.userId),
+      ...seats.map((s) => s.claimedByUserId).filter((id): id is string => !!id),
+    ]),
+  ];
+}
+
 /** Whether this account attends the event: its own confirmed booking, or a claimed seat on one. */
 export async function isAttending(
   prisma: Pick<PrismaClient, 'eventRegistration' | 'groupSeat'>,

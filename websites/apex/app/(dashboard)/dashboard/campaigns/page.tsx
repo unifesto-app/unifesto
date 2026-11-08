@@ -60,6 +60,7 @@ const AUDIENCE_LABEL: Record<CampaignAudience["type"], string> = {
   all: "Everyone",
   space: "Space members",
   event: "Event attendees",
+  not_checked_in: "Not checked in yet",
   waitlist: "Event waitlist",
   organisers: "Organisers",
   staff: "Staff only (test run)",
@@ -76,6 +77,17 @@ const CHANNEL_LABEL: Record<CampaignChannel, string> = {
 function when(iso: string | null): string {
   if (!iso) return "";
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+/** Audiences of one event: the only ones a campaign can be timed to (C18). */
+const EVENT_AUDIENCE: ReadonlySet<CampaignAudience["type"]> = new Set(["event", "not_checked_in", "waitlist"]);
+
+/** "2 h before the start", "30 min after the start". */
+function relative(min: number): string {
+  if (min === 0) return "at the start";
+  const abs = Math.abs(min);
+  const amount = abs < 60 ? `${abs} min` : `${Number((abs / 60).toFixed(1))} h`;
+  return `${amount} ${min < 0 ? "before" : "after"} the start`;
 }
 
 function titleOf(c: Campaign): string {
@@ -221,7 +233,9 @@ function CampaignCard({ c, onCancel }: { c: Campaign; onCancel: () => void }) {
           <span className={`text-sm font-medium ${STATUS[c.status].tone}`}>{STATUS[c.status].label}</span>
           <span className="font-semibold text-foreground">{titleOf(c)}</span>
           <span className="ml-auto text-xs text-muted-foreground">
-            {c.status === "SCHEDULED" ? `For ${when(c.scheduledAt)}` : when(c.sentAt ?? c.createdAt)}
+            {c.status === "SCHEDULED"
+              ? `For ${when(c.scheduledAt)}${c.offsetMinutes != null ? ` (${relative(c.offsetMinutes)})` : ""}`
+              : when(c.sentAt ?? c.createdAt)}
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -278,7 +292,10 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
   const [templateName, setTemplateName] = useState("");
   const [params, setParams] = useState<string[]>([]);
 
+  const [timing, setTiming] = useState<"now" | "at" | "event">("now");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [offsetHours, setOffsetHours] = useState("2");
+  const [offsetDir, setOffsetDir] = useState<"before" | "after">("before");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -288,6 +305,18 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
   const [aiNote, setAiNote] = useState<string[]>([]);
 
   const template = templates?.find((t) => t.name === templateName);
+
+  // When it goes: now, at a clock time, or timed to the event's start (C18; moves with the event).
+  const isEventAudience = EVENT_AUDIENCE.has(audienceType);
+  const offsetMinutes =
+    timing === "event" && isEventAudience ? Math.round(Number(offsetHours) * 60) * (offsetDir === "before" ? -1 : 1) : undefined;
+  const at = timing === "at" ? scheduledAt : "";
+  const later = !!at || offsetMinutes !== undefined;
+  const whenText = at
+    ? `, on ${new Date(at).toLocaleString("en-IN")}`
+    : offsetMinutes !== undefined
+      ? `, ${relative(offsetMinutes)} (it moves if the event moves)`
+      : "";
 
   useEffect(() => {
     if (!useWhatsapp || templates) return;
@@ -319,7 +348,10 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     setEmailPreview(null);
     setTemplateName("");
     setParams([]);
+    setTiming("now");
     setScheduledAt("");
+    setOffsetHours("2");
+    setOffsetDir("before");
     setError("");
     setLine("");
     setAiNote([]);
@@ -334,7 +366,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     const { data, error } = await draftCampaign({
       line: line.trim(),
       channels: [...channels.filter((c) => c !== "whatsapp"), ...(wantsWhatsapp ? (["whatsapp"] as const) : [])],
-      ...((audienceType === "event" || audienceType === "waitlist") && target ? { eventId: target.id } : {}),
+      ...(isEventAudience && target ? { eventId: target.id } : {}),
       ...(wantsWhatsapp ? { whatsapp: { bodyText: template.bodyText ?? "", paramCount: template.bodyParamCount } } : {}),
     });
     setDrafting(false);
@@ -370,7 +402,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
   const audience = (): CampaignAudience => ({
     type: audienceType,
     ...(audienceType === "space" && target ? { spaceId: target.id } : {}),
-    ...((audienceType === "event" || audienceType === "waitlist") && target ? { eventId: target.id } : {}),
+    ...(isEventAudience && target ? { eventId: target.id } : {}),
     ...(audienceType === "users" ? { userIds: users.map((u) => u.id) } : {}),
   });
 
@@ -382,9 +414,12 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     if (useWhatsapp && !template) return "Pick an approved WhatsApp template.";
     if (useWhatsapp && template && params.slice(0, template.bodyParamCount).some((p) => !p.trim()))
       return "Fill every WhatsApp variable.";
-    if (["space", "event", "waitlist"].includes(audienceType) && !target)
+    if ((audienceType === "space" || isEventAudience) && !target)
       return `Pick the ${audienceType === "space" ? "space" : "event"}.`;
     if (audienceType === "users" && users.length === 0) return "Pick at least one person.";
+    if (timing === "at" && !scheduledAt) return "Pick when to send it.";
+    if (timing === "event" && !isEventAudience) return "Only a campaign to one event's people can be timed to its start.";
+    if (timing === "event" && !(Number(offsetHours) >= 0)) return "Say how many hours from the start.";
     return null;
   };
 
@@ -395,12 +430,12 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     const msg = message();
     const who = audienceType === "users" ? users.map((u) => u.name).join(", ") : `${AUDIENCE_LABEL[audienceType]}${target ? `: ${target.name}` : ""}`;
     const ok = await confirmDialog({
-      title: scheduledAt ? "Schedule this campaign?" : "Send this campaign now?",
+      title: later ? "Schedule this campaign?" : "Send this campaign now?",
       description: (
         <>
           <p>
             To {who}
-            {scheduledAt ? `, on ${new Date(scheduledAt).toLocaleString("en-IN")}` : ""}, as{" "}
+            {whenText}, as{" "}
             {category === "promotions" ? "a promotion (opted-in only)" : "a product update"}.
           </p>
           <p>Nothing can be recalled once it goes.</p>
@@ -415,13 +450,13 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
             <li>{data.audience} people in the audience</li>
             {channels.map((ch) => (
               <li key={ch}>
-                {CHANNEL_LABEL[ch]}: {data[ch] ?? 0} {scheduledAt ? "would get it now" : "get it"}
+                {CHANNEL_LABEL[ch]}: {data[ch] ?? 0} {later ? "would get it now" : "get it"}
               </li>
             ))}
           </ul>
         );
       },
-      confirmLabel: scheduledAt ? "Schedule" : "Send now",
+      confirmLabel: later ? "Schedule" : "Send now",
       test: {
         label: "Send a test to me",
         run: async () => {
@@ -437,7 +472,8 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
     const { data, error } = await createCampaign({
       ...msg,
       audience: audience(),
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      scheduledAt: at ? new Date(at).toISOString() : undefined,
+      offsetMinutes,
       brief: aiNote.length ? line.trim() : undefined,
     });
     setSaving(false);
@@ -552,7 +588,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
               </Select>
               <div className="min-w-56 flex-1">
                 {audienceType === "space" && picker("space")}
-                {(audienceType === "event" || audienceType === "waitlist") && picker("event")}
+                {isEventAudience && picker("event")}
               </div>
             </div>
             {audienceType === "users" && (
@@ -725,11 +761,60 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
             </section>
           )}
 
-          <section className="space-y-1">
-            <label htmlFor="campaign-schedule" className="text-sm font-medium">
-              Schedule (optional)
-            </label>
-            <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} id="campaign-schedule" />
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium">When</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={timing} onValueChange={(v) => setTiming(v as typeof timing)}>
+                <SelectTrigger className="w-52" aria-label="When">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="now">Now</SelectItem>
+                  <SelectItem value="at">At a set time</SelectItem>
+                  <SelectItem value="event" disabled={!isEventAudience}>
+                    From the event start
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {timing === "at" && (
+                <Input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  aria-label="Send at"
+                  className="w-60"
+                />
+              )}
+              {timing === "event" && (
+                <>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={offsetHours}
+                    onChange={(e) => setOffsetHours(e.target.value)}
+                    aria-label="Hours from the start"
+                    className="w-20"
+                  />
+                  <span className="text-sm text-muted-foreground">hours</span>
+                  <Select value={offsetDir} onValueChange={(v) => setOffsetDir(v as typeof offsetDir)}>
+                    <SelectTrigger className="w-28" aria-label="Before or after">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="before">before</SelectItem>
+                      <SelectItem value="after">after</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">the start</span>
+                </>
+              )}
+            </div>
+            {timing === "event" && (
+              <p className="text-xs text-muted-foreground">
+                It moves if the event moves, is cancelled if the event is, and works out who&apos;s in the audience when it sends.
+              </p>
+            )}
           </section>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -740,7 +825,7 @@ function ComposeDialog({ open, onClose, onSent }: { open: boolean; onClose: () =
             Cancel
           </Button>
           <Button onClick={submit} disabled={saving}>
-            {saving ? "Sending…" : scheduledAt ? "Schedule" : "Send now"}
+            {saving ? "Sending…" : later ? "Schedule" : "Send now"}
           </Button>
         </DialogFooter>
       </DialogContent>

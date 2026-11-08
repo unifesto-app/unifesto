@@ -18,7 +18,8 @@ export type CampaignChannel = "push" | "inapp" | "email";
 export type CampaignStatus = "DRAFT" | "SCHEDULED" | "SENDING" | "SENT" | "FAILED" | "CANCELLED" | "HELD";
 
 export interface CampaignAudience {
-  type: "space" | "event" | "waitlist" | "users";
+  /** not_checked_in: an event's attendees who haven't checked in yet, worked out when it sends. */
+  type: "space" | "event" | "not_checked_in" | "waitlist" | "users";
   eventId?: string;
   userIds?: string[];
 }
@@ -33,6 +34,8 @@ export interface CreateCampaign extends CampaignMessage {
   audience: CampaignAudience;
   /** ISO time; leave out to send now. */
   scheduledAt?: string;
+  /** Timed to the event instead: minutes from its start, negative before. Moves with the event. */
+  offsetMinutes?: number;
   /** The line Write with AI drafted it from. */
   brief?: string;
 }
@@ -86,6 +89,7 @@ export interface Campaign {
   content: Pick<CampaignMessage, "push" | "email">;
   status: CampaignStatus;
   scheduledAt: string | null;
+  offsetMinutes: number | null;
   sentAt: string | null;
   error: string | null;
   recipientCount: number;

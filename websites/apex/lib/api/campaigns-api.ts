@@ -15,7 +15,8 @@ export type CampaignCategory = "productUpdates" | "promotions";
 export type CampaignStatus = "DRAFT" | "SCHEDULED" | "SENDING" | "SENT" | "FAILED" | "CANCELLED" | "HELD";
 
 export interface CampaignAudience {
-  type: "all" | "space" | "event" | "waitlist" | "organisers" | "staff" | "users";
+  /** not_checked_in: an event's attendees who haven't checked in yet, worked out when it sends. */
+  type: "all" | "space" | "event" | "not_checked_in" | "waitlist" | "organisers" | "staff" | "users";
   spaceId?: string;
   eventId?: string;
   /** `users`: hand-picked accounts (max 500). */
@@ -37,6 +38,8 @@ export interface CreateCampaign extends CampaignMessage {
   audience: CampaignAudience;
   /** ISO time; leave out to send now. */
   scheduledAt?: string;
+  /** Timed to the event instead: minutes from its start, negative before. Moves with the event. */
+  offsetMinutes?: number;
   brief?: string;
 }
 
@@ -56,6 +59,7 @@ export interface Campaign {
   content: CampaignContent;
   status: CampaignStatus;
   scheduledAt: string | null;
+  offsetMinutes: number | null;
   sentAt: string | null;
   error: string | null;
   recipientCount: number;

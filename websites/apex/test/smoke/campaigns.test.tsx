@@ -13,6 +13,7 @@ const sent = {
   content: { push: { title: "Hack Night is on", body: "Friday, 7 PM" }, email: { subject: "Hack Night", html: "<p>x</p>" } },
   status: "SENT",
   scheduledAt: null,
+  offsetMinutes: null,
   sentAt: "2026-11-07T10:00:00.000Z",
   error: null,
   recipientCount: 150,
