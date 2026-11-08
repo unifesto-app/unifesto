@@ -18,6 +18,18 @@ describe('reminders reach attending bookings and joined group members (C9)', () 
     });
   });
 
+  it("an event whose managers switched the reminder off gets none, not even a claim on the guard (C18)", async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      event: { findMany: jest.fn().mockResolvedValue([{ id: 'ev-1', automationsOff: ['event.reminder'], startDateTime: new Date(), endDateTime: new Date() }]) },
+      eventRegistration: { findMany },
+    };
+    const redis = { setNx: jest.fn().mockResolvedValue(true) };
+    await new EventSchedulerService(prisma as any, {} as any, redis as any).sendEventReminders();
+    expect(redis.setNx).not.toHaveBeenCalled();
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
   it('gives the lead the booking QR and each member their own seat ticket', () => {
     const out = reminderRecipients({
       userId: 'lead',

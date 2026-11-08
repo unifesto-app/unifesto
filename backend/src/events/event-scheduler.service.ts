@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { NOT_DELETED } from '../common/soft-delete';
 import { canSend } from '../notifications/send-policy';
+import { automationOn } from '../automations/automations';
 import { forEachPage, inChunks } from '../common/batching';
 import { CLAIMED_MEMBER_SEAT, COUNTS_AS_ATTENDING } from '../common/attendance';
 import { emailInterestLeads } from '../sponsors/interest-fanout';
@@ -133,6 +134,8 @@ export class EventSchedulerService {
     });
 
     for (const event of events) {
+      // C18: switched off for this event (the leads' reminder email too).
+      if (!automationOn(event, 'event.reminder')) continue;
       const first = await this.redis.setNx(
         `event:reminder:email:${event.id}`,
         '1',
@@ -227,6 +230,7 @@ export class EventSchedulerService {
     });
 
     for (const event of events) {
+      if (!automationOn(event, 'event.starting_soon')) continue; // C18: switched off for this event
       const first = await this.redis.setNx(
         `event:startingsoon:${event.id}`,
         '1',
@@ -354,6 +358,7 @@ export class EventSchedulerService {
     });
 
     for (const event of completedEvents) {
+      if (!automationOn(event, 'event.summary')) continue; // C18: switched off for this event
       const first = await this.redis.setNx(
         `event:summary:${event.id}`,
         '1',

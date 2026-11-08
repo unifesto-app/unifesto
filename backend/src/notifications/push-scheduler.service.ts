@@ -7,6 +7,7 @@ import { PushCampaignService } from './push-campaign.service';
 import { NotificationsService } from './notifications.service';
 import { attendingUserIds } from '../common/attendance';
 import { ticketLink } from './notify.kinds';
+import { automationOn } from '../automations/automations';
 
 @Injectable()
 export class PushSchedulerService {
@@ -59,10 +60,11 @@ export class PushSchedulerService {
         deletedAt: null,
         startDateTime: { gte: windowStart, lte: windowEnd },
       },
-      select: { id: true, title: true, slug: true },
+      select: { id: true, title: true, slug: true, automationsOff: true },
     });
 
     for (const event of events) {
+      if (!automationOn(event, 'event.reminder')) continue; // C18: switched off for this event
       const first = await this.redis.setNx(`push:reminder:${event.id}`, '1', 3 * 24 * 60 * 60);
       if (!first) continue; // already reminded
 

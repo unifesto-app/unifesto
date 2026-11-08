@@ -49,6 +49,7 @@ import { HelpModule } from './help/help.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { EmailCampaignsModule } from './email-campaigns/email-campaigns.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { AutomationsModule } from './automations/automations.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
 import { MeAccessModule } from './me-access/me-access.module';
 import { CouponsModule } from './coupons/coupons.module';
@@ -207,6 +208,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     NotificationsModule,
     EmailCampaignsModule,
     CampaignsModule,
+    AutomationsModule,
     SponsorsModule,
     MeAccessModule,
     CouponsModule,
