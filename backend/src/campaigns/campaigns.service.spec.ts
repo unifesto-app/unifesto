@@ -1,3 +1,4 @@
+import { notCheckedInUserIds } from '../common/attendance';
 import { CampaignsService, resolveAudience } from './campaigns.service';
 
 describe('CampaignsService (C17)', () => {
@@ -34,7 +35,11 @@ describe('CampaignsService (C17)', () => {
         update: jest.fn().mockResolvedValue(campaign),
         count: jest.fn().mockResolvedValue(0),
       },
-      event: { findFirst: jest.fn(async ({ where }: any) => (where.spaceId === 's1' && where.id === 'e1' ? { id: 'e1' } : null)) },
+      event: {
+        findFirst: jest.fn(async ({ where }: any) => (where.spaceId === 's1' && where.id === 'e1' ? { id: 'e1' } : null)),
+        findUnique: jest.fn().mockResolvedValue({ startDateTime: new Date(Date.now() + 2 * 86_400_000) }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       user: { findMany: jest.fn().mockResolvedValue(users.map((id) => ({ id }))) },
       messageDelivery: { groupBy: jest.fn().mockResolvedValue([]) },
     };
@@ -178,6 +183,52 @@ describe('CampaignsService (C17)', () => {
     expect(prisma.messageDelivery.groupBy.mock.calls[0][0].where).toEqual({ campaignId: { in: ['p1', 'e1'] } });
   });
 
+  describe('timed to the event (C18)', () => {
+    const msg = { channels: ['push' as const], push: { title: 'Doors open soon', body: 'Gate 2.' } };
+
+    it('"2 hours before the start" is worked out from the event, and needs an event audience', async () => {
+      const { svc, prisma } = build();
+      const start = (await prisma.event.findUnique()).startDateTime.getTime();
+      await svc.create(SPACE, 'org', { ...msg, audience: { type: 'not_checked_in', eventId: 'e1' }, offsetMinutes: -120 });
+      expect(prisma.campaign.create.mock.calls[0][0].data).toMatchObject({
+        status: 'SCHEDULED',
+        offsetMinutes: -120,
+        eventId: 'e1',
+        audience: { type: 'not_checked_in', eventId: 'e1' },
+        category: 'organiserAnnouncements',
+      });
+      expect(prisma.campaign.create.mock.calls[0][0].data.scheduledAt.getTime()).toBe(start - 120 * 60_000);
+      await expect(svc.create(SPACE, 'org', { ...msg, audience: { type: 'space' }, offsetMinutes: -120 })).rejects.toThrow('timed to its start');
+      await expect(
+        svc.create(SPACE, 'org', { ...msg, audience: { type: 'event', eventId: 'e1' }, offsetMinutes: -120, scheduledAt: new Date().toISOString() }),
+      ).rejects.toThrow('not both');
+    });
+
+    it('moves with its event, and is cancelled with it', async () => {
+      const { svc, prisma } = build();
+      const moved = new Date(Date.now() + 3 * 3_600_000);
+      prisma.campaign.findMany
+        .mockResolvedValueOnce([
+          { id: 'c-moved', eventId: 'e1', offsetMinutes: -120, scheduledAt: new Date(Date.now() + 86_400_000) },
+          { id: 'c-gone', eventId: 'e2', offsetMinutes: 30, scheduledAt: new Date() },
+        ])
+        .mockResolvedValueOnce([]);
+      prisma.event.findMany.mockResolvedValue([
+        { id: 'e1', startDateTime: moved, status: 'PUBLISHED', deletedAt: null },
+        { id: 'e2', startDateTime: moved, status: 'CANCELLED', deletedAt: null },
+      ]);
+      await svc.sweepScheduled();
+      expect(prisma.campaign.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c-moved', status: 'SCHEDULED' },
+        data: { scheduledAt: new Date(moved.getTime() - 120 * 60_000) },
+      });
+      expect(prisma.campaign.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c-gone', status: 'SCHEDULED' },
+        data: { status: 'CANCELLED', error: 'The event was cancelled, so this never went out.' },
+      });
+    });
+  });
+
   describe('organiser campaigns (part 3)', () => {
     const later = new Date(Date.now() + 3_600_000).toISOString();
     const msg = { channels: ['push' as const], push: { title: 'Doors at 6', body: 'Bring your ticket.' }, scheduledAt: later };
@@ -245,6 +296,18 @@ describe('CampaignsService (C17)', () => {
       expect(check.clear).not.toHaveBeenCalled();
       expect(push.createBroadcast).toHaveBeenCalled();
     });
+  });
+});
+
+describe('notCheckedInUserIds (C18)', () => {
+  it('is bookings without a check-in plus claimed seats without one', async () => {
+    const prisma: any = {
+      eventRegistration: { findMany: jest.fn().mockResolvedValue([{ userId: 'lead' }]) },
+      groupSeat: { findMany: jest.fn().mockResolvedValue([{ claimedByUserId: 'member' }, { claimedByUserId: 'lead' }]) },
+    };
+    expect(await notCheckedInUserIds(prisma, 'e1')).toEqual(['lead', 'member']);
+    expect(prisma.eventRegistration.findMany.mock.calls[0][0].where).toMatchObject({ eventId: 'e1', checkedInAt: null });
+    expect(prisma.groupSeat.findMany.mock.calls[0][0].where).toMatchObject({ checkins: { none: {} } });
   });
 });
 

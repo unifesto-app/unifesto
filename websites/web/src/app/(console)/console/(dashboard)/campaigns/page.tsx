@@ -34,9 +34,18 @@ const STATUS: Record<CampaignStatus, { label: string; tone: string }> = {
 const AUDIENCE: Record<CampaignAudience["type"], string> = {
   space: "All space members",
   event: "Event attendees",
+  not_checked_in: "Attendees not checked in yet",
   waitlist: "Event waitlist",
   users: "One member",
 };
+
+/** "2 h before the start", "30 min after the start". */
+function relative(min: number): string {
+  if (min === 0) return "at the start";
+  const abs = Math.abs(min);
+  const amount = abs < 60 ? `${abs} min` : `${Number((abs / 60).toFixed(1))} h`;
+  return `${amount} ${min < 0 ? "before" : "after"} the start`;
+}
 
 const CHANNEL: Record<CampaignChannel, string> = { push: "Push and in-app", inapp: "In-app", email: "Email" };
 
@@ -144,7 +153,9 @@ export default function SpaceCampaignsPage() {
                       {c.content.push?.title ?? c.content.email?.subject ?? "Campaign"}
                     </span>
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {c.status === "SCHEDULED" ? `For ${when(c.scheduledAt)}` : when(c.sentAt ?? c.createdAt)}
+                      {c.status === "SCHEDULED"
+                        ? `For ${when(c.scheduledAt)}${c.offsetMinutes != null ? ` (${relative(c.offsetMinutes)})` : ""}`
+                        : when(c.sentAt ?? c.createdAt)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">

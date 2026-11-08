@@ -57,9 +57,18 @@ type InApp = "push" | "inapp" | "off";
 const TARGETS: { value: Target; label: string; needs?: "event" | "member" }[] = [
   { value: "space", label: "All space members" },
   { value: "event", label: "Attendees of an event", needs: "event" },
+  { value: "not_checked_in", label: "Attendees not checked in yet", needs: "event" },
   { value: "waitlist", label: "Waitlist of an event", needs: "event" },
   { value: "users", label: "A single member", needs: "member" },
 ];
+
+/** "2 h before the start", "30 min after the start". */
+function relative(min: number): string {
+  if (min === 0) return "at the start";
+  const abs = Math.abs(min);
+  const amount = abs < 60 ? `${abs} min` : `${Number((abs / 60).toFixed(1))} h`;
+  return `${amount} ${min < 0 ? "before" : "after"} the start`;
+}
 
 const CHANNEL_LABEL: Record<CampaignChannel, string> = {
   push: "Push and in-app",
@@ -86,7 +95,10 @@ export default function SpaceComposeCampaignPage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
+  const [timing, setTiming] = useState<"now" | "at" | "event">("now");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [offsetHours, setOffsetHours] = useState("2");
+  const [offsetDir, setOffsetDir] = useState<"before" | "after">("before");
 
   const [preview, setPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +111,19 @@ export default function SpaceComposeCampaignPage() {
 
   const targetDef = TARGETS.find((t) => t.value === target)!;
   const channels: CampaignChannel[] = [...(inApp !== "off" ? [inApp] : []), ...(useEmail ? (["email"] as const) : [])];
+
+  // When it goes: now, at a clock time, or timed to the event's start (C18; moves with the event).
+  const offsetMinutes =
+    timing === "event" && targetDef.needs === "event"
+      ? Math.round(Number(offsetHours) * 60) * (offsetDir === "before" ? -1 : 1)
+      : undefined;
+  const at = timing === "at" ? scheduledAt : "";
+  const later = !!at || offsetMinutes !== undefined;
+  const whenText = at
+    ? ` · ${new Date(at).toLocaleString("en-IN")}`
+    : offsetMinutes !== undefined
+      ? ` · ${relative(offsetMinutes)}, moving with the event`
+      : "";
 
   useEffect(() => {
     if (!spaceId) return;
@@ -178,7 +203,10 @@ export default function SpaceComposeCampaignPage() {
   // Human-readable recap of the chosen audience for the review rail.
   const audienceLabel = (() => {
     if (targetDef.needs === "event") {
-      return event ? `${targetDef.label.replace("an event", "")}${event.title}` : null;
+      if (!event) return null;
+      return targetDef.label.includes("an event")
+        ? targetDef.label.replace("an event", event.title)
+        : `${targetDef.label} at ${event.title}`;
     }
     if (targetDef.needs === "member") {
       const m = members.find((x) => x.user.id === targetId);
@@ -194,6 +222,9 @@ export default function SpaceComposeCampaignPage() {
     if (inApp !== "off" && (!title.trim() || !message.trim())) return "Add the notification's title and message.";
     if (useEmail && (!subject.trim() || !body.trim())) return "Add the email's subject and body.";
     if (targetDef.needs && !targetId) return `Choose ${targetDef.needs === "event" ? "an event" : "a member"}.`;
+    if (timing === "at" && !scheduledAt) return "Pick when to send it.";
+    if (timing === "event" && targetDef.needs !== "event") return "Only a campaign to an event's people can be timed to its start.";
+    if (timing === "event" && !(Number(offsetHours) >= 0)) return "Say how many hours from the start.";
     return null;
   };
 
@@ -203,12 +234,12 @@ export default function SpaceComposeCampaignPage() {
     if (why) return;
     const msg = buildMessage();
     const ok = await confirmDialog({
-      title: scheduledAt ? "Schedule this campaign?" : "Send this campaign now?",
+      title: later ? "Schedule this campaign?" : "Send this campaign now?",
       description: (
         <>
           <p>
             To: {audienceLabel ?? targetDef.label}
-            {scheduledAt ? ` · ${new Date(scheduledAt).toLocaleString("en-IN")}` : ""}
+            {whenText}
           </p>
           <p>Nothing can be recalled once it goes. Unifesto checks it before it goes out.</p>
         </>
@@ -222,13 +253,13 @@ export default function SpaceComposeCampaignPage() {
             <li>{data.audience} people in the audience</li>
             {channels.map((ch) => (
               <li key={ch}>
-                {CHANNEL_LABEL[ch]}: {data[ch] ?? 0} {scheduledAt ? "would get it now" : "get it"}
+                {CHANNEL_LABEL[ch]}: {data[ch] ?? 0} {later ? "would get it now" : "get it"}
               </li>
             ))}
           </ul>
         );
       },
-      confirmLabel: scheduledAt ? "Schedule" : "Send now",
+      confirmLabel: later ? "Schedule" : "Send now",
       test: {
         label: "Send a test to me",
         run: async () => {
@@ -244,7 +275,8 @@ export default function SpaceComposeCampaignPage() {
     const { data, error } = await createCampaign(spaceId, {
       ...msg,
       audience: audience(),
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+      scheduledAt: at ? new Date(at).toISOString() : undefined,
+      offsetMinutes,
       brief: aiNote.length ? line.trim() : undefined,
     });
     setSubmitting(false);
@@ -521,30 +553,69 @@ export default function SpaceComposeCampaignPage() {
                 </div>
               </dl>
 
-              <div className="space-y-1.5 border-t border-border pt-4">
-                <Label htmlFor="scheduledAt" className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> Schedule for later
+              <div className="space-y-2 border-t border-border pt-4">
+                <Label htmlFor="timing" className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> When
                 </Label>
-                <Input
-                  id="scheduledAt"
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                />
+                <Select value={timing} onValueChange={(v) => setTiming(v as typeof timing)}>
+                  <SelectTrigger id="timing">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="now">Now</SelectItem>
+                    <SelectItem value="at">At a set time</SelectItem>
+                    <SelectItem value="event" disabled={targetDef.needs !== "event"}>
+                      From the event start
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {timing === "at" && (
+                  <Input
+                    type="datetime-local"
+                    aria-label="Send at"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                  />
+                )}
+                {timing === "event" && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      aria-label="Hours from the start"
+                      value={offsetHours}
+                      onChange={(e) => setOffsetHours(e.target.value)}
+                      className="w-20"
+                    />
+                    <span className="text-sm text-muted-foreground">h</span>
+                    <Select value={offsetDir} onValueChange={(v) => setOffsetDir(v as typeof offsetDir)}>
+                      <SelectTrigger aria-label="Before or after" className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="before">before</SelectItem>
+                        <SelectItem value="after">after</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Leave empty to send immediately. Up to 3 campaigns a day per event, or to the whole space.
+                  {timing === "event"
+                    ? "It moves if the event moves, is cancelled if the event is, and works out who's in the audience when it sends."
+                    : "Up to 3 campaigns a day per event, or to the whole space."}
                 </p>
               </div>
 
               <Button onClick={submit} disabled={submitting || !ready} className="w-full">
-                {scheduledAt ? (
+                {later ? (
                   <CalendarBlank className="mr-1.5 h-4 w-4" />
                 ) : (
                   <PaperPlaneTilt className="mr-1.5 h-4 w-4" weight="fill" />
                 )}
                 {submitting
                   ? "Working…"
-                  : scheduledAt
+                  : later
                     ? "Schedule campaign"
                     : "Send now"}
               </Button>

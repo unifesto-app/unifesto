@@ -5303,6 +5303,10 @@ model Campaign {
 
   status      CampaignStatus @default(DRAFT)
   scheduledAt DateTime?      @map("scheduled_at") @db.Timestamptz(6)
+  // C18: timed to the event (eventId) instead of a clock time: minutes from its
+  // start, negative before. The sweep reads the event's start when it runs, so
+  // the campaign moves with the event; scheduledAt is kept in step for display.
+  offsetMinutes Int?         @map("offset_minutes")
   sentAt      DateTime?      @map("sent_at") @db.Timestamptz(6)
   error       String?        @db.Text // channels that couldn't be handed off
 

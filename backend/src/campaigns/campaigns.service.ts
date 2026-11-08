@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { BroadcastKind, Campaign, CampaignScope, CampaignStatus, EmailTargetType, Prisma } from '@prisma/client';
+import { BroadcastKind, Campaign, CampaignScope, CampaignStatus, EmailTargetType, EventStatus, Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { BROADCAST_DECIDED, BroadcastCheck, type BroadcastDecided } from '../ai/broadcast-check';
 import { emailText } from '../ai/risk';
@@ -13,7 +13,7 @@ import {
   type CommsDraftInput,
   type CommsDraftResult,
 } from './campaign-draft';
-import { attendingUserIds } from '../common/attendance';
+import { attendingUserIds, notCheckedInUserIds } from '../common/attendance';
 import { MARKETABLE_USER, promotionsOptedInUserIds } from '../common/marketing-opt-out';
 import { OnEvent } from '../common/on-event';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
@@ -31,6 +31,7 @@ import {
   CampaignMessageDto,
   CreateCampaignDto,
   DraftCampaignDto,
+  EVENT_AUDIENCES,
   TestCampaignDto,
 } from './dto/campaign.dto';
 
@@ -153,11 +154,20 @@ export class CampaignsService {
 
   /** Save it, then send now (awaited, so the reply says what went) or leave it SCHEDULED. */
   async create(owner: CampaignOwner, createdById: string, dto: CreateCampaignDto): Promise<Campaign> {
-    const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+    const s = await this.scoped(owner, dto);
+    const offsetMinutes = dto.offsetMinutes ?? null;
+    let scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+    if (offsetMinutes !== null) {
+      // C18: timed to the event. Its start is read again at send time (sweepScheduled).
+      if (scheduledAt) throw new BadRequestException('Pick a time, or a time from the event start, not both.');
+      if (!s.eventId) throw new BadRequestException("Only a campaign to one event's people can be timed to its start.");
+      const event = await this.prisma.event.findUnique({ where: { id: s.eventId }, select: { startDateTime: true } });
+      if (!event) throw new NotFoundException('Event not found');
+      scheduledAt = new Date(event.startDateTime.getTime() + offsetMinutes * 60_000);
+    }
     if (scheduledAt && scheduledAt.getTime() < Date.now() - 60_000) {
       throw new BadRequestException('That time has passed.');
     }
-    const s = await this.scoped(owner, dto);
     if (owner.scope !== 'PLATFORM') await this.assertUnderLimit(s);
     if (!scheduledAt) await this.platformConfig?.assertCommsOpen();
     const campaign = await this.prisma.campaign.create({
@@ -173,6 +183,7 @@ export class CampaignsService {
         brief: dto.brief ?? null,
         status: scheduledAt ? CampaignStatus.SCHEDULED : CampaignStatus.DRAFT,
         scheduledAt,
+        offsetMinutes,
       },
     });
     if (scheduledAt) return campaign;
@@ -375,6 +386,7 @@ export class CampaignsService {
   /** Scheduled campaigns that are due. Each claim is guarded, so replicas can't double-send. */
   @Cron(CronExpression.EVERY_MINUTE)
   async sweepScheduled(now = new Date()): Promise<number> {
+    await this.followEvents();
     const due = await this.prisma.campaign.findMany({
       where: { status: CampaignStatus.SCHEDULED, scheduledAt: { lte: now } },
       select: { id: true },
@@ -383,6 +395,40 @@ export class CampaignsService {
     });
     for (const { id } of due) await this.dispatch(id);
     return due.length;
+  }
+
+  /**
+   * C18: campaigns timed to an event follow it. A moved start moves them (a
+   * time that has now passed sends on this sweep); a cancelled or deleted
+   * event cancels them.
+   * ponytail: reads every pending timed campaign each minute; index or window
+   * by event start if there are ever thousands waiting.
+   */
+  private async followEvents(): Promise<void> {
+    const timed = await this.prisma.campaign.findMany({
+      where: { status: CampaignStatus.SCHEDULED, offsetMinutes: { not: null }, eventId: { not: null } },
+      select: { id: true, eventId: true, offsetMinutes: true, scheduledAt: true },
+    });
+    if (timed.length === 0) return;
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: [...new Set(timed.map((c) => c.eventId!))] } },
+      select: { id: true, startDateTime: true, status: true, deletedAt: true },
+    });
+    const byId = new Map(events.map((e) => [e.id, e]));
+    for (const c of timed) {
+      const e = byId.get(c.eventId!);
+      if (!e || e.deletedAt || e.status === EventStatus.CANCELLED) {
+        await this.prisma.campaign.updateMany({
+          where: { id: c.id, status: CampaignStatus.SCHEDULED },
+          data: { status: CampaignStatus.CANCELLED, error: 'The event was cancelled, so this never went out.' },
+        });
+        continue;
+      }
+      const at = new Date(e.startDateTime.getTime() + c.offsetMinutes! * 60_000);
+      if (c.scheduledAt?.getTime() !== at.getTime()) {
+        await this.prisma.campaign.updateMany({ where: { id: c.id, status: CampaignStatus.SCHEDULED }, data: { scheduledAt: at } });
+      }
+    }
   }
 
   async cancel(owner: CampaignOwner, id: string): Promise<{ status: CampaignStatus }> {
@@ -417,13 +463,13 @@ export class CampaignsService {
    */
   private async scoped(owner: CampaignOwner, dto: Pick<CreateCampaignDto, 'audience' | 'channels' | 'category'>): Promise<Scoped> {
     if (owner.scope === 'PLATFORM') {
-      const eventId = dto.audience.type === 'event' || dto.audience.type === 'waitlist' ? dto.audience.eventId ?? null : null;
+      const eventId = EVENT_AUDIENCES.has(dto.audience.type) ? dto.audience.eventId ?? null : null;
       return { audience: dto.audience, category: dto.category ?? 'productUpdates', eventId, spaceId: null };
     }
     assertNoWhatsapp(dto);
     const a = dto.audience;
     if (owner.scope === 'EVENT') {
-      if (a.type !== 'event' && a.type !== 'waitlist') throw new ForbiddenException('An event sends to its attendees or its waitlist.');
+      if (!EVENT_AUDIENCES.has(a.type)) throw new ForbiddenException('An event sends to its attendees or its waitlist.');
       return {
         audience: { type: a.type, eventId: owner.eventId },
         category: 'organiserAnnouncements',
@@ -438,6 +484,7 @@ export class CampaignsService {
       case 'users':
         return { audience: { type: 'users', userIds: a.userIds }, category: 'spaceUpdates', eventId: null, spaceId: owner.spaceId };
       case 'event':
+      case 'not_checked_in':
       case 'waitlist': {
         const event = await this.prisma.event.findFirst({ where: { id: a.eventId, spaceId: owner.spaceId }, select: { id: true } });
         if (!event) throw new ForbiddenException('That event is not in this space.');
@@ -512,6 +559,10 @@ export async function resolveAudience(
       break;
     case 'event':
       where = { id: { in: await attendingUserIds(prisma, a.eventId!) } };
+      break;
+    case 'not_checked_in':
+      // Read when it sends, so whoever checked in by then is left out.
+      where = { id: { in: await notCheckedInUserIds(prisma, a.eventId!) } };
       break;
     case 'waitlist':
       where = {
