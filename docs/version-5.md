@@ -1172,3 +1172,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-08** · C18 part 1: every automatic attendee message (tickets, WhatsApp confirmations, seats, waitlist, cancellations, refunds, certificates, hackathon pushes) logs its own kind for the automation list (#624)
 - **2026-11-08** · C18 part 2: Apex Automations lists every automatic message with channels and counts; organisers switch the day-before reminder, starting-soon, summary and unpaid nudge off per event in console settings (#625)
 - **2026-11-08** · C18 part 3: campaigns timed to their event (start ± hours, moves and cancels with the event) and a "not checked in yet" audience, in Apex and console (#626)
+- **2026-11-08** · C19: ticket attribution: pushes, in-app notices and campaign email links carry a nid; bookings within 24 h store it; campaigns and automations show opens and tickets per channel (#627)
