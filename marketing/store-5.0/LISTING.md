@@ -113,3 +113,24 @@ Unifesto 5.0, our biggest update yet:
 | App Store app preview | 886x1920, 30 s | `out/preview.mp4` |
 
 The App Store icon comes from the build (Horizon, ivory by day and silver by night), so it is not uploaded here.
+
+## 5.0.1
+
+Only the release notes change; the listing, screenshots and video stay as in 5.0. No in-app What's new entry: the app shows only the newest one, and people still on 4.0.5 should see 5.0's.
+
+**App Store What's New:**
+
+```
+• Notifications now come straight from Unifesto, and tapping one opens the right screen, even when the app was closed
+• New updates show up in the bell the moment they are sent, with the unread count on the app icon
+• Small fixes
+```
+
+**Play release notes:**
+
+```
+• Notifications now come straight from Unifesto, and tapping one opens the right screen, even when the app was closed
+• New updates show up in the bell the moment they are sent
+• Notifications show the Unifesto mark
+• Small fixes
+```
