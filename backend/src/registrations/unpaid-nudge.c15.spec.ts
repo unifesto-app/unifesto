@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { RegistrationPaymentsService, UNPAID_NUDGE_AFTER_MS } from './registration-payments.service';
 
 describe('Unpaid checkout nudge (C15)', () => {
@@ -51,8 +52,12 @@ describe('Unpaid checkout nudge (C15)', () => {
       paymentLinkId: null,
       event: { status: 'PUBLISHED', startDateTime: { gt: now } },
     });
-    expect(now.getTime() - where.createdAt.lte.getTime()).toBe(UNPAID_NUDGE_AFTER_MS);
-    expect(where.createdAt.lte.getTime() - where.createdAt.gt.getTime()).toBe(30 * 60_000);
+    expect(now.getTime() - where.registeredAt.lte.getTime()).toBe(UNPAID_NUDGE_AFTER_MS);
+    expect(where.registeredAt.lte.getTime() - where.registeredAt.gt.getTime()).toBe(30 * 60_000);
+    // tsc doesn't check keys nested in a Prisma where, so a wrong column only
+    // failed in prod (createdAt, UNIFESTO-BACKEND-D): every key is a real field.
+    const fields = new Set<string>([...Object.keys(Prisma.EventRegistrationScalarFieldEnum), 'event']);
+    expect(Object.keys(where).filter((k) => !fields.has(k))).toEqual([]);
   });
 
   it('skips someone who has since paid for the event', async () => {
