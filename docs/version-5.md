@@ -1176,3 +1176,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-08** · C15 fix: the unpaid-checkout nudge filtered on a column bookings don't have (createdAt) and never sent; now registeredAt, with a spec that checks every query key is a real field (#628)
 - **2026-11-08** · C17 polish: Write with AI never asks readers to reply to a push, the eval's venue-change rule allows "instead of Block C", and Apex names comms_draft "Write with AI"; eval 6/6 (#629)
 - **2026-11-08** · 5.0.1 prep: version 5.0.1, the live 5.0.0 runtimes (iOS 41, Android 53) recorded for OTA-safe, and 5.0.1 store notes; carries C13, C14 and C19 to phones (#630)
+- **2026-11-09** · C12 fix: a burst of push-device reports from a 5.0.1 phone no longer 500s while retiring the old OneSignal row (deleteMany, UNIFESTO-BACKEND-E) (#631)
