@@ -1,4 +1,4 @@
-import { expect, it } from '@jest/globals';
+import { expect, it, jest } from '@jest/globals';
 import { redirectSystemPath } from '../app/+native-intent';
 import { attributionFor, rememberNid } from '../src/services/utm';
 
