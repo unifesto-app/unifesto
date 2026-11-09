@@ -1,12 +1,14 @@
 {
   "production": {
     "ios": [
+      "4bb0238926643a9c19c211deb1c35f65040339ef",
       "6cd7244511ea7da0a3073cb4ea758b7cda29bd76",
       "0972128a1ecb85e7f42f6c3c4d2571e722daeeba",
       "d1776dd1e847165bdd66cfddd6165c836578319d",
       "e197ffbecf4be9ed7002503f074c1cdf1220328c"
     ],
     "android": [
+      "0fc043471c84455471ad38648b10ea8f2020dfcf",
       "e185148b13e4a054bcce4e9a200cf29d6926106e",
       "a2ac11337e472c6fcce842e0ececd6126c589508",
       "d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b",
