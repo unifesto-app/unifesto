@@ -37,6 +37,11 @@ class PushService {
   private initialized = false;
   private foreground: ForegroundHandler = () => false;
   private listeners = new Set<() => void>();
+  /**
+   * This install's native token once known. Asking the OS for it again fires
+   * the token listener, so it is asked once per launch and kept here.
+   */
+  private token: string | null = null;
 
   /** Once at launch: how a push shows while the app is open, and Android's channel. */
   initialize(): void {
@@ -93,14 +98,17 @@ class PushService {
   async getDeviceIdentity(): Promise<{ token: string; optedIn: boolean; apnsEnv: string | null } | null> {
     if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null;
     try {
-      const [{ data }, optedIn, apnsEnv] = await Promise.all([
-        Notifications.getDevicePushTokenAsync(),
+      const [token, optedIn, apnsEnv] = await Promise.all([
+        this.token ??
+          Notifications.getDevicePushTokenAsync().then(({ data }) =>
+            typeof data === 'string' && data ? (this.token = data) : null,
+          ),
         this.hasPermission(),
         Platform.OS === 'ios'
           ? Application.getIosPushNotificationServiceEnvironmentAsync().catch(() => null)
           : Promise.resolve(null),
       ]);
-      return typeof data === 'string' && data ? { token: data, optedIn, apnsEnv } : null;
+      return token ? { token, optedIn, apnsEnv } : null;
     } catch {
       return null;
     }
@@ -113,7 +121,14 @@ class PushService {
    */
   onChange(cb: () => void): () => void {
     this.listeners.add(cb);
-    const token = Notifications.addPushTokenListener(() => cb());
+    // getDevicePushTokenAsync fires this listener too (iOS and Android), so a
+    // repeat of the token we have must not call cb: cb → getDeviceIdentity →
+    // token event → cb looped for the whole session in 5.0.1.
+    const token = Notifications.addPushTokenListener(({ data }) => {
+      if (typeof data !== 'string' || !data || data === this.token) return;
+      this.token = data;
+      cb();
+    });
     const app = AppState.addEventListener('change', (s) => {
       if (s === 'active') cb();
     });
