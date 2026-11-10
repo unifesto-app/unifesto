@@ -117,6 +117,8 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   its list, label and glyph in `c.sky` (`SettingsRow accent`), never a title button. Glyphs may
   carry their job's accent: sky tickets and events, mint done, ivory the star. A row that opens
   another app shows that app's real mark (`BrandIcon`).
+  The one picture rail on Home is Find your vibe (`VibeRail`): category banners at 4:3, named
+  underneath, after Browse.
 - **Stats** are a figure over a muted label. `ManageStats` draws a row of them as one card divided
   by hairlines.
 - **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,

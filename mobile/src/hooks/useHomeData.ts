@@ -115,6 +115,7 @@ export function useHomeData() {
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
   const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
@@ -200,6 +201,8 @@ export function useHomeData() {
       setCategories(await getCategories());
     } catch {
       setCategories([]);
+    } finally {
+      setIsLoadingCategories(false);
     }
   }, []);
 
@@ -321,6 +324,8 @@ export function useHomeData() {
         loadUpcomingTickets(),
         loadMySpaces(),
         loadAllSpaces(),
+        // Find your vibe hides when this comes back empty; refresh/reconnect brings it back.
+        loadCategories(),
         loadEvents(),
         loadBeyond(),
         loadFavorites(),
@@ -329,7 +334,7 @@ export function useHomeData() {
     } finally {
       setRefreshing(false);
     }
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
 
   // Back from Settings with location switched on: pick the city up without a restart.
   useEffect(() => {
@@ -381,6 +386,7 @@ export function useHomeData() {
     allSpaces,
 
     categories,
+    isLoadingCategories,
 
     detectedCity,
     locationStatus,
