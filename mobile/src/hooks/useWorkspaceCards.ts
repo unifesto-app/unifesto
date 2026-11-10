@@ -8,13 +8,7 @@ import type { CheckinEvent } from '../lib/api/checkin';
 import type { JudgingEvent } from '../lib/api/leaderboard';
 import type { PortalSponsor } from '../lib/api/sponsorPortal';
 import { pendingCounts } from '../lib/apexQueues';
-import {
-  getAdminPayouts,
-  getAdminRefunds,
-  getPlatformOverview,
-  getWhatsappStats,
-  type PlatformOverview,
-} from '../lib/api/apex';
+import { getAdminPayouts, getAdminRefunds, getWhatsappStats } from '../lib/api/apex';
 import { getTicketStats, listContentReports } from '../lib/api/apexSupport';
 
 // Home is focused often; these panels don't need to be fresher than this.
@@ -48,7 +42,6 @@ export interface WorkspaceData {
   adminSpaceIds: string[];
   judging: JudgingEvent[];
   sponsorships: PortalSponsor[];
-  overview: PlatformOverview | null;
   /** Non-zero Apex queues, busiest first. Empty + loaded ⇒ all clear. */
   needs: ApexNeed[];
   loadingApex: boolean;
@@ -70,7 +63,6 @@ export function useWorkspaceCards(): WorkspaceData {
 
   const [upcoming, setUpcoming] = useState<HostedEvent[]>([]);
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
-  const [overview, setOverview] = useState<PlatformOverview | null>(null);
   const [needs, setNeeds] = useState<ApexNeed[]>([]);
   const [loadingApex, setLoadingApex] = useState(true);
   const lastLoad = useRef({ key: '', at: 0 });
@@ -106,8 +98,7 @@ export function useWorkspaceCards(): WorkspaceData {
 
   const loadApex = useCallback(async () => {
     if (!showApex) return;
-    const [ov, queues, refunds, payouts, reports, support, wa] = await Promise.all([
-      getPlatformOverview(),
+    const [queues, refunds, payouts, reports, support, wa] = await Promise.all([
       pendingCounts(),
       getAdminRefunds('PENDING_ADMIN'),
       getAdminPayouts('PENDING'),
@@ -115,7 +106,6 @@ export function useWorkspaceCards(): WorkspaceData {
       getTicketStats(),
       getWhatsappStats(),
     ]);
-    setOverview(ov.ok ? ov.data : null);
     const requests = Object.values(queues).reduce<number>((sum, n) => sum + (n ?? 0), 0);
     const list: ApexNeed[] = [
       { key: 'requests', label: 'Requests', count: requests, to: '/apex/requests' },
@@ -177,7 +167,6 @@ export function useWorkspaceCards(): WorkspaceData {
     adminSpaceIds: adminSpaces(hosted).map((s) => s.id),
     judging: activeEvents(access.judgingEvents, now),
     sponsorships: access.sponsorships,
-    overview,
     needs,
     loadingApex,
     refresh,

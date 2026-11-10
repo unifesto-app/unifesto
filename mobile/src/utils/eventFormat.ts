@@ -61,6 +61,24 @@ export function shortPrice(event: { isFree?: boolean; ticketTypes?: { price: str
   return getEventCardPrice(event as Parameters<typeof getEventCardPrice>[0]).price.replace(/^Starting from /, 'From ');
 }
 
+/** Below this many registrations a row shows its price alone: "3 going" puts people off. */
+const MIN_GOING = 10;
+/** Share of a capped event taken before it reads "Almost full". */
+const ALMOST_FULL = 0.85;
+
+/**
+ * The crowd beside a row's price: "Full" or "Almost full" for a capped event
+ * (hot, so it reads in amber), else "64 going" once enough have registered.
+ */
+export function crowdLabel(e: { registeredCount?: number | null; capacity?: number | null }) {
+  const going = e.registeredCount ?? 0;
+  if (e.capacity && going >= e.capacity * ALMOST_FULL) {
+    return { text: going >= e.capacity ? 'Full' : 'Almost full', hot: true };
+  }
+  if (going >= MIN_GOING) return { text: `${going.toLocaleString('en-IN')} going`, hot: false };
+  return null;
+}
+
 /**
  * This weekend, local time: Saturday 00:00 up to Monday 00:00. On a Sunday it
  * is the weekend already under way, so "this weekend" never jumps a week ahead.
@@ -72,15 +90,6 @@ export function weekendWindow(now: Date = new Date()) {
   const end = new Date(start);
   end.setDate(start.getDate() + 2);
   return { start, end };
-}
-
-/** "Sat 14 to Sun 15 Nov" (both months when the weekend spans two): the Browse row on Home. */
-export function weekendLabel(now: Date = new Date()) {
-  const { start } = weekendWindow(now);
-  const sun = new Date(start);
-  sun.setDate(start.getDate() + 1);
-  const month = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short' });
-  return `Sat ${start.getDate()}${month(start) === month(sun) ? '' : ` ${month(start)}`} to Sun ${sun.getDate()} ${month(sun)}`;
 }
 
 /** "Thu 12 Nov". */

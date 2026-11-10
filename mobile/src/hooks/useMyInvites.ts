@@ -13,13 +13,22 @@ import { declineSeat, getMyInvites, type MyInvite } from '../lib/api/registratio
 export function useMyInvites() {
   const { token } = useAuth();
   const [invites, setInvites] = useState<MyInvite[]>([]);
+  // While a fetch is out: Home's lists wait on the first one (also right after
+  // signing in) so they can leave out invited events.
+  const [loading, setLoading] = useState(!!token);
+  // Signing in or out: loading again in this same render, before the fetch effect runs.
+  const [loadingFor, setLoadingFor] = useState(token);
+  if (token !== loadingFor) {
+    setLoadingFor(token);
+    setLoading(!!token);
+  }
 
   const refresh = useCallback(async () => {
-    if (!token) {
-      setInvites([]);
-      return;
-    }
-    setInvites(await getMyInvites());
+    if (token) {
+      setLoading(true);
+      setInvites(await getMyInvites()); // never throws
+    } else setInvites([]);
+    setLoading(false);
   }, [token]);
 
   useFocusEffect(
@@ -46,5 +55,5 @@ export function useMyInvites() {
     ]);
   }, []);
 
-  return { invites, refresh, decline };
+  return { invites, loading, refresh, decline };
 }
