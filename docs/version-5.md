@@ -1182,3 +1182,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-10** · Mobile push token loop fixed (every signed-in session re-fetched the token forever) and the empty full-screen backdrop bitmap dropped on 55 screens; aimed at the iOS watchdog kills in UNIFESTO-MOBILE-1 (#635)
 - **2026-11-10** · Mobile Home finds WeGoBeyond by slug (its events were missing since the rename) and gets the city from the last known location, so the first load is quicker (#634)
 - **2026-11-10** · Mobile push token rotated while signed out is no longer lost: one app-wide token listener notifies every subscriber, and the #635 loop guard stays (#636)
+- **2026-11-10** · Mobile Home shows Find your vibe again: category banners (4:3, named underneath) after Browse; a tap opens Events filtered to that category (#637)
