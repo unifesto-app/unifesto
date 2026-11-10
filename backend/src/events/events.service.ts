@@ -1409,7 +1409,7 @@ export class EventsService {
 
   /**
    * Team edits (T1): needs EVENT_ASSIGN_CREW on the event (no co-host
-   * fallback), never on yourself, and never on someone ranked at or above you
+   * fallback), never on yourself (unless Platform ADMIN), and never on someone ranked at or above you
    * (`canAssign`, T2). Returns the event and the target's current event role.
    */
   private async assertCanEditTeamMember(userId: string, eventId: string, targetUserId: string) {
@@ -1419,7 +1419,9 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException('Event not found');
     await this.assertEventAction(userId, eventId, Action.EVENT_ASSIGN_CREW, 'You cannot change this event team');
-    if (targetUserId === userId) {
+    // canAssign keeps the self rule (only a Platform ADMIN acts on themselves);
+    // asking about the lowest role just tests that rule.
+    if (targetUserId === userId && !(await this.canAssignOn(userId, event, RoleCode.MEMBER, userId))) {
       throw new ForbiddenException('You cannot change your own role on this event');
     }
     const current = await this.prisma.userRole.findFirst({

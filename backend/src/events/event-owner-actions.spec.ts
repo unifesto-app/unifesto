@@ -27,6 +27,7 @@ type Row = { userId: string; code: RoleCode; spaceId: string | null; eventId: st
 function build(opts: { event?: Record<string, unknown>; plan?: string } = {}) {
   const rows: Row[] = [
     { userId: 'padmin', code: RoleCode.ADMIN, spaceId: null, eventId: null },
+    { userId: 'padmin', code: RoleCode.MEMBER, spaceId: 'sp-1', eventId: null },
     { userId: 'sadmin', code: RoleCode.SPACE_ADMIN, spaceId: 'sp-1', eventId: null },
     { userId: 'cohost', code: RoleCode.SPACE_ADMIN, spaceId: 'sp-2', eventId: null },
     { userId: 'curator', code: RoleCode.MEMBER, spaceId: 'sp-1', eventId: null },
@@ -143,6 +144,11 @@ describe('team edits (T1)', () => {
       await expect(add(svc, 'padmin', 'member', EventTeamRole.CURATOR)).resolves.toEqual({ success: true });
       expect(prisma.userRole.create).toHaveBeenCalled();
       expect(audit).toHaveBeenCalledWith(expect.stringContaining('event role grant: event=ev-1 target=member role=CURATOR'));
+    });
+
+    it('may put themselves on the team', async () => {
+      const { svc } = build();
+      await expect(add(svc, 'padmin', 'padmin', EventTeamRole.CREW)).resolves.toEqual({ success: true });
     });
   });
 
