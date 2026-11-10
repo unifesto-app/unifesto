@@ -11,11 +11,23 @@ export interface Profile {
   bio: string | null;
   gender: string | null;
   createdAt: string;
+  /** The city whose new events I get alerts for (Home's "Tell me about new events"). */
+  newEventsCity?: string | null;
 }
 
 export const getProfile = async (): Promise<Profile | null> => {
   const response = await makeAuthenticatedRequest('/users/me');
   if (!response?.ok) return null;
+  return response.json();
+};
+
+/** Alerts for new events in `city`, or none with null. */
+export const setCityAlert = async (city: string | null): Promise<{ city: string | null }> => {
+  const response = await makeAuthenticatedRequest('/users/me/city-alert', {
+    method: 'PUT',
+    body: JSON.stringify({ city }),
+  });
+  if (!response?.ok) throw await errorFrom(response, "Couldn't change the alert");
   return response.json();
 };
 

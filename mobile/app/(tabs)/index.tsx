@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { CalendarDots, Globe, IdentificationCard, Sparkle, Ticket, UserCircle, UsersThree } from '@unifesto/unicon/react-native';
+import { Buildings, IdentificationCard, ShieldCheck, Sparkle, UserCircle, UsersThree } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { useCosmos } from '../../src/theme/cosmos';
@@ -11,26 +11,32 @@ import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
 import HomeHeader from '../../src/components/home/HomeHeader';
 import { GUTTER, Section } from '../../src/components/home/Section';
-import DayRows, { EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
+import DayRows, { ActionRow, EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
 import HackathonCard, { useMyHackathon } from '../../src/components/home/HackathonCard';
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
 import { useUnreadNotifications } from '../../src/hooks/useUnreadNotifications';
 import PromptCard from '../../src/components/home/PromptCard';
-import SpacePanel, { LinkRow, Rows } from '../../src/components/home/SpacePanel';
-import ApexPanel from '../../src/components/home/ApexPanel';
+import { LinkRow, LiveCheckinCard, Rows } from '../../src/components/home/SpacePanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
-import { MySpacesRows } from '../../src/components/home/SpaceCards';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import type { Preset } from '../../src/hooks/useEventsBrowse';
-import { relativeWhen, weekendLabel } from '../../src/utils/eventFormat';
+import { relativeWhen } from '../../src/utils/eventFormat';
 import { isEventOver } from '../../src/lib/eventEnded';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
-import { openSpaceWeb } from '../../src/lib/openOnWeb';
+
+const ids = (list: { id: string }[]) => list.map((e) => e.id);
+
+// The next three coming up. /favorites is newest-saved first and keeps ended events.
+const nextThree = (events: Event[]) =>
+  events
+    .filter((e) => !isEventOver(e))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, 3);
 
 export default function HomeTab() {
   const router = useRouter();
@@ -41,7 +47,7 @@ export default function HomeTab() {
   const myInvites = useMyInvites();
   const unread = useUnreadNotifications();
   const search = useHomeSearch();
-  // Shortcuts into the Space / Apex tabs, shown only to people who have them.
+  // Live check-ins and the Space / Apex rows, shown only to people who have those tabs.
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
 
@@ -50,17 +56,24 @@ export default function HomeTab() {
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
   const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
-  // Browse glyphs carry the events accent; Explore spaces isn't events, so it stays text.
-  const browseGlyph = { size: 24, color: c.sky };
-  // The next three coming up. /favorites is newest-saved first and keeps ended
-  // events; a space's feed is newest first.
-  const nextThree = (events: Event[]) =>
-    events
-      .filter((e) => !isEventOver(e))
-      .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-      .slice(0, 3);
+  const openSpaces = () => router.push('/spaces');
+
+  // ── What each list shows: every event once ─────────────────────────────
+  // Ones I'm going to or invited to lead the page; the lists under them skip those.
+  const mine = new Set([...ids(data.upcomingTickets), ...myInvites.invites.map((i) => i.event.id)]);
+  const notMine = (events: Event[]) => events.filter((e) => !mine.has(e.id));
+  const fromMySpaces = nextThree(notMine(data.spaceEvents));
+  // Nothing coming up in my spaces (or none joined): the space Apex features instead.
+  const featured = fromMySpaces.length === 0 && data.featuredSpace ? nextThree(notMine(data.featuredEvents)) : [];
   const shortlist = nextThree(data.favoriteEvents);
-  const beyond = nextThree(data.beyondEvents);
+  // "Happening near you" is discovery: anything already on the page stays out of it.
+  const shown = new Set([...mine, ...ids(fromMySpaces), ...ids(featured), ...ids(shortlist)]);
+  const nearYou = data.feedEvents.filter((e) => !shown.has(e.id));
+  const feedLoading = data.isLoadingFeed || myInvites.loading;
+  // The space list lands with the list under it (both wait on the same sources),
+  // then stays put through refreshes instead of blinking out.
+  const settled = React.useRef(false);
+  if (!feedLoading) settled.current = true;
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -70,6 +83,16 @@ export default function HomeTab() {
       : profile && !profile.fullName
         ? { icon: <UserCircle size={20} color={c.text} weight="fill" />, title: 'Finish your profile', body: 'Add your name before you register.', to: '/edit-profile' as const }
         : null;
+
+  // The Space and Apex tabs, one row each: the tabs hold the detail.
+  const nextHosted = workspace.upcoming[0];
+  const spaceMeta = nextHosted
+    ? `Next: ${nextHosted.title} · ${relativeWhen(nextHosted.startDateTime)}`
+    : workspace.judging.length > 0
+      ? `${workspace.judging.length} to judge`
+      : 'Events, check-in and my team';
+  const waiting = workspace.needs.reduce((sum, n) => sum + n.count, 0);
+  const apexMeta = waiting > 0 ? `${waiting.toLocaleString('en-IN')} waiting on me` : workspace.loadingApex ? 'Requests, money and support' : 'All clear';
 
   // A success tap when a pull-to-refresh I started lands (not on background reloads).
   const pulled = React.useRef(false);
@@ -83,6 +106,7 @@ export default function HomeTab() {
   const nextTicket = data.upcomingTickets[0];
   // My team hub, when one of my upcoming tickets is a hackathon I'm on a team in.
   const hackathon = useMyHackathon(data.upcomingTickets);
+  const city = data.detectedCity;
 
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
@@ -112,7 +136,7 @@ export default function HomeTab() {
       >
         <HomeHeader
           signedIn={!!user}
-          city={data.detectedCity}
+          city={city}
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
           unread={unread}
@@ -158,44 +182,81 @@ export default function HomeTab() {
           </View>
         ) : null}
 
-        {/* Discovery first, then mine: a list of what's next, ways in, and my own things. */}
-        <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'}>
-          <DayRows
-            events={data.feedEvents}
-            loading={data.isLoadingFeed}
-            failed={data.eventsFailed}
-            onRetry={data.onRefresh}
-            onPressEvent={openEvent}
-            allLabel={data.detectedCity ? `All events in ${data.detectedCity}` : 'All events'}
-            // K1: "near you" opens that city's events.
-            onSeeAll={() => router.push(data.detectedCity ? { pathname: '/events', params: { city: data.detectedCity } } : '/events')}
-          />
-        </Section>
+        {/* A check-in running now is the one operator thing that can't wait for the Space tab. */}
+        {workspace.liveCheckins.length > 0 ? (
+          <View style={[styles.block, styles.cards]}>
+            {workspace.liveCheckins.map((e) => (
+              <LiveCheckinCard
+                key={e.id}
+                event={e}
+                onScan={() =>
+                  router.push({
+                    pathname: `/checkin/${e.id}`,
+                    params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
+                  })
+                }
+              />
+            ))}
+          </View>
+        ) : null}
 
-        {/* WeGoBeyond by name, under the list. It lands with the list (which waits
-            for it), so no skeleton of its own. */}
-        {data.beyondSpace && beyond.length > 0 ? (
-          <Section title={data.beyondSpace.name} onSeeAll={() => openSpace(data.beyondSpace!)}>
+        {/* Mine first, then discovery: what the spaces I joined have coming up, else
+            the featured space, each closed by a way to find more spaces. */}
+        {settled.current && fromMySpaces.length > 0 ? (
+          <Section title="From my spaces" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
             <View style={styles.rows}>
               <Rows>
-                {beyond.map((e) => (
+                {fromMySpaces.map((e) => (
                   <EventRow key={e.id} event={e} when={relativeWhen(e.startDateTime)} onPress={() => openEvent(e)} />
                 ))}
               </Rows>
+              <ActionRow label="Explore spaces" onPress={openSpaces} />
+            </View>
+          </Section>
+        ) : settled.current && data.featuredSpace && featured.length > 0 ? (
+          <Section title={data.featuredSpace.name} onSeeAll={() => openSpace(data.featuredSpace!)}>
+            <View style={styles.rows}>
+              <Rows>
+                {featured.map((e) => (
+                  <EventRow key={e.id} event={e} hideHost when={relativeWhen(e.startDateTime)} onPress={() => openEvent(e)} />
+                ))}
+              </Rows>
+              <ActionRow label="Explore spaces" onPress={openSpaces} />
             </View>
           </Section>
         ) : null}
 
-        <Section title="Browse">
-          <View style={styles.rows}>
+        <Section title={city ? 'Happening near you' : 'Happening soon'}>
+          <DayRows
+            events={nearYou}
+            loading={feedLoading}
+            failed={data.eventsFailed}
+            onRetry={data.onRefresh}
+            onPressEvent={openEvent}
+            allLabel={city ? `All events in ${city}` : 'All events'}
+            // K1: "near you" opens that city's events.
+            onSeeAll={() => router.push(city ? { pathname: '/events', params: { city } } : '/events')}
+            footer={
+              city && profile ? (
+                <ActionRow
+                  label={data.cityAlertOn ? `Alerts on for new events in ${city}` : `Tell me about new events in ${city}`}
+                  muted={data.cityAlertOn}
+                  hint={data.cityAlertOn ? 'Turns these alerts off' : 'Sends a notification when an event in this city is published'}
+                  onPress={() => void data.toggleCityAlert()}
+                />
+              ) : null
+            }
+          />
+        </Section>
+
+        {/* Neither space list showed: keep a way into spaces on the page. */}
+        {settled.current && fromMySpaces.length === 0 && featured.length === 0 ? (
+          <View style={[styles.rows, styles.lone]}>
             <Rows>
-              <LinkRow key="weekend" icon={<CalendarDots {...browseGlyph} />} title="This weekend" meta={weekendLabel()} onPress={() => openPreset('weekend')} />
-              <LinkRow key="free" icon={<Ticket {...browseGlyph} />} title="Free to attend" meta="Events with free tickets" onPress={() => openPreset('free')} />
-              <LinkRow key="online" icon={<Globe {...browseGlyph} />} title="Online from anywhere" meta="Join from home" onPress={() => openPreset('online')} />
-              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={() => router.push('/spaces')} />
+              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={openSpaces} />
             </Rows>
           </View>
-        </Section>
+        ) : null}
 
         {data.isLoadingCategories || data.categories.length > 0 ? (
           <Section title="Find your vibe">
@@ -221,62 +282,25 @@ export default function HomeTab() {
           </Section>
         ) : null}
 
-        {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
-          <Section title="My spaces" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
-            <MySpacesRows
-              spaces={data.mySpaces}
-              loading={data.isLoadingMySpaces}
-              onPress={openSpace}
-            />
-          </Section>
-        ) : null}
-
         {!workspace.showSpace ? (
           <View style={{ marginTop: spacing[12] }}>
             <HostCta onPress={() => router.push(user ? '/space-request' : '/login')} />
           </View>
         ) : null}
 
-        {/* The other side of the door: tools for people running events. They also
-            have their own tabs, so they follow discovery instead of leading it. */}
-        {workspace.showSpace ? (
-          <Section title="My space" onSeeAll={() => router.navigate('/space')}>
-            <SpacePanel
-              liveCheckins={workspace.liveCheckins}
-              upcoming={workspace.upcoming}
-              loadingUpcoming={workspace.loadingUpcoming}
-              hosting={workspace.hostedSpaceIds.length > 0}
-              canCreate={workspace.adminSpaceIds.length > 0}
-              judging={workspace.judging}
-              sponsorships={workspace.sponsorships}
-              onScan={(e) =>
-                router.push({
-                  pathname: `/checkin/${e.id}`,
-                  params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
-                })
-              }
-              onOpenEvent={(e) => router.push(`/manage/event/${e.id}`)}
-              onCreateEvent={() =>
-                // One space I can create in: straight into the web form (G1 moved editing to the
-                // web). Otherwise pick on the Space tab.
-                workspace.adminSpaceIds.length === 1
-                  ? openSpaceWeb('/events/new', workspace.adminSpaceIds[0])
-                  : router.navigate('/space')
-              }
-              onOpenJudging={(j) => router.push({ pathname: `/judging/${j.eventId}`, params: { title: j.title } })}
-              onOpenSponsor={(sp) => router.push(`/sponsoring/${sp.sponsorId}`)}
-            />
-          </Section>
-        ) : null}
-
-        {workspace.showApex ? (
-          <Section title="Apex" onSeeAll={() => router.navigate('/apex')}>
-            <ApexPanel
-              overview={workspace.overview}
-              needs={workspace.needs}
-              loading={workspace.loadingApex}
-              onOpenNeed={(n) => router.push(n.to)}
-            />
+        {/* The other side of the door: the Space and Apex tabs hold the tools, Home just points there. */}
+        {workspace.showSpace || workspace.showApex ? (
+          <Section title="Manage">
+            <View style={styles.rows}>
+              <Rows>
+                {workspace.showSpace ? (
+                  <LinkRow key="space" icon={<Buildings size={24} color={c.text} />} title="My space" meta={spaceMeta} onPress={() => router.navigate('/space')} />
+                ) : null}
+                {workspace.showApex ? (
+                  <LinkRow key="apex" icon={<ShieldCheck size={24} color={c.text} />} title="Apex" meta={apexMeta} onPress={() => router.navigate('/apex')} />
+                ) : null}
+              </Rows>
+            </View>
           </Section>
         ) : null}
       </ScrollView>
@@ -306,5 +330,7 @@ const styles = StyleSheet.create({
   // Clears the floating native tab bar.
   content: { paddingBottom: 120 },
   block: { marginTop: spacing[8] },
+  cards: { paddingHorizontal: GUTTER, gap: spacing[3] },
   rows: { paddingHorizontal: GUTTER },
+  lone: { marginTop: spacing[8] },
 });

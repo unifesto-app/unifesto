@@ -36,9 +36,38 @@ interface SpacePanelProps {
 
 const plural = (n: number, one: string) => `${n.toLocaleString('en-IN')} ${one}${n === 1 ? '' : 's'}`;
 
+/** A check-in running now, one tap from the scanner. On the Space tab and near the top of Home. */
+export function LiveCheckinCard({ event: e, onScan }: { event: CheckinEvent; onScan: () => void }) {
+  const c = useCosmos();
+  return (
+    <PressableScale
+      onPress={onScan}
+      accessibilityRole="button"
+      accessibilityLabel={`Scan tickets for ${e.title}`}
+      style={[styles.card, styles.row]}
+    >
+      <CardBackdrop shape={styles.card} />
+      <QrCode size={24} color={c.mint} />
+      <View style={{ flex: 1 }}>
+        <View style={styles.liveRow}>
+          <View style={[styles.dot, { backgroundColor: c.mint }]} />
+          <Text style={[styles.eyebrow, { color: c.mint }]}>Check-in live</Text>
+        </View>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{e.title}</Text>
+        <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
+          {plural(e._count.registrations, 'registration')}
+        </Text>
+      </View>
+      <View style={[styles.cta, { backgroundColor: c.primary }]}>
+        <Text style={[styles.ctaText, { color: c.primaryFg }]}>Scan</Text>
+      </View>
+    </PressableScale>
+  );
+}
+
 /**
- * Operator snapshot on Home: a live check-in to jump into, my next hosted
- * events with how full they are, plus judging boards and sponsor leads.
+ * Operator snapshot on the Space tab: a live check-in to jump into, my next
+ * hosted events with how full they are, plus judging boards and sponsor leads.
  */
 export default function SpacePanel(p: SpacePanelProps) {
   const c = useCosmos();
@@ -47,29 +76,7 @@ export default function SpacePanel(p: SpacePanelProps) {
   return (
     <View style={styles.wrap}>
       {p.liveCheckins.map((e) => (
-        <PressableScale
-          key={e.id}
-          onPress={() => p.onScan(e)}
-          accessibilityRole="button"
-          accessibilityLabel={`Scan tickets for ${e.title}`}
-          style={[styles.card, styles.row]}
-        >
-          <CardBackdrop shape={styles.card} />
-          <QrCode size={24} color={c.mint} />
-          <View style={{ flex: 1 }}>
-            <View style={styles.liveRow}>
-              <View style={[styles.dot, { backgroundColor: c.mint }]} />
-              <Text style={[styles.eyebrow, { color: c.mint }]}>Check-in live</Text>
-            </View>
-            <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{e.title}</Text>
-            <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
-              {plural(e._count.registrations, 'registration')}
-            </Text>
-          </View>
-          <View style={[styles.cta, { backgroundColor: c.primary }]}>
-            <Text style={[styles.ctaText, { color: c.primaryFg }]}>Scan</Text>
-          </View>
-        </PressableScale>
+        <LiveCheckinCard key={e.id} event={e} onScan={() => p.onScan(e)} />
       ))}
 
       {p.loadingUpcoming && p.upcoming.length === 0 ? (

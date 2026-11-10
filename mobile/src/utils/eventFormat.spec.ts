@@ -1,5 +1,5 @@
 // Runs with mobile's jest: `npm test` (jest.config.js).
-import { groupByDay, rowTime, weekendLabel } from './eventFormat';
+import { crowdLabel, groupByDay, rowTime } from './eventFormat';
 import { rollUpToSuperEvents } from '../hooks/useHomeData';
 import type { Event } from '../lib/api/events';
 
@@ -62,17 +62,20 @@ describe('rowTime', () => {
   });
 });
 
+describe('crowdLabel', () => {
+  it('stays quiet for a small crowd, counts a real one and warns when a capped event fills', () => {
+    expect(crowdLabel({ registeredCount: 3, capacity: null })).toBeNull();
+    expect(crowdLabel({ registeredCount: undefined })).toBeNull();
+    expect(crowdLabel({ registeredCount: 64, capacity: null })).toEqual({ text: '64 going', hot: false });
+    expect(crowdLabel({ registeredCount: 64, capacity: 200 })).toEqual({ text: '64 going', hot: false });
+    expect(crowdLabel({ registeredCount: 9, capacity: 10 })).toEqual({ text: 'Almost full', hot: true });
+    expect(crowdLabel({ registeredCount: 200, capacity: 200 })).toEqual({ text: 'Full', hot: true });
+  });
+});
+
 describe('rollUpToSuperEvents', () => {
   it('keeps a sub-event when the parent is only a breadcrumb with no dates', () => {
     const sub = { id: 's', title: 'Talk', startDateTime: at(14, 10), parentEvent: { id: 'p', title: 'Fest', slug: 'fest' } };
     expect(rollUpToSuperEvents([sub as unknown as Event]).map((e) => e.id)).toEqual(['s']);
-  });
-});
-
-describe('weekendLabel', () => {
-  it('names the coming weekend, and the current one on a Sunday', () => {
-    expect(weekendLabel(now)).toBe('Sat 14 to Sun 15 Nov');
-    expect(weekendLabel(new Date(2026, 10, 15, 12))).toBe('Sat 14 to Sun 15 Nov');
-    expect(weekendLabel(new Date(2026, 9, 28))).toBe('Sat 31 Oct to Sun 1 Nov');
   });
 });

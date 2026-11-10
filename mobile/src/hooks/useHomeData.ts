@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { onReconnect } from '../lib/offline/connectivity';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
-import { getProfile, Profile } from '../lib/api/profile';
+import { getProfile, Profile, setCityAlert } from '../lib/api/profile';
 import {
   Event,
   getEvents,
@@ -11,14 +11,13 @@ import {
   getFeaturedEvents,
   getTrendingEvents,
 } from '../lib/api/events';
-import { getUserSpaces, Space, getAllSpaces, getSpaceBySlug, getSpaceEvents } from '../lib/api/spaces';
+import { getUserSpaces, Space, getAllSpaces, getFeaturedSpace } from '../lib/api/spaces';
 import { getFavorites } from '../lib/api/favorites';
 import { fetchUpcomingTickets } from '../lib/upcomingTickets';
 import { syncUpNextWidget } from '../widgets/sync';
+import { AppAlert } from '../components/ui/AppAlert';
 
-// WeGoBeyond, whose events join Home's "Happening near you". Found by slug, so
-// renaming the space (it was "Beyond by Unifesto") can't lose its events again.
-export const BEYOND_SLUG = 'beyond';
+const listOf = (res: { data?: Event[]; events?: Event[] } | null | undefined): Event[] => res?.data || res?.events || [];
 
 export type LocationStatus = 'idle' | 'loading' | 'granted' | 'denied';
 
@@ -117,9 +116,14 @@ export function useHomeData() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  const [beyondSpace, setBeyondSpace] = useState<Space | null>(null);
-  const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
-  const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
+  // The space Apex features on Home, for people who haven't joined one.
+  const [featuredSpace, setFeaturedSpace] = useState<Space | null>(null);
+  const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+
+  // Upcoming events from the spaces I'm in ("From my spaces").
+  const [spaceEvents, setSpaceEvents] = useState<Event[]>([]);
+  const [isLoadingSpaceEvents, setIsLoadingSpaceEvents] = useState(!!user);
 
   const [favoriteEvents, setFavoriteEvents] = useState<Event[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(!!user);
@@ -136,6 +140,7 @@ export function useHomeData() {
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
+  const [onlineEvents, setOnlineEvents] = useState<Event[]>([]);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -245,29 +250,59 @@ export function useHomeData() {
     }
   }, [user]);
 
-  // WeGoBeyond and its upcoming events: its own section on Home, and part of the list.
-  const loadBeyond = useCallback(async () => {
+  // The featured space and its next events. Public /events, so each carries its
+  // host and crowd like every other list. No featured space (or an older server): none.
+  const loadFeatured = useCallback(async () => {
     try {
-      const space = await getSpaceBySlug(BEYOND_SLUG);
-      setBeyondSpace(space);
-      const res = await getSpaceEvents(space.id, 1, 10);
-      // The space feed shows its own team drafts too; Home is public listings only.
-      setBeyondEvents((res?.events || []).filter((e) => e.status !== 'DRAFT'));
+      const space = await getFeaturedSpace();
+      setFeaturedSpace(space);
+      setFeaturedEvents(space ? listOf(await getEvents({ page: 1, limit: 10, spaceId: space.id })) : []);
     } catch {
-      setBeyondEvents([]);
+      setFeaturedSpace(null);
+      setFeaturedEvents([]);
     } finally {
-      setIsLoadingBeyond(false);
+      setIsLoadingFeatured(false);
     }
   }, []);
 
-  // Fetch city-scoped events once we know the user's city
+  const spaceIdsKey = mySpaces.map((s) => s.id).join(',');
+  const loadSpaceEvents = useCallback(async () => {
+    if (!spaceIdsKey) {
+      setSpaceEvents([]);
+      setIsLoadingSpaceEvents(false);
+      return;
+    }
+    try {
+      setIsLoadingSpaceEvents(true);
+      const mine = new Set(spaceIdsKey.split(','));
+      // An older server ignores spaceIds and sends every event: keep only mine.
+      setSpaceEvents(listOf(await getEvents({ page: 1, limit: 10, spaceIds: spaceIdsKey })).filter((e) => mine.has(e.spaceId)));
+    } catch {
+      setSpaceEvents([]);
+    } finally {
+      setIsLoadingSpaceEvents(false);
+    }
+  }, [spaceIdsKey]);
+
+  // Each time my spaces land (first load and every refresh), their events follow.
+  useEffect(() => {
+    if (!isLoadingMySpaces) void loadSpaceEvents();
+  }, [isLoadingMySpaces, loadSpaceEvents]);
+
+  // Once the city is known: its events, plus online ones, which anyone there can
+  // join, so a quiet city fills up with those before other cities' picks.
   const loadNearby = useCallback(async (city: string) => {
     try {
       setIsLoadingNearby(true);
-      const eventsRes = await getEvents({ page: 1, limit: 10, city });
-      setNearbyEvents(eventsRes?.data || eventsRes?.events || []);
+      const [cityRes, onlineRes] = await Promise.all([
+        getEvents({ page: 1, limit: 10, city }),
+        getEvents({ page: 1, limit: 10, type: 'ONLINE' }).catch(() => null),
+      ]);
+      setNearbyEvents(listOf(cityRes));
+      setOnlineEvents(listOf(onlineRes));
     } catch {
       setNearbyEvents([]);
+      setOnlineEvents([]);
     } finally {
       setIsLoadingNearby(false);
     }
@@ -313,10 +348,10 @@ export function useHomeData() {
     loadAllSpaces();
     loadCategories();
     loadEvents();
-    loadBeyond();
+    loadFeatured();
     loadFavorites();
     loadLocation();
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadBeyond, loadFavorites, loadLocation]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadFeatured, loadFavorites, loadLocation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -329,14 +364,30 @@ export function useHomeData() {
         // Find your vibe hides when this comes back empty; refresh/reconnect brings it back.
         loadCategories(),
         loadEvents(),
-        loadBeyond(),
+        loadFeatured(),
         loadFavorites(),
         detectedCity ? loadNearby(detectedCity) : Promise.resolve(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadFeatured, loadFavorites, loadNearby, detectedCity]);
+
+  // "Tell me about new events in <city>": on while my alert city is the one I'm in.
+  // One alert city per person, so turning it on here moves it from any other.
+  const cityAlertOn = !!detectedCity && profile?.newEventsCity?.toLowerCase() === detectedCity.toLowerCase();
+  const toggleCityAlert = useCallback(async () => {
+    if (!detectedCity || !profile) return;
+    const before = profile.newEventsCity ?? null;
+    const next = cityAlertOn ? null : detectedCity;
+    setProfile({ ...profile, newEventsCity: next });
+    try {
+      await setCityAlert(next);
+    } catch {
+      setProfile((p) => (p ? { ...p, newEventsCity: before } : p));
+      AppAlert.alert("Couldn't change the alert", 'Check your connection and try again.');
+    }
+  }, [detectedCity, profile, cityAlertOn]);
 
   // Back from Settings with location switched on: pick the city up without a restart.
   useEffect(() => {
@@ -351,18 +402,30 @@ export function useHomeData() {
   useEffect(() => onReconnect(() => void onRefresh()), [onRefresh]);
 
   // ── Derived sections ──────────────────────────────────────────────────────
-  // "Happening near you", in priority order: city events, then WeGoBeyond's, then
+  // "Happening near you", in priority order: city events, then online ones, then
   // curated popular picks so it's never empty. Sub-events roll up to their super
-  // event; the list keeps the first few that aren't over and sorts those by date
-  // (groupByDay), so the city always wins a place.
+  // event; Home leaves out what it already shows above, then the list keeps the
+  // first few that aren't over and sorts those by date (groupByDay), so the city
+  // always wins a place.
   const feedEvents = useMemo(
-    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], beyondEvents, popularEvents)),
-    [detectedCity, nearbyEvents, popularEvents, beyondEvents],
+    () =>
+      rollUpToSuperEvents(
+        buildPopularEvents(detectedCity ? nearbyEvents : [], detectedCity ? onlineEvents : [], popularEvents),
+      ),
+    [detectedCity, nearbyEvents, onlineEvents, popularEvents],
   );
-  // Every source of the list, so its first showing doesn't reshuffle as the
-  // city's or WeGoBeyond's events land (the last known fix keeps the wait short).
+  // Every source of the list and of what it leaves out (tickets, shortlist, my
+  // spaces' and the featured space's events), so its first showing doesn't
+  // reshuffle as they land. Home adds the invites.
   const isLoadingFeed =
-    isLoadingEvents || isLoadingBeyond || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
+    isLoadingEvents ||
+    locationStatus === 'loading' ||
+    (detectedCity ? isLoadingNearby : false) ||
+    isLoadingTickets ||
+    isLoadingFavorites ||
+    isLoadingMySpaces ||
+    isLoadingSpaceEvents ||
+    isLoadingFeatured;
 
   return {
     user,
@@ -383,11 +446,12 @@ export function useHomeData() {
     favoriteEvents,
     isLoadingFavorites,
 
-    beyondSpace,
-    beyondEvents,
+    featuredSpace,
+    featuredEvents,
 
     mySpaces,
     isLoadingMySpaces,
+    spaceEvents,
     allSpaces,
 
     categories,
@@ -397,6 +461,8 @@ export function useHomeData() {
     locationStatus,
     loadLocation,
     canAskLocation,
+    cityAlertOn,
+    toggleCityAlert,
   };
 }
 

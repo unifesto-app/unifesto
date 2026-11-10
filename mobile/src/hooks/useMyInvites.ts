@@ -13,13 +13,13 @@ import { declineSeat, getMyInvites, type MyInvite } from '../lib/api/registratio
 export function useMyInvites() {
   const { token } = useAuth();
   const [invites, setInvites] = useState<MyInvite[]>([]);
+  // Until the first answer: Home's list waits so it can leave out invited events.
+  const [loading, setLoading] = useState(!!token);
 
   const refresh = useCallback(async () => {
-    if (!token) {
-      setInvites([]);
-      return;
-    }
-    setInvites(await getMyInvites());
+    if (token) setInvites(await getMyInvites()); // never throws
+    else setInvites([]);
+    setLoading(false);
   }, [token]);
 
   useFocusEffect(
@@ -46,5 +46,5 @@ export function useMyInvites() {
     ]);
   }, []);
 
-  return { invites, refresh, decline };
+  return { invites, loading, refresh, decline };
 }

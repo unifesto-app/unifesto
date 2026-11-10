@@ -111,16 +111,23 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
   Hanken SemiBold, sentence case, with no blurb under them.
-- **Row lists** (Profile and its settings pages, every list on Home (Happening near you by day, WeGoBeyond, Browse, My shortlist, My spaces), the Spaces page, About, the Space tab, Apex "Waiting on me"): rows
+- **Row lists** (Profile and its settings pages, every list on Home (From my spaces or the featured
+  space, Happening near you by day, My shortlist, Manage), the Spaces page, About, the Space tab,
+  Apex "Waiting on me"): rows
   straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
   `Rows` from `SpacePanel`). An action (Manage, Add, Link, Start, Open Settings) is the last row of
   its list, label and glyph in `c.sky` (`SettingsRow accent`), never a title button. Under rows
-  with thumbnails it is the sky label alone (Home's "All events"): a lone glyph there reads as
-  a missing picture. Glyphs may
+  with thumbnails it is the sky label alone (`ActionRow`: "All events", "Explore spaces", the city
+  alert, which turns muted while on): a lone glyph there reads as a missing picture. Glyphs may
   carry their job's accent: sky tickets and events, mint done, ivory the star. A row that opens
   another app shows that app's real mark (`BrandIcon`).
-  The one picture rail on Home is Find your vibe (`VibeRail`): category banners at 4:3, named
-  underneath, after Browse.
+- **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
+  muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
+- **Home shows each event once.** Tickets and invites lead; the space list and Happening near you
+  leave those out, and Happening near you also leaves out the space list and My shortlist.
+- **Pictures on Home:** Happening near you opens on one hero card (`EventHero`), the soonest event's
+  4:3 cover at full width; the rest are rows. The one picture rail is Find your vibe (`VibeRail`):
+  category banners at 4:3, named underneath, after Happening near you.
 - **Stats** are a figure over a muted label. `ManageStats` draws a row of them as one card divided
   by hairlines.
 - **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,

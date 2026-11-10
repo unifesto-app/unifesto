@@ -164,6 +164,12 @@ export async function getSpaceBySlug(slug: string): Promise<Space> {
   return request(`/spaces/slug/${cleanSlug}`, 'Space not found');
 }
 
+/** The space Apex features on Home for people who haven't joined one, if any. */
+export async function getFeaturedSpace(): Promise<Space | null> {
+  const body = await request<{ space: Space | null }>('/spaces/featured', "Couldn't load the featured space");
+  return body?.space ?? null;
+}
+
 /**
  * Search spaces
  */
