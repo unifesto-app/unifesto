@@ -1179,3 +1179,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-09** · C12 fix: a burst of push-device reports from a 5.0.1 phone no longer 500s while retiring the old OneSignal row (deleteMany, UNIFESTO-BACKEND-E) (#631)
 - **2026-11-09** · O5: the live 5.0.1 runtimes (iOS 42, Android 54) recorded for OTA-safe (#632)
 - **2026-11-10** · Mobile Home redesigned as hairline rows (Happening near you by day, Browse, My shortlist, My spaces); cover-flow, Trending, vibe banners and the Beyond and spaces rails removed (#633)
+- **2026-11-10** · Mobile push token loop fixed (every signed-in session re-fetched the token forever) and the empty full-screen backdrop bitmap dropped on 55 screens; aimed at the iOS watchdog kills in UNIFESTO-MOBILE-1 (#635)
