@@ -52,11 +52,15 @@ export default function HomeTab() {
   const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
   // Browse glyphs carry the events accent; Explore spaces isn't events, so it stays text.
   const browseGlyph = { size: 24, color: c.sky };
-  // /favorites is newest-saved first and keeps ended events: show the next three coming up.
-  const shortlist = data.favoriteEvents
-    .filter((e) => !isEventOver(e))
-    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-    .slice(0, 3);
+  // The next three coming up. /favorites is newest-saved first and keeps ended
+  // events; a space's feed is newest first.
+  const nextThree = (events: Event[]) =>
+    events
+      .filter((e) => !isEventOver(e))
+      .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+      .slice(0, 3);
+  const shortlist = nextThree(data.favoriteEvents);
+  const beyond = nextThree(data.beyondEvents);
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -167,6 +171,20 @@ export default function HomeTab() {
             onSeeAll={() => router.push(data.detectedCity ? { pathname: '/events', params: { city: data.detectedCity } } : '/events')}
           />
         </Section>
+
+        {/* WeGoBeyond by name, under the list. It lands with the list (which waits
+            for it), so no skeleton of its own. */}
+        {data.beyondSpace && beyond.length > 0 ? (
+          <Section title={data.beyondSpace.name} onSeeAll={() => openSpace(data.beyondSpace!)}>
+            <View style={styles.rows}>
+              <Rows>
+                {beyond.map((e) => (
+                  <EventRow key={e.id} event={e} when={relativeWhen(e.startDateTime)} onPress={() => openEvent(e)} />
+                ))}
+              </Rows>
+            </View>
+          </Section>
+        ) : null}
 
         <Section title="Browse">
           <View style={styles.rows}>

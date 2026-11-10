@@ -117,6 +117,7 @@ export function useHomeData() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
+  const [beyondSpace, setBeyondSpace] = useState<Space | null>(null);
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
   const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
 
@@ -244,10 +245,11 @@ export function useHomeData() {
     }
   }, [user]);
 
-  // WeGoBeyond's upcoming events.
+  // WeGoBeyond and its upcoming events: its own section on Home, and part of the list.
   const loadBeyond = useCallback(async () => {
     try {
       const space = await getSpaceBySlug(BEYOND_SLUG);
+      setBeyondSpace(space);
       const res = await getSpaceEvents(space.id, 1, 10);
       // The space feed shows its own team drafts too; Home is public listings only.
       setBeyondEvents((res?.events || []).filter((e) => e.status !== 'DRAFT'));
@@ -380,6 +382,9 @@ export function useHomeData() {
 
     favoriteEvents,
     isLoadingFavorites,
+
+    beyondSpace,
+    beyondEvents,
 
     mySpaces,
     isLoadingMySpaces,

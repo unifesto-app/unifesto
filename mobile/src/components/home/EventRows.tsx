@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarDots } from '@unifesto/unicon/react-native';
 import type { Event } from '../../lib/api/events';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import { groupByDay, rowTime, shortPrice } from '../../utils/eventFormat';
@@ -135,9 +134,6 @@ export default function DayRows({ events, loading, failed, onRetry, onPressEvent
         accessibilityLabel={allLabel}
         style={[styles.row, styles.all, { borderTopColor: c.border }]}
       >
-        <View style={styles.glyph}>
-          <CalendarDots size={24} color={c.sky} />
-        </View>
         <Text style={[styles.title, { color: c.sky }]} numberOfLines={1}>{allLabel}</Text>
       </PressableScale>
     </View>
@@ -151,7 +147,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   // The action row closing the list, a full hairline above it like the rows.
   all: { paddingVertical: spacing[3], borderTopWidth: StyleSheet.hairlineWidth },
-  glyph: { width: THUMB_W, alignItems: 'center' },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   body: { flex: 1, gap: 2 },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
