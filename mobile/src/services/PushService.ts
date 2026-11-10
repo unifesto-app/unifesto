@@ -43,10 +43,19 @@ class PushService {
    */
   private token: string | null = null;
 
-  /** Once at launch: how a push shows while the app is open, and Android's channel. */
+  /** Once at launch: how a push shows while the app is open, Android's channel, and token changes. */
   initialize(): void {
     if (this.initialized) return;
     this.initialized = true;
+    // One app-wide subscription, so a token rotated while no one is listening
+    // (signed out) is still kept. getDevicePushTokenAsync fires this event too
+    // (iOS and Android), so a repeat of the kept token must not notify:
+    // onChange → getDeviceIdentity → token event → onChange looped in 5.0.1.
+    Notifications.addPushTokenListener(({ data }) => {
+      if (typeof data !== 'string' || !data || data === this.token) return;
+      this.token = data;
+      this.listeners.forEach((cb) => cb());
+    });
     Notifications.setNotificationHandler({
       handleNotification: async (n) => {
         const inApp = this.foreground(payloadOf(n));
@@ -121,20 +130,11 @@ class PushService {
    */
   onChange(cb: () => void): () => void {
     this.listeners.add(cb);
-    // getDevicePushTokenAsync fires this listener too (iOS and Android), so a
-    // repeat of the token we have must not call cb: cb → getDeviceIdentity →
-    // token event → cb looped for the whole session in 5.0.1.
-    const token = Notifications.addPushTokenListener(({ data }) => {
-      if (typeof data !== 'string' || !data || data === this.token) return;
-      this.token = data;
-      cb();
-    });
     const app = AppState.addEventListener('change', (s) => {
       if (s === 'active') cb();
     });
     return () => {
       this.listeners.delete(cb);
-      token.remove();
       app.remove();
     };
   }
