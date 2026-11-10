@@ -1187,3 +1187,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-10** · Platform ADMIN can change their own space role and join event teams themselves (#640)
 - **2026-11-10** · Featured space on the app Home (set in Apex), events from several spaces in one call, and alerts for new events in my city (#642)
 - **2026-11-10** · Mobile Home shows each event once: From my spaces or a featured space, a hero card, hosts and crowds on rows, city alerts, Manage rows; Browse removed (#639)
+- **2026-11-10** · Apex can create spaces (New space, with Super/Regular type) and admins can put a club under a college whatever the college's plan; the sub-space plan limit now applies only to an organiser's own request (#641)
