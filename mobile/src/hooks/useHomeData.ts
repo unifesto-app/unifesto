@@ -117,6 +117,7 @@ export function useHomeData() {
   const [categories, setCategories] = useState<any[]>([]);
 
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
+  const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
 
   const [favoriteEvents, setFavoriteEvents] = useState<Event[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(!!user);
@@ -249,6 +250,8 @@ export function useHomeData() {
       setBeyondEvents((res?.events || []).filter((e) => e.status !== 'DRAFT'));
     } catch {
       setBeyondEvents([]);
+    } finally {
+      setIsLoadingBeyond(false);
     }
   }, []);
 
@@ -275,10 +278,10 @@ export function useHomeData() {
         setCanAskLocation(canAskAgain);
         return;
       }
-      // Only the city matters: a fix from the last few hours is instant, where a
+      // Only the city matters: a fix from the last hour is instant, where a
       // fresh one can take many seconds indoors.
       const position =
-        (await Location.getLastKnownPositionAsync({ maxAge: 6 * 60 * 60 * 1000 })) ??
+        (await Location.getLastKnownPositionAsync({ maxAge: 60 * 60 * 1000 })) ??
         (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
       const places = await Location.reverseGeocodeAsync({
         latitude: position.coords.latitude,
@@ -349,9 +352,10 @@ export function useHomeData() {
     () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], beyondEvents, popularEvents)),
     [detectedCity, nearbyEvents, popularEvents, beyondEvents],
   );
-  // Not held for the location: the list shows as soon as the feeds land, and the
-  // city's events slot in first once it's known.
-  const isLoadingFeed = isLoadingEvents || (detectedCity ? isLoadingNearby : false);
+  // Every source of the list, so its first showing doesn't reshuffle as the
+  // city's or WeGoBeyond's events land (the last known fix keeps the wait short).
+  const isLoadingFeed =
+    isLoadingEvents || isLoadingBeyond || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
 
   return {
     user,
