@@ -16,7 +16,7 @@ import { getFavorites } from '../lib/api/favorites';
 import { fetchUpcomingTickets } from '../lib/upcomingTickets';
 import { syncUpNextWidget } from '../widgets/sync';
 
-// The featured partner space whose events get their own home rail.
+// The featured partner space whose events join Home's "Happening near you".
 export const BEYOND_SPACE_NAME = 'Beyond by Unifesto';
 
 export type LocationStatus = 'idle' | 'loading' | 'granted' | 'denied';
@@ -110,14 +110,11 @@ export function useHomeData() {
   const [mySpaces, setMySpaces] = useState<Space[]>([]);
   const [isLoadingMySpaces, setIsLoadingMySpaces] = useState(!!user);
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
-  const [isLoadingAllSpaces, setIsLoadingAllSpaces] = useState(true);
 
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  const [beyondSpace, setBeyondSpace] = useState<Space | null>(null);
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
-  const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
 
   const [favoriteEvents, setFavoriteEvents] = useState<Event[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(!!user);
@@ -134,7 +131,6 @@ export function useHomeData() {
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [nearbyEvents, setNearbyEvents] = useState<Event[]>([]);
-  const [nearbySpaces, setNearbySpaces] = useState<Space[]>([]);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -185,16 +181,14 @@ export function useHomeData() {
     }
   }, [user]);
 
+  // Popular spaces for the search sheet.
   const loadAllSpaces = useCallback(async () => {
     try {
-      setIsLoadingAllSpaces(true);
       const response = await getAllSpaces({ page: 1, limit: 24 });
       setAllSpaces(response.spaces.filter((sp) => !isPlaceholderSpace(sp)).slice(0, 8));
     } catch (error) {
       if (__DEV__) console.error('Failed to load all spaces:', error);
       setAllSpaces([]);
-    } finally {
-      setIsLoadingAllSpaces(false);
     }
   }, []);
 
@@ -250,7 +244,6 @@ export function useHomeData() {
   // Resolve the "Beyond by Unifesto" space by name, then load its events.
   const loadBeyond = useCallback(async () => {
     try {
-      setIsLoadingBeyond(true);
       const resp = await getAllSpaces({ search: BEYOND_SPACE_NAME, limit: 5 });
       const list = resp?.spaces || [];
       // Prefer an exact name match; fall back to the top search hit.
@@ -259,35 +252,24 @@ export function useHomeData() {
         list[0] ||
         null;
       if (!match) {
-        setBeyondSpace(null);
         setBeyondEvents([]);
         return;
       }
-      setBeyondSpace(match);
       const res = await getSpaceEvents(match.id, 1, 10);
       setBeyondEvents(res?.events || []);
     } catch {
-      setBeyondSpace(null);
       setBeyondEvents([]);
-    } finally {
-      setIsLoadingBeyond(false);
     }
   }, []);
 
-  // Fetch city-scoped events & spaces once we know the user's city
+  // Fetch city-scoped events once we know the user's city
   const loadNearby = useCallback(async (city: string) => {
     try {
       setIsLoadingNearby(true);
-      const [eventsRes, spacesRes] = await Promise.all([
-        getEvents({ page: 1, limit: 10, city }),
-        // Filtered by city on the server since K1 (it used to ignore `city`).
-        getAllSpaces({ page: 1, limit: 24, city }),
-      ]);
+      const eventsRes = await getEvents({ page: 1, limit: 10, city });
       setNearbyEvents(eventsRes?.data || eventsRes?.events || []);
-      setNearbySpaces((spacesRes?.spaces || []).filter((sp) => !isPlaceholderSpace(sp)).slice(0, 8));
     } catch {
       setNearbyEvents([]);
-      setNearbySpaces([]);
     } finally {
       setIsLoadingNearby(false);
     }
@@ -365,19 +347,14 @@ export function useHomeData() {
   useEffect(() => onReconnect(() => void onRefresh()), [onRefresh]);
 
   // ── Derived sections ──────────────────────────────────────────────────────
-  // Nearby city events lead the hero; curated popular picks backfill so it's
-  // never empty. Sub-events roll up to their super event.
-  // Memoised: a fresh array every render would re-render the whole carousel.
-  const heroEvents = useMemo(
-    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], popularEvents, [])),
-    [detectedCity, nearbyEvents, popularEvents],
+  // "Happening near you": city events, then curated popular picks so it's never
+  // empty, then Beyond's. Sub-events roll up to their super event; the list
+  // sorts by date and drops what's over (groupByDay).
+  const feedEvents = useMemo(
+    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], popularEvents, beyondEvents)),
+    [detectedCity, nearbyEvents, popularEvents, beyondEvents],
   );
-  const isLoadingHero = isLoadingEvents || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
-
-  const showNearbySpaces = !!detectedCity && nearbySpaces.length > 0;
-
-  const discoverSpaces = showNearbySpaces ? nearbySpaces : allSpaces;
-  const isLoadingDiscoverSpaces = isLoadingAllSpaces || (detectedCity ? isLoadingNearby : false);
+  const isLoadingFeed = isLoadingEvents || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
 
   return {
     user,
@@ -388,8 +365,8 @@ export function useHomeData() {
     upcomingTickets,
     isLoadingTickets,
 
-    heroEvents,
-    isLoadingHero,
+    feedEvents,
+    isLoadingFeed,
     trendingEvents,
     popularEvents,
     isLoadingEvents,
@@ -401,16 +378,9 @@ export function useHomeData() {
     mySpaces,
     isLoadingMySpaces,
     allSpaces,
-    discoverSpaces,
-    showNearbySpaces,
-    isLoadingDiscoverSpaces,
 
     categories,
     isLoadingCategories,
-
-    beyondSpace,
-    beyondEvents,
-    isLoadingBeyond,
 
     detectedCity,
     locationStatus,

@@ -1,4 +1,5 @@
 import { getEventCardPrice } from '../lib/api/events';
+import { isEventOver } from '../lib/eventEnded';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -73,7 +74,41 @@ export function weekendWindow(now: Date = new Date()) {
   return { start, end };
 }
 
-export const spaceMembers = (s: { member_count?: number; _count?: { userRoles: number } }) =>
+/** "Sat 14 to Sun 15 Nov" (both months when the weekend spans two): the Browse row on Home. */
+export function weekendLabel(now: Date = new Date()) {
+  const { start } = weekendWindow(now);
+  const sun = new Date(start);
+  sun.setDate(start.getDate() + 1);
+  const month = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short' });
+  return `Sat ${start.getDate()}${month(start) === month(sun) ? '' : ` ${month(start)}`} to Sun ${sun.getDate()} ${month(sun)}`;
+}
+
+/**
+ * Home's "Happening near you": events that aren't over, in start order, cut to
+ * `max`, under a day label ("Happening now", "Today", "Tomorrow", "Thu 12 Nov").
+ */
+export function groupByDay<T extends { startDateTime: string }>(events: T[], max: number, now: Date = new Date()) {
+  const next = events
+    .filter((e) => !isEventOver(e, now.getTime()))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, max);
+  const groups: { label: string; events: T[] }[] = [];
+  for (const e of next) {
+    const d = new Date(e.startDateTime);
+    const diff = dayDiff(now, d);
+    const label =
+      d <= now ? 'Happening now'
+      : diff === 0 ? 'Today'
+      : diff === 1 ? 'Tomorrow'
+      : `${d.toLocaleDateString('en-IN', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}`;
+    const last = groups[groups.length - 1];
+    if (last?.label === label) last.events.push(e);
+    else groups.push({ label, events: [e] });
+  }
+  return groups;
+}
+
+export const spaceMembers =(s: { member_count?: number; _count?: { userRoles: number } }) =>
   s.member_count || s._count?.userRoles || 0;
 
 export const spaceLogo = (s: { logoUrl?: string | null; logo_url?: string | null }) =>
