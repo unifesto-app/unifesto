@@ -813,6 +813,18 @@ export class EventFilterDto {
   @IsString()
   spaceId?: string;
 
+  // Comma-separated space ids ("From my spaces"); empties dropped.
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    const ids = value.split(',').map((v) => v.trim()).filter(Boolean);
+    return ids.length ? ids : undefined;
+  })
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUUID('all', { each: true })
+  spaceIds?: string[];
+
   @IsOptional()
   @IsInt()
   @Min(1)

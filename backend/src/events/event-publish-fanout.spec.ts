@@ -46,4 +46,50 @@ describe('EventPublishFanout', () => {
     await new Promise((r) => setImmediate(r));
     expect(email.sendEventPublished).toHaveBeenCalled();
   });
+
+  describe('city alerts', () => {
+    const event = (over: object = {}) => ({
+      id: 'e1', spaceId: 's1', title: 'Fest', slug: 'fest', type: 'OFFLINE', venueName: 'T-Hub', city: ' Hyderabad ',
+      status: 'PUBLISHED', visibility: 'PUBLIC', parentEventId: null, createdBy: 'creator', timezone: 'Asia/Kolkata',
+      startDateTime: new Date('2026-11-01T04:30:00Z'), endDateTime: new Date('2026-11-01T07:30:00Z'),
+      space: { name: 'Club' }, ...over,
+    });
+    const run = async (over: object = {}) => {
+      const prisma: any = {
+        event: { findUnique: jest.fn().mockResolvedValue(event(over)) },
+        userRole: { findMany: jest.fn().mockResolvedValue([]) },
+        user: { findMany: jest.fn().mockResolvedValueOnce([{ id: 'u1' }, { id: 'u2' }]).mockResolvedValue([]) },
+      };
+      const events = { emit: jest.fn() };
+      await new EventPublishFanout(prisma, {} as any, {} as any, events as any).run('e1');
+      return { prisma, events };
+    };
+
+    it('tells matching users, excluding space members and the creator, with a per-user dedup key', async () => {
+      const { prisma, events } = await run();
+      const where = prisma.user.findMany.mock.calls[0][0].where;
+      expect(where).toMatchObject({
+        newEventsCity: { equals: 'Hyderabad', mode: 'insensitive' },
+        id: { not: 'creator' },
+        roles: { none: { spaceId: 's1' } },
+      });
+      expect(events.emit).toHaveBeenCalledTimes(1);
+      const [, batch] = events.emit.mock.calls[0];
+      expect(batch.kind).toBe('city.new_event');
+      expect(batch.items.map((i: any) => i.dedupKey)).toEqual(['city.new_event:e1:u1', 'city.new_event:e1:u2']);
+      expect(batch.items[0].data).toMatchObject({ eventTitle: 'Fest', city: 'Hyderabad', venueName: 'T-Hub', spaceName: 'Club' });
+    });
+
+    it.each([
+      ['online', { type: 'ONLINE' }],
+      ['a sub-event', { parentEventId: 'parent' }],
+      ['private', { visibility: 'PRIVATE' }],
+      ['not live', { status: 'DRAFT' }],
+      ['no city', { city: null }],
+    ])('skips %s events', async (_n, over) => {
+      const { prisma, events } = await run(over);
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+  });
 });

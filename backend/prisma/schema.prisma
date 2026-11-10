@@ -551,6 +551,8 @@ model User {
   orbitLeads                   OrbitLead[]
   orbitApplications            OrbitApplication[]
   companyItemsOwned            CompanyItem[]                 @relation("CompanyItemOwner")
+  // City the user wants new-event alerts for; null = off.
+  newEventsCity                String?                       @map("new_events_city") @db.VarChar(100)
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -1184,6 +1186,8 @@ model Space {
   // a "not affiliated" note publicly. Cleared when the space is renamed.
   verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
   verifiedBy String?   @map("verified_by") @db.Uuid
+  // Editorial slot on the app Home: the most recently featured live public space wins.
+  featuredAt DateTime? @map("featured_at") @db.Timestamptz(6)
 
   // Creator
   createdBy String @map("created_by") @db.Uuid

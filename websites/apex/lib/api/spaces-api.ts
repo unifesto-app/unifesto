@@ -63,6 +63,7 @@ export async function getSpace(
     updated_at: raw.updated_at ?? raw.updatedAt,
     is_active: raw.is_active ?? statusVal === "ACTIVE",
     is_verified: Boolean(raw.verifiedAt),
+    is_featured: Boolean(raw.featuredAt),
   };
   return {
     data: normalized as unknown as SpaceWithHierarchy,
@@ -368,6 +369,17 @@ export async function setSpaceVerification(
   verified: boolean
 ): Promise<{ data: { id: string; verifiedAt: string | null } | null; error: ApiError | null }> {
   return apiCall(backendClient.patch(`/spaces/${id}/verification`, { verified }));
+}
+
+/**
+ * Show a space on the app's Home (the latest featured live public space wins)
+ * or take it off. ADMIN only. `PATCH /spaces/:id/featured`.
+ */
+export async function setSpaceFeatured(
+  id: string,
+  featured: boolean
+): Promise<{ data: { id: string; featuredAt: string | null } | null; error: ApiError | null }> {
+  return apiCall(backendClient.patch(`/spaces/${id}/featured`, { featured }));
 }
 
 /** Space visibility as accepted by the backend (`SpaceVisibility`). */

@@ -35,6 +35,7 @@ export const AUTOMATIONS: Automation[] = [
   { key: 'event.updated', name: 'Time or venue changed', when: 'When a published event moves', to: 'Attendees and "Notify me" leads', group: 'Before the event', channels: ['push', 'inapp', 'email'], kinds: ['event.updated'] },
   { key: 'event.cancelled', name: 'Event cancelled', when: 'When the organiser cancels', to: 'Attendees', group: 'Before the event', channels: ['push', 'inapp', 'email'], kinds: ['event.cancelled'] },
   { key: 'event.published', name: 'New event in your space', when: 'When an event is published', to: "The space's members", group: 'Before the event', channels: ['push', 'inapp', 'email'], kinds: ['event.published'] },
+  { key: 'city.new_event', name: 'New event in my city', when: 'When an event is published in a city', to: 'People who turned on alerts for that city', group: 'Before the event', channels: ['push', 'inapp'], kinds: ['city.new_event'] },
   { key: 'lead.interest', name: '"Notify me" updates', when: 'With the day-before reminder and time or venue changes', to: 'People who tapped Notify me', group: 'Before the event', channels: ['email'], kinds: ['lead.interest'] },
   // After the event
   { key: 'feedback', name: 'Feedback ask and reminder', when: '2 hours and 48 hours after the end', to: 'Checked-in attendees who have not answered', group: 'After the event', channels: ['push', 'inapp'], kinds: ['feedback.request', 'feedback.reminder'], switchable: 'feedback' },

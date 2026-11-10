@@ -161,6 +161,8 @@ export interface Space {
   logo_url: string | null;
   banner_url: string | null;
   is_verified: boolean;
+  /** Set from `featuredAt`: the space is on the app's Home. */
+  is_featured?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;

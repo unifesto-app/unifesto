@@ -98,6 +98,15 @@ export class UsersService {
    * idempotent — repeated reports of the same version just refresh the
    * last-reported timestamp so staff can see recency.
    */
+  async setCityAlert(userId: string, city: string | null) {
+    const { newEventsCity } = await this.prisma.user.update({
+      where: { id: userId },
+      data: { newEventsCity: city },
+      select: { newEventsCity: true },
+    });
+    return { city: newEventsCity };
+  }
+
   async updateMyAppVersion(
     userId: string,
     dto: { version: string; platform: string; runtimeVersion?: string; updateId?: string | null },

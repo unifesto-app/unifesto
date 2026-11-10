@@ -1198,6 +1198,28 @@ export class SpacesService {
     });
   }
 
+  async setSpaceFeatured(id: string, featured: boolean) {
+    const space = await this.prisma.space.findUnique({ where: { id }, select: { id: true } });
+    if (!space) {
+      throw new NotFoundException('Space not found');
+    }
+    return this.prisma.space.update({
+      where: { id },
+      data: { featuredAt: featured ? new Date() : null },
+      select: { id: true, featuredAt: true },
+    });
+  }
+
+  /** Latest featured space that is live and public, in the same shape as GET /spaces/slug/:slug. */
+  async getFeaturedSpace() {
+    const row = await this.prisma.space.findFirst({
+      where: { featuredAt: { not: null }, status: 'ACTIVE', visibility: 'PUBLIC' },
+      orderBy: { featuredAt: 'desc' },
+      select: { id: true },
+    });
+    return { space: row ? await this.getSpaceById(row.id) : null };
+  }
+
   /**
    * Q29: a space request makes the space at once, live and Unverified, with
    * the requester as its Space Admin. The request row stays as the record of

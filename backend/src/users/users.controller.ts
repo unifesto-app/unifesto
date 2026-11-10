@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Put,
   Post,
   Delete,
   Body,
@@ -25,6 +26,7 @@ import {
   CheckUsernameDto,
   UpdateNotificationSettingsDto,
   ReportAppVersionDto,
+  SetCityAlertDto,
 } from './dto';
 import type { User } from '@prisma/client';
 import { UserProfileDto } from '../auth/dto';
@@ -69,6 +71,16 @@ export class UsersController {
     @Body() dto: ReportAppVersionDto,
   ) {
     return this.usersService.updateMyAppVersion(user.id, dto);
+  }
+
+  /**
+   * Turn "new events in my city" alerts on (city) or off (null).
+   * PUT /users/me/city-alert { city: string | null } -> { city }
+   */
+  @Put('me/city-alert')
+  @UseGuards(JwtAuthGuard)
+  async setCityAlert(@CurrentUser() user: User, @Body() dto: SetCityAlertDto) {
+    return this.usersService.setCityAlert(user.id, dto.city);
   }
 
   /**
