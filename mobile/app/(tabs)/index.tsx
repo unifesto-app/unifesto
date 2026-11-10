@@ -22,6 +22,7 @@ import SpacePanel, { LinkRow, Rows } from '../../src/components/home/SpacePanel'
 import ApexPanel from '../../src/components/home/ApexPanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import { MySpacesRows } from '../../src/components/home/SpaceCards';
+import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import type { Preset } from '../../src/hooks/useEventsBrowse';
@@ -177,6 +178,16 @@ export default function HomeTab() {
             </Rows>
           </View>
         </Section>
+
+        {data.isLoadingCategories || data.categories.length > 0 ? (
+          <Section title="Find your vibe">
+            {data.categories.length === 0 ? (
+              <VibeRailSkeleton />
+            ) : (
+              <VibeRail categories={data.categories} onPressCategory={openCategory} />
+            )}
+          </Section>
+        ) : null}
 
         {user && ((data.isLoadingFavorites && data.favoriteEvents.length === 0) || shortlist.length > 0) ? (
           <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>

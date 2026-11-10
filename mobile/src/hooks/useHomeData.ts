@@ -115,6 +115,7 @@ export function useHomeData() {
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
   const [isLoadingBeyond, setIsLoadingBeyond] = useState(true);
@@ -200,6 +201,8 @@ export function useHomeData() {
       setCategories(await getCategories());
     } catch {
       setCategories([]);
+    } finally {
+      setIsLoadingCategories(false);
     }
   }, []);
 
@@ -381,6 +384,7 @@ export function useHomeData() {
     allSpaces,
 
     categories,
+    isLoadingCategories,
 
     detectedCity,
     locationStatus,
