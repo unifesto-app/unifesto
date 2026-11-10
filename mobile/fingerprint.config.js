@@ -14,12 +14,17 @@
  * used to change the runtime. Skipping it keeps script edits OTA-safe.
  * (This replaces the default skip, PackageJsonAndroidAndIosScriptsIfNotContainRun,
  * which PackageJsonScriptsAll covers.)
+ *
+ * ExpoConfigVersions: `version` in app.config.js is only the store label, but
+ * Expo hashes it by default, so a version bump on `main` used to move the
+ * runtime and block every OTA until a store build shipped. Landed with the
+ * 5.0.2 store build; from then on a bump changes nothing for OTA.
  * @type {import('expo/fingerprint').Config}
  */
 const { SourceSkips } = require('expo/fingerprint');
 
 const config = {
-  sourceSkips: SourceSkips.PackageJsonScriptsAll,
+  sourceSkips: SourceSkips.PackageJsonScriptsAll | SourceSkips.ExpoConfigVersions,
   ignorePaths: [
     // react-native-maps' config plugin sets HAVE_GOOGLE_MAPS here at prebuild.
     'node_modules/react-native-maps/ios/AirMaps/RNMapsDefines.h',

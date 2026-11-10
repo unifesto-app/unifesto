@@ -38,13 +38,22 @@ async function main() {
   const base = await fingerprints(path.resolve(baseDir));
   const broken = headMisses.filter((p) => isLive(p, base[p]));
   for (const p of PLATFORMS) console.log(`base ${p.padEnd(8)} ${base[p]} ${isLive(p, base[p]) ? '✓ live' : '✗'}`);
+  if (broken.length && process.env.OTA_NATIVE_LABEL === 'true') {
+    // O8: acknowledged. Still loud, so nobody merges it outside a store-build window.
+    console.log(
+      `\n::warning title=OTA-safe::native change (labelled native): store build only (${broken.join(', ')}). ` +
+        'Merge right before the build; OTAs from main stop reaching current phones once it lands.',
+    );
+    return;
+  }
   if (broken.length) {
     console.log(`\n::error title=OTA-safe::native change: needs a store build (${broken.join(', ')})`);
     console.error(
       'native change: needs a store build.\n' +
         `The base matched a live ${broken.join(' + ')} runtime and this PR does not, so no OTA published\n` +
-        'after it would reach anyone on the current store builds. Label the PR `native` and hold it for the\n' +
-        'next store-build window. Locally, `eas fingerprint:compare --environment production` shows what changed.',
+        'after it would reach anyone on the current store builds. Label the PR `native` (then re-run CI) and\n' +
+        'hold it for the next store-build window. Locally, `eas fingerprint:compare --environment production`\n' +
+        'shows what changed.',
     );
     process.exit(1);
   }

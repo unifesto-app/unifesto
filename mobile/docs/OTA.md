@@ -28,7 +28,9 @@ From **15 Nov 2026** (5.0.0 live) on:
 
 - A PR that changes the runtime gets the `native` label and stays open until the
   next store-build window. At the window, all `native` PRs merge together right
-  before the build, so `main` stays OTA-safe in between.
+  before the build, so `main` stays OTA-safe in between. CI's OTA-safe step fails
+  on a runtime change until the label is on, then passes with a warning (label
+  added after the run: press Re-run).
 - JS PRs never wait for a window. They merge and ship as OTAs.
 - All PRs still base on `main` (no stacking).
 - The PR template's "Ships as" is the CI result (OTA-safe / store build), not a guess.

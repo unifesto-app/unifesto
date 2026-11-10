@@ -16,7 +16,7 @@ module.exports = () => {
   const config = {
     name: "Unifesto",
     slug: "unifesto",
-    version: "5.0.1",
+    version: "5.0.2",
     // Native app only. Without this Expo defaults to ["ios", "android", "web"],
     // so `eas update` (platform "all") also tried to bundle web and failed,
     // which is why OTAs needed the --skip-bundler recipe. Part of the runtime

@@ -110,14 +110,20 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: .ota-base
+      # O8: a runtime change passes (with a warning) once the PR has the `native`
+      # label. Labels are read live, not from the event, so labelling the PR and
+      # pressing Re-run is enough; if the lookup fails the check stays strict.
       - name: OTA-safe
         if: ${{ !cancelled() && steps.ota.outputs.ok == 'true' }}
         working-directory: mobile
         env:
           GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           (cd ../.ota-base/mobile && npm ci)
-          node scripts/ota-ci-check.js ../.ota-base/mobile
+          OTA_NATIVE_LABEL=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq 'any(.labels[]; .name == "native")' || echo false) \
+            node scripts/ota-ci-check.js ../.ota-base/mobile
 
       # ── websites (Node 22) ──────────────────────────────────────────────
       # Each app also runs the production `next build` (J19): with
