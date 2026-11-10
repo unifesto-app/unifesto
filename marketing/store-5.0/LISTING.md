@@ -134,3 +134,27 @@ Only the release notes change; the listing, screenshots and video stay as in 5.0
 • Notifications show the Unifesto mark
 • Small fixes
 ```
+
+## 5.0.2
+
+Only the release notes change; the listing, screenshots and video stay as in 5.0. No in-app What's new entry, for the same reason as 5.0.1. Most phones already run this code as the 5.0.2 OTA; the store build makes it what a fresh install gets.
+
+**App Store What's New:**
+
+```
+• A simpler Home: what's on near you, day by day, with quick ways into this weekend, free and online events
+• WeGoBeyond events are back on Home
+• Home finds your city faster and no longer waits on location
+• Fixes a crash on some iPhones and uses less memory
+• Small fixes
+```
+
+**Play release notes:**
+
+```
+• A simpler Home: what's on near you, day by day, with quick ways into this weekend, free and online events
+• WeGoBeyond events are back on Home
+• Home finds your city faster and no longer waits on location
+• Uses less memory and battery
+• Small fixes
+```
