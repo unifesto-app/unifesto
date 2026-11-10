@@ -1,4 +1,5 @@
 import { getEventCardPrice } from '../lib/api/events';
+import { isEventOver } from '../lib/eventEnded';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -71,6 +72,55 @@ export function weekendWindow(now: Date = new Date()) {
   const end = new Date(start);
   end.setDate(start.getDate() + 2);
   return { start, end };
+}
+
+/** "Sat 14 to Sun 15 Nov" (both months when the weekend spans two): the Browse row on Home. */
+export function weekendLabel(now: Date = new Date()) {
+  const { start } = weekendWindow(now);
+  const sun = new Date(start);
+  sun.setDate(start.getDate() + 1);
+  const month = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short' });
+  return `Sat ${start.getDate()}${month(start) === month(sun) ? '' : ` ${month(start)}`} to Sun ${sun.getDate()} ${month(sun)}`;
+}
+
+/** "Thu 12 Nov". */
+const dayName = (d: Date) =>
+  `${d.toLocaleDateString('en-IN', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}`;
+
+const hasDate = (e: { startDateTime?: string }) => !!e.startDateTime && !Number.isNaN(new Date(e.startDateTime).getTime());
+
+/**
+ * Home's "Happening near you": the first `max` events that aren't over (the
+ * input order is the priority, so city events keep their places), then sorted
+ * by start under a day label ("Happening now", "Today", "Tomorrow", "Thu 12 Nov").
+ */
+export function groupByDay<T extends { startDateTime: string }>(events: T[], max: number, now: Date = new Date()) {
+  const next = events
+    .filter((e) => hasDate(e) && !isEventOver(e, now.getTime()))
+    .slice(0, max)
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
+  const groups: { label: string; events: T[] }[] = [];
+  for (const e of next) {
+    const d = new Date(e.startDateTime);
+    const diff = dayDiff(now, d);
+    const label = d <= now ? 'Happening now' : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : dayName(d);
+    const last = groups[groups.length - 1];
+    if (last?.label === label) last.events.push(e);
+    else groups.push({ label, events: [e] });
+  }
+  return groups;
+}
+
+/**
+ * The time line of a row under a day label: the start time, or for something
+ * already on, when it ends ("Until 9:00 PM" today, else "Until Thu 12 Nov").
+ */
+export function rowTime(e: { startDateTime: string; endDateTime?: string | null }, now: Date = new Date()) {
+  const start = new Date(e.startDateTime);
+  if (start > now) return formatTime(start);
+  if (!e.endDateTime) return `Started ${formatTime(start)}`;
+  const end = new Date(e.endDateTime);
+  return `Until ${dayDiff(now, end) === 0 ? formatTime(end) : dayName(end)}`;
 }
 
 export const spaceMembers = (s: { member_count?: number; _count?: { userRoles: number } }) =>

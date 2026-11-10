@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { IdentificationCard, Sparkle, UserCircle } from '@unifesto/unicon/react-native';
+import { CalendarDots, Globe, IdentificationCard, Sparkle, Ticket, UserCircle, UsersThree } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { useCosmos } from '../../src/theme/cosmos';
@@ -10,25 +10,23 @@ import { useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
 import HomeHeader from '../../src/components/home/HomeHeader';
-import { Rail, Section } from '../../src/components/home/Section';
-import HeroCarousel from '../../src/components/home/HeroCarousel';
+import { GUTTER, Section } from '../../src/components/home/Section';
+import DayRows, { EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
 import HackathonCard, { useMyHackathon } from '../../src/components/home/HackathonCard';
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
 import { useUnreadNotifications } from '../../src/hooks/useUnreadNotifications';
 import PromptCard from '../../src/components/home/PromptCard';
-import SpacePanel from '../../src/components/home/SpacePanel';
+import SpacePanel, { LinkRow, Rows } from '../../src/components/home/SpacePanel';
 import ApexPanel from '../../src/components/home/ApexPanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
-import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
-import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
-import { MySpacesRows, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
-import TrendingList from '../../src/components/home/TrendingList';
+import { MySpacesRows } from '../../src/components/home/SpaceCards';
 import HostCta from '../../src/components/home/HostCta';
-import BeyondFeature, { BeyondFeatureSkeleton } from '../../src/components/home/BeyondFeature';
 import SearchSheet from '../../src/components/home/SearchSheet';
-import { relativeWhen, shortPrice } from '../../src/utils/eventFormat';
+import type { Preset } from '../../src/hooks/useEventsBrowse';
+import { relativeWhen, weekendLabel } from '../../src/utils/eventFormat';
+import { isEventOver } from '../../src/lib/eventEnded';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
 import { openSpaceWeb } from '../../src/lib/openOnWeb';
@@ -47,29 +45,17 @@ export default function HomeTab() {
   const { user, profile } = data;
 
   // ── Navigation ──────────────────────────────────────────────────────────
-  // Stable, so the memoised hero carousel doesn't re-render on every Home update.
-  const openEvent = React.useCallback(
-    (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`),
-    [router],
-  );
+  const openEvent = (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`);
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
-
-  const eventPoster = (e: Event) => (
-    <PosterCard
-      key={e.id}
-      title={e.title}
-      imageUrl={e.coverImageUrl}
-      when={relativeWhen(e.startDateTime)}
-      where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
-      host={e.space?.name}
-      tag={e.categories?.[0] || e.category}
-      price={shortPrice(e)}
-      onPress={() => openEvent(e)}
-    />
-  );
-
-  const posterSkeletons = [0, 1].map((i) => <PosterCardSkeleton key={i} />);
+  const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
+  // Browse glyphs carry the events accent; Explore spaces isn't events, so it stays text.
+  const browseGlyph = { size: 24, color: c.sky };
+  // /favorites is newest-saved first and keeps ended events: show the next three coming up.
+  const shortlist = data.favoriteEvents
+    .filter((e) => !isEventOver(e))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, 3);
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -126,7 +112,7 @@ export default function HomeTab() {
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
           unread={unread}
           onPressBell={() => router.push('/notifications')}
-          onPressPreset={(preset) => router.push({ pathname: '/events', params: { preset } })}
+          onPressPreset={openPreset}
           onPressSearch={search.openSheet}
         />
 
@@ -167,10 +153,42 @@ export default function HomeTab() {
           </View>
         ) : null}
 
-        {/* Mine first, then discovery. */}
-        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
+        {/* Discovery first, then mine: a list of what's next, ways in, and my own things. */}
+        <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'}>
+          <DayRows
+            events={data.feedEvents}
+            loading={data.isLoadingFeed}
+            failed={data.eventsFailed}
+            onRetry={data.onRefresh}
+            onPressEvent={openEvent}
+            allLabel={data.detectedCity ? `All events in ${data.detectedCity}` : 'All events'}
+            // K1: "near you" opens that city's events.
+            onSeeAll={() => router.push(data.detectedCity ? { pathname: '/events', params: { city: data.detectedCity } } : '/events')}
+          />
+        </Section>
+
+        <Section title="Browse">
+          <View style={styles.rows}>
+            <Rows>
+              <LinkRow key="weekend" icon={<CalendarDots {...browseGlyph} />} title="This weekend" meta={weekendLabel()} onPress={() => openPreset('weekend')} />
+              <LinkRow key="free" icon={<Ticket {...browseGlyph} />} title="Free to attend" meta="Events with free tickets" onPress={() => openPreset('free')} />
+              <LinkRow key="online" icon={<Globe {...browseGlyph} />} title="Online from anywhere" meta="Join from home" onPress={() => openPreset('online')} />
+              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={() => router.push('/spaces')} />
+            </Rows>
+          </View>
+        </Section>
+
+        {user && ((data.isLoadingFavorites && data.favoriteEvents.length === 0) || shortlist.length > 0) ? (
           <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
-            <Rail>{data.isLoadingFavorites ? posterSkeletons : data.favoriteEvents.map(eventPoster)}</Rail>
+            <View style={styles.rows}>
+              <Rows>
+                {shortlist.length === 0
+                  ? [0, 1].map((i) => <EventRowSkeleton key={i} />)
+                  : shortlist.map((e) => (
+                      <EventRow key={e.id} event={e} when={relativeWhen(e.startDateTime)} onPress={() => openEvent(e)} />
+                    ))}
+              </Rows>
+            </View>
           </Section>
         ) : null}
 
@@ -181,61 +199,6 @@ export default function HomeTab() {
               loading={data.isLoadingMySpaces}
               onPress={openSpace}
             />
-          </Section>
-        ) : null}
-
-        <Section
-          title={data.detectedCity ? 'Happening near you' : 'Happening soon'}
-          // K1: "near you" opens that city's events.
-          onSeeAll={() => router.push(data.detectedCity ? { pathname: '/events', params: { city: data.detectedCity } } : '/events')}
-        >
-          <HeroCarousel
-            events={data.heroEvents}
-            loading={data.isLoadingHero}
-            failed={data.eventsFailed}
-            onRetry={data.onRefresh}
-            onPressEvent={openEvent}
-          />
-        </Section>
-
-        {/* Under three it isn't much of a ranking. */}
-        {data.trendingEvents.length >= 3 ? (
-          <Section title="Trending now">
-            <TrendingList events={data.trendingEvents} onPress={openEvent} />
-          </Section>
-        ) : null}
-
-        <Section title="Find your vibe">
-          {data.isLoadingCategories && data.categories.length === 0 ? (
-            <VibeRailSkeleton />
-          ) : data.categories.length > 0 ? (
-            <VibeRail categories={data.categories} onPressCategory={openCategory} />
-          ) : null}
-        </Section>
-
-        {data.isLoadingBeyond || data.beyondEvents.length > 0 ? (
-          <Section title="Beyond by Unifesto">
-            {data.beyondSpace ? (
-              <BeyondFeature space={data.beyondSpace} onPress={() => openSpace(data.beyondSpace!)} />
-            ) : data.isLoadingBeyond ? (
-              <BeyondFeatureSkeleton />
-            ) : null}
-            <View style={{ marginTop: spacing[4] }}>
-              <Rail>{data.isLoadingBeyond ? posterSkeletons : data.beyondEvents.map(eventPoster)}</Rail>
-            </View>
-          </Section>
-        ) : null}
-
-        {data.isLoadingDiscoverSpaces || data.discoverSpaces.length > 0 ? (
-          <Section
-            title={data.showNearbySpaces ? `Spaces in ${data.detectedCity}` : 'Explore spaces'}
-            onSeeAll={() => router.push('/spaces')}
-          >
-            <Rail>
-              {data.isLoadingDiscoverSpaces
-                ? [0, 1, 2].map((i) => <SpaceCardSkeleton key={i} />)
-                : data.discoverSpaces.map((s) => <SpaceCard key={s.id} space={s} onPress={() => openSpace(s)} />)}
-            </Rail>
           </Section>
         ) : null}
 
@@ -314,4 +277,5 @@ const styles = StyleSheet.create({
   // Clears the floating native tab bar.
   content: { paddingBottom: 120 },
   block: { marginTop: spacing[8] },
+  rows: { paddingHorizontal: GUTTER },
 });

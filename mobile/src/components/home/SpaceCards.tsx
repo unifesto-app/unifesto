@@ -113,18 +113,6 @@ export function compact(n: number): string {
   return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
 }
 
-export function SpaceCardSkeleton({ width = CARD_W }: { width?: number }) {
-  return (
-    <View style={{ width }}>
-      <Skeleton width={width} height={Math.round((width * 3) / 4)} borderRadius={cosmosCardRadius} />
-      <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.md} style={{ marginTop: -LOGO / 2, marginLeft: spacing[3] }} />
-      <Skeleton width={width * 0.8} height={14} borderRadius={6} style={{ marginTop: spacing[2] }} />
-      <Skeleton width={width * 0.5} height={11} borderRadius={6} style={{ marginTop: 6 }} />
-      <Skeleton width={width * 0.6} height={26} borderRadius={6} style={{ marginTop: spacing[3] }} />
-    </View>
-  );
-}
-
 /** My role in a space, when it's more than plain membership. */
 export function roleOf(space: Space): string | null {
   // /users/me/spaces sends a flat { code, name }; the type still models the nested one.
