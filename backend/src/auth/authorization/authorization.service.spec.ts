@@ -268,11 +268,13 @@ describe('AuthorizationService', () => {
       }
     });
 
-    it('only ADMIN or a Space Admin makes a Curator; nobody edits their own role', async () => {
+    it('only ADMIN or a Space Admin makes a Curator; only Platform ADMIN edits their own role', async () => {
       expect(await build(as(RoleCode.CO_CURATOR, RoleScope.EVENT, null, EVENT_IN_A)).canAssign(user, RoleCode.CURATOR, at)).toBe(false);
       const admin = build(as(RoleCode.ADMIN, RoleScope.PLATFORM, null, null));
       expect(await admin.canAssign(user, RoleCode.CURATOR, at, 'someone-else')).toBe(true);
-      expect(await admin.canAssign(user, RoleCode.CREW, at, user.id)).toBe(false);
+      expect(await admin.canAssign(user, RoleCode.CREW, at, user.id)).toBe(true);
+      expect(await admin.canAssign(user, RoleCode.ADMIN, at, user.id)).toBe(false);
+      expect(await build(as(RoleCode.CURATOR, RoleScope.EVENT, null, EVENT_IN_A)).canAssign(user, RoleCode.CREW, at, user.id)).toBe(false);
     });
 
     it('co-admins are self-serve: a Space Admin manages Space Admins in its own space, never itself', async () => {
