@@ -29,6 +29,12 @@ export default function CosmosBackdrop({
   const isDark = c.scheme === 'dark';
   const sun = isDark ? 0.32 : 0.5;
 
+  // Nothing to paint (most screens): skip the Svg. Even empty, it holds a
+  // screen-sized bitmap (about 14 MB at 3x) for as long as the screen is mounted.
+  if (!hue && !horizon) {
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }]} />;
+  }
+
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg, overflow: 'hidden' }]}>
       <Svg width={w} height={h}>
