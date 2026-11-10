@@ -11,13 +11,14 @@ import {
   getFeaturedEvents,
   getTrendingEvents,
 } from '../lib/api/events';
-import { getUserSpaces, Space, getAllSpaces, getSpaceEvents } from '../lib/api/spaces';
+import { getUserSpaces, Space, getAllSpaces, getSpaceBySlug, getSpaceEvents } from '../lib/api/spaces';
 import { getFavorites } from '../lib/api/favorites';
 import { fetchUpcomingTickets } from '../lib/upcomingTickets';
 import { syncUpNextWidget } from '../widgets/sync';
 
-// The featured partner space whose events join Home's "Happening near you".
-export const BEYOND_SPACE_NAME = 'Beyond by Unifesto';
+// WeGoBeyond, whose events join Home's "Happening near you". Found by slug, so
+// renaming the space (it was "Beyond by Unifesto") can't lose its events again.
+export const BEYOND_SLUG = 'beyond';
 
 export type LocationStatus = 'idle' | 'loading' | 'granted' | 'denied';
 
@@ -239,21 +240,11 @@ export function useHomeData() {
     }
   }, [user]);
 
-  // Resolve the "Beyond by Unifesto" space by name, then load its events.
+  // WeGoBeyond's upcoming events.
   const loadBeyond = useCallback(async () => {
     try {
-      const resp = await getAllSpaces({ search: BEYOND_SPACE_NAME, limit: 5 });
-      const list = resp?.spaces || [];
-      // Prefer an exact name match; fall back to the top search hit.
-      const match =
-        list.find((s: Space) => s.name?.trim().toLowerCase() === BEYOND_SPACE_NAME.toLowerCase()) ||
-        list[0] ||
-        null;
-      if (!match) {
-        setBeyondEvents([]);
-        return;
-      }
-      const res = await getSpaceEvents(match.id, 1, 10);
+      const space = await getSpaceBySlug(BEYOND_SLUG);
+      const res = await getSpaceEvents(space.id, 1, 10);
       // The space feed shows its own team drafts too; Home is public listings only.
       setBeyondEvents((res?.events || []).filter((e) => e.status !== 'DRAFT'));
     } catch {
@@ -284,7 +275,11 @@ export function useHomeData() {
         setCanAskLocation(canAskAgain);
         return;
       }
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+      // Only the city matters: a fix from the last few hours is instant, where a
+      // fresh one can take many seconds indoors.
+      const position =
+        (await Location.getLastKnownPositionAsync({ maxAge: 6 * 60 * 60 * 1000 })) ??
+        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
       const places = await Location.reverseGeocodeAsync({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -346,7 +341,7 @@ export function useHomeData() {
   useEffect(() => onReconnect(() => void onRefresh()), [onRefresh]);
 
   // ── Derived sections ──────────────────────────────────────────────────────
-  // "Happening near you", in priority order: city events, then Beyond's, then
+  // "Happening near you", in priority order: city events, then WeGoBeyond's, then
   // curated popular picks so it's never empty. Sub-events roll up to their super
   // event; the list keeps the first few that aren't over and sorts those by date
   // (groupByDay), so the city always wins a place.
@@ -354,7 +349,9 @@ export function useHomeData() {
     () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], beyondEvents, popularEvents)),
     [detectedCity, nearbyEvents, popularEvents, beyondEvents],
   );
-  const isLoadingFeed = isLoadingEvents || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
+  // Not held for the location: the list shows as soon as the feeds land, and the
+  // city's events slot in first once it's known.
+  const isLoadingFeed = isLoadingEvents || (detectedCity ? isLoadingNearby : false);
 
   return {
     user,
