@@ -6,7 +6,7 @@ import { Buildings, IdentificationCard, ShieldCheck, Sparkle, UserCircle, UsersT
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { useCosmos } from '../../src/theme/cosmos';
-import { useHomeData } from '../../src/hooks/useHomeData';
+import { composeHome, useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
 import HomeHeader from '../../src/components/home/HomeHeader';
@@ -25,18 +25,8 @@ import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import type { Preset } from '../../src/hooks/useEventsBrowse';
 import { relativeWhen } from '../../src/utils/eventFormat';
-import { isEventOver } from '../../src/lib/eventEnded';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
-
-const ids = (list: { id: string }[]) => list.map((e) => e.id);
-
-// The next three coming up. /favorites is newest-saved first and keeps ended events.
-const nextThree = (events: Event[]) =>
-  events
-    .filter((e) => !isEventOver(e))
-    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-    .slice(0, 3);
 
 export default function HomeTab() {
   const router = useRouter();
@@ -58,22 +48,23 @@ export default function HomeTab() {
   const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
   const openSpaces = () => router.push('/spaces');
 
-  // ── What each list shows: every event once ─────────────────────────────
-  // Ones I'm going to or invited to lead the page; the lists under them skip those.
-  const mine = new Set([...ids(data.upcomingTickets), ...myInvites.invites.map((i) => i.event.id)]);
-  const notMine = (events: Event[]) => events.filter((e) => !mine.has(e.id));
-  const fromMySpaces = nextThree(notMine(data.spaceEvents));
+  // ── What each list shows: every event once (see composeHome) ───────────
   // Nothing coming up in my spaces (or none joined): the space Apex features instead.
-  const featured = fromMySpaces.length === 0 && data.featuredSpace ? nextThree(notMine(data.featuredEvents)) : [];
-  const shortlist = nextThree(data.favoriteEvents);
-  // "Happening near you" is discovery: anything already on the page stays out of it.
-  const shown = new Set([...mine, ...ids(fromMySpaces), ...ids(featured), ...ids(shortlist)]);
-  const nearYou = data.feedEvents.filter((e) => !shown.has(e.id));
+  const { fromMySpaces, featured, shortlist, nearYou } = composeHome({
+    tickets: data.upcomingTickets,
+    invitedEventIds: myInvites.invites.map((i) => i.event.id),
+    spaceEvents: data.spaceEvents,
+    featuredEvents: data.featuredSpace ? data.featuredEvents : [],
+    favorites: data.favoriteEvents,
+    feed: data.feedEvents,
+  });
   const feedLoading = data.isLoadingFeed || myInvites.loading;
-  // The space list lands with the list under it (both wait on the same sources),
-  // then stays put through refreshes instead of blinking out.
-  const settled = React.useRef(false);
-  if (!feedLoading) settled.current = true;
+  // The space list shows once what it skips has loaded (not the location fix),
+  // then stays put through refreshes. Per person: signing in waits again.
+  const userKey = user?.id ?? 'out';
+  const spacesSettledFor = React.useRef<string | null>(null);
+  if (!data.isLoadingSpaceLists && !myInvites.loading) spacesSettledFor.current = userKey;
+  const spacesSettled = spacesSettledFor.current === userKey;
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -202,7 +193,7 @@ export default function HomeTab() {
 
         {/* Mine first, then discovery: what the spaces I joined have coming up, else
             the featured space, each closed by a way to find more spaces. */}
-        {settled.current && fromMySpaces.length > 0 ? (
+        {spacesSettled && fromMySpaces.length > 0 ? (
           <Section title="From my spaces" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
             <View style={styles.rows}>
               <Rows>
@@ -213,7 +204,7 @@ export default function HomeTab() {
               <ActionRow label="Explore spaces" onPress={openSpaces} />
             </View>
           </Section>
-        ) : settled.current && data.featuredSpace && featured.length > 0 ? (
+        ) : spacesSettled && data.featuredSpace && featured.length > 0 ? (
           <Section title={data.featuredSpace.name} onSeeAll={() => openSpace(data.featuredSpace!)}>
             <View style={styles.rows}>
               <Rows>
@@ -228,6 +219,8 @@ export default function HomeTab() {
 
         <Section title={city ? 'Happening near you' : 'Happening soon'}>
           <DayRows
+            // A new person (signing in or out) gets a fresh first load.
+            key={userKey}
             events={nearYou}
             loading={feedLoading}
             failed={data.eventsFailed}
@@ -236,11 +229,13 @@ export default function HomeTab() {
             allLabel={city ? `All events in ${city}` : 'All events'}
             // K1: "near you" opens that city's events.
             onSeeAll={() => router.push(city ? { pathname: '/events', params: { city } } : '/events')}
+            // Everything coming up is already in the lists above.
+            emptyTitle={data.feedEvents.length > 0 ? 'Nothing else coming up' : undefined}
             footer={
               city && profile ? (
                 <ActionRow
                   label={data.cityAlertOn ? `Alerts on for new events in ${city}` : `Tell me about new events in ${city}`}
-                  muted={data.cityAlertOn}
+                  checked={data.cityAlertOn}
                   hint={data.cityAlertOn ? 'Turns these alerts off' : 'Sends a notification when an event in this city is published'}
                   onPress={() => void data.toggleCityAlert()}
                 />
@@ -250,7 +245,7 @@ export default function HomeTab() {
         </Section>
 
         {/* Neither space list showed: keep a way into spaces on the page. */}
-        {settled.current && fromMySpaces.length === 0 && featured.length === 0 ? (
+        {spacesSettled && fromMySpaces.length === 0 && featured.length === 0 ? (
           <View style={[styles.rows, styles.lone]}>
             <Rows>
               <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={openSpaces} />

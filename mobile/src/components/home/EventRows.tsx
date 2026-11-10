@@ -119,22 +119,42 @@ export function EventHero({ event: e, onPress }: { event: Event; onPress: () => 
 
 /**
  * The text row that closes a list ("All events in Hyderabad", "Explore spaces"),
- * with a full hairline above it like the rows. Sky by default; `muted` for a
- * state that is already on (a city alert).
+ * with a full hairline above it like the rows. Sky; a toggle (`checked`, the
+ * city alert) reads as a switch and turns muted while on.
  */
-export function ActionRow({ label, onPress, muted, hint }: { label: string; onPress: () => void; muted?: boolean; hint?: string }) {
+export function ActionRow({ label, onPress, checked, hint }: { label: string; onPress: () => void; checked?: boolean; hint?: string }) {
   const c = useCosmos();
+  const toggle = checked !== undefined;
   return (
     <PressableScale
       feedback="inline"
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole={toggle ? 'switch' : 'button'}
+      accessibilityState={toggle ? { checked } : undefined}
       accessibilityLabel={label}
       accessibilityHint={hint}
       style={[styles.action, { borderTopColor: c.border }]}
     >
-      <Text style={[styles.title, { color: muted ? c.muted : c.sky }]} numberOfLines={2}>{label}</Text>
+      <Text style={[styles.title, { color: checked ? c.muted : c.sky }]} numberOfLines={2}>{label}</Text>
     </PressableScale>
+  );
+}
+
+/** The list's first paint: the hero's shape, then two rows, so the page doesn't jump when it lands. */
+function DayRowsSkeleton() {
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.cover}>
+        <Skeleton borderRadius={cosmosCardRadius} style={{ height: '100%' }} />
+      </View>
+      <View style={styles.heroSkeletonText}>
+        <Skeleton width="60%" height={20} borderRadius={6} />
+        <Skeleton width="80%" height={12} borderRadius={6} />
+      </View>
+      <View style={styles.group}>
+        <Rows>{[0, 1].map((i) => <EventRowSkeleton key={i} />)}</Rows>
+      </View>
+    </View>
   );
 }
 
@@ -162,6 +182,8 @@ interface DayRowsProps {
   onSeeAll: () => void;
   /** A row above All events (the city alert), shown with the list or its empty state. */
   footer?: React.ReactNode;
+  /** Empty-state title, e.g. when everything coming up is already in the lists above. */
+  emptyTitle?: string;
 }
 
 /**
@@ -169,22 +191,17 @@ interface DayRowsProps {
  * closed by a sky "All events" row. The day is in the label, so each row only
  * says the time.
  */
-export default function DayRows({ events, loading, failed, onRetry, onPressEvent, allLabel, onSeeAll, footer }: DayRowsProps) {
+export default function DayRows({ events, loading, failed, onRetry, onPressEvent, allLabel, onSeeAll, footer, emptyTitle }: DayRowsProps) {
   const c = useCosmos();
   // Not memoised: a cheap pass that keeps Today and Tomorrow right on any render.
   const groups = groupByDay(events, MAX);
   // The first load holds the skeleton until every feed is in, so rows don't move
   // under a finger as the city's events arrive; a refresh keeps the rows shown.
+  // Home remounts this per signed-in person, so signing in waits again.
   const settled = React.useRef(false);
   if (!loading) settled.current = true;
 
-  if (loading && (!settled.current || groups.length === 0)) {
-    return (
-      <View style={styles.wrap}>
-        <Rows>{[0, 1, 2].map((i) => <EventRowSkeleton key={i} />)}</Rows>
-      </View>
-    );
-  }
+  if (loading && (!settled.current || groups.length === 0)) return <DayRowsSkeleton />;
 
   if (groups.length === 0) {
     return (
@@ -192,14 +209,19 @@ export default function DayRows({ events, loading, failed, onRetry, onPressEvent
         <View style={styles.empty}>
           <CardBackdrop shape={styles.empty} />
           <Text style={[styles.emptyTitle, { color: c.text }]} accessibilityRole="header">
-            {failed ? "Couldn't load events" : 'Nothing on the calendar yet'}
+            {failed ? "Couldn't load events" : emptyTitle ?? 'Nothing on the calendar yet'}
           </Text>
           <Text style={[styles.emptyText, { color: c.muted }]}>
             {failed ? 'Check your connection and try again.' : 'New events land here first. Pull to refresh.'}
           </Text>
           {failed && onRetry ? <AuthButton label="Try again" variant="secondary" onPress={onRetry} style={styles.retry} /> : null}
         </View>
-        {failed ? null : <View style={styles.emptyFooter}>{footer}</View>}
+        {failed ? null : (
+          <View style={styles.emptyFooter}>
+            {footer}
+            <ActionRow label={allLabel} onPress={onSeeAll} />
+          </View>
+        )}
       </View>
     );
   }
@@ -243,6 +265,7 @@ const styles = StyleSheet.create({
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   heroTitle: { marginTop: spacing[3], fontSize: 22, lineHeight: 28, ...cosmosFont.display },
   heroMeta: { marginTop: spacing[1], marginBottom: 2 },
+  heroSkeletonText: { marginTop: spacing[3], gap: 8 },
   meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   price: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   crowd: { ...cosmosFont.body },

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { isEventOver } from '../lib/eventEnded';
 import { onReconnect } from '../lib/offline/connectivity';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
@@ -49,6 +50,45 @@ export function buildPopularEvents(featured: Event[], trending: Event[], upcomin
     seen.add(key);
     return true;
   });
+}
+
+/** The next three not over yet, soonest first (/favorites is newest-saved first and keeps ended events). */
+export function nextThree(events: Event[], now = Date.now()): Event[] {
+  return events
+    .filter((e) => !isEventOver(e, now))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, 3);
+}
+
+/**
+ * What each Home list shows, every event once, in page order. Tickets and
+ * invites lead (a ticket to a sub-event counts its fest as mine too); the space
+ * list (from my spaces, else the featured space) skips those; My shortlist skips
+ * all of that; Happening near you skips everything shown anywhere else.
+ */
+export function composeHome(p: {
+  tickets: { id: string; parentEventId?: string | null }[];
+  invitedEventIds: string[];
+  spaceEvents: Event[];
+  /** Empty when no space is featured. */
+  featuredEvents: Event[];
+  favorites: Event[];
+  feed: Event[];
+  now?: number;
+}) {
+  const shown = new Set<string>(
+    [...p.tickets.flatMap((t) => [t.id, t.parentEventId]), ...p.invitedEventIds].filter((id): id is string => !!id),
+  );
+  const take = (events: Event[]) => {
+    const next = nextThree(events.filter((e) => !shown.has(e.id)), p.now);
+    next.forEach((e) => shown.add(e.id));
+    return next;
+  };
+  const fromMySpaces = take(p.spaceEvents);
+  const featured = fromMySpaces.length === 0 ? take(p.featuredEvents) : [];
+  const shortlist = take(p.favorites);
+  const nearYou = p.feed.filter((e) => !shown.has(e.id));
+  return { fromMySpaces, featured, shortlist, nearYou };
 }
 
 // "Happening near you" should surface whole events, not their parts: when an
@@ -127,6 +167,18 @@ export function useHomeData() {
 
   const [favoriteEvents, setFavoriteEvents] = useState<Event[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(!!user);
+
+  // Signing in or out: the per-person lists count as loading in this same render,
+  // before their fetch effects run, so Home doesn't settle on the last person's.
+  const [loadsFor, setLoadsFor] = useState(user?.id ?? null);
+  if ((user?.id ?? null) !== loadsFor) {
+    setLoadsFor(user?.id ?? null);
+    setProfile(null);
+    setIsLoadingTickets(!!user);
+    setIsLoadingMySpaces(!!user);
+    setIsLoadingSpaceEvents(!!user);
+    setIsLoadingFavorites(!!user);
+  }
 
   const [trendingEvents, setTrendingEvents] = useState<Event[]>([]);
   const [popularEvents, setPopularEvents] = useState<Event[]>([]);
@@ -266,22 +318,26 @@ export function useHomeData() {
   }, []);
 
   const spaceIdsKey = mySpaces.map((s) => s.id).join(',');
+  // Only the latest call may set the list: one still out after a sign-out must not bring it back.
+  const spaceEventsCall = useRef(0);
   const loadSpaceEvents = useCallback(async () => {
+    const call = ++spaceEventsCall.current;
     if (!spaceIdsKey) {
       setSpaceEvents([]);
       setIsLoadingSpaceEvents(false);
       return;
     }
+    let events: Event[] = [];
     try {
       setIsLoadingSpaceEvents(true);
       const mine = new Set(spaceIdsKey.split(','));
-      // An older server ignores spaceIds and sends every event: keep only mine.
-      setSpaceEvents(listOf(await getEvents({ page: 1, limit: 10, spaceIds: spaceIdsKey })).filter((e) => mine.has(e.spaceId)));
-    } catch {
-      setSpaceEvents([]);
-    } finally {
-      setIsLoadingSpaceEvents(false);
-    }
+      // A server without spaceIds rejects it (400: section hidden); keeping only
+      // my spaces' events also guards against one that would ignore it.
+      events = listOf(await getEvents({ page: 1, limit: 10, spaceIds: spaceIdsKey })).filter((e) => mine.has(e.spaceId));
+    } catch {}
+    if (call !== spaceEventsCall.current) return;
+    setSpaceEvents(events);
+    setIsLoadingSpaceEvents(false);
   }, [spaceIdsKey]);
 
   // Each time my spaces land (first load and every refresh), their events follow.
@@ -376,16 +432,22 @@ export function useHomeData() {
   // "Tell me about new events in <city>": on while my alert city is the one I'm in.
   // One alert city per person, so turning it on here moves it from any other.
   const cityAlertOn = !!detectedCity && profile?.newEventsCity?.toLowerCase() === detectedCity.toLowerCase();
+  // One change at a time: a second tap while one is out is ignored, so replies can't land out of order.
+  const cityAlertBusy = useRef(false);
   const toggleCityAlert = useCallback(async () => {
-    if (!detectedCity || !profile) return;
+    if (!detectedCity || !profile || cityAlertBusy.current) return;
+    cityAlertBusy.current = true;
     const before = profile.newEventsCity ?? null;
     const next = cityAlertOn ? null : detectedCity;
-    setProfile({ ...profile, newEventsCity: next });
+    setProfile((p) => (p ? { ...p, newEventsCity: next } : p));
     try {
-      await setCityAlert(next);
+      const saved = await setCityAlert(next);
+      setProfile((p) => (p ? { ...p, newEventsCity: saved.city } : p));
     } catch {
       setProfile((p) => (p ? { ...p, newEventsCity: before } : p));
-      AppAlert.alert("Couldn't change the alert", 'Check your connection and try again.');
+      AppAlert.alert("Couldn't change the alert", 'Please try again in a bit.');
+    } finally {
+      cityAlertBusy.current = false;
     }
   }, [detectedCity, profile, cityAlertOn]);
 
@@ -417,15 +479,15 @@ export function useHomeData() {
   // Every source of the list and of what it leaves out (tickets, shortlist, my
   // spaces' and the featured space's events), so its first showing doesn't
   // reshuffle as they land. Home adds the invites.
+  // The space list only skips tickets (and invites, which Home adds), so it
+  // doesn't wait on the location fix.
+  const isLoadingSpaceLists = isLoadingTickets || isLoadingMySpaces || isLoadingSpaceEvents || isLoadingFeatured;
   const isLoadingFeed =
+    isLoadingSpaceLists ||
     isLoadingEvents ||
     locationStatus === 'loading' ||
     (detectedCity ? isLoadingNearby : false) ||
-    isLoadingTickets ||
-    isLoadingFavorites ||
-    isLoadingMySpaces ||
-    isLoadingSpaceEvents ||
-    isLoadingFeatured;
+    isLoadingFavorites;
 
   return {
     user,
@@ -438,6 +500,7 @@ export function useHomeData() {
 
     feedEvents,
     isLoadingFeed,
+    isLoadingSpaceLists,
     trendingEvents,
     popularEvents,
     isLoadingEvents,

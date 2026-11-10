@@ -123,8 +123,9 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   another app shows that app's real mark (`BrandIcon`).
 - **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
   muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
-- **Home shows each event once.** Tickets and invites lead; the space list and Happening near you
-  leave those out, and Happening near you also leaves out the space list and My shortlist.
+- **Home shows each event once** (`composeHome`). Tickets and invites lead (a sub-event ticket
+  counts its fest); the space list leaves those out, My shortlist leaves out both, and Happening
+  near you leaves out everything shown anywhere else on the page.
 - **Pictures on Home:** Happening near you opens on one hero card (`EventHero`), the soonest event's
   4:3 cover at full width; the rest are rows. The one picture rail is Find your vibe (`VibeRail`):
   category banners at 4:3, named underneath, after Happening near you.

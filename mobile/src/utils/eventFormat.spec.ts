@@ -1,6 +1,6 @@
 // Runs with mobile's jest: `npm test` (jest.config.js).
 import { crowdLabel, groupByDay, rowTime } from './eventFormat';
-import { rollUpToSuperEvents } from '../hooks/useHomeData';
+import { composeHome, rollUpToSuperEvents } from '../hooks/useHomeData';
 import type { Event } from '../lib/api/events';
 
 // Tue 10 Nov 2026, 10:00 local.
@@ -70,6 +70,33 @@ describe('crowdLabel', () => {
     expect(crowdLabel({ registeredCount: 64, capacity: 200 })).toEqual({ text: '64 going', hot: false });
     expect(crowdLabel({ registeredCount: 9, capacity: 10 })).toEqual({ text: 'Almost full', hot: true });
     expect(crowdLabel({ registeredCount: 200, capacity: 200 })).toEqual({ text: 'Full', hot: true });
+  });
+});
+
+describe('composeHome', () => {
+  const e = (id: string, day: number) => ev(id, at(day, 18)) as unknown as Event;
+  const ids = (list: { id: string }[]) => list.map((x) => x.id);
+  const base = {
+    tickets: [{ id: 'ticket' }, { id: 'talk', parentEventId: 'fest' }],
+    invitedEventIds: ['invite'],
+    favorites: [e('saved', 20), e('mixer', 14), e('ticket', 12)],
+    feed: [e('fest', 15), e('ticket', 12), e('mixer', 14), e('open', 13), e('run', 15), e('saved', 20)],
+    now: now.getTime(),
+  };
+
+  it('shows every event once, in page order', () => {
+    const home = composeHome({ ...base, spaceEvents: [e('invite', 11), e('mixer', 14), e('over', 9)], featuredEvents: [e('wgb', 16)] });
+    expect(ids(home.fromMySpaces)).toEqual(['mixer']); // the invite leads the page; ended events drop
+    expect(home.featured).toEqual([]); // my spaces have something on
+    expect(ids(home.shortlist)).toEqual(['saved']); // ticket and mixer are already shown
+    expect(ids(home.nearYou)).toEqual(['open', 'run']); // nor the fest I hold a sub-event ticket for
+  });
+
+  it('falls back to the featured space when nothing is on in my spaces', () => {
+    const home = composeHome({ ...base, spaceEvents: [], featuredEvents: [e('wgb', 16), e('invite', 11)] });
+    expect(ids(home.featured)).toEqual(['wgb']);
+    expect(ids(home.shortlist)).toEqual(['mixer', 'saved']);
+    expect(ids(home.nearYou)).toEqual(['open', 'run']);
   });
 });
 
