@@ -24,11 +24,12 @@ const TEAM_RANK: Partial<Record<RoleCode, number>> = {
 };
 
 const SPACE_ADMIN_RANK = 4;
+const PLATFORM_ADMIN_RANK = 5;
 
 /** Who may assign whom (`canAssign`): ADMIN 5, Space Admin 4, the event team, everything else 0. */
 const assignRank = (code: RoleCode): number =>
   code === RoleCode.ADMIN
-    ? 5
+    ? PLATFORM_ADMIN_RANK
     : SPACE_ADMIN_ROLE_CODES.includes(code)
       ? SPACE_ADMIN_RANK
       : (TEAM_RANK[code] ?? 0);
@@ -179,8 +180,10 @@ export class AuthorizationService {
    * The one role-assignment rule (T2): may `actor` give `role` in the space
    * `at.spaceId`, or on the event `at.eventId` that lives in it? Pass the role
    * someone holds now to ask whether the actor may change or remove it. Only
-   * roles below the actor's own standing there, and never on themselves:
-   * Platform ADMIN, then a Space Admin of the space, then the event's Curator,
+   * roles below the actor's own standing there, and never on themselves
+   * (except Platform ADMIN, who already holds every action, so a space or event
+   * role of their own adds nothing): Platform ADMIN, then a Space Admin of the
+   * space, then the event's Curator,
    * Co-Curator and Crew. So only a Space Admin or ADMIN makes a Curator (who
    * moves the event's money, D9). One exception: co-admins are self-serve, so
    * in their own space a Space Admin also gives, changes and removes Space
@@ -193,7 +196,6 @@ export class AuthorizationService {
     at: { spaceId: string; eventId?: string },
     targetUserId?: string,
   ): Promise<boolean> {
-    if (targetUserId === actor.id) return false;
     const standing = Math.max(
       0,
       ...(await this.loadAssignments(actor.id))
@@ -205,6 +207,7 @@ export class AuthorizationService {
         )
         .map((a) => assignRank(a.code)),
     );
+    if (targetUserId === actor.id && standing < PLATFORM_ADMIN_RANK) return false;
     const rank = assignRank(role);
     return (
       rank < standing ||

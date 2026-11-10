@@ -19,6 +19,7 @@ describe('space members follow canAssign (T2)', () => {
     'ur-member2': { userId: 'member2', code: RoleCode.MEMBER },
     'ur-sadmin': { userId: 'sadmin', code: RoleCode.SPACE_ADMIN },
     'ur-owner': { userId: 'owner', code: RoleCode.SPACE_ADMIN },
+    'ur-padmin': { userId: 'padmin', code: RoleCode.SPACE_ADMIN },
   };
 
   const build = () => {
@@ -80,6 +81,14 @@ describe('space members follow canAssign (T2)', () => {
     expect(prisma.userRole.create).toHaveBeenCalled();
     expect(prisma.userRole.update).toHaveBeenCalled();
     expect(prisma.userRole.delete).toHaveBeenCalled();
+  });
+
+  it('a Platform ADMIN changes their own row and adds themselves', async () => {
+    const { svc, prisma } = build();
+    await svc.updateSpaceMemberRole('s1', 'ur-padmin', 'padmin', RoleCode.MEMBER);
+    await svc.addSpaceMember('s1', 'padmin', 'padmin', RoleCode.SPACE_ADMIN);
+    expect(prisma.userRole.update).toHaveBeenCalled();
+    expect(prisma.userRole.create).toHaveBeenCalled();
   });
 
   it('a plain Member assigns nothing', async () => {
