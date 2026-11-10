@@ -2,14 +2,33 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   MagnifyingGlass,
   Buildings,
   Users,
   Stack,
+  Plus,
 } from "@unifesto/unicon/react";
-import { getAllSpacesAdmin, SPACE_STATUS_LABEL, type AdminSpace, type SpaceActivity } from "@/lib/api/spaces-api";
-import type { SpaceStatus } from "@/lib/types/rbac";
+import { createSpace, getAllSpacesAdmin, SPACE_STATUS_LABEL, type AdminSpace, type SpaceActivity } from "@/lib/api/spaces-api";
+import type { SpaceKind, SpaceStatus } from "@/lib/types/rbac";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -60,6 +79,7 @@ export default function SpacesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [activity, setActivity] = useState<SpaceActivity | null>(null);
+  const [creating, setCreating] = useState(false);
 
   // Debounce search input to avoid a request per keystroke.
   useEffect(() => {
@@ -98,7 +118,17 @@ export default function SpacesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Spaces" subtitle={subtitle} />
+      <PageHeader
+        title="Spaces"
+        subtitle={subtitle}
+        actions={
+          <Button onClick={() => setCreating(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            New space
+          </Button>
+        }
+      />
+      {creating && <NewSpaceDialog onClose={() => setCreating(false)} />}
 
       <div className="relative max-w-sm">
         <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -196,6 +226,146 @@ export default function SpacesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100);
+
+/** Admin creates a space (POST /spaces), then lands on it to set branding and hierarchy. */
+function NewSpaceDialog({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [form, setForm] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    websiteUrl: "",
+    city: "",
+    state: "",
+    country: "India",
+    type: "REGULAR" as SpaceKind,
+  });
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  async function handleCreate() {
+    const name = form.name.trim();
+    const slug = form.slug.trim();
+    if (name.length < 3) return setError("Name must be at least 3 characters.");
+    if (slug.length < 3 || !/^[a-z0-9-]+$/.test(slug))
+      return setError("Slug must be 3 or more lowercase letters, numbers, or hyphens.");
+    setBusy(true);
+    setError("");
+    // Blank optional fields are left out, not sent as "".
+    const optional = Object.fromEntries(
+      (["description", "websiteUrl", "city", "state", "country"] as const)
+        .map((k) => [k, form[k].trim()])
+        .filter(([, v]) => v)
+    );
+    const { data, error: apiError } = await createSpace({ name, slug, type: form.type, ...optional });
+    if (apiError || !data) {
+      setError(apiError?.message ?? "Could not create the space.");
+      setBusy(false);
+      return;
+    }
+    router.push(`/dashboard/spaces/${data.id}`);
+  }
+
+  const text = (key: "websiteUrl" | "city" | "state" | "country", label: string, placeholder?: string) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={`new-space-${key}`}>{label}</Label>
+      <Input
+        id={`new-space-${key}`}
+        value={form[key]}
+        onChange={(e) => set(key, e.target.value)}
+        disabled={busy}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>New space</DialogTitle>
+          <DialogDescription>
+            It goes live straight away, Unverified. Add the logo, banner and parent space on the next page.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {error && <ErrorNotice message={error} />}
+          <div className="space-y-1.5">
+            <Label htmlFor="new-space-name">Name</Label>
+            <Input
+              id="new-space-name"
+              value={form.name}
+              onChange={(e) => {
+                set("name", e.target.value);
+                if (!slugTouched) set("slug", slugify(e.target.value));
+              }}
+              disabled={busy}
+              maxLength={255}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-space-slug">Slug</Label>
+            <Input
+              id="new-space-slug"
+              value={form.slug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                set("slug", e.target.value.toLowerCase());
+              }}
+              disabled={busy}
+              maxLength={100}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-space-type">Type</Label>
+            <Select value={form.type} onValueChange={(v) => set("type", v as SpaceKind)} disabled={busy}>
+              <SelectTrigger id="new-space-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="REGULAR">Regular: a club, team or community</SelectItem>
+                <SelectItem value="SUPER">Super: a college or group that holds sub-spaces</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-space-description">Description</Label>
+            <Textarea
+              id="new-space-description"
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              disabled={busy}
+              maxLength={5000}
+              rows={3}
+            />
+          </div>
+          {text("websiteUrl", "Website", "https://example.com")}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {text("city", "City")}
+            {text("state", "State")}
+            {text("country", "Country")}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button disabled={busy} onClick={handleCreate}>
+            {busy ? "Creating…" : "Create space"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

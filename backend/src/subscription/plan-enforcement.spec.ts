@@ -104,6 +104,68 @@ describe('plan enforcement (T9)', () => {
     );
   });
 
+  describe('a club joins a college on the General plan', () => {
+    // sp-1 is the college (SUPER, General, already has a child); club-1 is free.
+    const setup = (admin: boolean) => {
+      const prisma: any = onPlan(OrgPlan.STARTER, {
+        space: {
+          findUnique: jest.fn(async ({ where }: any) =>
+            where.id === 'sp-1'
+              ? { id: 'sp-1', type: 'SUPER', parentSpaceId: null }
+              : { id: where.id, type: 'REGULAR', parentSpaceId: null },
+          ),
+          count: jest.fn(async () => 1),
+          update: jest.fn(async () => ({})),
+        },
+        subSpaceRequest: {
+          findFirst: jest.fn(async () => null),
+          create: jest.fn(async ({ data }: any) => ({ id: 'req-1', ...data, targetSpace: { name: 'College' }, subSpace: null })),
+          findUnique: jest.fn(async () => ({
+            id: 'req-1',
+            status: 'PENDING',
+            requestType: 'JOIN_SUPER',
+            targetSpaceId: 'sp-1',
+            subSpaceId: 'club-1',
+            targetSpace: { name: 'College' },
+            user: { identities: [] },
+          })),
+          update: jest.fn(async () => ({ id: 'req-1', status: 'APPROVED' })),
+        },
+      });
+      prisma.$transaction = jest.fn((fn: any) => fn(prisma));
+      const authz: any = { canAny: jest.fn(async () => true), can: jest.fn(async () => admin) };
+      return { prisma, svc: new SpacesService(prisma, {} as any, {} as any, {} as any, new PlanConfigService(prisma), authz) };
+    };
+    const ask = (svc: SpacesService) =>
+      svc.createSubSpaceRequest('u-1', { requestType: 'JOIN_SUPER', targetSpaceId: 'sp-1', subSpaceId: 'club-1' } as any);
+
+    it("an organiser's own request still hits the plan limit", async () => {
+      await expect(ask(setup(false).svc)).rejects.toThrow('The General plan allows 1 space, counting sub-spaces.');
+    });
+
+    it('a Unifesto admin can ask past it', async () => {
+      const { svc, prisma } = setup(true);
+      await expect(ask(svc)).resolves.toMatchObject({ id: 'req-1' });
+      expect(prisma.subSpaceRequest.create).toHaveBeenCalled();
+    });
+
+    it('approval attaches the club without re-checking the limit', async () => {
+      const { svc, prisma } = setup(false);
+      await svc.reviewSubSpaceRequest('req-1', 'admin-1', { status: 'APPROVED' } as any);
+      expect(prisma.space.update).toHaveBeenCalledWith({ where: { id: 'club-1' }, data: { parentSpaceId: 'sp-1' } });
+    });
+  });
+
+  it('an admin-created space keeps the type it was given', async () => {
+    const prisma: any = {
+      space: { findUnique: jest.fn(async () => null), create: jest.fn(async ({ data }: any) => ({ id: 'sp-9', ...data })) },
+      orgSubscription: { create: jest.fn(async () => ({})) },
+    };
+    const svc = new SpacesService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    await svc.createSpace({ name: 'VIT Bhopal', slug: 'vitb', type: 'SUPER' } as any, 'admin-1');
+    expect(prisma.space.create.mock.calls[0][0].data.type).toBe('SUPER');
+  });
+
   describe('priority support', () => {
     const create = async (plan: OrgPlan, operator = true) => {
       const prisma: any = onPlan(plan, {

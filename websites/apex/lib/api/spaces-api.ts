@@ -412,6 +412,13 @@ export async function updateSpace(
   );
 }
 
+/** Create a space (ADMIN only). Backed by `POST /spaces`; it starts live and Unverified. */
+export async function createSpace(
+  payload: UpdateSpacePayload & { name: string; slug: string; type?: SpaceKind }
+): Promise<{ data: { id: string } | null; error: ApiError | null }> {
+  return apiCall<{ id: string }>(backendClient.post("/spaces", payload));
+}
+
 /**
  * Upload a space logo. Backed by `POST /spaces/:id/logo` (multipart, field
  * `logo`), guarded by `SpaceRoleGuard` — allowed for platform admins and the
