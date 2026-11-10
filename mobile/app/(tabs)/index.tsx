@@ -26,6 +26,7 @@ import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import type { Preset } from '../../src/hooks/useEventsBrowse';
 import { relativeWhen, weekendLabel } from '../../src/utils/eventFormat';
+import { isEventOver } from '../../src/lib/eventEnded';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
 import { openSpaceWeb } from '../../src/lib/openOnWeb';
@@ -48,8 +49,13 @@ export default function HomeTab() {
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
   const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
-  // Browse glyphs carry the events accent.
+  // Browse glyphs carry the events accent; Explore spaces isn't events, so it stays text.
   const browseGlyph = { size: 24, color: c.sky };
+  // /favorites is newest-saved first and keeps ended events: show the next three coming up.
+  const shortlist = data.favoriteEvents
+    .filter((e) => !isEventOver(e))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, 3);
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -167,18 +173,18 @@ export default function HomeTab() {
               <LinkRow key="weekend" icon={<CalendarDots {...browseGlyph} />} title="This weekend" meta={weekendLabel()} onPress={() => openPreset('weekend')} />
               <LinkRow key="free" icon={<Ticket {...browseGlyph} />} title="Free to attend" meta="Events with free tickets" onPress={() => openPreset('free')} />
               <LinkRow key="online" icon={<Globe {...browseGlyph} />} title="Online from anywhere" meta="Join from home" onPress={() => openPreset('online')} />
-              <LinkRow key="spaces" icon={<UsersThree {...browseGlyph} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={() => router.push('/spaces')} />
+              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={() => router.push('/spaces')} />
             </Rows>
           </View>
         </Section>
 
-        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
+        {user && ((data.isLoadingFavorites && data.favoriteEvents.length === 0) || shortlist.length > 0) ? (
           <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
             <View style={styles.rows}>
               <Rows>
-                {data.isLoadingFavorites && data.favoriteEvents.length === 0
+                {shortlist.length === 0
                   ? [0, 1].map((i) => <EventRowSkeleton key={i} />)
-                  : data.favoriteEvents.slice(0, 3).map((e) => (
+                  : shortlist.map((e) => (
                       <EventRow key={e.id} event={e} when={relativeWhen(e.startDateTime)} onPress={() => openEvent(e)} />
                     ))}
               </Rows>

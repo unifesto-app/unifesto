@@ -60,7 +60,9 @@ export function rollUpToSuperEvents(events: Event[]): Event[] {
   const out: Event[] = [];
   for (const e of events) {
     // A populated `parentEvent` means `e` is a sub-event — swap in the parent.
-    const canonical = (e?.parentEvent ? e.parentEvent : e) as unknown as Event;
+    // A space's event list only sends the parent's { id, title, slug }: with no
+    // dates to show, keep the sub-event itself.
+    const canonical = (e?.parentEvent?.startDateTime ? e.parentEvent : e) as unknown as Event;
     const key = String(canonical?.id ?? '');
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -112,7 +114,6 @@ export function useHomeData() {
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const [categories, setCategories] = useState<any[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   const [beyondEvents, setBeyondEvents] = useState<Event[]>([]);
 
@@ -194,12 +195,9 @@ export function useHomeData() {
 
   const loadCategories = useCallback(async () => {
     try {
-      setIsLoadingCategories(true);
       setCategories(await getCategories());
     } catch {
       setCategories([]);
-    } finally {
-      setIsLoadingCategories(false);
     }
   }, []);
 
@@ -256,7 +254,8 @@ export function useHomeData() {
         return;
       }
       const res = await getSpaceEvents(match.id, 1, 10);
-      setBeyondEvents(res?.events || []);
+      // The space feed shows its own team drafts too; Home is public listings only.
+      setBeyondEvents((res?.events || []).filter((e) => e.status !== 'DRAFT'));
     } catch {
       setBeyondEvents([]);
     }
@@ -347,11 +346,12 @@ export function useHomeData() {
   useEffect(() => onReconnect(() => void onRefresh()), [onRefresh]);
 
   // ── Derived sections ──────────────────────────────────────────────────────
-  // "Happening near you": city events, then curated popular picks so it's never
-  // empty, then Beyond's. Sub-events roll up to their super event; the list
-  // sorts by date and drops what's over (groupByDay).
+  // "Happening near you", in priority order: city events, then Beyond's, then
+  // curated popular picks so it's never empty. Sub-events roll up to their super
+  // event; the list keeps the first few that aren't over and sorts those by date
+  // (groupByDay), so the city always wins a place.
   const feedEvents = useMemo(
-    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], popularEvents, beyondEvents)),
+    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], beyondEvents, popularEvents)),
     [detectedCity, nearbyEvents, popularEvents, beyondEvents],
   );
   const isLoadingFeed = isLoadingEvents || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
@@ -380,7 +380,6 @@ export function useHomeData() {
     allSpaces,
 
     categories,
-    isLoadingCategories,
 
     detectedCity,
     locationStatus,

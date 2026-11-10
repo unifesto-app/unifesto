@@ -83,24 +83,27 @@ export function weekendLabel(now: Date = new Date()) {
   return `Sat ${start.getDate()}${month(start) === month(sun) ? '' : ` ${month(start)}`} to Sun ${sun.getDate()} ${month(sun)}`;
 }
 
+/** "Thu 12 Nov". */
+const dayName = (d: Date) =>
+  `${d.toLocaleDateString('en-IN', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}`;
+
+const hasDate = (e: { startDateTime?: string }) => !!e.startDateTime && !Number.isNaN(new Date(e.startDateTime).getTime());
+
 /**
- * Home's "Happening near you": events that aren't over, in start order, cut to
- * `max`, under a day label ("Happening now", "Today", "Tomorrow", "Thu 12 Nov").
+ * Home's "Happening near you": the first `max` events that aren't over (the
+ * input order is the priority, so city events keep their places), then sorted
+ * by start under a day label ("Happening now", "Today", "Tomorrow", "Thu 12 Nov").
  */
 export function groupByDay<T extends { startDateTime: string }>(events: T[], max: number, now: Date = new Date()) {
   const next = events
-    .filter((e) => !isEventOver(e, now.getTime()))
-    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-    .slice(0, max);
+    .filter((e) => hasDate(e) && !isEventOver(e, now.getTime()))
+    .slice(0, max)
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
   const groups: { label: string; events: T[] }[] = [];
   for (const e of next) {
     const d = new Date(e.startDateTime);
     const diff = dayDiff(now, d);
-    const label =
-      d <= now ? 'Happening now'
-      : diff === 0 ? 'Today'
-      : diff === 1 ? 'Tomorrow'
-      : `${d.toLocaleDateString('en-IN', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}`;
+    const label = d <= now ? 'Happening now' : diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : dayName(d);
     const last = groups[groups.length - 1];
     if (last?.label === label) last.events.push(e);
     else groups.push({ label, events: [e] });
@@ -108,7 +111,19 @@ export function groupByDay<T extends { startDateTime: string }>(events: T[], max
   return groups;
 }
 
-export const spaceMembers =(s: { member_count?: number; _count?: { userRoles: number } }) =>
+/**
+ * The time line of a row under a day label: the start time, or for something
+ * already on, when it ends ("Until 9:00 PM" today, else "Until Thu 12 Nov").
+ */
+export function rowTime(e: { startDateTime: string; endDateTime?: string | null }, now: Date = new Date()) {
+  const start = new Date(e.startDateTime);
+  if (start > now) return formatTime(start);
+  if (!e.endDateTime) return `Started ${formatTime(start)}`;
+  const end = new Date(e.endDateTime);
+  return `Until ${dayDiff(now, end) === 0 ? formatTime(end) : dayName(end)}`;
+}
+
+export const spaceMembers = (s: { member_count?: number; _count?: { userRoles: number } }) =>
   s.member_count || s._count?.userRoles || 0;
 
 export const spaceLogo = (s: { logoUrl?: string | null; logo_url?: string | null }) =>

@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarDots } from '@unifesto/unicon/react-native';
 import type { Event } from '../../lib/api/events';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
-import { formatTime, groupByDay, shortPrice } from '../../utils/eventFormat';
+import { groupByDay, rowTime, shortPrice } from '../../utils/eventFormat';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -22,8 +22,11 @@ const MAX = 8;
 const THUMB_W = 64;
 const THUMB_H = 48;
 
-/** One event as a row on the page: 4:3 thumb, title, when · where, price in sky. */
-export function EventRow({ event: e, when, onPress }: { event: Event; when: string; onPress: () => void }) {
+/**
+ * One event as a row on the page: 4:3 thumb, title, when · where, price in sky.
+ * `day` is the group label above it, so VoiceOver reads the day too.
+ */
+export function EventRow({ event: e, when, day, onPress }: { event: Event; when: string; day?: string; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
   const cover = coverOr(defaults, e.id, e.coverImageUrl);
@@ -34,7 +37,7 @@ export function EventRow({ event: e, when, onPress }: { event: Event; when: stri
       feedback="inline"
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[e.title, when, where, price].filter(Boolean).join(', ')}
+      accessibilityLabel={[e.title, day, when, where, price].filter(Boolean).join(', ')}
       style={styles.row}
     >
       <View style={[styles.thumb, { backgroundColor: c.card }]}>
@@ -83,9 +86,14 @@ interface DayRowsProps {
  */
 export default function DayRows({ events, loading, failed, onRetry, onPressEvent, allLabel, onSeeAll }: DayRowsProps) {
   const c = useCosmos();
-  const groups = React.useMemo(() => groupByDay(events, MAX), [events]);
+  // Not memoised: a cheap pass that keeps Today and Tomorrow right on any render.
+  const groups = groupByDay(events, MAX);
+  // The first load holds the skeleton until every feed is in, so rows don't move
+  // under a finger as the city's events arrive; a refresh keeps the rows shown.
+  const settled = React.useRef(false);
+  if (!loading) settled.current = true;
 
-  if (loading && events.length === 0) {
+  if (loading && (!settled.current || groups.length === 0)) {
     return (
       <View style={styles.wrap}>
         <Rows>{[0, 1, 2].map((i) => <EventRowSkeleton key={i} />)}</Rows>
@@ -115,7 +123,7 @@ export default function DayRows({ events, loading, failed, onRetry, onPressEvent
           <Text style={[styles.day, { color: c.muted }]} accessibilityRole="header">{g.label}</Text>
           <Rows>
             {g.events.map((e) => (
-              <EventRow key={e.id} event={e} when={formatTime(new Date(e.startDateTime))} onPress={() => onPressEvent(e)} />
+              <EventRow key={e.id} event={e} day={g.label} when={rowTime(e)} onPress={() => onPressEvent(e)} />
             ))}
           </Rows>
         </View>
