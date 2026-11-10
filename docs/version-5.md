@@ -1185,3 +1185,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-10** · Mobile Home shows Find your vibe again: category banners (4:3, named underneath) after Browse; a tap opens Events filtered to that category (#637)
 - **2026-11-10** · Mobile 5.0.2 store build prepared: version 5.0.2, version bumps no longer move the OTA runtime (ExpoConfigVersions skip), App Store and Play notes (#638)
 - **2026-11-10** · Platform ADMIN can change their own space role and join event teams themselves (#640)
+- **2026-11-10** · Featured space on the app Home (set in Apex), events from several spaces in one call, and alerts for new events in my city (#642)
