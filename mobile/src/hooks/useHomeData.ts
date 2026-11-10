@@ -324,6 +324,8 @@ export function useHomeData() {
         loadUpcomingTickets(),
         loadMySpaces(),
         loadAllSpaces(),
+        // Find your vibe hides when this comes back empty; refresh/reconnect brings it back.
+        loadCategories(),
         loadEvents(),
         loadBeyond(),
         loadFavorites(),
@@ -332,7 +334,7 @@ export function useHomeData() {
     } finally {
       setRefreshing(false);
     }
-  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
+  }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadCategories, loadEvents, loadBeyond, loadFavorites, loadNearby, detectedCity]);
 
   // Back from Settings with location switched on: pick the city up without a restart.
   useEffect(() => {
