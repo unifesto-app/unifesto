@@ -1914,7 +1914,13 @@ function HierarchyPanel({
         {done && (
           <div className="inline-flex items-center gap-1.5 rounded-md bg-success/10 px-3 py-2 text-sm text-success">
             <CheckCircle className="h-4 w-4" weight="fill" />
-            Request submitted for admin review.
+            Request submitted.{" "}
+            <Link
+              href="/dashboard/requests/subspace"
+              className="underline underline-offset-2"
+            >
+              Review it in Sub-space requests
+            </Link>
           </div>
         )}
 
