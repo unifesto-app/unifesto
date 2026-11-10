@@ -29,6 +29,8 @@ export class UserProfileDto {
   deletionScheduledFor: string | null;
   /** Z11: when I confirmed I am 18 or older; null = not yet. */
   ageConfirmedAt: string | null;
+  /** City I get new-event alerts for; null = off. */
+  newEventsCity: string | null;
   roles?: { role: { code: string; name: string } }[];
 
   static fromUser(user: User, roles?: any[]): UserProfileDto {
@@ -50,6 +52,7 @@ export class UserProfileDto {
         ? deletionDueAt(user.deletionRequestedAt).toISOString()
         : null,
       ageConfirmedAt: user.ageConfirmedAt?.toISOString() ?? null,
+      newEventsCity: user.newEventsCity ?? null,
       roles: roles || [],
     };
   }

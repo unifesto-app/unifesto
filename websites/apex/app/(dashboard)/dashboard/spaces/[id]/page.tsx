@@ -51,6 +51,7 @@ import {
   uploadSpaceLogo,
   uploadSpaceBanner,
   setSpaceVerification,
+  setSpaceFeatured,
   type ChildSpace,
   type SpaceMember,
   type SpaceMemberRoleCode,
@@ -76,6 +77,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { SpaceDealsCard } from "@/components/spaces/SpaceDealsCard";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -374,6 +376,7 @@ function SpaceManagement({
             spaceId={space.id}
             status={space.status}
             verified={space.is_verified}
+            featured={Boolean(space.is_featured)}
             onChange={onChange}
           />
 
@@ -1346,11 +1349,13 @@ function AdminSpacePanel({
   spaceId,
   status,
   verified,
+  featured,
   onChange,
 }: {
   spaceId: string;
   status?: SpaceStatus;
   verified: boolean;
+  featured: boolean;
   onChange: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -1499,6 +1504,36 @@ function AdminSpacePanel({
             <SealCheck className="h-4 w-4" />
             {verified ? "Remove verification" : "Mark verified"}
           </Button>
+        </div>
+
+        {/* Home shows the most recently featured live public space to people
+            who haven't joined one. */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Feature on app Home</p>
+            <p className="text-xs text-muted-foreground">
+              Shows this space on Home for people who haven&apos;t joined one.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={featured}
+            aria-label="Feature on app Home"
+            disabled={busy}
+            onClick={() => run(() => setSpaceFeatured(spaceId, !featured))}
+            className={cn(
+              "relative h-5 w-9 rounded-full transition-colors disabled:opacity-50",
+              featured ? "bg-primary" : "bg-muted-foreground/30"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform",
+                featured && "translate-x-4"
+              )}
+            />
+          </button>
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Post,
   Patch,
   Delete,
@@ -40,6 +41,7 @@ import {
 } from './dto';
 import { CreateSpaceRequestDto } from './dto/create-space-request.dto';
 import { SetSpaceVerificationDto } from './dto/set-space-verification.dto';
+import { SetSpaceFeaturedDto } from './dto/set-space-featured.dto';
 import {
   CreateSubSpaceRequestDto,
   ReviewSubSpaceRequestDto,
@@ -375,6 +377,18 @@ export class SpacesController {
   }
 
   /**
+   * The space featured on the app Home (PUBLIC)
+   * GET /spaces/featured -> { space | null }
+   * NOTE: Must be declared before the ':id' route.
+   */
+  @Get('featured')
+  // Hit on every app Home load; a minute stale is fine.
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
+  async getFeaturedSpace() {
+    return this.spacesService.getFeaturedSpace();
+  }
+
+  /**
    * Get space by ID (PUBLIC - for mobile view)
    * GET /spaces/:id
    */
@@ -513,6 +527,18 @@ export class SpacesController {
     @CurrentUser() user: User,
   ) {
     return this.spacesService.setSpaceVerification(id, dto.verified, user.id);
+  }
+
+  /**
+   * Feature / un-feature a space on the app Home (ADMIN only)
+   * PATCH /spaces/:id/featured { featured: boolean }
+   */
+  @Patch(':id/featured')
+  @Audit('space.featured', (r) => ({ spaceId: r.params.id }))
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async setSpaceFeatured(@Param('id') id: string, @Body() dto: SetSpaceFeaturedDto) {
+    return this.spacesService.setSpaceFeatured(id, dto.featured);
   }
 
   /**

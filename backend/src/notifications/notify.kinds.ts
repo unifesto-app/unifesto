@@ -59,6 +59,8 @@ export interface NotifyKindData {
   'feedback.request': FeedbackNotice;
   /** F2: the same, at 48 h, to those who haven't answered. */
   'feedback.reminder': FeedbackNotice & { closesText: string };
+  /** A public event published in the city someone asked to hear about. Push + inbox only. */
+  'city.new_event': { eventId: string; eventSlug?: string; eventTitle: string; city: string; whenText: string; venueName?: string; spaceName: string };
   /** C15: a checkout the attendee started and didn't pay. */
   'checkout.unpaid': { registrationId: string; eventId: string; eventSlug?: string; eventTitle: string };
 }
@@ -294,6 +296,19 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     (d) => `Rate ${d.eventTitle}`,
     (d) => `Feedback closes ${d.closesText}. It takes under a minute.`,
   ),
+  // Low: push + inbox, no email, once per event. The new-events switch, daily cap
+  // and quiet hours apply inside notify().
+  'city.new_event': {
+    category: 'newEvents',
+    criticality: 'low',
+    entity: (d) => d.eventId,
+    push: (d) => ({
+      title: `New in ${d.city}: ${d.eventTitle}`,
+      body: `${d.whenText} · ${d.venueName || d.city} · from ${d.spaceName}`,
+      deepLink: eventLink(d),
+      data: { type: 'city_new_event', eventId: d.eventId },
+    }),
+  },
   // Low: push + inbox, no email, once per checkout. An event reminder, so the
   // person's reminder switch and quiet hours apply. The copy promises no seat:
   // nothing is held for an unpaid checkout, and the event page says if it sold out.

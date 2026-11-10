@@ -1,4 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { SpaceStatus } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Job, Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +9,9 @@ import { EmailService } from '../email/email.service';
 import { canSend } from '../notifications/send-policy';
 import { forEachPage, inChunks } from '../common/batching';
 import { reportError } from '../common/observability';
+import { NotificationEvents } from '../notifications/notifications.constants';
+import type { NotifyBatchEvent } from '../notifications/notifications.events';
+import { isSpaceLive } from '../spaces/space-access';
 import { formatEventDate, formatEventTime } from './event-dates';
 
 const QUEUE_NAME = 'event-publish-fanout';
@@ -40,6 +45,7 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly email: EmailService,
+    private readonly events?: EventEmitter2,
   ) {}
 
   onModuleInit() {
@@ -99,7 +105,7 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
   async run(eventId: string): Promise<void> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      include: { space: { select: { name: true } } },
+      include: { space: { select: { name: true, status: true, visibility: true, verifiedAt: true } } },
     });
     if (!event?.spaceId) return;
     const base = {
@@ -154,6 +160,82 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
             ),
           10,
         );
+      },
+    );
+    await this.runCityAlerts(event);
+  }
+
+  /**
+   * "New in <city>" push to people who asked for that city. Only public,
+   * top-level, in-person events (no burst for a super event's sub-events), and
+   * never to the space's own people (they got the member email) or the creator.
+   * Goes out as a NotifyBatch because EventsModule can't inject NotifyService;
+   * the per-person dedup key makes a re-run safe.
+   */
+  private async runCityAlerts(event: {
+    id: string;
+    spaceId: string;
+    title: string;
+    slug: string;
+    city: string | null;
+    venueName: string | null;
+    type: string;
+    status: string;
+    visibility: string;
+    parentEventId: string | null;
+    createdBy: string;
+    startDateTime: Date;
+    timezone: string;
+    space: { name: string; status: SpaceStatus; visibility: string; verifiedAt: Date | null } | null;
+  }): Promise<void> {
+    const city = event.city?.trim();
+    if (
+      !city ||
+      !this.events ||
+      event.visibility !== 'PUBLIC' ||
+      event.parentEventId ||
+      event.type === 'ONLINE' ||
+      !['PUBLISHED', 'ONGOING'].includes(event.status) ||
+      // Same public-and-live rule as the event list; an event is PUBLIC by default even in a private space.
+      !event.space ||
+      event.space.visibility !== 'PUBLIC' ||
+      !isSpaceLive(event.space.status) ||
+      // Verified only: spaces publish without review, so an unverified one must not push to a whole city.
+      !event.space.verifiedAt
+    ) {
+      return;
+    }
+    await forEachPage(
+      (page) =>
+        this.prisma.user.findMany({
+          ...page,
+          where: {
+            newEventsCity: { equals: city.toLowerCase() },
+            id: { not: event.createdBy },
+            // Space members and event-scoped staff (spaceId null, eventId set) already hear from the organiser.
+            roles: { none: { OR: [{ spaceId: event.spaceId }, { eventId: event.id }] } },
+            deletionRequestedAt: null,
+            deletedAt: null,
+          },
+          select: { id: true },
+        }),
+      async (users) => {
+        this.events!.emit(NotificationEvents.NotifyBatch, {
+          kind: 'city.new_event',
+          items: users.map((u) => ({
+            userId: u.id,
+            dedupKey: `city.new_event:${event.id}:${u.id}`,
+            data: {
+              eventId: event.id,
+              eventSlug: event.slug,
+              eventTitle: event.title,
+              city,
+              whenText: formatEventDate(event.startDateTime, event.timezone),
+              venueName: event.venueName || undefined,
+              spaceName: event.space?.name ?? '',
+            },
+          })),
+        } satisfies NotifyBatchEvent<'city.new_event'>);
       },
     );
   }

@@ -1737,6 +1737,7 @@ export class EventsService {
       endDate,
       search,
       spaceId,
+      spaceIds,
       includeSubEvents = false,
       featured = false,
       trending = false,
@@ -1788,6 +1789,8 @@ export class EventsService {
 
     if (spaceId) {
       where.spaceId = spaceId;
+    } else if (spaceIds?.length) {
+      where.spaceId = { in: spaceIds };
     }
     if (city) {
       where.city = { contains: city, mode: 'insensitive' };

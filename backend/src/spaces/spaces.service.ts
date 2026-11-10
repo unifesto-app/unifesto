@@ -1198,6 +1198,38 @@ export class SpacesService {
     });
   }
 
+  /** One slot: featuring a space clears every other, and only a public live space can take it. */
+  async setSpaceFeatured(id: string, featured: boolean) {
+    const space = await this.prisma.space.findUnique({
+      where: { id },
+      select: { id: true, status: true, visibility: true },
+    });
+    if (!space) {
+      throw new NotFoundException('Space not found');
+    }
+    if (!featured) {
+      return this.prisma.space.update({ where: { id }, data: { featuredAt: null }, select: { id: true, featuredAt: true } });
+    }
+    if (space.visibility !== 'PUBLIC' || !isSpaceLive(space.status)) {
+      throw new BadRequestException('Only a public, live space can be featured on Home.');
+    }
+    const [, updated] = await this.prisma.$transaction([
+      this.prisma.space.updateMany({ where: { id: { not: id }, featuredAt: { not: null } }, data: { featuredAt: null } }),
+      this.prisma.space.update({ where: { id }, data: { featuredAt: new Date() }, select: { id: true, featuredAt: true } }),
+    ]);
+    return updated;
+  }
+
+  /** The featured space if it is still public and live, in the same shape as GET /spaces/slug/:slug. */
+  async getFeaturedSpace() {
+    const row = await this.prisma.space.findFirst({
+      where: { featuredAt: { not: null }, ...PUBLIC_LIVE_SPACE_WHERE },
+      orderBy: { featuredAt: 'desc' },
+      select: { id: true },
+    });
+    return { space: row ? await this.getSpaceById(row.id) : null };
+  }
+
   /**
    * Q29: a space request makes the space at once, live and Unverified, with
    * the requester as its Space Admin. The request row stays as the record of
