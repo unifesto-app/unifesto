@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { EventFilterDto } from './dto';
+import { PUBLIC_LIVE_SPACE_WHERE } from '../spaces/space-access';
 import { EventsService } from './events.service';
 
 const A = '11111111-1111-4111-8111-111111111111';
@@ -27,9 +28,17 @@ describe('GET /events?spaceIds=', () => {
     const q = prisma.event.findMany.mock.calls[0][0];
     expect(q.where.spaceId).toEqual({ in: [A, B] });
     expect(q.where.visibility).toBe('PUBLIC');
+    expect(q.where.space).toEqual(PUBLIC_LIVE_SPACE_WHERE);
     expect(q.where.status).toEqual({ in: ['PUBLISHED', 'ONGOING'] });
     expect(q.take).toBe(10);
     expect(q.select.space.select).toMatchObject({ name: true, slug: true });
     expect(q.select).toMatchObject({ registeredCount: true, capacity: true });
+  });
+
+  it('a single spaceId wins over spaceIds', async () => {
+    const prisma: any = { event: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) } };
+    const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    await svc.getEvents({ spaceId: A, spaceIds: [B] });
+    expect(prisma.event.findMany.mock.calls[0][0].where.spaceId).toBe(A);
   });
 });

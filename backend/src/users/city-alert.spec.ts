@@ -25,8 +25,8 @@ describe('PUT /users/me/city-alert', () => {
   it('stores it and returns { city }', async () => {
     const prisma: any = { user: { update: jest.fn(async ({ data }) => ({ newEventsCity: data.newEventsCity })) } };
     const svc = new UsersService(prisma, {} as any, {} as any);
-    expect(await svc.setCityAlert('u1', 'Hyderabad')).toEqual({ city: 'Hyderabad' });
-    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'u1' }, data: { newEventsCity: 'Hyderabad' } }));
+    expect(await svc.setCityAlert('u1', 'Hyderabad')).toEqual({ city: 'hyderabad' });
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'u1' }, data: { newEventsCity: 'hyderabad' } }));
     expect(await svc.setCityAlert('u1', null)).toEqual({ city: null });
   });
 

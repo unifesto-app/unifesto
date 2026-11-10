@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { SpaceStatus } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Job, Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
@@ -10,6 +11,7 @@ import { forEachPage, inChunks } from '../common/batching';
 import { reportError } from '../common/observability';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { NotifyBatchEvent } from '../notifications/notifications.events';
+import { isSpaceLive } from '../spaces/space-access';
 import { formatEventDate, formatEventTime } from './event-dates';
 
 const QUEUE_NAME = 'event-publish-fanout';
@@ -103,7 +105,7 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
   async run(eventId: string): Promise<void> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      include: { space: { select: { name: true } } },
+      include: { space: { select: { name: true, status: true, visibility: true, verifiedAt: true } } },
     });
     if (!event?.spaceId) return;
     const base = {
@@ -184,7 +186,7 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
     createdBy: string;
     startDateTime: Date;
     timezone: string;
-    space: { name: string } | null;
+    space: { name: string; status: SpaceStatus; visibility: string; verifiedAt: Date | null } | null;
   }): Promise<void> {
     const city = event.city?.trim();
     if (
@@ -193,7 +195,13 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
       event.visibility !== 'PUBLIC' ||
       event.parentEventId ||
       event.type === 'ONLINE' ||
-      !['PUBLISHED', 'ONGOING'].includes(event.status)
+      !['PUBLISHED', 'ONGOING'].includes(event.status) ||
+      // Same public-and-live rule as the event list; an event is PUBLIC by default even in a private space.
+      !event.space ||
+      event.space.visibility !== 'PUBLIC' ||
+      !isSpaceLive(event.space.status) ||
+      // Verified only: spaces publish without review, so an unverified one must not push to a whole city.
+      !event.space.verifiedAt
     ) {
       return;
     }
@@ -202,10 +210,12 @@ export class EventPublishFanout implements OnModuleInit, OnModuleDestroy {
         this.prisma.user.findMany({
           ...page,
           where: {
-            newEventsCity: { equals: city, mode: 'insensitive' },
+            newEventsCity: { equals: city.toLowerCase() },
             id: { not: event.createdBy },
-            roles: { none: { spaceId: event.spaceId } },
+            // Space members and event-scoped staff (spaceId null, eventId set) already hear from the organiser.
+            roles: { none: { OR: [{ spaceId: event.spaceId }, { eventId: event.id }] } },
             deletionRequestedAt: null,
+            deletedAt: null,
           },
           select: { id: true },
         }),

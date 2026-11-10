@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Post,
   Patch,
   Delete,
@@ -381,6 +382,8 @@ export class SpacesController {
    * NOTE: Must be declared before the ':id' route.
    */
   @Get('featured')
+  // Hit on every app Home load; a minute stale is fine.
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
   async getFeaturedSpace() {
     return this.spacesService.getFeaturedSpace();
   }

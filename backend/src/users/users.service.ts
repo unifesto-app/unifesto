@@ -101,7 +101,8 @@ export class UsersService {
   async setCityAlert(userId: string, city: string | null) {
     const { newEventsCity } = await this.prisma.user.update({
       where: { id: userId },
-      data: { newEventsCity: city },
+      // Lower-cased so the fan-out matches with plain equality (no ILIKE wildcards).
+      data: { newEventsCity: city?.toLowerCase() ?? null },
       select: { newEventsCity: true },
     });
     return { city: newEventsCity };
@@ -1308,6 +1309,7 @@ export class UsersService {
           appRuntimeVersion: null,
           appUpdateId: null,
           lastSeenAt: null,
+          newEventsCity: null,
           deletedAt: new Date(),
         },
       }),

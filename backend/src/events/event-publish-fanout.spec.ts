@@ -49,10 +49,10 @@ describe('EventPublishFanout', () => {
 
   describe('city alerts', () => {
     const event = (over: object = {}) => ({
-      id: 'e1', spaceId: 's1', title: 'Fest', slug: 'fest', type: 'OFFLINE', venueName: 'T-Hub', city: ' Hyderabad ',
+      id: 'e1', spaceId: 's1', title: 'Fest', slug: 'fest', type: 'IN_PERSON', venueName: 'T-Hub', city: ' Hyderabad ',
       status: 'PUBLISHED', visibility: 'PUBLIC', parentEventId: null, createdBy: 'creator', timezone: 'Asia/Kolkata',
       startDateTime: new Date('2026-11-01T04:30:00Z'), endDateTime: new Date('2026-11-01T07:30:00Z'),
-      space: { name: 'Club' }, ...over,
+      space: { name: 'Club', status: 'ACTIVE', visibility: 'PUBLIC', verifiedAt: new Date() }, ...over,
     });
     const run = async (over: object = {}) => {
       const prisma: any = {
@@ -69,9 +69,10 @@ describe('EventPublishFanout', () => {
       const { prisma, events } = await run();
       const where = prisma.user.findMany.mock.calls[0][0].where;
       expect(where).toMatchObject({
-        newEventsCity: { equals: 'Hyderabad', mode: 'insensitive' },
+        newEventsCity: { equals: 'hyderabad' },
         id: { not: 'creator' },
-        roles: { none: { spaceId: 's1' } },
+        roles: { none: { OR: [{ spaceId: 's1' }, { eventId: 'e1' }] } },
+        deletedAt: null,
       });
       expect(events.emit).toHaveBeenCalledTimes(1);
       const [, batch] = events.emit.mock.calls[0];
@@ -86,6 +87,9 @@ describe('EventPublishFanout', () => {
       ['private', { visibility: 'PRIVATE' }],
       ['not live', { status: 'DRAFT' }],
       ['no city', { city: null }],
+      ['a private space', { space: { name: 'Club', status: 'ACTIVE', visibility: 'PRIVATE', verifiedAt: new Date() } }],
+      ['a suspended space', { space: { name: 'Club', status: 'SUSPENDED', visibility: 'PUBLIC', verifiedAt: new Date() } }],
+      ['an unverified space', { space: { name: 'Club', status: 'ACTIVE', visibility: 'PUBLIC', verifiedAt: null } }],
     ])('skips %s events', async (_n, over) => {
       const { prisma, events } = await run(over);
       expect(prisma.user.findMany).not.toHaveBeenCalled();
