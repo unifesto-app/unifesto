@@ -18,8 +18,9 @@
 #
 # The origin cert must cover both `unifesto.app` and `*.unifesto.app`.
 
-(cf_origin) {
-	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key {
+# Takes the cert's base name: `import cf_tls origin` = origin.pem/origin.key.
+(cf_tls) {
+	tls /etc/caddy/certs/{args[0]}.pem /etc/caddy/certs/{args[0]}.key {
 		# J18: only Cloudflare may connect (Authenticated Origin Pulls, global,
 		# on since 31 Oct 2026). Every Cloudflare edge presents a client cert
 		# signed by this CA; a direct hit on the origin IP has none and is
@@ -54,6 +55,10 @@
 			roll_keep_for 4320h
 		}
 	}
+}
+
+(cf_origin) {
+	import cf_tls origin
 }
 
 api.unifesto.app {
@@ -152,6 +157,24 @@ unifesto.app, www.unifesto.app {
 			header_up X-Forwarded-For {client_ip}
 		}
 	}
+}
+
+# wegobeyond.in is its own Cloudflare zone with its own Origin Certificate
+# (certs/wegobeyond.pem + .key, placed on the server by hand), same AOP check.
+# events.wegobeyond.in is a Cloudflare-for-SaaS custom hostname on unifesto.app
+# and keeps going through the `https://` block below, so no wildcard here.
+www.wegobeyond.in {
+	import cf_tls wegobeyond
+	reverse_proxy wegobeyond:3000 {
+		lb_try_duration 15s
+		lb_try_interval 250ms
+		header_up X-Forwarded-For {client_ip}
+	}
+}
+
+wegobeyond.in {
+	import cf_tls wegobeyond
+	redir https://www.wegobeyond.in{uri} 308
 }
 
 # White-label custom domains (track H, P3). Cloudflare for SaaS terminates the
