@@ -17,7 +17,7 @@ set -euo pipefail
 #   SERVER_MIGRATIONS=names.txt ./deploy.sh --check   # also the DROP guard, offline
 #   SERVER_SHAS="backend=<sha> web=<sha> apex=<sha> wegobeyond=<sha>" ./deploy.sh --check   # what it would pick
 # Put back the image each service ran before its last deploy (J13):
-#   ./deploy.sh rollback                  # backend apex web wegobeyond
+#   ./deploy.sh rollback                  # backend apex web (name wegobeyond to roll it back)
 #   ./deploy.sh rollback backend          # the API (+ cert-worker) only
 #   ROLLBACK_TO=<sha> ./deploy.sh rollback web   # a :<sha> image instead of :previous
 #   Rollback never runs migrations backwards: the database keeps its schema.
@@ -74,9 +74,11 @@ esac
 
 # Any args are compose service names; no args = the whole stack, which
 # pick_services then narrows to what changed. A rollback with no args covers
-# every image deploy.sh builds.
+# backend, apex and web.
 SERVICES="$*"
-if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web wegobeyond}"; fi
+# wegobeyond is left out: retag refuses the whole rollback if any image lacks
+# :previous, which wegobeyond has only after its second build. Name it to roll it back.
+if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web}"; fi
 
 # Images deploy.sh builds and tags. backend-migrate and cert-worker run the
 # backend's image.
@@ -176,12 +178,25 @@ run_gates() {
 # J14: the env files live only on the server (rsync excludes them), so check
 # them there. Prints key names only; a missing file or key fails the deploy
 # before anything is synced, so the stack can't come up without its secrets.
+# The same goes for the origin certs (certs/ is never synced): every
+# `import cf_tls <name>` in the Caddyfile needs certs/<name>.pem and .key, or
+# caddy validate fails only after the new containers are already up.
 server_env_gate() {
-  { declare -f ok fail env_val; cat <<'ENVGATE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" ${REQUIRED_BACKEND_ENV}
+  local certs
+  certs="$(sed -n 's/^[[:space:]]*import cf_tls \([A-Za-z0-9_-]*\).*/\1/p' "${HERE}/Caddyfile" | sort -u | xargs)"
+  { declare -f ok fail env_val; cat <<'ENVGATE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" "${certs}" ${REQUIRED_BACKEND_ENV}
 set -uo pipefail
 cd "$1" || exit 1
-shift
+certs="$2"
+shift 2
 FAILED=0
+for c in ${certs}; do
+  if [ -f "certs/${c}.pem" ] && [ -f "certs/${c}.key" ]; then
+    ok "server has certs/${c}.pem and certs/${c}.key"
+  else
+    fail "server is missing certs/${c}.pem or certs/${c}.key: the Caddyfile loads them, put them there by hand"
+  fi
+done
 for f in .env backend/.env websites/apex/.env websites/web/.env.local; do
   if [ -f "${f}" ]; then ok "server has ${f}"; else fail "server is missing ${f}: deploy.sh no longer syncs env files, put it there by hand"; fi
 done
