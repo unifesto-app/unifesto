@@ -63,7 +63,8 @@ describe('WeGoBeyond schema', () => {
     expect(Object.keys(SEED).sort()).toEqual([...DOC_NAMES].sort());
     for (const name of DOC_NAMES) {
       const r = validateDoc(name, SEED[name]);
-      expect(r).toEqual({ ok: true, value: SEED[name] });
+      // Subset: optional fields added after the seed (settings.communityUrl) come back empty.
+      expect(r).toMatchObject({ ok: true, value: SEED[name] });
     }
   });
 

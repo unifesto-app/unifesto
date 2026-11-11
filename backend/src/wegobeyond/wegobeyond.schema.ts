@@ -321,6 +321,12 @@ export const DOCS: Record<DocName, DocSpec> = {
         kind: 'email',
         required: true,
       },
+      {
+        key: 'communityUrl',
+        label: 'WhatsApp community invite link',
+        kind: 'url',
+        hint: 'The chat.whatsapp.com link. Leave empty to hide "Join the community" on the site.',
+      },
     ],
     lists: [
       {
