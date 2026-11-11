@@ -1188,3 +1188,6 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-10** · Featured space on the app Home (set in Apex), events from several spaces in one call, and alerts for new events in my city (#642)
 - **2026-11-10** · Mobile Home shows each event once: From my spaces or a featured space, a hero card, hosts and crowds on rows, city alerts, Manage rows; Browse removed (#639)
 - **2026-11-10** · Apex can create spaces (New space, with Super/Regular type) and admins can put a club under a college whatever the college's plan; the sub-space plan limit now applies only to an organiser's own request (#641)
+- **2026-11-12** · Unifesto Orbit's public page moves to wegobeyond.in/orbit (unifesto.app/orbit 308s there; apply and terms stay); WeGoBeyond settings get optional WhatsApp community and Razorpay support links. Rebuild backend + web. (#643)
+- **2026-11-12** · wegobeyond.in moves into the monorepo (websites/wegobeyond) and ships with deploy.sh behind Caddy and Cloudflare instead of Vercel; Caddy's TLS snippet takes a cert name. Rebuild the whole stack; origin cert on the server first. (#644)
+- **2026-11-12** · deploy.sh's origin-cert check quotes the cert list for the remote shell (it broke `./deploy.sh wegobeyond`). (#645)
