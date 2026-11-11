@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+/*
+  WeGoBeyond design system.
+  One theme, five colours taken from two reference images (ink, rust and silver
+  from the dark one; paper and slate from the light one). No light/dark modes:
+  every page uses all five. DM Sans only, two weights, six sizes. Every colour
+  and size lives here; components use the tokens, never literal values.
+*/
+
+@theme {
+  --color-ink: #0e0c0b; /* ground */
+  --color-ink-2: #1a1817; /* raised tiles on ink */
+  --color-line: #2e2b28; /* hairlines and field borders on ink */
+  --color-paper: #e9e5dc; /* type on ink, cards */
+  --color-stone: #4a4740; /* secondary text on paper */
+  --color-rust: #cc5a2f; /* the accent; ink text on it is 4.7:1 */
+  --color-slate: #2a3140; /* panels, the nav pill */
+  --color-mist: #c9cbd0; /* secondary text on slate */
+  --color-silver: #a7a6a0; /* secondary text on ink */
+
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  /* Native scrolling only (no scroll-jacking library): anchor jumps ease via CSS,
+     and stay instant for anyone who prefers reduced motion. */
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font: 400 17px/1.45 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* clip, not hidden: hides sideways overflow (the crew band) without turning
+       body into a scroll container, which is what made scrolling stick in Safari
+       and would break the sticky header. */
+    overflow-x: clip;
+  }
+
+  /* Type scale. 700 for anything read at a glance, 400 for reading through.
+     The bigger the size, the tighter the tracking. */
+  h1,
+  .h1,
+  h2,
+  h3,
+  .h3 {
+    font-weight: 700;
+  }
+  /* .h1: a number set at the h1 size that isn't the page title (Orbit's tier bars). */
+  h1,
+  .h1 {
+    font-size: clamp(60px, 12vw, 164px);
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+  }
+  h2,
+  .h2 {
+    font-weight: 700;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+  }
+  h3,
+  .h3 {
+    font-size: clamp(28px, 3vw, 36px);
+    line-height: 1;
+    letter-spacing: -0.035em;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: var(--color-rust);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-rust);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Grain over everything: the stipple texture of both references, without
+     their shapes. Normal blending so it reads on ink as well as paper. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0.11;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.9 .9 .9 0 -.85 .9 .9 .9 0 -.85 .9 .9 .9 0 -.85 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@layer components {
+  /* The content column. */
+  .wrap {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: clamp(16px, 5vw, 64px);
+  }
+
+  /* The rest of the type scale. */
+  /* A paragraph read as a headline (What we run): between h2 and h3, at reading
+     weight, with bold words picked out inside it. */
+  .statement {
+    font-size: clamp(28px, 3.4vw, 46px);
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+    text-wrap: pretty;
+  }
+  /* Giant words, between h1 and h2: the crew band. */
+  .marquee-word {
+    font-size: clamp(56px, 9vw, 128px);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+  }
+  .num {
+    font-size: clamp(28px, 3vw, 36px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+  }
+  .title {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .lead {
+    font-size: clamp(18px, 1.8vw, 20px);
+  }
+  .small {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  /* Notes, labels and fine print: the small size at reading weight. */
+  .caption {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  /* Buttons: pills in the small size, one per ground. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 17px 24px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    transition: background-color 0.18s var(--ease-out-quart),
+      color 0.18s var(--ease-out-quart), box-shadow 0.18s var(--ease-out-quart),
+      transform 0.12s var(--ease-out-quart);
+  }
+  .btn:active {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .btn-paper {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+  .btn-paper:hover {
+    background-color: #f6f3ec;
+  }
+  .btn-ink {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-ink:hover {
+    background-color: #2a2725;
+  }
+  .btn-rust {
+    background-color: var(--color-rust);
+    color: var(--color-ink);
+  }
+  .btn-rust:hover {
+    background-color: #d8673b;
+  }
+  .btn-ghost {
+    color: var(--color-paper);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-silver) 45%, transparent);
+  }
+  .btn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px var(--color-paper);
+  }
+
+  /* Form fields on ink. */
+  .field {
+    width: 100%;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    border: 1.5px solid var(--color-line);
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    font-size: 16px;
+    transition: border-color 0.18s var(--ease-out-quart);
+  }
+  .field::placeholder {
+    color: color-mix(in srgb, var(--color-silver) 70%, transparent);
+  }
+  .field:hover {
+    border-color: color-mix(in srgb, var(--color-silver) 60%, var(--color-line));
+  }
+  .field:focus {
+    border-color: var(--color-rust);
+    outline: none;
+  }
+}
+
+@layer components {
+  /* The crew band: one line of display type scrolling left forever. The track
+     holds two identical copies and moves by half its width, so it loops seamlessly. */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 32s linear infinite;
+  }
+  .marquee:hover .marquee-track,
+  .marquee:focus-visible .marquee-track {
+    animation-play-state: paused;
+  }
+  .marquee-word {
+    line-height: 1.05; /* a touch taller than .big so descenders never clip */
+    white-space: nowrap;
+    transition: color 0.18s var(--ease-out-quart);
+  }
+  .marquee:hover .marquee-word:not(.text-rust) {
+    color: var(--color-rust);
+  }
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+    }
+  }
+}
+
+@layer utilities {
+  /* Motion base: content is visible by default; GSAP applies the entrance
+     start-state on mount, so no-JS and reduced-motion renders show everything. */
+  .will-reveal {
+    will-change: transform, opacity;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn,
+    .field {
+      transition: none;
+    }
+    .btn:active {
+      transform: none;
+    }
+  }
+}
