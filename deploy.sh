@@ -184,7 +184,9 @@ run_gates() {
 server_env_gate() {
   local certs
   certs="$(sed -n 's/^[[:space:]]*import cf_tls \([A-Za-z0-9_-]*\).*/\1/p' "${HERE}/Caddyfile" | sort -u | xargs)"
-  { declare -f ok fail env_val; cat <<'ENVGATE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" "${certs}" ${REQUIRED_BACKEND_ENV}
+  # ssh joins its args into one command line for the remote shell, so the list
+  # is quoted again for that shell (as the BUILD step does with SERVICES).
+  { declare -f ok fail env_val; cat <<'ENVGATE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" "'${certs}'" ${REQUIRED_BACKEND_ENV}
 set -uo pipefail
 cd "$1" || exit 1
 certs="$2"
