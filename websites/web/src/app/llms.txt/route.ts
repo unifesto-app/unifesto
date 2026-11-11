@@ -3,7 +3,6 @@ import {
   buyerFeeText,
   FAQ_HOME,
   pricingFaq,
-  FAQ_ORBIT, ORBIT_STEPS, ORBIT_TIERS,
   HACKATHON_STAGES,
   PILLARS,
   PLANS,
@@ -40,7 +39,6 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [For organisers](${SITE.url}/organisers): the full platform for clubs, communities and institutions
 - [The Unifesto app](${SITE.url}/app): the free attendee app for iOS and Android
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
-- [Unifesto Orbit](${SITE.url}/orbit): the campus programme; one Orbit Lead per campus helps every club run its events on Unifesto
 - [Pricing](${SITE.url}/pricing): plans and platform fees, no monthly fee; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
@@ -57,13 +55,7 @@ ${HACKATHON_STAGES.map((s) => `- ${s.title}: ${s.body}`).join("\n")}
 
 ## Unifesto Orbit (campus programme)
 
-One Orbit Lead per campus represents Unifesto (not the college) and helps every club on campus run its events on Unifesto. Rewards are recognition, not cash. Terms: ${SITE.url}/orbit/terms
-
-${ORBIT_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
-
-${ORBIT_TIERS.map((t) => `- ${t.name} (${t.bar}): ${t.rewards.join("; ")}`).join("\n")}
-
-${FAQ_ORBIT.map((f) => `- ${f.q} ${f.a}`).join("\n")}
+Unifesto Orbit, the campus programme, is at https://www.wegobeyond.in/orbit. Applications are at ${SITE.url}/orbit/apply.
 
 ## The attendee app
 

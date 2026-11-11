@@ -115,7 +115,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/organisers', 'weekly', 0.9),
     page('/app', 'weekly', 0.9),
     page('/sprint', 'weekly', 0.9),
-    page('/orbit', 'weekly', 0.7),
     page('/orbit/apply', 'weekly', 0.6),
     page('/orbit/terms', 'yearly', 0.3),
     page('/pricing', 'monthly', 0.9),

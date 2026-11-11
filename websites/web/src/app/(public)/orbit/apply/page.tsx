@@ -30,7 +30,6 @@ export default function OrbitApplyPage() {
       <JsonLd
         data={breadcrumbLd([
           { name: "Home", path: "/" },
-          { name: "Unifesto Orbit", path: "/orbit" },
           { name: "Apply", path: "/orbit/apply" },
         ])}
       />
@@ -71,7 +70,7 @@ export default function OrbitApplyPage() {
             </div>
             <p className="text-sm text-paper/60">
               Read the <Link href="/orbit/terms" className="underline underline-offset-4 hover:text-white">programme terms</Link>{" "}
-              or go back to <Link href="/orbit" className="underline underline-offset-4 hover:text-white">how Orbit works</Link>.
+              or go back to <a href="https://www.wegobeyond.in/orbit" className="underline underline-offset-4 hover:text-white">how Orbit works</a>.
               Questions: orbit@unifesto.app
             </p>
           </aside>

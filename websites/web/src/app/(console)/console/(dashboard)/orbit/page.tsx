@@ -12,7 +12,7 @@ import { Badge } from "@/console/components/ui/badge";
 import { getOrbitCampus, type OrbitCampusView } from "@/console/lib/api/orbit";
 import { useSession } from "@/console/lib/context/SessionContext";
 
-const ORBIT_URL = "https://www.unifesto.app/orbit";
+const ORBIT_URL = "https://www.wegobeyond.in/orbit";
 const GOAL_LABEL = { clubs: "Clubs onboarded", activeClubs: "Active clubs", paidEvents: "Paid events" } as const;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
@@ -119,7 +119,7 @@ export default function OrbitPage() {
       </ListGroup>
 
       <p className="text-xs text-muted-foreground">
-        <a className="hover:underline" href={`${ORBIT_URL}/terms`}>Orbit Lead Programme Terms</a>
+        <a className="hover:underline" href="https://www.unifesto.app/orbit/terms">Orbit Lead Programme Terms</a>
       </p>
     </div>
   );

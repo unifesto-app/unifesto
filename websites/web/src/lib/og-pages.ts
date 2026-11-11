@@ -3,7 +3,7 @@ import {
   Article, Briefcase, CalendarDots, CalendarPlus, ChatCircleDots, CurrencyInr, Database,
   DeviceMobile, DownloadSimple, FileText, Flag, Gavel, HandArrowUp, Handshake, Heart,
   IdentificationCard, Info, Lifebuoy, Link, ListChecks, LockKey, Medal, Megaphone, PlusCircle,
-  Prohibit, Question, Receipt, RocketLaunch, ShieldCheck, SquaresFour, Trash, Tray, TreeStructure,
+  Prohibit, Question, Receipt, ShieldCheck, SquaresFour, Trash, Tray, TreeStructure,
   Trophy, UsersThree,
 } from "@unifesto/unicon/react";
 
@@ -36,7 +36,6 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/request-event": { kind: "Get started", title: "Host one event, no Space needed", subtitle: "Run a single event on Unifesto without setting up a Space.", cta: "Host an event", icon: CalendarPlus },
 
   // Orbit
-  "/orbit": { kind: "Unifesto Orbit", title: "One student per campus", subtitle: "Orbit Leads help every club on their campus run its events on Unifesto.", cta: "Become a Lead", icon: RocketLaunch },
   "/orbit/apply": { kind: "Unifesto Orbit", title: "Lead Orbit on your campus", subtitle: "Apply to be your campus Orbit Lead. We read every application, usually within a week.", cta: "Apply now", icon: HandArrowUp },
 
   // Company
