@@ -31,7 +31,7 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
     items: [
       { label: "Platform", href: "/organisers", description: "Ticketing, check-in, payouts, one Space" },
       { label: "Unifesto Sprint", href: "/sprint", description: "Hackathons: teams, judging and help desks" },
-      { label: "Unifesto Orbit", href: "/orbit", description: "The campus programme for students" },
+      { label: "Unifesto Orbit", href: "https://www.wegobeyond.in/orbit", description: "The campus programme for students" },
       { label: "Start a Space", href: "/request-space", description: "Get your club or institution set up" },
       { label: "Host one event", href: "/request-event", description: "No Space yet? We set one up for you" },
     ],

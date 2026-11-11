@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
       { source: '/features', destination: '/organisers', permanent: true },
       // Apex links legal docs as /<slug>; the Orbit terms live under /orbit.
       { source: '/orbit-terms', destination: '/orbit/terms', permanent: true },
+      // The programme page lives on WeGoBeyond; /orbit/apply and /orbit/terms stay here.
+      { source: '/orbit', destination: 'https://www.wegobeyond.in/orbit', permanent: true },
       { source: '/host', destination: '/organisers', permanent: true },
       { source: '/products', destination: '/organisers', permanent: true },
       // Account pages moved to the app (the website has no sign-in).

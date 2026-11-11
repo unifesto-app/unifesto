@@ -321,6 +321,18 @@ export const DOCS: Record<DocName, DocSpec> = {
         kind: 'email',
         required: true,
       },
+      {
+        key: 'communityUrl',
+        label: 'WhatsApp community invite link',
+        kind: 'url',
+        hint: 'The chat.whatsapp.com link. Leave empty to hide "Join the community" on the site.',
+      },
+      {
+        key: 'supportUrl',
+        label: 'Back the community link (Razorpay Payment Page)',
+        kind: 'url',
+        hint: 'The rzp.io or pages.razorpay.com link. Leave empty to hide "Back the community" on the site.',
+      },
     ],
     lists: [
       {

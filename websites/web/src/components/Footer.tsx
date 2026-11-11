@@ -62,7 +62,7 @@ const COLUMNS = [
     links: [
       { label: "Platform", href: "/organisers" },
       { label: "Unifesto Sprint", href: "/sprint" },
-      { label: "Unifesto Orbit", href: "/orbit" },
+      { label: "Unifesto Orbit", href: "https://www.wegobeyond.in/orbit" },
       { label: "Pricing", href: "/pricing" },
       { label: "Start a Space", href: "/request-space" },
       { label: "Host one event", href: "/request-event" },
