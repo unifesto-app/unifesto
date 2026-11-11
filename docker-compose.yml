@@ -42,11 +42,13 @@ services:
       - ./certs:/etc/caddy/certs:ro
       - caddy_data:/data
       - caddy_config:/config
+    # wegobeyond is left out on purpose: adding it would change caddy's service
+    # config, so a deploy's `up -d` would recreate caddy on the new Caddyfile
+    # before deploy.sh validates it. Caddy resolves wegobeyond per request.
     depends_on:
       - backend
       - apex
       - web
-      - wegobeyond
 
   # One-shot: apply DB migrations exactly once before the API replicas start,
   # so the replicas don't race to run `prisma migrate deploy` concurrently on
