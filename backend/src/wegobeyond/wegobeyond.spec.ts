@@ -64,7 +64,7 @@ describe('WeGoBeyond schema', () => {
     for (const name of DOC_NAMES) {
       const r = validateDoc(name, SEED[name]);
       // Optional fields added after the seed come back empty.
-      const added = name === 'settings' ? { communityUrl: '' } : {};
+      const added = name === 'settings' ? { communityUrl: '', supportUrl: '' } : {};
       expect(r).toEqual({ ok: true, value: { ...SEED[name], ...added } });
     }
   });
