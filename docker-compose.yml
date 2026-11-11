@@ -8,6 +8,7 @@ name: unifesto
 #   api.unifesto.app    -> backend:8080 (3 replicas)
 #   apex.unifesto.app   -> apex:3000
 #   unifesto.app / www  -> web:3000 (the console is www/console; space.unifesto.app 308s there)
+#   www.wegobeyond.in   -> wegobeyond:3000 (bare wegobeyond.in 308s to www)
 #
 # Runtime secrets come from each app's own env file (backend/.env,
 # websites/apex/.env, websites/web/.env.local).
@@ -45,6 +46,7 @@ services:
       - backend
       - apex
       - web
+      - wegobeyond
 
   # One-shot: apply DB migrations exactly once before the API replicas start,
   # so the replicas don't race to run `prisma migrate deploy` concurrently on
@@ -286,6 +288,32 @@ services:
       resources:
         limits:
           memory: 768M
+
+  wegobeyond:
+    build:
+      context: ./websites/wegobeyond
+    image: unifesto-wegobeyond:latest
+    restart: unless-stopped
+    logging: *logging
+    expose:
+      - "3000"
+    # Same probe as apex/web. No env file or depends_on: it reads the public API.
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:3000/_next/static/healthcheck',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    # Shared 8 GB host; a small static site.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 # Build-only secret for the Sentry source-map upload (apex, web). Read from
 # SENTRY_AUTH_TOKEN in ./.env; it never reaches a runtime container or image.

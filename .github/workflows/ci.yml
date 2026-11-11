@@ -50,6 +50,9 @@ jobs:
             apex:
               - *ci
               - 'websites/apex/**'
+            wegobeyond:
+              - *ci
+              - 'websites/wegobeyond/**'
 
       # ── mobile (Node 22) ────────────────────────────────────────────────
       - uses: actions/setup-node@v7
@@ -200,6 +203,28 @@ jobs:
           # S65 smoke: space approvals and financials.
           npm run test:smoke
           echo "::group::Build"; npm run build; echo "::endgroup::"
+
+      - uses: actions/setup-node@v7
+        if: ${{ !cancelled() && steps.filter.outputs.wegobeyond == 'true' && github.event_name == 'pull_request' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: websites/wegobeyond/package-lock.json
+      - name: WeGoBeyond
+        if: ${{ !cancelled() && steps.filter.outputs.wegobeyond == 'true' && github.event_name == 'pull_request' }}
+        working-directory: websites/wegobeyond
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          npm ci
+          npx next typegen
+          npx tsc --noEmit -p .
+          npm run lint -- --quiet
+          npm audit --omit=dev --audit-level=critical
+          node --experimental-strip-types --no-warnings lib/crewForm.check.ts
+          # No `npm run build` here: the pages prerender from the production API
+          # and throw when it is unreachable, and CI never calls prod. The
+          # server's docker build (deploy.sh) is the real build.
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
       - name: Migrations have no destructive SQL without review

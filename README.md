@@ -8,7 +8,8 @@ unifesto/
 ├── mobile/         # Expo attendee app ("Unifesto"), the production app
 ├── websites/
 │   ├── apex/       # platform-admin dashboard
-│   └── web/        # public site (event & space pages, blog) + organiser console at /console
+│   ├── web/        # public site (event & space pages, blog) + organiser console at /console
+│   └── wegobeyond/ # wegobeyond.in brand site
 ├── docs/           # feature plans
 └── Caddyfile · docker-compose.yml · deploy.sh
 ```
@@ -42,7 +43,7 @@ rewrite. Styling is `StyleSheet`-based:
 ## Deploy
 
 `docker-compose.yml` runs Caddy, the backend (plus a one-shot
-`backend-migrate`) and two websites (apex, web). `deploy.sh` syncs the repo to the
+`backend-migrate`) and three websites (apex, web, wegobeyond). `deploy.sh` syncs the repo to the
 server over SSH and rebuilds:
 
 ```bash

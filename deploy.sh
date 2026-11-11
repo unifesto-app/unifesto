@@ -7,16 +7,17 @@ set -euo pipefail
 # Deploy what changed since the build each service runs (see pick_services):
 #   ./deploy.sh
 #   FULL=1 ./deploy.sh         # the whole stack, changed or not
-# Deploy only some services (backend | apex | web), others keep running:
+# Deploy only some services (backend | apex | web | wegobeyond), others keep running:
 #   ./deploy.sh web            # just the public site
 #   ./deploy.sh apex           # just the platform-admin dashboard
+#   ./deploy.sh wegobeyond     # the wegobeyond.in brand site
 #   ./deploy.sh backend web    # both of these, leave the rest alone
 # Check the gates below without touching the server (nothing synced or built):
 #   ./deploy.sh --check
 #   SERVER_MIGRATIONS=names.txt ./deploy.sh --check   # also the DROP guard, offline
-#   SERVER_SHAS="backend=<sha> web=<sha> apex=<sha>" ./deploy.sh --check   # what it would pick
+#   SERVER_SHAS="backend=<sha> web=<sha> apex=<sha> wegobeyond=<sha>" ./deploy.sh --check   # what it would pick
 # Put back the image each service ran before its last deploy (J13):
-#   ./deploy.sh rollback                  # backend apex web
+#   ./deploy.sh rollback                  # backend apex web wegobeyond
 #   ./deploy.sh rollback backend          # the API (+ cert-worker) only
 #   ROLLBACK_TO=<sha> ./deploy.sh rollback web   # a :<sha> image instead of :previous
 #   Rollback never runs migrations backwards: the database keeps its schema.
@@ -75,7 +76,7 @@ esac
 # pick_services then narrows to what changed. A rollback with no args covers
 # every image deploy.sh builds.
 SERVICES="$*"
-if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web}"; fi
+if [ "${MODE}" = rollback ]; then SERVICES="${SERVICES:-backend apex web wegobeyond}"; fi
 
 # Images deploy.sh builds and tags. backend-migrate and cert-worker run the
 # backend's image.
@@ -85,13 +86,13 @@ image_names() {
   for s in "$@"; do
     case "${s}" in
       backend|backend-migrate|cert-worker) echo unifesto-backend ;;
-      apex|web) echo "unifesto-${s}" ;;
+      apex|web|wegobeyond) echo "unifesto-${s}" ;;
     esac
   done | sort -u | xargs
 }
 # IMAGES and DEPLOY_BACKEND for SERVICES; again once pick_services narrows it.
 scope() {
-  IMAGES="$(image_names ${SERVICES:-backend apex web})"
+  IMAGES="$(image_names ${SERVICES:-backend apex web wegobeyond})"
   # Does this deploy touch the backend? A full deploy (no args) always does; a
   # targeted one only if "backend" is named. When it does, DB migrations must be
   # applied with the freshly-built image BEFORE the API replicas start — otherwise
@@ -247,7 +248,7 @@ pick_services() {
   running="$(mktemp)"
   if [ "${MODE}" = check ]; then
     if [ -z "${SERVER_SHAS:-}" ]; then
-      echo "  skip   needs the server's running builds (SERVER_SHAS=\"backend=<sha> web=<sha> apex=<sha>\" to run it offline)"
+      echo "  skip   needs the server's running builds (SERVER_SHAS=\"backend=<sha> web=<sha> apex=<sha> wegobeyond=<sha>\" to run it offline)"
       rm -f "${running}"
       return 0
     fi
@@ -255,7 +256,7 @@ pick_services() {
   elif ! ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" > "${running}" <<'RUNNING'; then
 set -euo pipefail
 cd "$1"
-for svc in backend web apex; do
+for svc in backend web apex wegobeyond; do
   for c in $(docker compose ps -q "${svc}"); do
     tag="$(docker image inspect -f '{{range .RepoTags}}{{println .}}{{end}}' "$(docker inspect -f '{{.Image}}' "${c}")" \
       | sed -n 's/.*:\([0-9a-f]\{7,40\}\(-dirty\)\{0,1\}\)$/\1/p' | head -1)"
@@ -267,7 +268,7 @@ RUNNING
     rm -f "${running}"
     return 0
   fi
-  for svc in backend web apex; do
+  for svc in backend web apex wegobeyond; do
     case "${svc}" in backend) dir=backend ;; *) dir="websites/${svc}" ;; esac
     sha="$(awk -v s="${svc}" '$1 == s { print $2 }' "${running}" | sort -u | xargs)"
     case "${sha}" in
@@ -294,7 +295,7 @@ RUNNING
   rm -f "${running}"
   case "$(echo ${picked})" in
     "") NOTHING=true ;;
-    "backend web apex") ;;
+    "backend web apex wegobeyond") ;;
     *) SERVICES="$(echo ${picked})" ;;
   esac
 }
@@ -339,7 +340,7 @@ fi
 
 if [ "${MODE}" = rollback ]; then
   if [ -z "${IMAGES}" ]; then
-    echo "!! Nothing to roll back: name backend, apex or web." >&2
+    echo "!! Nothing to roll back: name backend, apex, web or wegobeyond." >&2
     exit 1
   fi
   echo "==> Rolling back: ${SERVICES}"

@@ -20,6 +20,12 @@
       "runtimeArgs": ["--prefix", "websites/apex", "run", "dev"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "wegobeyond",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "websites/wegobeyond", "run", "dev", "--", "-p", "3310"],
+      "port": 3310
     }
   ]
 }
