@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SignIn from "@/components/SignIn";
 import { FIELD, Question } from "@/components/FormQuestion";
-import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
+import { openAppOrStore, storeUrlFor, useAppHref } from "@/lib/appLinks";
 import { clearSession, setSession, useWebSession } from "@/lib/auth";
 import {
   acceptLegal,
@@ -33,6 +33,7 @@ import { getMe } from "@/lib/api/account";
 export default function ClaimPage() {
   const token = String(useParams().token ?? "");
   const deepLink = `unifesto://claim/${token}`;
+  const appHref = useAppHref(deepLink);
   const { session, ready, pending } = useWebSession();
   const [info, setInfo] = useState<ClaimInfo | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
@@ -105,9 +106,10 @@ export default function ClaimPage() {
   };
 
   const openApp = (
-    <button type="button" onClick={() => openAppOrStore(deepLink)} className="btn btn-secondary mt-3 w-full">
+    // A link, not a button: iOS opens the app only for a real tap on one.
+    <a href={appHref} onClick={(e) => openAppOrStore(deepLink, e)} className="btn btn-secondary mt-3 w-full">
       Open in the Unifesto app
-    </button>
+    </a>
   );
   const notYou = session && (
     <p className="mt-5 text-sm text-paper/65">

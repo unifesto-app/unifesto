@@ -4,7 +4,7 @@
  * redirect so the behaviour is consistent everywhere.
  */
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, type MouseEvent } from 'react';
 
 export const APP_PACKAGE = 'com.unifesto.app';
 export const IOS_APP_ID = '6767165496';
@@ -43,6 +43,23 @@ export function androidIntentUrl(scheme: string): string {
   );
 }
 
+// Paths public/.well-known/apple-app-site-association hands to the app.
+const IOS_APP_PATHS = /^(?:event|space|claim|qr)\//;
+
+/**
+ * `unifesto://event/x` → `https://unifesto.app/event/x?app=1`, a Universal
+ * Link. Safari opens the app for one only when it points at another host than
+ * the page, and the site lives on www, so the link uses the bare host. Without
+ * the app, the bare host 308s back to www with the query kept, and proxy.ts
+ * turns `app=1` into the App Store. Paths the AASA doesn't list go straight to
+ * the store.
+ */
+export function iosAppUrl(scheme: string): string {
+  const rest = scheme.split('://')[1] ?? '';
+  if (!IOS_APP_PATHS.test(rest)) return APP_STORE_URL;
+  return `https://unifesto.app/${rest}${rest.includes('?') ? '&' : '?'}app=1`;
+}
+
 const noopSubscribe = () => () => {};
 
 /** The visitor's phone platform; `unknown` on desktop and during the server render. */
@@ -59,26 +76,35 @@ export function useMobilePlatform(): MobilePlatform {
  */
 export function useAppHref(scheme: string): string {
   const platform = useMobilePlatform();
-  return platform === 'android' ? androidIntentUrl(scheme) : storeUrlFor(platform);
+  return platform === 'android' ? androidIntentUrl(scheme) : platform === 'ios' ? iosAppUrl(scheme) : storeUrlFor(platform);
 }
 
 /**
  * Hand off to the app. Android: an intent URL opens the app, or the Play Store
- * when it isn't installed. iOS: straight to the App Store (it shows "Open"
- * when the app is installed). A custom scheme there makes Safari alert
- * "address is invalid" when the app is missing, and installed users already
- * reach the app through Universal Links and the Smart App Banner. Desktop:
- * /download, carrying the current page so it can point back to it.
+ * when it isn't installed. iOS: a Universal Link on the bare host (iosAppUrl),
+ * which falls back to the App Store. Not the custom scheme: Safari alerts
+ * "address is invalid" for it when the app is missing. Desktop: /download,
+ * carrying the current page so it can point back to it.
+ *
+ * Pass the click event from an <a>: iOS opens an app only for a real tap on a
+ * link, so there the link follows its own (refreshed) href instead of a script
+ * navigation.
  *
  * Returns a cleanup function (kept for callers that run it from an effect).
  */
-export function openAppOrStore(scheme: string): () => void {
+export function openAppOrStore(scheme: string, e?: MouseEvent<HTMLAnchorElement>): () => void {
   const platform = detectMobilePlatform();
-  window.location.href =
+  const url =
     platform === 'android'
       ? androidIntentUrl(scheme)
       : platform === 'ios'
-        ? APP_STORE_URL
+        ? iosAppUrl(scheme)
         : `/download?from=${encodeURIComponent(window.location.pathname)}`;
+  if (e && platform === 'ios') {
+    e.currentTarget.href = url;
+  } else {
+    e?.preventDefault();
+    window.location.href = url;
+  }
   return () => {};
 }

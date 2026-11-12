@@ -2,6 +2,7 @@ import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
 import { isOwnHost } from '@/lib/own-host';
 import { isCachedPage } from '@/lib/cached-pages';
+import { SITE } from '@/lib/site';
 import type { NextRequest } from 'next/server';
 
 const MAIN = 'https://www.unifesto.app';
@@ -129,6 +130,8 @@ async function eventSpace(eventSlug: string): Promise<string | null> {
 
 /**
  * 1. .well-known paths pass untouched (App/Universal Links need a plain 200).
+ *    `?app=1` (an iPhone app link with no app to catch it) → the App Store,
+ *    or for any other device, the same page without it.
  * 2. unifesto.app → www.unifesto.app.
  * 3. On our own hosts, /console/** goes through the console gate.
  * 4. A space's custom domain serves only that space: `/` is its space page,
@@ -168,6 +171,18 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
   const hostname = hostOf(request);
 
   if (pathname.startsWith('/.well-known/')) return NextResponse.next({ request: { headers: reqHeaders } });
+
+  // An iPhone "Open in app" link (appLinks.ts iosAppUrl) the app didn't catch:
+  // it isn't installed, so the App Store. The same link copied to any other
+  // device goes to its page without the marker. Always a redirect, so the edge
+  // never caches a page here. (appLinks.ts can't be imported: the proxy bundle
+  // rejects its React hooks.)
+  if (request.nextUrl.searchParams.get('app') === '1') {
+    if (/iPhone|iPad|iPod/.test(request.headers.get('user-agent') ?? '')) return NextResponse.redirect(SITE.appStore);
+    const query = new URLSearchParams(search);
+    query.delete('app');
+    return NextResponse.redirect(`https://${hostname}${pathname}${query.size ? `?${query}` : ''}`);
+  }
 
   if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 

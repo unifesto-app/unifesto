@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } from "@/components/BrandedChrome";
@@ -32,7 +32,7 @@ import {
 import { getMe } from "@/lib/api/account";
 import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
 import SocialSignIn from "@/components/SocialSignIn";
-import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
+import { openAppOrStore, storeUrlFor, useAppHref } from "@/lib/appLinks";
 import { returnLink, storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
 import { CHECKOUT_JS, checkout, lastPayMethod, payByUpi, rememberPayMethod, upiWay, type UpiWay } from "@/lib/razorpay";
 import UpiWait from "@/components/UpiWait";
@@ -61,6 +61,7 @@ interface Props {
 export default function RegisterClient({ event, tickets, fields, nonce }: Props) {
   const [now] = useState(() => Date.now());
   const appLink = `unifesto://event/${event.slug}`;
+  const appHref = useAppHref(appLink);
 
   // Tickets I can pick right now: on sale, and not sold out unless they queue.
   const onSale = tickets.filter(
@@ -386,7 +387,8 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   const verifyPhone = run(async () => signedIn(await verifyPhoneCode(mobileNumber, otp.trim(), tempToken)));
   const signOut = () => clearSession();
 
-  const openApp = (link: string) => openAppOrStore(withStoredUtm(link));
+  // Links, not buttons: iOS opens the app only for a real tap on one.
+  const openApp = (link: string) => (e: MouseEvent<HTMLAnchorElement>) => openAppOrStore(withStoredUtm(link), e);
   const back = (
     <Link href={`/event/${event.slug}`} className="link-draw text-sm text-paper/65">
       Back to event
@@ -400,9 +402,9 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         <h2 className="font-display text-2xl text-paper">{handoff.title}</h2>
         <p className="mt-3 text-paper/70">{handoff.body}</p>
         {handoff.app && (
-          <button type="button" onClick={() => openApp(appLink)} className="btn btn-lg btn-primary mt-8 w-full">
+          <a href={appHref} onClick={openApp(appLink)} className="btn btn-lg btn-primary mt-8 w-full">
             Open in the Unifesto app
-          </button>
+          </a>
         )}
         <div className="mt-5">{back}</div>
       </div>
@@ -425,13 +427,13 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
       <div className="animate-pop-in text-center">
         <h2 className="font-display text-2xl text-paper">{title}</h2>
         <p className="mt-3 text-paper/70">{text}</p>
-        <button
-          type="button"
-          onClick={() => openApp(done.registrationId ? `unifesto://ticket/${done.registrationId}` : appLink)}
+        <a
+          href={appHref}
+          onClick={openApp(done.registrationId ? `unifesto://ticket/${done.registrationId}` : appLink)}
           className="btn btn-lg btn-primary mt-8 w-full"
         >
           Open My tickets in the app
-        </button>
+        </a>
         {returnTo && (
           <>
             <a

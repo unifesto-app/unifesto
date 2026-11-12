@@ -332,10 +332,7 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
       <ActionBar label={memberCount === 1 ? "Member" : "Members"} value={memberCount.toLocaleString("en-IN")}>
         <a
           href={spaceHref}
-          onClick={(e) => {
-            e.preventDefault();
-            openAppOrStore(spaceDeepLink);
-          }}
+          onClick={(e) => openAppOrStore(spaceDeepLink, e)}
           className="btn btn-lg btn-primary shrink-0"
         >
           <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden />
