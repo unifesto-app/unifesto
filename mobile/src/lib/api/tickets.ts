@@ -19,13 +19,16 @@ export interface ProcessingFeeTerms {
 export const NO_FEE: ProcessingFeeTerms = { percent: 0, capPerTicket: null };
 
 /**
- * App-wide buyer processing fee terms. Public endpoint; falls back to no fee
- * on any failure so the preview never over-charges (the server's order amount
- * is what's actually paid).
+ * Buyer processing fee terms. With `eventId` (a UUID), that event's own: its
+ * space's plan or deal, exactly what checkout charges; without, the platform
+ * rate card. Falls back to no fee on any failure so the preview never
+ * over-charges (the server's order amount is what's actually paid).
  */
-export async function getProcessingFeeTerms(): Promise<ProcessingFeeTerms> {
+export async function getProcessingFeeTerms(eventId?: string): Promise<ProcessingFeeTerms> {
   try {
-    const response = await makePublicRequest('/config/processing-fee');
+    const response = await makePublicRequest(
+      eventId ? `/config/processing-fee?eventId=${encodeURIComponent(eventId)}` : '/config/processing-fee',
+    );
     if (!response?.ok) return NO_FEE;
     const data = await response.json();
     return {

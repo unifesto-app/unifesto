@@ -17,7 +17,7 @@ describe('plan lineup', () => {
   });
 
   it('the public rate card shows every plan with its platform fee and the buyer fee', () => {
-    const ctrl = new PublicConfigController({ getProcessingFeePercent: () => 5, getProcessingFeeCapPerTicket: () => 99 } as any, planConfig);
+    const ctrl = new PublicConfigController({ getProcessingFeePercent: () => 5, getProcessingFeeCapPerTicket: () => 99 } as any, planConfig, {} as any);
     const card = ctrl.getPlanFees();
     expect(card.buyerProcessingFeePercent).toBe(5);
     expect(card.buyerProcessingFeeCapPerTicket).toBe(99);

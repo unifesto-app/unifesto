@@ -106,7 +106,9 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
   // discountPaise null = not checked yet (signed out); create-order checks it either way.
   const [coupon, setCoupon] = useState<{ code: string; discountPaise: number | null } | null>(null);
   const [couponMsg, setCouponMsg] = useState("");
-  const [quote, setQuote] = useState<Quote | null>(null);
+  // The quote and the listed price + discount it was asked for: the quote's own
+  // basePaise is net of the coupon and of an included fee, so it can't be matched.
+  const [quote, setQuote] = useState<{ q: Quote; base: number; discount: number } | null>(null);
   const [resent, setResent] = useState("");
   const [waGroup, setWaGroup] = useState<WhatsappGroup | null>(null);
   // Q40: UPI without the sheet where this browser can (null = the sheet only), the pick, and the wait.
@@ -142,7 +144,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     let live = true;
     const t = setTimeout(() => {
       getQuote(event.id, basePaise, discountPaise)
-        .then((q) => live && setQuote(q))
+        .then((q) => live && setQuote({ q, base: basePaise, discount: discountPaise }))
         .catch(() => live && setQuote(null));
     }, 250);
     return () => {
@@ -151,7 +153,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
     };
   }, [paid, event.id, basePaise, discountPaise]);
   // Only a quote for what is on screen right now.
-  const shown = paid && quote?.basePaise === basePaise && quote.couponDiscountPaise === discountPaise ? quote : null;
+  const shown = paid && quote?.base === basePaise && quote.discount === discountPaise ? quote.q : null;
 
   // Done: the event's WhatsApp group, when it has one, is the next step.
   const doneId = done?.registrationId;
@@ -616,7 +618,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
             <dl className="space-y-1.5 text-sm">
               <PriceLine label="Ticket" value={inr(basePaise)} />
               {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
-              {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}
+              {!!shown?.buyerFeePaise && <PriceLine label={shown.feeAbsorbed ? "PF included" : "Processing fee"} value={inr(shown.buyerFeePaise)} />}
               <PriceLine label="Total" value={shown ? inr(shown.totalPaise) : "…"} strong />
             </dl>
             {upi && (

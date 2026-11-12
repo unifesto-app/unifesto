@@ -9,8 +9,6 @@ import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
 import EventDetailClient from "./EventDetailClient";
-import { getRateCard } from "@/lib/api/rate-card";
-import { buyerFeeText } from "@/lib/site";
 
 // J25: one render per event a minute, served to every visitor (and cached by
 // Cloudflare), so a link shared in a big group can't swamp the web server.
@@ -179,7 +177,6 @@ export default async function EventDetailPage({ params }: Props) {
   if (!isPublic(event)) notFound();
   // An old slug (renamed event) or an id resolves too: go to the current address.
   if (event.slug && event.slug !== slug) redirect(`/event/${event.slug}`);
-  const { buyerFee, buyerFeeCap } = await getRateCard();
   // The poster is the LCP element but only appears after the client fetch;
   // preloading it from the server HTML starts the download immediately.
   const poster = event.banner_url || event.thumbnail_url || event.image_url;
@@ -187,7 +184,7 @@ export default async function EventDetailPage({ params }: Props) {
   return (
     <>
       <JsonLd data={eventLd(event)} />
-      <EventDetailClient event={event} buyerFee={buyerFeeText(buyerFee, buyerFeeCap)} />
+      <EventDetailClient event={event} />
     </>
   );
 }

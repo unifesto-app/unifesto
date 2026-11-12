@@ -6,7 +6,7 @@ describe('UPI checkout switch', () => {
   const build = (row: object | null) => {
     const upsert = jest.fn(async () => ({}));
     const svc = new PlatformConfigService({ platformConfig: { findUnique: jest.fn(async () => row), upsert } } as any);
-    return { upsert, ctrl: new PublicConfigController(svc, {} as any) };
+    return { upsert, ctrl: new PublicConfigController(svc, {} as any, {} as any) };
   };
 
   it('serves each platform under the key its client reads', async () => {

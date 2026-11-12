@@ -34,8 +34,6 @@ import { myRegistrations } from "@/lib/api/registration";
 interface Props {
   /** Fetched (and checked public) by the server page, so it all renders in the initial HTML. */
   event: Event;
-  /** "5% processing fee, capped at ₹99 per ticket", from the live rate card. */
-  buyerFee: string;
 }
 
 /** Long agendas start folded to this many slots (as on mobile). */
@@ -96,7 +94,7 @@ function subPrice(sub: SubEventSummary): string {
   return "";
 }
 
-export default function EventDetailClient({ event, buyerFee }: Props) {
+export default function EventDetailClient({ event }: Props) {
   // Client-only: a countdown rendered on the server would never match hydration.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const { agenda = [], speakers = [], prizes = [], contacts = [], faqs = [] } = event.sections ?? {};
@@ -165,7 +163,8 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
   const priceLabel = event.is_free ? "Free" : multiTier ? `Starting from ${priceAmount}` : priceAmount;
 
   // State the buyer fee up front, not first at the payment step (A11).
-  const feeLine = event.is_free ? undefined : event.fee_included ? "Processing fee included" : `Plus ${buyerFee}`;
+  // Buyers never see a percentage: the amount shows at checkout.
+  const feeLine = event.is_free ? undefined : event.fee_included ? "PF included" : "Plus processing fee";
 
   // "Big event" with no tickets of its own: registration is per sub-event.
   const subEvents = event.sub_events ?? [];
