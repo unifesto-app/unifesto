@@ -1208,3 +1208,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Mobile launch splash rebuilt from the approved GSAP prototype (letters + props, liquid glass, u-zoom into Home) (#660)
 - **2026-11-13** · Reanimated applies transform/opacity straight to native views (sync UI props) for the 5.0.2 store build (#661)
 - **2026-11-13** · Mobile white-labelled space and event pages drop the header logo and keep the square space logo instead of a cropped wordmark (#662)
+- **2026-11-13** · Web: iPhone "Open in app" opens the app at the event (Universal Link via unifesto.app), App Store only when the app is missing (#663)
