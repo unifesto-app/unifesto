@@ -189,7 +189,13 @@ export function WebhooksSection({ spaceId, onError }: { spaceId: string; onError
                       <span className="text-foreground">{label(d.type)}</span>
                       <span className={STATUS_CLASS[d.status]}>{STATUS_TEXT[d.status]}</span>
                       <span className="text-muted-foreground">
-                        {[d.lastStatusCode, d.lastError, d.attempts > 1 ? `${d.attempts} tries` : null].filter(Boolean).join(" · ")}
+                        {[
+                          d.lastStatusCode,
+                          d.lastError !== `HTTP ${d.lastStatusCode}` ? d.lastError : null,
+                          d.attempts > 1 ? `${d.attempts} tries` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                       {(d.status === "FAILED" || d.status === "SKIPPED") && d.type !== "webhook.test" && (
                         <button type="button" className="text-foreground underline-offset-4 hover:underline" onClick={() => void resend(h, d)}>
