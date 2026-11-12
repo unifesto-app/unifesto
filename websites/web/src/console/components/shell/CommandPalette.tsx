@@ -84,7 +84,11 @@ export function CommandPalette() {
         group: "Spaces",
         icon: Buildings,
         keywords: "change switch space org",
-        run: () => setCurrentSpace(other),
+        // As the rail's switcher does: the new space's dashboard, not this page of the old one.
+        run: () => {
+          setCurrentSpace(other);
+          router.push(`${BASE_URL}/space`);
+        },
       });
     }
 

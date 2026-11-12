@@ -1,15 +1,18 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CaretLeft, CaretRight, MagnifyingGlass, SignOut } from "@unifesto/unicon/react";
+import { CaretDown, CaretLeft, CaretRight, MagnifyingGlass, SignOut } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { useCommandPalette } from "@/console/lib/context/CommandPaletteContext";
+import { useMobileNav } from "@/console/lib/context/MobileNavContext";
 import { signOut } from "@/console/lib/utils/auth";
 import { cn } from "@/console/lib/utils/cn";
-import type { CurrentUser } from "@/console/lib/types/rbac";
+import type { CurrentUser, SpaceMembership } from "@/console/lib/types/rbac";
 import { BASE_URL } from "./nav-config";
+import { NAV_ITEM_ACTIVE } from "./SpaceNav";
 
 /**
  * Top of the sidebar: the wordmark with the collapse control beside it, and
@@ -57,6 +60,7 @@ export function RailHeader({ collapsed = false, onToggle }: { collapsed?: boolea
           )}
         </div>
       )}
+      <SpaceSwitcher collapsed={collapsed} />
       {collapsed ? (
         <button
           type="button"
@@ -79,6 +83,118 @@ export function RailHeader({ collapsed = false, onToggle }: { collapsed?: boolea
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * The space I'm working in, at the top of every sidebar (Q43). One click opens
+ * my spaces, a second opens one, from any page: a space, an event or my own
+ * pages. It replaces the "My Spaces" back link, so no sidebar loses the space.
+ * Nothing shows for people who run no space. On the icon rail it's the space's
+ * mark, linking to My Spaces.
+ */
+function SpaceSwitcher({ collapsed }: { collapsed: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { spaces, currentSpace, setCurrentSpace, hasAccess } = useSession();
+  const { open: drawerOpen, setOpen: setDrawerOpen } = useMobileNav();
+  const menu = useRef<HTMLDetailsElement>(null);
+  // The rail stays mounted across pages, and <details> has no outside-click or
+  // Escape close: shut the list whenever the page changes or the drawer opens or shuts.
+  useEffect(() => {
+    if (menu.current) menu.current.open = false;
+  }, [pathname, drawerOpen]);
+  if (!hasAccess || !currentSpace) return null;
+
+  // Picking anything shuts the list (and the phone drawer). Focus goes back to
+  // the summary first, so a keyboard user isn't dropped at the top of the page.
+  const close = () => {
+    menu.current?.querySelector("summary")?.focus();
+    if (menu.current) menu.current.open = false;
+    setDrawerOpen(false);
+  };
+  // The same two steps as My Spaces (SpaceList): make it the console's space, then open its dashboard.
+  const open = (space: SpaceMembership) => {
+    close();
+    setCurrentSpace(space);
+    router.push(`${BASE_URL}/space`);
+  };
+
+  if (collapsed) {
+    return (
+      <Link
+        href={`${BASE_URL}/spaces`}
+        aria-label={`Switch space (now ${currentSpace.name})`}
+        title={`${currentSpace.name}: switch space`}
+        className="rounded-lg p-1 transition-colors hover:bg-muted"
+      >
+        <SpaceMark space={currentSpace} />
+      </Link>
+    );
+  }
+
+  const row = "relative flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors duration-150";
+  return (
+    <details ref={menu} className="group -mx-1">
+      <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden">
+        <SpaceMark space={currentSpace} />
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{currentSpace.name}</span>
+        <span className="sr-only">Switch space</span>
+        <CaretDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180" />
+      </summary>
+      <div className="mt-1 space-y-0.5">
+        {/* ponytail: a plain scroll list, capped to the screen so the links below stay
+            reachable on a short phone; My Spaces has the search for people with many. */}
+        <div className="max-h-[40vh] space-y-0.5 overflow-y-auto">
+          {spaces.map((s) => {
+            const here = s.id === currentSpace.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => open(s)}
+                aria-current={here ? "true" : undefined}
+                className={cn(row, here ? NAV_ITEM_ACTIVE : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground")}
+              >
+                <SpaceMark space={s} small />
+                <span className="min-w-0 truncate">{s.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="border-t border-border pt-1">
+          <Link href={`${BASE_URL}/spaces`} onClick={close} className={cn(row, "font-medium text-muted-foreground hover:bg-muted hover:text-foreground")}>
+            All my spaces
+          </Link>
+          <Link href="/request-space" onClick={close} className={cn(row, "font-medium text-muted-foreground hover:bg-muted hover:text-foreground")}>
+            Start a space
+          </Link>
+          <Link href={BASE_URL} onClick={close} className={cn(row, "font-medium text-muted-foreground hover:bg-muted hover:text-foreground")}>
+            My tickets and account
+          </Link>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/** A space's logo, or its first letter without one. */
+function SpaceMark({ space, small = false }: { space: SpaceMembership; small?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "grid shrink-0 place-items-center overflow-hidden rounded-md bg-muted font-semibold text-muted-foreground",
+        small ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-xs"
+      )}
+    >
+      {space.logo_url ? (
+        // Lazy: the closed list's logos load only when it opens.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={space.logo_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+      ) : (
+        space.name.charAt(0).toUpperCase()
+      )}
+    </span>
   );
 }
 

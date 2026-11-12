@@ -24,9 +24,9 @@ interface SpaceNavProps {
 }
 
 /**
- * The space sidebar: back to My Spaces, the space I'm in, then its
- * capability-filtered menu. My own pages have their own sidebar (AccountNav)
- * and an event its own (EventNav).
+ * The space sidebar: the space's capability-filtered menu. Which space it is,
+ * and the way to another, is the switcher at the top of the rail (RailChrome).
+ * My own pages have their own sidebar (AccountNav) and an event its own (EventNav).
  */
 export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const pathname = usePathname();
@@ -36,16 +36,6 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
-      <BackLink href={`${BASE_URL}/spaces`} label="My Spaces" collapsed={collapsed} onNavigate={onNavigate} />
-      {/* Space identity — hidden on the icon rail */}
-      {!collapsed && (
-        <div className="space-y-1 px-3 pb-6">
-          <h2 className="text-base font-semibold text-foreground line-clamp-2">{space.name}</h2>
-          {(space.description || space.tagline) && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{space.description || space.tagline}</p>
-          )}
-        </div>
-      )}
       <NavGroups
         groups={resolveNavGroups(space, access)}
         collapsed={collapsed}
