@@ -83,13 +83,13 @@ export default function MySpacesScreen() {
 
   const open = (s: Space) => router.push(`/space/${s.id}`);
   const row = (s: Space) => (
-    <SpaceRow key={s.id} space={s} parent={s.parentSpaceId ? parents[s.parentSpaceId] : null} onPress={() => open(s)} />
+    <SpaceRow key={s.id} inCard space={s} parent={s.parentSpaceId ? parents[s.parentSpaceId] : null} onPress={() => open(s)} />
   );
   const body = (() => {
     if (loading) {
       return (
-        <SettingsGroup flat style={[styles.group, styles.first]}>
-          {[0, 1, 2, 3].map((i) => <SpaceRowSkeleton key={i} />)}
+        <SettingsGroup style={[styles.group, styles.first]}>
+          {[0, 1, 2, 3].map((i) => <SpaceRowSkeleton key={i} inCard />)}
         </SettingsGroup>
       );
     }
@@ -133,12 +133,12 @@ export default function MySpacesScreen() {
         ) : null}
 
         {running.length > 0 ? (
-          <SettingsGroup flat title="I run" style={[styles.group, styles.first]}>
+          <SettingsGroup title="I run" style={[styles.group, styles.first]}>
             {running.map(row)}
           </SettingsGroup>
         ) : null}
         {member.length > 0 ? (
-          <SettingsGroup flat title="Member of" style={[styles.group, !running.length && styles.first]}>
+          <SettingsGroup title="Member of" style={[styles.group, !running.length && styles.first]}>
             {member.map(row)}
           </SettingsGroup>
         ) : null}

@@ -113,13 +113,13 @@ export default function AboutScreen() {
         </View>
 
         <Section title="Updates" style={styles.firstSection}>
-          <SettingsGroup flat plain style={styles.group}>
+          <SettingsGroup plain style={styles.group}>
             <SettingsRow label={update.label} value={update.value} accent={c.sky} onPress={update.onPress} />
           </SettingsGroup>
         </Section>
 
         <Section title="Spread the word" style={styles.section}>
-          <SettingsGroup flat plain style={styles.group}>
+          <SettingsGroup plain style={styles.group}>
             <SettingsRow
               label="Share Unifesto"
               onPress={() => Share.share({ message: `Find events and the people going on Unifesto: ${APP_LINK}`, url: APP_LINK }).catch(() => {})}
@@ -130,7 +130,7 @@ export default function AboutScreen() {
         </Section>
 
         <Section title="For support" style={styles.section}>
-          <SettingsGroup flat plain style={styles.group}>
+          <SettingsGroup plain style={styles.group}>
             <SettingsRow label="Version" value={buildLabel(info)} />
             <SettingsRow label="Platform" value={info.platform} />
             <SettingsRow label="Runtime" value={info.runtimeVersion ? info.runtimeVersion.slice(0, 12) : '–'} />

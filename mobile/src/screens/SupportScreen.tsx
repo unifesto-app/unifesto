@@ -130,14 +130,14 @@ export default function SupportScreen() {
         </View>
 
         {user && (tickets === null || tickets.length > 0) ? (
-          <SettingsGroup flat title="My requests" style={styles.group}>
+          <SettingsGroup title="My requests" style={styles.group}>
             {tickets === null
               ? [0, 1].map((i) => <TicketRowSkeleton key={i} />)
               : tickets.map((t) => <TicketRow key={t.id} ticket={t} onPress={() => router.push(`/manage/support/${t.id}`)} />)}
           </SettingsGroup>
         ) : null}
 
-        <SettingsGroup flat title="Talk to us" style={styles.group}>
+        <SettingsGroup title="Talk to us" style={styles.group}>
           <SettingsRow
             icon={<EnvelopeSimple size={28} color={c.text} />}
             label="Email"
@@ -154,13 +154,13 @@ export default function SupportScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup flat plain title="Policies" style={styles.group}>
+        <SettingsGroup plain title="Policies" style={styles.group}>
           {POLICIES.map((p) => (
             <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
           ))}
         </SettingsGroup>
 
-        <SettingsGroup flat plain title="My data" style={styles.group}>
+        <SettingsGroup plain title="My data" style={styles.group}>
           {YOUR_DATA.map((p) => (
             <SettingsRow key={p.path} label={p.label} external onPress={() => openPage(p.path)} />
           ))}

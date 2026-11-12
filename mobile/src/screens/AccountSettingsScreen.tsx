@@ -269,7 +269,7 @@ export default function AccountSettingsScreen() {
         ) : null}
 
         <Section title="My details" style={styles.firstSection}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             <SettingsRow icon={unicon('user')} label="Name" value={profile?.fullName || 'Not set'} onPress={() => router.push('/edit-profile')} />
             <SettingsRow
               icon={unicon('at')}
@@ -283,7 +283,7 @@ export default function AccountSettingsScreen() {
         </Section>
 
         <Section title="Sign-in methods" style={styles.section}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {groups.length === 0 ? (
               <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
             ) : (
@@ -355,7 +355,7 @@ export default function AccountSettingsScreen() {
 
         {passkeys ? (
           <Section title="Passkeys" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {passkeys.length === 0 ? (
                 <SettingsRow icon={unicon('lock-key')} label="No passkeys yet" />
               ) : (
@@ -380,7 +380,7 @@ export default function AccountSettingsScreen() {
 
         {devices?.length ? (
           <Section title="Linked devices" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {devices.map((d) => (
                 <SettingsRow
                   key={d.id}
@@ -404,7 +404,7 @@ export default function AccountSettingsScreen() {
         {/* The 30-day grace period is spelled out in the confirm alert. */}
         {profile?.deletionScheduledFor ? null : (
           <Section title="Delete account" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               <SettingsRow icon={<Trash size={ICON} color={c.danger} />} label="Delete my account" danger onPress={handleDeleteAccount} />
             </SettingsGroup>
           </Section>

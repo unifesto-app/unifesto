@@ -121,7 +121,7 @@ export default function ProfileScreen() {
 
   // Help is the same signed in or out.
   const help = (
-    <SettingsGroup flat title="Help and more" style={styles.group}>
+    <SettingsGroup title="Help and more" style={styles.group}>
       <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
       <SettingsRow icon={icon('sparkle', c.sky)} label="What’s new" onPress={openWhatsNew} />
       <SettingsRow
@@ -217,19 +217,19 @@ export default function ProfileScreen() {
         </View>
 
         {nudge ? (
-          <SettingsGroup flat style={[styles.group, styles.first]}>
+          <SettingsGroup style={[styles.group, styles.first]}>
             <SettingsRow icon={icon(nudge.icon, c.sky)} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
           </SettingsGroup>
         ) : null}
 
         {/* Tickets has its own tab (and Going to above opens it), so it isn't repeated here. */}
-        <SettingsGroup flat title="My stuff" style={styles.group}>
+        <SettingsGroup title="My stuff" style={styles.group}>
           <SettingsRow icon={icon('tag', c.sky)} label="Saved" onPress={() => router.push('/favorites')} />
           <SettingsRow icon={icon('certificate', c.mint)} label="Certificates" onPress={() => router.push('/certificates')} />
           <SettingsRow icon={icon('users-three', c.sky)} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
-        <SettingsGroup flat title="Settings" style={styles.group}>
+        <SettingsGroup title="Settings" style={styles.group}>
           <SettingsRow icon={icon('user-circle')} label="Account" onPress={() => router.push('/account')} />
           <SettingsRow icon={icon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
           <SettingsRow icon={icon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
         {/* Hosts get a door into their Space tab. Starting one stays for everyone:
             people who already run a space can start another. */}
         {/* Starting something is an action, so those rows close the list in the sky accent. */}
-        <SettingsGroup flat title="Hosting" style={styles.group}>
+        <SettingsGroup title="Hosting" style={styles.group}>
           {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
           <SettingsRow
             icon={icon('plus-circle', c.sky)}
@@ -260,7 +260,7 @@ export default function ProfileScreen() {
 
         {help}
 
-        <SettingsGroup flat style={styles.group}>
+        <SettingsGroup style={styles.group}>
           <SettingsRow icon={icon('sign-out', c.danger)} label="Sign out" danger onPress={handleLogout} />
         </SettingsGroup>
 

@@ -212,6 +212,7 @@ export default function UserProfileScreen() {
         {loadingSpaces || spaces.length > 0 ? (
           <Section title="Spaces" onSeeAll={spaces.length ? () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) : undefined}>
             <MySpacesRows
+              card
               spaces={spaces}
               loading={loadingSpaces}
               onPress={(s) => router.push(`/space/${s.id}`)}

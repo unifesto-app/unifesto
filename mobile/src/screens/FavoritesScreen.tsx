@@ -132,8 +132,8 @@ export default function FavoritesScreen() {
         <PosterCardSkeleton width={posterWidth} />
         <View style={styles.list}>
           {[0, 1].map((i) => (
-            <View key={i} style={i > 0 && [styles.divider, { borderTopColor: c.border }]}>
-              <EventListCardSkeleton flat />
+            <View key={i} style={i > 0 && styles.gap}>
+              <EventListCardSkeleton />
             </View>
           ))}
         </View>
@@ -149,7 +149,7 @@ export default function FavoritesScreen() {
     );
   }
 
-  // A titled list of rows with full hairlines, each row keyed by its event.
+  // A titled list of event cards, each keyed by its event.
   const list = (title: string, items: Event[], first: boolean, faded = false) => (
     <Animated.View layout={reflow} style={[styles.pad, styles.list, first && styles.first]}>
       <Text style={[styles.listTitle, { color: c.muted }]} accessibilityRole="header">{title}</Text>
@@ -159,9 +159,9 @@ export default function FavoritesScreen() {
           entering={FadeIn}
           exiting={FadeOut.duration(180)}
           layout={reflow}
-          style={i > 0 && [styles.divider, { borderTopColor: c.border }]}
+          style={i > 0 && styles.gap}
         >
-          <EventListCard flat event={e} past={faded} onPress={() => openEvent(e)} />
+          <EventListCard event={e} past={faded} onPress={() => openEvent(e)} />
         </Animated.View>
       ))}
     </Animated.View>
@@ -206,7 +206,8 @@ const styles = StyleSheet.create({
   // Same as SettingsGroup's title: muted Hanken SemiBold, sentence case.
   listTitle: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   eyebrow: { marginBottom: 0 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  // spacing[3] between cards in one list; lists step by spacing[8].
+  gap: { marginTop: spacing[3] },
   prompt: { alignItems: 'center', paddingHorizontal: GUTTER, marginTop: spacing[10] },
   promptTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   promptBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
