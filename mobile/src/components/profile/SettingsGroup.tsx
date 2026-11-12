@@ -159,7 +159,7 @@ export function SettingsRow({ icon, label, value, external, trailing, danger, ac
     <Pressable
       onPress={onPress}
       accessibilityRole={external ? 'link' : 'button'}
-      accessibilityLabel={label}
+      accessibilityLabel={value ? `${label}, ${value}` : label}
       style={({ pressed }) => [row, pressed && (flat ? { opacity: 0.6 } : { backgroundColor: c.tint })]}
     >
       {content}

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { RefreshControl } from '../components/ui/RefreshControl';
@@ -98,6 +98,14 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
+
+  // Signing out from Settings (or deleting the account) leaves this tab mounted
+  // under login: forget the last account so a guest or the next person never sees it.
+  useEffect(() => {
+    if (token) return;
+    setProfile(null);
+    setSupportUnread(0);
+  }, [token]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -239,7 +247,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 140, flexGrow: 1 },
   pad: { paddingHorizontal: GUTTER },
-  header: { paddingHorizontal: GUTTER, marginBottom: spacing[6], flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // paddingBottom, not margin: Android clips the pencil's hitSlop to this row's bounds.
+  header: { paddingHorizontal: GUTTER, paddingBottom: spacing[6], flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pageTitle: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },

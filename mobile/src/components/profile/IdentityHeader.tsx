@@ -46,7 +46,7 @@ export const initials = (name: string) =>
     .toUpperCase();
 
 /**
- * The top of the Profile tab, straight on the page (no card): avatar, my name
+ * The top of View profile, straight on the page (no card): avatar, my name
  * (Hanken SemiBold; names are never display), handle and bio centred, two
  * outline buttons, then my numbers in a band between full hairlines.
  */
