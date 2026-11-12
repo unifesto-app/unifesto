@@ -8,7 +8,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { EventStatus, EventVisibility, FormFieldType, Prisma } from '@prisma/client';
+import { EventStatus, EventVisibility, FormFieldType, Prisma, RegistrationStatus } from '@prisma/client';
 import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -19,9 +19,14 @@ import { normalizeMobile } from '../auth/identifiers';
 import { ApiKeysService, type ResolvedKey } from './api-keys.service';
 import type { ApiRegisterDto } from './dto';
 
-/** Registrations one key may create a day (IST), on top of the per-minute limit. */
+/** Registrations a space's keys may make a day (IST), together: a new key never buys more. */
 export const DAILY_REGISTRATIONS = 500;
+/** Registrations for one email address a day, per space: a form can't flood one inbox. */
+export const DAILY_PER_EMAIL = 5;
+/** How long a finished answer is kept for retries. */
 const IDEMPOTENCY_TTL = 86_400;
+/** How long "still running" holds a key: a crash mid-request frees it soon after. */
+const IN_FLIGHT_TTL = 120;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -94,8 +99,21 @@ export class PublicApiService {
           },
         },
         formFields: {
+          // Asked on every ticket, or on a ticket this API can sell.
+          where: { OR: [{ ticketTypeId: null }, { ticketType: { isActive: true, isVisible: true } }] },
           orderBy: { order: 'asc' },
-          select: { id: true, ticketTypeId: true, label: true, type: true, options: true, isRequired: true, helpText: true },
+          select: {
+            id: true,
+            ticketTypeId: true,
+            label: true,
+            type: true,
+            options: true,
+            isRequired: true,
+            helpText: true,
+            config: true,
+            // Asked only when another answer matches (see the event page's form).
+            showIf: true,
+          },
         },
       },
     });
@@ -129,8 +147,9 @@ export class PublicApiService {
     if (!client) throw new ServiceUnavailableException('Registrations are paused for a moment. Retry with the same Idempotency-Key.');
 
     const slot = `apikey-idem-${key.id}-${sha256(idempotencyKey)}`;
-    const bodyHash = sha256(JSON.stringify([ref, dto]));
-    const claimed = await client.set(slot, JSON.stringify({ pending: true, bodyHash }), 'EX', IDEMPOTENCY_TTL, 'NX');
+    // Who and which ticket: the same person in another key order or by event id still matches.
+    const bodyHash = sha256(JSON.stringify([dto.ticketTypeId, dto.email.trim().toLowerCase()]));
+    const claimed = await client.set(slot, JSON.stringify({ pending: true, bodyHash }), 'EX', IN_FLIGHT_TTL, 'NX');
     if (!claimed) {
       const prior = JSON.parse((await client.get(slot)) ?? '{}') as { pending?: boolean; bodyHash?: string; result?: unknown };
       if (prior.bodyHash && prior.bodyHash !== bodyHash) {
@@ -140,33 +159,43 @@ export class PublicApiService {
       return prior.result;
     }
 
+    let result: Awaited<ReturnType<PublicApiService['registerOnce']>>;
     try {
-      const result = await this.registerOnce(key, ref, dto);
-      await client.set(slot, JSON.stringify({ bodyHash, result }), 'EX', IDEMPOTENCY_TTL);
-      return result;
+      result = await this.registerOnce(key, ref, dto);
     } catch (err) {
-      // Nothing was made (or it failed part-way and manual add rolled back): free the key for a retry.
+      // Nothing stands (manual add closes a row whose payment link failed): free the key for a retry.
       await client.del(slot).catch(() => undefined);
       throw err;
     }
+    // The registration exists either way; a lost cache write must not turn it into an error.
+    await client.set(slot, JSON.stringify({ bodyHash, result }), 'EX', IDEMPOTENCY_TTL).catch(() => undefined);
+    return result;
   }
 
   private async registerOnce(key: ResolvedKey, ref: string, dto: ApiRegisterDto) {
     const day = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
-    if (await this.keys.over(`day-${key.id}-${day}`, DAILY_REGISTRATIONS, 2 * 86_400)) {
-      throw new HttpException(`This key has made its ${DAILY_REGISTRATIONS} registrations for today.`, HttpStatus.TOO_MANY_REQUESTS);
+    const email = dto.email.trim().toLowerCase();
+    const spaceDay = `day-${key.spaceId}-${day}`;
+    const emailDay = `email-${key.spaceId}-${sha256(email)}-${day}`;
+    // Checked before, counted after: refused or failed requests don't use the allowance up.
+    if ((await this.keys.peek(spaceDay)) >= DAILY_REGISTRATIONS) {
+      throw new HttpException(`This space's keys have made their ${DAILY_REGISTRATIONS} registrations for today.`, HttpStatus.TOO_MANY_REQUESTS);
+    }
+    if ((await this.keys.peek(emailDay)) >= DAILY_PER_EMAIL) {
+      throw new HttpException('Too many registrations for this email address today.', HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    // Registration needs a published event, as self-registration does (listing shows live ones too).
     const event = await this.prisma.event.findFirst({
-      where: { ...listable(key.spaceId), ...(UUID.test(ref) ? { id: ref } : { slug: ref }) },
+      where: { ...listable(key.spaceId), status: EventStatus.PUBLISHED, ...(UUID.test(ref) ? { id: ref } : { slug: ref }) },
       select: { id: true, externalRegistrationUrl: true },
     });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Event not found, or not open for registration');
     assertNoOutsideLink(event);
 
     const ticket = await this.prisma.eventTicketType.findFirst({
       where: { id: dto.ticketTypeId, eventId: event.id, isActive: true, isVisible: true },
-      select: { id: true, kind: true, price: true, saleStartsAt: true, saleEndsAt: true },
+      select: { id: true, kind: true, saleStartsAt: true, saleEndsAt: true },
     });
     if (!ticket) throw new NotFoundException('Ticket type not found');
     if (ticket.kind === 'GROUP') {
@@ -185,18 +214,45 @@ export class PublicApiService {
     const mobile = dto.phone ? normalizeMobile(dto.phone) : null;
     if (dto.phone && !mobile) throw new BadRequestException('phone must be a mobile number');
 
-    const added = await this.registrations.manualAddAttendee(event.id, {
-      ticketTypeId: ticket.id,
-      name: dto.name.trim(),
-      email: dto.email,
-      mobile: mobile ?? undefined,
-      gender: dto.gender,
-      formResponses: dto.answers,
-      // Never a comp: a paid ticket always goes out as a payment link.
-      collectPayment: Number(ticket.price) > 0,
-      requireAnswers: true,
-      utm: { utmSource: key.name, utmMedium: 'api', utmCampaign: dto.campaign },
-    });
+    let added: Awaited<ReturnType<RegistrationsService['manualAddAttendee']>>;
+    try {
+      added = await this.registrations.manualAddAttendee(event.id, {
+        ticketTypeId: ticket.id,
+        name: dto.name.trim(),
+        email,
+        mobile: mobile ?? undefined,
+        gender: dto.gender,
+        formResponses: dto.answers,
+        // Always: manual add takes it only when the price (read there, once) is above 0,
+        // so a paid ticket is never comped, even if its price changed a moment ago.
+        collectPayment: true,
+        requireAnswers: true,
+        fromApi: true,
+        utm: { utmSource: key.name, utmMedium: 'api', utmCampaign: dto.campaign },
+      });
+    } catch (err) {
+      // Already registered for this ticket: hand back that registration, not a dead end.
+      if (err instanceof ConflictException) {
+        const existing = await this.prisma.eventRegistration.findFirst({
+          where: {
+            eventId: event.id,
+            ticketTypeId: ticket.id,
+            status: { not: RegistrationStatus.CANCELLED },
+            user: { identities: { some: { email } } },
+          },
+          orderBy: { registeredAt: 'desc' },
+          select: { id: true, paymentStatus: true },
+        });
+        if (existing) {
+          return existing.paymentStatus === 'PAID'
+            ? { registrationId: existing.id, status: 'confirmed' as const, existing: true }
+            : // Its payment link already went to the person by email and SMS.
+              { registrationId: existing.id, status: 'payment_pending' as const, paymentUrl: null, amount: null, existing: true };
+        }
+      }
+      throw err;
+    }
+    await Promise.all([this.keys.bump(spaceDay, 2 * 86_400), this.keys.bump(emailDay, 2 * 86_400)]);
 
     return added.paymentStatus === 'PAID'
       ? { registrationId: added.registrationId, status: 'confirmed' as const }
