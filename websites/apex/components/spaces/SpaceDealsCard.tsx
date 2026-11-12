@@ -23,15 +23,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-/**
- * Until 5.0.0 (2 Dec 2026) the old 4.0.5 app shows a 5% fee estimate while
- * Razorpay charges the server amount, so a deal with another buyer fee shows
- * those buyers a wrong estimate.
- */
-const OLD_APP_CUTOFF = new Date("2026-12-02T00:00:00+05:30");
-const oldAppWarning = (buyerFeeBps: number | null | undefined) =>
-  buyerFeeBps != null && buyerFeeBps !== 500 && Date.now() < OLD_APP_CUTOFF.getTime();
-
 const pct = (bps: number | null) => (bps == null ? "rate card" : `${bps / 100}%`);
 const rupees = (paise: number | null) =>
   paise == null ? "rate card" : paise === 0 ? "comp" : `₹${(paise / 100).toLocaleString("en-IN")}`;
@@ -137,12 +128,6 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
             {current.dealId ? " (deal)" : " (plan)"}
           </p>
         )}
-        {oldAppWarning(current?.buyerFeeBps) && (
-          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
-            Buyer fee isn&apos;t 5%: the old 4.0.5 app shows a 5% estimate until 2 Dec, while
-            Razorpay charges the real amount.
-          </p>
-        )}
 
         {deals.length === 0 ? (
           <p className="text-sm text-muted-foreground">No deals. This space pays the rate card.</p>
@@ -161,9 +146,6 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
                   {day(d.validFrom)} → {d.validUntil ? day(d.validUntil) : "open-ended"}
                   {d.note ? ` · ${d.note}` : ""}
                 </div>
-                {isActive(d) && oldAppWarning(d.buyerFeeBps) && (
-                  <div className="text-xs text-amber-600">Buyer fee isn&apos;t 5%: old-app estimate is off until 2 Dec.</div>
-                )}
                 {(!d.validUntil || new Date(d.validUntil).getTime() > now) && (
                   <Button size="sm" variant="outline" className="mt-1" onClick={() => end(d)}>
                     End now
@@ -199,11 +181,6 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
             <Field label="Note">
               <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             </Field>
-            {oldAppWarning(buyerFeeBps) && (
-              <p className="text-xs text-amber-600">
-                Buyer fee isn&apos;t 5%: the old 4.0.5 app will show buyers a 5% estimate until 2 Dec.
-              </p>
-            )}
             <div className="flex gap-2">
               <Button onClick={create} disabled={saving}>
                 {saving ? "Saving…" : "Create deal"}
