@@ -209,7 +209,10 @@ export class PlanConfigService implements OnModuleInit {
     plan: OrgPlan,
     patch: Partial<PlanLimits>,
   ): Promise<PlanLimits & { plan: OrgPlan }> {
-    const merged: PlanLimits = { ...this.getLimits(plan), ...patch };
+    // A DTO carries every field it leaves out as undefined: drop those, or they
+    // would wipe the cached value (and slip past assertOneFee).
+    const given = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const merged: PlanLimits = { ...this.getLimits(plan), ...given };
     assertOneFee(merged);
     const data = {
       spaces: merged.spaces,

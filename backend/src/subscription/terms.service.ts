@@ -156,11 +156,14 @@ export class TermsService {
     };
     // One processing fee (12 Nov 2026): the deal's rate or the plan's, no cap,
     // and an organiser fee of 0 frozen onto the sale so nothing takes it twice.
-    const oneFee = this.planConfig.getLimits(plan).processingFeePercent;
+    // Which fees apply follows the subscription's plan, as the stamp trigger does.
+    const oneFee = this.planConfig.getLimits(sub?.plan ?? OrgPlan.STARTER).processingFeePercent;
     if (oneFee != null) {
+      const planBps = Math.round(oneFee * 100);
       return {
         ...base,
-        buyerFeeBps: deal?.buyerFeeBps ?? Math.round(oneFee * 100),
+        // A deal made before the plan switched may sit outside the range: hold it there.
+        buyerFeeBps: deal?.buyerFeeBps == null ? planBps : Math.min(planBps, Math.max(GATEWAY_FEE_PERCENT * 100, deal.buyerFeeBps)),
         buyerFeeCapPaise: null,
         organiserFeeBps: 0,
         organiserFeeFromDeal: true,
@@ -240,10 +243,8 @@ export class TermsService {
    * true; an organiser fee there would be charged on top of it.
    */
   private async assertDealFee(spaceId: string, input: CreateDealInput) {
-    const sub = input.plan
-      ? null
-      : await this.prisma.orgSubscription.findUnique({ where: { spaceId }, select: { plan: true } });
-    const oneFee = this.planConfig.getLimits(input.plan ?? sub?.plan ?? OrgPlan.STARTER).processingFeePercent;
+    const sub = await this.prisma.orgSubscription.findUnique({ where: { spaceId }, select: { plan: true } });
+    const oneFee = this.planConfig.getLimits(sub?.plan ?? OrgPlan.STARTER).processingFeePercent;
     if (oneFee == null) return;
     if (input.organiserFeeBps) {
       throw new BadRequestException('This plan has one processing fee: leave the organiser fee empty');

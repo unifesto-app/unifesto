@@ -69,7 +69,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const blank = { eventId: "", fee: "", validUntil: "", note: "" };
+  const blank = { eventId: "", fee: "", organiserFee: "", validUntil: "", note: "" };
   const [form, setForm] = useState(blank);
 
   const load = useCallback(async () => {
@@ -84,6 +84,8 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
   }, [load]);
 
   const buyerFeeBps = num(form.fee) == null ? null : Math.round(num(form.fee)! * 100);
+  // Spaces whose plan has no processing fee yet keep the old two fees.
+  const oldFees = current != null && current.buyerFeeCapPaise != null;
 
   const create = async () => {
     setSaving(true);
@@ -91,6 +93,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
     const { error } = await createSpaceDeal(spaceId, {
       eventId: form.eventId.trim() || undefined,
       buyerFeeBps: buyerFeeBps ?? undefined,
+      organiserFeeBps: oldFees && num(form.organiserFee) != null ? Math.round(num(form.organiserFee)! * 100) : undefined,
       validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : undefined,
       note: form.note.trim() || undefined,
     });
@@ -181,9 +184,14 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
               <Input value={form.eventId} onChange={(e) => setForm({ ...form, eventId: e.target.value })} />
             </Field>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Processing fee % (incl. 2.5% gateway)">
+              <Field label={oldFees ? "Buyer fee % (old fees, capped)" : "Processing fee % (incl. 2.5% gateway)"}>
                 <Input inputMode="decimal" value={form.fee} onChange={(e) => setForm({ ...form, fee: e.target.value })} />
               </Field>
+              {oldFees && (
+                <Field label="Organiser fee % (old fees)">
+                  <Input inputMode="decimal" value={form.organiserFee} onChange={(e) => setForm({ ...form, organiserFee: e.target.value })} />
+                </Field>
+              )}
               <Field label="Ends (blank = open)">
                 <Input type="date" value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} />
               </Field>
