@@ -67,7 +67,10 @@ export function httpCorsOrigin(isCustomDomainOrigin: (origin: string) => Promise
         warn(`Blocked CORS request from disallowed origin: ${origin}`);
         callback(corsRefusal(), false);
       },
-      () => callback(corsRefusal(), false),
+      () => {
+        warn(`Refused CORS request from ${origin}: the custom domain lookup failed`);
+        callback(corsRefusal(), false);
+      },
     );
   };
 }

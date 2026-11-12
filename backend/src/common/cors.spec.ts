@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, INestApplication } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, INestApplication, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { corsOriginCallback, httpCorsOrigin, isAllowedOrigin } from './cors';
@@ -58,17 +58,28 @@ describe('origin refusals are a 403, not a 500 (no Sentry issue)', () => {
     expect(err).toBeInstanceOf(ForbiddenException);
   });
 
-  it('the socket gateways refuse the same way', () => {
+  // engine.io answers any refusal with its own 400, so only "refused" matters there.
+  it('the socket gateways still refuse other origins and let ours through', () => {
     const cb = jest.fn();
     corsOriginCallback('https://example.com', cb);
-    expect(cb.mock.calls[0][0]).toBeInstanceOf(ForbiddenException);
+    expect(cb.mock.calls[0][0]).toBeTruthy();
+    expect(cb.mock.calls[0][1]).toBe(false);
+    corsOriginCallback('https://www.unifesto.app', cb);
+    expect(cb.mock.calls[1]).toEqual([null, true]);
   });
 
   describe('through the real app setup', () => {
+    const handled = jest.fn();
     @Controller()
     class Ping {
       @Get('ping')
       ping() {
+        handled();
+        return { ok: true };
+      }
+      @Post('ping')
+      post() {
+        handled();
         return { ok: true };
       }
     }
@@ -84,11 +95,31 @@ describe('origin refusals are a 403, not a 500 (no Sentry issue)', () => {
     });
     afterAll(() => app.close());
 
-    it('answers a disallowed origin with 403 and reports nothing', async () => {
+    beforeEach(() => {
+      handled.mockClear();
+      report.mockClear();
+    });
+
+    it('answers a disallowed origin with our filter\'s 403 and reports nothing', async () => {
       const res = await request(app.getHttpServer()).get('/ping').set('Origin', 'https://example.com');
       expect(res.status).toBe(403);
+      // Our GlobalExceptionFilter's shape (Nest's own has no path), so it really ran.
+      expect(res.body).toMatchObject({ statusCode: 403, path: '/ping' });
       expect(res.headers['access-control-allow-origin']).toBeUndefined();
       expect(report).not.toHaveBeenCalled();
+      expect(handled).not.toHaveBeenCalled();
+    });
+
+    it('refuses a preflight and a cookie POST from a disallowed origin before any handler', async () => {
+      const pre = await request(app.getHttpServer())
+        .options('/ping')
+        .set('Origin', 'https://example.com')
+        .set('Access-Control-Request-Method', 'POST');
+      expect(pre.status).toBe(403);
+      expect(Object.keys(pre.headers).filter((h) => h.startsWith('access-control-'))).toEqual([]);
+      const post = await request(app.getHttpServer()).post('/ping').set('Origin', 'https://example.com').set('Cookie', 'sid=x');
+      expect(post.status).toBe(403);
+      expect(handled).not.toHaveBeenCalled();
     });
 
     it('serves an allowed origin with its CORS header', async () => {
