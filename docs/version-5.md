@@ -1199,3 +1199,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-12** · K20 events can register on another site (outside link, no tickets) + Register link, button and QR for organisers' own sites (#647)
 - **2026-11-12** · K21 popup checkout script (embed.js) and an embeddable event card for organisers' own sites (#650)
 - **2026-11-12** · K22 registration API keys for a space's own site (Apex switch per space, console keys page) (#653)
+- **2026-11-12** · Apex Deals no longer shows the old 4.0.5 app fee notices (#654)
