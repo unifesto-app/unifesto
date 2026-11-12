@@ -28,6 +28,8 @@ export const RETENTION: ReadonlyArray<{
   { table: 'email_campaign_logs', column: 'sent_at', days: 365 },
   { table: 'whatsapp_messages', column: 'created_at', days: 365 },
   { table: 'message_deliveries', column: 'created_at', days: 180 },
+  // K23: webhook delivery log (status, timing, error code; attendee details in its payload).
+  { table: 'webhook_deliveries', column: 'created_at', days: 30 },
   // Push installs the app hasn't reported in this long (it re-reports daily
   // when opened). FCM drops tokens idle for 270 days; uninstalls usually go
   // sooner, when APNs/FCM reject a send (C12).

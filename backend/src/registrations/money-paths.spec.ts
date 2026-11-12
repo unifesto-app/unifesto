@@ -73,13 +73,18 @@ function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number }
     createSeatsForRegistration: jest.fn(async () => undefined),
     notifyGroupCancelled: jest.fn(async () => undefined),
   };
+  const events = { emit: jest.fn() };
   const svc = buildRegistrationsService(
     prisma, { sendCancellationConfirmation: jest.fn() } as any, {} as any, cache as any, {} as any, {} as any,
-    payments as any, { convert: jest.fn() } as any, { emit: jest.fn() } as any, groupSeats as any, {} as any,
+    payments as any, { convert: jest.fn() } as any, events as any, groupSeats as any, {} as any,
     coupons as any, {} as any, { can: async () => true } as any,
   );
-  return { svc, prisma, payments, coupons };
+  return { svc, prisma, payments, coupons, events };
 }
+
+/** K23: the webhook events a run emitted, as [type, registrationId]. */
+const webhooksOf = (events: { emit: jest.Mock }) =>
+  events.emit.mock.calls.filter(([name]) => name === 'webhook.registration').map(([, p]) => [p.type, p.registrationId]);
 
 const future = new Date(Date.now() + 86_400_000);
 const row = (over: Record<string, unknown> = {}) => ({
@@ -144,6 +149,15 @@ describe('cancel (S9)', () => {
       where: { id: 'tt-1' },
       data: { soldCount: { decrement: 1 } },
     });
+  });
+
+  it('tells webhooks about a confirmed booking cancelled, never an unpaid checkout (K23)', async () => {
+    const free = build({ row: row() });
+    await free.svc.cancelMyRegistration('reg-1', 'user-1');
+    expect(webhooksOf(free.events)).toEqual([['registration.cancelled', 'reg-1']]);
+    const unpaid = build({ row: row({ paymentStatus: PaymentStatus.PENDING, totalAmount: 500, razorpayAmount: 500 }) });
+    await unpaid.svc.cancelMyRegistration('reg-1', 'user-1');
+    expect(webhooksOf(unpaid.events)).toEqual([]);
   });
 
   it('a concurrent second cancel releases nothing', async () => {

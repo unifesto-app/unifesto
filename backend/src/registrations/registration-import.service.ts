@@ -463,7 +463,7 @@ export class RegistrationImportService {
       void inChunks(toConfirm, (id) =>
         (sendEmails
           ? this.confirmations.sendRegistrationConfirmations(id)
-          : this.confirmations.sendWhatsAppGroupInvite(id)
+          : (this.confirmations.announceConfirmed(id), this.confirmations.sendWhatsAppGroupInvite(id))
         ).catch((err) =>
           this.logger.error(`import confirmations(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
         ),
@@ -742,7 +742,7 @@ export class RegistrationImportService {
       // adds are exactly who needs the group, and the switch only covers email.
       void (dto.sendTicketEmail !== false
         ? this.confirmations.sendRegistrationConfirmations(registrationId)
-        : this.confirmations.sendWhatsAppGroupInvite(registrationId)
+        : (this.confirmations.announceConfirmed(registrationId), this.confirmations.sendWhatsAppGroupInvite(registrationId))
       ).catch((err) =>
         this.logger.error(`manual add confirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
       );

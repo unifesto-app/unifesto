@@ -11,6 +11,7 @@ import type { RegistrationConfirmedEvent } from '../notifications/notifications.
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { contactMobile, seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
 import { formatEventDate, formatEventTime, generateQRCode, generateTicketCode } from './registration.util';
+import { emitWebhook } from '../webhooks/webhook-events';
 
 /**
  * Confirmation emails / WhatsApp / push for a settled registration, the
@@ -34,6 +35,16 @@ export class RegistrationConfirmationsService {
    * Sends WhatsApp + email registration confirmations for a completed (PAID) registration.
    * Shared by RSVP completion and free-ticket completion in createPaymentOrder.
    */
+  /**
+   * K23: tell the space's webhooks about a confirmed registration whose
+   * attendee emails were switched off (manual add or import without the
+   * ticket email). Every other confirmation goes through
+   * sendRegistrationConfirmations, which does this itself.
+   */
+  announceConfirmed(registrationId: string): void {
+    emitWebhook(this.events, 'registration.confirmed', registrationId);
+  }
+
   async sendRegistrationConfirmations(registrationId: string) {
     // One confirmation per registration, no matter how many code paths reach
     // here. The webhook (`payment.captured`), the client-side verify, and
@@ -54,6 +65,8 @@ export class RegistrationConfirmationsService {
       );
       return;
     }
+    // K23: the same once-per-registration gate tells the space's webhooks.
+    emitWebhook(this.events, 'registration.confirmed', registrationId);
 
     const fullRegistration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },

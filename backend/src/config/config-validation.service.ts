@@ -51,9 +51,17 @@ export class ConfigValidationService implements OnModuleInit {
       throw new Error(errorMessage);
     }
 
+    // K23: lets webhooks reach localhost for local testing. Never in production,
+    // where it would open the internal network to any space's webhook URL.
+    if (process.env.NODE_ENV === 'production' && process.env.WEBHOOK_ALLOW_PRIVATE) {
+      const errorMessage = 'WEBHOOK_ALLOW_PRIVATE must not be set in production';
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
     // S31: HMAC secrets. Unset = a key derived from JWT_SECRET (see
     // common/secrets.ts), which works but ties them to JWT rotation.
-    for (const key of ['EMAIL_TRACKING_SECRET', 'TRAFFIC_HASH_SECRET', 'APPLE_TOKEN_ENCRYPTION_KEY']) {
+    for (const key of ['EMAIL_TRACKING_SECRET', 'TRAFFIC_HASH_SECRET', 'APPLE_TOKEN_ENCRYPTION_KEY', 'WEBHOOK_SECRET_KEY']) {
       if (!process.env[key]) {
         this.logger.warn(`${key} not set: using a key derived from JWT_SECRET`);
       }

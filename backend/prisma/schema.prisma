@@ -1236,6 +1236,7 @@ model Space {
   shortLinks               ShortLink[]
   deals                    Deal[]
   apiKeys                  SpaceApiKey[]
+  webhooks                 SpaceWebhook[]
 
   @@index([status])
   @@index([createdBy])
@@ -1261,6 +1262,52 @@ model SpaceApiKey {
 
   @@index([spaceId])
   @@map("space_api_keys")
+}
+
+/// K23: a space's webhook, signed POSTs to its own server when someone
+/// registers, cancels or checks in. The signing secret is stored encrypted
+/// (common/secrets.ts sealSecret) because it must be read back to sign.
+model SpaceWebhook {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId      String            @map("space_id") @db.Uuid
+  space        Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  url          String            @db.Text
+  secretEnc    String            @map("secret_enc") @db.Text
+  /// registration.confirmed | registration.cancelled | registration.checked_in
+  events       String[]
+  isActive     Boolean           @default(true) @map("is_active")
+  /// Deliveries that failed in a row; 20 switches it off (disabledAt).
+  failureCount Int               @default(0) @map("failure_count")
+  disabledAt   DateTime?         @map("disabled_at") @db.Timestamptz(6)
+  createdBy    String            @map("created_by") @db.Uuid
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deliveries   WebhookDelivery[]
+
+  @@index([spaceId])
+  @@map("space_webhooks")
+}
+
+/// K23: one event sent (or being sent) to one webhook. Only the status, timing
+/// and an error code are kept from the receiver, never its response body.
+model WebhookDelivery {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  webhookId      String       @map("webhook_id") @db.Uuid
+  webhook        SpaceWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  type           String       @db.VarChar(40)
+  registrationId String?      @map("registration_id") @db.Uuid
+  payload        Json
+  /// PENDING | DELIVERED | FAILED | SKIPPED
+  status         String       @default("PENDING") @db.VarChar(12)
+  attempts       Int          @default(0)
+  lastStatusCode Int?         @map("last_status_code")
+  lastError      String?      @map("last_error") @db.VarChar(120)
+  durationMs     Int?         @map("duration_ms")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  deliveredAt    DateTime?    @map("delivered_at") @db.Timestamptz(6)
+
+  @@index([webhookId, createdAt])
+  @@map("webhook_deliveries")
 }
 
 model SubSpaceRequest {

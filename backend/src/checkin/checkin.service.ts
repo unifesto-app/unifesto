@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Optional,
   BadRequestException,
   ForbiddenException,
   HttpException,
@@ -22,6 +23,8 @@ import { END_GRACE_MS } from '../events/event-dates';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { memberSeatTicket } from '../registrations/registration.util';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { emitWebhook } from '../webhooks/webhook-events';
 
 /** See CheckinService.newBatch. */
 interface CheckinBatch {
@@ -44,6 +47,8 @@ export class CheckinService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly authz: AuthorizationService,
+    // K23: optional so tests that build the service by hand still compile.
+    @Optional() private readonly events?: EventEmitter2,
   ) {}
 
   /**
@@ -626,6 +631,8 @@ export class CheckinService {
     registration.checkedInAt = at;
     registration.checkedInBy = userId;
     registration.status = RegistrationStatus.ATTENDED;
+    // First-ever check-in, after its write committed: tell the space's webhooks.
+    emitWebhook(this.events, 'registration.checked_in', registration.id);
   }
 
   /**
