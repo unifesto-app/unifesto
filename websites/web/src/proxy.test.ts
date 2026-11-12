@@ -87,3 +87,12 @@ test("prerendered pages get a CSP without a nonce; everything else keeps K14's",
   assert.equal(res.headers.get("x-middleware-request-content-security-policy"), null);
   assert.equal(res.headers.get("x-middleware-request-x-nonce"), null);
 });
+
+test("only the event card may sit in another site's frame (K21)", async () => {
+  const ancestors = async (path: string) =>
+    /frame-ancestors ([^;]+)/.exec((await run(`https://www.unifesto.app${path}`)).headers.get("content-security-policy") ?? "")?.[1];
+  assert.equal(await ancestors("/embed/event/hack-26"), "*");
+  for (const path of ["/", "/embed", "/embed/", "/embed/nope", "/embed/event", "/embed/event/a/b", "/embedx/event/a", "/event/hack-26", "/login"]) {
+    assert.equal(await ancestors(path), "'none'", path);
+  }
+});

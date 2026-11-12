@@ -69,3 +69,13 @@ test("the card reads back hex colours, known shapes and a short label only", () 
   assert.equal(look.style.color, undefined);
   assert.equal(look.style.borderRadius, undefined);
 });
+
+test("repeated params (arrays) are ignored, not a crash", () => {
+  const look = cardButtonLook({ label: ["a", "b"], bg: ["c2410c"], shape: ["pill"] });
+  assert.deepEqual(look, { label: "Register", style: { background: undefined, color: undefined, borderRadius: undefined } });
+});
+
+test("labels lose control and right-to-left override characters", () => {
+  assert.equal(cardButtonLook({ label: "Pay‮evil\u0007" }).label, "Payevil");
+  assert.match(registerButtonHtml(href, { ...DEFAULT_BUTTON, label: "Go‮ now" }), />Go now<\/a>$/);
+});

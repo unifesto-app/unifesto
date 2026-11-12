@@ -167,13 +167,15 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
 
   // Done and sent here by an embed on a site that autoReturnAllowed trusts: go
   // back after a moment (the done screen says so, and its link still works).
+  // Only once they're in: never off a waiting-list or still-confirming screen.
+  const doneIn = step === "done" && (done?.kind === "in" || done?.kind === "already");
   useEffect(() => {
-    if (step !== "done") return;
+    if (!doneIn) return;
     const r = storedReturn(event.slug);
     if (!r?.auto) return;
-    const t = setTimeout(() => window.location.assign(returnLink(r, event.slug)), 2500);
+    const t = setTimeout(() => window.location.assign(returnLink(r, event.slug, true)), 2500);
     return () => clearTimeout(t);
-  }, [step, event.slug]);
+  }, [doneIn, event.slug]);
 
   // Q5: the 18+ box is asked once per account (Z11), so it's hidden once on record.
   const [ageDone, setAgeDone] = useState(false);
@@ -431,13 +433,15 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         {returnTo && (
           <>
             <a
-              href={returnLink(returnTo, event.slug)}
+              href={returnLink(returnTo, event.slug, done.kind === "in" || done.kind === "already")}
               rel="noreferrer"
               className="btn btn-lg btn-secondary mt-3 h-auto w-full whitespace-normal break-all"
             >
               Back to {returnTo.host}
             </a>
-            {returnTo.auto && <p className="mt-2 text-sm text-paper/65">Taking you back to {returnTo.host}…</p>}
+            {returnTo.auto && (done.kind === "in" || done.kind === "already") && (
+              <p className="mt-2 text-sm text-paper/65">Taking you back to {returnTo.host}…</p>
+            )}
           </>
         )}
         {waGroup?.inviteUrl && (

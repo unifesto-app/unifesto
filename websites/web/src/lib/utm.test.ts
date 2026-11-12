@@ -103,12 +103,43 @@ test("an embed landing keeps embed, popup and where it came from; the way back c
   const r = storedReturn("build-sunday")!;
   assert.equal(r.embed, true);
   assert.equal(r.popup, true);
-  assert.equal(returnLink(r, "build-sunday"), "https://wegobeyond.in/build-sunday#unifesto=registered&event=build-sunday&popup=1");
+  assert.equal(r.auto, true);
+  assert.equal(returnLink(r, "build-sunday", true), "https://wegobeyond.in/build-sunday#unifesto=registered&event=build-sunday&popup=1");
+  // Waiting list or a payment still confirming: back, but no "registered" marker.
+  assert.equal(returnLink(r, "build-sunday", false), "https://wegobeyond.in/build-sunday");
   // A plain tagged link (no embed.js) goes back with no marker and never on its own.
   visit("?return=https%3A%2F%2Fwegobeyond.in%2F", "/event/build-sunday");
   captureUtm();
   const plain = storedReturn("build-sunday")!;
-  assert.equal(returnLink(plain, "build-sunday"), "https://wegobeyond.in/");
+  assert.equal(returnLink(plain, "build-sunday", true), "https://wegobeyond.in/");
   assert.equal(plain.auto, false);
+  Object.assign(globalThis, { document: undefined });
+});
+
+test("a reload keeps who sent them on the first landing", () => {
+  store.clear();
+  Object.assign(globalThis, { document: { referrer: "https://wegobeyond.in/" } });
+  visit("?embed=1&return=https%3A%2F%2Fwegobeyond.in%2F", "/event/x/register");
+  captureUtm();
+  // Reloaded: the referrer is now our own page.
+  Object.assign(globalThis, { document: { referrer: "https://www.unifesto.app/event/x/register?embed=1" } });
+  captureUtm();
+  assert.equal(storedReturn("x")!.auto, true);
+  Object.assign(globalThis, { document: undefined });
+});
+
+test("the marker and automatic return need the sending site to be the return site", () => {
+  store.clear();
+  // A crafted link: return points at another site than the one they came from.
+  Object.assign(globalThis, { document: { referrer: "https://chat.example/" } });
+  visit("?embed=1&return=https%3A%2F%2Fevil.example%2F", "/event/x/register");
+  captureUtm();
+  const crafted = storedReturn("x")!;
+  assert.equal(crafted.auto, false);
+  assert.equal(returnLink(crafted, "x", true), "https://evil.example/");
+  // No referrer at all (opened from an app or a no-referrer site): same.
+  Object.assign(globalThis, { document: { referrer: "" } });
+  captureUtm();
+  assert.equal(storedReturn("x")!.auto, false);
   Object.assign(globalThis, { document: undefined });
 });
