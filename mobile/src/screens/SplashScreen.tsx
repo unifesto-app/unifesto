@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { PixelRatio, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Easing,
@@ -24,12 +24,16 @@ interface SplashScreenProps {
   shouldExit?: boolean;
 }
 
-// Brand wordmark PNG is 2400×551; render it at a fixed, calm size.
-const MARK_W = 176;
-const MARK_H = Math.round((MARK_W * 551) / 2400);
-/** The wordmark rises in as vertical slices, GSAP SplitText-style (it's a PNG, so no real letters). */
+/**
+ * The wordmark rises in as vertical slices, GSAP SplitText-style (it's a PNG, so
+ * no real letters). Slices are whole device pixels wide: on Android's fractional
+ * densities Yoga's rounding otherwise leaves 1px steps between them at rest.
+ */
 const SLICES = 8;
-const SLICE_W = MARK_W / SLICES;
+const SLICE_W = PixelRatio.roundToNearestPixel(176 / SLICES);
+// Brand wordmark PNG is 2400×551; render it at a fixed, calm size (~176pt).
+const MARK_W = SLICE_W * SLICES;
+const MARK_H = Math.round((MARK_W * 551) / 2400);
 const TAGLINE = 'Every fest. One app.';
 const LINE_H = 18;
 const TRACK_W = 56;
@@ -64,6 +68,15 @@ const OUTRO = {
 const OUTRO_END = OUTRO.fade.at + OUTRO.fade.dur;
 
 type Tween = { at: number; dur: number };
+
+/** GSAP's stagger: one tween per piece, `stagger` s apart. Built once, so re-renders never restart them. */
+const staggered = ({ at, dur, stagger }: Tween & { stagger: number }, n: number): Tween[] =>
+  Array.from({ length: n }, (_, i) => ({ at: at + i * stagger, dur }));
+const WORDS = TAGLINE.split(' ');
+const MARK_IN = staggered(INTRO.mark, SLICES);
+const MARK_OUT = staggered(OUTRO.mark, SLICES);
+const WORDS_IN = staggered(INTRO.words, WORDS.length);
+const WORDS_OUT = staggered(OUTRO.words, WORDS.length);
 
 /** How far a tween is (0–1) at playhead `t`: GSAP's position parameter. */
 const phase = (t: number, at: number, dur: number) => {
@@ -184,8 +197,8 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
             out={out}
             dist={MARK_H}
             ease={power4Out}
-            enter={{ at: INTRO.mark.at + i * INTRO.mark.stagger, dur: INTRO.mark.dur }}
-            exit={{ at: OUTRO.mark.at + i * OUTRO.mark.stagger, dur: OUTRO.mark.dur }}
+            enter={MARK_IN[i]}
+            exit={MARK_OUT[i]}
             clip={[styles.slice, { left: i * SLICE_W }]}
           >
             <Image source={source} style={[styles.mark, { marginLeft: -i * SLICE_W }]} contentFit="contain" />
@@ -213,17 +226,13 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
       </View>
 
       <View style={styles.words} accessible accessibilityRole="text" accessibilityLabel={TAGLINE}>
-        {TAGLINE.split(' ').map((word, i) => (
-          <Rise
-            key={i}
-            t={t}
-            out={out}
-            dist={LINE_H}
-            ease={power3Out}
-            enter={{ at: INTRO.words.at + i * INTRO.words.stagger, dur: INTRO.words.dur }}
-            exit={{ at: OUTRO.words.at + i * OUTRO.words.stagger, dur: OUTRO.words.dur }}
-          >
-            <Text style={[styles.tagline, { color: c.muted }]}>{word}</Text>
+        {WORDS.map((word, i) => (
+          <Rise key={i} t={t} out={out} dist={LINE_H} ease={power3Out} enter={WORDS_IN[i]} exit={WORDS_OUT[i]}>
+            {/* Fixed size: each clip hides exactly one 18pt line, so OS text scaling
+                would show the type on frame one. The row's label carries the words. */}
+            <Text maxFontSizeMultiplier={1} style={[styles.tagline, { color: c.muted }]}>
+              {word}
+            </Text>
           </Rise>
         ))}
       </View>
@@ -243,7 +252,9 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
         enter={INTRO.footer}
         clip={[styles.footer, { bottom: insets.bottom + 28 }]}
       >
-        <Text style={[styles.footerText, { color: c.muted }]}>Built by organisers who lived the chaos</Text>
+        <Text maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.footerText, { color: c.muted }]}>
+          Built by organisers who lived the chaos
+        </Text>
       </Rise>
     </Animated.View>
   );
