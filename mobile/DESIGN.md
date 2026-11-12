@@ -60,9 +60,14 @@ owner's approval first.
 
 - Every screen sits on `CosmosScreen` / `CosmosList` or draws `<CosmosBackdrop horizon={false} />`
   itself. Never a custom page background, gradient or image behind a whole screen.
-- `CosmosBackdrop` (default `horizon`) is the hero sky: login, splash, auth callback, with the blue
+- `CosmosBackdrop` (default `horizon`) is the hero sky: login, auth callback, with the blue
   glow from the bottom-right corner. Scrolling screens use `horizon={false}`: the plain ground.
   Banner-lit pages pass `hue`.
+- **The launch splash is its own exception** (owner-approved 13 Nov 2026): a full-screen sheet of
+  untinted liquid glass on the plain ground (rims, edge glow, a drifting sheen; no grain, no
+  accent light), the wordmark as eight separate letters, and glossy props (flower, dot, sparkle,
+  bolt, ring, arch, star, squiggle) in the accents' gradients standing in for letters. The props
+  and the full-screen glass belong to the splash only; nowhere else in the app.
 
 ## 3. Colour
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LogBox, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import { Stack, ThemeProvider as NavigationThemeProvider, usePathname } from 'expo-router';
 import { DarkTheme, DefaultTheme } from 'expo-router/react-navigation';
 import * as Font from 'expo-font';
 import { getApp } from '@react-native-firebase/app';
@@ -11,7 +11,9 @@ import {
   recordError,
   setCrashlyticsCollectionEnabled,
 } from '@react-native-firebase/crashlytics';
-import { AuthProvider } from '../src/context/AuthContext';
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import SplashScreen from '../src/screens/SplashScreen';
+import { launchGate } from '../src/lib/launchGate';
 import LegalAcceptSheet from '../src/components/LegalAcceptSheet';
 import WhatsNewSheet, { showWhatsNewIfNeeded } from '../src/components/WhatsNewSheet';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
@@ -142,6 +144,23 @@ function DeepLinkBridge() {
   return null;
 }
 
+/**
+ * The launch splash, over everything, on a normal launch only: a link that
+ * opens a screen directly skips it, and a remount never replays it. Home
+ * mounts underneath once the splash allows (`launchGate`), so its exit can
+ * zoom straight into it.
+ */
+function LaunchSplash() {
+  const path = usePathname();
+  const { isLoading } = useAuth();
+  const [show, setShow] = useState(() => !launchGate.get().done && path === '/');
+  useEffect(() => {
+    if (!show) launchGate.set({ appMayMount: true, done: true });
+  }, [show]);
+  if (!show) return null;
+  return <SplashScreen shouldExit={!isLoading} onAnimationComplete={() => setShow(false)} />;
+}
+
 function RootStack() {
   const { tokens, isDark } = useTheme();
 
@@ -215,6 +234,7 @@ function RootStack() {
         <ImageCropHost />
         <LegalAcceptSheet />
       </FavoritesProvider>
+      <LaunchSplash />
     </AuthProvider>
   );
 }
