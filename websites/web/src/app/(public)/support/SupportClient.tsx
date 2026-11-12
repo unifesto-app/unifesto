@@ -16,7 +16,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SupportGroup, SupportRow, supportMailto, whatsappHref } from "@/components/support";
 import { HeroSky } from "@/components/site/CosmicBackdrop";
-import { SITE, buyerFeeText, planFeesText } from "@/lib/site";
+import { SITE } from "@/lib/site";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -104,14 +104,14 @@ const faqs = [
     category: "Pricing & Billing",
     question: "Is Unifesto free for students?",
     answer:
-      `Yes, discovery, registration, and your passes are free for attendees. A paid ticket carries a ${buyerFeeText()}, unless the organiser includes it in the price. You see the total before you pay.`,
+      "Yes, discovery, registration, and your passes are free for attendees. A paid ticket carries a processing fee unless the organiser includes it in the price. You see the total before you pay.",
   },
   {
     id: "pr-2",
     category: "Pricing & Billing",
     question: "How does billing work for organisers?",
     answer:
-      `There is no monthly fee and free RSVP events cost nothing. Organisers pay a platform fee per paid ticket by plan: ${planFeesText()}. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. See Pricing for plans.`,
+      "There is no monthly fee and free RSVP events cost nothing. Paid tickets carry a fee per ticket by plan, with Razorpay's charges covered, so you never pay them on top. See Pricing for what each plan costs.",
   },
   {
     id: "vf-1",

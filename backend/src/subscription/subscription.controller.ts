@@ -15,6 +15,7 @@ import {
   AdminUpdateSubscriptionDto,
   CreateDealDto,
   RecordOfflinePaymentDto,
+  SetFeePayerDto,
   SubscriptionResponseDto,
   SubscriptionUsageDto,
   UpdatePlanConfigDto,
@@ -43,7 +44,12 @@ export class SubscriptionController {
   @Get('space/:spaceId')
   @Can(Action.SPACE_MANAGE_BILLING)
   async getSpaceSubscription(@Param('spaceId') spaceId: string) {
-    return this.subscriptionService.getSpaceSubscription(spaceId);
+    const [subscription, fee] = await Promise.all([
+      this.subscriptionService.getSpaceSubscription(spaceId),
+      this.terms.feeSummary(spaceId),
+    ]);
+    // `fee`: what this space actually pays, deals included, and who pays it.
+    return { ...subscription, fee };
   }
 
   @Get('space/:spaceId/usage')
@@ -159,6 +165,13 @@ export class SubscriptionController {
   @Roles(RoleCode.ADMIN)
   async createDeal(@Request() req, @Param('spaceId') spaceId: string, @Body() dto: CreateDealDto) {
     return this.terms.createDeal(spaceId, dto, req.user.id);
+  }
+
+  @Patch('admin/space/:spaceId/fee-payer')
+  @Audit('space.fee-payer', (r) => ({ spaceId: r.params.spaceId }))
+  @Roles(RoleCode.ADMIN)
+  async setFeePayer(@Param('spaceId') spaceId: string, @Body() dto: SetFeePayerDto) {
+    return this.terms.setFeePayer(spaceId, dto.included);
   }
 
   @Post('admin/deals/:dealId/end')

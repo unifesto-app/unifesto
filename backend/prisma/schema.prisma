@@ -1188,6 +1188,11 @@ model Space {
   verifiedBy String?   @map("verified_by") @db.Uuid
   // Editorial slot on the app Home: the most recently featured live public space wins.
   featuredAt DateTime? @map("featured_at") @db.Timestamptz(6)
+  /// Who pays the processing fee on this space's events (12 Nov 2026): true =
+  /// included in the ticket price (PF included), false = the buyer pays it on
+  /// top. Only Unifesto sets it (Apex); new events copy it and setting it
+  /// writes every event's absorbProcessingFee, which checkout reads.
+  absorbProcessingFee Boolean @default(false) @map("absorb_processing_fee")
 
   // Creator
   createdBy String @map("created_by") @db.Uuid

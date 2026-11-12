@@ -75,6 +75,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { StatCard } from "@/components/shared/StatCard";
 import { SpaceDealsCard } from "@/components/spaces/SpaceDealsCard";
+import { SpaceFeePayerCard } from "@/components/spaces/SpaceFeePayerCard";
 import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
@@ -381,6 +382,7 @@ function SpaceManagement({
           />
 
           <SpaceDealsCard spaceId={space.id} />
+          <SpaceFeePayerCard spaceId={space.id} />
 
           {isSuper && <ChildSpacesPanel space={space} />}
 

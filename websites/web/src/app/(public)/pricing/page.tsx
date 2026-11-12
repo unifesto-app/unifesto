@@ -11,7 +11,7 @@ import ShadeCard, { SHADES, type Shade } from "@/components/site/ShadeCard";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { SITE, type Catalog, type CatalogRow, type Plan, buyerFeeText, passExample, planFee, planFeesText, planMinimum, pricingFaq } from "@/lib/site";
+import { SITE, type Catalog, type CatalogRow, type Plan, buyerFeeText, isOneFee, passExample, planFee, planFeesText, planMinimum, pricingFaq } from "@/lib/site";
 import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
@@ -22,7 +22,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const { plans, buyerFee, buyerFeeCap } = await getRateCard();
   return withSocial({
     title: "Pricing: free RSVP events, clear fees on paid tickets",
-    description: `No monthly fee. Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
+    description: isOneFee(plans)
+      ? `No monthly fee. Free RSVP events on every plan. One processing fee per paid ticket, payment gateway included: ${planFeesText(plans)}.`
+      : `No monthly fee. Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
     alternates: { canonical: "/pricing" },
   }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
@@ -110,19 +112,24 @@ export default async function PricingPage() {
         )}
         <p className="mt-8 text-center text-sm text-paper/55">
           {/* TODO(A6): GST wording waits for GST registration and the CA. */}
-          Fees exclude GST. Buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay&apos;s charges come out of that fee. Free RSVP events carry no fees on any plan.
+          {isOneFee(plans)
+            ? "Fees exclude GST. One processing fee per paid ticket, payment gateway included, with no cap. Buyers pay it at checkout, or it is included in your ticket price. Free RSVP events carry no fees on any plan."
+            : `Fees exclude GST. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay's charges come out of that fee. Free RSVP events carry no fees on any plan.`}
         </p>
       </Section>
 
       {catalog.length > 0 && <CompareSection plans={plans} catalog={catalog} />}
 
-      <Section surface="paper" aria-labelledby="compare-heading">
-        <PassPaysYou
-          plans={plans.filter((p) => !p.feeText).map((p) => ({ id: p.id, name: p.name, fee: p.fee, feeText: planFee(p) }))}
-          buyerFee={buyerFee}
-          buyerFeeCap={buyerFeeCap}
-        />
-      </Section>
+      {/* An exact worked example only fits the old fees; the one fee is shown as "up to". */}
+      {!isOneFee(plans) && (
+        <Section surface="paper" aria-labelledby="compare-heading">
+          <PassPaysYou
+            plans={plans.filter((p) => !p.feeText).map((p) => ({ id: p.id, name: p.name, fee: p.fee, feeText: planFee(p) }))}
+            buyerFee={buyerFee}
+            buyerFeeCap={buyerFeeCap}
+          />
+        </Section>
+      )}
 
       <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap)} />
 

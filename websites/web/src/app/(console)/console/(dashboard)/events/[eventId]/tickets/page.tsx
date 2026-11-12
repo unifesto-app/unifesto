@@ -1,6 +1,6 @@
 "use client";
 
-import { inr, BUYER_FEE_PERCENT, BUYER_FEE_CAP, includedFeeKeeps } from "@/console/lib/utils/money";
+import { inr } from "@/console/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -18,7 +18,6 @@ import {
 } from "@unifesto/unicon/react";
 import {
   getEventById,
-  updateEvent,
   getManageTicketTypes,
   createTicketType,
   updateTicketType,
@@ -238,7 +237,7 @@ export default function EventTicketsPage() {
       )}
 
       {tickets.some((t) => t.price > 0) && event && (
-        <FeeCard event={event} onSaved={(absorb) => setEvent({ ...event, absorbProcessingFee: absorb })} />
+        <FeeCard event={event} />
       )}
 
       {draft && (
@@ -293,44 +292,23 @@ function formatInr(n: number) {
 }
 
 /**
- * Who pays the buyer fee on this event's paid tickets (A33). Off: it is
- * added on top at checkout. On: buyers pay the listed price and the fee comes
- * out of the organiser's share. Changing it affects new sales only. Needs the
- * event's or space's money rights; the server refuses anyone else.
+ * Who pays the processing fee on this event's paid tickets. Unifesto sets it
+ * per space (12 Nov 2026), so organisers see it here but can't change it; the
+ * fee itself is on the Billing page.
  */
-function FeeCard({ event, onSaved }: { event: Event; onSaved: (absorb: boolean) => void }) {
-  const absorb = !!event.absorbProcessingFee;
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const toggle = async () => {
-    const next = !absorb;
-    const msg = next
-      ? `Include the fee in your ticket prices? Buyers will pay exactly the listed price and the ${BUYER_FEE_PERCENT}% fee comes out of your share. New sales only.`
-      : `Add the fee on top again? Buyers will pay the listed price plus ${BUYER_FEE_PERCENT}% at checkout. New sales only.`;
-    if (!window.confirm(msg)) return;
-    setSaving(true);
-    setError("");
-    const { error } = await updateEvent(event.id, { absorbProcessingFee: next });
-    setSaving(false);
-    if (error) setError(error.message);
-    else onSaved(next);
-  };
+function FeeCard({ event }: { event: Event }) {
   return (
     <Card>
-      <CardContent className="space-y-2 py-4">
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-0.5" checked={absorb} disabled={saving} onChange={toggle} />
-          <span>
-            <span className="font-medium text-foreground">Include the processing fee in my ticket prices</span>
-            <span className="block text-muted-foreground">
-              {absorb
-                ? `On a ₹500 ticket the buyer pays ₹500 and you get ${formatInr(includedFeeKeeps(500))}. The ${BUYER_FEE_PERCENT}% fee (max ₹${BUYER_FEE_CAP} a ticket) comes out of your share.`
-                : `On a ₹500 ticket the buyer pays ${formatInr(500 * (1 + BUYER_FEE_PERCENT / 100))} (${BUYER_FEE_PERCENT}% fee on top, max ₹${BUYER_FEE_CAP} a ticket) and you get ₹500.`}{" "}
-              Changes apply to new sales only.
-            </span>
-          </span>
-        </label>
-        {error && <ErrorNotice message={error} />}
+      <CardContent className="space-y-1 py-4 text-sm">
+        <p className="font-medium text-foreground">
+          {event.absorbProcessingFee ? "PF included in your ticket prices" : "Buyers pay the processing fee at checkout"}
+        </p>
+        <p className="text-muted-foreground">
+          {event.absorbProcessingFee
+            ? "Buyers pay the listed price and the fee comes out of your share."
+            : "It is added on top of the listed price, so you get the full ticket price."}{" "}
+          Unifesto sets this for your space. Your fee is on the Billing page.
+        </p>
       </CardContent>
     </Card>
   );

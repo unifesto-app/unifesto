@@ -167,7 +167,38 @@ export class TermsService {
     return this.resolve(event.spaceId, eventId, at);
   }
 
+  /**
+   * What a space's organisers are told about fees: the buyer fee % with its
+   * cap (on a one-fee plan the cap is null and this is the whole fee, gateway
+   * included), the organiser fee, and who pays the processing fee.
+   */
+  async feeSummary(spaceId: string) {
+    const [t, space] = await Promise.all([
+      this.resolve(spaceId),
+      this.prisma.space.findUnique({ where: { id: spaceId }, select: { absorbProcessingFee: true } }),
+    ]);
+    return {
+      percent: t.buyerFeeBps / 100,
+      capPerTicket: t.buyerFeeCapPaise == null ? null : t.buyerFeeCapPaise / 100,
+      organiserPercent: t.organiserFeeBps / 100,
+      included: space?.absorbProcessingFee ?? false,
+    };
+  }
+
   // ---- Apex admin ----
+
+  /**
+   * Who pays the processing fee on a space's events (12 Nov 2026): Unifesto's
+   * call. New events copy it, and every event of the space takes it now, for
+   * new sales (each sale keeps the price it was quoted).
+   */
+  async setFeePayer(spaceId: string, included: boolean) {
+    const [, events] = await this.prisma.$transaction([
+      this.prisma.space.update({ where: { id: spaceId }, data: { absorbProcessingFee: included } }),
+      this.prisma.event.updateMany({ where: { spaceId }, data: { absorbProcessingFee: included } }),
+    ]);
+    return { included, events: events.count };
+  }
 
   listDeals(spaceId: string) {
     return this.prisma.deal.findMany({

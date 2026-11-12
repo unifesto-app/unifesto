@@ -429,3 +429,28 @@ export function billingSummary(s: BillingArrangement): string {
   const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
   return amt > 0 ? `${PLAN_LABEL[s.plan]} · ₹${amt.toLocaleString("en-IN")}/${cycle}` : PLAN_LABEL[s.plan];
 }
+
+/**
+ * What a space pays per paid ticket and who pays the processing fee
+ * (`fee` on `GET /subscription/space/:spaceId`). `capPerTicket` null = no cap
+ * (a one-fee plan, where `percent` is the whole fee, gateway included).
+ */
+export interface SpaceFee {
+  percent: number;
+  capPerTicket: number | null;
+  organiserPercent: number;
+  /** true = included in the ticket price (PF included); false = buyers pay it on top. */
+  included: boolean;
+}
+
+export async function getSpaceFee(spaceId: string) {
+  const { data, error } = await apiCall<{ fee: SpaceFee }>(backendClient.get(`/subscription/space/${spaceId}`));
+  return { data: data?.fee ?? null, error };
+}
+
+/** `PATCH /subscription/admin/space/:spaceId/fee-payer`: Unifesto sets who pays, for every event of the space. */
+export async function setSpaceFeePayer(spaceId: string, included: boolean) {
+  return apiCall<{ included: boolean; events: number }>(
+    backendClient.patch(`/subscription/admin/space/${spaceId}/fee-payer`, { included })
+  );
+}
