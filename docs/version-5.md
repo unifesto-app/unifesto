@@ -1192,3 +1192,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-12** · wegobeyond.in moves into the monorepo (websites/wegobeyond) and ships with deploy.sh behind Caddy and Cloudflare instead of Vercel; Caddy's TLS snippet takes a cert name. Rebuild the whole stack; origin cert on the server first. (#644)
 - **2026-11-12** · deploy.sh's origin-cert check quotes the cert list for the remote shell (it broke `./deploy.sh wegobeyond`). (#645)
 - **2026-11-12** · wegobeyond.in moves to Next 16.4.3 like web and apex (critical audit fix). Deploy wegobeyond. (#646)
+- **2026-11-12** · One processing fee per plan (gateway included, no cap, no organiser fee), off until set in Apex › Plans; deals reduced to a fee (#648)
