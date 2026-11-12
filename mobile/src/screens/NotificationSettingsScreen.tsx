@@ -5,6 +5,7 @@ import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import PushService from '../services/PushService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
@@ -216,10 +217,11 @@ export default function NotificationSettingsScreen() {
   );
 
   // One toggle row: bare icon, label, native switch in the cosmos silver.
-  const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void, disabled = false) => (
+  // A glyph name, or a real mark (WhatsApp) drawn by BrandIcon.
+  const row = (icon: GlyphName | React.ReactElement, label: string, value: boolean, onToggle: () => void, disabled = false) => (
     <View style={disabled && styles.dim}>
       <SettingsRow
-        icon={<UnGlyph name={icon} size={28} color={c.text} />}
+        icon={typeof icon === 'string' ? <UnGlyph name={icon} size={28} color={c.text} /> : icon}
         label={label}
         trailing={sw(label, value, onToggle, disabled)}
       />
@@ -322,7 +324,7 @@ export default function NotificationSettingsScreen() {
               ? row('envelope-simple', 'Marketing email', notifs.marketingEmail, () => toggle('marketingEmail'))
               : null}
             {notifs.marketingWhatsapp != null
-              ? row('whatsapp-logo', 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
+              ? row(<BrandIcon brand="whatsapp" size={28} />, 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
               : null}
           </SettingsGroup>
           {notifs.spaceOptOuts.length ? (

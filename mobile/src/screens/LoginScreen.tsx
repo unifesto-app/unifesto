@@ -23,7 +23,6 @@ import {
   CheckCircle,
   EnvelopeSimple,
   WarningCircle,
-  WhatsappLogo,
   X,
 } from '@unifesto/unicon/react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -44,6 +43,7 @@ import { AppAlert } from '../components/ui/AppAlert';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
 import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { column } from '../theme/spacing';
+import BrandIcon from '../components/profile/BrandIcon';
 
 type LoginStep = 'email' | 'email-otp' | 'mobile' | 'mobile-otp';
 
@@ -634,7 +634,7 @@ export default function NewLoginScreen() {
             {isEmail ? (
               <EnvelopeSimple size={40} color={c.text} weight="light" />
             ) : (
-              <WhatsappLogo size={40} color={c.text} weight="light" />
+              <BrandIcon brand="whatsapp" size={40} />
             )}
           </View>
           <Text style={styles.title}>{isEmail ? 'Check your inbox' : 'Check WhatsApp'}</Text>
@@ -681,7 +681,7 @@ export default function NewLoginScreen() {
     <>
       <View style={styles.hero}>
         <View style={styles.badge}>
-          <WhatsappLogo size={40} color={c.text} weight="light" />
+          <BrandIcon brand="whatsapp" size={40} />
         </View>
         <Text style={styles.title}>Add your number</Text>
         <Text style={styles.lead}>

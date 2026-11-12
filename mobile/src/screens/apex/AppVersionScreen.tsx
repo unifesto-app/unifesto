@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { AndroidLogo, AppleLogo, ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
+import { ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
@@ -13,6 +13,7 @@ import { compareVersions } from '../../lib/appUpdate';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import BrandIcon from '../../components/profile/BrandIcon';
 
 /*
  * Apex "App Version" parity: per-store latest/minimum version + store URL that
@@ -24,9 +25,9 @@ const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const URL_RE = /^https?:\/\/\S+$/i;
 
 type Store = 'ios' | 'android';
-const STORES: { key: Store; title: string; Logo: typeof AppleLogo }[] = [
-  { key: 'ios', title: 'iOS · App Store', Logo: AppleLogo },
-  { key: 'android', title: 'Android · Play Store', Logo: AndroidLogo },
+const STORES: { key: Store; title: string; brand: 'apple' | 'android' }[] = [
+  { key: 'ios', title: 'iOS · App Store', brand: 'apple' },
+  { key: 'android', title: 'Android · Play Store', brand: 'android' },
 ];
 
 const sameStore = (a: StoreVersionPolicy, b: StoreVersionPolicy) =>
@@ -151,7 +152,7 @@ export default function AppVersionScreen() {
       keyboardDismissMode="interactive"
       footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} error={error} />}
     >
-        {STORES.map(({ key, title, Logo }) => (
+        {STORES.map(({ key, title, brand }) => (
           <SettingsGroup key={key} title={title}>
             <FormRow
               icon={<ArrowCircleUp size={ICON} color={c.text} />}
@@ -172,7 +173,7 @@ export default function AppVersionScreen() {
               trailing={hint('Minimum')}
             />
             <FormRow
-              icon={<Logo size={ICON} color={c.text} />}
+              icon={<BrandIcon brand={brand} size={ICON} />}
               value={draft[key].storeUrl}
               onChangeText={set(key, 'storeUrl')}
               placeholder="https://…"

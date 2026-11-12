@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Phone, PlusCircle, WhatsappLogo, X } from '@unifesto/unicon/react-native';
+import { Phone, PlusCircle, X } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
@@ -11,6 +11,7 @@ import { getStatsRecipients, updateStatsRecipients } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import BrandIcon from '../../components/profile/BrandIcon';
 
 /*
  * Apex "Stats recipients": the WhatsApp numbers that get the Unifesto Stats
@@ -131,7 +132,7 @@ export default function StatsRecipientsScreen() {
             draft.map((n) => (
               <SettingsRow
                 key={n}
-                icon={<WhatsappLogo size={ICON} color={c.text} />}
+                icon={<BrandIcon brand="whatsapp" size={ICON} />}
                 label={display(n)}
                 trailing={
                   <Pressable onPress={() => remove(n)} hitSlop={12} accessibilityRole="button" accessibilityLabel={`Remove ${display(n)}`}>

@@ -25,11 +25,11 @@ import { AppAlert } from '../components/ui/AppAlert';
 
 const MARK = 26;
 
-/** My links as their real marks; GitHub's mark is monochrome, so the glyph in text colour is the real one. */
+/** My links as their real marks (BrandIcon); a website has none, so it's a globe. */
 const LINKS: { key: keyof AuthAPI.User; label: string; mark: (color: string) => React.ReactNode }[] = [
   { key: 'linkedinUrl', label: 'LinkedIn', mark: () => <BrandIcon brand="linkedin" size={MARK} /> },
   { key: 'instagramUrl', label: 'Instagram', mark: () => <BrandIcon brand="instagram" size={MARK} /> },
-  { key: 'githubUrl', label: 'GitHub', mark: (color) => <UnGlyph name="github-logo" size={MARK} color={color} weight="fill" /> },
+  { key: 'githubUrl', label: 'GitHub', mark: () => <BrandIcon brand="github" size={MARK} /> },
   { key: 'websiteUrl', label: 'Website', mark: (color) => <UnGlyph name="globe" size={MARK} color={color} /> },
 ];
 
