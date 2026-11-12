@@ -1,5 +1,11 @@
 import { OrgPlan } from '@prisma/client';
 
+/**
+ * What the payment gateway (Razorpay) costs, as Unifesto passes it on: the
+ * floor of any processing fee and the "+ 2.5%" organisers see (12 Nov 2026).
+ */
+export const GATEWAY_FEE_PERCENT = 2.5;
+
 export interface PlanLimits {
   spaces: number | null;
   eventsPerMonth: number | null;
@@ -18,8 +24,13 @@ export interface PlanLimits {
   hasCertificates: boolean;
   /** Gates the sponsors & lead-generation feature (roster, leads, portal). */
   hasSponsors: boolean;
-  /** Organiser platform fee % per paid ticket (A9). Ships at 0: an admin sets it to go live. */
+  /** Organiser platform fee % per paid ticket (A9). Must be 0 once processingFeePercent is set. */
   platformFeePercent: number;
+  /**
+   * The one processing fee % per paid ticket, gateway included, no cap (12 Nov
+   * 2026). null = the old rate card (4% capped ₹99 + platformFeePercent).
+   */
+  processingFeePercent: number | null;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }
@@ -189,6 +200,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasCertificates: false,
     hasSponsors: false,
     platformFeePercent: 3,
+    processingFeePercent: null,
     monthlyPrice: 0,
     annualPrice: 0,
   },
@@ -208,6 +220,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasCertificates: true,
     hasSponsors: false,
     platformFeePercent: 3.5,
+    processingFeePercent: null,
     monthlyPrice: 0,
     annualPrice: 0,
   },
@@ -227,6 +240,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasCertificates: true,
     hasSponsors: true,
     platformFeePercent: 4,
+    processingFeePercent: null,
     monthlyPrice: 0,
     annualPrice: 0,
   },
@@ -246,6 +260,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasCertificates: true,
     hasSponsors: true,
     platformFeePercent: 4.5,
+    processingFeePercent: null,
     monthlyPrice: 0,
     annualPrice: 0,
   },
@@ -265,6 +280,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasCertificates: true,
     hasSponsors: true,
     platformFeePercent: 0,
+    processingFeePercent: null,
     monthlyPrice: null,
     annualPrice: null,
   },

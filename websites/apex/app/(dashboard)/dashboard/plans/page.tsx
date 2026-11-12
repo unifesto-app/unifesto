@@ -34,6 +34,7 @@ const NUM_FIELDS = [
   "monthlyPrice",
   "annualPrice",
   "platformFeePercent",
+  "processingFeePercent",
   "spaces",
   "eventsPerMonth",
   "attendeesPerEvent",
@@ -58,6 +59,10 @@ function toPatch(d: Draft) {
   const patch: Record<string, unknown> = { ...d.flags };
   for (const k of NUM_FIELDS) patch[k] = whole(d.nums[k]);
   patch.platformFeePercent = Math.min(100, Math.max(0, Number(d.nums.platformFeePercent) || 0));
+  // The one processing fee replaces the organiser fee, so it saves as 0 alongside.
+  const fee = d.nums.processingFeePercent.trim();
+  patch.processingFeePercent = fee === "" ? null : Math.min(100, Math.max(0, Number(fee) || 0));
+  if (patch.processingFeePercent != null) patch.platformFeePercent = 0;
   return patch;
 }
 
@@ -182,8 +187,18 @@ export default function PlansPage() {
                   <NumRow label="Monthly (₹)" hint="Empty = Custom" field="monthlyPrice" plans={plans} draft={draft} onChange={setNum} />
                   <NumRow label="Yearly (₹)" hint="Empty = Custom" field="annualPrice" plans={plans} draft={draft} onChange={setNum} />
                   <NumRow
+                    label="Processing fee per paid ticket (%)"
+                    hint="Includes the 2.5% payment gateway, no cap. Organisers see this one number. Empty = old fees below."
+                    field="processingFeePercent"
+                    step="0.25"
+                    placeholder="Old fees"
+                    plans={plans}
+                    draft={draft}
+                    onChange={setNum}
+                  />
+                  <NumRow
                     label="Organiser fee per paid ticket (%)"
-                    hint="New sales only. Separate from the buyer fee."
+                    hint="Old fees only. Saved as 0 once a processing fee is set."
                     field="platformFeePercent"
                     step="0.25"
                     plans={plans}
@@ -282,6 +297,7 @@ function NumRow({
   hint,
   field,
   step = "1",
+  placeholder,
   plans,
   draft,
   onChange,
@@ -290,6 +306,7 @@ function NumRow({
   hint?: string;
   field: NumField;
   step?: string;
+  placeholder?: string;
   plans: PlanInfo[];
   draft: Partial<Record<OrgPlan, Draft>>;
   onChange: (plan: OrgPlan, k: NumField, v: string) => void;
@@ -304,7 +321,7 @@ function NumRow({
             min={0}
             step={step}
             inputMode="decimal"
-            placeholder={field === "monthlyPrice" || field === "annualPrice" ? "Custom" : "∞"}
+            placeholder={placeholder ?? (field === "monthlyPrice" || field === "annualPrice" ? "Custom" : "∞")}
             aria-label={`${label}, ${PLAN_LABEL[p.plan]}`}
             value={draft[p.plan]?.nums[field] ?? ""}
             onChange={(e) => onChange(p.plan, field, e.target.value)}
@@ -369,7 +386,7 @@ function BuyerFeeCard() {
           <Percent className="h-4 w-4" weight="duotone" />
         </span>
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-foreground">Buyer fee</p>
+          <p className="text-sm font-medium text-foreground">Buyer fee (old fees)</p>
           {error ? (
             <ErrorNotice message={error} />
           ) : pct === null ? (
@@ -381,7 +398,7 @@ function BuyerFeeCard() {
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Paid by attendees on top of the ticket price, on every plan. Fixed platform-wide.
+            Only on plans without a processing fee: paid on top of the ticket price, next to the organiser fee.
           </p>
         </div>
       </CardContent>

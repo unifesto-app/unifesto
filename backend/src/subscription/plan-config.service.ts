@@ -1,9 +1,10 @@
-import { ForbiddenException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, OnModuleInit, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { OrgPlan, PlanConfig } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   FEATURE_LABELS,
+  GATEWAY_FEE_PERCENT,
   PLAN_LIMITS,
   PLAN_NAMES,
   PlanFeatureFlag,
@@ -95,6 +96,7 @@ export class PlanConfigService implements OnModuleInit {
       hasCertificates: row.hasCertificates,
       hasSponsors: row.hasSponsors,
       platformFeePercent: Number(row.platformFeePercent),
+      processingFeePercent: row.processingFeePercent == null ? null : Number(row.processingFeePercent),
       monthlyPrice: row.monthlyPrice,
       annualPrice: row.annualPrice,
     };
@@ -207,7 +209,11 @@ export class PlanConfigService implements OnModuleInit {
     plan: OrgPlan,
     patch: Partial<PlanLimits>,
   ): Promise<PlanLimits & { plan: OrgPlan }> {
-    const merged: PlanLimits = { ...this.getLimits(plan), ...patch };
+    // A DTO carries every field it leaves out as undefined: drop those, or they
+    // would wipe the cached value (and slip past assertOneFee).
+    const given = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const merged: PlanLimits = { ...this.getLimits(plan), ...given };
+    assertOneFee(merged);
     const data = {
       spaces: merged.spaces,
       eventsPerMonth: merged.eventsPerMonth,
@@ -224,6 +230,7 @@ export class PlanConfigService implements OnModuleInit {
       hasCertificates: merged.hasCertificates,
       hasSponsors: merged.hasSponsors,
       platformFeePercent: merged.platformFeePercent,
+      processingFeePercent: merged.processingFeePercent,
       monthlyPrice: merged.monthlyPrice,
       annualPrice: merged.annualPrice,
     };
@@ -235,6 +242,21 @@ export class PlanConfigService implements OnModuleInit {
     this.cache.set(plan, merged);
     await this.bumpReplicas();
     return { plan, ...merged };
+  }
+}
+
+/**
+ * A plan on the one processing fee (12 Nov 2026) can't also charge the
+ * organiser fee: the stamp triggers read platformFeePercent, so a non-zero one
+ * would take the fee twice. The rate covers the payment gateway at least.
+ */
+export function assertOneFee(l: Pick<PlanLimits, 'platformFeePercent' | 'processingFeePercent'>) {
+  if (l.processingFeePercent == null) return;
+  if (l.platformFeePercent !== 0) {
+    throw new BadRequestException('Set the organiser fee to 0 to use one processing fee');
+  }
+  if (l.processingFeePercent < GATEWAY_FEE_PERCENT) {
+    throw new BadRequestException(`The processing fee can't be below the ${GATEWAY_FEE_PERCENT}% payment gateway`);
   }
 }
 

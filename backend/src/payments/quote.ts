@@ -3,10 +3,10 @@
  * builds the full terms; quote() only needs the buyer fee.
  */
 export interface FeeTerms {
-  /** Buyer fee in basis points (500 = 5%). */
+  /** Buyer fee in basis points (500 = 5%): on a one-fee plan, the whole fee. */
   buyerFeeBps: number;
-  /** Most the buyer fee can be per ticket, in paise (D11: 9900). */
-  buyerFeeCapPaise: number;
+  /** Most the buyer fee can be per ticket, in paise (D11: 9900); null = no cap (one-fee plans). */
+  buyerFeeCapPaise: number | null;
   /** Organiser platform fee in basis points, when known (shown, never charged here). */
   organiserFeeBps?: number;
 }
@@ -52,7 +52,9 @@ export function quote(
   );
   const listed = listedPaise - discount;
   const cap =
-    terms.buyerFeeCapPaise * Math.max(1, Math.trunc(opts.tickets ?? 1));
+    terms.buyerFeeCapPaise == null
+      ? Infinity
+      : terms.buyerFeeCapPaise * Math.max(1, Math.trunc(opts.tickets ?? 1));
   const fee = opts.absorb
     ? Math.min(
         mulDivRound(listed, terms.buyerFeeBps, 10_000 + terms.buyerFeeBps),
