@@ -6,7 +6,7 @@ import { CalendarBlank } from "@unifesto/unicon/react";
 import type { EventAccessEntry } from "@/console/lib/types/rbac";
 import { cn } from "@/console/lib/utils/cn";
 import { QuestionsLink } from "./QuestionsLink";
-import { BackLink, NAV_ITEM_ACTIVE } from "./SpaceNav";
+import { NAV_ITEM_ACTIVE } from "./SpaceNav";
 
 interface EventAccessNavProps {
   events: EventAccessEntry[];
@@ -24,7 +24,6 @@ export function EventAccessNav({ events, onNavigate, collapsed = false }: EventA
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
-      <BackLink href="/console/spaces" label="My Spaces" collapsed={collapsed} onNavigate={onNavigate} />
       <QuestionsLink collapsed={collapsed} onNavigate={onNavigate} />
       {!collapsed && (
         <p className="mb-2 px-3 text-xs font-medium text-muted-foreground">
