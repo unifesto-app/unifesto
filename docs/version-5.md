@@ -1195,3 +1195,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-12** · One processing fee per plan (gateway included, no cap, no organiser fee), off until set in Apex › Plans; deals reduced to a fee (#648)
 - **2026-11-12** · Checkout shows each event's own fee (mobile reads ?eventId terms); buyers see "Processing fee" / "PF included", never a %; web checkout total fixed for coupons and included fees (#649)
 - **2026-11-12** · Unifesto sets who pays the processing fee per space (Apex); organisers see one fee number; /pricing shows "up to X%" on the one fee; attendee FAQs drop the % (#651)
+- **2026-11-12** · Console: a space switcher at the top of every sidebar; any space is 2 clicks from any console page (Q43) (#652)
