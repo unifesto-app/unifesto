@@ -116,7 +116,7 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
   Hanken SemiBold, sentence case, with no blurb under them.
-- **Row lists** (Profile, Settings and its pages, every list on Home (From my spaces or the featured
+- **Row lists** (Profile and its settings pages, every list on Home (From my spaces or the featured
   space, Happening near you by day, My shortlist, Manage), the Spaces page, About, the Space tab,
   Apex "Waiting on me"): rows
   straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
@@ -152,13 +152,6 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
 - **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
   Glyphs take `c.text`, `c.muted` or the card's accent.
-- **One exception, Profile and Settings rows** (owner, 13 Nov 2026: "squared color icons, apple
-  icons"): `IconTile`, a solid rounded square (30pt, radius 7, continuous corner) in the deep shade
-  of its row's tone with a white glyph, like iOS Settings. iOS draws the real SF Symbol
-  (`expo-symbols`), Android its Unicon twin. Every row's symbol and tone live in `TILES`
-  (components/profile/IconTile). The Profile header's Edit pencil is the same `SystemGlyph`, bare.
-  Nowhere else; other lists keep bare glyphs, and on these two pages the tile replaces the row
-  glyph accents of §5 (an action row keeps its sky label).
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
 - **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.

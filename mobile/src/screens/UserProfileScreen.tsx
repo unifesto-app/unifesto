@@ -38,8 +38,8 @@ const toUrl = (raw: string) => (/^https?:\/\//i.test(raw) ? raw : `https://${raw
 
 /**
  * "View profile": the signed-in user's own profile as others would see it.
- * The centred identity (IdentityHeader, numbers in a hairline band; the
- * Profile tab shows a compact row instead) with my links as bare brand marks, then what I'm going to,
+ * The same identity as the Profile tab (centred on the page, numbers in a
+ * hairline band) with my links as bare brand marks, then what I'm going to,
  * where I've been and the spaces I'm in.
  */
 export default function UserProfileScreen() {
