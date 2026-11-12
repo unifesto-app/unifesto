@@ -1197,3 +1197,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-12** · Unifesto sets who pays the processing fee per space (Apex); organisers see one fee number; /pricing shows "up to X%" on the one fee; attendee FAQs drop the % (#651)
 - **2026-11-12** · Console: a space switcher at the top of every sidebar; any space is 2 clicks from any console page (Q43) (#652)
 - **2026-11-12** · K20 events can register on another site (outside link, no tickets) + Register link, button and QR for organisers' own sites (#647)
+- **2026-11-12** · K21 popup checkout script (embed.js) and an embeddable event card for organisers' own sites (#650)
