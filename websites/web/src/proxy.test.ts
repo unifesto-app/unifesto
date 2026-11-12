@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { SITE } from "@/lib/site";
 
 // No network: the custom-domain and event lookups are faked. Each test file runs in its own process.
 const calls: string[] = [];
@@ -23,10 +24,17 @@ test("own hosts pass, the bare domain goes to www", async () => {
 });
 
 test("an iPhone app link the app didn't catch goes to the App Store", async () => {
+  const iphone = { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15" };
+  const at = async (url: string, headers?: Record<string, string>) => (await proxy(new NextRequest(url, { headers }))).headers;
   for (const url of ["https://www.unifesto.app/event/x?utm_source=wa&app=1", "https://unifesto.app/event/x?app=1"]) {
-    assert.match((await run(url)).headers.get("location") ?? "", /^https:\/\/apps\.apple\.com\//, url);
+    assert.equal((await at(url, iphone)).get("location"), SITE.appStore, url);
   }
-  assert.equal((await run("https://www.unifesto.app/event/x?app=0")).headers.get("x-middleware-next"), "1");
+  // The same link copied to another device: its page, without the marker.
+  assert.equal((await at("https://www.unifesto.app/event/x?utm_source=wa&app=1")).get("location"), "https://www.unifesto.app/event/x?utm_source=wa");
+  assert.equal((await at("https://www.unifesto.app/space/acme?app=1")).get("location"), "https://www.unifesto.app/space/acme");
+  assert.equal((await at("https://www.unifesto.app/event/x?app=0", iphone)).get("x-middleware-next"), "1");
+  // App links still read the AASA.
+  assert.equal((await at("https://www.unifesto.app/.well-known/apple-app-site-association?app=1", iphone)).get("x-middleware-next"), "1");
 });
 
 test("a custom domain serves only its space (H7)", async () => {
