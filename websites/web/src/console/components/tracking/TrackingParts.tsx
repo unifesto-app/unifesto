@@ -8,6 +8,7 @@ import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
 import { DEFAULT_BUTTON, registerButtonHtml, type ButtonLook, type ButtonShape } from "@/console/lib/register-button";
+import { safeReturnUrl } from "@/lib/utm";
 
 export const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -143,7 +144,8 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
   const [look, setLook] = useState<ButtonLook>(DEFAULT_BUTTON);
   const setLookField = <K extends keyof ButtonLook>(k: K, v: ButtonLook[K]) => setLook((l) => ({ ...l, [k]: v }));
   const s = tag(site);
-  const back = /^https:\/\/[^\s]+\.[^\s]+$/i.test(page.trim()) ? page.trim() : "";
+  // Same rule the register page applies, so a link we hand out always gets its Back button.
+  const back = safeReturnUrl(page.trim())?.href ?? "";
   const link = s
     ? withUtm(registerUrl, s, "website", tag(campaign) || undefined) + (back ? `&return=${encodeURIComponent(back)}` : "")
     : "";

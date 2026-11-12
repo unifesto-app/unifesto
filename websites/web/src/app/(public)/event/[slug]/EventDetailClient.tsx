@@ -594,9 +594,10 @@ export default function EventDetailClient({ event, buyerFee }: Props) {
               View my ticket
             </Link>
           ) : outside ? (
+            // The bar's value names the host; a host in the label overflows phones.
             <a href={outside.href} target="_blank" rel="noopener noreferrer nofollow" className="btn btn-lg btn-primary shrink-0">
               <ArrowSquareOut weight="bold" className="h-5 w-5" aria-hidden />
-              Register on {outside.host}
+              Register
             </a>
           ) : isUmbrella ? (
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">

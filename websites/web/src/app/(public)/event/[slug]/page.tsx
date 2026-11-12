@@ -4,7 +4,7 @@ import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { preload } from "react-dom";
-import { getEventBySlug as fetchEvent, registrationState, UnavailableError, type Event } from "@/lib/api/events";
+import { getEventBySlug as fetchEvent, outsideRegistration, registrationState, UnavailableError, type Event } from "@/lib/api/events";
 import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
@@ -131,6 +131,7 @@ function eventLd(event: Event) {
   const virtual = { "@type": "VirtualLocation", url };
   // What the Register button would say, never a blanket InStock. A sale that
   // has ended (not sold out) has no honest schema.org value, so it's omitted.
+  const outside = outsideRegistration(event);
   const availability = {
     open: "https://schema.org/InStock",
     upcoming: "https://schema.org/PreOrder",
@@ -159,14 +160,17 @@ function eventLd(event: Event) {
     organizer: host
       ? { "@type": "Organization", name: host.name, url: domain ? `${base}/` : host.slug ? `${SITE.url}/space/${host.slug}` : undefined }
       : { "@type": "Organization", name: SITE.name, url: SITE.url },
-    offers: {
-      "@type": "Offer",
-      url,
-      price: event.is_free || event.has_free_tickets ? 0 : (event.price ?? 0),
-      priceCurrency: event.currency || "INR",
-      availability,
-      validFrom: event.registration_start,
-    },
+    // Registration on another site: point there, with no price we can't know.
+    offers: outside
+      ? { "@type": "Offer", url: outside.href, availability }
+      : {
+          "@type": "Offer",
+          url,
+          price: event.is_free || event.has_free_tickets ? 0 : (event.price ?? 0),
+          priceCurrency: event.currency || "INR",
+          availability,
+          validFrom: event.registration_start,
+        },
   };
 }
 

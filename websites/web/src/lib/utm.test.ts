@@ -71,6 +71,11 @@ test("safeReturnUrl refuses anything that isn't a plain https page", () => {
     "https://user:pw@wegobeyond.in",
     "https://localhost/x",
     "https://intranet/x",
+    "https://localhost./x",
+    "https://printer.local/x",
+    "https://10.0.0.5/x",
+    "https://[::1]/x",
+    `https://${"a".repeat(55)}.evil.com/`,
     `https://wegobeyond.in/${"a".repeat(500)}`,
   ]) {
     assert.equal(safeReturnUrl(raw), null, String(raw));

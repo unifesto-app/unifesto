@@ -223,13 +223,15 @@ export function useEventDetail(eventId: string | undefined) {
   const outside = outsideRegistration(event?.externalRegistrationUrl);
 
   // A ticket holder always gets "View my ticket", even once the rest sell out.
+  // Same order as the web event page: my ticket, then the outside site, then a
+  // hub's sub-events (an umbrella owns no tickets of its own, so holders can't be one).
   const registerMode: RegisterMode =
-    bigEventMode === 'umbrella'
-      ? 'umbrella'
-      : ownsAnyTicket
-        ? 'registered'
-        : outside
-          ? 'external'
+    ownsAnyTicket
+      ? 'registered'
+      : outside
+        ? 'external'
+        : bigEventMode === 'umbrella'
+          ? 'umbrella'
           : unavailable
           ? unavailable
           : !user
@@ -331,13 +333,15 @@ export function useEventDetail(eventId: string | undefined) {
     if (!event) return;
     const when = new Date(event.startDateTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     const where = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : '');
-    const message = `${event.title}\n${[when, where].filter(Boolean).join(' · ')}\n${isFree ? 'Free' : priceDisplay}\n\nRegister on Unifesto`;
+    // An event that registers elsewhere has no price here and isn't registered on Unifesto.
+    const entry = outside ? `Register on ${outside.host}` : `${isFree ? 'Free' : priceDisplay}\n\nRegister on Unifesto`;
+    const message = `${event.title}\n${[when, where].filter(Boolean).join(' · ')}\n${entry}`;
     await shareLink({
       message,
       url: withUtm(eventUrl(event), { source: 'unifesto_app', medium: 'share', campaign: 'event_share' }),
       title: event.title,
     });
-  }, [event, isFree, priceDisplay]);
+  }, [event, isFree, priceDisplay, outside]);
 
   const copyLink = useCallback(async () => {
     if (!event) return;

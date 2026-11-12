@@ -245,7 +245,7 @@ export class RegistrationCheckoutService {
       id: string;
       spaceId: string;
       visibility: EventVisibility;
-      externalRegistrationUrl?: string | null;
+      externalRegistrationUrl: string | null;
       space?: { name: string } | null;
     },
     userId: string,

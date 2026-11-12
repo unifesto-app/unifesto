@@ -27,9 +27,10 @@ export function safeReturnUrl(raw: string | null | undefined): { href: string; h
   if (!raw || raw.length > 500) return null;
   try {
     const url = new URL(raw);
-    const host = url.hostname;
+    // "localhost." is localhost; a name this long could hide its real domain in the button.
+    const host = url.hostname.replace(/\.$/, "");
     if (url.protocol !== "https:" || url.username || url.password) return null;
-    if (!host.includes(".") || host.endsWith(".localhost")) return null;
+    if (!host.includes(".") || host.length > 60 || PRIVATE_HOST.test(host)) return null;
     url.hash = "";
     return { href: url.toString(), host: host.replace(/^www\./, "") };
   } catch {
@@ -38,6 +39,9 @@ export function safeReturnUrl(raw: string | null | undefined): { href: string; h
 }
 
 /** "/event/x" or "/event/x/register" → "x". */
+/** IP literals and names that only resolve inside someone's own network. */
+const PRIVATE_HOST = /^\[|^[\d.]+$|\.(localhost|local|lan|internal|home|corp|intranet)$/i;
+
 const eventSlugOf = (path: string) => /^\/event\/([^/]+)/.exec(path)?.[1] ?? null;
 
 /** The return link captured on landing on this event's pages, if any. */

@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { buildRegistrationsService } from '../registrations/registrations.testing';
 import {
   assertNoOutsideLink,
   OUTSIDE_LINK_TICKETS_MESSAGE,
@@ -25,6 +26,10 @@ describe('resolveExternalRegistrationUrl', () => {
     ['forms.gle/x', 'full registration link'],
     ['https://user:pass@forms.gle/x', 'username or password'],
     ['https://localhost/x', 'public website'],
+    ['https://localhost./x', 'public website'],
+    ['https://intranet./x', 'public website'],
+    ['https://printer.local/x', 'public website'],
+    ['https://nas.lan/x', 'public website'],
     ['https://intranet/x', 'public website'],
     ['https://127.0.0.1/x', 'public website'],
     ['https://169.254.169.254/latest', 'public website'],
@@ -82,5 +87,41 @@ describe('an event has an outside link or active tickets, never both', () => {
       OUTSIDE_LINK_TICKETS_MESSAGE,
     );
     expect(prisma.eventTicketType.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('self-registration refuses an event that registers elsewhere', () => {
+  // Same harness as age-confirmation.z11.spec.ts: stop right after the gates.
+  const order = (externalRegistrationUrl: string | null) => {
+    const prisma: any = {
+      event: {
+        findUnique: jest.fn(async () => ({
+          id: 'ev-1',
+          spaceId: 'sp-1',
+          visibility: 'PUBLIC',
+          status: 'DRAFT',
+          externalRegistrationUrl,
+          ticketTypes: [],
+          registrations: [],
+          space: { status: 'ACTIVE' },
+        })),
+      },
+      space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) },
+      platformConfig: { findUnique: jest.fn(async () => null) },
+    };
+    const svc = buildRegistrationsService(
+      prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+      {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any,
+      {} as any, {} as any, { can: async () => true } as any,
+    );
+    return svc.createPaymentOrder('ev-1', 'buyer', { ticketTypeId: 'tt-1', quantity: 1 } as any);
+  };
+
+  it('refuses before anything else when the link is set', async () => {
+    await expect(order('https://forms.gle/x')).rejects.toThrow("Registration for this event is on the organiser's site.");
+  });
+
+  it('lets an ordinary event through to its next check', async () => {
+    await expect(order(null)).rejects.toThrow('Event is not open for registration');
   });
 });

@@ -359,10 +359,10 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             ) : (
               <Fact
                 icon={<Ticket size={ICON} color={c.sky} />}
-                title={priceLine}
+                title={d.outside ? `Registration on ${d.outside.host}` : priceLine}
                 color={c.sky}
-                sub={d.canAddTicket ? 'Add another ticket' : d.feeNote}
-                onPress={d.canAddTicket ? d.addTicket : undefined}
+                sub={d.outside ? 'Tickets and payment are handled on that site.' : d.canAddTicket ? 'Add another ticket' : d.feeNote}
+                onPress={d.outside ? d.handleRegister : d.canAddTicket ? d.addTicket : undefined}
               />
             )}
 

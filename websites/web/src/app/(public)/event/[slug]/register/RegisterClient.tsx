@@ -419,7 +419,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           Open My tickets in the app
         </button>
         {returnTo && (
-          <a href={returnTo.href} className="btn btn-lg btn-secondary mt-3 w-full">
+          <a href={returnTo.href} rel="noreferrer" className="btn btn-lg btn-secondary mt-3 h-auto w-full whitespace-normal break-all">
             Back to {returnTo.host}
           </a>
         )}

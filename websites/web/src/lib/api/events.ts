@@ -255,8 +255,9 @@ export function mapSubEvent(
     city: r.city as string | undefined,
     event_type: (r.type ?? r.event_type) as string | undefined,
     status: r.status as string | undefined,
-    // Free only when there are tickets and none is paid.
-    is_free: hasTickets ? !hasPaidTickets : (r.isFree as boolean | undefined),
+    // Free only when there are tickets and none is paid. An event that registers
+    // on another site has no tickets here, so its price is unknown, never "Free".
+    is_free: hasTickets ? !hasPaidTickets : r.externalRegistrationUrl ? undefined : (r.isFree as boolean | undefined),
     price: minPrice,
     has_free_tickets: hasPaidTickets && prices.some((p) => p === 0),
     currency: ticketTypes[0]?.currency as string | undefined,
@@ -310,9 +311,13 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
   const minPrice = hasPaidTickets ? Math.min(...paidPrices) : undefined;
   // Free only when there are ticket types and NONE of them is paid. With no
   // ticket data, fall back to the (unreliable) event-level flag.
+  // An event that registers on another site has no tickets here: its price is
+  // unknown, so it is never "Free" (cards, the free filter, JSON-LD).
   const isFree = hasTickets
     ? !hasPaidTickets
-    : ((r.isFree ?? r.is_free ?? true) as boolean);
+    : r.externalRegistrationUrl
+      ? false
+      : ((r.isFree ?? r.is_free ?? true) as boolean);
   const minTicket = hasPaidTickets
     ? ticketTypes.find((t) => parseFloat(String(t.price)) === minPrice)
     : undefined;

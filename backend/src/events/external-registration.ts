@@ -9,9 +9,18 @@ import { isBlockedAddress } from './event-draft';
  *
  * An event has either this link or active ticket types, never both, so no
  * registration path can sell a seat on an event that registers elsewhere.
+ * Self-registration, the waiting list (join and offers) and paid extra seats
+ * also check the link. Still allowed on purpose: an organiser's manual add
+ * and CSV import (bringing outside sign-ups in), and settling a payment that
+ * was already captured.
+ * ponytail: the ticket count and the link write aren't one transaction, so a
+ * ticket created in the same instant can slip in; lock the event row if that
+ * ever happens.
  */
 
 const MAX_LENGTH = 2000;
+/** Names that only resolve inside someone's own network. */
+const PRIVATE_SUFFIX = /\.(localhost|local|lan|internal|home|corp|intranet)$/i;
 
 /**
  * DTO value → column value. Undefined leaves the column alone, blank clears
@@ -31,8 +40,9 @@ export function resolveExternalRegistrationUrl(raw: string | null | undefined): 
   }
   if (url.protocol !== 'https:') throw new BadRequestException('The registration link must start with https://');
   if (url.username || url.password) throw new BadRequestException('The registration link cannot contain a username or password');
-  const host = url.hostname.replace(/^\[|\]$/g, '');
-  if (!host.includes('.') || host.endsWith('.localhost') || (isIP(host) && isBlockedAddress(host))) {
+  // "localhost." and "intranet." are the same names with a trailing dot.
+  const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (!host.includes('.') || PRIVATE_SUFFIX.test(host) || (isIP(host) && isBlockedAddress(host))) {
     throw new BadRequestException('The registration link must be a public website');
   }
   return url.toString();

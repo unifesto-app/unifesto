@@ -268,6 +268,7 @@ export class EventsService {
     venueName: true,
     city: true,
     isFree: true,
+    externalRegistrationUrl: true,
     capacity: true,
     registeredCount: true,
     deletedAt: true,
