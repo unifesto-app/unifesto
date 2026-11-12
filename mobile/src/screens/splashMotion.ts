@@ -205,39 +205,22 @@ const GLASS_EXIT: Track = { i: REST, s: [[S, 1, 1.6, 0.92, 0.5, P3I, 0]] };
 const GROUND_EXIT: Track = { i: REST, s: [[A, 1, 0, 1.0, 0.3, P1I, 0]] };
 
 /**
- * The loader's order, drawn once at mount: a random letter each time, never
- * the i, never the same one twice running. Long enough to outlast the 12s cap.
+ * The loader's next letter: a random one each time, never the i, never the
+ * one that just went.
  */
-export function swapSequence(n = 40, random: () => number = Math.random): number[] {
-  const pool = [0, 1, 3, 4, 5, 6, 7];
-  const seq: number[] = [];
-  while (seq.length < n) {
-    const choices = pool.filter((k) => k !== seq[seq.length - 1]);
-    seq.push(choices[Math.floor(random() * choices.length)]);
-  }
-  return seq;
+export function nextSwap(last: number, random: () => number = Math.random): number {
+  const choices = [0, 1, 3, 4, 5, 6, 7].filter((k) => k !== last);
+  return choices[Math.floor(random() * choices.length)];
 }
 
-/** Seconds into letter `i`'s current swap, or -1 when it isn't swapping. */
-function swapLocal(i: number, loop: number, seq: number[]): number {
+/**
+ * A letter during its swap, `local` seconds in (idle below 0 or from SWAP_LEN):
+ * [translateY, opacity]. It lifts out, waits for its prop, drops back in.
+ * Each letter has its own swap clock, so only the letters swapping move.
+ */
+function swapLetter(local: number): number[] {
   'worklet';
-  if (loop <= 0) return -1;
-  const k = Math.floor(loop / LOOP_EVERY);
-  // A swap outlasts its slot, so the previous slot's letter may still be landing.
-  for (let back = 0; back < 2; back++) {
-    const slot = k - back;
-    if (slot < 0) break;
-    const local = loop - slot * LOOP_EVERY;
-    if (seq[slot % seq.length] === i && local < SWAP_LEN) return local;
-  }
-  return -1;
-}
-
-/** Letter `i` during the loader: [translateY, opacity]. It lifts out, waits for its prop, drops back in. */
-function swapLetter(i: number, loop: number, seq: number[]): number[] {
-  'worklet';
-  const local = swapLocal(i, loop, seq);
-  if (local < 0) return [0, 1];
+  if (local < 0 || local >= SWAP_LEN) return [0, 1];
   if (local < 0.2) {
     const p = ease(P2I, 0, local / 0.2);
     return [-16 * p, 1 - p];
@@ -247,11 +230,10 @@ function swapLetter(i: number, loop: number, seq: number[]): number[] {
   return [16 - 16 * p, Math.min(Math.max(p, 0), 1)];
 }
 
-/** Letter `i`'s swap prop during the loader: [scale, rotate]. */
-function swapProp(i: number, loop: number, seq: number[]): number[] {
+/** A swap prop, `local` seconds into its letter's swap: [scale, rotate]. */
+export function swapPropFrame(local: number): number[] {
   'worklet';
-  const local = swapLocal(i, loop, seq);
-  if (local < 0.15) return [0, -60];
+  if (local < 0.15 || local >= SWAP_LEN) return [0, -60];
   if (local < 0.45) {
     const p = ease(BACK, 2.2, (local - 0.15) / 0.3);
     return [p, -60 + 60 * p];
@@ -261,17 +243,21 @@ function swapProp(i: number, loop: number, seq: number[]): number[] {
   return [1 - p, 60 * p];
 }
 
-/** Letter `i` at the three clocks: [x, y, scale, scaleY, rotate, opacity]. */
-export function letterFrame(i: number, t: number, loop: number, out: number, seq: number[]): number[] {
+/**
+ * Letter `i` at its clocks: the intro `t`, its own swap clock `swap` (seconds
+ * into its current swap; idle below 0), and the exit `out`.
+ * Returns [x, y, scale, scaleY, rotate, opacity].
+ */
+export function letterFrame(i: number, t: number, swap: number, out: number): number[] {
   'worklet';
   const v = evalTrack(LETTER_INTRO[i], t);
-  if (loop > 0) {
-    const w = swapLetter(i, loop, seq);
+  if (swap >= 0) {
+    const w = swapLetter(swap);
     v[Y] = w[0];
     v[A] = w[1];
   }
   if (out > 0) {
-    // A letter caught mid-swap settles first.
+    // A letter still landing settles first (the loader winds down before the exit, so this is a safety net).
     const settle = ease(P1O, 0, phase(out, 0, 0.12));
     v[Y] = v[Y] * (1 - settle);
     v[A] = v[A] + (1 - v[A]) * settle;
@@ -288,14 +274,6 @@ export function letterFrame(i: number, t: number, loop: number, out: number, seq
 export function introPropFrame(k: number, t: number): number[] {
   'worklet';
   return evalTrack(INTRO_PROPS[k].track, t);
-}
-
-/** Letter `i`'s swap prop: [scale, rotate]; it goes with the exit's settle. */
-export function swapPropFrame(i: number, loop: number, out: number, seq: number[]): number[] {
-  'worklet';
-  const v = swapProp(i, loop, seq);
-  if (out > 0) v[0] *= 1 - ease(P2I, 0, phase(out, 0, 0.12));
-  return v;
 }
 
 /** The footer's opacity. */

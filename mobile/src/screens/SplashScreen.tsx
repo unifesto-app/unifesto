@@ -1,12 +1,11 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Easing,
-  ReduceMotion,
-  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -24,9 +23,11 @@ import {
   INTRO_END,
   INTRO_PROPS,
   LETTERS,
+  LOOP_EVERY,
   MARK_H,
   MARK_W,
   ORIGIN,
+  SWAP_LEN,
   SWAP_PROPS,
   footerOpacity,
   glassFrame,
@@ -34,8 +35,8 @@ import {
   groundOpacity,
   introPropFrame,
   letterFrame,
+  nextSwap,
   swapPropFrame,
-  swapSequence,
   type PropShape,
 } from './splashMotion';
 
@@ -47,14 +48,20 @@ interface SplashScreenProps {
 
 /** On screen at least this long from mount, even if auth is instant. */
 const HOLD_MS = 2600;
-/** Home mounts this long before the exit starts, so its first render lands in the hold, not the motion. */
+/** Home mounts this long before the exit starts, while nothing moves but the faint sheen. */
 const SETTLE_MS = 350;
-/** Never stuck: leave by this time even if auth never loads. */
-const CAP_MS = 12000;
+/**
+ * Never stuck: leave by this time even if auth never loads. Auth's own
+ * timeouts (15s, plus 15s for a token refresh) end well before; the launch
+ * route shows a spinner if it ever outlasts the splash.
+ */
+const CAP_MS = 30000;
 /** Wait this long at most for the letter images before starting (they are bundled; it is a few ms). */
 const IMAGE_WAIT_MS = 300;
-/** The loader's clock runs this far at most; the cap ends the splash long before. */
-const LOOP_MAX = 30;
+/** The others have joined the u by this point in the exit; their clock stops there so they stop redrawing. */
+const COLLAPSE_END = 0.66;
+/** The JS fallback finishes the handover this long after the exit's own end, if its callback was lost. */
+const FALLBACK_MS = 2000;
 /** The display's corner radius, roughly, so the glass rims follow the screen. */
 const GLASS_RADIUS = 54;
 
@@ -144,11 +151,17 @@ const snap = PixelRatio.roundToNearestPixel;
  * the centre, and zooms through its opening into Home, which is already
  * mounted underneath.
  *
- * All motion is a pure function of three UI-thread clocks (`splashMotion.ts`),
- * transforms and opacity only. The JS side only decides when to start, when
- * Home may mount and when to leave, with timers that guarantee it leaves.
+ * All motion is a pure function of UI-thread clocks (`splashMotion.ts`),
+ * transforms and opacity only, and only what is moving redraws: the intro's
+ * clock stops when it settles, each letter has its own swap clock, and the
+ * others' exit clock stops once they have joined the u. The JS side only
+ * decides when things start, with flags set by timers, so it always leaves.
+ *
+ * The order: intro (2.3s) → while auth loads, a swap every 0.9s → once auth
+ * has loaded no new swap starts → when the last one has landed, Home mounts
+ * underneath (everything still) → 350ms later, and never before 2.6s, the exit.
  */
-export default function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
+function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
   // Follows the OS, not the in-app theme: the native launch frame before it can
   // only follow the OS, so matching it keeps the handoff seamless.
   const c = cosmosFor(launchScheme);
@@ -156,24 +169,43 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   const screen = useWindowDimensions();
   const [size, setSize] = useState({ w: screen.width, h: screen.height });
   const insets = useSafeAreaInsets();
-  const [seq] = useState(() => swapSequence());
+  // With reduced motion the intro and exit jump to their ends (Reanimated follows
+  // the system setting) and the loader stays off.
+  const reduced = useReducedMotion();
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
 
   const t = useSharedValue(0);
-  const loop = useSharedValue(0);
   const out = useSharedValue(0);
+  const collapse = useSharedValue(0);
   const sheen = useSharedValue(0);
+  // One swap clock per letter (seconds into its swap; idle below 0). The i never swaps.
+  const swaps = [
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+  ];
 
   const live = useRef({
-    mountedAt: Date.now(),
     started: false,
     introDone: false,
     held: false,
-    gateAt: 0,
+    authReady: shouldExit,
+    capped: false,
+    winding: false,
+    gate: false,
+    settled: false,
     exiting: false,
     done: false,
-    authReady: shouldExit,
-    reduced: false,
     loaded: 0,
+    last: -1,
+    lastSwapAt: 0,
+    swapTimer: null as ReturnType<typeof setTimeout> | null,
   });
   const onDone = useRef(onAnimationComplete);
   onDone.current = onAnimationComplete;
@@ -186,6 +218,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
     const s = live.current;
     if (s.done) return;
     s.done = true;
+    if (s.swapTimer) clearTimeout(s.swapTimer);
     launchGate.set({ appMayMount: true, done: true });
     onDone.current?.();
   }, []);
@@ -194,44 +227,73 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
     const s = live.current;
     if (s.exiting) return;
     s.exiting = true;
-    cancelAnimation(loop); // freezes any swap mid-way; the exit settles it
     out.value = withTiming(EXIT_END, { duration: EXIT_END * 1000, easing: Easing.linear }, (ok) => {
       if (ok) runOnJS(finish)();
     });
+    collapse.value = withTiming(COLLAPSE_END, { duration: COLLAPSE_END * 1000, easing: Easing.linear });
     // If the UI thread's callback is ever lost (cancelled, backgrounded), leave anyway.
-    later(EXIT_END * 1000 + 700, finish);
+    later(EXIT_END * 1000 + FALLBACK_MS, finish);
   };
 
-  // Home mounts once the intro has settled and auth has loaded (or the cap is
-  // hit); the exit follows SETTLE_MS later, and never before the hold is over.
   const tick = () => {
     const s = live.current;
-    if (s.exiting) return;
-    const capped = Date.now() - s.mountedAt >= CAP_MS;
-    if (!s.gateAt && ((s.introDone && s.authReady) || capped)) {
-      s.gateAt = Date.now();
-      launchGate.set({ appMayMount: true });
-      later(SETTLE_MS, tick);
-    }
-    if (s.gateAt && ((s.held && Date.now() - s.gateAt >= SETTLE_MS) || capped)) startExit();
+    if (!s.exiting && s.gate && s.settled && s.held) startExit();
+  };
+
+  // Home mounts now, while the letters are still; the exit waits SETTLE_MS for its first render.
+  const openGate = () => {
+    const s = live.current;
+    s.gate = true;
+    launchGate.set({ appMayMount: true });
+    later(SETTLE_MS, () => {
+      s.settled = true;
+      tick();
+    });
+  };
+
+  // Auth has loaded (or the cap is hit): no new swap starts, and the gate
+  // opens once the last one has landed.
+  const windDown = () => {
+    const s = live.current;
+    if (s.winding || !s.introDone) return;
+    s.winding = true;
+    if (s.swapTimer) clearTimeout(s.swapTimer);
+    s.swapTimer = null;
+    const landing = s.lastSwapAt ? Math.max(0, s.lastSwapAt + SWAP_LEN * 1000 - Date.now()) : 0;
+    later(landing + 30, openGate);
+  };
+
+  // The loader: a random letter (never the i, never twice running) swaps for its prop every LOOP_EVERY.
+  const swapNext = () => {
+    const s = live.current;
+    s.swapTimer = null;
+    if (s.winding || reducedRef.current) return;
+    const i = nextSwap(s.last);
+    s.last = i;
+    s.lastSwapAt = Date.now();
+    const clock = swaps[i];
+    clock.value = 0;
+    clock.value = withTiming(SWAP_LEN, { duration: SWAP_LEN * 1000, easing: Easing.linear });
+    s.swapTimer = setTimeout(swapNext, LOOP_EVERY * 1000);
+  };
+
+  const onIntroDone = () => {
+    const s = live.current;
+    if (s.introDone) return;
+    s.introDone = true;
+    if (s.authReady || s.capped) windDown();
+    else swapNext();
   };
 
   const start = () => {
     const s = live.current;
     if (s.started) return;
     s.started = true;
-    t.value = withTiming(INTRO_END, { duration: INTRO_END * 1000, easing: Easing.linear });
-    sheen.value = withDelay(1200, withRepeat(withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.sin) }), -1, true));
-    if (!s.reduced) {
-      loop.value = withDelay(
-        INTRO_END * 1000,
-        withTiming(LOOP_MAX, { duration: LOOP_MAX * 1000, easing: Easing.linear, reduceMotion: ReduceMotion.Never }),
-      );
-    }
-    later(INTRO_END * 1000, () => {
-      s.introDone = true;
-      tick();
+    t.value = withTiming(INTRO_END, { duration: INTRO_END * 1000, easing: Easing.linear }, (ok) => {
+      if (ok) runOnJS(onIntroDone)();
     });
+    sheen.value = withDelay(1200, withRepeat(withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.sin) }), -1, true));
+    later(INTRO_END * 1000 + 400, onIntroDone); // if the UI thread's callback is lost
   };
 
   const onLetterLoad = () => {
@@ -240,31 +302,27 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
 
   useEffect(() => {
     const s = live.current;
-    // Reduced motion: the intro and exit jump to their ends on their own (Reanimated
-    // follows the system setting); the loader, which runs regardless, stays off.
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduced) => {
-        s.reduced = reduced;
-        if (reduced) {
-          cancelAnimation(loop);
-          loop.value = 0;
-        }
-      })
-      .catch(() => {});
     later(IMAGE_WAIT_MS, start);
     later(HOLD_MS, () => {
       s.held = true;
       tick();
     });
-    later(CAP_MS, tick);
+    later(CAP_MS, () => {
+      s.capped = true;
+      windDown();
+    });
     const pending = timers.current;
-    return () => pending.forEach(clearTimeout);
+    return () => {
+      pending.forEach(clearTimeout);
+      if (s.swapTimer) clearTimeout(s.swapTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    live.current.authReady = shouldExit;
-    tick();
+    const s = live.current;
+    s.authReady = shouldExit;
+    if (shouldExit) windDown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldExit]);
 
@@ -297,31 +355,36 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }, groundStyle]}>
         <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
           <GlassSheet w={size.w} h={size.h} scheme={scheme} />
-          <View style={[StyleSheet.absoluteFill, styles.sheenClip]}>
-            <Animated.View
-              style={[
-                styles.sheen,
-                { left: -0.35 * size.w, top: -0.16 * size.h, width: 1.15 * size.w, height: 0.52 * size.h },
-                sheenStyle,
-              ]}
-            >
-              <Sheen w={1.15 * size.w} h={0.52 * size.h} scheme={scheme} />
-            </Animated.View>
-          </View>
+          {/* Unclipped: it fades to nothing at its edge, and the display clips the rest. */}
+          <Animated.View
+            style={[
+              styles.sheen,
+              { left: -0.35 * size.w, top: -0.16 * size.h, width: 1.15 * size.w, height: 0.52 * size.h },
+              sheenStyle,
+            ]}
+          >
+            <Sheen w={1.15 * size.w} h={0.52 * size.h} scheme={scheme} />
+          </Animated.View>
         </Animated.View>
       </Animated.View>
 
       <View style={styles.centre} pointerEvents="none">
         <View style={styles.mark}>
           {LETTERS.map((name, i) => (
-            <Letter key={name} i={i} t={t} loop={loop} out={out} seq={seq} source={LETTER_IMAGES[scheme][i]} onLoad={onLetterLoad} />
+            <Letter
+              key={name}
+              i={i}
+              t={t}
+              swap={swaps[i]}
+              exit={i === 0 ? out : collapse}
+              source={LETTER_IMAGES[scheme][i]}
+              onLoad={onLetterLoad}
+            />
           ))}
           {INTRO_PROPS.map((_, k) => (
             <IntroProp key={k} k={k} t={t} scheme={scheme} />
           ))}
-          {LETTERS.map((_, i) =>
-            i === 2 ? null : <SwapProp key={`s${i}`} i={i} loop={loop} out={out} seq={seq} scheme={scheme} />,
-          )}
+          {LETTERS.map((_, i) => (i === 2 ? null : <SwapProp key={`s${i}`} i={i} swap={swaps[i]} scheme={scheme} />))}
         </View>
       </View>
 
@@ -335,24 +398,25 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   );
 }
 
+export default memo(SplashScreen);
+
 function Letter({
   i,
   t,
-  loop,
-  out,
-  seq,
+  swap,
+  exit,
   source,
   onLoad,
 }: {
   i: number;
   t: SharedValue<number>;
-  loop: SharedValue<number>;
-  out: SharedValue<number>;
-  seq: number[];
+  swap: SharedValue<number>;
+  /** The u's full exit clock, or the others' collapse clock (it stops once they have joined the u). */
+  exit: SharedValue<number>;
   source: number;
   onLoad: () => void;
 }) {
-  const style = useAnimatedStyle(() => frameStyle(letterFrame(i, t.value, loop.value, out.value, seq)));
+  const style = useAnimatedStyle(() => frameStyle(letterFrame(i, t.value, swap.value, exit.value)));
   const b = BOX[i];
   return (
     <Animated.View
@@ -383,21 +447,9 @@ function IntroProp({ k, t, scheme }: { k: number; t: SharedValue<number>; scheme
   );
 }
 
-function SwapProp({
-  i,
-  loop,
-  out,
-  seq,
-  scheme,
-}: {
-  i: number;
-  loop: SharedValue<number>;
-  out: SharedValue<number>;
-  seq: number[];
-  scheme: 'dark' | 'light';
-}) {
+function SwapProp({ i, swap, scheme }: { i: number; swap: SharedValue<number>; scheme: 'dark' | 'light' }) {
   const style = useAnimatedStyle(() => {
-    const v = swapPropFrame(i, loop.value, out.value, seq);
+    const v = swapPropFrame(swap.value);
     const s = Math.max(v[0], 0.001);
     return { opacity: v[0] > 0.001 ? 1 : 0, transform: [{ rotate: `${v[1]}deg` }, { scale: s }] };
   });
@@ -599,13 +651,12 @@ const Sheen = memo(function Sheen({ w, h, scheme }: { w: number; h: number; sche
 });
 
 const styles = StyleSheet.create({
-  // Above every host (banners, notices, alerts) until it removes itself.
-  root: { ...StyleSheet.absoluteFill, zIndex: 1000, elevation: 1000 },
+  // Above the app and its in-tree hosts until it removes itself (alerts and notices wait for it: launchGate).
+  root: { ...StyleSheet.absoluteFill, zIndex: 2000, elevation: 2000 },
   abs: { position: 'absolute' },
   fill: { width: '100%', height: '100%' },
   centre: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   mark: { width: MARK_W, height: MARK_H },
-  sheenClip: { borderRadius: GLASS_RADIUS, overflow: 'hidden' },
   sheen: { position: 'absolute' },
   footer: { position: 'absolute', left: 24, right: 24, textAlign: 'center', fontSize: 12, lineHeight: 18, ...cosmosFont.body },
 });

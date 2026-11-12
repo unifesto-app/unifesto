@@ -12,6 +12,7 @@ import { notificationArrived } from '../lib/notificationBus';
 import { seenLive, useNotificationSocket } from './useNotificationSocket';
 import { rememberNid } from '../services/utm';
 import { reportNotificationOpened } from '../lib/api/hackathon';
+import { useLaunchGate } from '../lib/launchGate';
 
 /** Push types shown as an in-app card when the app is open (they also land in the in-app feed). */
 const IN_APP_TYPES = new Set(['hackathon', 'competition']);
@@ -62,6 +63,8 @@ function presentInApp(n: Arrived, open: () => void): boolean {
  */
 export function useDeepLinks(): void {
   const { isAuthenticated, isLoading } = useAuth();
+  // A held cold-start link opens with Home, once the launch splash lets screens mount.
+  const { appMayMount } = useLaunchGate();
 
   // Keep the latest auth state readable inside the once-registered listener.
   const authRef = useRef(isAuthenticated);
@@ -111,7 +114,7 @@ export function useDeepLinks(): void {
   });
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !appMayMount) return;
     const held = coldStartLink.current;
     coldStartLink.current = null;
     const opened = coldStartOpen.current;
@@ -121,5 +124,5 @@ export function useDeepLinks(): void {
     if (!isAuthenticated) return;
     const pending = consumePendingDeepLink();
     if (pending) routeToDeepLink(pending, { isAuthenticated: true });
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, appMayMount]);
 }

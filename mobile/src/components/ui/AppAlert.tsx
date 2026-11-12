@@ -7,6 +7,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../../them
 import { SHEET_MAX, spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { TopLayer } from './TopLayer';
+import { useLaunchGate } from '../../lib/launchGate';
 
 /**
  * Themed drop-in for React Native's `Alert.alert`: same arguments, same
@@ -125,7 +126,10 @@ export function AppAlertHost() {
     };
   }, []);
 
-  const current = queue[0];
+  // Its top layer draws over the launch splash, so alerts raised during it
+  // (store update, account deletion) wait in the queue until it has gone.
+  const { done: launched } = useLaunchGate();
+  const current = launched ? queue[0] : undefined;
 
   // Animate each alert in as it reaches the front of the queue.
   useEffect(() => {

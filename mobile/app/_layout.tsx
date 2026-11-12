@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { LogBox, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack, ThemeProvider as NavigationThemeProvider, usePathname } from 'expo-router';
@@ -146,7 +146,8 @@ function DeepLinkBridge() {
 
 /**
  * The launch splash, over everything, on a normal launch only: a link that
- * opens a screen directly skips it, and a remount never replays it. Home
+ * opens a screen directly skips it, and once it has played it never replays
+ * (a crash-screen retry before it finished plays it again, harmlessly). Home
  * mounts underneath once the splash allows (`launchGate`), so its exit can
  * zoom straight into it.
  */
@@ -154,11 +155,12 @@ function LaunchSplash() {
   const path = usePathname();
   const { isLoading } = useAuth();
   const [show, setShow] = useState(() => !launchGate.get().done && path === '/');
+  const hide = useCallback(() => setShow(false), []);
   useEffect(() => {
     if (!show) launchGate.set({ appMayMount: true, done: true });
   }, [show]);
   if (!show) return null;
-  return <SplashScreen shouldExit={!isLoading} onAnimationComplete={() => setShow(false)} />;
+  return <SplashScreen shouldExit={!isLoading} onAnimationComplete={hide} />;
 }
 
 function RootStack() {

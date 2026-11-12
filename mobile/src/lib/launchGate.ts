@@ -2,11 +2,13 @@ import { useSyncExternalStore } from 'react';
 
 /**
  * The launch splash's two moments, for the screens it covers.
- * `appMayMount`: the intro has settled and auth has loaded, so Home can mount
- * under the splash; mounting earlier would cost the letters frames.
- * `done`: the splash has gone, so sheets (legal, What's new) may open.
- * Both only ever turn on, and stay on for the life of the process, so a
- * remount (the crash screen's retry, Fast Refresh) never replays the splash.
+ * `appMayMount`: the intro has settled, auth has loaded and the last letter
+ * swap has landed, so Home (and a held cold-start link) can mount under the
+ * splash while nothing moves.
+ * `done`: the splash has gone, so things that draw over it may show: the
+ * legal and What's new sheets, alerts, in-app notices.
+ * Both only ever turn on, and stay on for the life of the process, so once
+ * the splash has played a remount never replays it.
  */
 type LaunchState = { appMayMount: boolean; done: boolean };
 
