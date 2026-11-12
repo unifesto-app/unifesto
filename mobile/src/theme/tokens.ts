@@ -38,11 +38,10 @@ export interface Tokens {
   scheme: 'dark' | 'light';
 }
 
-// Soft charcoal rather than pure black: OLED black made the canvas feel like a
-// void and flattened elevation. Cards still lift by stepping lighter. Same
+// Black ground (owner, 13 Nov 2026), cards step lighter to lift off it. Same
 // values as cosmos.ts.
 export const darkTokens: Tokens = {
-  bg: '#17171b',
+  bg: '#000000',
   surface: '#1d1d21',
   /** Borderless cards: the same lift as cosmos `raised`. */
   elevated: '#232327',
@@ -55,7 +54,7 @@ export const darkTokens: Tokens = {
 
   text: '#ececee',
   textSecondary: '#b4b4ba',
-  textMuted: '#9a9aa0', // as cosmos muted: 6.4:1 on bg, 5.6:1 on a card
+  textMuted: '#9a9aa0', // as cosmos muted: 7.5:1 on bg, 5.6:1 on a card
 
   accent: '#e8e8ea',
   accentStrong: '#ffffff',
