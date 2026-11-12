@@ -616,7 +616,7 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
             <dl className="space-y-1.5 text-sm">
               <PriceLine label="Ticket" value={inr(basePaise)} />
               {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
-              {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}
+              {!!shown?.buyerFeePaise && <PriceLine label={shown.feeAbsorbed ? "PF included" : "Processing fee"} value={inr(shown.buyerFeePaise)} />}
               <PriceLine label="Total" value={shown ? inr(shown.totalPaise) : "…"} strong />
             </dl>
             {upi && (

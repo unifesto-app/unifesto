@@ -472,7 +472,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
           {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.ivory} /> : null}
           {r.feePercent > 0 && r.fee > 0 ? (
             <Line
-              label={r.feeIncluded ? 'Processing fee (included)' : `Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`}
+              label={r.feeIncluded ? 'PF included' : 'Processing fee'}
               value={money(r.symbol, r.fee)}
             />
           ) : null}

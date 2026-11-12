@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, NotFoundException, ParseUUIDPipe, Query } from '@nestjs/common';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
+import { TermsService } from '../subscription/terms.service';
 import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
 import { paymentMethods } from './razorpay-methods';
 
@@ -13,10 +14,25 @@ export class PublicConfigController {
   constructor(
     private readonly platformConfig: PlatformConfigService,
     private readonly planConfig: PlanConfigService,
+    private readonly terms: TermsService,
   ) {}
 
+  /**
+   * The buyer fee terms. With `eventId`: that event's own (its space's plan or
+   * deal, T4), what checkout charges, so the app's estimate matches. Without:
+   * the platform rate card, for older apps.
+   */
   @Get('processing-fee')
-  getProcessingFee() {
+  async getProcessingFee(@Query('eventId', new ParseUUIDPipe({ optional: true })) eventId?: string) {
+    if (eventId) {
+      const t = await this.terms.forEvent(eventId).catch(() => {
+        throw new NotFoundException('Event not found');
+      });
+      return {
+        processingFeePercent: t.buyerFeeBps / 100,
+        processingFeeCapPerTicket: t.buyerFeeCapPaise == null ? null : t.buyerFeeCapPaise / 100,
+      };
+    }
     return {
       processingFeePercent: this.platformConfig.getProcessingFeePercent(),
       processingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),

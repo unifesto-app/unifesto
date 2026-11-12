@@ -99,12 +99,13 @@ export function useEventRegistration() {
   // Team-wide (per-group) answers, asked once for the whole group.
   const [teamFieldValues, setTeamFieldValues] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  // App-wide buyer fee terms (percent + per-ticket cap); none until loaded.
+  // This event's buyer fee terms (percent + per-ticket cap); none until loaded.
   const [feeTerms, setFeeTerms] = useState(NO_FEE);
-
+  const feeEventId = event?.id;
   useEffect(() => {
-    getProcessingFeeTerms().then(setFeeTerms).catch(() => setFeeTerms(NO_FEE));
-  }, []);
+    if (!feeEventId) return;
+    getProcessingFeeTerms(feeEventId).then(setFeeTerms).catch(() => setFeeTerms(NO_FEE));
+  }, [feeEventId]);
 
   useEffect(() => {
     (async () => {
@@ -406,8 +407,6 @@ export function useEventRegistration() {
   const fullTotal =
     basePrice === 0 ? 0 : feeIncluded ? basePrice : Math.round((basePrice + buyerFee(basePrice, feeTerms, feeTickets)) * 100) / 100;
   const feePercent = feeTerms.percent;
-  const feeCapped =
-    !feeIncluded && fee > 0 && fee < Math.round(discountedBase * feeTerms.percent + 1e-9) / 100;
 
   const applyCoupon = async () => {
     if (!selectedTicket || !event || !couponInput.trim()) return;
@@ -444,7 +443,7 @@ export function useEventRegistration() {
   const toPayment = () => {
     setStep('payment');
     // The fee may have changed while the form was open; refresh the total.
-    getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
+    getProcessingFeeTerms(event?.id).then(setFeeTerms).catch(() => {});
   };
 
   const next = () => {
@@ -583,7 +582,7 @@ export function useEventRegistration() {
         const proceed = await confirmAmountChange(shownPaise, order.amount);
         if (!proceed) {
           // Show the live total; the PENDING registration is reused/cleaned up server-side.
-          getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
+          getProcessingFeeTerms(event?.id).then(setFeeTerms).catch(() => {});
           return;
         }
       }
@@ -707,7 +706,6 @@ export function useEventRegistration() {
     discount,
     fee,
     feePercent,
-    feeCapped,
     feeIncluded,
     total,
     fullTotal,

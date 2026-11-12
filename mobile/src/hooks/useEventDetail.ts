@@ -231,17 +231,18 @@ export function useEventDetail(eventId: string | undefined) {
   // A holder can still add another ticket type that's on sale.
   const canAddTicket = ownsAnyTicket && canRegisterMore && !unavailable;
 
-  // "Plus 5% processing fee, capped at ₹99 per ticket", as the web event page says (A11).
+  // "Plus processing fee" or "PF included": buyers never see a percentage.
+  // This event's terms decide only whether there is a fee at all.
   const [feeTerms, setFeeTerms] = useState(NO_FEE);
   useEffect(() => {
-    void getProcessingFeeTerms().then(setFeeTerms);
-  }, []);
+    if (viewedId) void getProcessingFeeTerms(viewedId).then(setFeeTerms);
+  }, [viewedId]);
   const feeNote =
     isFree || feeTerms.percent <= 0
       ? null
       : event?.absorbProcessingFee
-        ? 'Processing fee included'
-        : `Plus ${feeTerms.percent}% processing fee${feeTerms.capPerTicket ? `, capped at ₹${feeTerms.capPerTicket} per ticket` : ''}`;
+        ? 'PF included'
+        : 'Plus processing fee';
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleRegister = async () => {
