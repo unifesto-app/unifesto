@@ -10,6 +10,7 @@ import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
 import { confirmDialog } from "@/console/components/shared/ConfirmDialog";
 import { useSpaceId } from "@/console/lib/hooks/useSpaceId";
 import { createApiKey, listApiKeys, revokeApiKey, type ApiKey, type NewApiKey } from "@/console/lib/api/api-keys-api";
+import { WebhooksSection } from "@/console/components/settings/WebhooksSection";
 
 const API = "https://api.unifesto.app";
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -129,6 +130,8 @@ export default function ApiSettingsPage() {
               </Button>
             </form>
           </ListGroup>
+
+          <WebhooksSection spaceId={spaceId} onError={setError} />
 
           <ListGroup title="How to use it" description="From your server only. Calls from a browser are refused, because the key would be public.">
             <div className="space-y-3 p-4 text-sm text-muted-foreground">

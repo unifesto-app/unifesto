@@ -52,6 +52,7 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { AutomationsModule } from './automations/automations.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
 import { PublicApiModule } from './public-api/public-api.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { MeAccessModule } from './me-access/me-access.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { EngagementModule } from './engagement/engagement.module';
@@ -212,6 +213,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     AutomationsModule,
     SponsorsModule,
     PublicApiModule,
+    WebhooksModule,
     MeAccessModule,
     CouponsModule,
     EngagementModule,

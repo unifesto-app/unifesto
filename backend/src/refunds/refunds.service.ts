@@ -39,6 +39,7 @@ import { openRefundCase, updateRefundCase, withNote } from './refund-cases';
 import { RefundAlreadyIssuedError, isRazorpayRejection, razorpayErrorText, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
 import type { DeliveryOpts } from '../notifications/message-delivery';
+import { emitWebhook } from '../webhooks/webhook-events';
 
 /** Round to 2 decimal places (money). */
 function money(n: number): number {
@@ -688,6 +689,8 @@ export class RefundsService {
 
     // Persist: registration totals + (if fully refunded) cancellation, and the request.
     const fullyRefunded = money(totalRefunded + refundedNow) >= base;
+    // K23: set when this refund is what cancelled a live booking.
+    let cancelledNow = false;
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -701,6 +704,7 @@ export class RefundsService {
               })
             ).count === 1
           : false;
+        cancelledNow = holdsSeats;
         await tx.eventRegistration.update({
           where: { id: reg.id },
           data: {
@@ -807,6 +811,7 @@ export class RefundsService {
       ),
       { kind: 'refund.approved', userId: reg.userId },
     );
+    if (cancelledNow) emitWebhook(this.events, 'registration.cancelled', reg.id);
     this.events.emit(NotificationEvents.RegistrationUpdate, {
       userId: reg.userId,
       eventId: reg.eventId,

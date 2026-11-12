@@ -25,6 +25,7 @@ import { HOLDS_SEAT_PAYMENT, generateQRCode, generateTicketCode, seatsFor } from
 import { PaymentsService } from '../payments/payments.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
 import { RefundsService } from '../refunds/refunds.service';
+import { emitWebhook } from '../webhooks/webhook-events';
 
 /** Cancelling a registration (attendee or curator) and restoring a cancelled one. */
 @Injectable()
@@ -244,6 +245,12 @@ export class RegistrationCancellationService {
       });
     });
 
+    // K23: only a booking that was in (paid or free, not a queue spot or an
+    // unpaid checkout) was ever announced as confirmed.
+    if (!registration.isWaitlisted && HOLDS_SEAT_PAYMENT.includes(registration.paymentStatus)) {
+      emitWebhook(this.events, 'registration.cancelled', registration.id);
+    }
+
     // Push only when the organiser cancelled; a self-cancel already happened in-app.
     if (opts.byOrganiser) {
       this.events.emit(NotificationEvents.RegistrationUpdate, {
@@ -416,6 +423,7 @@ export class RegistrationCancellationService {
     this.logger.log(
       `Restored registration ${registration.id} (event ${eventId}) by user ${userId}`,
     );
+    emitWebhook(this.events, 'registration.confirmed', registration.id);
 
     return this.attendees.buildRegistrationDetail(eventId, registrationId);
   }
