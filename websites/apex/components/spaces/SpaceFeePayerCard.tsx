@@ -42,23 +42,18 @@ export function SpaceFeePayerCard({ spaceId }: { spaceId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Who pays the processing fee</CardTitle>
-        <CardDescription>Unifesto&apos;s call. Applies to every event in this space and to new ones.</CardDescription>
+        <CardDescription>
+          Unifesto&apos;s call. Applies to every event in this space and to new ones. Either button can be pressed
+          again to bring events an organiser set differently back in line.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {error && <ErrorNotice message={error} />}
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant={fee && !fee.included ? "default" : "outline"}
-            disabled={!fee || saving || !fee.included}
-            onClick={() => set(false)}
-          >
+          <Button variant={fee && !fee.included ? "default" : "outline"} disabled={!fee || saving} onClick={() => set(false)}>
             Buyer, on top
           </Button>
-          <Button
-            variant={fee?.included ? "default" : "outline"}
-            disabled={!fee || saving || fee.included}
-            onClick={() => set(true)}
-          >
+          <Button variant={fee?.included ? "default" : "outline"} disabled={!fee || saving} onClick={() => set(true)}>
             Organiser (PF included)
           </Button>
         </div>

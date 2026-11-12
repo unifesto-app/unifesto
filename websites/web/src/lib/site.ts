@@ -434,14 +434,14 @@ export const planFeesText = (plans: Plan[] = PLANS) =>
     )
     .join(", ");
 
-/** "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep
+/** "A ₹500 pass: students pay ₹520, or ₹500 if the fee is included. You keep
    ₹485 on General." Computed from the rate card it is given. */
 export const passExample = (
   plan: Plan = PLANS[0],
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
 ) =>
-  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if you include the fee. You keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
+  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if the fee is included. You keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -535,7 +535,7 @@ export const pricingFaq = (
   return [
   {
     q: "Is there a monthly fee?",
-    a: "No. No plan has a monthly price. Unifesto earns a platform fee on each paid ticket, so you pay only when you sell.",
+    a: "No. No plan has a monthly price. Unifesto earns a fee on each paid ticket, so you pay only when you sell.",
   },
   {
     q: "Are free events really free?",
@@ -545,7 +545,7 @@ export const pricingFaq = (
     q: "What do students pay, and what do I keep?",
     a: one
       ? `Every paid ticket carries one processing fee by plan, ${planFeesText(plans)}, payment gateway included and with no cap. Students pay it at checkout, or it is included in your ticket price and comes out of your share, as Unifesto sets with you. It is not refundable.`
-      : `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or you include it in your ticket price per event and it comes out of your share. It is not refundable. You also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
+      : `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or it is included in your ticket price and comes out of your share, as Unifesto sets with you. It is not refundable. You also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
   },
   {
     // TODO(A6): GST wording waits for GST registration and the CA.

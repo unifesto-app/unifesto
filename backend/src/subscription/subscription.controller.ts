@@ -167,6 +167,13 @@ export class SubscriptionController {
     return this.terms.createDeal(spaceId, dto, req.user.id);
   }
 
+  /** Works for a space without a subscription row, unlike GET space/:spaceId. */
+  @Get('admin/space/:spaceId/fee-payer')
+  @Roles(RoleCode.ADMIN)
+  async getFeePayer(@Param('spaceId') spaceId: string) {
+    return this.terms.feeSummary(spaceId);
+  }
+
   @Patch('admin/space/:spaceId/fee-payer')
   @Audit('space.fee-payer', (r) => ({ spaceId: r.params.spaceId }))
   @Roles(RoleCode.ADMIN)

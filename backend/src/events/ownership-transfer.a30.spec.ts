@@ -38,6 +38,8 @@ function build() {
     r.eventId === w.eventId && !roles.some((m) => m.userId === r.userId && m.spaceId === w.user.roles.none.spaceId);
   const matches = (row: any, w: any) => Object.entries(w).every(([k, v]) => row[k] === v);
   const prisma: any = {
+    // The receiving space includes the processing fee in its prices (Unifesto's call there).
+    space: { findUnique: jest.fn(async () => ({ absorbProcessingFee: true })) },
     event: {
       findUnique: jest.fn(async () => event),
       update: jest.fn(async ({ data }: any) => Object.assign(event, data)),
@@ -130,6 +132,8 @@ describe('event ownership transfer re-homes money and roles (A30)', () => {
     await transfer();
     await accept();
     expect(event).toMatchObject({ spaceId: 'sp-new', createdBy: 'new-admin', payoutBankAccountId: null });
+    // Who pays the processing fee follows the receiving space.
+    expect((event as { absorbProcessingFee?: boolean }).absorbProcessingFee).toBe(true);
     expect(transfers[0].status).toBe('ACCEPTED');
     expect(coHosts()).toHaveLength(0);
     // The old space's curator is off the team; the receiving space's crew stays.

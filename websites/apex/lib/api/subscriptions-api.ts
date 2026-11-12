@@ -432,7 +432,7 @@ export function billingSummary(s: BillingArrangement): string {
 
 /**
  * What a space pays per paid ticket and who pays the processing fee
- * (`fee` on `GET /subscription/space/:spaceId`). `capPerTicket` null = no cap
+ * (`GET /subscription/admin/space/:spaceId/fee-payer`). `capPerTicket` null = no cap
  * (a one-fee plan, where `percent` is the whole fee, gateway included).
  */
 export interface SpaceFee {
@@ -444,8 +444,7 @@ export interface SpaceFee {
 }
 
 export async function getSpaceFee(spaceId: string) {
-  const { data, error } = await apiCall<{ fee: SpaceFee }>(backendClient.get(`/subscription/space/${spaceId}`));
-  return { data: data?.fee ?? null, error };
+  return apiCall<SpaceFee>(backendClient.get(`/subscription/admin/space/${spaceId}/fee-payer`));
 }
 
 /** `PATCH /subscription/admin/space/:spaceId/fee-payer`: Unifesto sets who pays, for every event of the space. */

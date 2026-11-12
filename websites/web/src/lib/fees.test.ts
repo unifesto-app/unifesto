@@ -5,7 +5,7 @@ import { PLANS, buyerFeeOn, includedFeeOn, isOneFee, passExample, planFee, planF
 test("the ₹500 pass example: students pay ₹520, General keeps ₹485", () => {
   assert.equal(
     passExample(PLANS[0], 4, 99),
-    "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep ₹485 on General.",
+    "A ₹500 pass: students pay ₹520, or ₹500 if the fee is included. You keep ₹485 on General.",
   );
 });
 

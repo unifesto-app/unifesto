@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service';
 import { BillingCycle, Deal, OrgPlan, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeeTerms, rateCardFees } from '../payments/quote';
@@ -91,6 +93,7 @@ export class TermsService {
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly platformConfig: PlatformConfigService,
+    @Optional() private readonly cache?: CacheService,
   ) {}
 
   /** The deal in force for a space (and event) at `at`, if any. */
@@ -170,7 +173,8 @@ export class TermsService {
   /**
    * What a space's organisers are told about fees: the buyer fee % with its
    * cap (on a one-fee plan the cap is null and this is the whole fee, gateway
-   * included), the organiser fee, and who pays the processing fee.
+   * included), the organiser fee, and who pays the processing fee. Space-wide:
+   * a space deal counts, an event's own deal does not.
    */
   async feeSummary(spaceId: string) {
     const [t, space] = await Promise.all([
@@ -197,6 +201,11 @@ export class TermsService {
       this.prisma.space.update({ where: { id: spaceId }, data: { absorbProcessingFee: included } }),
       this.prisma.event.updateMany({ where: { spaceId }, data: { absorbProcessingFee: included } }),
     ]);
+    // The cached event details carry the flag, and the app prices from it.
+    if (this.cache) {
+      const slugs = await this.prisma.event.findMany({ where: { spaceId }, select: { slug: true } });
+      await Promise.all(slugs.map((e) => this.cache!.invalidateEventCache(e.slug)));
+    }
     return { included, events: events.count };
   }
 

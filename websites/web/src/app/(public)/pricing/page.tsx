@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Pricing: free RSVP events, clear fees on paid tickets",
     description: isOneFee(plans)
       ? `No monthly fee. Free RSVP events on every plan. One processing fee per paid ticket, payment gateway included: ${planFeesText(plans)}.`
-      : `No monthly fee. Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
+      : `No monthly fee. Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or it is included in your price. Organiser platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
     alternates: { canonical: "/pricing" },
   }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
@@ -61,7 +61,7 @@ export default async function PricingPage() {
       <PageHero
         lines={["Free events stay free.", "Paid ones cost less."]}
         accentFrom={1}
-        lede="No monthly fee on any plan. You pay a platform fee only on tickets you sell. Every plan includes the Unifesto app for attendees and Crew."
+        lede="No monthly fee on any plan. Fees apply only to tickets you sell. Every plan includes the Unifesto app for attendees and Crew."
         size="md"
       />
 
@@ -114,7 +114,7 @@ export default async function PricingPage() {
           {/* TODO(A6): GST wording waits for GST registration and the CA. */}
           {isOneFee(plans)
             ? "Fees exclude GST. One processing fee per paid ticket, payment gateway included, with no cap. Buyers pay it at checkout, or it is included in your ticket price. Free RSVP events carry no fees on any plan."
-            : `Fees exclude GST. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay's charges come out of that fee. Free RSVP events carry no fees on any plan.`}
+            : `Fees exclude GST. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or it is included in your ticket price. Razorpay's charges come out of that fee. Free RSVP events carry no fees on any plan.`}
         </p>
       </Section>
 

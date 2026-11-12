@@ -1308,10 +1308,20 @@ export class EventsService {
     // Event roles carry no space, so "from the receiving space" means holding
     // any role there (the same test addTeamMember uses).
     const outsiders = { eventId, user: { roles: { none: { spaceId: transfer.toSpaceId } } } };
+    // Who pays the processing fee follows the receiving space (Unifesto's call there).
+    const toSpace = await this.prisma.space.findUnique({
+      where: { id: transfer.toSpaceId },
+      select: { absorbProcessingFee: true },
+    });
     await this.prisma.$transaction([
       this.prisma.event.update({
         where: { id: eventId },
-        data: { spaceId: transfer.toSpaceId, createdBy: userId, payoutBankAccountId: null },
+        data: {
+          spaceId: transfer.toSpaceId,
+          createdBy: userId,
+          payoutBankAccountId: null,
+          absorbProcessingFee: toSpace?.absorbProcessingFee ?? false,
+        },
       }),
       this.prisma.eventCoHost.deleteMany({
         where: { eventId, spaceId: transfer.toSpaceId },
