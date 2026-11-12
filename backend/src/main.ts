@@ -7,7 +7,7 @@ import helmet from 'helmet';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LogsService } from './logs/logs.service';
 import { createRequestLogger } from './logs/logging.middleware';
-import { isAllowedOrigin } from './common/cors';
+import { httpCorsOrigin } from './common/cors';
 import { WhiteLabelService } from './white-label/white-label.service';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import axios from 'axios';
@@ -71,26 +71,8 @@ async function bootstrap() {
   // Enable CORS for all Unifesto subdomains
   const whiteLabel = app.get(WhiteLabelService);
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      // Only allow *.unifesto.app subdomains, the apex domain, localhost for dev,
-      // and a space's live custom web domain (H25: its "Notify me" and inquiry
-      // forms post here). Never an arbitrary reflected origin.
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-        return;
-      }
-      void whiteLabel.isCustomDomainOrigin(origin).then((ok) => {
-        if (ok) return callback(null, true);
-        logger.warn(`Blocked CORS request from disallowed origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'), false);
-      });
-    },
+    // The allowlist, then a space's live custom web domain; anything else is a 403.
+    origin: httpCorsOrigin((o) => whiteLabel.isCustomDomainOrigin(o), (m) => logger.warn(m)),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Display-Token'],

@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+
 /**
  * Single source of truth for allowed browser origins (used by the HTTP server
  * in main.ts). Keep new socket gateways on this allowlist rather than
@@ -24,16 +26,51 @@ export function isAllowedOrigin(origin?: string): boolean {
   );
 }
 
+type OriginCallback = (err: Error | null, allow?: boolean) => void;
+
+/**
+ * The refusal for a browser origin we don't serve: a 403, which the global
+ * filter neither logs as an error nor sends to Sentry. A plain Error became a
+ * 500 and a Sentry issue for every request any other site's browser made.
+ * Still a refusal: the request never reaches a handler.
+ */
+export const corsRefusal = () =>
+  new ForbiddenException("This site can't call the Unifesto API from a browser. Call it from your server.");
+
 /**
  * Origin callback in the shape both `cors` (Express) and Socket.IO expect.
  */
-export function corsOriginCallback(
-  origin: string | undefined,
-  callback: (err: Error | null, allow?: boolean) => void,
-): void {
+export function corsOriginCallback(origin: string | undefined, callback: OriginCallback): void {
   if (isAllowedOrigin(origin)) {
     callback(null, true);
   } else {
-    callback(new Error('Not allowed by CORS'), false);
+    callback(corsRefusal(), false);
   }
+}
+
+/**
+ * The HTTP server's origin check (main.ts): the allowlist, then a space's live
+ * custom web domain (H25: its "Notify me" and inquiry forms post here). Never
+ * an arbitrary reflected origin. A failed domain lookup refuses rather than
+ * leaving the request waiting forever.
+ */
+export function httpCorsOrigin(isCustomDomainOrigin: (origin: string) => Promise<boolean>, warn: (message: string) => void) {
+  return (origin: string | undefined, callback: OriginCallback): void => {
+    // No origin: mobile apps, servers, curl. Nothing to refuse.
+    if (!origin || isAllowedOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+    isCustomDomainOrigin(origin).then(
+      (ok) => {
+        if (ok) return callback(null, true);
+        warn(`Blocked CORS request from disallowed origin: ${origin}`);
+        callback(corsRefusal(), false);
+      },
+      () => {
+        warn(`Refused CORS request from ${origin}: the custom domain lookup failed`);
+        callback(corsRefusal(), false);
+      },
+    );
+  };
 }
