@@ -54,10 +54,15 @@ const eventSlugOf = (path: string) => /^\/event\/([^/]+)/.exec(path)?.[1] ?? nul
  * /event/x/register?return=https://evil.example and share it.
  */
 export function autoReturnAllowed(referrerOrigin: string | null, returnHref: string): boolean {
-  // TODO(you): decide when an automatic return is safe. Until then: always ask for a click.
-  void referrerOrigin;
-  void returnHref;
-  return false;
+  // Only back to the site that sent them here. A crafted link shared on
+  // WhatsApp or another site arrives with no referrer or a different one, so
+  // it gets the plain "Back to <host>" link and no "registered" marker.
+  if (!referrerOrigin) return false;
+  try {
+    return new URL(returnHref).origin === referrerOrigin;
+  } catch {
+    return false;
+  }
 }
 
 export interface StoredReturn {
@@ -67,7 +72,11 @@ export interface StoredReturn {
   embed: boolean;
   /** Opened as embed.js's popup: the return hop may close the window. */
   popup: boolean;
-  /** Go back on our own (autoReturnAllowed), not only on a click. */
+  /**
+   * The return page is on the site that sent them (autoReturnAllowed): only
+   * then does the way back carry the "registered" marker, and only then do we
+   * go back on our own, not only on a click.
+   */
   auto: boolean;
 }
 
@@ -91,12 +100,14 @@ export function storedReturn(slug: string): StoredReturn | null {
 }
 
 /**
- * Where "Back to <host>" goes. For embed.js visitors it carries a fragment the
- * script reads (event slug only: no ids, nothing personal). The site sees it as
- * a hint, never proof: anyone can type it. Webhooks are the proof.
+ * Where "Back to <host>" goes. For embed.js visitors from the return page's own
+ * site who are now in (`registered`: confirmed or already in, not the waiting
+ * list or a payment still confirming), it carries a fragment the script reads:
+ * the event slug only, no ids, nothing personal. The site sees it as a hint,
+ * never proof: anyone can type it. Webhooks are the proof.
  */
-export function returnLink(r: StoredReturn, slug: string): string {
-  if (!r.embed) return r.href;
+export function returnLink(r: StoredReturn, slug: string, registered: boolean): string {
+  if (!r.auto || !registered) return r.href;
   return `${r.href}#unifesto=registered&event=${encodeURIComponent(slug)}${r.popup ? "&popup=1" : ""}`;
 }
 
@@ -117,6 +128,10 @@ export function captureUtm(): void {
     const back = safeReturnUrl(q.get("return"));
     const slug = eventSlugOf(window.location.pathname ?? "");
     if (back && slug) {
+      // The first landing says who sent them. A reload or a second landing on
+      // the same link (the referrer is then often this page) keeps that answer.
+      const prev = JSON.parse(sessionStorage.getItem(RETURN_KEY) || "null") as { slug?: string; href?: string; ref?: string | null } | null;
+      const same = prev?.slug === slug && prev?.href === back.href;
       sessionStorage.setItem(
         RETURN_KEY,
         JSON.stringify({
@@ -124,7 +139,7 @@ export function captureUtm(): void {
           href: back.href,
           embed: q.get("embed") === "1",
           popup: q.get("popup") === "1",
-          ref: referrerOrigin(),
+          ref: same ? (prev?.ref ?? null) : referrerOrigin(),
         }),
       );
     }

@@ -70,6 +70,8 @@ function csp(nonce: string | null, isConsole: boolean, isEmbed = false): string 
 const HINT_COOKIE = 'uf_in';
 const CONSOLE_PUBLIC = ['/console/present'];
 const under = (pathname: string, p: string) => pathname === p || pathname.startsWith(`${p}/`);
+/** The one page other sites may frame (K21): /embed/event/<slug>, nothing under or beside it. */
+export const isEmbedCard = (pathname: string) => /^\/embed\/event\/[^/]+$/.test(pathname);
 
 function consoleGate(request: NextRequest, reqHeaders: Headers): NextResponse {
   const { pathname, search } = request.nextUrl;
@@ -140,7 +142,7 @@ export async function proxy(request: NextRequest) {
   // cached home page; its /event/* pages are the same prerendered ones as www's.
   const cached = isCachedPage(pathname) && (pathname !== '/' || isOwnHost(hostOf(request)));
   const nonce = cached ? null : Buffer.from(crypto.randomUUID()).toString('base64');
-  const policy = csp(nonce, under(pathname, '/console'), under(pathname, '/embed'));
+  const policy = csp(nonce, under(pathname, '/console'), isEmbedCard(pathname));
   // Next reads the nonce from the request's CSP header while rendering. A
   // prerendered page's background re-render must not bake one in.
   const headers = new Headers(request.headers);

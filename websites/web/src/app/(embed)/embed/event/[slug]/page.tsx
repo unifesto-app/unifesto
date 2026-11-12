@@ -6,14 +6,16 @@ import { cardButtonLook } from "@/console/lib/register-button";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ theme?: string; source?: string; label?: string; bg?: string; fg?: string; shape?: string }>;
+  // A repeated param arrives as an array: only plain strings are read (see str below).
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 const CLOSED = { upcoming: "Registration opens soon", sold_out: "Sold out", closed: "Registration closed" } as const;
 
 /** The embedding site's name as a utm_source tag, same shape as the console's. */
-const sourceTag = (v?: string) =>
-  (v ?? "").toLowerCase().replace(/[^a-z0-9_]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "embed";
+const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+const sourceTag = (v: unknown) =>
+  (str(v) ?? "").toLowerCase().replace(/[^a-z0-9_]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "embed";
 
 function priceLabel(e: Event): string | null {
   if (e.is_free) return "Free";
@@ -32,7 +34,9 @@ function priceLabel(e: Event): string | null {
  */
 export default async function EmbedEventCard({ params, searchParams }: Props) {
   const [{ slug }, q] = await Promise.all([params, searchParams]);
-  const event = await getEventBySlug(slug).catch(() => null);
+  // Only a 404 is "no such event"; an API blip errors instead of showing a missing card.
+  // ponytail: one API call per frame load (dynamic page); cache the fetch if a busy host site shows up in the API load.
+  const event = await getEventBySlug(slug);
   // Same public rule as the event page.
   if (!event || event.status === "DRAFT" || event.visibility === "SPACE_ONLY") notFound();
   const nonce = (await headers()).get("x-nonce") ?? undefined;
@@ -69,7 +73,7 @@ export default async function EmbedEventCard({ params, searchParams }: Props) {
   return (
     <>
       {/* The organiser picks the card's theme to match their page; dark is the site default. */}
-      {q.theme === "light" && (
+      {str(q.theme) === "light" && (
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.theme='light'" }} />
       )}
       <article className="mx-auto max-w-md overflow-hidden rounded-2xl bg-night-2 text-paper">

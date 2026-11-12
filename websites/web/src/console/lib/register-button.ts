@@ -20,6 +20,9 @@ export interface ButtonLook {
 export const DEFAULT_BUTTON: ButtonLook = { label: "Register on Unifesto", background: "#111113", color: "#ffffff", shape: "pill" };
 
 const hex = (v: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
+/** Label text without control or bidi-override characters (no right-to-left spoofing). */
+const plain = (v: string, max: number) =>
+  v.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim().slice(0, max);
 
 /** The button's inline style, shared by the snippet and the console preview. */
 function buttonCss(look: ButtonLook): string {
@@ -40,7 +43,7 @@ function buttonCss(look: ButtonLook): string {
  * label is escaped, so nothing the organiser types can break out of the tag.
  */
 export const registerButtonHtml = (href: string, look: ButtonLook = DEFAULT_BUTTON, embed = false) =>
-  `<a href="${attr(href)}"${embed ? " data-unifesto-event" : ""} style="${attr(buttonCss(look))}">${text(look.label.trim().slice(0, 60) || DEFAULT_BUTTON.label)}</a>`;
+  `<a href="${attr(href)}"${embed ? " data-unifesto-event" : ""} style="${attr(buttonCss(look))}">${text(plain(look.label, 60) || DEFAULT_BUTTON.label)}</a>`;
 
 /**
  * The same button run by embed.js (K21): checkout opens in a popup and the
@@ -63,7 +66,7 @@ export const cardIframeHtml = (
   look: ButtonLook = DEFAULT_BUTTON,
 ) => {
   const q = new URLSearchParams({ source, theme });
-  const label = look.label.trim().slice(0, 40);
+  const label = plain(look.label, 40);
   if (label && label !== DEFAULT_BUTTON.label) q.set("label", label);
   if (hex(look.background, "") && look.background.toLowerCase() !== DEFAULT_BUTTON.background) q.set("bg", look.background.slice(1));
   if (hex(look.color, "") && look.color.toLowerCase() !== DEFAULT_BUTTON.color) q.set("fg", look.color.slice(1));
@@ -72,14 +75,20 @@ export const cardIframeHtml = (
 };
 
 /** The card's own reading of those params: hex colours, a known shape and a short label, or nothing. */
-export function cardButtonLook(q: { label?: string; bg?: string; fg?: string; shape?: string }) {
-  const colour = (v?: string) => (v && /^[0-9a-f]{6}$/i.test(v) ? `#${v}` : undefined);
+export function cardButtonLook(q: { label?: unknown; bg?: unknown; fg?: unknown; shape?: unknown }) {
+  // Query params: a repeated one arrives as an array, so anything but a string is ignored.
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const colour = (v: unknown) => {
+    const s = str(v);
+    return s && /^[0-9a-f]{6}$/i.test(s) ? `#${s}` : undefined;
+  };
+  const shape = str(q.shape);
   return {
-    label: q.label?.trim().slice(0, 40) || "Register",
+    label: plain(str(q.label) ?? "", 40) || "Register",
     style: {
       background: colour(q.bg),
       color: colour(q.fg),
-      borderRadius: q.shape && Object.hasOwn(RADIUS, q.shape) ? RADIUS[q.shape as ButtonShape] : undefined,
+      borderRadius: shape && Object.hasOwn(RADIUS, shape) ? RADIUS[shape as ButtonShape] : undefined,
     },
   };
 }
