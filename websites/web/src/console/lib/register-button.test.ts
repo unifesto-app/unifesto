@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_BUTTON, cardIframeHtml, popupButtonHtml, registerButtonHtml } from "@/console/lib/register-button";
+import { DEFAULT_BUTTON, cardButtonLook, cardIframeHtml, popupButtonHtml, registerButtonHtml } from "@/console/lib/register-button";
 
 const href = "https://www.unifesto.app/event/x/register?utm_source=site&return=https%3A%2F%2Fa.in";
 
@@ -44,4 +44,28 @@ test("the card iframe is tagged with the site and its title escaped", () => {
   const html = cardIframeHtml("https://www.unifesto.app", "build-sunday", "wegobeyond", "dark", `Build "Sunday" <x>`);
   assert.match(html, /src="https:\/\/www\.unifesto\.app\/embed\/event\/build-sunday\?source=wegobeyond&amp;theme=dark"/);
   assert.match(html, /title="Build &quot;Sunday&quot; <x>"/);
+});
+
+test("the card URL carries only the button settings that differ from the default", () => {
+  const plain = cardIframeHtml("https://www.unifesto.app", "x", "site", "light", "X");
+  assert.ok(!/label=|bg=|fg=|shape=/.test(plain));
+  const custom = cardIframeHtml("https://www.unifesto.app", "x", "site", "light", "X", {
+    label: "Grab a seat",
+    background: "#C2410C",
+    color: "#ffffff",
+    shape: "rounded",
+  });
+  assert.match(custom, /label=Grab\+a\+seat&amp;bg=C2410C&amp;shape=rounded"/);
+});
+
+test("the card reads back hex colours, known shapes and a short label only", () => {
+  assert.deepEqual(cardButtonLook({}), {
+    label: "Register",
+    style: { background: undefined, color: undefined, borderRadius: undefined },
+  });
+  const look = cardButtonLook({ label: "x".repeat(80), bg: "c2410c", fg: "red;position:fixed", shape: "constructor" });
+  assert.equal(look.label.length, 40);
+  assert.equal(look.style.background, "#c2410c");
+  assert.equal(look.style.color, undefined);
+  assert.equal(look.style.borderRadius, undefined);
 });

@@ -162,7 +162,7 @@ export function WebsiteLinks({ registerUrl, campaign, title }: { registerUrl: st
   const origin = new URL(registerUrl).origin;
   const [cardTheme, setCardTheme] = useState<"light" | "dark">("light");
   const popup = s ? popupButtonHtml(origin, withUtm(registerUrl, s, "website", tag(campaign) || undefined), look) : "";
-  const card = s ? cardIframeHtml(origin, campaign, s, cardTheme, `${title} on Unifesto`) : "";
+  const card = s ? cardIframeHtml(origin, campaign, s, cardTheme, `${title} on Unifesto`, look) : "";
 
   useEffect(() => {
     let live = true;
@@ -263,7 +263,7 @@ export function WebsiteLinks({ registerUrl, campaign, title }: { registerUrl: st
             )}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">Event card (shows date, place, price and seats left)</p>
+                <p className="text-xs text-muted-foreground">Event card (date, place, price and seats left; its button uses the style above)</p>
                 <select
                   aria-label="Card theme"
                   value={cardTheme}

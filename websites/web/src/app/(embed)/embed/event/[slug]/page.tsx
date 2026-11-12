@@ -2,10 +2,11 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getEventBySlug, outsideRegistration, registrationState, type Event } from "@/lib/api/events";
 import { optimized } from "@/lib/img";
+import { cardButtonLook } from "@/console/lib/register-button";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ theme?: string; source?: string }>;
+  searchParams: Promise<{ theme?: string; source?: string; label?: string; bg?: string; fg?: string; shape?: string }>;
 }
 
 const CLOSED = { upcoming: "Registration opens soon", sold_out: "Sold out", closed: "Registration closed" } as const;
@@ -27,6 +28,7 @@ function priceLabel(e: Event): string | null {
  * site) in a new tab. No sign-in, forms or state inside the frame.
  *
  *   <iframe src="https://www.unifesto.app/embed/event/<slug>?source=<site>&theme=light" …>
+ *   Optional, from the console's button settings: label, bg and fg (hex), shape.
  */
 export default async function EmbedEventCard({ params, searchParams }: Props) {
   const [{ slug }, q] = await Promise.all([params, searchParams]);
@@ -61,6 +63,8 @@ export default async function EmbedEventCard({ params, searchParams }: Props) {
     ? outside.href
     : `/event/${encodeURIComponent(event.slug)}${webRegister ? "/register" : ""}?${tags}`;
   const image = event.banner_url || event.thumbnail_url || event.image_url;
+  // The organiser's button look from the console (hex colours, known shapes, short label only).
+  const button = cardButtonLook(q);
 
   return (
     <>
@@ -93,8 +97,8 @@ export default async function EmbedEventCard({ params, searchParams }: Props) {
             ) : !outside && state !== "open" ? (
               <span className="shrink-0 text-sm text-paper/60">{CLOSED[state]}</span>
             ) : (
-              <a href={href} target="_blank" rel="noopener" className="btn btn-primary shrink-0">
-                Register
+              <a href={href} target="_blank" rel="noopener" className="btn btn-primary shrink-0" style={button.style}>
+                {button.label}
               </a>
             )}
           </div>
