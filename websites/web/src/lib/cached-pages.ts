@@ -9,7 +9,8 @@
  * fixed /event/ and /space/ links, never as HTML or a URL the organiser picks;
  * and the event page itself (J25: shared links in big groups), on the same
  * terms. Its only organiser-picked URLs are sponsor sites (React 19 blocks
- * `javascript:` hrefs) and mailto:/tel: contacts; its two inline scripts are
+ * `javascript:` hrefs), the outside registration link (https only, checked by
+ * the backend and again by outsideRegistration) and mailto:/tel: contacts; its two inline scripts are
  * the `<`-escaped JSON-LD and BrandTheme's fixed light/dark switch. Keep it
  * that way, or take these off this list. Anything else showing organiser or
  * attendee content, a sign-in, or a form keeps the nonce.

@@ -30,6 +30,7 @@ import { takeFreeAddSeats } from '../free-attendee-add/free-add-quota';
 import { RedisService } from '../redis/redis.service';
 import { TermsService, dealColumns } from '../subscription/terms.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
+import { assertNoOutsideLink } from '../events/external-registration';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
@@ -86,6 +87,7 @@ const REG_SELECT = {
       endDateTime: true,
       spaceId: true,
       absorbProcessingFee: true,
+      externalRegistrationUrl: true,
       allowTeamChanges: true,
       teamChangesUntil: true,
     },
@@ -426,6 +428,8 @@ export class TeamChangesService {
   /** Open a Razorpay order for `seats` extra seats on a PER_PERSON paid ticket. */
   async createAddSeatsOrder(registrationId: string, userId: string, seats: number) {
     const reg = await this.load(registrationId, { by: 'lead', userId });
+    // No new payments on an event that now registers on another site.
+    assertNoOutsideLink(reg.event);
     this.assertCanGrow(reg, seats);
     await assertSpaceLive(this.prisma, { events: { some: { id: reg.eventId } } });
     const tt = reg.ticketType!;

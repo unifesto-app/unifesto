@@ -13,6 +13,7 @@ import { ApplePayButton } from '../../../modules/apple-pay-button';
 
 const CTA_LABEL: Record<RegisterMode, string> = {
   umbrella: 'View sub-events',
+  external: 'Register',
   signIn: 'Sign in to register',
   registered: 'View my ticket',
   choose: 'Choose ticket',

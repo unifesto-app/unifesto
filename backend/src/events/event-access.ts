@@ -147,6 +147,7 @@ export const PUBLIC_EVENT_CARD_SELECT = {
   latitude: true,
   longitude: true,
   onlinePlatform: true,
+  externalRegistrationUrl: true,
   capacity: true,
   registeredCount: true,
   waitlistEnabled: true,

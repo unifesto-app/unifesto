@@ -11,6 +11,7 @@ const ready: PublishCheckEvent = {
   venueName: 'Block C',
   venueAddress: null,
   onlineUrl: null,
+  externalRegistrationUrl: null,
   ticketCount: 1,
   subEventCount: 0,
 };
@@ -35,6 +36,11 @@ describe('publishMustHaves (Q22)', () => {
     expect(publishMustHaves({ ...ready, type: 'ONLINE', venueName: null, onlineUrl: 'https://meet.google.com/x' })).toEqual([]);
     expect(publishMustHaves({ ...ready, type: 'HYBRID', venueName: null })).toEqual(['a venue or joining link']);
     expect(publishMustHaves({ ...ready, type: 'HYBRID', venueName: null, onlineUrl: 'https://zoom.us/j/1' })).toEqual([]);
+  });
+
+  it('lets an event that registers on another site go live without tickets', () => {
+    expect(publishMustHaves({ ...ready, ticketCount: 0, externalRegistrationUrl: 'https://forms.gle/x' })).toEqual([]);
+    expect(publishMustHaves({ ...ready, ticketCount: 0, externalRegistrationUrl: ' ' })).toEqual(['a ticket']);
   });
 
   it('lets a festival hub with sub-events go live without its own ticket', () => {

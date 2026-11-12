@@ -3,7 +3,7 @@
 import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { CalendarBlank, MapPin, ArrowRight } from "@unifesto/unicon/react";
-import type { Event } from "@/lib/api/events";
+import { outsideRegistration, type Event } from "@/lib/api/events";
 import { IST } from "@/lib/site";
 
 interface EventCardProps {
@@ -94,8 +94,12 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
   
   let priceLabel: string;
   let priceSubLabel: string | null = null;
-  
-  if (isFree && !hasMultipleTickets) {
+  const outside = outsideRegistration(event);
+
+  if (outside) {
+    // Registration (and any price) lives on the organiser's own site.
+    priceLabel = `On ${outside.host}`;
+  } else if (isFree && !hasMultipleTickets) {
     // All tickets are free
     priceLabel = "Free";
   } else if (hasMultipleTickets || event.ticket_type_count) {

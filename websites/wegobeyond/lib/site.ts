@@ -29,6 +29,14 @@ export const UNIFESTO = {
   api: process.env.NEXT_PUBLIC_UNIFESTO_API || "https://api.unifesto.app",
   spaceSlug: "beyond",
   eventUrl: (slug: string) => `${EVENTS_HOST}/event/${encodeURIComponent(slug)}`,
+  // Register buttons: tagged so these sign-ups show as "wegobeyond" in the event's
+  // sources, with a "Back to wegobeyond.in" link once they're done.
+  registerUrl: (slug: string) =>
+    `${EVENTS_HOST}/event/${encodeURIComponent(slug)}?${new URLSearchParams({
+      utm_source: "wegobeyond",
+      utm_medium: "website",
+      return: `${SITE_URL}/`,
+    })}`,
 } as const;
 
 /**

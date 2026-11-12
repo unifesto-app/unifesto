@@ -54,13 +54,21 @@ function buildChecklist(event: Event, base: string) {
       href: `${base}/edit`,
     },
     { key: "location", ...location, href: `${base}/edit` },
-    {
-      key: "registration",
-      label: isPaid ? "A ticket" : "An RSVP option",
-      hint: isPaid ? "Add at least one ticket to sell." : "Set up how people RSVP.",
-      done: canRegister,
-      href: registrationHref,
-    },
+    has(event.externalRegistrationUrl)
+      ? {
+          key: "registration",
+          label: "Outside registration link",
+          hint: "People register on that site.",
+          done: true,
+          href: `${base}/edit`,
+        }
+      : {
+          key: "registration",
+          label: isPaid ? "A ticket" : "An RSVP option",
+          hint: isPaid ? "Add at least one ticket to sell." : "Set up how people RSVP.",
+          done: canRegister,
+          href: registrationHref,
+        },
   ];
 
   const enhancements: ChecklistItem[] = [

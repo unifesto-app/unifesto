@@ -4,6 +4,7 @@ import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
+  ArrowSquareOut,
   CaretDown,
   CaretRight,
   CalendarPlus,
@@ -24,7 +25,7 @@ import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } fr
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/components/DetailParts";
 import { registerEventInterest } from "@/lib/api/leads";
-import { registrationState, type Event, type SubEventSummary } from "@/lib/api/events";
+import { outsideRegistration, registrationState, type Event, type SubEventSummary } from "@/lib/api/events";
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
 import { openAppOrStore, useAppHref, useMobilePlatform } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
@@ -173,7 +174,11 @@ export default function EventDetailClient({ event }: Props) {
   const reg = isUmbrella ? "open" : registrationState(event.tickets, now);
   // Individual tickets, free or paid, register on the web (K10); group ones in the app.
   const webRegister = !isUmbrella && (event.tickets?.some((t) => !t.group) ?? true);
-  const bar = isUmbrella
+  // Registration on the organiser's own site: Unifesto only lists the event.
+  const outside = outsideRegistration(event);
+  const bar = outside
+    ? { label: "Registration", value: outside.host }
+    : isUmbrella
     ? { label: "Multi-part event", value: subCount }
     : event.is_free
       ? { label: "Entry", value: "Free" }
@@ -334,6 +339,14 @@ export default function EventDetailClient({ event }: Props) {
                 <FactRow icon={<XCircle className="h-6 w-6 text-red-400" aria-hidden />} title="This event was cancelled" danger />
               ) : isOver ? (
                 <FactRow icon={<Ticket className="h-6 w-6 text-paper/45" aria-hidden />} title="This event has ended" />
+              ) : outside ? (
+                <FactRow
+                  icon={<Ticket className="h-6 w-6 text-paper" aria-hidden />}
+                  title={`Registration on ${outside.host}`}
+                  sub="Tickets and payment are handled on that site."
+                  href={outside.href}
+                  external
+                />
               ) : (
                 <FactRow
                   icon={<Ticket className="h-6 w-6 text-paper" aria-hidden />}
@@ -579,6 +592,12 @@ export default function EventDetailClient({ event }: Props) {
               <Ticket weight="fill" className="h-5 w-5" aria-hidden />
               View my ticket
             </Link>
+          ) : outside ? (
+            // The bar's value names the host; a host in the label overflows phones.
+            <a href={outside.href} target="_blank" rel="noopener noreferrer nofollow" className="btn btn-lg btn-primary shrink-0">
+              <ArrowSquareOut weight="bold" className="h-5 w-5" aria-hidden />
+              Register
+            </a>
           ) : isUmbrella ? (
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">
               View events

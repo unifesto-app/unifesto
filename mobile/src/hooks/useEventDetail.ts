@@ -25,7 +25,13 @@ import { trackPageView } from '../services/pageViews';
 
 export const eventUrl = (e: Pick<Event, 'slug' | 'id'>) => `https://www.unifesto.app/event/${e.slug || e.id}`;
 
-export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
+export type RegisterMode = 'umbrella' | 'external' | 'signIn' | 'registered' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
+
+/** The outside site an event registers on, named by host. Null when it registers on Unifesto. */
+export function outsideRegistration(url?: string | null): { href: string; host: string } | null {
+  const m = url ? /^https:\/\/([^/?#:]+)/i.exec(url) : null;
+  return m ? { href: url!, host: m[1].toLowerCase().replace(/^www\./, '') } : null;
+}
 
 /**
  * Everything the event page needs: the event + tickets + additional-info
@@ -213,13 +219,20 @@ export function useEventDetail(eventId: string | undefined) {
           ? 'notOpen'
           : 'closed';
 
+  // Registration on the organiser's own site: Register opens it, no sign-in.
+  const outside = outsideRegistration(event?.externalRegistrationUrl);
+
   // A ticket holder always gets "View my ticket", even once the rest sell out.
+  // Same order as the web event page: my ticket, then the outside site, then a
+  // hub's sub-events (an umbrella owns no tickets of its own, so holders can't be one).
   const registerMode: RegisterMode =
-    bigEventMode === 'umbrella'
-      ? 'umbrella'
-      : ownsAnyTicket
-        ? 'registered'
-        : unavailable
+    ownsAnyTicket
+      ? 'registered'
+      : outside
+        ? 'external'
+        : bigEventMode === 'umbrella'
+          ? 'umbrella'
+          : unavailable
           ? unavailable
           : !user
             ? 'signIn'
@@ -247,6 +260,10 @@ export function useEventDetail(eventId: string | undefined) {
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleRegister = async () => {
     if (!event) return;
+    if (registerMode === 'external' && outside) {
+      void Linking.openURL(outside.href).catch(() => AppAlert.alert('Couldn’t open the link', outside.href));
+      return;
+    }
     if (!user) {
       AppAlert.alert('Sign in required', 'Please sign in to register for this event.', [
         { text: 'Cancel', style: 'cancel' },
@@ -317,13 +334,15 @@ export function useEventDetail(eventId: string | undefined) {
     if (!event) return;
     const when = new Date(event.startDateTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     const where = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : '');
-    const message = `${event.title}\n${[when, where].filter(Boolean).join(' · ')}\n${isFree ? 'Free' : priceDisplay}\n\nRegister on Unifesto`;
+    // An event that registers elsewhere has no price here and isn't registered on Unifesto.
+    const entry = outside ? `Register on ${outside.host}` : `${isFree ? 'Free' : priceDisplay}\n\nRegister on Unifesto`;
+    const message = `${event.title}\n${[when, where].filter(Boolean).join(' · ')}\n${entry}`;
     await shareLink({
       message,
       url: withUtm(eventUrl(event), { source: 'unifesto_app', medium: 'share', campaign: 'event_share' }),
       title: event.title,
     });
-  }, [event, isFree, priceDisplay]);
+  }, [event, isFree, priceDisplay, outside]);
 
   const copyLink = useCallback(async () => {
     if (!event) return;
@@ -468,6 +487,7 @@ export function useEventDetail(eventId: string | undefined) {
     bigEventMode,
     ownsAnyTicket,
     registerMode,
+    outside,
     handleRegister,
     canAddTicket,
     addTicket,

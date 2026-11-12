@@ -23,6 +23,7 @@ import {
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
 import { TermsService, dealColumns } from '../subscription/terms.service';
+import { assertNoOutsideLink } from '../events/external-registration';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -104,7 +105,7 @@ export class WaitlistService {
       eventId,
       Action.EVENT_MANAGE_ATTENDEES,
       'Only the event organisers can manage the waiting list',
-      { title: true, startDateTime: true, absorbProcessingFee: true },
+      { title: true, startDateTime: true, absorbProcessingFee: true, externalRegistrationUrl: true },
     );
   }
 
@@ -148,6 +149,7 @@ export class WaitlistService {
     ]);
     if (!event) throw new NotFoundException('Event not found');
     if (!ticketType) throw new NotFoundException('Ticket type not found');
+    assertNoOutsideLink(event);
     const groupSize = resolveGroupSize(ticketType, input.groupSize);
 
     const existing = await this.prisma.eventRegistration.findFirst({
@@ -474,6 +476,8 @@ export class WaitlistService {
    */
   async offer(organiserId: string, eventId: string, registrationId: string) {
     const event = await this.assertOrganiser(organiserId, eventId);
+    // An offer leads to a payment; an event that registers elsewhere takes none.
+    assertNoOutsideLink(event);
     // Terms at offer time (T5), like the price: a later deal change does not
     // move the amount on someone mid-payment.
     const terms = await this.terms.forEvent(eventId);
@@ -618,7 +622,7 @@ export class WaitlistService {
     ticketTypeId: string,
     count: number,
   ) {
-    await this.assertOrganiser(organiserId, eventId);
+    assertNoOutsideLink(await this.assertOrganiser(organiserId, eventId));
     const want = Math.max(1, Math.min(count, 100));
 
     // ponytail: the first 200 in line; a queue deeper than that with only big

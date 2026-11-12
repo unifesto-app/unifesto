@@ -135,6 +135,11 @@ export class CreateEventDto {
   @IsString()
   whatsappAttendeeGroupUrl?: string;
 
+  /** Outside registration link (https). Blank clears it. */
+  @IsOptional()
+  @IsString()
+  externalRegistrationUrl?: string;
+
   // accepted for old clients, ignored
   @IsOptional()
   @IsString()
@@ -262,6 +267,11 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString()
   whatsappAttendeeGroupUrl?: string;
+
+  /** Outside registration link (https). Blank clears it. */
+  @IsOptional()
+  @IsString()
+  externalRegistrationUrl?: string;
 
   // accepted for old clients, ignored
   @IsOptional()

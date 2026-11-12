@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
-import { Check, Copy, EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, WhatsappLogo } from "@unifesto/unicon/react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import QRCode from "qrcode";
+import { Check, Copy, DownloadSimple, EnvelopeSimple, Globe, InstagramLogo, LinkSimple, LinkedinLogo, WhatsappLogo } from "@unifesto/unicon/react";
 import { Card } from "@/console/components/ui/card";
 import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { DEFAULT_BUTTON, registerButtonHtml, type ButtonLook, type ButtonShape } from "@/console/lib/register-button";
+import { safeReturnUrl } from "@/lib/utm";
 
 export const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -121,6 +124,142 @@ export function TrackingLinks({ url, campaign }: { url: string; campaign: string
               {copied === "built" ? "Copied" : "Copy"}
             </Button>
           </div>
+        )}
+      </div>
+    </ListGroup>
+  );
+}
+
+/**
+ * A link, a paste-in button and a QR for the organiser's own website. Tagged
+ * with the site's name (medium "website", or "qr" for print) so its sign-ups
+ * show as their own source, and carrying ?return= so the register page offers
+ * "Back to <site>" once they're done.
+ */
+export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; campaign: string }) {
+  const { copied, copy } = useCopy();
+  const [site, setSite] = useState("");
+  const [page, setPage] = useState("");
+  const [qr, setQr] = useState("");
+  const [look, setLook] = useState<ButtonLook>(DEFAULT_BUTTON);
+  const setLookField = <K extends keyof ButtonLook>(k: K, v: ButtonLook[K]) => setLook((l) => ({ ...l, [k]: v }));
+  const s = tag(site);
+  // Same rule the register page applies, so a link we hand out always gets its Back button.
+  const back = safeReturnUrl(page.trim())?.href ?? "";
+  const link = s
+    ? withUtm(registerUrl, s, "website", tag(campaign) || undefined) + (back ? `&return=${encodeURIComponent(back)}` : "")
+    : "";
+  const qrLink = s ? withUtm(registerUrl, s, "qr", tag(campaign) || undefined) : "";
+  const button = link ? registerButtonHtml(link, look) : "";
+
+  useEffect(() => {
+    let live = true;
+    if (qrLink) QRCode.toDataURL(qrLink, { margin: 2, width: 512 }).then((d) => live && setQr(d), () => live && setQr(""));
+    return () => {
+      live = false;
+    };
+  }, [qrLink]);
+
+  const row = (key: string, label: string, value: string) => (
+    <div className="space-y-1.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+        <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{value}</code>
+        <Button size="sm" variant="outline" onClick={() => void copy(value, key)}>
+          {copied === key ? "Copied" : "Copy"}
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <ListGroup
+      title="On your website"
+      description="A Register link, button and QR for your own site. Sign-ups through them show up as the site's own source."
+    >
+      <div className="space-y-4 p-4">
+        <p className="flex items-center gap-2 text-sm text-foreground">
+          <Globe className="h-5 w-5" weight="fill" /> Your site
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input placeholder="Site name, e.g. wegobeyond" value={site} onChange={(e) => setSite(e.target.value)} />
+          <Input
+            type="url"
+            inputMode="url"
+            placeholder="Page to come back to (optional), https://…"
+            value={page}
+            onChange={(e) => setPage(e.target.value)}
+          />
+        </div>
+        {link && (
+          <>
+            {row("site-link", "Link", link)}
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-xs text-muted-foreground">Button style</p>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
+                <Input
+                  aria-label="Button text"
+                  maxLength={60}
+                  value={look.label}
+                  onChange={(e) => setLookField("label", e.target.value)}
+                />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Colour
+                  <input
+                    type="color"
+                    value={look.background}
+                    onChange={(e) => setLookField("background", e.target.value)}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Text
+                  <input
+                    type="color"
+                    value={look.color}
+                    onChange={(e) => setLookField("color", e.target.value)}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+                <select
+                  aria-label="Button shape"
+                  value={look.shape}
+                  onChange={(e) => setLookField("shape", e.target.value as ButtonShape)}
+                  className="h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
+                >
+                  <option value="pill">Pill</option>
+                  <option value="rounded">Rounded</option>
+                  <option value="square">Square</option>
+                </select>
+              </div>
+              {/* The exact snippet, rendered: its label is escaped and colours are hex only. */}
+              <div className="flex flex-wrap gap-3">
+                <div className="rounded-md bg-white p-4" dangerouslySetInnerHTML={{ __html: registerButtonHtml("#", look) }} />
+                <div className="rounded-md bg-neutral-900 p-4" dangerouslySetInnerHTML={{ __html: registerButtonHtml("#", look) }} />
+              </div>
+              {look !== DEFAULT_BUTTON && (
+                <button type="button" className="text-xs text-muted-foreground underline-offset-4 hover:underline" onClick={() => setLook(DEFAULT_BUTTON)}>
+                  Reset to Unifesto ink
+                </button>
+              )}
+            </div>
+            {row("site-button", "Button (paste into your page's HTML)", button)}
+            <div className="flex items-center gap-4">
+              {qr && (
+                // eslint-disable-next-line @next/next/no-img-element -- a data URL from the qrcode encoder
+                <img src={qr} alt="QR code for the Register link" className="h-24 w-24 rounded-md bg-white p-1" />
+              )}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">QR for posters and print, tagged as {s} / qr.</p>
+                {qr && (
+                  <a href={qr} download={`${tag(campaign) || "event"}-${s}-qr.png`} className="inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline">
+                    <DownloadSimple className="h-4 w-4" />
+                    Download QR
+                  </a>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </ListGroup>

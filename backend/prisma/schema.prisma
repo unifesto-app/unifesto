@@ -1469,6 +1469,11 @@ model Event {
   onlineUrl      String? @map("online_url") @db.Text
   onlinePlatform String? @map("online_platform") @db.VarChar(100)
 
+  // Outside registration: people register on this https link (Google Forms,
+  // Unstop, the organiser's site) and Unifesto only lists the event. Never set
+  // while the event has active ticket types (events/external-registration.ts).
+  externalRegistrationUrl String? @map("external_registration_url") @db.Text
+
   // Registration
   capacity            Int?
   registeredCount     Int     @default(0) @map("registered_count")

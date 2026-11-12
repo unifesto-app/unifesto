@@ -12,14 +12,56 @@
  */
 
 const KEY = "unifesto.utm";
+const RETURN_KEY = "unifesto.return";
 const NID_KEY = "unifesto.nid";
 const NID = /^[pie]:[\w.-]{1,64}$/;
 const PARAMS = ["utm_source", "utm_medium", "utm_campaign"] as const;
+
+/**
+ * An outside site's page to send people back to after registering
+ * (`?return=` on a link the organiser put on their site). Attacker-controlled,
+ * so: https only, no credentials, a real hostname, capped, and the fragment
+ * dropped. Callers show the host and only ever link to it on a click.
+ */
+export function safeReturnUrl(raw: string | null | undefined): { href: string; host: string } | null {
+  if (!raw || raw.length > 500) return null;
+  try {
+    const url = new URL(raw);
+    // "localhost." is localhost; a name this long could hide its real domain in the button.
+    const host = url.hostname.replace(/\.$/, "");
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    if (!host.includes(".") || host.length > 60 || PRIVATE_HOST.test(host)) return null;
+    url.hash = "";
+    return { href: url.toString(), host: host.replace(/^www\./, "") };
+  } catch {
+    return null;
+  }
+}
+
+/** "/event/x" or "/event/x/register" → "x". */
+/** IP literals and names that only resolve inside someone's own network. */
+const PRIVATE_HOST = /^\[|^[\d.]+$|\.(localhost|local|lan|internal|home|corp|intranet)$/i;
+
+const eventSlugOf = (path: string) => /^\/event\/([^/]+)/.exec(path)?.[1] ?? null;
+
+/** The return link captured on landing on this event's pages, if any. */
+export function storedReturn(slug: string): { href: string; host: string } | null {
+  try {
+    const r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || "null") as { slug?: string; href?: string } | null;
+    return r?.slug === slug ? safeReturnUrl(r.href) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Remember the utm_* tags on the current URL, if any. Latest tagged landing wins. */
 export function captureUtm(): void {
   try {
     const q = new URLSearchParams(window.location.search);
+    // ?return= rides with the tags (sign-in drops the query string), kept for this event only.
+    const back = safeReturnUrl(q.get("return"));
+    const slug = eventSlugOf(window.location.pathname ?? "");
+    if (back && slug) sessionStorage.setItem(RETURN_KEY, JSON.stringify({ slug, href: back.href }));
     const nid = q.get("nid");
     if (nid && NID.test(nid)) sessionStorage.setItem(NID_KEY, nid);
     if (!q.get("utm_source")) return;

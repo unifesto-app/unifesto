@@ -43,6 +43,8 @@ export interface Event {
   currency?: string;
   /** Number of distinct visible ticket/RSVP types (drives "Starting from"). */
   ticket_type_count?: number;
+  /** Registration runs on this outside site; Unifesto only lists the event. */
+  external_registration_url?: string | null;
   /** Whether event has at least one free ticket available */
   has_free_tickets?: boolean;
   status: string;
@@ -110,6 +112,23 @@ export interface TicketSale {
   group?: boolean;
   sale_start?: string;
   sale_end?: string;
+}
+
+/**
+ * The outside site an event registers on, with the host to name it by
+ * ("forms.gle"). Null for events that register on Unifesto. The backend only
+ * stores https links; anything else is ignored here too.
+ */
+export function outsideRegistration(event: Pick<Event, "external_registration_url">): { href: string; host: string } | null {
+  const raw = event.external_registration_url;
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    return { href: url.toString(), host: url.hostname.replace(/^www\./, "") };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -236,8 +255,9 @@ export function mapSubEvent(
     city: r.city as string | undefined,
     event_type: (r.type ?? r.event_type) as string | undefined,
     status: r.status as string | undefined,
-    // Free only when there are tickets and none is paid.
-    is_free: hasTickets ? !hasPaidTickets : (r.isFree as boolean | undefined),
+    // Free only when there are tickets and none is paid. An event that registers
+    // on another site has no tickets here, so its price is unknown, never "Free".
+    is_free: hasTickets ? !hasPaidTickets : r.externalRegistrationUrl ? undefined : (r.isFree as boolean | undefined),
     price: minPrice,
     has_free_tickets: hasPaidTickets && prices.some((p) => p === 0),
     currency: ticketTypes[0]?.currency as string | undefined,
@@ -291,9 +311,13 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
   const minPrice = hasPaidTickets ? Math.min(...paidPrices) : undefined;
   // Free only when there are ticket types and NONE of them is paid. With no
   // ticket data, fall back to the (unreliable) event-level flag.
+  // An event that registers on another site has no tickets here: its price is
+  // unknown, so it is never "Free" (cards, the free filter, JSON-LD).
   const isFree = hasTickets
     ? !hasPaidTickets
-    : ((r.isFree ?? r.is_free ?? true) as boolean);
+    : r.externalRegistrationUrl
+      ? false
+      : ((r.isFree ?? r.is_free ?? true) as boolean);
   const minTicket = hasPaidTickets
     ? ticketTypes.find((t) => parseFloat(String(t.price)) === minPrice)
     : undefined;
@@ -326,6 +350,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
       | string
       | undefined,
     ticket_type_count: ticketTypes.length,
+    external_registration_url: (r.externalRegistrationUrl ?? null) as string | null,
     has_free_tickets: hasFreeTickets,
     status: r.status as string,
     visibility: (r.visibility ?? r.event_visibility) as string | undefined,

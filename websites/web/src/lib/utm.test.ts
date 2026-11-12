@@ -1,9 +1,9 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { captureUtm, storedUtm, withStoredUtm } from "@/lib/utm";
+import { captureUtm, safeReturnUrl, storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
 
 const store = new Map<string, string>();
-const visit = (search: string) => Object.assign(globalThis, { window: { location: { search } } });
+const visit = (search: string, pathname = "/") => Object.assign(globalThis, { window: { location: { search, pathname } } });
 Object.assign(globalThis, {
   sessionStorage: {
     getItem: (k: string) => store.get(k) ?? null,
@@ -51,4 +51,47 @@ test("withStoredUtm appends with ? or &, and leaves untagged links alone", () =>
   captureUtm();
   assert.equal(withStoredUtm("unifesto://event/x"), "unifesto://event/x?utm_source=wa&utm_campaign=fest");
   assert.equal(withStoredUtm("unifesto://event/x?a=1"), "unifesto://event/x?a=1&utm_source=wa&utm_campaign=fest");
+});
+
+test("safeReturnUrl keeps a public https page and names its host", () => {
+  assert.deepEqual(safeReturnUrl("https://www.wegobeyond.in/build-sunday?x=1#top"), {
+    href: "https://www.wegobeyond.in/build-sunday?x=1",
+    host: "wegobeyond.in",
+  });
+});
+
+test("safeReturnUrl refuses anything that isn't a plain https page", () => {
+  for (const raw of [
+    null,
+    "",
+    "http://wegobeyond.in",
+    "javascript:alert(1)",
+    "data:text/html,hi",
+    "//wegobeyond.in",
+    "https://user:pw@wegobeyond.in",
+    "https://localhost/x",
+    "https://intranet/x",
+    "https://localhost./x",
+    "https://printer.local/x",
+    "https://10.0.0.5/x",
+    "https://[::1]/x",
+    `https://${"a".repeat(55)}.evil.com/`,
+    `https://wegobeyond.in/${"a".repeat(500)}`,
+  ]) {
+    assert.equal(safeReturnUrl(raw), null, String(raw));
+  }
+});
+
+test("a return link is kept for the event it landed on, and only that one", () => {
+  visit("?utm_source=wegobeyond&return=https%3A%2F%2Fwegobeyond.in%2F", "/event/build-sunday/register");
+  captureUtm();
+  assert.equal(storedReturn("build-sunday")?.host, "wegobeyond.in");
+  assert.equal(storedReturn("other-event"), null);
+  visit("?return=javascript%3Aalert(1)", "/event/build-sunday");
+  captureUtm();
+  assert.equal(storedReturn("build-sunday")?.host, "wegobeyond.in");
+  visit("?return=https%3A%2F%2Fwegobeyond.in%2F", "/events");
+  store.clear();
+  captureUtm();
+  assert.equal(storedReturn("build-sunday"), null);
 });
