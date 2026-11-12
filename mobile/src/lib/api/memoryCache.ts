@@ -39,6 +39,9 @@ const NEVER: RegExp[] = [
   /^\/payments/,
   // Q40's kill switch: off must reach the next checkout, not one 10 minutes on.
   /^\/config\/checkout/,
+  // An event's fee follows its space's deal, which Apex can change any time;
+  // the pay step's refetch must reach the server.
+  /^\/config\/processing-fee/,
   /^\/leaderboard/,
   // Hackathon teams, rooms and the in-app feed change with other curators'
   // edits and incoming pushes, not only this device's writes.

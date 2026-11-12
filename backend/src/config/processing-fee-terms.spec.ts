@@ -27,4 +27,11 @@ describe('processing fee terms', () => {
     });
     await expect(ctrl.getProcessingFee('e')).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('a database failure stays a 500, not a 404', async () => {
+    const ctrl = build(async () => {
+      throw new Error("Can't reach database server");
+    });
+    await expect(ctrl.getProcessingFee('e')).rejects.not.toBeInstanceOf(NotFoundException);
+  });
 });

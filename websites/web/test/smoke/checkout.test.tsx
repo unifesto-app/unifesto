@@ -68,3 +68,19 @@ test("a signed-in buyer pays for a ticket through Razorpay and gets it", async (
     razorpaySignature: "sig",
   });
 });
+
+test("an organiser-included fee shows as PF included with the listed total", async () => {
+  mockApi({
+    "POST /auth/session": { accessToken: "tok", email: "asha@example.com", fullName: "Asha Rao" },
+    "GET /users/me": { ageConfirmedAt: "2026-01-01T00:00:00.000Z" },
+    "GET /events/ev1/my-registrations": [],
+    "GET /legal/pending": [],
+    // Included: the quote's base is the price minus the fee, the total is the price.
+    "POST /quote": { basePaise: 48019, couponDiscountPaise: 0, buyerFeePaise: 1881, totalPaise: 49900, feeAbsorbed: true },
+  });
+  render(<RegisterClient event={{ ...event, fee_included: true } as Event} tickets={[ticket]} fields={[]} />);
+
+  expect(await screen.findByRole("button", { name: "Pay ₹499" })).toBeTruthy();
+  expect(screen.getByText("PF included")).toBeTruthy();
+  expect(screen.queryByText(/%/)).toBeNull();
+});

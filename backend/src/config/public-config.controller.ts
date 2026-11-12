@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, ParseUUIDPipe, Query } from '@nestjs/common';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
 import { TermsService } from '../subscription/terms.service';
@@ -25,9 +25,8 @@ export class PublicConfigController {
   @Get('processing-fee')
   async getProcessingFee(@Query('eventId', new ParseUUIDPipe({ optional: true })) eventId?: string) {
     if (eventId) {
-      const t = await this.terms.forEvent(eventId).catch(() => {
-        throw new NotFoundException('Event not found');
-      });
+      // forEvent 404s an unknown event itself; anything else stays a 500.
+      const t = await this.terms.forEvent(eventId);
       return {
         processingFeePercent: t.buyerFeeBps / 100,
         processingFeeCapPerTicket: t.buyerFeeCapPaise == null ? null : t.buyerFeeCapPaise / 100,
