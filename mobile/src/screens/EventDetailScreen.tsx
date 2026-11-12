@@ -46,7 +46,6 @@ import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
 import { useBannerAccent } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
-import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { borderRadius, column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -130,7 +129,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   // Header actions: save + one overflow menu. Plain icons, no backgrounds.
   useLayoutEffect(() => {
     navigation.setOptions({
-      ...brandHeaderOptions(event?.branding),
       headerRight: () => (
         <HeaderActions>
           {event ? (
@@ -449,7 +447,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
         <HostedBySection
           // Same logo the space page shows (its default when none is set), never an initial.
-          space={event.space ? { ...event.space, logoUrl: event.branding?.logoUrl || hostLogo } : event.space}
+          space={event.space ? { ...event.space, logoUrl: hostLogo } : event.space}
           coHosts={event.coHosts?.map((h) => ({ ...h, logoUrl: logoOr(defaults, h.id, h.logoUrl) }))}
           curators={event.curators}
           contacts={d.contacts}

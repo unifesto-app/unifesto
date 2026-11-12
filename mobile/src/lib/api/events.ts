@@ -9,7 +9,7 @@ export interface Branding {
   /** Space name for the branded header; null when only an event colour applies. */
   name?: string | null;
   color: string | null;
-  /** Header logo: the wide brand wordmark, else the square space logo. */
+  /** The wide brand wordmark, else the square space logo. Web only: the app keeps the square logo. */
   logoUrl?: string | null;
   font?: string | null;
   mode?: 'light' | 'dark' | null;
