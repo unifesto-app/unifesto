@@ -47,6 +47,7 @@ import {
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { TermsService, dealColumns } from '../subscription/terms.service';
+import { assertNoOutsideLink } from '../events/external-registration';
 
 /**
  * Starting a registration: free RSVP, paid checkout (Razorpay order + coupon
@@ -244,10 +245,13 @@ export class RegistrationCheckoutService {
       id: string;
       spaceId: string;
       visibility: EventVisibility;
+      externalRegistrationUrl?: string | null;
       space?: { name: string } | null;
     },
     userId: string,
   ) {
+    // Registration for this event runs on the organiser's own site.
+    assertNoOutsideLink(event);
     // No new sales while the space is taken down (J16).
     await assertSpaceLive(this.prisma, { id: event.spaceId });
     if (!(await canAccessSpaceOnlyEvent(this.prisma, event, userId))) {

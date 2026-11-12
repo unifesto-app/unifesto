@@ -23,6 +23,7 @@ import {
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
 import { TermsService, dealColumns } from '../subscription/terms.service';
+import { assertNoOutsideLink } from '../events/external-registration';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -148,6 +149,7 @@ export class WaitlistService {
     ]);
     if (!event) throw new NotFoundException('Event not found');
     if (!ticketType) throw new NotFoundException('Ticket type not found');
+    assertNoOutsideLink(event);
     const groupSize = resolveGroupSize(ticketType, input.groupSize);
 
     const existing = await this.prisma.eventRegistration.findFirst({

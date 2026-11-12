@@ -8,6 +8,8 @@ export interface PublishCheckEvent {
   venueName: string | null;
   venueAddress: string | null;
   onlineUrl: string | null;
+  /** Outside registration link: registering happens on that site instead. */
+  externalRegistrationUrl: string | null;
   /** Active ticket types (RSVP options included). */
   ticketCount: number;
   /** Listed (published) sub-events: a festival hub takes registrations on those, not on itself. */
@@ -19,8 +21,9 @@ const has = (v: string | null) => !!v?.trim();
 /**
  * Q22 (decision E): an event can't go live without a cover, somewhere to be
  * (a venue in person, a joining link online, either for hybrid) and one way to
- * register. Everything else on the console checklist stays a tip. Returns the
- * missing parts in curator words, empty when it can publish.
+ * register (a ticket, an RSVP option or an outside registration link).
+ * Everything else on the console checklist stays a tip. Returns the missing
+ * parts in curator words, empty when it can publish.
  */
 export function publishMustHaves(e: PublishCheckEvent): string[] {
   const venue = has(e.venueName) || has(e.venueAddress);
@@ -30,7 +33,7 @@ export function publishMustHaves(e: PublishCheckEvent): string[] {
   if (e.type === 'IN_PERSON' && !venue) missing.push('a venue');
   else if (e.type === 'ONLINE' && !link) missing.push('a joining link');
   else if (e.type === 'HYBRID' && !venue && !link) missing.push('a venue or joining link');
-  if (!e.ticketCount && !e.subEventCount) missing.push(e.registrationType === 'RSVP' ? 'an RSVP option' : 'a ticket');
+  if (!e.ticketCount && !e.subEventCount && !has(e.externalRegistrationUrl)) missing.push(e.registrationType === 'RSVP' ? 'an RSVP option' : 'a ticket');
   return missing;
 }
 

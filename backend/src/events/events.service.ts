@@ -59,6 +59,7 @@ import {
 } from '@prisma/client';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertEventSchedule } from './event-dates';
+import { OUTSIDE_LINK_TICKETS_MESSAGE, resolveExternalRegistrationUrl } from './external-registration';
 import {
   assertCanViewSpace,
   assertSpaceLive,
@@ -1719,6 +1720,7 @@ export class EventsService {
         spaceId: dto.spaceId,
         parentEventId: dto.parentEventId ?? null,
         whatsappAttendeeGroupUrl: whatsappAttendeeGroupUrl ?? null,
+        externalRegistrationUrl: resolveExternalRegistrationUrl(dto.externalRegistrationUrl) ?? null,
         createdBy: userId,
       },
     });
@@ -2419,6 +2421,16 @@ export class EventsService {
       dto.whatsappAttendeeGroupUrl,
     );
 
+    // Outside registration and Unifesto tickets never mix: setting a link
+    // waits until every ticket type is switched off (existing holders keep theirs).
+    const externalRegistrationUrl = resolveExternalRegistrationUrl(dto.externalRegistrationUrl);
+    if (externalRegistrationUrl) {
+      const activeTickets = await this.prisma.eventTicketType.count({ where: { eventId, isActive: true } });
+      if (activeTickets) {
+        throw new BadRequestException('Switch off this event’s tickets before adding an outside registration link.');
+      }
+    }
+
     const updated = await this.prisma.event.update({
       where: { id: eventId },
       data: {
@@ -2449,6 +2461,7 @@ export class EventsService {
         ...resolveCategories(dto, event),
         visibility: dto.visibility,
         whatsappAttendeeGroupUrl,
+        externalRegistrationUrl,
       },
     });
 
@@ -3117,6 +3130,10 @@ export class EventsService {
       throw new ForbiddenException('You cannot manage this event');
     }
 
+    if (event.externalRegistrationUrl && (dto.isActive ?? true)) {
+      throw new BadRequestException(OUTSIDE_LINK_TICKETS_MESSAGE);
+    }
+
     const subscription = event.space.subscription!;
     const limits = this.planConfig.getEffectiveLimits(subscription);
 
@@ -3279,6 +3296,9 @@ export class EventsService {
     });
     if (!existing || existing.eventId !== eventId) {
       throw new NotFoundException('Ticket type not found');
+    }
+    if (event.externalRegistrationUrl && (dto.isActive ?? existing.isActive)) {
+      throw new BadRequestException(OUTSIDE_LINK_TICKETS_MESSAGE);
     }
 
     // Resolve the effective kind/group config (new value falls back to stored).
