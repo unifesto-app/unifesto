@@ -1,48 +1,30 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { CaretRight, UnGlyph } from '@unifesto/unicon/react-native';
-import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import * as AuthAPI from '../lib/api/auth';
 import { getMyUnreadCount } from '../lib/api/support';
-import { openStoreReview } from '../utils/storeReview';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import Skeleton from '../components/Skeleton';
-import BrandWordmark from '../components/BrandWordmark';
 import { GUTTER } from '../components/home/Section';
 import { initials } from '../components/profile/IdentityHeader';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import IconTile, { TILES } from '../components/profile/IconTile';
 import SystemGlyph from '../components/profile/SystemGlyph';
-import BrandIcon, { type Brand } from '../components/profile/BrandIcon';
 import AuthButton from '../components/auth/AuthButton';
 import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
-import { AppAlert } from '../components/ui/AppAlert';
-import { openWhatsNew } from '../components/WhatsNewSheet';
 
 const AVATAR = 60;
 /** Past this Dynamic Type scale the identity lines wrap instead of truncating. */
 const LARGE_TEXT = 1.3;
-
-const openExternal = (url: string, name: string) =>
-  Linking.openURL(url).catch(() => AppAlert.alert('Error', `Unable to open ${name}`));
-
-/** Where Unifesto posts: real marks in one line above the wordmark. */
-const SOCIALS: { brand: Brand; name: string; url: string }[] = [
-  { brand: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/unifesto.app/' },
-  { brand: 'x', name: 'X', url: 'https://x.com/unifestoapp' },
-  { brand: 'linkedin', name: 'LinkedIn', url: 'https://www.linkedin.com/company/unifesto' },
-  { brand: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/@unifesto-app' },
-];
 
 interface Nudge {
   title: string;
@@ -110,10 +92,9 @@ function IdentityRowSkeleton() {
 export default function ProfileScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const { theme } = useTheme();
   const topInset = useStableTopInset();
   const access = useSpaceAccess();
-  const { token, logout, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { token, isLoading: authLoading, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
@@ -139,26 +120,7 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
-  const handleLogout = () => {
-    AppAlert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-            router.replace('/login');
-          } catch {
-            AppAlert.alert('Error', 'Failed to sign out. Please try again.');
-          }
-        },
-      },
-    ]);
-  };
-
-  const version = Application.nativeApplicationVersion;
-  // A downloaded OTA waiting for a restart: point people at About to apply it.
+  // A downloaded OTA waiting for a restart: Settings › About applies it.
   const { isUpdatePending } = Updates.useUpdates();
 
   const header = (
@@ -178,42 +140,17 @@ export default function ProfileScreen() {
     </View>
   );
 
-  // Help is the same signed in or out.
-  const help = (
-    <SettingsGroup flat title="Help and more" style={styles.group}>
-      <SettingsRow icon={<IconTile {...TILES.support} />} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
-      <SettingsRow icon={<IconTile {...TILES.whatsNew} />} label="What’s new" onPress={openWhatsNew} />
+  // Settings, help, About and Sign out live one level down (SettingsScreen).
+  // What those rows used to flag (a support reply, an update waiting) rides here.
+  const settings = (
+    <SettingsGroup flat style={styles.group}>
       <SettingsRow
-        icon={<IconTile {...TILES.about} tone={isUpdatePending ? 'mint' : TILES.about.tone} />}
-        label="About and updates"
-        value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined}
-        onPress={() => router.push('/about')}
+        icon={<IconTile {...TILES.settings} />}
+        label="Settings and help"
+        value={supportUnread ? `${supportUnread} new` : isUpdatePending ? 'Update ready' : undefined}
+        onPress={() => router.push('/settings')}
       />
-      <SettingsRow icon={<IconTile {...TILES.rate} />} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
     </SettingsGroup>
-  );
-
-  // Apps show their real marks, bare, in one line above the wordmark.
-  const footer = (
-    <View style={styles.footer}>
-      <View style={styles.socials}>
-        {SOCIALS.map((s) => (
-          <Pressable
-            key={s.brand}
-            onPress={() => openExternal(s.url, s.name)}
-            accessibilityRole="link"
-            accessibilityLabel={`Unifesto on ${s.name}`}
-            hitSlop={10}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-          >
-            <BrandIcon brand={s.brand} size={26} />
-          </Pressable>
-        ))}
-      </View>
-      <Pressable onPress={() => router.push('/about')} accessibilityRole="button" accessibilityLabel="About and updates" hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-        <BrandWordmark width={104} />
-      </Pressable>
-    </View>
   );
 
   // ── Guest ────────────────────────────────────────────────────────────────
@@ -232,8 +169,7 @@ export default function ProfileScreen() {
             </Text>
             <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={styles.guestButton} />
           </View>
-          {help}
-          {footer}
+          {settings}
         </ScrollView>
       </View>
     );
@@ -276,18 +212,6 @@ export default function ProfileScreen() {
           <SettingsRow icon={<IconTile {...TILES.spaces} />} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
-        <SettingsGroup flat title="Settings" style={styles.group}>
-          <SettingsRow icon={<IconTile {...TILES.account} />} label="Account" onPress={() => router.push('/account')} />
-          <SettingsRow icon={<IconTile {...TILES.notifications} />} label="Notifications" onPress={() => router.push('/notification-settings')} />
-          <SettingsRow icon={<IconTile {...TILES.permissions} />} label="Permissions" onPress={() => router.push('/permissions')} />
-          <SettingsRow
-            icon={<IconTile {...TILES.appearance} />}
-            label="Appearance"
-            value={theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
-            onPress={() => router.push('/appearance')}
-          />
-        </SettingsGroup>
-
         {/* Hosts get a door into their Space tab. Starting one stays for everyone:
             people who already run a space can start another. */}
         {/* Starting something is an action, so those rows close the list in the sky accent. */}
@@ -305,13 +229,7 @@ export default function ProfileScreen() {
           ) : null}
         </SettingsGroup>
 
-        {help}
-
-        <SettingsGroup flat style={styles.group}>
-          <SettingsRow icon={<IconTile {...TILES.signOut} />} label="Sign out" danger onPress={handleLogout} />
-        </SettingsGroup>
-
-        {footer}
+        {settings}
       </ScrollView>
     </View>
   );
@@ -337,6 +255,4 @@ const styles = StyleSheet.create({
   guestTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   guestBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
   guestButton: { marginTop: spacing[6], alignSelf: 'stretch' },
-  footer: { alignItems: 'center', gap: spacing[6], marginTop: spacing[12] },
-  socials: { flexDirection: 'row', gap: spacing[8] },
 });

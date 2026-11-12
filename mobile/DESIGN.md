@@ -116,7 +116,7 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
   Hanken SemiBold, sentence case, with no blurb under them.
-- **Row lists** (Profile and its settings pages, every list on Home (From my spaces or the featured
+- **Row lists** (Profile, Settings and its pages, every list on Home (From my spaces or the featured
   space, Happening near you by day, My shortlist, Manage), the Spaces page, About, the Space tab,
   Apex "Waiting on me"): rows
   straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
