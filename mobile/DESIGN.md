@@ -152,6 +152,11 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
 - **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
   Glyphs take `c.text`, `c.muted` or the card's accent.
+- **One exception, Profile and Settings rows** (owner, 13 Nov 2026: "squared color icons, apple
+  icons"): `IconTile`, a solid rounded square (30pt, radius 7, continuous corner) in the deep shade
+  of its row's tone with a white glyph, like iOS Settings. iOS draws the real SF Symbol
+  (`expo-symbols`), Android its Unicon twin. Every row's symbol and tone live in `TILES`
+  (components/profile/IconTile). Nowhere else; other lists keep bare glyphs.
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
 - **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.
