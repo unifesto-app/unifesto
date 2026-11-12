@@ -33,7 +33,7 @@ import { getMe } from "@/lib/api/account";
 import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
 import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
-import { storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
+import { returnLink, storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
 import { CHECKOUT_JS, checkout, lastPayMethod, payByUpi, rememberPayMethod, upiWay, type UpiWay } from "@/lib/razorpay";
 import UpiWait from "@/components/UpiWait";
 import { CHOICE, FIELD, Question } from "@/components/FormQuestion";
@@ -164,6 +164,16 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
       live = false;
     };
   }, [doneId, token]);
+
+  // Done and sent here by an embed on a site that autoReturnAllowed trusts: go
+  // back after a moment (the done screen says so, and its link still works).
+  useEffect(() => {
+    if (step !== "done") return;
+    const r = storedReturn(event.slug);
+    if (!r?.auto) return;
+    const t = setTimeout(() => window.location.assign(returnLink(r, event.slug)), 2500);
+    return () => clearTimeout(t);
+  }, [step, event.slug]);
 
   // Q5: the 18+ box is asked once per account (Z11), so it's hidden once on record.
   const [ageDone, setAgeDone] = useState(false);
@@ -419,9 +429,16 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
           Open My tickets in the app
         </button>
         {returnTo && (
-          <a href={returnTo.href} rel="noreferrer" className="btn btn-lg btn-secondary mt-3 h-auto w-full whitespace-normal break-all">
-            Back to {returnTo.host}
-          </a>
+          <>
+            <a
+              href={returnLink(returnTo, event.slug)}
+              rel="noreferrer"
+              className="btn btn-lg btn-secondary mt-3 h-auto w-full whitespace-normal break-all"
+            >
+              Back to {returnTo.host}
+            </a>
+            {returnTo.auto && <p className="mt-2 text-sm text-paper/65">Taking you back to {returnTo.host}…</p>}
+          </>
         )}
         {waGroup?.inviteUrl && (
           <a href={waGroup.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-lg btn-secondary mt-3 w-full">

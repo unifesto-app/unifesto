@@ -39,5 +39,18 @@ function buttonCss(look: ButtonLook): string {
  * won't have ours), same tab so "Back to" returns. Colours are hex only and the
  * label is escaped, so nothing the organiser types can break out of the tag.
  */
-export const registerButtonHtml = (href: string, look: ButtonLook = DEFAULT_BUTTON) =>
-  `<a href="${attr(href)}" style="${attr(buttonCss(look))}">${text(look.label.trim().slice(0, 60) || DEFAULT_BUTTON.label)}</a>`;
+export const registerButtonHtml = (href: string, look: ButtonLook = DEFAULT_BUTTON, embed = false) =>
+  `<a href="${attr(href)}"${embed ? " data-unifesto-event" : ""} style="${attr(buttonCss(look))}">${text(look.label.trim().slice(0, 60) || DEFAULT_BUTTON.label)}</a>`;
+
+/**
+ * The same button run by embed.js (K21): checkout opens in a popup and the
+ * page gets a "unifesto:registered" event. embed.js adds ?return= itself.
+ */
+export const popupButtonHtml = (origin: string, href: string, look: ButtonLook = DEFAULT_BUTTON) =>
+  `<script src="${attr(origin)}/embed.js" async></script>\n${registerButtonHtml(href, look, true)}`;
+
+/** The event card iframe (K21), tagged with the site so its sign-ups show as their own source. */
+export const cardIframeHtml = (origin: string, slug: string, source: string, theme: "light" | "dark", title: string) => {
+  const q = new URLSearchParams({ source, theme });
+  return `<iframe src="${attr(`${origin}/embed/event/${encodeURIComponent(slug)}?${q}`)}" title="${attr(title)}" width="100%" height="560" style="border:0;max-width:448px" loading="lazy"></iframe>`;
+};

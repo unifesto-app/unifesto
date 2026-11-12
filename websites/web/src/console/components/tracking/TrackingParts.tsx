@@ -7,7 +7,14 @@ import { Card } from "@/console/components/ui/card";
 import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
-import { DEFAULT_BUTTON, registerButtonHtml, type ButtonLook, type ButtonShape } from "@/console/lib/register-button";
+import {
+  DEFAULT_BUTTON,
+  cardIframeHtml,
+  popupButtonHtml,
+  registerButtonHtml,
+  type ButtonLook,
+  type ButtonShape,
+} from "@/console/lib/register-button";
 import { safeReturnUrl } from "@/lib/utm";
 
 export const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -136,7 +143,7 @@ export function TrackingLinks({ url, campaign }: { url: string; campaign: string
  * show as their own source, and carrying ?return= so the register page offers
  * "Back to <site>" once they're done.
  */
-export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; campaign: string }) {
+export function WebsiteLinks({ registerUrl, campaign, title }: { registerUrl: string; campaign: string; title: string }) {
   const { copied, copy } = useCopy();
   const [site, setSite] = useState("");
   const [page, setPage] = useState("");
@@ -151,6 +158,11 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
     : "";
   const qrLink = s ? withUtm(registerUrl, s, "qr", tag(campaign) || undefined) : "";
   const button = link ? registerButtonHtml(link, look) : "";
+  // embed.js adds ?return= itself (the page the button is on), so the popup link has none.
+  const origin = new URL(registerUrl).origin;
+  const [cardTheme, setCardTheme] = useState<"light" | "dark">("light");
+  const popup = s ? popupButtonHtml(origin, withUtm(registerUrl, s, "website", tag(campaign) || undefined), look) : "";
+  const card = s ? cardIframeHtml(origin, campaign, s, cardTheme, `${title} on Unifesto`) : "";
 
   useEffect(() => {
     let live = true;
@@ -162,7 +174,7 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
 
   const row = (key: string, label: string, value: string) => (
     <div className="space-y-1.5">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      {label && <p className="text-xs text-muted-foreground">{label}</p>}
       <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
         <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{value}</code>
         <Button size="sm" variant="outline" onClick={() => void copy(value, key)}>
@@ -244,6 +256,26 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
               )}
             </div>
             {row("site-button", "Button (paste into your page's HTML)", button)}
+            {row(
+              "site-popup",
+              "Button with popup checkout (people stay on your page; it gets a \"unifesto:registered\" event when they're done)",
+              popup,
+            )}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">Event card (shows date, place, price and seats left)</p>
+                <select
+                  aria-label="Card theme"
+                  value={cardTheme}
+                  onChange={(e) => setCardTheme(e.target.value as "light" | "dark")}
+                  className="h-8 rounded-md border border-border bg-transparent px-2 text-xs text-foreground"
+                >
+                  <option value="light">Light page</option>
+                  <option value="dark">Dark page</option>
+                </select>
+              </div>
+              {row("site-card", "", card)}
+            </div>
             <div className="flex items-center gap-4">
               {qr && (
                 // eslint-disable-next-line @next/next/no-img-element -- a data URL from the qrcode encoder

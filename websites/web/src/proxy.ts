@@ -28,7 +28,7 @@ const origin = (url: string | undefined) => {
  * Prerendered pages (src/lib/cached-pages.ts) get no nonce: their inline
  * scripts need 'unsafe-inline'. Script from other hosts stays blocked there.
  */
-function csp(nonce: string | null, isConsole: boolean): string {
+function csp(nonce: string | null, isConsole: boolean, isEmbed = false): string {
   const dev = process.env.NODE_ENV === 'development';
   const razorpay = 'https://checkout.razorpay.com https://api.razorpay.com';
   const api = origin(process.env.NEXT_PUBLIC_API_URL) || 'https://api.unifesto.app';
@@ -58,7 +58,8 @@ function csp(nonce: string | null, isConsole: boolean): string {
     "base-uri 'self'",
     // Q40: razorpay.js runs in the page (UPI without the sheet) and may post to Razorpay.
     "form-action 'self' https://api.razorpay.com",
-    "frame-ancestors 'none'",
+    // Only /embed/** may sit in another site's frame (K21).
+    isEmbed ? "frame-ancestors *" : "frame-ancestors 'none'",
   ].join('; ');
 }
 
@@ -139,7 +140,7 @@ export async function proxy(request: NextRequest) {
   // cached home page; its /event/* pages are the same prerendered ones as www's.
   const cached = isCachedPage(pathname) && (pathname !== '/' || isOwnHost(hostOf(request)));
   const nonce = cached ? null : Buffer.from(crypto.randomUUID()).toString('base64');
-  const policy = csp(nonce, under(pathname, '/console'));
+  const policy = csp(nonce, under(pathname, '/console'), under(pathname, '/embed'));
   // Next reads the nonce from the request's CSP header while rendering. A
   // prerendered page's background re-render must not bake one in.
   const headers = new Headers(request.headers);

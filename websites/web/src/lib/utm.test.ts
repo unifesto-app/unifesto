@@ -1,6 +1,6 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { captureUtm, safeReturnUrl, storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
+import { captureUtm, returnLink, safeReturnUrl, storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
 
 const store = new Map<string, string>();
 const visit = (search: string, pathname = "/") => Object.assign(globalThis, { window: { location: { search, pathname } } });
@@ -94,4 +94,21 @@ test("a return link is kept for the event it landed on, and only that one", () =
   store.clear();
   captureUtm();
   assert.equal(storedReturn("build-sunday"), null);
+});
+
+test("an embed landing keeps embed, popup and where it came from; the way back carries the marker", () => {
+  Object.assign(globalThis, { document: { referrer: "https://wegobeyond.in/build-sunday" } });
+  visit("?utm_source=wegobeyond&embed=1&popup=1&return=https%3A%2F%2Fwegobeyond.in%2Fbuild-sunday", "/event/build-sunday/register");
+  captureUtm();
+  const r = storedReturn("build-sunday")!;
+  assert.equal(r.embed, true);
+  assert.equal(r.popup, true);
+  assert.equal(returnLink(r, "build-sunday"), "https://wegobeyond.in/build-sunday#unifesto=registered&event=build-sunday&popup=1");
+  // A plain tagged link (no embed.js) goes back with no marker and never on its own.
+  visit("?return=https%3A%2F%2Fwegobeyond.in%2F", "/event/build-sunday");
+  captureUtm();
+  const plain = storedReturn("build-sunday")!;
+  assert.equal(returnLink(plain, "build-sunday"), "https://wegobeyond.in/");
+  assert.equal(plain.auto, false);
+  Object.assign(globalThis, { document: undefined });
 });

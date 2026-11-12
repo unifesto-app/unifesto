@@ -38,17 +38,72 @@ export function safeReturnUrl(raw: string | null | undefined): { href: string; h
   }
 }
 
-/** "/event/x" or "/event/x/register" → "x". */
 /** IP literals and names that only resolve inside someone's own network. */
 const PRIVATE_HOST = /^\[|^[\d.]+$|\.(localhost|local|lan|internal|home|corp|intranet)$/i;
 
+/** "/event/x" or "/event/x/register" → "x". */
 const eventSlugOf = (path: string) => /^\/event\/([^/]+)/.exec(path)?.[1] ?? null;
 
+/**
+ * Whether the register page may send someone back to `returnHref` on its own,
+ * after a short notice, instead of waiting for a click on "Back to <host>".
+ * `referrerOrigin` is the origin of the page that sent them here, taken from
+ * document.referrer on their first landing (null when the site sends none).
+ *
+ * The return link is attacker-controlled: anyone can craft
+ * /event/x/register?return=https://evil.example and share it.
+ */
+export function autoReturnAllowed(referrerOrigin: string | null, returnHref: string): boolean {
+  // TODO(you): decide when an automatic return is safe. Until then: always ask for a click.
+  void referrerOrigin;
+  void returnHref;
+  return false;
+}
+
+export interface StoredReturn {
+  href: string;
+  host: string;
+  /** Came through embed.js: the site listens for "#unifesto=registered". */
+  embed: boolean;
+  /** Opened as embed.js's popup: the return hop may close the window. */
+  popup: boolean;
+  /** Go back on our own (autoReturnAllowed), not only on a click. */
+  auto: boolean;
+}
+
 /** The return link captured on landing on this event's pages, if any. */
-export function storedReturn(slug: string): { href: string; host: string } | null {
+export function storedReturn(slug: string): StoredReturn | null {
   try {
-    const r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || "null") as { slug?: string; href?: string } | null;
-    return r?.slug === slug ? safeReturnUrl(r.href) : null;
+    const r = JSON.parse(sessionStorage.getItem(RETURN_KEY) || "null") as {
+      slug?: string;
+      href?: string;
+      embed?: boolean;
+      popup?: boolean;
+      ref?: string | null;
+    } | null;
+    const back = r?.slug === slug ? safeReturnUrl(r.href) : null;
+    if (!back) return null;
+    const embed = r!.embed === true;
+    return { ...back, embed, popup: embed && r!.popup === true, auto: embed && autoReturnAllowed(r!.ref ?? null, back.href) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where "Back to <host>" goes. For embed.js visitors it carries a fragment the
+ * script reads (event slug only: no ids, nothing personal). The site sees it as
+ * a hint, never proof: anyone can type it. Webhooks are the proof.
+ */
+export function returnLink(r: StoredReturn, slug: string): string {
+  if (!r.embed) return r.href;
+  return `${r.href}#unifesto=registered&event=${encodeURIComponent(slug)}${r.popup ? "&popup=1" : ""}`;
+}
+
+/** Origin of the page that sent this visitor, if the browser says. */
+function referrerOrigin(): string | null {
+  try {
+    return document.referrer ? new URL(document.referrer).origin : null;
   } catch {
     return null;
   }
@@ -61,7 +116,18 @@ export function captureUtm(): void {
     // ?return= rides with the tags (sign-in drops the query string), kept for this event only.
     const back = safeReturnUrl(q.get("return"));
     const slug = eventSlugOf(window.location.pathname ?? "");
-    if (back && slug) sessionStorage.setItem(RETURN_KEY, JSON.stringify({ slug, href: back.href }));
+    if (back && slug) {
+      sessionStorage.setItem(
+        RETURN_KEY,
+        JSON.stringify({
+          slug,
+          href: back.href,
+          embed: q.get("embed") === "1",
+          popup: q.get("popup") === "1",
+          ref: referrerOrigin(),
+        }),
+      );
+    }
     const nid = q.get("nid");
     if (nid && NID.test(nid)) sessionStorage.setItem(NID_KEY, nid);
     if (!q.get("utm_source")) return;

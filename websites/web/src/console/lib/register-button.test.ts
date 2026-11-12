@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_BUTTON, registerButtonHtml } from "@/console/lib/register-button";
+import { DEFAULT_BUTTON, cardIframeHtml, popupButtonHtml, registerButtonHtml } from "@/console/lib/register-button";
 
 const href = "https://www.unifesto.app/event/x/register?utm_source=site&return=https%3A%2F%2Fa.in";
 
@@ -33,4 +33,15 @@ test("colours are hex only and the shape falls back to a pill", () => {
 
 test("a blank label falls back to the default", () => {
   assert.match(registerButtonHtml(href, { ...DEFAULT_BUTTON, label: "   " }), />Register on Unifesto<\/a>$/);
+});
+
+test("the popup button loads embed.js and marks the link for it", () => {
+  const html = popupButtonHtml("https://www.unifesto.app", href);
+  assert.match(html, /^<script src="https:\/\/www\.unifesto\.app\/embed\.js" async><\/script>\n<a href="[^"]+" data-unifesto-event style="/);
+});
+
+test("the card iframe is tagged with the site and its title escaped", () => {
+  const html = cardIframeHtml("https://www.unifesto.app", "build-sunday", "wegobeyond", "dark", `Build "Sunday" <x>`);
+  assert.match(html, /src="https:\/\/www\.unifesto\.app\/embed\/event\/build-sunday\?source=wegobeyond&amp;theme=dark"/);
+  assert.match(html, /title="Build &quot;Sunday&quot; <x>"/);
 });

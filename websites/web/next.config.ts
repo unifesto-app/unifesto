@@ -95,8 +95,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        // Everything but /embed/**, which other sites frame (K21). A later rule
+        // can't unset X-Frame-Options, so /embed is left out here instead.
+        source: '/:path((?!embed/).*)',
         headers: securityHeaders,
+      },
+      {
+        source: '/embed/:path*',
+        headers: securityHeaders.filter((h) => h.key !== 'X-Frame-Options'),
       },
       {
         // Razorpay Checkout opens bank / 3-D Secure pages in a popup that
