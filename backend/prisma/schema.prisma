@@ -1121,6 +1121,9 @@ model Space {
   brandMode           String?   @map("brand_mode") @db.VarChar(10)
   // Drops the "Powered by Unifesto" line from branded pages and emails.
   hidePoweredBy       Boolean   @default(false) @map("hide_powered_by")
+  // K22: registration API keys (and K23 webhooks) for the space's own site.
+  // Off until a Platform Admin turns it on in Apex; keys stop working when off.
+  integrationsEnabled Boolean   @default(false) @map("integrations_enabled")
   //   faviconUrl    — the tab icon on public space/event pages.
   //   emailFromName — display name on attendee emails.
   //   emailReplyTo  — Reply-To on those emails, so replies reach the organiser.
@@ -1232,12 +1235,32 @@ model Space {
   pageViews                PageView[]
   shortLinks               ShortLink[]
   deals                    Deal[]
+  apiKeys                  SpaceApiKey[]
 
   @@index([status])
   @@index([createdBy])
   @@index([type])
   @@index([parentSpaceId])
   @@map("spaces")
+}
+
+/// K22: a space's registration API key, for its own site's server. Only the
+/// SHA-256 of the key is stored; the key itself is shown once, at creation.
+model SpaceApiKey {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId    String    @map("space_id") @db.Uuid
+  space      Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  name       String    @db.VarChar(60)
+  /// The key's first characters ("uf_live_AbC1"), so people can tell keys apart.
+  prefix     String    @db.VarChar(16)
+  keyHash    String    @unique @map("key_hash") @db.Char(64)
+  createdBy  String    @map("created_by") @db.Uuid
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@map("space_api_keys")
 }
 
 model SubSpaceRequest {

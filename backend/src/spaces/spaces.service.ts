@@ -1199,6 +1199,17 @@ export class SpacesService {
     });
   }
 
+  /** K22: API keys and webhooks on or off. Off pauses the keys (the guard checks this) without revoking them. */
+  async setSpaceIntegrations(id: string, enabled: boolean) {
+    const found = await this.prisma.space.findUnique({ where: { id }, select: { id: true } });
+    if (!found) throw new NotFoundException('Space not found');
+    return this.prisma.space.update({
+      where: { id },
+      data: { integrationsEnabled: enabled },
+      select: { id: true, integrationsEnabled: true },
+    });
+  }
+
   /** One slot: featuring a space clears every other, and only a public live space can take it. */
   async setSpaceFeatured(id: string, featured: boolean) {
     const space = await this.prisma.space.findUnique({

@@ -32,6 +32,7 @@ export const Action = {
   SPACE_CREATE_EVENT: 'space:create-event', // name-only create + assign curator
   SPACE_MANAGE_EMAIL: 'space:manage-email', // compose/send campaigns, manage templates
   SPACE_MANAGE_SPONSORS: 'space:manage-sponsors', // sponsor roster/tiers, event attach, leads
+  SPACE_MANAGE_INTEGRATIONS: 'space:manage-integrations', // registration API keys + webhooks (K22, K23)
 
   // ---- Event scope ----
   EVENT_VIEW: 'event:view',
@@ -73,6 +74,7 @@ export const ACTION_SCOPE: Record<Action, RoleScope> = {
   [Action.SPACE_CREATE_EVENT]: RoleScope.SPACE,
   [Action.SPACE_MANAGE_EMAIL]: RoleScope.SPACE,
   [Action.SPACE_MANAGE_SPONSORS]: RoleScope.SPACE,
+  [Action.SPACE_MANAGE_INTEGRATIONS]: RoleScope.SPACE,
 
   [Action.EVENT_VIEW]: RoleScope.EVENT,
   [Action.EVENT_EDIT]: RoleScope.EVENT,
