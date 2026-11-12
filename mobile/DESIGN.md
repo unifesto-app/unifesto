@@ -3,7 +3,7 @@ name: Unifesto Horizon (Mobile)
 description: The Unifesto app in the Horizon theme. Night first, thin lines, monochrome chrome, and colour only inside cards, on the work it describes.
 theme: Unifesto Horizon, locked 29 Oct 2026. Spec marketing/brand-2026/guidelines.html; tokens src/theme/cosmos.ts.
 colors:
-  night: "#17171b (charcoal, since 2 Nov 2026)"
+  night: "#000000 (black again since 13 Nov 2026; charcoal #17171b 2–13 Nov)"
   card: "#232327"
   type: "#ececee"
   silver: "#e8e8ea"
@@ -37,8 +37,8 @@ owner's approval first.
 
 ## 1. The six rules
 
-1. **Night first.** Charcoal ground `#17171b` (the owner's pick, 2 Nov 2026; it was black) with
-   `#232327` cards, silver type. By day the same roles sit on paper `#f2f2f5` with white cards, and
+1. **Night first.** Black ground `#000000` (the owner's pick, 13 Nov 2026; charcoal `#17171b`
+   from 2 Nov) with `#232327` cards, silver type. By day the same roles sit on paper `#f2f2f5` with white cards, and
    light turns pale blue. Day is translated, not inverted. Camera screens and QR codes stay black.
 2. **A quiet sky.** The plain ground and a soft Horizon-blue glow on hero screens, nothing else.
    No lines (the owner removed the orbits and the horizon line on 31 Oct 2026) and no stars or

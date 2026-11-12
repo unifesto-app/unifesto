@@ -6,11 +6,11 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { TextStyle } from 'react-native';
 import { useTokens } from '../context/ThemeContext';
 
-// Night ground is charcoal #17171b, not black (owner, 2 Nov 2026); cards step up
-// by the same ratio they had over black, and muted and crimson lift with them
-// so every pair keeps AA.
+// Night ground is black again (owner, 13 Nov 2026; charcoal #17171b from 2 Nov).
+// Cards keep the charcoal-era steps, so they lift further off the black, and
+// every text pair only gains contrast. Black also matches the native launch frame.
 const dark = {
-  bg: '#17171b',
+  bg: '#000000',
   /** Placeholder behind images (covers, logos), between the ground and a card. */
   card: '#1d1d21',
   /** Event / content cards. */
@@ -25,7 +25,7 @@ const dark = {
   border: 'rgba(255, 255, 255, 0.1)',
   input: 'rgba(255, 255, 255, 0.18)',
   outline: 'rgba(255, 255, 255, 0.28)',
-  /** Crimson (#be123c by day), lifted to read at night: 5.4:1 on the ground, 4.7:1 on a card. */
+  /** Crimson (#be123c by day), lifted to read at night: 6.4:1 on the ground, 4.7:1 on a card. */
   danger: '#f2557a',
   /** Amber for counts and other text that needs attention; the light value holds 4.5:1 on cards. */
   warn: '#f59e0b',
