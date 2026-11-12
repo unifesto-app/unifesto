@@ -204,6 +204,27 @@ describe('AuthorizationService', () => {
     });
   });
 
+  describe('space:manage-integrations (API keys, webhooks: K22)', () => {
+    it('Space Admin holds it in their own space only', async () => {
+      const svc = build([
+        { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: SPACE_A, eventId: null },
+      ]);
+      expect(await svc.can(user, Action.SPACE_MANAGE_INTEGRATIONS, { spaceId: SPACE_A })).toBe(true);
+      expect(await svc.can(user, Action.SPACE_MANAGE_INTEGRATIONS, { spaceId: SPACE_B })).toBe(false);
+    });
+
+    it('Curators and Co-Curators do not: a key can send payment links to anyone', async () => {
+      const curator = build([
+        { code: RoleCode.CURATOR, scope: RoleScope.EVENT, spaceId: null, eventId: EVENT_IN_A },
+      ]);
+      const co = build([
+        { code: RoleCode.CO_CURATOR, scope: RoleScope.SPACE, spaceId: SPACE_A, eventId: null },
+      ]);
+      expect(await curator.can(user, Action.SPACE_MANAGE_INTEGRATIONS, { spaceId: SPACE_A })).toBe(false);
+      expect(await co.can(user, Action.SPACE_MANAGE_INTEGRATIONS, { spaceId: SPACE_A })).toBe(false);
+    });
+  });
+
   describe('canAny (S34: one assignment load for a list of resources)', () => {
     const buildWithPrisma = (assignments: Assignment[]) => {
       const prisma = {

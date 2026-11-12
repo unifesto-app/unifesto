@@ -52,6 +52,7 @@ import {
   uploadSpaceBanner,
   setSpaceVerification,
   setSpaceFeatured,
+  setSpaceIntegrations,
   type ChildSpace,
   type SpaceMember,
   type SpaceMemberRoleCode,
@@ -378,6 +379,7 @@ function SpaceManagement({
             status={space.status}
             verified={space.is_verified}
             featured={Boolean(space.is_featured)}
+            integrations={Boolean(space.integrations_enabled)}
             onChange={onChange}
           />
 
@@ -1352,12 +1354,14 @@ function AdminSpacePanel({
   status,
   verified,
   featured,
+  integrations,
   onChange,
 }: {
   spaceId: string;
   status?: SpaceStatus;
   verified: boolean;
   featured: boolean;
+  integrations: boolean;
   onChange: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -1533,6 +1537,36 @@ function AdminSpacePanel({
               className={cn(
                 "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform",
                 featured && "translate-x-4"
+              )}
+            />
+          </button>
+        </div>
+
+        {/* K22: the space's own site can register people through API keys. Off
+            pauses its keys without revoking them. */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Registration API</p>
+            <p className="text-xs text-muted-foreground">
+              Space Admins can make API keys to register people from their own site. Keys can send ticket emails and payment links.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={integrations}
+            aria-label="Registration API"
+            disabled={busy}
+            onClick={() => run(() => setSpaceIntegrations(spaceId, !integrations))}
+            className={cn(
+              "relative h-5 w-9 rounded-full transition-colors disabled:opacity-50",
+              integrations ? "bg-primary" : "bg-muted-foreground/30"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform",
+                integrations && "translate-x-4"
               )}
             />
           </button>

@@ -34,7 +34,7 @@ const ACCOUNT: Record<string, string> = {
   "sign-in": "Security",
   delete: "Delete account",
 };
-const WORDS: Record<string, string> = { new: "New", add: "Add", import: "Import", edit: "Edit", live: "Live", details: "My details" };
+const WORDS: Record<string, string> = { new: "New", add: "Add", import: "Import", edit: "Edit", live: "Live", details: "My details", api: "API" };
 /** What an id stands for, by the segment before it. */
 const ID_OF: Record<string, string> = { tickets: "Ticket", events: "Event", sessions: "Session", support: "Request", feedback: "Event" };
 

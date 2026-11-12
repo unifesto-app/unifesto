@@ -42,6 +42,7 @@ import {
 import { CreateSpaceRequestDto } from './dto/create-space-request.dto';
 import { SetSpaceVerificationDto } from './dto/set-space-verification.dto';
 import { SetSpaceFeaturedDto } from './dto/set-space-featured.dto';
+import { SetSpaceIntegrationsDto } from './dto/set-space-integrations.dto';
 import {
   CreateSubSpaceRequestDto,
   ReviewSubSpaceRequestDto,
@@ -539,6 +540,19 @@ export class SpacesController {
   @Roles(RoleCode.ADMIN)
   async setSpaceFeatured(@Param('id') id: string, @Body() dto: SetSpaceFeaturedDto) {
     return this.spacesService.setSpaceFeatured(id, dto.featured);
+  }
+
+  /**
+   * Turn a space's registration API keys and webhooks on or off (ADMIN only, K22).
+   * Off pauses every key without revoking it.
+   * PATCH /spaces/:id/integrations { enabled: boolean }
+   */
+  @Patch(':id/integrations')
+  @Audit('space.integrations', (r) => ({ spaceId: r.params.id }))
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async setSpaceIntegrations(@Param('id') id: string, @Body() dto: SetSpaceIntegrationsDto) {
+    return this.spacesService.setSpaceIntegrations(id, dto.enabled);
   }
 
   /**

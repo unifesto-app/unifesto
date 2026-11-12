@@ -38,6 +38,8 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
     Action.SPACE_CREATE_EVENT,
     Action.SPACE_MANAGE_EMAIL,
     Action.SPACE_MANAGE_SPONSORS,
+    // K22: keys can create registrations and send payment links: Space Admin only.
+    Action.SPACE_MANAGE_INTEGRATIONS,
   ],
 
   [RoleCode.CURATOR]: [

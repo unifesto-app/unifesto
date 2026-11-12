@@ -31,6 +31,7 @@ import { findIdentityByEmail, normalizeEmail, normalizeMobile } from '../auth/id
 import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
 import { assertSpaceLive } from '../spaces/space-access';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
+import { utmColumns } from '../common/utm';
 
 /**
  * Curator-added attendees: bulk CSV import (template, preview, import) and the
@@ -177,8 +178,8 @@ export class RegistrationImportService {
    * person's own sign-up. It rides along on the registration (`attendeeMobile`,
    * A35) and a group's seat 1 only.
    */
-  private findOrCreateUserByEmail(email: string, name: string): Promise<string> {
-    return findOrCreateUserByEmail(this.prisma, email, name, { fillMissingName: true });
+  private findOrCreateUserByEmail(email: string, name: string, fillMissingName = true): Promise<string> {
+    return findOrCreateUserByEmail(this.prisma, email, name, { fillMissingName });
   }
 
   /**
@@ -296,6 +297,8 @@ export class RegistrationImportService {
       freeAddSeats?: number;
       /** The mobile the curator typed, E.164 (A35). */
       attendeeMobile: string | null;
+      /** Where the registration came from (K22: an API key). */
+      utm?: ReturnType<typeof utmColumns>;
     },
   ): Promise<string> {
     const qrCode = generateQRCode();
@@ -310,6 +313,7 @@ export class RegistrationImportService {
           ticketTypeId,
           quantity: 1,
           groupSize: opts.groupSize,
+          ...opts.utm,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PAID,
           paidAt: new Date(),
@@ -614,7 +618,8 @@ export class RegistrationImportService {
       name: string;
       email: string;
       mobile?: string;
-      gender: string;
+      /** Required from the console form; optional for API keys (K22). */
+      gender?: string;
       groupSize?: number;
       groupMembers?: Array<{
         name: string;
@@ -627,6 +632,19 @@ export class RegistrationImportService {
       leadCustomFields?: Record<string, unknown>;
       collectPayment?: boolean;
       sendTicketEmail?: boolean;
+      /**
+       * K22: the attendee filled the form on the organiser's site, so required
+       * questions are enforced like self-registration. A curator adding someone
+       * may not know every answer, so the console leaves this off.
+       */
+      requireAnswers?: boolean;
+      /** K22: where it came from, as on self-registration (utm_source etc.). */
+      utm?: { utmSource?: string; utmMedium?: string; utmCampaign?: string };
+      /**
+       * K22: added by a space's API key, from its own site's form: leaves an
+       * existing account's name alone, and its payment link expires after a week.
+       */
+      fromApi?: boolean;
     },
     /** The curator adding them; their uploads may be referenced by answers. */
     actorId?: string,
@@ -650,7 +668,9 @@ export class RegistrationImportService {
       throw new BadRequestException('Not enough seats left on this ticket type.');
     }
 
-    const userId = await this.findOrCreateUserByEmail(dto.email, dto.name);
+    // An organiser's site can't vouch for the name an existing account has, so
+    // the API never writes it onto one (K22).
+    const userId = await this.findOrCreateUserByEmail(dto.email, dto.name, !dto.fromApi);
     const attendeeMobile = dto.mobile ? normalizeMobile(dto.mobile) : null;
     if (await this.hasActiveRegistration(eventId, userId, dto.ticketTypeId)) {
       throw new ConflictException(
@@ -693,12 +713,13 @@ export class RegistrationImportService {
       isGroup,
       formResponses: dto.formResponses,
       members: groupMembers ?? undefined,
-      required: { team: false, members: 'none' },
+      required: dto.requireAnswers ? { team: true, members: 'first' } : { team: false, members: 'none' },
       uploaderIds: actorId ? [actorId] : [],
     });
-    const formResponses = isGroup
+    const formResponses = isGroup || dto.gender === undefined
       ? checkedResponses
       : { ...checkedResponses, gender: dto.gender };
+    const utm = dto.utm ? utmColumns(dto.utm) : undefined;
 
     const price = Number(ticketType.price);
     const wantsPayment = Boolean(dto.collectPayment) && price > 0;
@@ -722,7 +743,7 @@ export class RegistrationImportService {
         eventId,
         userId,
         dto.ticketTypeId,
-        { groupSize, groupMembers, formResponses, freeAddSeats, attendeeMobile },
+        { groupSize, groupMembers, formResponses, freeAddSeats, attendeeMobile, utm },
       );
       // With the ticket email off, the WhatsApp group invite still goes: door
       // adds are exactly who needs the group, and the switch only covers email.
@@ -772,6 +793,7 @@ export class RegistrationImportService {
           qrCode: generateQRCode(),
           formResponses: formResponses as Prisma.InputJsonValue,
           attendeeMobile,
+          ...utm,
         },
       });
       await this.groupSeats.createSeatsForRegistration(tx, {
@@ -783,22 +805,42 @@ export class RegistrationImportService {
       return reg;
     });
 
-    const link = await this.payments.createPaymentLink({
-      amount: totalAmount,
-      description: `${event.title} — ${ticketType.name}`,
-      customer: {
-        name: dto.name,
-        email: dto.email,
-        contact: dto.mobile,
-      },
-      referenceId: registration.id,
-      notes: { registrationId: registration.id, eventId },
-    });
+    let link: { id: string; shortUrl: string };
+    try {
+      link = await this.payments.createPaymentLink({
+        amount: totalAmount,
+        description: `${event.title} — ${ticketType.name}`,
+        customer: {
+          name: dto.name,
+          email: dto.email,
+          contact: dto.mobile,
+        },
+        referenceId: registration.id,
+        notes: { registrationId: registration.id, eventId },
+        ...(dto.fromApi && { expireBy: Math.floor(Date.now() / 1000) + 7 * 86_400 }),
+      });
+    } catch (err) {
+      // No link, so no money can arrive: close the row, or it blocks this
+      // person from being added again (hasActiveRegistration counts PENDING).
+      await this.prisma.eventRegistration
+        .update({
+          where: { id: registration.id },
+          data: {
+            status: RegistrationStatus.CANCELLED,
+            paymentStatus: PaymentStatus.FAILED,
+            cancelledAt: new Date(),
+            cancellationReason: 'Payment link could not be created',
+          },
+        })
+        .catch((e) => this.logger.error(`Closing registration ${registration.id} after a link failure failed: ${String(e)}`));
+      throw err;
+    }
     // Stored so checkout cleanup knows money can still arrive on this row (A19).
-    await this.prisma.eventRegistration.update({
-      where: { id: registration.id },
-      data: { paymentLinkId: link.id },
-    });
+    // If this write fails the link still works: payment.captured finds the row
+    // through the link's notes, so the add stands.
+    await this.prisma.eventRegistration
+      .update({ where: { id: registration.id }, data: { paymentLinkId: link.id } })
+      .catch((e) => this.logger.error(`Saving payment link ${link.id} on ${registration.id} failed: ${String(e)}`));
 
     return {
       registrationId: registration.id,

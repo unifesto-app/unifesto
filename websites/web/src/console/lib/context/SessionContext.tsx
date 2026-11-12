@@ -30,6 +30,7 @@ export type Capability =
   | "space:create-event"
   | "space:manage-email"
   | "space:manage-sponsors"
+  | "space:manage-integrations"
   | "event:view"
   | "event:edit"
   | "event:publish"
