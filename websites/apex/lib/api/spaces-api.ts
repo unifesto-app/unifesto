@@ -64,6 +64,7 @@ export async function getSpace(
     is_active: raw.is_active ?? statusVal === "ACTIVE",
     is_verified: Boolean(raw.verifiedAt),
     is_featured: Boolean(raw.featuredAt),
+    integrations_enabled: Boolean(raw.integrationsEnabled),
   };
   return {
     data: normalized as unknown as SpaceWithHierarchy,
@@ -380,6 +381,17 @@ export async function setSpaceFeatured(
   featured: boolean
 ): Promise<{ data: { id: string; featuredAt: string | null } | null; error: ApiError | null }> {
   return apiCall(backendClient.patch(`/spaces/${id}/featured`, { featured }));
+}
+
+/**
+ * Turn a space's registration API keys and webhooks on or off (K22). Off
+ * pauses its keys without revoking them. ADMIN only. `PATCH /spaces/:id/integrations`.
+ */
+export async function setSpaceIntegrations(
+  id: string,
+  enabled: boolean
+): Promise<{ data: { id: string; integrationsEnabled: boolean } | null; error: ApiError | null }> {
+  return apiCall(backendClient.patch(`/spaces/${id}/integrations`, { enabled }));
 }
 
 /** Space visibility as accepted by the backend (`SpaceVisibility`). */

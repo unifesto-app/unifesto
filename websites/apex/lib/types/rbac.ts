@@ -163,6 +163,8 @@ export interface Space {
   is_verified: boolean;
   /** Set from `featuredAt`: the space is on the app's Home. */
   is_featured?: boolean;
+  /** K22: API keys and webhooks are on for this space. */
+  integrations_enabled?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;

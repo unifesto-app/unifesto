@@ -9,6 +9,7 @@ import { cn } from "@/console/lib/utils/cn";
 const TABS: Array<{ href: string; label: string; requires: Capability }> = [
   { href: "/console/settings", label: "General", requires: "space:manage-members" },
   { href: "/console/settings/branding", label: "Branding", requires: "space:manage-settings" },
+  { href: "/console/settings/api", label: "API", requires: "space:manage-integrations" },
 ];
 
 /** Route-backed tabs so Branding lives inside Settings but keeps its own URL. */
