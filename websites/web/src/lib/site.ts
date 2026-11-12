@@ -23,7 +23,7 @@ export const SITE = {
 
 /* Official profiles. The footer links and the Organization JSON-LD
    `sameAs` both read this, which is how search engines and AI assistants
-   tie these accounts to one company. Mobile mirrors these in ProfileScreen (Help and more). */
+   tie these accounts to one company. Mobile mirrors these in SettingsScreen (its footer). */
 export const SOCIAL = {
   instagram: "https://www.instagram.com/unifesto.app/",
   linkedin: "https://www.linkedin.com/company/unifesto",

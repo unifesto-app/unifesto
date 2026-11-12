@@ -36,7 +36,7 @@ const AVATAR = 88;
 /** Past this Dynamic Type scale the side-by-side buttons would truncate: stack them. */
 const LARGE_TEXT = 1.3;
 
-const initials = (name: string) =>
+export const initials = (name: string) =>
   name
     .split(' ')
     .filter(Boolean)
@@ -46,7 +46,7 @@ const initials = (name: string) =>
     .toUpperCase();
 
 /**
- * The top of the Profile tab, straight on the page (no card): avatar, my name
+ * The top of View profile, straight on the page (no card): avatar, my name
  * (Hanken SemiBold; names are never display), handle and bio centred, two
  * outline buttons, then my numbers in a band between full hairlines.
  */
