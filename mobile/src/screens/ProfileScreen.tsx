@@ -222,7 +222,7 @@ export default function ProfileScreen() {
           </SettingsGroup>
         ) : null}
 
-        {/* Tickets has its own tab (and Going to above opens it), so it isn't repeated here. */}
+        {/* Tickets has its own tab, so it isn't repeated here. */}
         <SettingsGroup title="My stuff" style={styles.group}>
           <SettingsRow icon={icon('tag', c.sky)} label="Saved" onPress={() => router.push('/favorites')} />
           <SettingsRow icon={icon('certificate', c.mint)} label="Certificates" onPress={() => router.push('/certificates')} />

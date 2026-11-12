@@ -88,7 +88,7 @@ export default function MySpacesScreen() {
   const body = (() => {
     if (loading) {
       return (
-        <SettingsGroup style={[styles.group, styles.first]}>
+        <SettingsGroup plain style={[styles.group, styles.first]}>
           {[0, 1, 2, 3].map((i) => <SpaceRowSkeleton key={i} inCard />)}
         </SettingsGroup>
       );
@@ -133,12 +133,12 @@ export default function MySpacesScreen() {
         ) : null}
 
         {running.length > 0 ? (
-          <SettingsGroup title="I run" style={[styles.group, styles.first]}>
+          <SettingsGroup plain title="I run" style={[styles.group, styles.first]}>
             {running.map(row)}
           </SettingsGroup>
         ) : null}
         {member.length > 0 ? (
-          <SettingsGroup title="Member of" style={[styles.group, !running.length && styles.first]}>
+          <SettingsGroup plain title="Member of" style={[styles.group, !running.length && styles.first]}>
             {member.map(row)}
           </SettingsGroup>
         ) : null}

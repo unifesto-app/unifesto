@@ -130,7 +130,7 @@ export default function SupportScreen() {
         </View>
 
         {user && (tickets === null || tickets.length > 0) ? (
-          <SettingsGroup title="My requests" style={styles.group}>
+          <SettingsGroup plain title="My requests" style={styles.group}>
             {tickets === null
               ? [0, 1].map((i) => <TicketRowSkeleton key={i} />)
               : tickets.map((t) => <TicketRow key={t.id} ticket={t} onPress={() => router.push(`/manage/support/${t.id}`)} />)}

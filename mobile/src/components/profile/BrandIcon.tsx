@@ -30,6 +30,13 @@ const BRAND_FILL: Partial<Record<Brand, string>> = {
 };
 
 /**
+ * simple-icons marks fill the whole 24 box; the glyphs they replaced (and Google's G)
+ * leave a margin. A 2-unit inset keeps them the same optical size beside 28pt glyphs
+ * and level with the G on the login buttons.
+ */
+const INSET = new Set<Brand>(['apple', 'whatsapp', 'github', 'android']);
+
+/**
  * A company's real mark, never a look-alike glyph: the Instagram gradient,
  * LinkedIn blue, YouTube red, WhatsApp and Android green, Google's four-colour
  * G. LinkedIn and YouTube cut their letters and play triangle out of the shape;
@@ -50,7 +57,7 @@ export default function BrandIcon({ brand, size = 24 }: { brand: Brand; size?: n
   }
   const fill = BRAND_FILL[brand] ?? c.text;
   return (
-    <Svg {...svg}>
+    <Svg {...svg} viewBox={INSET.has(brand) ? '-2 -2 28 28' : svg.viewBox}>
       {brand === 'instagram' ? (
         <Defs>
           <LinearGradient id="ig" x1="0" y1="1" x2="1" y2="0">

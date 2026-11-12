@@ -328,7 +328,7 @@ export default function NotificationSettingsScreen() {
               : null}
           </SettingsGroup>
           {notifs.spaceOptOuts.length ? (
-            <SettingsGroup title="Spaces I unsubscribed from" style={styles.group}>
+            <SettingsGroup title="Spaces I unsubscribed from" style={[styles.group, styles.next]}>
               {notifs.spaceOptOuts.map((sp) => (
                 <SettingsRow
                   key={sp.spaceId}
@@ -345,7 +345,7 @@ export default function NotificationSettingsScreen() {
         </Section>
 
         <Section title="Quiet hours" style={styles.section}>
-          <SettingsGroup style={styles.group}>
+          <SettingsGroup plain style={styles.group}>
             {row('moon', 'Quiet hours', quietOn, () =>
               commit(quietOn ? { quietHoursStart: null, quietHoursEnd: null } : QUIET_DEFAULT),
             )}
@@ -391,6 +391,8 @@ const styles = StyleSheet.create({
   cell: { width: 64, alignItems: 'center', textAlign: 'center' },
   note: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   // Inset by the card's row padding so the labels sit over the switches.
+  // A second group inside one Section: SettingsGroup's own gap, which styles.group zeroes.
+  next: { marginTop: spacing[8] },
   gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER + spacing[4], marginBottom: spacing[2] },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

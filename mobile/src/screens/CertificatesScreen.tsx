@@ -133,7 +133,7 @@ export default function CertificatesScreen() {
         </View>
       ) : null}
       {years.map(([year, certs]) => (
-        <SettingsGroup key={year} flat title={String(year)} style={styles.group}>
+        <SettingsGroup key={year} plain title={String(year)} style={styles.group}>
           {certs.map((cert) => <CertificateRow key={cert.id} cert={cert} />)}
         </SettingsGroup>
       ))}

@@ -120,7 +120,9 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   screens"): the Profile tab and the screens it opens (Account, Notifications, Permissions, About,
   Support, Certificates, My spaces, View profile's spaces) put each list on one borderless card
   (`SettingsGroup` without `flat`); custom rows in them take the card's `spacing[4]` side padding
-  (`useFlatRows`, or `inCard` on `SpaceRow`). Saved shows its events as `EventListCard` cards.
+  (`useFlatRows`, or `inCard` on `SpaceRow`). Groups whose rows don't lead with a 30pt glyph
+  (thumbnails, logos, no icon) pass `plain`, so the hairline starts at the card's inner edge.
+  Saved shows its events as `EventListCard` cards.
   The rules below on action rows, accents and real marks still apply.
 - **Row lists** (every list on Home (From my spaces or the featured
   space, Happening near you by day, My shortlist, Manage), the Spaces page, the Space tab,

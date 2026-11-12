@@ -176,26 +176,23 @@ export function SpaceRowSkeleton({ inCard }: { inCard?: boolean }) {
 }
 
 /**
- * "My spaces" on Home and a person's profile: the first few as rows, on the
- * page with full hairlines like Up next (Home), or on one card (`card`, View
- * profile). The section's See all opens the rest.
+ * A person's spaces on View profile: the first few as rows on one card. The
+ * section's See all opens the rest.
  */
 export function MySpacesRows({
   spaces,
   loading,
-  card,
   onPress,
 }: {
   spaces: Space[];
   loading: boolean;
-  card?: boolean;
   onPress: (space: Space) => void;
 }) {
   return (
-    <SettingsGroup flat={!card} style={styles.rows}>
+    <SettingsGroup plain style={styles.rows}>
       {loading && spaces.length === 0
-        ? [0, 1].map((i) => <SpaceRowSkeleton key={i} inCard={card} />)
-        : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} inCard={card} onPress={() => onPress(s)} />)}
+        ? [0, 1].map((i) => <SpaceRowSkeleton key={i} inCard />)
+        : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} inCard onPress={() => onPress(s)} />)}
     </SettingsGroup>
   );
 }
