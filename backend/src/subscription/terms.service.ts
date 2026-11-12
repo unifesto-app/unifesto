@@ -7,6 +7,7 @@ import { BillingCycle, Deal, OrgPlan, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeeTerms, rateCardFees } from '../payments/quote';
 import { PlanConfigService, SELLABLE_PLANS } from './plan-config.service';
+import { GATEWAY_FEE_PERCENT } from './plan-limits.config';
 import { PlatformConfigService } from './platform-config.service';
 
 /** The terms a sale or a plan is priced under (T4). */
@@ -18,7 +19,10 @@ export interface Terms extends FeeTerms {
   /** Deal plan price in paise: null = rate card, 0 = comp. */
   planPricePaise: number | null;
   organiserFeeBps: number;
-  /** The organiser fee is the deal's own, not the rate card's. */
+  /**
+   * The organiser fee is fixed by these terms (a deal's own, or 0 on a
+   * one-fee plan) and written onto the sale, not left to the trigger.
+   */
   organiserFeeFromDeal: boolean;
 }
 
@@ -143,12 +147,28 @@ export class TermsService {
         select: { plan: true, billingCycle: true },
       }),
     ]);
-    const rate = rateCardFees(this.platformConfig);
-    return {
+    const plan = deal?.plan ?? sub?.plan ?? OrgPlan.STARTER;
+    const base = {
       dealId: deal?.id ?? null,
-      plan: deal?.plan ?? sub?.plan ?? OrgPlan.STARTER,
+      plan,
       billingCycle: deal?.billingCycle ?? sub?.billingCycle ?? null,
       planPricePaise: deal?.planPricePaise ?? null,
+    };
+    // One processing fee (12 Nov 2026): the deal's rate or the plan's, no cap,
+    // and an organiser fee of 0 frozen onto the sale so nothing takes it twice.
+    const oneFee = this.planConfig.getLimits(plan).processingFeePercent;
+    if (oneFee != null) {
+      return {
+        ...base,
+        buyerFeeBps: deal?.buyerFeeBps ?? Math.round(oneFee * 100),
+        buyerFeeCapPaise: null,
+        organiserFeeBps: 0,
+        organiserFeeFromDeal: true,
+      };
+    }
+    const rate = rateCardFees(this.platformConfig);
+    return {
+      ...base,
       buyerFeeBps: deal?.buyerFeeBps ?? rate.buyerFeeBps,
       buyerFeeCapPaise: rate.buyerFeeCapPaise,
       organiserFeeBps:
@@ -191,6 +211,7 @@ export class TermsService {
       if (!event)
         throw new BadRequestException('That event is not in this space');
     }
+    await this.assertDealFee(spaceId, input);
     const validFrom = input.validFrom ? new Date(input.validFrom) : new Date();
     const validUntil = input.validUntil ? new Date(input.validUntil) : null;
     if (validUntil && validUntil <= validFrom) {
@@ -211,6 +232,26 @@ export class TermsService {
         createdBy,
       },
     });
+  }
+
+  /**
+   * On a one-fee plan a deal sets just the processing fee, between the payment
+   * gateway's cost and the plan's own rate, so the "up to" on /pricing stays
+   * true; an organiser fee there would be charged on top of it.
+   */
+  private async assertDealFee(spaceId: string, input: CreateDealInput) {
+    const sub = input.plan
+      ? null
+      : await this.prisma.orgSubscription.findUnique({ where: { spaceId }, select: { plan: true } });
+    const oneFee = this.planConfig.getLimits(input.plan ?? sub?.plan ?? OrgPlan.STARTER).processingFeePercent;
+    if (oneFee == null) return;
+    if (input.organiserFeeBps) {
+      throw new BadRequestException('This plan has one processing fee: leave the organiser fee empty');
+    }
+    const bps = input.buyerFeeBps;
+    if (bps != null && (bps < GATEWAY_FEE_PERCENT * 100 || bps > Math.round(oneFee * 100))) {
+      throw new BadRequestException(`The processing fee must be between ${GATEWAY_FEE_PERCENT}% and the plan's ${oneFee}%`);
+    }
   }
 
   /** End a deal now. Deals are never deleted: sales that cite one keep it. */

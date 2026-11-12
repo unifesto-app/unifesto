@@ -5,10 +5,8 @@ import {
   createSpaceDeal,
   endDeal,
   getSpaceDeals,
-  SELLABLE_PLANS,
-  type BillingCycle,
+  PLAN_LABEL,
   type Deal,
-  type OrgPlan,
   type ResolvedTerms,
 } from "@/lib/api/subscriptions-api";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -43,23 +41,36 @@ const day = (iso: string) =>
 /** Empty input = null (rate card); otherwise a number. */
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
-/** Platform admin: list, create and end a space's deals (T4). */
+/** Today's terms in one line: the one fee, or the old buyer fee + organiser fee. */
+const termsText = (t: ResolvedTerms) =>
+  t.buyerFeeCapPaise == null
+    ? `processing fee ${pct(t.buyerFeeBps)}`
+    : `old fees: buyer ${pct(t.buyerFeeBps)} (capped ₹${t.buyerFeeCapPaise / 100}) + organiser ${pct(t.organiserFeeBps)}`;
+
+/** A deal's terms; plan, price and organiser fee only show on old deals that set them. */
+const dealText = (d: Deal) =>
+  [
+    `processing fee ${pct(d.buyerFeeBps)}`,
+    d.organiserFeeBps != null && `organiser ${pct(d.organiserFeeBps)}`,
+    d.plan && PLAN_LABEL[d.plan],
+    d.planPricePaise != null && `price ${rupees(d.planPricePaise)}${d.billingCycle ? ` ${d.billingCycle.toLowerCase()}` : ""}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+/**
+ * Platform admin: list, create and end a space's deals (T4). A deal is just a
+ * processing fee for the whole space or one event: on a one-fee plan it must
+ * sit between the 2.5% gateway and the plan's rate (the backend checks).
+ */
 export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [current, setCurrent] = useState<ResolvedTerms | null>(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    eventId: "",
-    plan: "" as OrgPlan | "",
-    billingCycle: "" as BillingCycle | "",
-    planPrice: "",
-    buyerFee: "",
-    organiserFee: "",
-    validUntil: "",
-    note: "",
-  });
+  const blank = { eventId: "", fee: "", validUntil: "", note: "" };
+  const [form, setForm] = useState(blank);
 
   const load = useCallback(async () => {
     const { data, error } = await getSpaceDeals(spaceId);
@@ -72,27 +83,21 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
     void load();
   }, [load]);
 
-  const buyerFeeBps = num(form.buyerFee) == null ? null : Math.round(num(form.buyerFee)! * 100);
+  const buyerFeeBps = num(form.fee) == null ? null : Math.round(num(form.fee)! * 100);
 
   const create = async () => {
     setSaving(true);
     setError("");
-    const planPrice = num(form.planPrice);
-    const organiserFee = num(form.organiserFee);
     const { error } = await createSpaceDeal(spaceId, {
       eventId: form.eventId.trim() || undefined,
-      plan: form.plan || undefined,
-      billingCycle: form.billingCycle || undefined,
-      planPricePaise: planPrice == null ? undefined : Math.round(planPrice * 100),
       buyerFeeBps: buyerFeeBps ?? undefined,
-      organiserFeeBps: organiserFee == null ? undefined : Math.round(organiserFee * 100),
       validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : undefined,
       note: form.note.trim() || undefined,
     });
     setSaving(false);
     if (error) return setError(error.message || "Could not create the deal.");
     setOpen(false);
-    setForm({ eventId: "", plan: "", billingCycle: "", planPrice: "", buyerFee: "", organiserFee: "", validUntil: "", note: "" });
+    setForm(blank);
     void load();
   };
 
@@ -118,16 +123,15 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
       <CardHeader>
         <CardTitle>Deals</CardTitle>
         <CardDescription>
-          Negotiated terms. An event deal beats a space deal; blank fields use the rate card.
+          A custom processing fee for this space or one event. An event deal beats a space deal; no deal = the plan&apos;s fee.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
         {current && (
           <p className="text-sm text-muted-foreground">
-            Now: {current.plan}, buyer fee {pct(current.buyerFeeBps)}, organiser fee{" "}
-            {pct(current.organiserFeeBps)}
-            {current.dealId ? " (space deal)" : " (rate card)"}
+            Now: {PLAN_LABEL[current.plan]}, {termsText(current)}
+            {current.dealId ? " (deal)" : " (plan)"}
           </p>
         )}
         {oldAppWarning(current?.buyerFeeBps) && (
@@ -148,9 +152,7 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
                   {isActive(d) ? <Badge variant="success">Active</Badge> : <Badge variant="neutral">Ended</Badge>}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {d.plan ?? "Plan: rate card"} · price {rupees(d.planPricePaise)}
-                  {d.billingCycle ? ` ${d.billingCycle.toLowerCase()}` : ""} · buyer {pct(d.buyerFeeBps)} ·
-                  organiser {pct(d.organiserFeeBps)}
+                  {dealText(d)}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {day(d.validFrom)} → {d.validUntil ? day(d.validUntil) : "open-ended"}
@@ -179,39 +181,8 @@ export function SpaceDealsCard({ spaceId }: { spaceId: string }) {
               <Input value={form.eventId} onChange={(e) => setForm({ ...form, eventId: e.target.value })} />
             </Field>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Plan">
-                <select
-                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                  value={form.plan}
-                  onChange={(e) => setForm({ ...form, plan: e.target.value as OrgPlan | "" })}
-                >
-                  <option value="">Rate card</option>
-                  {SELLABLE_PLANS.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Cycle">
-                <select
-                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                  value={form.billingCycle}
-                  onChange={(e) => setForm({ ...form, billingCycle: e.target.value as BillingCycle | "" })}
-                >
-                  <option value="">Any</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="ANNUAL">Annual</option>
-                </select>
-              </Field>
-              <Field label="Plan price ₹ (0 = comp)">
-                <Input inputMode="decimal" value={form.planPrice} onChange={(e) => setForm({ ...form, planPrice: e.target.value })} />
-              </Field>
-              <Field label="Buyer fee %">
-                <Input inputMode="decimal" value={form.buyerFee} onChange={(e) => setForm({ ...form, buyerFee: e.target.value })} />
-              </Field>
-              <Field label="Organiser fee %">
-                <Input inputMode="decimal" value={form.organiserFee} onChange={(e) => setForm({ ...form, organiserFee: e.target.value })} />
+              <Field label="Processing fee % (incl. 2.5% gateway)">
+                <Input inputMode="decimal" value={form.fee} onChange={(e) => setForm({ ...form, fee: e.target.value })} />
               </Field>
               <Field label="Ends (blank = open)">
                 <Input type="date" value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} />

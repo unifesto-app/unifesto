@@ -113,6 +113,11 @@ export interface PlanInfo {
   hasSponsors: boolean;
   /** Organiser platform fee % per paid ticket on this plan; new sales only (A9). */
   platformFeePercent: number;
+  /**
+   * The one processing fee % per paid ticket, 2.5% gateway included, no cap.
+   * null = the old rate card (4% buyer fee capped ₹99 + organiser fee).
+   */
+  processingFeePercent: number | null;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }
@@ -182,7 +187,8 @@ export interface ResolvedTerms {
   dealId: string | null;
   plan: OrgPlan;
   buyerFeeBps: number;
-  buyerFeeCapPaise: number;
+  /** null = no cap (a plan on the one processing fee). */
+  buyerFeeCapPaise: number | null;
   organiserFeeBps: number;
 }
 

@@ -1385,6 +1385,11 @@ model PlanConfig {
   /// resolvePlatformFeePercent and the platform_fee_percent_for_event trigger
   /// function, so a change applies to new sales only (A21).
   platformFeePercent Decimal @default(0) @map("platform_fee_percent") @db.Decimal(5, 2)
+  /// The one processing fee per paid ticket, gateway included (12 Nov 2026):
+  /// the buyer pays it on top, or the organiser includes it in the price. No
+  /// per-ticket cap; platformFeePercent must be 0 alongside it. NULL = the old
+  /// rate card (4% capped ₹99 + organiser fee). A deal may only go lower.
+  processingFeePercent Decimal? @map("processing_fee_percent") @db.Decimal(5, 2)
   monthlyPrice       Int?    @map("monthly_price") // null = custom / contact sales
   annualPrice        Int?    @map("annual_price")
 
