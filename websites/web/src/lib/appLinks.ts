@@ -43,9 +43,6 @@ export function androidIntentUrl(scheme: string): string {
   );
 }
 
-/** Marks an iOS app link the app didn't catch; proxy.ts sends it to the App Store. */
-export const IOS_MISSED_PARAM = 'app';
-
 // Paths public/.well-known/apple-app-site-association hands to the app.
 const IOS_APP_PATHS = /^(?:event|space|claim|qr)\//;
 
@@ -60,7 +57,7 @@ const IOS_APP_PATHS = /^(?:event|space|claim|qr)\//;
 export function iosAppUrl(scheme: string): string {
   const rest = scheme.split('://')[1] ?? '';
   if (!IOS_APP_PATHS.test(rest)) return APP_STORE_URL;
-  return `https://unifesto.app/${rest}${rest.includes('?') ? '&' : '?'}${IOS_MISSED_PARAM}=1`;
+  return `https://unifesto.app/${rest}${rest.includes('?') ? '&' : '?'}app=1`;
 }
 
 const noopSubscribe = () => () => {};

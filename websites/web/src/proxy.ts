@@ -2,7 +2,7 @@ import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
 import { isOwnHost } from '@/lib/own-host';
 import { isCachedPage } from '@/lib/cached-pages';
-import { APP_STORE_URL, IOS_MISSED_PARAM } from '@/lib/appLinks';
+import { SITE } from '@/lib/site';
 import type { NextRequest } from 'next/server';
 
 const MAIN = 'https://www.unifesto.app';
@@ -173,7 +173,8 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
 
   // An iPhone "Open in app" link (appLinks.ts iosAppUrl) the app didn't catch:
   // it isn't installed. Always a redirect, so the edge never caches a page here.
-  if (request.nextUrl.searchParams.get(IOS_MISSED_PARAM) === '1') return NextResponse.redirect(APP_STORE_URL);
+  // (appLinks.ts can't be imported: the proxy bundle rejects its React hooks.)
+  if (request.nextUrl.searchParams.get('app') === '1') return NextResponse.redirect(SITE.appStore);
 
   if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 
