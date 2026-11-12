@@ -1202,3 +1202,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-12** · Apex Deals no longer shows the old 4.0.5 app fee notices (#654)
 - **2026-11-12** · K23 webhooks: signed registration confirmed / cancelled / checked-in events to a space's own server (#655)
 - **2026-11-12** · CORS refusals are a 403, not a 500 and a Sentry issue (#656)
+- **2026-11-12** · Apex Subscriptions becomes Space plans: fee per space and who pays, no prices, cycles or offline payments (#657)
