@@ -83,11 +83,22 @@ export class ApiKeysService {
    * Without Redis it lets the call through, like the global throttler.
    */
   async over(counter: string, limit: number, windowSeconds: number): Promise<boolean> {
+    return (await this.bump(counter, windowSeconds)) > limit;
+  }
+
+  /** Adds one to a counter and returns it (0 without Redis). */
+  async bump(counter: string, windowSeconds: number): Promise<number> {
     const client = this.redis.getClient();
-    if (!client) return false;
+    if (!client) return 0;
     const key = `apikey-${counter}`;
     const n = await client.incr(key);
     if (n === 1) await client.expire(key, windowSeconds);
-    return n > limit;
+    return n;
+  }
+
+  /** A counter's value without adding to it (0 without Redis). */
+  async peek(counter: string): Promise<number> {
+    const client = this.redis.getClient();
+    return client ? Number((await client.get(`apikey-${counter}`)) ?? 0) : 0;
   }
 }

@@ -11,7 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { assertSpaceLive } from '../spaces/space-access';
 import { ApiKeysService, type ResolvedKey } from './api-keys.service';
 
-/** Per key, per minute. Writes are tighter: each can send an email or a payment link. */
+/** Per minute: reads per key, writes per space. Writes are tighter: each can send an email or a payment link. */
 export const READS_PER_MINUTE = 120;
 export const WRITES_PER_MINUTE = 60;
 
@@ -40,9 +40,11 @@ export class ApiKeyGuard implements CanActivate {
     if (!key.integrationsEnabled) throw new ForbiddenException('API access is off for this space');
     await assertSpaceLive(this.prisma, { id: key.spaceId });
 
+    // Writes count per space, so making new keys never buys more; reads per key.
     const write = req.method !== 'GET';
     const minute = Math.floor(Date.now() / 60_000);
-    if (await this.keys.over(`rl-${key.id}-${write ? 'w' : 'r'}-${minute}`, write ? WRITES_PER_MINUTE : READS_PER_MINUTE, 60)) {
+    const who = write ? `w-${key.spaceId}` : `r-${key.id}`;
+    if (await this.keys.over(`rl-${who}-${minute}`, write ? WRITES_PER_MINUTE : READS_PER_MINUTE, 60)) {
       throw new HttpException('Too many requests for this key. Slow down and retry in a minute.', HttpStatus.TOO_MANY_REQUESTS);
     }
     req.apiKey = key;

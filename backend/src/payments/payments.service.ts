@@ -145,6 +145,8 @@ export interface CreatePaymentLinkOptions {
   /** Unique reference echoed back on webhooks; we pass the registration id. */
   referenceId?: string;
   currency?: string;
+  /** Unix seconds after which the link can't be paid (K22: API-made links). */
+  expireBy?: number;
 }
 
 export interface PaymentLinkResult {
@@ -262,6 +264,7 @@ export class PaymentsService {
       },
       reminder_enable: true,
       notes: options.notes,
+      ...(options.expireBy && { expire_by: options.expireBy }),
     });
 
     this.logger.log(

@@ -1,4 +1,5 @@
-import { ForbiddenException, HttpException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, NotFoundException, UnauthorizedException, ValidationPipe } from '@nestjs/common';
+import { ApiRegisterDto } from './dto';
 import { ApiKeyGuard } from './api-key.guard';
 import { ApiKeysService } from './api-keys.service';
 import { PublicApiService } from './public-api.service';
@@ -90,7 +91,7 @@ describe('ApiKeyGuard', () => {
     await expect(down.guard.canActivate(down.ctx)).rejects.toThrow('temporarily unavailable');
   });
 
-  it('caps writes per key per minute', async () => {
+  it('caps writes per space per minute, whichever key makes them', async () => {
     const { guard, ctx, req } = build(live);
     req.method = 'POST';
     for (let i = 0; i < 60; i++) await guard.canActivate(ctx);
@@ -123,10 +124,16 @@ describe('PublicApiService.register', () => {
     const { svc, registrations, prisma } = build();
     await expect(svc.register(key, 'build-sunday', body, 'idem-1')).resolves.toEqual({ registrationId: 'reg-1', status: 'confirmed' });
     // Only the key's own space, live and open beyond members.
-    expect(prisma.event.findFirst.mock.calls[0][0].where).toMatchObject({ spaceId: 'sp-1', slug: 'build-sunday', deletedAt: null });
+    expect(prisma.event.findFirst.mock.calls[0][0].where).toMatchObject({ spaceId: 'sp-1', slug: 'build-sunday', deletedAt: null, status: 'PUBLISHED' });
     expect(registrations.manualAddAttendee).toHaveBeenCalledWith(
       'ev-1',
-      expect.objectContaining({ collectPayment: false, requireAnswers: true, utm: expect.objectContaining({ utmSource: 'WeGoBeyond site', utmMedium: 'api' }) }),
+      // Always on: manual add uses it only when its own read of the price is above 0.
+      expect.objectContaining({
+        collectPayment: true,
+        requireAnswers: true,
+        fromApi: true,
+        utm: expect.objectContaining({ utmSource: 'WeGoBeyond site', utmMedium: 'api' }),
+      }),
     );
   });
 
@@ -173,5 +180,80 @@ describe('PublicApiService.register', () => {
     await expect(
       build({ event: { id: 'ev-1', externalRegistrationUrl: 'https://forms.gle/x' } }).svc.register(key, 'x', body, 'd'),
     ).rejects.toThrow("organiser's site");
+  });
+});
+
+describe('PublicApiService.register: limits and retries', () => {
+  const key = { id: 'k1', spaceId: 'sp-1', name: 'site', prefix: 'uf_live_EXAM', integrationsEnabled: true };
+  const body = { ticketTypeId: '7a1c2d3e-0000-4000-8000-000000000001', name: 'Asha', email: 'Asha@Example.com', ageConfirmed: true as const };
+  const setup = () => {
+    const prisma: any = {
+      event: { findFirst: jest.fn(async () => ({ id: 'ev-1', externalRegistrationUrl: null })) },
+      eventTicketType: { findFirst: jest.fn(async () => ({ id: body.ticketTypeId, kind: 'INDIVIDUAL', saleStartsAt: null, saleEndsAt: null })) },
+      eventFormField: { findFirst: jest.fn(async () => null) },
+      eventRegistration: { findFirst: jest.fn(async () => ({ id: 'reg-old', paymentStatus: 'PENDING' })) },
+    };
+    const redis = fakeRedis();
+    let n = 0;
+    const registrations: any = { manualAddAttendee: jest.fn(async () => ({ registrationId: `reg-${++n}`, paymentStatus: 'PAID' })) };
+    const keys = new ApiKeysService(prisma, redis.service);
+    return { svc: new PublicApiService(prisma, redis.service, registrations, keys), registrations, redis };
+  };
+
+  it('counts the daily allowance per space and per email, only on success', async () => {
+    const { svc, registrations, redis } = setup();
+    registrations.manualAddAttendee.mockRejectedValueOnce(new Error('boom'));
+    await expect(svc.register(key, 'x', body, 'a')).rejects.toThrow('boom');
+    expect([...redis.kv.keys()].filter((k) => k.includes('-day-') || k.includes('-email-'))).toEqual([]);
+    for (let i = 0; i < 5; i++) await svc.register({ ...key, id: `k${i}` }, 'x', body, `b${i}`);
+    // A sixth for the same address, even through another key, is refused.
+    await expect(svc.register({ ...key, id: 'k9' }, 'x', body, 'c')).rejects.toThrow('this email address');
+  });
+
+  it('a person already registered gets that registration back, not an error', async () => {
+    const { svc, registrations } = setup();
+    registrations.manualAddAttendee.mockRejectedValueOnce(new ConflictException('already registered'));
+    await expect(svc.register(key, 'x', body, 'd')).resolves.toMatchObject({ registrationId: 'reg-old', status: 'payment_pending', existing: true });
+  });
+
+  it('matches a retry by ticket and email, whatever the key order or case', async () => {
+    const { svc, registrations } = setup();
+    const first = await svc.register(key, 'x', body, 'e');
+    const reordered = { email: 'asha@example.com', ageConfirmed: true as const, name: 'Asha', ticketTypeId: body.ticketTypeId };
+    await expect(svc.register(key, 'ev-uuid-or-slug', reordered, 'e')).resolves.toEqual(first);
+    expect(registrations.manualAddAttendee).toHaveBeenCalledTimes(1);
+  });
+
+  it('still answers with the registration when keeping the answer for retries fails', async () => {
+    const { svc, redis } = setup();
+    const set = redis.client.set;
+    redis.client.set = jest.fn(async (k: string, v: string, ...rest: unknown[]) => {
+      if (!rest.includes('NX')) throw new Error('redis down');
+      return set(k, v, ...rest);
+    }) as any;
+    await expect(svc.register(key, 'x', body, 'f')).resolves.toMatchObject({ status: 'confirmed' });
+  });
+
+  it('holds "still running" briefly and the answer for a day', async () => {
+    const { svc, redis } = setup();
+    await svc.register(key, 'x', body, 'g');
+    expect(redis.client.set.mock.calls.map((c: unknown[]) => c[3])).toEqual([120, 86_400]);
+  });
+});
+
+describe('ApiRegisterDto', () => {
+  it("takes only a real true for ageConfirmed, through the app's ValidationPipe", async () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    });
+    const meta = { type: 'body' as const, metatype: ApiRegisterDto };
+    const base = { ticketTypeId: '7a1c2d3e-0000-4000-8000-000000000001', name: 'A', email: 'a@example.com' };
+    await expect(pipe.transform({ ...base, ageConfirmed: true }, meta)).resolves.toBeDefined();
+    for (const v of ['false', 'no', 1, 'true', undefined]) {
+      await expect(pipe.transform({ ...base, ageConfirmed: v }, meta)).rejects.toBeDefined();
+    }
   });
 });
