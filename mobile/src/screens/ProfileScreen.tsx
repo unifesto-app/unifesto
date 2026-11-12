@@ -9,8 +9,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import * as AuthAPI from '../lib/api/auth';
-import { getMyRegisteredEvents } from '../lib/api/events';
-import { getUserSpaces } from '../lib/api/spaces';
 import { getMyUnreadCount } from '../lib/api/support';
 import { openStoreReview } from '../utils/storeReview';
 import { useStableTopInset } from '../components/CustomHeader';
@@ -40,12 +38,6 @@ const SOCIALS: { brand: Brand; name: string; url: string }[] = [
   { brand: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/@unifesto-app' },
 ];
 
-interface Counts {
-  upcoming: number;
-  past: number;
-  spaces: number;
-}
-
 interface Nudge {
   title: string;
   to: Href;
@@ -53,7 +45,7 @@ interface Nudge {
 }
 
 /**
- * The single "finish your profile" row under my numbers, or null.
+ * The single "finish your profile" row under my name, or null.
  * Home already nags for a username and a name; this is the Profile tab's own
  * chance to ask for what makes the public profile worth opening.
  */
@@ -71,38 +63,16 @@ export default function ProfileScreen() {
   const access = useSpaceAccess();
   const { token, logout, isLoading: authLoading, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<AuthAPI.User | null>(null);
-  const [counts, setCounts] = useState<Counts | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
 
   const load = useCallback(async () => {
     if (!token) return;
-    const [user, regs, spaces, unread] = await Promise.allSettled([
-      AuthAPI.getCurrentUser(),
-      getMyRegisteredEvents(1, 50),
-      getUserSpaces(),
-      getMyUnreadCount(),
-    ]);
+    // My numbers live on View profile now, so this tab only needs me and the support count.
+    const [user, unread] = await Promise.allSettled([AuthAPI.getCurrentUser(), getMyUnreadCount()]);
     if (unread.status === 'fulfilled') setSupportUnread(unread.value);
     if (user.status === 'fulfilled') setProfile(user.value);
     else if (__DEV__) console.error('Failed to load profile:', user.reason);
-
-    // Same counting as the public profile: one per event, split at now.
-    const rows: any[] = regs.status === 'fulfilled' ? regs.value?.data || regs.value?.events || [] : [];
-    const events = rows.map((r) => (r.event ? r.event : r)).filter((e) => e?.id);
-    const ids = new Set<string>();
-    let upcoming = 0;
-    let past = 0;
-    const now = Date.now();
-    for (const e of events) {
-      if (ids.has(e.id)) continue;
-      ids.add(e.id);
-      if (new Date(e.startDateTime).getTime() >= now) upcoming++;
-      else past++;
-    }
-    // /users/me/spaces returns one row per role: count spaces, not rows.
-    const mySpaces = spaces.status === 'fulfilled' ? new Set((spaces.value || []).map((s) => s.id)).size : 0;
-    setCounts({ upcoming, past, spaces: mySpaces });
   }, [token]);
 
   // On focus, so edits made in Edit profile show the moment you come back.
@@ -232,7 +202,7 @@ export default function ProfileScreen() {
 
         <View style={styles.pad}>
           {!profile ? (
-            <IdentityHeaderSkeleton />
+            <IdentityHeaderSkeleton stats={false} />
           ) : (
             <IdentityHeader
               name={profile.fullName || profile.username || 'My profile'}
@@ -242,11 +212,6 @@ export default function ProfileScreen() {
               memberSince={profile.createdAt}
               onEdit={() => router.push('/edit-profile')}
               onViewPublic={() => router.push('/user-profile')}
-              stats={[
-                { label: 'Going to', value: counts?.upcoming ?? null, accent: c.sky, onPress: () => router.navigate('/tickets') },
-                { label: 'Been to', value: counts?.past ?? null, accent: c.mint, onPress: () => router.push('/user-profile') },
-                { label: 'Spaces', value: counts?.spaces ?? null, onPress: () => router.push({ pathname: '/spaces', params: { mine: 'true' } }) },
-              ]}
             />
           )}
         </View>
@@ -313,8 +278,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: typography.fontSize['3xl'], lineHeight: 34, ...cosmosFont.display, letterSpacing: displayTracking(28) },
   // Grouped lists: SettingsGroup owns the section spacing and its muted title.
   group: { marginHorizontal: GUTTER },
-  // Right under my numbers: the band's hairline sits above it.
-  first: { marginTop: 0 },
+  // Right under my name and buttons: closer than a new section.
+  first: { marginTop: spacing[6] },
   guest: { alignItems: 'center', paddingHorizontal: GUTTER, marginTop: spacing[8] },
   guestTitle: { marginTop: spacing[4], fontSize: 24, lineHeight: 30, textAlign: 'center', ...cosmosFont.display, letterSpacing: displayTracking(24) },
   guestBody: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: 22, textAlign: 'center', ...cosmosFont.body },
