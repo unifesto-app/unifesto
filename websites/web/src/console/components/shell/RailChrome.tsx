@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -95,13 +95,21 @@ export function RailHeader({ collapsed = false, onToggle }: { collapsed?: boolea
  */
 function SpaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { spaces, currentSpace, setCurrentSpace, hasAccess } = useSession();
-  const { setOpen: setDrawerOpen } = useMobileNav();
+  const { open: drawerOpen, setOpen: setDrawerOpen } = useMobileNav();
   const menu = useRef<HTMLDetailsElement>(null);
+  // The rail stays mounted across pages, and <details> has no outside-click or
+  // Escape close: shut the list whenever the page changes or the drawer opens or shuts.
+  useEffect(() => {
+    if (menu.current) menu.current.open = false;
+  }, [pathname, drawerOpen]);
   if (!hasAccess || !currentSpace) return null;
 
-  // Picking anything shuts the list (and the phone drawer); the rail stays mounted across pages.
+  // Picking anything shuts the list (and the phone drawer). Focus goes back to
+  // the summary first, so a keyboard user isn't dropped at the top of the page.
   const close = () => {
+    menu.current?.querySelector("summary")?.focus();
     if (menu.current) menu.current.open = false;
     setDrawerOpen(false);
   };
@@ -135,8 +143,9 @@ function SpaceSwitcher({ collapsed }: { collapsed: boolean }) {
         <CaretDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180" />
       </summary>
       <div className="mt-1 space-y-0.5">
-        {/* ponytail: a plain scroll list; My Spaces has the search for people with many. */}
-        <div className="max-h-64 space-y-0.5 overflow-y-auto">
+        {/* ponytail: a plain scroll list, capped to the screen so the links below stay
+            reachable on a short phone; My Spaces has the search for people with many. */}
+        <div className="max-h-[40vh] space-y-0.5 overflow-y-auto">
           {spaces.map((s) => {
             const here = s.id === currentSpace.id;
             return (
@@ -179,8 +188,9 @@ function SpaceMark({ space, small = false }: { space: SpaceMembership; small?: b
       )}
     >
       {space.logo_url ? (
+        // Lazy: the closed list's logos load only when it opens.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={space.logo_url} alt="" className="h-full w-full object-cover" />
+        <img src={space.logo_url} alt="" loading="lazy" className="h-full w-full object-cover" />
       ) : (
         space.name.charAt(0).toUpperCase()
       )}
