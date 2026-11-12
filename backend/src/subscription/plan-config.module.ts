@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { CacheModule } from '../cache/cache.module';
 import { PlanConfigService } from './plan-config.service';
 import { PlatformConfigService } from './platform-config.service';
 import { TermsService } from './terms.service';
@@ -11,6 +12,8 @@ import { TermsService } from './terms.service';
  */
 @Global()
 @Module({
+  // TermsService clears event caches when Unifesto changes who pays.
+  imports: [CacheModule],
   providers: [PlanConfigService, PlatformConfigService, TermsService],
   exports: [PlanConfigService, PlatformConfigService, TermsService],
 })

@@ -230,6 +230,8 @@ export type Plan = {
   forWho: string;
   /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
+  /** The one processing fee, percent, gateway included, when the plan is on it (12 Nov 2026). Shown as "up to". */
+  processingFee?: number | null;
   /** Least the platform fee comes to per event, in rupees (Growth, Pro).
      ponytail: applied by hand when an admin moves a space up; code it once plans are per event. */
   minPerEvent?: number;
@@ -413,8 +415,11 @@ export const buyerFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE
 export const includedFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
   Math.min(Math.round((price * percent * 100) / (100 + percent)) / 100, cap ?? Infinity);
 
-/** "4.5%", or "Custom" (Enterprise). */
-export const planFee = (p: Plan) => p.feeText ?? `${p.fee}%`;
+/** "Up to 7%" on the one processing fee, "4.5%" on the old fees, or "Custom" (Enterprise). */
+export const planFee = (p: Plan) => p.feeText ?? (p.processingFee != null ? `Up to ${p.processingFee}%` : `${p.fee}%`);
+
+/** Every listed plan with a set rate is on the one processing fee, so the copy says "up to", never exact rates. */
+export const isOneFee = (plans: Plan[]) => plans.some((p) => !p.feeText) && plans.every((p) => p.feeText || p.processingFee != null);
 
 /** "At least ₹999 an event" for a plan with a minimum. */
 export const planMinimum = (p: Pick<Plan, "minPerEvent">) => (p.minPerEvent ? `At least ${inr(p.minPerEvent)} an event` : null);
@@ -422,17 +427,21 @@ export const planMinimum = (p: Pick<Plan, "minPerEvent">) => (p.minPerEvent ? `A
 /** "3% on General, 3.5% on Club, 4% on Growth (at least ₹999 an event), …, Enterprise by contract". */
 export const planFeesText = (plans: Plan[] = PLANS) =>
   plans
-    .map((p) => (p.feeText ? `${p.name} by contract` : `${p.fee}% on ${p.name}${p.minPerEvent ? ` (at least ${inr(p.minPerEvent)} an event)` : ""}`))
+    .map((p) =>
+      p.feeText
+        ? `${p.name} by contract`
+        : `${p.processingFee != null ? `up to ${p.processingFee}%` : `${p.fee}%`} on ${p.name}${p.minPerEvent ? ` (at least ${inr(p.minPerEvent)} an event)` : ""}`,
+    )
     .join(", ");
 
-/** "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep
+/** "A ₹500 pass: students pay ₹520, or ₹500 if the fee is included. You keep
    ₹485 on General." Computed from the rate card it is given. */
 export const passExample = (
   plan: Plan = PLANS[0],
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
 ) =>
-  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if you include the fee. You keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
+  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if the fee is included. You keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -443,7 +452,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: `Yes. There is no monthly fee and free RSVP events cost nothing. On paid tickets, buyers pay a ${buyerFeeText()}, or you include it in your price, and organisers pay a platform fee per paid ticket: ${planFeesText()}. ${passExample()}`,
+    a: "Yes. There is no monthly fee and free RSVP events cost nothing. Paid tickets carry a fee per ticket by plan, with Razorpay's charges covered, so you never pay them on top. The pricing page shows what each plan costs.",
   },
   {
     q: "How does check-in work?",
@@ -485,7 +494,7 @@ export const FAQ_ORGANISERS: Faq[] = [
 export const FAQ_APP: Faq[] = [
   {
     q: "Is the Unifesto app free?",
-    a: `Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid tickets, through Razorpay. A paid ticket carries a ${buyerFeeText()}, unless the organiser includes it in the price, and you see the total before you pay.`,
+    a: "Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid tickets, through Razorpay. A paid ticket carries a processing fee unless the organiser includes it in the price, and you see the total before you pay.",
   },
   {
     q: "Do I need the app to attend an event?",
@@ -521,10 +530,12 @@ export const pricingFaq = (
   plans: Plan[] = PLANS,
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
-): Faq[] => [
+): Faq[] => {
+  const one = isOneFee(plans);
+  return [
   {
     q: "Is there a monthly fee?",
-    a: "No. No plan has a monthly price. Unifesto earns a platform fee on each paid ticket, so you pay only when you sell.",
+    a: "No. No plan has a monthly price. Unifesto earns a fee on each paid ticket, so you pay only when you sell.",
   },
   {
     q: "Are free events really free?",
@@ -532,15 +543,20 @@ export const pricingFaq = (
   },
   {
     q: "What do students pay, and what do I keep?",
-    a: `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or you include it in your ticket price per event and it comes out of your share. It is not refundable. You also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
+    a: one
+      ? `Every paid ticket carries one processing fee by plan, ${planFeesText(plans)}, payment gateway included and with no cap. Students pay it at checkout, or it is included in your ticket price and comes out of your share, as Unifesto sets with you. It is not refundable.`
+      : `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or it is included in your ticket price and comes out of your share, as Unifesto sets with you. It is not refundable. You also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap)}`,
   },
   {
     // TODO(A6): GST wording waits for GST registration and the CA.
     q: "Are payment gateway charges included?",
-    a: "Yes. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. Fees exclude GST.",
+    a: one
+      ? "Yes. The processing fee includes Razorpay's charges, so you never pay them on top. Fees exclude GST."
+      : "Yes. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. Fees exclude GST.",
   },
   {
     q: "Can I switch plans later?",
     a: "Yes. Every Space starts on General. Write to us to move up and we switch your Space for you. Growth and Pro carry a minimum per event, which we agree with you first.",
   },
-];
+  ];
+};

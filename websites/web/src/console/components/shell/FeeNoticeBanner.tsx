@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { X } from "@unifesto/unicon/react";
 import { useSession } from "@/console/lib/context/SessionContext";
 import { PLAN_LABEL, type OrgPlan } from "@/console/lib/api/subscriptions-api";
-import { BUYER_FEE_PERCENT } from "@/console/lib/utils/money";
 import { PLANS, planFee } from "@/lib/site";
 
 /**
@@ -61,8 +60,7 @@ export function FeeNoticeBanner() {
             {planFee(plan)} platform fee.
           </span>{" "}
           On a ₹500 ticket you get ₹{keep}. There is no monthly fee on any plan, sales before then are not affected,
-          and free events stay free. Every Space now starts on General; write to us to move up. You can include the
-          buyer&apos;s {BUYER_FEE_PERCENT}% processing fee in your price from each event&apos;s Tickets page.{" "}
+          and free events stay free. Every Space now starts on General; write to us to move up.{" "}
           <a href="https://unifesto.app/pricing" target="_blank" rel="noreferrer" className="underline">
             See pricing
           </a>

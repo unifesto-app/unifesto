@@ -26,9 +26,18 @@ import { Card, CardContent } from "@/console/components/ui/card";
 import { cn } from "@/console/lib/utils/cn";
 import { PLANS, inr, planMinimum } from "@/lib/site";
 
-/** "4.5%", or "Custom" for Enterprise (by contract). */
+/** "Up to 7%" on a one-fee plan, "4.5%" on the old fees, or "Custom" for Enterprise (by contract). */
 function feeText(plan: PlanInfo): string {
-  return plan.plan === "ENTERPRISE" ? "Custom" : `${plan.platformFeePercent}%`;
+  if (plan.plan === "ENTERPRISE") return "Custom";
+  return plan.processingFeePercent != null ? `Up to ${plan.processingFeePercent}%` : `${plan.platformFeePercent}%`;
+}
+
+/** What this space pays, from its own terms (deals included): one number on the one fee. */
+function yourFee(fee: NonNullable<Subscription["fee"]>): string {
+  const payer = fee.included ? "included in your ticket prices (PF included)" : "paid by buyers at checkout";
+  return fee.capPerTicket == null
+    ? `Your processing fee is ${fee.percent}% per paid ticket, payment gateway included, ${payer}.`
+    : `Buyers' processing fee is ${fee.percent}%, capped at ₹${fee.capPerTicket} per ticket, ${payer}, and Razorpay's charges come out of it. You pay a ${fee.organiserPercent}% platform fee per paid ticket.`;
 }
 
 /** The least fee per event on Growth and Pro (Z2), in rupees, from the site's plan list. */
@@ -291,10 +300,7 @@ export default function BillingPage() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Buyers pay a {cat?.buyerProcessingFeePercent ?? 4}% processing fee on paid tickets
-        {cat?.buyerProcessingFeeCapPerTicket ? `, capped at ₹${cat.buyerProcessingFeeCapPerTicket} per ticket,` : ""} on
-        every plan. You can include it in your price from each event&apos;s Tickets page. Razorpay&apos;s charges come
-        out of that fee. Free RSVP events carry no fees.
+        {sub?.fee && `${yourFee(sub.fee)} `}Unifesto sets who pays the processing fee. Free RSVP events carry no fees.
       </p>
     </div>
   );

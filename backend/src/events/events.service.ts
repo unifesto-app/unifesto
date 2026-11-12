@@ -1308,10 +1308,20 @@ export class EventsService {
     // Event roles carry no space, so "from the receiving space" means holding
     // any role there (the same test addTeamMember uses).
     const outsiders = { eventId, user: { roles: { none: { spaceId: transfer.toSpaceId } } } };
+    // Who pays the processing fee follows the receiving space (Unifesto's call there).
+    const toSpace = await this.prisma.space.findUnique({
+      where: { id: transfer.toSpaceId },
+      select: { absorbProcessingFee: true },
+    });
     await this.prisma.$transaction([
       this.prisma.event.update({
         where: { id: eventId },
-        data: { spaceId: transfer.toSpaceId, createdBy: userId, payoutBankAccountId: null },
+        data: {
+          spaceId: transfer.toSpaceId,
+          createdBy: userId,
+          payoutBankAccountId: null,
+          absorbProcessingFee: toSpace?.absorbProcessingFee ?? false,
+        },
       }),
       this.prisma.eventCoHost.deleteMany({
         where: { eventId, spaceId: transfer.toSpaceId },
@@ -1695,6 +1705,8 @@ export class EventsService {
       data: {
         title: dto.title,
         slug,
+        // Who pays the processing fee is the space's, set by Unifesto.
+        absorbProcessingFee: space.absorbProcessingFee,
         description: dto.description,
         type: dto.type,
         registrationType: dto.registrationType,
@@ -2375,17 +2387,10 @@ export class EventsService {
       await this.planConfig.assertFeature(event.spaceId, 'hasWaitlist');
     }
 
-    // Absorbing the buyer fee cuts the organiser's take, so it is a money
-    // decision (A33): event money (Curator) or space money (Space Admin) only.
-    if (
-      dto.absorbProcessingFee !== undefined &&
-      dto.absorbProcessingFee !== event.absorbProcessingFee &&
-      !(
-        (await this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId })) ||
-        (await this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }))
-      )
-    ) {
-      throw new ForbiddenException('Only the Curator or a Space Admin can change who pays the processing fee');
+    // Who pays the processing fee is Unifesto's call (12 Nov 2026), set per
+    // space in Apex; organisers can't change it here.
+    if (dto.absorbProcessingFee !== undefined && dto.absorbProcessingFee !== event.absorbProcessingFee) {
+      throw new ForbiddenException('Unifesto sets who pays the processing fee. Write to us to change it.');
     }
 
     // The schedule as it will be after this edit (B17). The far-future check

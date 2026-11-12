@@ -24,7 +24,7 @@ export interface RateCard {
 interface PlanFeesResponse {
   buyerProcessingFeePercent: number;
   buyerProcessingFeeCapPerTicket?: number | null;
-  plans: (PlanRow & { plan: string; tagline?: string; platformFeePercent: number })[];
+  plans: (PlanRow & { plan: string; tagline?: string; platformFeePercent: number; processingFeePercent?: number | null })[];
   catalog?: Catalog;
 }
 
@@ -43,6 +43,7 @@ export async function getRateCard(): Promise<RateCard> {
         forWho: row.tagline ?? p.forWho,
         row,
         fee: Number(row.platformFeePercent),
+        processingFee: row.processingFeePercent == null ? null : Number(row.processingFeePercent),
         // Older APIs send fees and prices only: keep the static list then.
         includes: "eventsPerMonth" in row ? planIncludes(p, row, prev && { plan: prev, row: rows.get(prev.id)! }) : p.includes,
       };

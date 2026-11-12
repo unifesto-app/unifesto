@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLANS, buyerFeeOn, includedFeeOn, passExample, planFeesText, planIncludes } from "@/lib/site";
+import { PLANS, buyerFeeOn, includedFeeOn, isOneFee, passExample, planFee, planFeesText, planIncludes, pricingFaq } from "@/lib/site";
 
 test("the ₹500 pass example: students pay ₹520, General keeps ₹485", () => {
   assert.equal(
     passExample(PLANS[0], 4, 99),
-    "A ₹500 pass: students pay ₹520, or ₹500 if you include the fee. You keep ₹485 on General.",
+    "A ₹500 pass: students pay ₹520, or ₹500 if the fee is included. You keep ₹485 on General.",
   );
 });
 
@@ -37,4 +37,17 @@ test("plan lists come from plan_configs: limits, then only the features the prev
     "Waiting list with pay-to-claim offers",
     "White-label: colours, logo, favicon, own email and domain",
   ]);
+});
+
+test("one processing fee: plans read 'up to', and the copy drops exact rates once every plan is on it", () => {
+  const one = PLANS.map((p) => (p.feeText ? p : { ...p, processingFee: { starter: 7, club: 7.5, growth: 8, pro: 8.5 }[p.id as "starter"] }));
+  assert.equal(planFee(one[0]), "Up to 7%");
+  assert.equal(planFee(PLANS[0]), "3%");
+  assert.equal(isOneFee(one), true);
+  assert.equal(isOneFee(PLANS), false);
+  // Half switched still reads as the old fees.
+  assert.equal(isOneFee([one[0], PLANS[1]]), false);
+  const answer = pricingFaq(one).find((f) => f.q.startsWith("What do students pay"))!.a;
+  assert.match(answer, /up to 7% on General/);
+  assert.doesNotMatch(answer, /capped|₹520/);
 });

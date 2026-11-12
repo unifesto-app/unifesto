@@ -52,7 +52,7 @@ export default function PassPaysYou({
           {included
             ? `On a ${inr(EXAMPLE_PASS)} ticket the buyer pays ${inr(EXAMPLE_PASS)} and the ${rupees(inside)} fee comes out of it, so you get ${rupees(base)}.`
             : `On a ${inr(EXAMPLE_PASS)} ticket the buyer pays ${rupees(EXAMPLE_PASS + onTop)} (${buyerFee}% fee on top${cap}) and you get ${rupees(EXAMPLE_PASS)}.`}{" "}
-          Set it per event on its Tickets page. Changes apply to new sales only.
+          Unifesto sets which applies to your space. Changes apply to new sales only.
         </p>
       </div>
 

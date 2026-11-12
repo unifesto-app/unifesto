@@ -52,6 +52,12 @@ describe('absorbed buyer fee (A33)', () => {
       );
     });
 
+    it('a Curator or Space Admin with money rights cannot either: Unifesto sets it per space', async () => {
+      await expect(build(true).updateEvent('u', 'ev', { absorbProcessingFee: true } as any)).rejects.toThrow(
+        'Unifesto sets who pays the processing fee',
+      );
+    });
+
     it('sending the same value needs no money rights', async () => {
       // Rejected later for an unrelated reason in this bare mock, never by the money gate.
       await expect(build(false).updateEvent('u', 'ev', { absorbProcessingFee: false } as any)).rejects.not.toBeInstanceOf(

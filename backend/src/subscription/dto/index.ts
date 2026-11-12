@@ -14,6 +14,12 @@ import {
 } from 'class-validator';
 import { BillingCycle, OrgPlan } from '@prisma/client';
 
+/** Platform admin: who pays the processing fee on a space's events (true = included in the price). */
+export class SetFeePayerDto {
+  @IsBoolean()
+  included: boolean;
+}
+
 /** Platform admin: negotiated terms for a space or one of its events (T4). Null = rate card. */
 export class CreateDealDto {
   @IsOptional()

@@ -38,6 +38,12 @@ export interface Subscription {
   expiresAt: string | null;
   cancelledAt: string | null;
   lastPaymentAt: string | null;
+  /**
+   * What this space pays per paid ticket, deals included, and who pays the
+   * processing fee (Unifesto sets it). `capPerTicket` null = the one
+   * processing fee: `percent` is the whole fee, payment gateway included.
+   */
+  fee?: { percent: number; capPerTicket: number | null; organiserPercent: number; included: boolean };
   nextPaymentAt: string | null;
   eventsThisMonth: number;
   usageResetAt: string;
@@ -72,6 +78,8 @@ export interface PlanInfo {
   hasSponsors: boolean;
   /** Organiser platform fee % per paid ticket on this plan (A9). */
   platformFeePercent: number;
+  /** The one processing fee %, gateway included, when the plan is on it (shown as "up to"). */
+  processingFeePercent?: number | null;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }
