@@ -2,7 +2,12 @@ import { jest } from '@jest/globals';
 
 // Native modules with no JS side under jest. Screens and the API layer stay real.
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => {
+  const mock = require('react-native-reanimated/mock');
+  // The library's mock leaves this out ("ADD ME IF NEEDED"); the splash reads it.
+  mock.useReducedMotion = () => false;
+  return mock;
+});
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),

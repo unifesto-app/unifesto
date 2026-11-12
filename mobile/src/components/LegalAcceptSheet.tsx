@@ -10,6 +10,7 @@ import { sheet, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
 import Modal from './ui/Modal';
+import { useLaunchGate } from '../lib/launchGate';
 
 /**
  * I2: blocks the app until the signed-in user accepts every legal document with
@@ -23,6 +24,8 @@ export default function LegalAcceptSheet() {
   const [pending, setPending] = useState<PendingLegalDoc[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // A native modal draws over the launch splash; wait until it has gone.
+  const { done: launched } = useLaunchGate();
 
   useEffect(() => {
     setPending([]);
@@ -50,7 +53,7 @@ export default function LegalAcceptSheet() {
   };
 
   return (
-    <Modal visible={pending.length > 0} transparent animationType="slide" statusBarTranslucent onRequestClose={() => {}}>
+    <Modal visible={launched && pending.length > 0} transparent animationType="slide" statusBarTranslucent onRequestClose={() => {}}>
       <View style={styles.root}>
         <View style={[StyleSheet.absoluteFill, styles.backdrop]} />
         <View style={[styles.card, { paddingBottom: insets.bottom + spacing[4] }]} accessibilityViewIsModal>

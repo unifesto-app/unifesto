@@ -1,31 +1,25 @@
-import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
-import SplashScreen from '../src/screens/SplashScreen';
+import { useLaunchGate } from '../src/lib/launchGate';
+import { cosmosFor } from '../src/theme/cosmos';
+import { launchScheme } from '../src/context/ThemeContext';
 
+/**
+ * The launch route. The splash plays over it from the root layout; this goes
+ * to the tabs once auth has loaded and the splash lets Home mount (after its
+ * intro, while its letters are still). Always the tabs: profile completion is
+ * a banner there, not a forced screen. If auth ever outlasts the splash (it
+ * leaves by 30s), a spinner says it is still working instead of a blank screen.
+ */
 export default function Index() {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [animationComplete, setAnimationComplete] = useState(false);
-  const { isLoading, isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    // Mark as loaded when auth finishes loading
-    if (!isLoading) {
-      setIsLoaded(true);
-    }
-  }, [isLoading]);
-
-  // Show splash screen with exit animation when loaded
-  if (!animationComplete) {
-    return (
-      <SplashScreen 
-        shouldExit={isLoaded}
-        onAnimationComplete={() => setAnimationComplete(true)}
-      />
-    );
-  }
-
-  // Always go straight to tabs — profile completion is a banner there instead of a forced screen
-
-  return <Redirect href="/(tabs)" />;
+  const { isLoading } = useAuth();
+  const { appMayMount, done } = useLaunchGate();
+  if (!isLoading && appMayMount) return <Redirect href="/(tabs)" />;
+  const c = cosmosFor(launchScheme);
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
+      {done ? <ActivityIndicator color={c.muted} accessibilityLabel="Loading" /> : null}
+    </View>
+  );
 }

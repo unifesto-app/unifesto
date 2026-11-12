@@ -11,6 +11,7 @@ import { WHATS_NEW, sectionsFor, shouldShowWhatsNew } from '../lib/whatsNew';
 import { sheet, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { useLaunchGate } from '../lib/launchGate';
 
 const SEEN_KEY = 'whatsNew.seen';
 /** Written by appVersionReport on any earlier version; tells an upgrade from a fresh install. */
@@ -66,8 +67,10 @@ export default function WhatsNewSheet() {
     };
   }, []);
 
-  // Wait for roles so the organiser section doesn't pop in after the sheet opens.
-  const visible = open && access.loaded;
+  // Wait for roles so the organiser section doesn't pop in after the sheet opens,
+  // and for the launch splash to go: its top layer would draw over it.
+  const { done: launched } = useLaunchGate();
+  const visible = open && access.loaded && launched;
   useEffect(() => {
     if (!visible) return;
     progress.value = 0;

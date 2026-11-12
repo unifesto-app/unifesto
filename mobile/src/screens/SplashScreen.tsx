@@ -1,317 +1,662 @@
-import React, { useEffect, useState } from 'react';
-import { PixelRatio, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Easing,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
-  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import MaskedView from '@react-native-masked-view/masked-view';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { cosmosFont, cosmosFor } from '../theme/cosmos';
 import { launchScheme } from '../context/ThemeContext';
+import { launchGate } from '../lib/launchGate';
+import {
+  BOX,
+  EXIT_END,
+  INTRO_END,
+  INTRO_PROPS,
+  LETTERS,
+  LOOP_EVERY,
+  MARK_H,
+  MARK_W,
+  ORIGIN,
+  SWAP_LEN,
+  SWAP_PROPS,
+  footerOpacity,
+  glassFrame,
+  glowBands,
+  groundOpacity,
+  introPropFrame,
+  letterFrame,
+  nextSwap,
+  swapPropFrame,
+  type PropShape,
+} from './splashMotion';
 
 interface SplashScreenProps {
   onAnimationComplete?: () => void;
+  /** Auth has loaded. */
   shouldExit?: boolean;
 }
 
+/** On screen at least this long from mount, even if auth is instant. */
+const HOLD_MS = 2600;
+/** Home mounts this long before the exit starts, while nothing moves but the faint sheen. */
+const SETTLE_MS = 350;
 /**
- * The wordmark rises in as vertical slices, GSAP SplitText-style (it's a PNG, so
- * no real letters). Slices are whole device pixels wide: on Android's fractional
- * densities Yoga's rounding otherwise leaves 1px steps between them at rest.
+ * Never stuck: leave by this time even if auth never loads. Auth's own
+ * timeouts (15s, plus 15s for a token refresh) end well before; the launch
+ * route shows a spinner if it ever outlasts the splash.
  */
-const SLICES = 8;
-const SLICE_W = PixelRatio.roundToNearestPixel(176 / SLICES);
-// Brand wordmark PNG is 2400×551; render it at a fixed, calm size (~176pt).
-const MARK_W = SLICE_W * SLICES;
-const MARK_H = Math.round((MARK_W * 551) / 2400);
-const TAGLINE = 'Every fest. One app.';
-const LINE_H = 18;
-const TRACK_W = 56;
-const RUNNER_W = TRACK_W / 2;
+const CAP_MS = 30000;
+/** Wait this long at most for the letter images before starting (they are bundled; it is a few ms). */
+const IMAGE_WAIT_MS = 300;
+/** The others have joined the u by this point in the exit; their clock stops there so they stop redrawing. */
+const COLLAPSE_END = 0.66;
+/** The JS fallback finishes the handover this long after the exit's own end, if its callback was lost. */
+const FALLBACK_MS = 2000;
+/** The display's corner radius, roughly, so the glass rims follow the screen. */
+const GLASS_RADIUS = 54;
+
+const LETTER_IMAGES = {
+  dark: [
+    require('../../assets/brand/letters/silver-u.png'),
+    require('../../assets/brand/letters/silver-n.png'),
+    require('../../assets/brand/letters/silver-i.png'),
+    require('../../assets/brand/letters/silver-f.png'),
+    require('../../assets/brand/letters/silver-e.png'),
+    require('../../assets/brand/letters/silver-s.png'),
+    require('../../assets/brand/letters/silver-t.png'),
+    require('../../assets/brand/letters/silver-o.png'),
+  ],
+  light: [
+    require('../../assets/brand/letters/ink-u.png'),
+    require('../../assets/brand/letters/ink-n.png'),
+    require('../../assets/brand/letters/ink-i.png'),
+    require('../../assets/brand/letters/ink-f.png'),
+    require('../../assets/brand/letters/ink-e.png'),
+    require('../../assets/brand/letters/ink-s.png'),
+    require('../../assets/brand/letters/ink-t.png'),
+    require('../../assets/brand/letters/ink-o.png'),
+  ],
+};
+
+type Stops = [string, string, string];
+/** Prop gradients: night uses the accents' own values, day their deeper day shades. */
+const PROP_GRADIENTS: Record<'dark' | 'light', Record<'sky' | 'mint' | 'ivory' | 'blue', Stops>> = {
+  dark: {
+    sky: ['#c6ecff', '#90d5ff', '#2f6bff'],
+    mint: ['#c9f5e2', '#90e4c1', '#1f7a5c'],
+    ivory: ['#ffffff', '#f7f0e0', '#9a7444'],
+    blue: ['#b9cfff', '#8fb4ff', '#0062ff'],
+  },
+  light: {
+    sky: ['#7cc4f5', '#2f8fd8', '#0369a1'],
+    mint: ['#7fd9b4', '#2a9c76', '#15745a'],
+    ivory: ['#f0d9a8', '#c49a52', '#7a5a1e'],
+    blue: ['#a9c3ff', '#5b8dff', '#0062ff'],
+  },
+};
+
+/** The glass sheet's light, no accents: [colour, opacity]. */
+const GLASS = {
+  dark: {
+    fill: [['#ffffff', 0.07], ['#ffffff', 0.012], ['#ffffff', 0.035]],
+    rimIn: ['#ffffff', 0.5],
+    rimOut: ['#ffffff', 0.14],
+    glow: ['#ffffff', 0.07],
+    edge: ['#ffffff', 0.025],
+    sheen: ['#ffffff', 0.1],
+  },
+  light: {
+    fill: [['#ffffff', 0.7], ['#ffffff', 0.22], ['#ffffff', 0.45]],
+    rimIn: ['#ffffff', 1],
+    rimOut: ['#1e2337', 0.1],
+    glow: ['#ffffff', 0.9],
+    edge: ['#1e2337', 0.045],
+    sheen: ['#ffffff', 0.85],
+  },
+} as const;
+
+/** A frame vector ([x, y, scale, scaleY, rotate, opacity]) as a style. Transform and opacity only. */
+function frameStyle(v: number[]) {
+  'worklet';
+  const s = Math.max(v[2], 0.001); // a 0 scale is a singular matrix on iOS
+  return {
+    opacity: Math.min(Math.max(v[5], 0), 1),
+    transform: [
+      { translateX: v[0] },
+      { translateY: v[1] },
+      { rotate: `${v[4]}deg` },
+      { scaleX: s },
+      { scaleY: Math.max(s * v[3], 0.001) },
+    ],
+  };
+}
+
+const snap = PixelRatio.roundToNearestPixel;
+
 /**
- * Minimum time on screen, even if auth resolves instantly: long enough for the
- * intro to settle and the light to cross the wordmark once (ends ~2.6s).
+ * The launch splash (owner-approved 13 Nov 2026, from a GSAP prototype): the
+ * wordmark's letters arrive one by one with props standing in for them, on a
+ * full-screen sheet of liquid glass. While auth loads, a random letter at a
+ * time swaps out for its prop. Then the word collapses into its u, the u takes
+ * the centre, and zooms through its opening into Home, which is already
+ * mounted underneath.
+ *
+ * All motion is a pure function of UI-thread clocks (`splashMotion.ts`),
+ * transforms and opacity only, and only what is moving redraws: the intro's
+ * clock stops when it settles, each letter has its own swap clock, and the
+ * others' exit clock stops once they have joined the u. The JS side only
+ * decides when things start, with flags set by timers, so it always leaves.
+ *
+ * The order: intro (2.3s) → while auth loads, a swap every 0.9s → once auth
+ * has loaded no new swap starts → when the last one has landed, Home mounts
+ * underneath (everything still) → 350ms later, and never before 2.6s, the exit.
  */
-const MIN_VISIBLE_MS = 2600;
-
-/**
- * The intro as a GSAP timeline: one playhead in seconds, every tween placed at
- * a position (`at`), pieces staggered left to right. Retime the splash here.
- */
-const INTRO = {
-  sky: { at: 0, dur: 1.6 },
-  mark: { at: 0.2, dur: 0.9, stagger: 0.05 },
-  words: { at: 0.7, dur: 0.8, stagger: 0.09 },
-  footer: { at: 1.0, dur: 0.8 },
-  track: { at: 1.1, dur: 0.6 },
-  sweep: { at: 1.5 }, // once the last slice has landed (1.45s)
-  runner: { at: 1.7 }, // once the track has drawn
-};
-const INTRO_END = 1.8;
-
-/** The way out: words then slices lift out of their clips, under a short fade. */
-const OUTRO = {
-  words: { at: 0, dur: 0.35, stagger: 0.04 },
-  mark: { at: 0.05, dur: 0.35, stagger: 0.025 },
-  fade: { at: 0.2, dur: 0.4 },
-};
-const OUTRO_END = OUTRO.fade.at + OUTRO.fade.dur;
-
-type Tween = { at: number; dur: number };
-
-/** GSAP's stagger: one tween per piece, `stagger` s apart. Built once, so re-renders never restart them. */
-const staggered = ({ at, dur, stagger }: Tween & { stagger: number }, n: number): Tween[] =>
-  Array.from({ length: n }, (_, i) => ({ at: at + i * stagger, dur }));
-const WORDS = TAGLINE.split(' ');
-const MARK_IN = staggered(INTRO.mark, SLICES);
-const MARK_OUT = staggered(OUTRO.mark, SLICES);
-const WORDS_IN = staggered(INTRO.words, WORDS.length);
-const WORDS_OUT = staggered(OUTRO.words, WORDS.length);
-
-/** How far a tween is (0–1) at playhead `t`: GSAP's position parameter. */
-const phase = (t: number, at: number, dur: number) => {
-  'worklet';
-  return Math.min(Math.max((t - at) / dur, 0), 1);
-};
-// GSAP's eases exactly (its powerN is one degree up: power3 = quart).
-const power3Out = (p: number) => {
-  'worklet';
-  return 1 - Math.pow(1 - p, 4);
-};
-const power4Out = (p: number) => {
-  'worklet';
-  return 1 - Math.pow(1 - p, 5);
-};
-const power2In = (p: number) => {
-  'worklet';
-  return p * p * p;
-};
-const expoOut = (p: number) => {
-  'worklet';
-  return p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
-};
-
-/**
- * Launch splash in the 2026 brand (same sky as the login), choreographed like a
- * GSAP timeline: the blue glow rises, the silver wordmark rises slice by slice
- * from behind its baseline, the tagline follows word by word, and a light
- * sweeps the letters while a thin line runs until auth loads. Leaves by lifting
- * the type out of its clips under a short fade, not a zoom.
- */
-export default function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
+function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
   // Follows the OS, not the in-app theme: the native launch frame before it can
-  // only follow the OS (iOS systemBackgroundColor, Android values/values-night
-  // launch_background), so matching it is what keeps the handoff seamless. The
-  // fade-out then reveals the app in the user's chosen theme.
+  // only follow the OS, so matching it keeps the handoff seamless.
   const c = cosmosFor(launchScheme);
-  const isDark = c.scheme === 'dark';
+  const scheme = c.scheme;
+  const screen = useWindowDimensions();
+  const [size, setSize] = useState({ w: screen.width, h: screen.height });
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
-  const [ready, setReady] = useState(false);
+  // With reduced motion the intro and exit jump to their ends (Reanimated follows
+  // the system setting) and the loader stays off.
+  const reduced = useReducedMotion();
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
 
-  // Playheads start at 0, so frame one is the bare ground: the native launch frame.
   const t = useSharedValue(0);
   const out = useSharedValue(0);
-  const sweep = useSharedValue(-1);
-  const runner = useSharedValue(0);
+  const collapse = useSharedValue(0);
+  const sheen = useSharedValue(0);
+  // One swap clock per letter (seconds into its swap; idle below 0). The i never swaps.
+  const swaps = [
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+    useSharedValue(-1),
+  ];
 
-  // ── Intro ────────────────────────────────────────────────────────────────
+  const live = useRef({
+    started: false,
+    introDone: false,
+    held: false,
+    authReady: shouldExit,
+    capped: false,
+    winding: false,
+    gate: false,
+    settled: false,
+    exiting: false,
+    done: false,
+    loaded: 0,
+    last: -1,
+    lastSwapAt: 0,
+    swapTimer: null as ReturnType<typeof setTimeout> | null,
+  });
+  const onDone = useRef(onAnimationComplete);
+  onDone.current = onAnimationComplete;
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const later = (ms: number, fn: () => void) => {
+    timers.current.push(setTimeout(fn, ms));
+  };
+
+  const finish = useCallback(() => {
+    const s = live.current;
+    if (s.done) return;
+    s.done = true;
+    if (s.swapTimer) clearTimeout(s.swapTimer);
+    launchGate.set({ appMayMount: true, done: true });
+    onDone.current?.();
+  }, []);
+
+  const startExit = () => {
+    const s = live.current;
+    if (s.exiting) return;
+    s.exiting = true;
+    out.value = withTiming(EXIT_END, { duration: EXIT_END * 1000, easing: Easing.linear }, (ok) => {
+      if (ok) runOnJS(finish)();
+    });
+    collapse.value = withTiming(COLLAPSE_END, { duration: COLLAPSE_END * 1000, easing: Easing.linear });
+    // If the UI thread's callback is ever lost (cancelled, backgrounded), leave anyway.
+    later(EXIT_END * 1000 + FALLBACK_MS, finish);
+  };
+
+  const tick = () => {
+    const s = live.current;
+    if (!s.exiting && s.gate && s.settled && s.held) startExit();
+  };
+
+  // Home mounts now, while the letters are still; the exit waits SETTLE_MS for its first render.
+  const openGate = () => {
+    const s = live.current;
+    s.gate = true;
+    launchGate.set({ appMayMount: true });
+    later(SETTLE_MS, () => {
+      s.settled = true;
+      tick();
+    });
+  };
+
+  // Auth has loaded (or the cap is hit): no new swap starts, and the gate
+  // opens once the last one has landed.
+  const windDown = () => {
+    const s = live.current;
+    if (s.winding || !s.introDone) return;
+    s.winding = true;
+    if (s.swapTimer) clearTimeout(s.swapTimer);
+    s.swapTimer = null;
+    const landing = s.lastSwapAt ? Math.max(0, s.lastSwapAt + SWAP_LEN * 1000 - Date.now()) : 0;
+    later(landing + 30, openGate);
+  };
+
+  // The loader: a random letter (never the i, never twice running) swaps for its prop every LOOP_EVERY.
+  const swapNext = () => {
+    const s = live.current;
+    s.swapTimer = null;
+    if (s.winding || reducedRef.current) return;
+    const i = nextSwap(s.last);
+    s.last = i;
+    s.lastSwapAt = Date.now();
+    const clock = swaps[i];
+    clock.value = 0;
+    clock.value = withTiming(SWAP_LEN, { duration: SWAP_LEN * 1000, easing: Easing.linear });
+    s.swapTimer = setTimeout(swapNext, LOOP_EVERY * 1000);
+  };
+
+  const onIntroDone = () => {
+    const s = live.current;
+    if (s.introDone) return;
+    s.introDone = true;
+    if (s.authReady || s.capped) windDown();
+    else swapNext();
+  };
+
+  const start = () => {
+    const s = live.current;
+    if (s.started) return;
+    s.started = true;
+    t.value = withTiming(INTRO_END, { duration: INTRO_END * 1000, easing: Easing.linear }, (ok) => {
+      if (ok) runOnJS(onIntroDone)();
+    });
+    sheen.value = withDelay(1200, withRepeat(withTiming(1, { duration: 7000, easing: Easing.inOut(Easing.sin) }), -1, true));
+    later(INTRO_END * 1000 + 400, onIntroDone); // if the UI thread's callback is lost
+  };
+
+  const onLetterLoad = () => {
+    if (++live.current.loaded === LETTERS.length) start();
+  };
+
   useEffect(() => {
-    t.value = withTiming(INTRO_END, { duration: INTRO_END * 1000, easing: Easing.linear });
-    // A light passes across the wordmark, then again every so often while we wait.
-    sweep.value = withDelay(
-      INTRO.sweep.at * 1000,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
-          withDelay(1100, withTiming(-1, { duration: 0 })),
-        ),
-        -1,
-      ),
-    );
-    runner.value = withDelay(
-      INTRO.runner.at * 1000,
-      withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.cubic) }), -1),
-    );
-
-    const timer = setTimeout(() => setReady(true), MIN_VISIBLE_MS);
-    return () => clearTimeout(timer);
+    const s = live.current;
+    later(IMAGE_WAIT_MS, start);
+    later(HOLD_MS, () => {
+      s.held = true;
+      tick();
+    });
+    later(CAP_MS, () => {
+      s.capped = true;
+      windDown();
+    });
+    const pending = timers.current;
+    return () => {
+      pending.forEach(clearTimeout);
+      if (s.swapTimer) clearTimeout(s.swapTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Outro ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!shouldExit || !ready) return;
-    // The fade ends last, so it alone hands over; everything else is done by then.
-    out.value = withTiming(OUTRO_END, { duration: OUTRO_END * 1000, easing: Easing.linear }, (done) => {
-      if (done && onAnimationComplete) runOnJS(onAnimationComplete)();
-    });
+    const s = live.current;
+    s.authReady = shouldExit;
+    if (shouldExit) windDown();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldExit, ready]);
+  }, [shouldExit]);
 
-  // ── Styles ───────────────────────────────────────────────────────────────
-  const rootStyle = useAnimatedStyle(() => ({ opacity: 1 - phase(out.value, OUTRO.fade.at, OUTRO.fade.dur) }));
-  // The whole sky drifts up 48pt as it fades in, so the blue glow "rises".
-  const skyStyle = useAnimatedStyle(() => {
-    const p = expoOut(phase(t.value, INTRO.sky.at, INTRO.sky.dur));
-    return { opacity: p, transform: [{ translateY: (1 - p) * 48 }] };
+  const groundStyle = useAnimatedStyle(() => ({ opacity: groundOpacity(out.value) }));
+  const glassStyle = useAnimatedStyle(() => {
+    const g = glassFrame(t.value, out.value);
+    return { opacity: g[0], transform: [{ scale: g[1] }] };
   });
-  // The light is pinned to the resting wordmark, so it goes before the slices lift.
-  const sheenStyle = useAnimatedStyle(() => ({ opacity: 1 - phase(out.value, 0, 0.15) }));
-  const sweepStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: sweep.value * MARK_W }],
+  const sheenStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: 60 * sheen.value },
+      { translateY: 46 * sheen.value },
+      { rotate: `${-28 + 8 * sheen.value}deg` },
+    ],
   }));
-  const trackStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: power3Out(phase(t.value, INTRO.track.at, INTRO.track.dur)) }],
-  }));
-  const runnerStyle = useAnimatedStyle(() => ({
-    // Enters fully off the left edge and exits fully off the right, so the loop never pops.
-    transform: [{ translateX: -RUNNER_W + runner.value * (TRACK_W + RUNNER_W) }],
-  }));
-
-  const source = isDark
-    ? require('../../assets/brand/wordmark-silver.png')
-    : require('../../assets/brand/wordmark-ink.png');
+  const footerStyle = useAnimatedStyle(() => ({ opacity: footerOpacity(t.value, out.value) }));
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor: c.bg }, rootStyle]}>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, skyStyle]}>
-        <CosmosBackdrop scheme={c.scheme} />
-      </Animated.View>
-
-      <View style={styles.mark} accessible accessibilityRole="image" accessibilityLabel="Unifesto">
-        {Array.from({ length: SLICES }, (_, i) => (
-          <Rise
-            key={i}
-            t={t}
-            out={out}
-            dist={MARK_H}
-            ease={power4Out}
-            enter={MARK_IN[i]}
-            exit={MARK_OUT[i]}
-            clip={[styles.slice, { left: i * SLICE_W }]}
+    <View
+      style={styles.root}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Unifesto"
+      // The window can differ from this layer's real size (Android system bars); the glass follows the layer.
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        if (Math.abs(width - size.w) > 0.5 || Math.abs(height - size.h) > 0.5) setSize({ w: width, h: height });
+      }}
+    >
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg }, groundStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, glassStyle]}>
+          <GlassSheet w={size.w} h={size.h} scheme={scheme} />
+          {/* Unclipped: it fades to nothing at its edge, and the display clips the rest. */}
+          <Animated.View
+            style={[
+              styles.sheen,
+              { left: -0.35 * size.w, top: -0.16 * size.h, width: 1.15 * size.w, height: 0.52 * size.h },
+              sheenStyle,
+            ]}
           >
-            <Image source={source} style={[styles.mark, { marginLeft: -i * SLICE_W }]} contentFit="contain" />
-          </Rise>
-        ))}
-        {/* The wordmark is the mask; the light only shows where the letters are.
-            Silver only: a white sweep over the ink wordmark reads as a grey smear. */}
-        {isDark && (
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, sheenStyle]}>
-            <MaskedView
-              style={styles.mark}
-              maskElement={<Image source={source} style={styles.mark} contentFit="contain" />}
-            >
-              <Animated.View style={[StyleSheet.absoluteFill, sweepStyle]}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-                  start={{ x: 0, y: 0.2 }}
-                  end={{ x: 1, y: 0.8 }}
-                  style={styles.sweep}
-                />
-              </Animated.View>
-            </MaskedView>
+            <Sheen w={1.15 * size.w} h={0.52 * size.h} scheme={scheme} />
           </Animated.View>
-        )}
-      </View>
-
-      <View style={styles.words} accessible accessibilityRole="text" accessibilityLabel={TAGLINE}>
-        {WORDS.map((word, i) => (
-          <Rise key={i} t={t} out={out} dist={LINE_H} ease={power3Out} enter={WORDS_IN[i]} exit={WORDS_OUT[i]}>
-            {/* Fixed size: each clip hides exactly one 18pt line, so OS text scaling
-                would show the type on frame one. The row's label carries the words. */}
-            <Text maxFontSizeMultiplier={1} style={[styles.tagline, { color: c.muted }]}>
-              {word}
-            </Text>
-          </Rise>
-        ))}
-      </View>
-
-      {/* 14% up, but always above the footer: a landscape phone ran the line through it. */}
-      <Animated.View
-        style={[styles.track, { backgroundColor: c.border, bottom: Math.max(height * 0.14, insets.bottom + 72) }, trackStyle]}
-      >
-        <Animated.View style={[styles.runner, { backgroundColor: c.primary }, runnerStyle]} />
+        </Animated.View>
       </Animated.View>
 
-      <Rise
-        t={t}
-        out={out}
-        dist={LINE_H}
-        ease={power3Out}
-        enter={INTRO.footer}
-        clip={[styles.footer, { bottom: insets.bottom + 28 }]}
-      >
-        <Text maxFontSizeMultiplier={1} numberOfLines={1} style={[styles.footerText, { color: c.muted }]}>
-          Built by organisers who lived the chaos
-        </Text>
-      </Rise>
-    </Animated.View>
-  );
-}
+      <View style={styles.centre} pointerEvents="none">
+        <View style={styles.mark}>
+          {LETTERS.map((name, i) => (
+            <Letter
+              key={name}
+              i={i}
+              t={t}
+              swap={swaps[i]}
+              exit={i === 0 ? out : collapse}
+              source={LETTER_IMAGES[scheme][i]}
+              onLoad={onLetterLoad}
+            />
+          ))}
+          {INTRO_PROPS.map((_, k) => (
+            <IntroProp key={k} k={k} t={t} scheme={scheme} />
+          ))}
+          {LETTERS.map((_, i) => (i === 2 ? null : <SwapProp key={`s${i}`} i={i} swap={swaps[i]} scheme={scheme} />))}
+        </View>
+      </View>
 
-/**
- * GSAP's mask reveal: rises into view from behind its own clip edge on the
- * playhead `t`, and lifts out of the top on `out`. Transform only, UI thread.
- */
-function Rise({
-  t,
-  out,
-  enter,
-  exit,
-  dist,
-  ease,
-  clip,
-  children,
-}: {
-  t: SharedValue<number>;
-  out: SharedValue<number>;
-  enter: Tween;
-  exit?: Tween;
-  dist: number;
-  ease: (p: number) => number;
-  clip?: StyleProp<ViewStyle>;
-  children: React.ReactNode;
-}) {
-  const style = useAnimatedStyle(() => {
-    const p = ease(phase(t.value, enter.at, enter.dur));
-    const q = exit ? power2In(phase(out.value, exit.at, exit.dur)) : 0;
-    return { transform: [{ translateY: (1 - p - q) * dist }] };
-  });
-  return (
-    <View style={[styles.clip, clip]}>
-      <Animated.View style={style}>{children}</Animated.View>
+      <Animated.Text
+        style={[styles.footer, { color: c.muted, bottom: insets.bottom + 28 }, footerStyle]}
+        numberOfLines={1}
+      >
+        Built by organisers who lived the chaos
+      </Animated.Text>
     </View>
   );
 }
 
+export default memo(SplashScreen);
+
+function Letter({
+  i,
+  t,
+  swap,
+  exit,
+  source,
+  onLoad,
+}: {
+  i: number;
+  t: SharedValue<number>;
+  swap: SharedValue<number>;
+  /** The u's full exit clock, or the others' collapse clock (it stops once they have joined the u). */
+  exit: SharedValue<number>;
+  source: number;
+  onLoad: () => void;
+}) {
+  const style = useAnimatedStyle(() => frameStyle(letterFrame(i, t.value, swap.value, exit.value)));
+  const b = BOX[i];
+  return (
+    <Animated.View
+      style={[
+        styles.abs,
+        { left: snap(b.x), top: snap(b.y), width: b.w, height: b.h, transformOrigin: ORIGIN[i] },
+        style,
+      ]}
+    >
+      <Image source={source} style={styles.fill} contentFit="fill" onLoad={onLoad} />
+    </Animated.View>
+  );
+}
+
+/** Places a prop centred in its host letter's box. */
+function propBox(host: number, w: number, h: number) {
+  const b = BOX[host];
+  return { left: b.x + (b.w - w) / 2, top: b.y + (b.h - h) / 2, width: w, height: h };
+}
+
+function IntroProp({ k, t, scheme }: { k: number; t: SharedValue<number>; scheme: 'dark' | 'light' }) {
+  const style = useAnimatedStyle(() => frameStyle(introPropFrame(k, t.value)));
+  const p = INTRO_PROPS[k];
+  return (
+    <Animated.View style={[styles.abs, propBox(p.host, p.w, p.h), style]}>
+      <PropArt shape={p.shape} w={p.w} h={p.h} id={`ip${k}`} scheme={scheme} />
+    </Animated.View>
+  );
+}
+
+function SwapProp({ i, swap, scheme }: { i: number; swap: SharedValue<number>; scheme: 'dark' | 'light' }) {
+  const style = useAnimatedStyle(() => {
+    const v = swapPropFrame(swap.value);
+    const s = Math.max(v[0], 0.001);
+    return { opacity: v[0] > 0.001 ? 1 : 0, transform: [{ rotate: `${v[1]}deg` }, { scale: s }] };
+  });
+  const p = SWAP_PROPS[i];
+  return (
+    <Animated.View style={[styles.abs, propBox(i, p.w, p.h), style]}>
+      <PropArt shape={p.shape} w={p.w} h={p.h} id={`sp${i}`} scheme={scheme} />
+    </Animated.View>
+  );
+}
+
+const STAR_PATH = (() => {
+  const pts = Array.from({ length: 10 }, (_, k) => {
+    const r = k % 2 ? 8.5 : 19;
+    const a = ((-90 + k * 36) * Math.PI) / 180;
+    return `${(r * Math.cos(a)).toFixed(1)} ${(r * Math.sin(a)).toFixed(1)}`;
+  });
+  return `M${pts.join(' L')} Z`;
+})();
+
+/** The glossy props, drawn in the accents' gradients. Static; their wrapper moves them. */
+const PropArt = memo(function PropArt({
+  shape,
+  w,
+  h,
+  id,
+  scheme,
+}: {
+  shape: PropShape;
+  w: number;
+  h: number;
+  id: string;
+  scheme: 'dark' | 'light';
+}) {
+  const g = PROP_GRADIENTS[scheme];
+  const grad = (gid: string, stops: Stops, mid: number) => (
+    <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+      <Stop offset="0" stopColor={stops[0]} />
+      <Stop offset={String(mid)} stopColor={stops[1]} />
+      <Stop offset="1" stopColor={stops[2]} />
+    </LinearGradient>
+  );
+  switch (shape) {
+    case 'sparkle':
+      return (
+        <Svg width={w} height={h} viewBox="-22 -22 44 44">
+          <Defs>{grad(id, g.mint, 0.5)}</Defs>
+          <Path d="M0 -22 C3 -6 6 -3 22 0 C6 3 3 6 0 22 C-3 6 -6 3 -22 0 C-6 -3 -3 -6 0 -22Z" fill={`url(#${id})`} />
+        </Svg>
+      );
+    case 'bolt':
+      return (
+        <Svg width={w} height={h} viewBox="-15 -25 30 50">
+          <Defs>{grad(id, g.ivory, 0.45)}</Defs>
+          <Path d="M7 -24 L-12 3 H-1 L-6 24 L13 -5 H2 Z" fill={`url(#${id})`} />
+        </Svg>
+      );
+    case 'dot':
+      return (
+        <Svg width={w} height={h} viewBox="-9 -9 18 18">
+          <Defs>{grad(id, g.sky, 0.45)}</Defs>
+          <Circle r={8} fill={`url(#${id})`} />
+        </Svg>
+      );
+    case 'flower':
+      return (
+        <Svg width={w} height={h} viewBox="-20 -20 40 40">
+          <Defs>
+            {grad(id, g.blue, 0.5)}
+            {grad(`${id}c`, g.sky, 0.45)}
+          </Defs>
+          <G fill={`url(#${id})`}>
+            <Circle cy={-10} r={9.5} />
+            <Circle cx={10} r={9.5} />
+            <Circle cy={10} r={9.5} />
+            <Circle cx={-10} r={9.5} />
+          </G>
+          <Circle r={5} fill={`url(#${id}c)`} />
+        </Svg>
+      );
+    case 'ring':
+      return (
+        <Svg width={w} height={h} viewBox="-20 -20 40 40">
+          <Defs>{grad(id, g.mint, 0.5)}</Defs>
+          <Circle r={14} fill="none" stroke={`url(#${id})`} strokeWidth={8} />
+        </Svg>
+      );
+    case 'arch':
+      return (
+        <Svg width={w} height={h} viewBox="-18 -18 36 26">
+          <Defs>{grad(id, g.ivory, 0.45)}</Defs>
+          <Path d="M-18 8 A18 18 0 0 1 18 8 H9 A9 9 0 0 0 -9 8 Z" fill={`url(#${id})`} />
+        </Svg>
+      );
+    case 'squiggle':
+      return (
+        <Svg width={w} height={h} viewBox="-20 -12 40 24">
+          <Defs>{grad(id, g.blue, 0.5)}</Defs>
+          <Path
+            d="M-16 4 C-12 -10 -6 -10 -4 0 S4 10 8 0 S14 -10 17 -2"
+            fill="none"
+            stroke={`url(#${id})`}
+            strokeWidth={6}
+            strokeLinecap="round"
+          />
+        </Svg>
+      );
+    case 'star':
+      return (
+        <Svg width={w} height={h} viewBox="-21 -21 42 42">
+          <Defs>{grad(id, g.sky, 0.45)}</Defs>
+          <Path d={STAR_PATH} fill={`url(#${id})`} stroke={`url(#${id})`} strokeWidth={3} strokeLinejoin="round" />
+        </Svg>
+      );
+  }
+});
+
+/** A rounded rect as a path, for the rims' crisp offset bands. */
+function roundRect(x: number, y: number, w: number, h: number, r: number) {
+  return `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
+}
+
+/**
+ * The full-screen sheet of liquid glass, drawn once: a faint diagonal fill,
+ * a soft glow just inside its edges (concentric strokes on the CSS inset-shadow
+ * falloff the prototype used), a bright rim where light enters (top and left)
+ * and a faint one where it leaves (bottom and right). Never redrawn while the
+ * splash moves; its wrapper fades and scales it.
+ */
+const GlassSheet = memo(function GlassSheet({ w, h, scheme }: { w: number; h: number; scheme: 'dark' | 'light' }) {
+  const g = GLASS[scheme];
+  const r = GLASS_RADIUS;
+  // CSS's 150deg gradient line, in this box's own coordinates.
+  const a = (150 * Math.PI) / 180;
+  const dx = Math.sin(a);
+  const dy = -Math.cos(a);
+  const len = w * Math.abs(dx) + h * Math.abs(dy);
+  const bands = (blur: number, colour: readonly [string, number], step: number, key: string) =>
+    glowBands(blur, colour[1], step).map((b, k) => (
+      <Rect
+        key={`${key}${k}`}
+        x={b.inset}
+        y={b.inset}
+        width={w - 2 * b.inset}
+        height={h - 2 * b.inset}
+        rx={Math.max(r - b.inset, 0)}
+        fill="none"
+        stroke={colour[0]}
+        strokeOpacity={b.alpha}
+        strokeWidth={b.width}
+      />
+    ));
+  const box = roundRect(0, 0, w, h, r);
+  return (
+    <Svg width={w} height={h} style={StyleSheet.absoluteFill}>
+      <Defs>
+        <LinearGradient
+          id="splashGlassFill"
+          gradientUnits="userSpaceOnUse"
+          x1={w / 2 - (dx * len) / 2}
+          y1={h / 2 - (dy * len) / 2}
+          x2={w / 2 + (dx * len) / 2}
+          y2={h / 2 + (dy * len) / 2}
+        >
+          <Stop offset="0" stopColor={g.fill[0][0]} stopOpacity={g.fill[0][1]} />
+          <Stop offset="0.4" stopColor={g.fill[1][0]} stopOpacity={g.fill[1][1]} />
+          <Stop offset="0.7" stopColor={g.fill[1][0]} stopOpacity={g.fill[1][1]} />
+          <Stop offset="1" stopColor={g.fill[2][0]} stopOpacity={g.fill[2][1]} />
+        </LinearGradient>
+        <ClipPath id="splashGlassClip">
+          <Path d={box} />
+        </ClipPath>
+      </Defs>
+      <Path d={box} fill="url(#splashGlassFill)" />
+      <G clipPath="url(#splashGlassClip)">
+        {bands(120, g.edge, 10, 'e')}
+        {bands(36, g.glow, 4, 'g')}
+        <Path d={`${box} ${roundRect(-1.5, -1.5, w, h, r)}`} fillRule="evenodd" fill={g.rimOut[0]} fillOpacity={g.rimOut[1]} />
+        <Path d={`${box} ${roundRect(2, 2, w, h, r)}`} fillRule="evenodd" fill={g.rimIn[0]} fillOpacity={g.rimIn[1]} />
+      </G>
+    </Svg>
+  );
+});
+
+/** The glass's broad diagonal sheen; its wrapper drifts it as if the phone were tilting. */
+const Sheen = memo(function Sheen({ w, h, scheme }: { w: number; h: number; scheme: 'dark' | 'light' }) {
+  const [colour, opacity] = GLASS[scheme].sheen;
+  return (
+    <Svg width={w} height={h}>
+      <Defs>
+        <RadialGradient id="splashSheen" cx="50%" cy="50%" rx="50%" ry="50%">
+          <Stop offset="0" stopColor={colour} stopOpacity={opacity} />
+          <Stop offset="1" stopColor={colour} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Ellipse cx={w / 2} cy={h / 2} rx={w / 2} ry={h / 2} fill="url(#splashSheen)" />
+    </Svg>
+  );
+});
+
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // Above the app and its in-tree hosts until it removes itself (alerts and notices wait for it: launchGate).
+  root: { ...StyleSheet.absoluteFill, zIndex: 2000, elevation: 2000 },
+  abs: { position: 'absolute' },
+  fill: { width: '100%', height: '100%' },
+  centre: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   mark: { width: MARK_W, height: MARK_H },
-  slice: { position: 'absolute', top: 0, width: SLICE_W, height: MARK_H },
-  clip: { overflow: 'hidden' },
-  sweep: { width: MARK_W * 0.6, height: '100%' },
-  words: { flexDirection: 'row', columnGap: 4, marginTop: 18 },
-  tagline: { fontSize: 12, lineHeight: LINE_H, ...cosmosFont.strong },
-  track: {
-    position: 'absolute',
-    width: TRACK_W,
-    height: 3,
-    borderRadius: 2,
-    overflow: 'hidden',
-    transformOrigin: 'left',
-  },
-  runner: { width: RUNNER_W, height: 3, borderRadius: 2 },
-  footer: { position: 'absolute', left: 24, right: 24 },
-  footerText: { textAlign: 'center', fontSize: 12, lineHeight: LINE_H, ...cosmosFont.body },
+  sheen: { position: 'absolute' },
+  footer: { position: 'absolute', left: 24, right: 24, textAlign: 'center', fontSize: 12, lineHeight: 18, ...cosmosFont.body },
 });

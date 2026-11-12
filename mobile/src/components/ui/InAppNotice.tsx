@@ -7,6 +7,7 @@ import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 import { cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 import { sheet } from '../../theme/spacing';
+import { useLaunchGate } from '../../lib/launchGate';
 
 const SHOW_MS = 6_000;
 
@@ -44,13 +45,16 @@ export function InAppNoticeHost() {
     };
   }, []);
 
+  // A notice that lands during the launch splash shows once it has gone, for the full time.
+  const { done: launched } = useLaunchGate();
+
   useEffect(() => {
-    if (!notice) return;
+    if (!notice || !launched) return;
     const t = setTimeout(() => setNotice(null), SHOW_MS);
     return () => clearTimeout(t);
-  }, [notice]);
+  }, [notice, launched]);
 
-  if (!notice) return null;
+  if (!notice || !launched) return null;
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { top: insets.top + 6 }]}>
