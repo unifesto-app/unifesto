@@ -172,6 +172,13 @@ export class UpdatePlanConfigDto {
   @Max(100)
   platformFeePercent?: number;
 
+  /** The one processing fee, gateway included; null goes back to the old rate card. */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  processingFeePercent?: number | null;
+
   @IsOptional()
   @IsInt()
   @Min(0)

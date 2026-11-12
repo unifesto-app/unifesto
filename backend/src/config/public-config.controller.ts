@@ -2,7 +2,7 @@ import { Controller, Get, ParseUUIDPipe, Query } from '@nestjs/common';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
 import { TermsService } from '../subscription/terms.service';
-import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
+import { GATEWAY_FEE_PERCENT, PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
 import { paymentMethods } from './razorpay-methods';
 
 /**
@@ -70,6 +70,8 @@ export class PublicConfigController {
     return {
       buyerProcessingFeePercent: this.platformConfig.getProcessingFeePercent(),
       buyerProcessingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),
+      // A plan with processingFeePercent set charges only that, gateway included.
+      gatewayFeePercent: GATEWAY_FEE_PERCENT,
       // The whole plan_configs row (T10): /pricing renders limits and
       // features from it too, so the site can't drift from what's enforced.
       plans: SELLABLE_PLANS.map((plan) => ({ plan, tagline: PLAN_TAGLINES[plan], ...this.planConfig.getLimits(plan) })),
