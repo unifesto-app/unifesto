@@ -26,6 +26,7 @@ export default function EventTrackingPage() {
   const { can } = useAccess(eventId);
   const scope = useMemo<TrafficScope>(() => ({ kind: "event", id: eventId }), [eventId]);
   const [slug, setSlug] = useState("");
+  const [title, setTitle] = useState("");
   // Events that register on another site get no Unifesto register link.
   const [registersElsewhere, setRegistersElsewhere] = useState(false);
   const [sources, setSources] = useState<RegistrationSources | null>(null);
@@ -38,6 +39,7 @@ export default function EventTrackingPage() {
     if (views.ok) setTraffic(views.data);
     if (ev.data) {
       setSlug(ev.data.slug);
+      setTitle(ev.data.title);
       setRegistersElsewhere(!!ev.data.externalRegistrationUrl);
     }
     if (res.ok) setSources(res.data);
@@ -107,7 +109,7 @@ export default function EventTrackingPage() {
           </ListGroup>
 
           {slug && <TrackingLinks url={`${WEB_URL}/event/${slug}`} campaign={slug} />}
-          {slug && !registersElsewhere && <WebsiteLinks registerUrl={`${WEB_URL}/event/${slug}/register`} campaign={slug} />}
+          {slug && !registersElsewhere && <WebsiteLinks registerUrl={`${WEB_URL}/event/${slug}/register`} campaign={slug} title={title} />}
         </>
       )}
     </div>

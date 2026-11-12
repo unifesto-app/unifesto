@@ -95,8 +95,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        // Everything but the event card other sites frame (K21), and only its
+        // exact path: a stray /embed/* is the public 404, whose links must not
+        // run inside someone else's frame. A later rule can't unset
+        // X-Frame-Options, so the card is left out here instead.
+        source: '/:path((?!embed/event/[^/]+$).*)',
         headers: securityHeaders,
+      },
+      {
+        source: '/embed/event/:slug',
+        headers: securityHeaders.filter((h) => h.key !== 'X-Frame-Options'),
       },
       {
         // Razorpay Checkout opens bank / 3-D Secure pages in a popup that
@@ -132,6 +140,12 @@ const nextConfig: NextConfig = {
           source,
           headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }],
         })),
+      {
+        // Organisers' sites load embed.js by this fixed name (K21): five minutes,
+        // so a fix reaches them the same hour, not after the day-long rule above.
+        source: '/embed.js',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=3600' }],
+      },
       {
         // Serve apple-app-site-association with correct content type for iOS Universal Links
         source: '/.well-known/apple-app-site-association',

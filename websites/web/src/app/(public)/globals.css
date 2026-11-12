@@ -970,3 +970,5 @@ body::after {
   opacity: 0.12;
 }
 :root[data-theme="light"] body::after { filter: invert(1); opacity: 0.09; }
+/* Embeds sit on other sites' pages: no grain over them (K21). */
+body.no-grain::after { content: none; }
