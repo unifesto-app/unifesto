@@ -7,8 +7,8 @@ import { useAppHref } from "@/lib/appLinks";
 
 /**
  * Where the sign-in QR (QrSignIn) lands when the phone didn't open the app
- * itself: no app, or a build that doesn't claim /qr yet. On Android the button
- * hands the code to the app (or Play); elsewhere it goes to the store.
+ * itself: no app, or a build that doesn't claim /qr yet. On a phone the button
+ * hands the code to the app, or its store when it isn't installed.
  */
 export default function QrSignInPage() {
   const code = String(useParams().code ?? "");

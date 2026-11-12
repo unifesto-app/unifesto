@@ -138,10 +138,7 @@ export default function EventDetailClient({ event }: Props) {
   const imageUrl = event.banner_url || event.thumbnail_url || event.image_url;
   const description = event.description?.trim();
   const appDeepLink = `unifesto://event/${event.slug}`;
-  const openApp = (e: React.MouseEvent) => {
-    e.preventDefault();
-    openAppOrStore(withStoredUtm(appDeepLink));
-  };
+  const openApp = (e: React.MouseEvent<HTMLAnchorElement>) => openAppOrStore(withStoredUtm(appDeepLink), e);
 
   const tz = event.timezone || "Asia/Kolkata";
   const start = new Date(event.start_date);

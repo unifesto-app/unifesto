@@ -22,6 +22,13 @@ test("own hosts pass, the bare domain goes to www", async () => {
   assert.equal((await run("https://unifesto.app/x")).headers.get("location"), "https://www.unifesto.app/x");
 });
 
+test("an iPhone app link the app didn't catch goes to the App Store", async () => {
+  for (const url of ["https://www.unifesto.app/event/x?utm_source=wa&app=1", "https://unifesto.app/event/x?app=1"]) {
+    assert.match((await run(url)).headers.get("location") ?? "", /^https:\/\/apps\.apple\.com\//, url);
+  }
+  assert.equal((await run("https://www.unifesto.app/event/x?app=0")).headers.get("x-middleware-next"), "1");
+});
+
 test("a custom domain serves only its space (H7)", async () => {
   assert.equal((await run("https://evil.example.com/")).status, 404);
   const root = await run("https://events.acme.edu/");

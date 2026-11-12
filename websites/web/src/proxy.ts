@@ -2,6 +2,7 @@ import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
 import { isOwnHost } from '@/lib/own-host';
 import { isCachedPage } from '@/lib/cached-pages';
+import { APP_STORE_URL, IOS_MISSED_PARAM } from '@/lib/appLinks';
 import type { NextRequest } from 'next/server';
 
 const MAIN = 'https://www.unifesto.app';
@@ -129,6 +130,7 @@ async function eventSpace(eventSlug: string): Promise<string | null> {
 
 /**
  * 1. .well-known paths pass untouched (App/Universal Links need a plain 200).
+ *    `?app=1` (an iPhone app link with no app to catch it) → the App Store.
  * 2. unifesto.app → www.unifesto.app.
  * 3. On our own hosts, /console/** goes through the console gate.
  * 4. A space's custom domain serves only that space: `/` is its space page,
@@ -168,6 +170,10 @@ async function route(request: NextRequest, reqHeaders: Headers): Promise<NextRes
   const hostname = hostOf(request);
 
   if (pathname.startsWith('/.well-known/')) return NextResponse.next({ request: { headers: reqHeaders } });
+
+  // An iPhone "Open in app" link (appLinks.ts iosAppUrl) the app didn't catch:
+  // it isn't installed. Always a redirect, so the edge never caches a page here.
+  if (request.nextUrl.searchParams.get(IOS_MISSED_PARAM) === '1') return NextResponse.redirect(APP_STORE_URL);
 
   if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 
