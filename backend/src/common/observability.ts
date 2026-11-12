@@ -26,6 +26,21 @@ export function initSentry(): void {
     release: process.env.SENTRY_RELEASE,
     // Errors only: no performance tracing.
     tracesSampleRate: 0,
+    // Never ship credentials or bodies: API keys (K22) and sessions ride in
+    // these headers, and bodies hold attendees' names, emails and phones.
+    beforeSend(event) {
+      const req = event.request;
+      if (req) {
+        if (req.headers) {
+          for (const h of Object.keys(req.headers)) {
+            if (/^(authorization|cookie|x-internal-key|idempotency-key)$/i.test(h)) delete req.headers[h];
+          }
+        }
+        delete req.cookies;
+        delete req.data;
+      }
+      return event;
+    },
   });
 }
 

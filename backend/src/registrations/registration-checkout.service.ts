@@ -49,6 +49,19 @@ import { RegistrationConfirmationsService } from './registration-confirmations.s
 import { TermsService, dealColumns } from '../subscription/terms.service';
 import { assertNoOutsideLink } from '../events/external-registration';
 
+/** Refuses a ticket outside its sale window. Shared with the registration API (K22). */
+export function assertTicketOnSale(ticketType: { saleStartsAt?: Date | null; saleEndsAt?: Date | null }): void {
+  const now = new Date();
+  if (ticketType.saleStartsAt && now < ticketType.saleStartsAt) {
+    throw new BadRequestException(
+      `This ticket goes on sale on ${ticketType.saleStartsAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.`,
+    );
+  }
+  if (ticketType.saleEndsAt && now > ticketType.saleEndsAt) {
+    throw new BadRequestException('Sales for this ticket have ended.');
+  }
+}
+
 /**
  * Starting a registration: free RSVP, paid checkout (Razorpay order + coupon
  * reservation), the waiting-list fallback and paying an offered spot.
@@ -221,22 +234,8 @@ export class RegistrationCheckoutService {
     if (stale.paymentLinkId) await this.payments.cancelPaymentLink(stale.paymentLinkId);
   }
 
-  private assertTicketOnSale(ticketType: {
-    saleStartsAt?: Date | null;
-    saleEndsAt?: Date | null;
-  }): void {
-    const now = new Date();
-    if (ticketType.saleStartsAt && now < ticketType.saleStartsAt) {
-      throw new BadRequestException(
-        `This ticket goes on sale on ${ticketType.saleStartsAt.toLocaleString(
-          'en-IN',
-          { timeZone: 'Asia/Kolkata' },
-        )}.`,
-      );
-    }
-    if (ticketType.saleEndsAt && now > ticketType.saleEndsAt) {
-      throw new BadRequestException('Sales for this ticket have ended.');
-    }
+  private assertTicketOnSale(ticketType: { saleStartsAt?: Date | null; saleEndsAt?: Date | null }): void {
+    assertTicketOnSale(ticketType);
   }
 
   /** Space-only events accept registrations from hosting-space members only. */

@@ -31,6 +31,7 @@ import { findIdentityByEmail, normalizeEmail, normalizeMobile } from '../auth/id
 import { findOrCreateUserByEmail } from '../auth/collaborator-invite';
 import { assertSpaceLive } from '../spaces/space-access';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
+import { utmColumns } from '../common/utm';
 
 /**
  * Curator-added attendees: bulk CSV import (template, preview, import) and the
@@ -296,6 +297,8 @@ export class RegistrationImportService {
       freeAddSeats?: number;
       /** The mobile the curator typed, E.164 (A35). */
       attendeeMobile: string | null;
+      /** Where the registration came from (K22: an API key). */
+      utm?: ReturnType<typeof utmColumns>;
     },
   ): Promise<string> {
     const qrCode = generateQRCode();
@@ -310,6 +313,7 @@ export class RegistrationImportService {
           ticketTypeId,
           quantity: 1,
           groupSize: opts.groupSize,
+          ...opts.utm,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PAID,
           paidAt: new Date(),
@@ -614,7 +618,8 @@ export class RegistrationImportService {
       name: string;
       email: string;
       mobile?: string;
-      gender: string;
+      /** Required from the console form; optional for API keys (K22). */
+      gender?: string;
       groupSize?: number;
       groupMembers?: Array<{
         name: string;
@@ -627,6 +632,14 @@ export class RegistrationImportService {
       leadCustomFields?: Record<string, unknown>;
       collectPayment?: boolean;
       sendTicketEmail?: boolean;
+      /**
+       * K22: the attendee filled the form on the organiser's site, so required
+       * questions are enforced like self-registration. A curator adding someone
+       * may not know every answer, so the console leaves this off.
+       */
+      requireAnswers?: boolean;
+      /** K22: where it came from, as on self-registration (utm_source etc.). */
+      utm?: { utmSource?: string; utmMedium?: string; utmCampaign?: string };
     },
     /** The curator adding them; their uploads may be referenced by answers. */
     actorId?: string,
@@ -693,12 +706,13 @@ export class RegistrationImportService {
       isGroup,
       formResponses: dto.formResponses,
       members: groupMembers ?? undefined,
-      required: { team: false, members: 'none' },
+      required: dto.requireAnswers ? { team: true, members: 'first' } : { team: false, members: 'none' },
       uploaderIds: actorId ? [actorId] : [],
     });
-    const formResponses = isGroup
+    const formResponses = isGroup || dto.gender === undefined
       ? checkedResponses
       : { ...checkedResponses, gender: dto.gender };
+    const utm = dto.utm ? utmColumns(dto.utm) : undefined;
 
     const price = Number(ticketType.price);
     const wantsPayment = Boolean(dto.collectPayment) && price > 0;
@@ -722,7 +736,7 @@ export class RegistrationImportService {
         eventId,
         userId,
         dto.ticketTypeId,
-        { groupSize, groupMembers, formResponses, freeAddSeats, attendeeMobile },
+        { groupSize, groupMembers, formResponses, freeAddSeats, attendeeMobile, utm },
       );
       // With the ticket email off, the WhatsApp group invite still goes: door
       // adds are exactly who needs the group, and the switch only covers email.
@@ -772,6 +786,7 @@ export class RegistrationImportService {
           qrCode: generateQRCode(),
           formResponses: formResponses as Prisma.InputJsonValue,
           attendeeMobile,
+          ...utm,
         },
       });
       await this.groupSeats.createSeatsForRegistration(tx, {
