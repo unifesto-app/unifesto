@@ -124,7 +124,7 @@ export const adminNav: NavGroup[] = [
       { href: "/dashboard/reconciliation", label: "Reconciliation", icon: Coins },
       { href: "/dashboard/orphaned-payments", label: "Orphaned payments", icon: LinkBreak },
       { href: "/dashboard/bank-accounts", label: "Bank accounts", icon: Bank },
-      { href: "/dashboard/subscriptions", label: "Subscriptions", icon: CreditCard, exact: true },
+      { href: "/dashboard/subscriptions", label: "Space plans", icon: CreditCard, exact: true },
       { href: "/dashboard/plans", label: "Plans", icon: Stack, keywords: "pricing tiers" },
     ],
   },

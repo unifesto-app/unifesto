@@ -81,14 +81,6 @@ export interface PlanPrice {
   dealId: string | null;
 }
 
-/** "₹1,499/mo · deal" style label for a price in force. */
-export function planPriceLabel(p: PlanPrice | null | undefined, cycle: BillingCycle): string {
-  if (!p || p.pricePaise === null) return "No set price";
-  if (p.pricePaise === 0) return "Comp (deal)";
-  const rupees = (p.pricePaise / 100).toLocaleString("en-IN");
-  return `₹${rupees}/${cycle === "ANNUAL" ? "yr" : "mo"} · ${p.dealId ? "deal" : "rate card"}`;
-}
-
 export interface PlanInfo {
   plan: OrgPlan;
   /** Who the plan is for, one line (rate card only). */
@@ -371,33 +363,6 @@ export async function adminUpdateSpaceSubscription(
   );
 }
 
-export interface OfflinePaymentInput {
-  plan: OrgPlan;
-  billingCycle: BillingCycle;
-  /** ₹ received; omitted = the plan's price in force. */
-  amount?: number;
-  /** Bank / cheque reference; a reference is recorded once. */
-  reference?: string;
-  note?: string;
-}
-
-/** `POST /subscription/admin/space/:spaceId/offline-payment` — extends the period. */
-export async function recordOfflinePayment(
-  spaceId: string,
-  input: OfflinePaymentInput
-): Promise<Result<SpaceSubscription>> {
-  return apiCall<SpaceSubscription>(
-    backendClient.post(`/subscription/admin/space/${spaceId}/offline-payment`, input)
-  );
-}
-
-/** `GET /subscription/admin/space/:spaceId/plan-prices` — each paid plan's price now. */
-export async function getSpacePlanPrices(
-  spaceId: string
-): Promise<Result<Partial<Record<OrgPlan, Record<BillingCycle, PlanPrice>>>>> {
-  return apiCall(backendClient.get(`/subscription/admin/space/${spaceId}/plan-prices`));
-}
-
 /* ------------------------------- Display --------------------------------- */
 
 export const PLAN_LABEL: Record<OrgPlan, string> = {
@@ -406,11 +371,6 @@ export const PLAN_LABEL: Record<OrgPlan, string> = {
   GROWTH: "Growth",
   PRO: "Pro",
   ENTERPRISE: "Enterprise",
-};
-
-export const BILLING_CYCLE_LABEL: Record<BillingCycle, string> = {
-  MONTHLY: "Monthly",
-  ANNUAL: "Annual",
 };
 
 /** A space's display name for the billing list. */
@@ -426,14 +386,6 @@ export function spaceAdminEmail(s: SpaceSubscription): string | null {
 /** The accountable admin's display name for a space's billing arrangement. */
 export function spaceAdminName(s: SpaceSubscription): string | null {
   return s.admin?.fullName || s.admin?.username || null;
-}
-
-/** "Pro · ₹2,999/mo" style label for a space's plan. */
-export function billingSummary(s: BillingArrangement): string {
-  if (s.configured === false || !s.plan) return "No plan set";
-  const amt = Number(s.amount) || 0;
-  const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
-  return amt > 0 ? `${PLAN_LABEL[s.plan]} · ₹${amt.toLocaleString("en-IN")}/${cycle}` : PLAN_LABEL[s.plan];
 }
 
 /**
