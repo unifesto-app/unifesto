@@ -143,8 +143,9 @@ export default function ApiSettingsPage() {
                 registers twice, and <code className="text-foreground">ageConfirmed: true</code> once your form has asked that they&apos;re 18 or older.
               </p>
               <p>
-                <code className="text-foreground">GET /v1/registrations/&lt;id&gt;</code> shows its status, payment and check-in. Limits: 60 registrations and 120
-                reads a minute, 500 registrations a day, per key.
+                <code className="text-foreground">GET /v1/registrations/&lt;id&gt;</code> shows its status, payment and check-in. Limits, for all your keys together:
+                60 registrations a minute and 500 a day, and 5 a day for one email address. Reads: 120 a minute per key. Sending the same person again
+                for the same ticket returns their existing registration. Payment links expire after a week.
               </p>
               <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-foreground">{`curl ${API}/v1/events/<slug>/registrations \\
   -H "Authorization: Bearer uf_live_EXAMPLE_NOT_A_REAL_KEY" \\
