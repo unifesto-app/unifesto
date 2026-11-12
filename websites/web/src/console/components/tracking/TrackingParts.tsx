@@ -7,6 +7,7 @@ import { Card } from "@/console/components/ui/card";
 import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
+import { DEFAULT_BUTTON, registerButtonHtml, type ButtonLook, type ButtonShape } from "@/console/lib/register-button";
 
 export const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -128,16 +129,6 @@ export function TrackingLinks({ url, campaign }: { url: string; campaign: string
   );
 }
 
-/** Safe inside a double-quoted HTML attribute. */
-const attr = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-
-/**
- * The register button for an organiser's own website: neutral Horizon ink,
- * system font (their site won't have ours), same tab so "Back to" returns.
- */
-export const registerButtonHtml = (href: string) =>
-  `<a href="${attr(href)}" style="display:inline-block;padding:12px 24px;border-radius:999px;background:#111113;color:#ffffff;font:600 16px/1.2 system-ui,-apple-system,'Segoe UI',sans-serif;text-decoration:none">Register on Unifesto</a>`;
-
 /**
  * A link, a paste-in button and a QR for the organiser's own website. Tagged
  * with the site's name (medium "website", or "qr" for print) so its sign-ups
@@ -149,13 +140,15 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
   const [site, setSite] = useState("");
   const [page, setPage] = useState("");
   const [qr, setQr] = useState("");
+  const [look, setLook] = useState<ButtonLook>(DEFAULT_BUTTON);
+  const setLookField = <K extends keyof ButtonLook>(k: K, v: ButtonLook[K]) => setLook((l) => ({ ...l, [k]: v }));
   const s = tag(site);
   const back = /^https:\/\/[^\s]+\.[^\s]+$/i.test(page.trim()) ? page.trim() : "";
   const link = s
     ? withUtm(registerUrl, s, "website", tag(campaign) || undefined) + (back ? `&return=${encodeURIComponent(back)}` : "")
     : "";
   const qrLink = s ? withUtm(registerUrl, s, "qr", tag(campaign) || undefined) : "";
-  const button = link ? registerButtonHtml(link) : "";
+  const button = link ? registerButtonHtml(link, look) : "";
 
   useEffect(() => {
     let live = true;
@@ -199,6 +192,55 @@ export function WebsiteLinks({ registerUrl, campaign }: { registerUrl: string; c
         {link && (
           <>
             {row("site-link", "Link", link)}
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-xs text-muted-foreground">Button style</p>
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
+                <Input
+                  aria-label="Button text"
+                  maxLength={60}
+                  value={look.label}
+                  onChange={(e) => setLookField("label", e.target.value)}
+                />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Colour
+                  <input
+                    type="color"
+                    value={look.background}
+                    onChange={(e) => setLookField("background", e.target.value)}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Text
+                  <input
+                    type="color"
+                    value={look.color}
+                    onChange={(e) => setLookField("color", e.target.value)}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+                <select
+                  aria-label="Button shape"
+                  value={look.shape}
+                  onChange={(e) => setLookField("shape", e.target.value as ButtonShape)}
+                  className="h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
+                >
+                  <option value="pill">Pill</option>
+                  <option value="rounded">Rounded</option>
+                  <option value="square">Square</option>
+                </select>
+              </div>
+              {/* The exact snippet, rendered: its label is escaped and colours are hex only. */}
+              <div className="flex flex-wrap gap-3">
+                <div className="rounded-md bg-white p-4" dangerouslySetInnerHTML={{ __html: registerButtonHtml("#", look) }} />
+                <div className="rounded-md bg-neutral-900 p-4" dangerouslySetInnerHTML={{ __html: registerButtonHtml("#", look) }} />
+              </div>
+              {look !== DEFAULT_BUTTON && (
+                <button type="button" className="text-xs text-muted-foreground underline-offset-4 hover:underline" onClick={() => setLook(DEFAULT_BUTTON)}>
+                  Reset to Unifesto ink
+                </button>
+              )}
+            </div>
             {row("site-button", "Button (paste into your page's HTML)", button)}
             <div className="flex items-center gap-4">
               {qr && (
