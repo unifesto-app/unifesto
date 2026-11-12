@@ -8,7 +8,7 @@ import { Ticket } from "@unifesto/unicon/react";
 import { EmptyState } from "@/console/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/console/components/shared/ListGroup";
 import { Skeleton } from "@/console/components/ui/skeleton";
-import { TrackingLinks, TrafficSummary, fmt } from "@/console/components/tracking/TrackingParts";
+import { TrackingLinks, TrafficSummary, WebsiteLinks, fmt } from "@/console/components/tracking/TrackingParts";
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/console/lib/api/tracking";
 import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/console/lib/api/traffic";
 import { getEventById } from "@/console/lib/api/events-api";
@@ -26,6 +26,8 @@ export default function EventTrackingPage() {
   const { can } = useAccess(eventId);
   const scope = useMemo<TrafficScope>(() => ({ kind: "event", id: eventId }), [eventId]);
   const [slug, setSlug] = useState("");
+  // Events that register on another site get no Unifesto register link.
+  const [registersElsewhere, setRegistersElsewhere] = useState(false);
   const [sources, setSources] = useState<RegistrationSources | null>(null);
   const [traffic, setTraffic] = useState<TrafficStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,10 @@ export default function EventTrackingPage() {
   const load = useCallback(async () => {
     const [res, views, ev] = await Promise.all([getRegistrationSources(eventId), getTraffic(scope), getEventById(eventId)]);
     if (views.ok) setTraffic(views.data);
-    if (ev.data) setSlug(ev.data.slug);
+    if (ev.data) {
+      setSlug(ev.data.slug);
+      setRegistersElsewhere(!!ev.data.externalRegistrationUrl);
+    }
     if (res.ok) setSources(res.data);
     else setError(res.message);
     setLoading(false);
@@ -102,6 +107,7 @@ export default function EventTrackingPage() {
           </ListGroup>
 
           {slug && <TrackingLinks url={`${WEB_URL}/event/${slug}`} campaign={slug} />}
+          {slug && !registersElsewhere && <WebsiteLinks registerUrl={`${WEB_URL}/event/${slug}/register`} campaign={slug} />}
         </>
       )}
     </div>

@@ -37,6 +37,8 @@ export interface Event {
   longitude: number | null;
   onlineUrl: string | null;
   onlinePlatform?: string | null;
+  /** Registration runs on this outside https link; Unifesto only lists the event. */
+  externalRegistrationUrl?: string | null;
   capacity: number | null;
   registeredCount: number;
   waitlistEnabled: boolean;

@@ -43,6 +43,8 @@ export interface Event {
   currency?: string;
   /** Number of distinct visible ticket/RSVP types (drives "Starting from"). */
   ticket_type_count?: number;
+  /** Registration runs on this outside site; Unifesto only lists the event. */
+  external_registration_url?: string | null;
   /** Whether event has at least one free ticket available */
   has_free_tickets?: boolean;
   status: string;
@@ -110,6 +112,23 @@ export interface TicketSale {
   group?: boolean;
   sale_start?: string;
   sale_end?: string;
+}
+
+/**
+ * The outside site an event registers on, with the host to name it by
+ * ("forms.gle"). Null for events that register on Unifesto. The backend only
+ * stores https links; anything else is ignored here too.
+ */
+export function outsideRegistration(event: Pick<Event, "external_registration_url">): { href: string; host: string } | null {
+  const raw = event.external_registration_url;
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    return { href: url.toString(), host: url.hostname.replace(/^www\./, "") };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -326,6 +345,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
       | string
       | undefined,
     ticket_type_count: ticketTypes.length,
+    external_registration_url: (r.externalRegistrationUrl ?? null) as string | null,
     has_free_tickets: hasFreeTickets,
     status: r.status as string,
     visibility: (r.visibility ?? r.event_visibility) as string | undefined,

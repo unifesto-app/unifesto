@@ -33,7 +33,7 @@ import { getMe } from "@/lib/api/account";
 import { clearSession, getSession, setSession, startSession, useWebSession, type WebSession } from "@/lib/auth";
 import SocialSignIn from "@/components/SocialSignIn";
 import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
-import { storedUtm, withStoredUtm } from "@/lib/utm";
+import { storedReturn, storedUtm, withStoredUtm } from "@/lib/utm";
 import { CHECKOUT_JS, checkout, lastPayMethod, payByUpi, rememberPayMethod, upiWay, type UpiWay } from "@/lib/razorpay";
 import UpiWait from "@/components/UpiWait";
 import { CHOICE, FIELD, Question } from "@/components/FormQuestion";
@@ -394,6 +394,9 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
       </div>
     );
   } else if (step === "done" && done) {
+    // The outside site this visitor came from (?return= on its link), named by
+    // its host. "done" only renders after a client-side step, so storage is there.
+    const returnTo = storedReturn(event.slug);
     const ticketText = "Your ticket and QR code are in your email and in the Unifesto app under My tickets.";
     const { title, text } = {
       in: { title: "You're in", text: "Ticket sent to your email and WhatsApp. It's in My tickets in the app too." },
@@ -415,6 +418,11 @@ export default function RegisterClient({ event, tickets, fields, nonce }: Props)
         >
           Open My tickets in the app
         </button>
+        {returnTo && (
+          <a href={returnTo.href} className="btn btn-lg btn-secondary mt-3 w-full">
+            Back to {returnTo.host}
+          </a>
+        )}
         {waGroup?.inviteUrl && (
           <a href={waGroup.inviteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-lg btn-secondary mt-3 w-full">
             <WhatsappLogo weight="fill" className="h-5 w-5" aria-hidden />

@@ -83,6 +83,7 @@ interface FormState {
   longitude: number | null;
   onlineUrl: string;
   onlinePlatform: string;
+  externalRegistrationUrl: string;
   category: string;
 }
 
@@ -227,6 +228,7 @@ export default function EditEventPage() {
         longitude: evt.longitude ?? null,
         onlineUrl: evt.onlineUrl || "",
         onlinePlatform: evt.onlinePlatform || "",
+        externalRegistrationUrl: evt.externalRegistrationUrl || "",
         category: evt.category || "",
       });
 
@@ -391,6 +393,7 @@ export default function EditEventPage() {
       endDateTime: toIso(form.endDateTime),
       tags,
       category: form.category || null,
+      externalRegistrationUrl: form.externalRegistrationUrl.trim() || null,
       ...(showVenue
         ? {
             venueName: form.venueName.trim() || null,
@@ -670,6 +673,22 @@ export default function EditEventPage() {
               </Select>
               <p className="text-xs text-muted-foreground">
                 Manage RSVP and ticket options from the Tickets &amp; RSVPs tabs.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="outside-link">Outside registration link</Label>
+              <Input
+                id="outside-link"
+                type="url"
+                inputMode="url"
+                value={form.externalRegistrationUrl}
+                onChange={(e) => set("externalRegistrationUrl", e.target.value)}
+                placeholder="https://forms.gle/…"
+              />
+              <p className="text-xs text-muted-foreground">
+                Only if people register on another site. Register on the event page opens this link, and Unifesto takes no
+                registrations or payments for the event. Switch off its tickets first. Leave empty to register on Unifesto.
               </p>
             </div>
 

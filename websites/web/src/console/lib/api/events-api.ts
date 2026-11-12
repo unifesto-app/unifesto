@@ -118,6 +118,8 @@ export interface Event {
   longitude?: number;
   onlineUrl?: string;
   onlinePlatform?: string;
+  /** Outside registration link: people register on that site instead. */
+  externalRegistrationUrl?: string | null;
   capacity?: number;
   registeredCount: number;
   waitlistEnabled: boolean;
@@ -253,6 +255,8 @@ export interface CreateEventPayload {
   longitude?: number | null;
   onlineUrl?: string;
   onlinePlatform?: string;
+  /** Registration runs on this outside https link; needs every ticket switched off. */
+  externalRegistrationUrl?: string;
   capacity?: number;
   waitlistEnabled?: boolean;
   /** Include the buyer fee in ticket prices. Needs money rights (A33). */
@@ -281,6 +285,7 @@ type ClearableEventField =
   | "state"
   | "onlineUrl"
   | "onlinePlatform"
+  | "externalRegistrationUrl"
   | "category";
 
 export type UpdateEventPayload = Omit<Partial<CreateEventPayload>, ClearableEventField> & {

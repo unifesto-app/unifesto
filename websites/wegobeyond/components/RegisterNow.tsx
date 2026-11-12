@@ -33,7 +33,7 @@ export default async function RegisterNow({ match }: { match?: string[] } = {}) 
             {events.map((e) => (
               <li key={e.slug} data-reveal-item>
                 <a
-                  href={UNIFESTO.eventUrl(e.slug)}
+                  href={UNIFESTO.registerUrl(e.slug)}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="group grid gap-2 border-b-[1.5px] border-line py-6 md:grid-cols-[220px_1fr_auto] md:items-baseline md:gap-8"

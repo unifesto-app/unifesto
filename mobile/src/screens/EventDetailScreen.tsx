@@ -229,7 +229,9 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
     ? `${d.subEventCount} sub-event${d.subEventCount === 1 ? '' : 's'}`
     : d.priceDisplay;
   // Bar splits "Starting from ₹199" into a small label and a large value.
-  const barPrice = d.bigEventMode === 'umbrella'
+  const barPrice = d.outside
+    ? { label: 'Registration', value: d.outside.host }
+    : d.bigEventMode === 'umbrella'
     ? { label: 'Multi-part event', value: priceLine }
     : d.priceDisplay.startsWith('Starting from ')
       ? { label: 'Starting from', value: d.priceDisplay.replace('Starting from ', '') }

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getRegistrationForm as fetchForm } from "@/lib/api/registration";
+import { outsideRegistration } from "@/lib/api/events";
 import { getTenant } from "@/lib/tenant";
 import RegisterClient from "./RegisterClient";
 
@@ -37,5 +38,7 @@ export default async function RegisterPage({ params }: Props) {
   if (!form || form.event.status === "DRAFT" || form.event.visibility === "SPACE_ONLY") notFound();
   const tenant = await getTenant();
   if (tenant && (form.event.space?.slug ?? form.event.organization?.slug) !== tenant.spaceSlug) notFound();
+  // Registration runs on the organiser's own site: the event page names it and links there.
+  if (outsideRegistration(form.event)) redirect(`/event/${encodeURIComponent(slug)}`);
   return <RegisterClient {...form} nonce={(await headers()).get("x-nonce") ?? undefined} />;
 }

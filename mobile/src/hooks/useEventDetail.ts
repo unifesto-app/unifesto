@@ -25,7 +25,13 @@ import { trackPageView } from '../services/pageViews';
 
 export const eventUrl = (e: Pick<Event, 'slug' | 'id'>) => `https://www.unifesto.app/event/${e.slug || e.id}`;
 
-export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
+export type RegisterMode = 'umbrella' | 'external' | 'signIn' | 'registered' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
+
+/** The outside site an event registers on, named by host. Null when it registers on Unifesto. */
+export function outsideRegistration(url?: string | null): { href: string; host: string } | null {
+  const m = url ? /^https:\/\/([^/?#:]+)/i.exec(url) : null;
+  return m ? { href: url!, host: m[1].toLowerCase().replace(/^www\./, '') } : null;
+}
 
 /**
  * Everything the event page needs: the event + tickets + additional-info
@@ -213,13 +219,18 @@ export function useEventDetail(eventId: string | undefined) {
           ? 'notOpen'
           : 'closed';
 
+  // Registration on the organiser's own site: Register opens it, no sign-in.
+  const outside = outsideRegistration(event?.externalRegistrationUrl);
+
   // A ticket holder always gets "View my ticket", even once the rest sell out.
   const registerMode: RegisterMode =
     bigEventMode === 'umbrella'
       ? 'umbrella'
       : ownsAnyTicket
         ? 'registered'
-        : unavailable
+        : outside
+          ? 'external'
+          : unavailable
           ? unavailable
           : !user
             ? 'signIn'
@@ -246,6 +257,10 @@ export function useEventDetail(eventId: string | undefined) {
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleRegister = async () => {
     if (!event) return;
+    if (registerMode === 'external' && outside) {
+      void Linking.openURL(outside.href).catch(() => AppAlert.alert('Couldn’t open the link', outside.href));
+      return;
+    }
     if (!user) {
       AppAlert.alert('Sign in required', 'Please sign in to register for this event.', [
         { text: 'Cancel', style: 'cancel' },
@@ -467,6 +482,7 @@ export function useEventDetail(eventId: string | undefined) {
     bigEventMode,
     ownsAnyTicket,
     registerMode,
+    outside,
     handleRegister,
     canAddTicket,
     addTicket,
