@@ -67,6 +67,7 @@ describe('WebhooksService', () => {
       spaceWebhook: {
         findMany: jest.fn(async () => [{ id: 'wh-1' }]),
         update: jest.fn(async ({ data }: any) => ({ failureCount: data.failureCount?.increment ? hook.failureCount + 1 : 0, disabledAt: null })),
+        updateMany: jest.fn(async () => ({ count: 1 })),
       },
       webhookDelivery: {
         create: jest.fn(async () => ({ id: 'd-1' })),
@@ -81,10 +82,9 @@ describe('WebhooksService', () => {
   it('turns a registration event into one queued delivery per matching webhook', async () => {
     const { svc, prisma, queue } = build();
     await svc.onRegistrationEvent({ type: 'registration.confirmed', registrationId: 'reg-1' });
-    expect(prisma.spaceWebhook.findMany.mock.calls[0][0].where).toMatchObject({
+    expect(prisma.spaceWebhook.findMany.mock.calls[0][0].where).toEqual({
       spaceId: 'sp-1',
       isActive: true,
-      disabledAt: null,
       events: { has: 'registration.confirmed' },
     });
     const payload = prisma.webhookDelivery.create.mock.calls[0][0].data.payload;
@@ -129,7 +129,45 @@ describe('WebhooksService', () => {
     expect(prisma.spaceWebhook.update).toHaveBeenLastCalledWith({ where: { id: 'wh-1' }, data: { disabledAt: expect.any(Date) } });
   });
 
-  it('skips, without sending, for a space taken down or a webhook switched off', async () => {
+  it('keeps a switched-off webhook\'s events as SKIPPED, for a resend later, and sends nothing', async () => {
+    const { svc, prisma, queue } = build();
+    prisma.spaceWebhook.findMany.mockResolvedValueOnce([{ id: 'wh-1', disabledAt: new Date() }]);
+    await svc.onRegistrationEvent({ type: 'registration.confirmed', registrationId: 'reg-1' });
+    expect(prisma.webhookDelivery.create.mock.calls[0][0].data.status).toBe('SKIPPED');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('only a delivery that failed for good counts toward switching off', async () => {
+    answer = 500;
+    const { svc, prisma } = build();
+    await expect(svc.deliver('d-1', false)).rejects.toThrow();
+    expect(prisma.spaceWebhook.update).not.toHaveBeenCalled();
+    await svc.deliver('d-1', true);
+    expect(prisma.spaceWebhook.update).toHaveBeenCalledWith(expect.objectContaining({ data: { failureCount: { increment: 1 } } }));
+  });
+
+  it('finishes retries queued before a switch-off', async () => {
+    const { svc } = build({ hook: { disabledAt: new Date() } });
+    await svc.deliver('d-1', false);
+    expect(received).toHaveLength(1);
+  });
+
+  it('a secret it can no longer read fails the delivery for good, without retries', async () => {
+    const { svc, prisma } = build({ hook: { secretEnc: 'not-a-sealed-secret' } });
+    await expect(svc.deliver('d-1', false)).resolves.toBeUndefined();
+    expect(prisma.webhookDelivery.update.mock.calls[0][0].data).toMatchObject({ status: 'FAILED', lastError: 'Secret unreadable' });
+    expect(received).toHaveLength(0);
+  });
+
+  it('a PATCH with nulls changes nothing instead of failing', async () => {
+    const { svc, prisma } = build();
+    prisma.spaceWebhook.findFirst = jest.fn(async () => ({ id: 'wh-1' }));
+    prisma.spaceWebhook.update = jest.fn(async () => ({}));
+    await svc.update('sp-1', 'wh-1', { url: null, events: null, isActive: null } as any);
+    expect(prisma.spaceWebhook.update.mock.calls[0][0].data).toEqual({});
+  });
+
+  it('skips, without sending, for a space taken down or a webhook turned off', async () => {
     for (const opts of [{ spaceStatus: 'SUSPENDED' }, { spaceOn: false }, { hook: { isActive: false } }]) {
       const { svc, prisma } = build(opts);
       await svc.deliver('d-1', false);

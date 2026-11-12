@@ -336,6 +336,9 @@ for (const [net, prefix] of [
   ['::1', 128],
   ['::ffff:0:0', 96], // IPv4-mapped: would sneak 127.0.0.1 past the v4 list
   ['64:ff9b::', 96], // NAT64
+  ['64:ff9b:1::', 48], // local-use NAT64
+  ['::', 96], // IPv4-compatible (deprecated): ::7f00:1 is 127.0.0.1
+  ['2002::', 16], // 6to4: wraps an IPv4 address, private ones included
   ['fc00::', 7],
   ['fe80::', 10],
   ['ff00::', 8],

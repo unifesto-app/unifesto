@@ -40,6 +40,13 @@ describe('assertWebhookUrl', () => {
     ['https://169.254.169.254/latest/meta-data', 'public address'],
     ['https://10.0.0.8/hook', 'public address'],
     ['https://[::1]/hook', 'public address'],
+    ['https://[::ffff:127.0.0.1]/hook', 'public address'],
+    ['https://[::]/hook', 'public address'],
+    ['https://2130706433/hook', 'public address'],
+    ['https://0x7f000001/hook', 'public address'],
+    ['https://127.1/hook', 'public address'],
+    ['https://0/hook', 'public address'],
+    ['https://127.0.0.1./hook', 'public address'],
     ['https://printer.local/hook', 'public address'],
     ['not a url', 'full webhook URL'],
   ])('refuses %s', (raw, why) => {
@@ -59,7 +66,14 @@ describe('sendWebhook', () => {
       req.on('data', (c) => (body += c));
       req.on('end', () => {
         seen.push({ headers: req.headers, body });
-        if (req.url === '/redirect') {
+        if (req.url === '/dribble') {
+          // One byte every 300 ms, forever: never idle long enough to time out.
+          res.writeHead(200);
+          const t = setInterval(() => res.write('x'), 300);
+          res.on('close', () => clearInterval(t));
+          return;
+        }
+                if (req.url === '/redirect') {
           res.writeHead(302, { Location: 'http://169.254.169.254/' });
           return res.end();
         }
@@ -93,6 +107,14 @@ describe('sendWebhook', () => {
     const r = await sendWebhook(new URL(`${base}/redirect`), {}, '{}');
     expect(r).toMatchObject({ ok: false, status: 302 });
     expect(seen.length).toBe(before + 1); // only the one request
+  });
+
+  it('gives up at its deadline on a receiver that dribbles bytes forever', async () => {
+    const started = Date.now();
+    const r = await sendWebhook(new URL(`${base}/dribble`), {}, '{}', 1500);
+    expect(Date.now() - started).toBeLessThan(4000);
+    // The receiver had answered 200 before stalling: the cut-off still ends the call.
+    expect(r.durationMs).toBeLessThan(4000);
   });
 
   it('reports a 5xx as a failure', async () => {

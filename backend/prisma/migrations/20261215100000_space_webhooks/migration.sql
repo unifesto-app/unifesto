@@ -34,6 +34,7 @@ CREATE TABLE "webhook_deliveries" (
 
 CREATE INDEX "space_webhooks_space_id_idx" ON "space_webhooks"("space_id");
 CREATE INDEX "webhook_deliveries_webhook_id_created_at_idx" ON "webhook_deliveries"("webhook_id", "created_at");
+CREATE INDEX "webhook_deliveries_created_at_idx" ON "webhook_deliveries"("created_at");
 
 ALTER TABLE "space_webhooks" ADD CONSTRAINT "space_webhooks_space_id_fkey" FOREIGN KEY ("space_id") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "webhook_deliveries" ADD CONSTRAINT "webhook_deliveries_webhook_id_fkey" FOREIGN KEY ("webhook_id") REFERENCES "space_webhooks"("id") ON DELETE CASCADE ON UPDATE CASCADE;

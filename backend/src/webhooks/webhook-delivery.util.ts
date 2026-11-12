@@ -35,7 +35,8 @@ export function webhookHeaders(secret: string, id: string, timestamp: number, bo
  * Local testing only (a receiver on localhost): never in production, which
  * config validation refuses at boot.
  */
-export const allowPrivateWebhooks = () => process.env.WEBHOOK_ALLOW_PRIVATE === '1' && process.env.NODE_ENV !== 'production';
+export const allowPrivateWebhooks = () =>
+  process.env.WEBHOOK_ALLOW_PRIVATE === '1' && ['development', 'test'].includes(process.env.NODE_ENV ?? '');
 
 /**
  * A webhook URL Unifesto may call: https on the default port, no credentials,
@@ -70,16 +71,25 @@ export interface SendResult {
   durationMs: number;
 }
 
+/** Silence allowed between bytes. */
 const TIMEOUT_MS = 5000;
+/** The whole exchange, start to finish: a receiver dribbling bytes can't hold a worker. */
+const DEADLINE_MS = 10_000;
 /** We read this much of the answer at most, and keep none of it. */
 const MAX_RESPONSE_BYTES = 4096;
 
 /**
  * One POST. No redirects (a 3xx is a failure: following one could land on an
- * internal address), no proxy, a pinned safe DNS lookup, a 5 second limit and
- * a small response cap. Only the status, timing and an error code come back.
+ * internal address), no proxy, a pinned safe DNS lookup, 5 seconds of silence
+ * at most, 10 seconds in all, and a small response cap. Only the status,
+ * timing and an error code come back.
  */
-export function sendWebhook(url: URL, headers: Record<string, string>, body: string): Promise<SendResult> {
+export function sendWebhook(
+  url: URL,
+  headers: Record<string, string>,
+  body: string,
+  deadlineMs = DEADLINE_MS,
+): Promise<SendResult> {
   const started = Date.now();
   const lib = url.protocol === 'http:' ? http : https;
   return new Promise((resolve) => {
@@ -96,6 +106,7 @@ export function sendWebhook(url: URL, headers: Record<string, string>, body: str
         headers: { ...headers, 'Content-Length': Buffer.byteLength(body) },
         lookup: allowPrivateWebhooks() ? undefined : safeLookup,
         timeout: TIMEOUT_MS,
+        signal: AbortSignal.timeout(deadlineMs),
         agent: false,
       },
       (res) => {
@@ -112,7 +123,9 @@ export function sendWebhook(url: URL, headers: Record<string, string>, body: str
       },
     );
     req.on('timeout', () => req.destroy(Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' })));
-    req.on('error', (err: NodeJS.ErrnoException) => done({ ok: false, status: null, error: (err.code ?? err.message).slice(0, 120) }));
+    req.on('error', (err: NodeJS.ErrnoException) =>
+      done({ ok: false, status: null, error: err.name === 'AbortError' || err.name === 'TimeoutError' ? 'TIMEOUT' : (err.code ?? err.message).slice(0, 120) }),
+    );
     req.end(body);
   });
 }

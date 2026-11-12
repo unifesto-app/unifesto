@@ -248,8 +248,12 @@ export function WebhooksSection({ spaceId, onError }: { spaceId: string; onError
             than five minutes, and skip ids you&apos;ve already handled.
           </p>
           <p>
-            Answer with any 2xx within five seconds. Anything else is retried for about two hours; after 20 failures in a row the webhook switches
-            off until you turn it back on.
+            Answer with any 2xx within ten seconds. Anything else is retried for about two hours. If 20 deliveries in a row fail all their
+            retries, the webhook switches off until you turn it back on; events while it&apos;s off stay in the log, ready to resend.
+          </p>
+          <p>
+            An event can arrive twice or out of order. Treat each one as the registration&apos;s latest state, keyed by its{" "}
+            <code className="text-foreground">registrationId</code>. Don&apos;t put secrets or tokens in the URL: other Space Admins can see it.
           </p>
         </div>
       </ListGroup>

@@ -1307,6 +1307,8 @@ model WebhookDelivery {
   deliveredAt    DateTime?    @map("delivered_at") @db.Timestamptz(6)
 
   @@index([webhookId, createdAt])
+  /// The nightly prune (logs/retention.service.ts) deletes by age across all webhooks.
+  @@index([createdAt])
   @@map("webhook_deliveries")
 }
 

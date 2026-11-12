@@ -18,7 +18,7 @@ import { WebhookDeliveryQueue } from './webhook-delivery.queue';
 
 /** Webhooks a space may have. */
 export const MAX_WEBHOOKS = 3;
-/** Failed deliveries in a row that switch a webhook off. */
+/** Deliveries that failed for good (all retries) in a row that switch a webhook off. */
 export const DISABLE_AFTER = 20;
 
 const SECRET_ENV = 'WEBHOOK_SECRET_KEY';
@@ -103,10 +103,10 @@ export class WebhooksService {
     return this.prisma.spaceWebhook.update({
       where: { id },
       data: {
-        ...(dto.url !== undefined && { url: assertWebhookUrl(dto.url).toString() }),
-        ...(dto.events !== undefined && { events: this.events(dto.events) }),
+        ...(dto.url != null && { url: assertWebhookUrl(dto.url).toString() }),
+        ...(dto.events != null && { events: this.events(dto.events) }),
         // Turning it back on starts a fresh count.
-        ...(dto.isActive !== undefined && { isActive: dto.isActive, ...(dto.isActive && { disabledAt: null, failureCount: 0 }) }),
+        ...(dto.isActive != null && { isActive: dto.isActive, ...(dto.isActive && { disabledAt: null, failureCount: 0 }) }),
       },
       select: HOOK_FIELDS,
     });
@@ -146,8 +146,13 @@ export class WebhooksService {
   async resend(spaceId: string, id: string, deliveryId: string) {
     await this.own(spaceId, id);
     await this.assertEnabled(spaceId);
+    // PENDING too once it's older than its retries could run (a stuck row).
     const { count } = await this.prisma.webhookDelivery.updateMany({
-      where: { id: deliveryId, webhookId: id, status: { not: 'PENDING' } },
+      where: {
+        id: deliveryId,
+        webhookId: id,
+        OR: [{ status: { not: 'PENDING' } }, { createdAt: { lt: new Date(Date.now() - 3 * 3_600_000) } }],
+      },
       data: { status: 'PENDING' },
     });
     if (!count) throw new NotFoundException('Delivery not found, or already queued');
@@ -181,9 +186,11 @@ export class WebhooksService {
       },
     });
     if (!reg || !reg.event.space.integrationsEnabled) return;
+    // Switched off after failures: still recorded (as SKIPPED), so nothing is
+    // lost and the admin can resend once the receiver is fixed.
     const hooks = await this.prisma.spaceWebhook.findMany({
-      where: { spaceId: reg.event.spaceId, isActive: true, disabledAt: null, events: { has: type } },
-      select: { id: true },
+      where: { spaceId: reg.event.spaceId, isActive: true, events: { has: type } },
+      select: { id: true, disabledAt: true },
     });
     if (!hooks.length) return;
 
@@ -211,10 +218,10 @@ export class WebhooksService {
     };
     for (const hook of hooks) {
       const d = await this.prisma.webhookDelivery.create({
-        data: { webhookId: hook.id, type, registrationId: reg.id, payload },
+        data: { webhookId: hook.id, type, registrationId: reg.id, payload, ...(hook.disabledAt && { status: 'SKIPPED' }) },
         select: { id: true },
       });
-      await this.queue.add(d.id);
+      if (!hook.disabledAt) await this.queue.add(d.id);
     }
   }
 
@@ -230,7 +237,9 @@ export class WebhooksService {
     });
     if (!d || d.status === 'DELIVERED') return;
     const hook = d.webhook;
-    const off = !opts.ignoreActive && (!hook.isActive || hook.disabledAt);
+    // Turned off by the admin. A webhook switched off after failures still
+    // finishes the retries it had already queued.
+    const off = !opts.ignoreActive && !hook.isActive;
     if (off || !hook.space.integrationsEnabled || !isSpaceLive(hook.space.status)) {
       await this.prisma.webhookDelivery.update({ where: { id: d.id }, data: { status: 'SKIPPED' } });
       return;
@@ -242,12 +251,19 @@ export class WebhooksService {
     } catch {
       // Saved before a rule tightened: never send, never retry.
     }
+    let secret: string | null = null;
+    try {
+      secret = open(hook.secretEnc);
+    } catch {
+      // WEBHOOK_SECRET_KEY (or the JWT_SECRET it falls back on) changed: retries can't help.
+    }
     const body = JSON.stringify({ id: d.id, ...(d.payload as object) });
-    const result = url
-      ? await sendWebhook(url, webhookHeaders(open(hook.secretEnc), d.id, Math.floor(Date.now() / 1000), body), body)
-      : { ok: false, status: null, error: 'URL refused', durationMs: 0 };
+    const result =
+      url && secret
+        ? await sendWebhook(url, webhookHeaders(secret, d.id, Math.floor(Date.now() / 1000), body), body)
+        : { ok: false, status: null, error: url ? 'Secret unreadable' : 'URL refused', durationMs: 0 };
 
-    const final = result.ok || finalAttempt || !url;
+    const final = result.ok || finalAttempt || !url || !secret;
     await this.prisma.webhookDelivery.update({
       where: { id: d.id },
       data: {
@@ -261,9 +277,12 @@ export class WebhooksService {
     });
 
     if (result.ok) {
-      if (hook.failureCount) await this.prisma.spaceWebhook.update({ where: { id: hook.id }, data: { failureCount: 0 } });
+      await this.prisma.spaceWebhook.updateMany({ where: { id: hook.id, failureCount: { gt: 0 } }, data: { failureCount: 0 } });
       return;
     }
+    // Counts deliveries that failed for good, not attempts: a short outage
+    // that retries ride out never switches a webhook off.
+    if (!final) throw new Error(`Webhook delivery ${d.id} failed: ${result.error}`);
     const failed = await this.prisma.spaceWebhook.update({
       where: { id: hook.id },
       data: { failureCount: { increment: 1 } },
@@ -273,6 +292,5 @@ export class WebhooksService {
       await this.prisma.spaceWebhook.update({ where: { id: hook.id }, data: { disabledAt: new Date() } });
       this.logger.warn(`Webhook ${hook.id} switched off after ${DISABLE_AFTER} failed deliveries in a row`);
     }
-    if (!final) throw new Error(`Webhook delivery ${d.id} failed: ${result.error}`);
   }
 }
