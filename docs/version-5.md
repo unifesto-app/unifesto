@@ -1206,3 +1206,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Mobile night ground back to black (#000000); cards unchanged (#658)
 - **2026-11-13** · Mobile splash rebuilt as a GSAP-style timeline (sliced wordmark reveal, word stagger, lift-out exit) (#659)
 - **2026-11-13** · Mobile launch splash rebuilt from the approved GSAP prototype (letters + props, liquid glass, u-zoom into Home) (#660)
+- **2026-11-13** · Reanimated applies transform/opacity straight to native views (sync UI props) for the 5.0.2 store build (#661)
