@@ -601,6 +601,8 @@ rsync -az --delete \
   --exclude '.DS_Store' \
   --exclude '/_company' \
   --exclude '/content-bank' \
+  --exclude '/founder' \
+  --exclude '/marketing' \
   --exclude '/.claude/settings.local.json' \
   --exclude '/.claude/worktrees' \
   --exclude '/backend/coverage' \
