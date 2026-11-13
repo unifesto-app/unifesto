@@ -2,14 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '../components/ui/icons';
+import { CalendarBlank, CalendarDots, Globe, MagnifyingGlass, SlidersHorizontal, Ticket, X } from '../components/ui/icons';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import EventListCard, { EventListCardSkeleton, placeOf } from '../components/EventListCard';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
-import { PRESET_ITEMS } from '../components/home/HomeHeader';
 import { GUTTER } from '../components/home/Section';
-import { HeaderMenu } from '../navigation/HeaderActions';
+import { HeaderMenu, type HeaderMenuItem } from '../navigation/HeaderActions';
 import Skeleton from '../components/Skeleton';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { PRESETS, useEventsBrowse, type Preset } from '../hooks/useEventsBrowse';
@@ -23,9 +22,16 @@ import useContentWidth from '../hooks/useContentWidth';
 
 const SEARCH_H = 52;
 
+const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
+  weekend: { ios: 'calendar', android: 'ic_menu_my_calendar', glyph: CalendarDots },
+  free: { ios: 'ticket', android: 'ic_menu_agenda', glyph: Ticket },
+  online: { ios: 'globe', android: 'ic_menu_mapmode', glyph: Globe },
+};
+const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
+
 /**
  * Browse all published events, in Home's cosmos voice: a search field with the
- * quick-filter menu beside it (same as Home), category chips, then the top
+ * quick-filter menu beside it, category chips, then the top
  * result as a full poster and the rest as rows on the page with full hairlines
  * (the same row as Saved). While searching the poster steps aside so results
  * read as one even list.

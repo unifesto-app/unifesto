@@ -9,7 +9,7 @@ import { useCosmos } from '../../src/theme/cosmos';
 import { composeHome, useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
-import HomeHeader from '../../src/components/home/HomeHeader';
+import { HOME_BAR_H, HomeBar, HomeHeadline } from '../../src/components/home/HomeHeader';
 import { GUTTER, Section } from '../../src/components/home/Section';
 import DayRows, { ActionRow, EventHero, EventHeroSkeleton, EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
@@ -24,7 +24,6 @@ import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
-import type { Preset } from '../../src/hooks/useEventsBrowse';
 import { relativeWhen } from '../../src/utils/eventFormat';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
@@ -38,6 +37,8 @@ export default function HomeTab() {
   const myInvites = useMyInvites();
   const unread = useUnreadNotifications();
   const search = useHomeSearch();
+  // Content is under the pinned bar, so it turns glass.
+  const [scrolled, setScrolled] = React.useState(false);
   // Live check-ins and the Space / Apex rows, shown only to people who have those tabs.
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
@@ -46,7 +47,6 @@ export default function HomeTab() {
   const openEvent = (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`);
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
-  const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
   const openSpaces = () => router.push('/spaces');
 
   // ── What each list shows: every event once (see composeHome) ───────────
@@ -196,6 +196,7 @@ export default function HomeTab() {
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
   // top inset on top of the header's own spacing (see mobile-tab-top-spacing).
+  // The bar is the ScrollView's sticky first child, so that stays true.
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
@@ -204,6 +205,10 @@ export default function HomeTab() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[0]}
+        // Re-renders only when content starts or stops sliding under the bar.
+        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 1)}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -215,19 +220,21 @@ export default function HomeTab() {
             }}
             tintColor={c.text}
             colors={[c.text]}
-            progressViewOffset={topInset}
+            progressViewOffset={topInset + HOME_BAR_H}
           />
         }
       >
-        <HomeHeader
+        <HomeBar
           signedIn={!!user}
+          unread={unread}
+          onPressBell={() => router.push('/notifications')}
+          onPressSearch={search.openSheet}
+          scrolled={scrolled}
+        />
+        <HomeHeadline
           city={city}
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
-          unread={unread}
-          onPressBell={() => router.push('/notifications')}
-          onPressPreset={openPreset}
-          onPressSearch={search.openSheet}
         />
 
         {nowCard ? (
