@@ -42,9 +42,9 @@ export interface Tokens {
 // values as cosmos.ts.
 export const darkTokens: Tokens = {
   bg: '#000000',
-  surface: '#1d1d21',
-  /** Borderless cards: the same lift as cosmos `raised`. */
-  elevated: '#232327',
+  surface: '#141416',
+  /** Borderless cards: the same lift as cosmos `raised` (iOS grouped dark). */
+  elevated: '#1c1c1e',
   border: 'rgba(255, 255, 255, 0.1)',
   borderStrong: 'rgba(255, 255, 255, 0.28)',
   overlay: 'rgba(0, 0, 0, 0.8)',
