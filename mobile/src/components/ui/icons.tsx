@@ -23,9 +23,12 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'arrow-up-right': require('../../../assets/icons/app/arrow-up-right.png'),
   'arrows-clockwise': require('../../../assets/icons/app/arrows-clockwise.png'),
   'arrows-left-right': require('../../../assets/icons/app/arrows-left-right.png'),
+  'article': require('../../../assets/icons/app/article.png'),
   'bank': require('../../../assets/icons/app/bank.png'),
   'bell': require('../../../assets/icons/app/bell.png'),
   'bell-ringing': require('../../../assets/icons/app/bell-ringing.png'),
+  'bell-simple': require('../../../assets/icons/app/bell-simple.png'),
+  'briefcase': require('../../../assets/icons/app/briefcase.png'),
   'broadcast': require('../../../assets/icons/app/broadcast.png'),
   'buildings': require('../../../assets/icons/app/buildings.png'),
   'calendar-blank': require('../../../assets/icons/app/calendar-blank.png'),
@@ -39,30 +42,40 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'caret-up': require('../../../assets/icons/app/caret-up.png'),
   'certificate': require('../../../assets/icons/app/certificate.png'),
   'chart-bar': require('../../../assets/icons/app/chart-bar.png'),
+  'chart-line-up': require('../../../assets/icons/app/chart-line-up.png'),
   'chats-circle': require('../../../assets/icons/app/chats-circle.png'),
   'check': require('../../../assets/icons/app/check.png'),
   'check-circle': require('../../../assets/icons/app/check-circle.png'),
   'clock': require('../../../assets/icons/app/clock.png'),
   'clock-counter-clockwise': require('../../../assets/icons/app/clock-counter-clockwise.png'),
+  'cloud-arrow-down': require('../../../assets/icons/app/cloud-arrow-down.png'),
   'cloud-arrow-up': require('../../../assets/icons/app/cloud-arrow-up.png'),
   'coffee': require('../../../assets/icons/app/coffee.png'),
+  'credit-card': require('../../../assets/icons/app/credit-card.png'),
   'crown': require('../../../assets/icons/app/crown.png'),
+  'desktop': require('../../../assets/icons/app/desktop.png'),
+  'device-mobile': require('../../../assets/icons/app/device-mobile.png'),
   'door-open': require('../../../assets/icons/app/door-open.png'),
+  'dots-three': require('../../../assets/icons/app/dots-three.png'),
   'download-simple': require('../../../assets/icons/app/download-simple.png'),
   'envelope-simple': require('../../../assets/icons/app/envelope-simple.png'),
   'export': require('../../../assets/icons/app/export.png'),
+  'eye': require('../../../assets/icons/app/eye.png'),
   'eye-slash': require('../../../assets/icons/app/eye-slash.png'),
   'file-csv': require('../../../assets/icons/app/file-csv.png'),
   'file-text': require('../../../assets/icons/app/file-text.png'),
   'flag': require('../../../assets/icons/app/flag.png'),
   'flashlight': require('../../../assets/icons/app/flashlight.png'),
+  'funnel': require('../../../assets/icons/app/funnel.png'),
   'gear': require('../../../assets/icons/app/gear.png'),
   'gear-six': require('../../../assets/icons/app/gear-six.png'),
   'gender-intersex': require('../../../assets/icons/app/gender-intersex.png'),
   'globe': require('../../../assets/icons/app/globe.png'),
+  'hand-coins': require('../../../assets/icons/app/hand-coins.png'),
   'handshake': require('../../../assets/icons/app/handshake.png'),
   'heart': require('../../../assets/icons/app/heart.png'),
   'hourglass': require('../../../assets/icons/app/hourglass.png'),
+  'hourglass-medium': require('../../../assets/icons/app/hourglass-medium.png'),
   'identification-card': require('../../../assets/icons/app/identification-card.png'),
   'image-square': require('../../../assets/icons/app/image-square.png'),
   'info': require('../../../assets/icons/app/info.png'),
@@ -71,6 +84,8 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'lightning': require('../../../assets/icons/app/lightning.png'),
   'link': require('../../../assets/icons/app/link.png'),
   'link-simple': require('../../../assets/icons/app/link-simple.png'),
+  'list-bullets': require('../../../assets/icons/app/list-bullets.png'),
+  'list-checks': require('../../../assets/icons/app/list-checks.png'),
   'list-numbers': require('../../../assets/icons/app/list-numbers.png'),
   'lock': require('../../../assets/icons/app/lock.png'),
   'lock-key': require('../../../assets/icons/app/lock-key.png'),
@@ -78,11 +93,13 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'lock-simple': require('../../../assets/icons/app/lock-simple.png'),
   'magnifying-glass': require('../../../assets/icons/app/magnifying-glass.png'),
   'map-pin': require('../../../assets/icons/app/map-pin.png'),
+  'medal': require('../../../assets/icons/app/medal.png'),
   'megaphone': require('../../../assets/icons/app/megaphone.png'),
   'megaphone-simple': require('../../../assets/icons/app/megaphone-simple.png'),
   'minus': require('../../../assets/icons/app/minus.png'),
   'moon': require('../../../assets/icons/app/moon.png'),
   'navigation-arrow': require('../../../assets/icons/app/navigation-arrow.png'),
+  'paint-brush': require('../../../assets/icons/app/paint-brush.png'),
   'paper-plane-right': require('../../../assets/icons/app/paper-plane-right.png'),
   'paper-plane-tilt': require('../../../assets/icons/app/paper-plane-tilt.png'),
   'paperclip': require('../../../assets/icons/app/paperclip.png'),
@@ -94,20 +111,24 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'plus': require('../../../assets/icons/app/plus.png'),
   'plus-circle': require('../../../assets/icons/app/plus-circle.png'),
   'power': require('../../../assets/icons/app/power.png'),
+  'pulse': require('../../../assets/icons/app/pulse.png'),
   'qr-code': require('../../../assets/icons/app/qr-code.png'),
   'quotes': require('../../../assets/icons/app/quotes.png'),
   'receipt': require('../../../assets/icons/app/receipt.png'),
   'rocket-launch': require('../../../assets/icons/app/rocket-launch.png'),
   'seal-check': require('../../../assets/icons/app/seal-check.png'),
+  'seal-percent': require('../../../assets/icons/app/seal-percent.png'),
   'share-network': require('../../../assets/icons/app/share-network.png'),
   'shield-check': require('../../../assets/icons/app/shield-check.png'),
   'shield-warning': require('../../../assets/icons/app/shield-warning.png'),
+  'sign-out': require('../../../assets/icons/app/sign-out.png'),
   'sliders-horizontal': require('../../../assets/icons/app/sliders-horizontal.png'),
   'sparkle': require('../../../assets/icons/app/sparkle.png'),
   'stack': require('../../../assets/icons/app/stack.png'),
   'star': require('../../../assets/icons/app/star.png'),
   'stop': require('../../../assets/icons/app/stop.png'),
   'tag': require('../../../assets/icons/app/tag.png'),
+  'terminal': require('../../../assets/icons/app/terminal.png'),
   'ticket': require('../../../assets/icons/app/ticket.png'),
   'timer': require('../../../assets/icons/app/timer.png'),
   'trash': require('../../../assets/icons/app/trash.png'),
@@ -117,6 +138,7 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'user-circle': require('../../../assets/icons/app/user-circle.png'),
   'user-focus': require('../../../assets/icons/app/user-focus.png'),
   'user-plus': require('../../../assets/icons/app/user-plus.png'),
+  'users': require('../../../assets/icons/app/users.png'),
   'users-four': require('../../../assets/icons/app/users-four.png'),
   'users-three': require('../../../assets/icons/app/users-three.png'),
   'video-camera': require('../../../assets/icons/app/video-camera.png'),
@@ -265,5 +287,27 @@ export const Warning = glyph('warning');
 export const WarningCircle = glyph('warning-circle');
 export const X = glyph('x');
 
+export const Article = glyph('article');
+export const BellSimple = glyph('bell-simple');
+export const Briefcase = glyph('briefcase');
+export const ChartLineUp = glyph('chart-line-up');
+export const CloudArrowDown = glyph('cloud-arrow-down');
+export const CreditCard = glyph('credit-card');
+export const DeviceMobile = glyph('device-mobile');
+export const DotsThree = glyph('dots-three');
+export const Eye = glyph('eye');
+export const Funnel = glyph('funnel');
+export const HandCoins = glyph('hand-coins');
+export const HourglassMedium = glyph('hourglass-medium');
+export const ListBullets = glyph('list-bullets');
+export const ListChecks = glyph('list-checks');
+export const Medal = glyph('medal');
+export const PaintBrush = glyph('paint-brush');
+export const Pulse = glyph('pulse');
+export const SealPercent = glyph('seal-percent');
+export const SignOut = glyph('sign-out');
+export const Terminal = glyph('terminal');
+export const Users = glyph('users');
+
 // No sonnycandra match: still Unicon.
-export { Article, At, BellSimple, Briefcase, Cards, ChartLineUp, Circle, CircleDashed, CircleIcon, CloudArrowDown, Confetti, CreditCard, DeviceMobile, DotsThree, Eye, Funnel, Gavel, HandCoins, HourglassMedium, LinkBreak, ListBullets, ListChecks, Medal, PaintBrush, Pulse, SealPercent, SignOut, Terminal, TreeStructure, UserMinus, Users, WifiSlash } from '@unifesto/unicon/react-native';
+export { At, Cards, Circle, CircleDashed, CircleIcon, Confetti, Gavel, LinkBreak, TreeStructure, UserMinus, WifiSlash } from '@unifesto/unicon/react-native';
