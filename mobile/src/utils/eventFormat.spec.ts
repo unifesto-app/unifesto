@@ -101,6 +101,12 @@ describe('composeHome', () => {
     expect(ids(home.nearYou)).toEqual(['open', 'run']);
   });
 
+  it('leaves the featured list empty when its only event is the spotlight', () => {
+    const home = composeHome({ ...base, spaceEvents: [], featuredEvents: [e('wgb', 16)] });
+    expect(home.spotlight?.id).toBe('wgb');
+    expect(home.featured).toEqual([]); // Home shows the Explore spaces row instead
+  });
+
   it('takes the spotlight from my spaces, then near you, never from what is already mine', () => {
     const mine = composeHome({ ...base, spaceEvents: [e('mixer', 14), e('club', 13)], featuredEvents: [] });
     expect(mine.spotlight?.id).toBe('club');
