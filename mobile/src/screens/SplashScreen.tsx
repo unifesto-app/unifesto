@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cosmosFont, cosmosFor } from '../theme/cosmos';
 import { launchScheme } from '../context/ThemeContext';
@@ -31,7 +31,6 @@ import {
   SWAP_PROPS,
   footerOpacity,
   glassFrame,
-  glowBands,
   groundOpacity,
   introPropFrame,
   letterFrame,
@@ -62,8 +61,6 @@ const IMAGE_WAIT_MS = 300;
 const COLLAPSE_END = 0.66;
 /** The JS fallback finishes the handover this long after the exit's own end, if its callback was lost. */
 const FALLBACK_MS = 2000;
-/** The display's corner radius, roughly, so the glass rims follow the screen. */
-const GLASS_RADIUS = 54;
 
 const LETTER_IMAGES = {
   dark: [
@@ -109,18 +106,10 @@ const PROP_GRADIENTS: Record<'dark' | 'light', Record<'sky' | 'mint' | 'ivory' |
 const GLASS = {
   dark: {
     fill: [['#ffffff', 0.07], ['#ffffff', 0.012], ['#ffffff', 0.035]],
-    rimIn: ['#ffffff', 0.5],
-    rimOut: ['#ffffff', 0.14],
-    glow: ['#ffffff', 0.07],
-    edge: ['#ffffff', 0.025],
     sheen: ['#ffffff', 0.1],
   },
   light: {
     fill: [['#ffffff', 0.7], ['#ffffff', 0.22], ['#ffffff', 0.45]],
-    rimIn: ['#ffffff', 1],
-    rimOut: ['#1e2337', 0.1],
-    glow: ['#ffffff', 0.9],
-    edge: ['#1e2337', 0.045],
     sheen: ['#ffffff', 0.85],
   },
 } as const;
@@ -567,42 +556,18 @@ const PropArt = memo(function PropArt({
   }
 });
 
-/** A rounded rect as a path, for the rims' crisp offset bands. */
-function roundRect(x: number, y: number, w: number, h: number, r: number) {
-  return `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
-}
-
 /**
- * The full-screen sheet of liquid glass, drawn once: a faint diagonal fill,
- * a soft glow just inside its edges (concentric strokes on the CSS inset-shadow
- * falloff the prototype used), a bright rim where light enters (top and left)
- * and a faint one where it leaves (bottom and right). Never redrawn while the
+ * The full-screen sheet of liquid glass, drawn once: a faint diagonal fill, no
+ * rims or edge glow (owner, 13 Nov: no border light). Never redrawn while the
  * splash moves; its wrapper fades and scales it.
  */
 const GlassSheet = memo(function GlassSheet({ w, h, scheme }: { w: number; h: number; scheme: 'dark' | 'light' }) {
   const g = GLASS[scheme];
-  const r = GLASS_RADIUS;
   // CSS's 150deg gradient line, in this box's own coordinates.
   const a = (150 * Math.PI) / 180;
   const dx = Math.sin(a);
   const dy = -Math.cos(a);
   const len = w * Math.abs(dx) + h * Math.abs(dy);
-  const bands = (blur: number, colour: readonly [string, number], step: number, key: string) =>
-    glowBands(blur, colour[1], step).map((b, k) => (
-      <Rect
-        key={`${key}${k}`}
-        x={b.inset}
-        y={b.inset}
-        width={w - 2 * b.inset}
-        height={h - 2 * b.inset}
-        rx={Math.max(r - b.inset, 0)}
-        fill="none"
-        stroke={colour[0]}
-        strokeOpacity={b.alpha}
-        strokeWidth={b.width}
-      />
-    ));
-  const box = roundRect(0, 0, w, h, r);
   return (
     <Svg width={w} height={h} style={StyleSheet.absoluteFill}>
       <Defs>
@@ -619,17 +584,8 @@ const GlassSheet = memo(function GlassSheet({ w, h, scheme }: { w: number; h: nu
           <Stop offset="0.7" stopColor={g.fill[1][0]} stopOpacity={g.fill[1][1]} />
           <Stop offset="1" stopColor={g.fill[2][0]} stopOpacity={g.fill[2][1]} />
         </LinearGradient>
-        <ClipPath id="splashGlassClip">
-          <Path d={box} />
-        </ClipPath>
       </Defs>
-      <Path d={box} fill="url(#splashGlassFill)" />
-      <G clipPath="url(#splashGlassClip)">
-        {bands(120, g.edge, 10, 'e')}
-        {bands(36, g.glow, 4, 'g')}
-        <Path d={`${box} ${roundRect(-1.5, -1.5, w, h, r)}`} fillRule="evenodd" fill={g.rimOut[0]} fillOpacity={g.rimOut[1]} />
-        <Path d={`${box} ${roundRect(2, 2, w, h, r)}`} fillRule="evenodd" fill={g.rimIn[0]} fillOpacity={g.rimIn[1]} />
-      </G>
+      <Rect width={w} height={h} fill="url(#splashGlassFill)" />
     </Svg>
   );
 });
