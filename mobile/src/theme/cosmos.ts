@@ -7,25 +7,25 @@ import type { TextStyle } from 'react-native';
 import { useTokens } from '../context/ThemeContext';
 
 // Night ground is black again (owner, 13 Nov 2026; charcoal #17171b from 2 Nov).
-// Cards keep the charcoal-era steps, so they lift further off the black, and
-// every text pair only gains contrast. Black also matches the native launch frame.
+// Cards are iOS grouped #1c1c1e (owner, 13 Nov; #232327 before), the placeholder
+// one step below. Black also matches the native launch frame.
 const dark = {
   bg: '#000000',
   /** Placeholder behind images (covers, logos), between the ground and a card. */
-  card: '#1d1d21',
-  /** Event / content cards. */
-  raised: '#232327',
+  card: '#141416',
+  /** Event / content cards: iOS grouped dark. */
+  raised: '#1c1c1e',
   text: '#ececee',
   /** Secondary text, between text and muted (the web's paper/65). */
   soft: '#b4b4ba',
-  /** 5.6:1 on a card, 4.7:1 on the brightest point of a night shade card. */
+  /** 6.1:1 on a card, 4.7:1 on the brightest point of a night shade card. */
   muted: '#9a9aa0',
   primary: '#e8e8ea',
   primaryFg: '#000000',
   border: 'rgba(255, 255, 255, 0.1)',
   input: 'rgba(255, 255, 255, 0.18)',
   outline: 'rgba(255, 255, 255, 0.28)',
-  /** Crimson (#be123c by day), lifted to read at night: 6.4:1 on the ground, 4.7:1 on a card. */
+  /** Crimson (#be123c by day), lifted to read at night: 6.4:1 on the ground, 5.1:1 on a card. */
   danger: '#f2557a',
   /** Amber for counts and other text that needs attention; the light value holds 4.5:1 on cards. */
   warn: '#f59e0b',
