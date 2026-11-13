@@ -25,11 +25,11 @@ import { AppAlert } from '../components/ui/AppAlert';
 
 const MARK = 26;
 
-/** My links as their real marks; GitHub's mark is monochrome, so the glyph in text colour is the real one. */
+/** My links as their real marks (BrandIcon); a website has none, so it's a globe. */
 const LINKS: { key: keyof AuthAPI.User; label: string; mark: (color: string) => React.ReactNode }[] = [
   { key: 'linkedinUrl', label: 'LinkedIn', mark: () => <BrandIcon brand="linkedin" size={MARK} /> },
   { key: 'instagramUrl', label: 'Instagram', mark: () => <BrandIcon brand="instagram" size={MARK} /> },
-  { key: 'githubUrl', label: 'GitHub', mark: (color) => <UnGlyph name="github-logo" size={MARK} color={color} weight="fill" /> },
+  { key: 'githubUrl', label: 'GitHub', mark: () => <BrandIcon brand="github" size={MARK} /> },
   { key: 'websiteUrl', label: 'Website', mark: (color) => <UnGlyph name="globe" size={MARK} color={color} /> },
 ];
 
@@ -38,8 +38,8 @@ const toUrl = (raw: string) => (/^https?:\/\//i.test(raw) ? raw : `https://${raw
 
 /**
  * "View profile": the signed-in user's own profile as others would see it.
- * The centred identity (IdentityHeader, numbers in a hairline band; the
- * Profile tab shows a compact row instead) with my links as bare brand marks, then what I'm going to,
+ * The same identity as the Profile tab (centred on the page, numbers in a
+ * hairline band) with my links as bare brand marks, then what I'm going to,
  * where I've been and the spaces I'm in.
  */
 export default function UserProfileScreen() {

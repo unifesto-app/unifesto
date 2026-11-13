@@ -116,8 +116,16 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a card. Kept as boxes because they are controls: fields, option cards, segmented controls.
 - **Grouped lists** use `SettingsGroup` / `SettingsRow` / `GroupCell`. Section titles are muted
   Hanken SemiBold, sentence case, with no blurb under them.
-- **Row lists** (Profile, Settings and its pages, every list on Home (From my spaces or the featured
-  space, Happening near you by day, My shortlist, Manage), the Spaces page, About, the Space tab,
+- **Card groups on Profile** (owner, 13 Nov 2026: "bring cards in profile screen and linked
+  screens"): the Profile tab and the screens it opens (Account, Notifications, Permissions, About,
+  Support, Certificates, My spaces, View profile's spaces) put each list on one borderless card
+  (`SettingsGroup` without `flat`); custom rows in them take the card's `spacing[4]` side padding
+  (`useFlatRows`, or `inCard` on `SpaceRow`). Groups whose rows don't lead with a 30pt glyph
+  (thumbnails, logos, no icon) pass `plain`, so the hairline starts at the card's inner edge.
+  Saved shows its events as `EventListCard` cards.
+  The rules below on action rows, accents and real marks still apply.
+- **Row lists** (every list on Home (From my spaces or the featured
+  space, Happening near you by day, My shortlist, Manage), the Spaces page, the Space tab,
   Apex "Waiting on me"): rows
   straight on the page with a full hairline between them, no card (`SettingsGroup flat`, or
   `Rows` from `SpacePanel`). An action (Manage, Add, Link, Start, Open Settings) is the last row of
@@ -126,6 +134,8 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   alert, which turns muted while on): a lone glyph there reads as a missing picture. Glyphs may
   carry their job's accent: sky tickets and events, mint done, ivory the star. A row that opens
   another app shows that app's real mark (`BrandIcon`).
+- **Logos are real marks.** Every company logo (Apple, Google, WhatsApp, GitHub, Android,
+  Instagram, LinkedIn, X, YouTube) is `BrandIcon`, never a Unicon `*-logo` look-alike glyph.
 - **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
   muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
 - **Home shows each event once** (`composeHome`). Tickets and invites lead (a sub-event ticket
@@ -152,13 +162,6 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
 - **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
   Glyphs take `c.text`, `c.muted` or the card's accent.
-- **One exception, Profile and Settings rows** (owner, 13 Nov 2026: "squared color icons, apple
-  icons"): `IconTile`, a solid rounded square (30pt, radius 7, continuous corner) in the deep shade
-  of its row's tone with a white glyph, like iOS Settings. iOS draws the real SF Symbol
-  (`expo-symbols`), Android its Unicon twin. Every row's symbol and tone live in `TILES`
-  (components/profile/IconTile). The Profile header's Edit pencil is the same `SystemGlyph`, bare.
-  Nowhere else; other lists keep bare glyphs, and on these two pages the tile replaces the row
-  glyph accents of §5 (an action row keeps its sky label).
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
 - **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.

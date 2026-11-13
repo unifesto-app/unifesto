@@ -4,6 +4,7 @@ import { CaretRight } from '@unifesto/unicon/react-native';
 import { CATEGORY_LABEL, KIND_LABEL, STATUS_LABEL, type SupportTicket } from '../../lib/api/support';
 import { Badge, type BadgeTone } from '../ui/Badge';
 import Skeleton from '../Skeleton';
+import { useFlatRows } from '../profile/SettingsGroup';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -18,6 +19,7 @@ export const isActiveTicket = (t: SupportTicket) => t.status === 'BOT' || t.stat
  * text, then #number · kind (category for help) · space · last activity.
  */
 export default function TicketRow({ ticket, onPress, showSpace = true }: { ticket: SupportTicket; onPress: () => void; showSpace?: boolean }) {
+  const flat = useFlatRows();
   const c = useCosmos();
   const active = isActiveTicket(ticket);
   // Waiting on me reads loudest (amber); resolved gets the done tick; the rest stay muted.
@@ -32,7 +34,7 @@ export default function TicketRow({ ticket, onPress, showSpace = true }: { ticke
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${ticket.subject}, ${STATUS_LABEL[ticket.status]}${ticket.unread ? ', new reply' : ''}`}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+      style={({ pressed }) => [styles.row, !flat && styles.inCard, pressed && { opacity: 0.6 }]}
     >
       <View style={[styles.info, !active && { opacity: 0.62 }]}>
         <View style={styles.subjectRow}>
@@ -48,8 +50,9 @@ export default function TicketRow({ ticket, onPress, showSpace = true }: { ticke
 }
 
 export function TicketRowSkeleton() {
+  const flat = useFlatRows();
   return (
-    <View style={styles.skeleton}>
+    <View style={[styles.skeleton, !flat && styles.inCard]}>
       <Skeleton width="70%" height={15} borderRadius={6} />
       <Skeleton width="45%" height={12} borderRadius={6} />
     </View>
@@ -58,6 +61,8 @@ export function TicketRowSkeleton() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3], minHeight: 56 },
+  // In a card group the row takes the card's side padding; on the page it has none.
+  inCard: { paddingHorizontal: spacing[4] },
   skeleton: { justifyContent: 'center', gap: 8, paddingVertical: spacing[3], minHeight: 56 },
   info: { flex: 1, gap: 4 },
   subjectRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },

@@ -5,6 +5,7 @@ import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import PushService from '../services/PushService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
@@ -216,10 +217,11 @@ export default function NotificationSettingsScreen() {
   );
 
   // One toggle row: bare icon, label, native switch in the cosmos silver.
-  const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void, disabled = false) => (
+  // A glyph name, or a real mark (WhatsApp) drawn by BrandIcon.
+  const row = (icon: GlyphName | React.ReactElement, label: string, value: boolean, onToggle: () => void, disabled = false) => (
     <View style={disabled && styles.dim}>
       <SettingsRow
-        icon={<UnGlyph name={icon} size={28} color={c.text} />}
+        icon={typeof icon === 'string' ? <UnGlyph name={icon} size={28} color={c.text} /> : icon}
         label={label}
         trailing={sw(label, value, onToggle, disabled)}
       />
@@ -291,21 +293,21 @@ export default function NotificationSettingsScreen() {
       >
         {/* One switch both ways: handlePushToggle asks for the OS permission when turning on. */}
         <View style={styles.firstGroup}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {row('bell', 'Push notifications', !pushOff, handlePushToggle)}
           </SettingsGroup>
         </View>
 
         <Section title="Updates about my tickets" style={styles.section}>
           {gridHeader}
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {gridRow('ticket', 'Tickets and waitlist', 'registrationUpdates', 'always')}
           </SettingsGroup>
         </Section>
 
         <Section title="Events and spaces" style={styles.section}>
           {gridHeader}
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {gridRow('calendar-blank', 'Reminders', 'eventReminders', 'emailEventReminders')}
             {gridRow('sparkle', 'New events', 'newEvents', 'emailNewEvents')}
             {gridRow('megaphone', 'From hosts', 'organiserAnnouncements', 'none')}
@@ -315,18 +317,18 @@ export default function NotificationSettingsScreen() {
         </Section>
 
         <Section title="Promotions" style={styles.section}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {row('tag', 'Offers from Unifesto', notifs.promotions, () => toggle('promotions'))}
             {/* Hidden without an address on file: there's nothing to opt out of. */}
             {notifs.marketingEmail != null
               ? row('envelope-simple', 'Marketing email', notifs.marketingEmail, () => toggle('marketingEmail'))
               : null}
             {notifs.marketingWhatsapp != null
-              ? row('whatsapp-logo', 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
+              ? row(<BrandIcon brand="whatsapp" size={28} />, 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
               : null}
           </SettingsGroup>
           {notifs.spaceOptOuts.length ? (
-            <SettingsGroup flat title="Spaces I unsubscribed from" style={styles.group}>
+            <SettingsGroup title="Spaces I unsubscribed from" style={[styles.group, styles.next]}>
               {notifs.spaceOptOuts.map((sp) => (
                 <SettingsRow
                   key={sp.spaceId}
@@ -343,7 +345,7 @@ export default function NotificationSettingsScreen() {
         </Section>
 
         <Section title="Quiet hours" style={styles.section}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup plain style={styles.group}>
             {row('moon', 'Quiet hours', quietOn, () =>
               commit(quietOn ? { quietHoursStart: null, quietHoursEnd: null } : QUIET_DEFAULT),
             )}
@@ -367,7 +369,7 @@ export default function NotificationSettingsScreen() {
         </Section>
 
         <Section title="Email" style={styles.section}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
           </SettingsGroup>
         </Section>
@@ -388,6 +390,9 @@ const styles = StyleSheet.create({
   cells: { flexDirection: 'row', alignItems: 'center' },
   cell: { width: 64, alignItems: 'center', textAlign: 'center' },
   note: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER, marginBottom: spacing[2] },
+  // Inset by the card's row padding so the labels sit over the switches.
+  // A second group inside one Section: SettingsGroup's own gap, which styles.group zeroes.
+  next: { marginTop: spacing[8] },
+  gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER + spacing[4], marginBottom: spacing[2] },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

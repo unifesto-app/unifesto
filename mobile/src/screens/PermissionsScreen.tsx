@@ -119,7 +119,7 @@ export default function PermissionsScreen() {
   const pending = statuses ? PERMISSIONS.filter((p) => statuses[p.key] !== 'granted') : [];
   const allowed = statuses ? PERMISSIONS.filter((p) => statuses[p.key] === 'granted') : [];
 
-  // One row of a flat group: same icon column as SettingsRow, so the rows line up.
+  // One row of a card group: same padding and icon column as SettingsRow, so the rows line up.
   const card = (perm: Perm) => {
     const status = statuses?.[perm.key] ?? 'undetermined';
     const granted = status === 'granted';
@@ -178,7 +178,7 @@ export default function PermissionsScreen() {
           </View>
         ) : (
           <Section title="Needs a look" style={styles.firstSection}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {pending.map(card)}
               {allowed.length === 0 ? openSettings : null}
             </SettingsGroup>
@@ -187,7 +187,7 @@ export default function PermissionsScreen() {
 
         {allowed.length > 0 ? (
           <Section title="Allowed" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {allowed.map(card)}
               {openSettings}
             </SettingsGroup>
@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
+    paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     minHeight: 64,
   },

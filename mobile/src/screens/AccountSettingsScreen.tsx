@@ -10,6 +10,7 @@ import { setPrimaryIdentity, removeIdentity } from '../lib/api/auth';
 import { cancelAccountDeletion, deleteAccount } from '../lib/api/profile';
 import Skeleton from '../components/Skeleton';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import BrandIcon from '../components/profile/BrandIcon';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import AuthButton from '../components/auth/AuthButton';
@@ -24,10 +25,11 @@ const ICON = 28;
 
 type IconName = GlyphName;
 
-const PROVIDER: Record<AuthAPI.UserIdentity['provider'], { label: string; icon: IconName }> = {
-  GOOGLE: { label: 'Google', icon: 'google-logo' },
-  APPLE: { label: 'Apple', icon: 'apple-logo' },
-  EMAIL: { label: 'Email', icon: 'envelope-simple' },
+/** Google and Apple show their real marks (BrandIcon); Email is a plain envelope. */
+const PROVIDER: Record<AuthAPI.UserIdentity['provider'], { label: string; mark: (size: number, color: string) => React.ReactNode }> = {
+  GOOGLE: { label: 'Google', mark: (size) => <BrandIcon brand="google" size={size} /> },
+  APPLE: { label: 'Apple', mark: (size) => <BrandIcon brand="apple" size={size} /> },
+  EMAIL: { label: 'Email', mark: (size, color) => <UnGlyph name="envelope-simple" size={size} color={color} /> },
 };
 
 /** "+919876543210" → "+91 98765 43210"; anything else is shown as-is. */
@@ -267,7 +269,7 @@ export default function AccountSettingsScreen() {
         ) : null}
 
         <Section title="My details" style={styles.firstSection}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             <SettingsRow icon={unicon('user')} label="Name" value={profile?.fullName || 'Not set'} onPress={() => router.push('/edit-profile')} />
             <SettingsRow
               icon={unicon('at')}
@@ -281,7 +283,7 @@ export default function AccountSettingsScreen() {
         </Section>
 
         <Section title="Sign-in methods" style={styles.section}>
-          <SettingsGroup flat style={styles.group}>
+          <SettingsGroup style={styles.group}>
             {groups.length === 0 ? (
               <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
             ) : (
@@ -298,11 +300,11 @@ export default function AccountSettingsScreen() {
                 const icon =
                   group.identities.length > 1 ? (
                     <View style={styles.iconPair}>
-                      <UnGlyph name={PROVIDER[first.provider].icon} size={20} color={c.text} />
-                      <UnGlyph name={PROVIDER[group.identities[1].provider].icon} size={16} color={c.text} />
+                      {PROVIDER[first.provider].mark(20, c.text)}
+                      {PROVIDER[group.identities[1].provider].mark(16, c.text)}
                     </View>
                   ) : (
-                    unicon(PROVIDER[first.provider].icon)
+                    PROVIDER[first.provider].mark(ICON, c.text)
                   );
 
                 const trailing = managing ? (
@@ -353,7 +355,7 @@ export default function AccountSettingsScreen() {
 
         {passkeys ? (
           <Section title="Passkeys" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {passkeys.length === 0 ? (
                 <SettingsRow icon={unicon('lock-key')} label="No passkeys yet" />
               ) : (
@@ -378,7 +380,7 @@ export default function AccountSettingsScreen() {
 
         {devices?.length ? (
           <Section title="Linked devices" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               {devices.map((d) => (
                 <SettingsRow
                   key={d.id}
@@ -402,7 +404,7 @@ export default function AccountSettingsScreen() {
         {/* The 30-day grace period is spelled out in the confirm alert. */}
         {profile?.deletionScheduledFor ? null : (
           <Section title="Delete account" style={styles.section}>
-            <SettingsGroup flat style={styles.group}>
+            <SettingsGroup style={styles.group}>
               <SettingsRow icon={<Trash size={ICON} color={c.danger} />} label="Delete my account" danger onPress={handleDeleteAccount} />
             </SettingsGroup>
           </Section>

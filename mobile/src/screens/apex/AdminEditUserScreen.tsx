@@ -23,6 +23,7 @@ import {
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import BrandIcon from '../../components/profile/BrandIcon';
 
 /*
  * Platform admin edits someone else's profile (Apex parity). Photo changes
@@ -221,15 +222,16 @@ export default function AdminEditUserScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Links">
+          {/* Real marks for the three networks; a website has none, so it's a globe. */}
           {([
-            ['linkedin-logo', 'linkedinUrl', 'https://linkedin.com/in/…'],
-            ['instagram-logo', 'instagramUrl', 'https://instagram.com/…'],
-            ['github-logo', 'githubUrl', 'https://github.com/…'],
-            ['globe', 'websiteUrl', 'https://…'],
-          ] as const).map(([iconName, key, placeholder]) => (
+            [<BrandIcon brand="linkedin" size={ICON} />, 'linkedinUrl', 'https://linkedin.com/in/…'],
+            [<BrandIcon brand="instagram" size={ICON} />, 'instagramUrl', 'https://instagram.com/…'],
+            [<BrandIcon brand="github" size={ICON} />, 'githubUrl', 'https://github.com/…'],
+            [unicon('globe'), 'websiteUrl', 'https://…'],
+          ] as const).map(([mark, key, placeholder]) => (
             <FormRow
               key={key}
-              icon={unicon(iconName)}
+              icon={mark}
               value={fields[key]}
               onChangeText={set(key)}
               placeholder={placeholder}

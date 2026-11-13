@@ -44,7 +44,7 @@ const initials = (name: string) =>
     .toUpperCase() || '·';
 
 /**
- * Profile › Edit profile. A live preview of my identity as View profile shows it (photo,
+ * Profile › Edit profile. A live preview of the Profile tab's identity (photo,
  * name, handle, centred on the page) on top, then the fields in the order registration cares about:
  * the basics it requires, the optional bio, then links. Save springs up from
  * the bottom only when something changed (logic lives in useEditProfile).
@@ -110,7 +110,7 @@ export default function EditProfileScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        {/* Live preview: what View profile will show */}
+        {/* Live preview: what the Profile tab will show */}
         <Pressable
           onPress={p.pickAvatar}
           accessibilityRole="button"
@@ -245,7 +245,7 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  // Straight on the page and centred, as View profile shows it.
+  // Straight on the page and centred, as the Profile tab shows it.
   identity: { alignItems: 'center', marginHorizontal: GUTTER, marginTop: spacing[4] },
   avatar: {
     width: AVATAR,

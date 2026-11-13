@@ -122,7 +122,8 @@ export function roleOf(space: Space): string | null {
 }
 
 /** One of my spaces as a row on the page: 1:1 logo, name, my role, place · members · events, parent. */
-export function SpaceRow({ space, parent, onPress }: { space: Space; parent?: string | null; onPress: () => void }) {
+/** `inCard`: the row sits in a card group and takes its side padding (on the page it has none). */
+export function SpaceRow({ space, parent, inCard, onPress }: { space: Space; parent?: string | null; inCard?: boolean; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
   const logo = logoOr(defaults, space.id, spaceLogo(space));
@@ -142,7 +143,7 @@ export function SpaceRow({ space, parent, onPress }: { space: Space; parent?: st
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[space.name, role, meta].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+      style={({ pressed }) => [styles.row, inCard && styles.rowInCard, pressed && { opacity: 0.6 }]}
     >
       {logo ? (
         <Image source={{ uri: logo }} style={[styles.rowLogo, { backgroundColor: c.card }]} contentFit="cover" />
@@ -162,9 +163,9 @@ export function SpaceRow({ space, parent, onPress }: { space: Space; parent?: st
   );
 }
 
-export function SpaceRowSkeleton() {
+export function SpaceRowSkeleton({ inCard }: { inCard?: boolean }) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, inCard && styles.rowInCard]}>
       <Skeleton width={ROW_LOGO} height={ROW_LOGO} borderRadius={borderRadius.md} />
       <View style={[styles.rowInfo, { gap: 8 }]}>
         <Skeleton width="70%" height={15} borderRadius={6} />
@@ -175,8 +176,8 @@ export function SpaceRowSkeleton() {
 }
 
 /**
- * "My spaces" on Home and a person's profile: the first few as rows on the
- * page with full hairlines, like Up next. The section's See all opens the rest.
+ * A person's spaces on View profile: the first few as rows on one card. The
+ * section's See all opens the rest.
  */
 export function MySpacesRows({
   spaces,
@@ -188,10 +189,10 @@ export function MySpacesRows({
   onPress: (space: Space) => void;
 }) {
   return (
-    <SettingsGroup flat style={styles.rows}>
+    <SettingsGroup plain style={styles.rows}>
       {loading && spaces.length === 0
-        ? [0, 1].map((i) => <SpaceRowSkeleton key={i} />)
-        : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} onPress={() => onPress(s)} />)}
+        ? [0, 1].map((i) => <SpaceRowSkeleton key={i} inCard />)
+        : spaces.slice(0, HOME_SPACES).map((s) => <SpaceRow key={s.id} space={s} inCard onPress={() => onPress(s)} />)}
     </SettingsGroup>
   );
 }
@@ -220,6 +221,7 @@ const styles = StyleSheet.create({
   rows: { marginTop: 0, marginHorizontal: GUTTER },
   // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
+  rowInCard: { paddingHorizontal: spacing[4] },
   rowLogo: { width: ROW_LOGO, height: ROW_LOGO, borderRadius: borderRadius.md, overflow: 'hidden' },
   rowInfo: { flex: 1, gap: 3 },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },

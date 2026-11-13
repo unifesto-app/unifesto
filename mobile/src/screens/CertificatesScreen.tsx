@@ -112,7 +112,7 @@ export default function CertificatesScreen() {
   ) : (
     <>
       {locked.length ? (
-        <SettingsGroup flat title="Waiting for my feedback" style={[styles.group, styles.first]}>
+        <SettingsGroup title="Waiting for my feedback" style={[styles.group, styles.first]}>
           {locked.map((cert) => (
             <SettingsRow
               key={cert.id}
@@ -133,7 +133,7 @@ export default function CertificatesScreen() {
         </View>
       ) : null}
       {years.map(([year, certs]) => (
-        <SettingsGroup key={year} flat title={String(year)} style={styles.group}>
+        <SettingsGroup key={year} plain title={String(year)} style={styles.group}>
           {certs.map((cert) => <CertificateRow key={cert.id} cert={cert} />)}
         </SettingsGroup>
       ))}
@@ -280,8 +280,8 @@ const styles = StyleSheet.create({
   codeLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   codeValue: { marginTop: 2, fontSize: typography.fontSize.base, letterSpacing: 0.5, ...cosmosFont.figure },
   copy: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  // Rows sit on the page: no side padding, SettingsGroup draws the full hairlines.
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
+  // Rows sit on the group's card: its side padding, SettingsGroup draws the hairlines.
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
   thumb: { width: THUMB_W, borderRadius: borderRadius.md, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 2 },
   rowTitle: { fontSize: typography.fontSize.base, lineHeight: 21, ...cosmosFont.strong },

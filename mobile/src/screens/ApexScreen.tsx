@@ -37,7 +37,6 @@ import {
   Tray,
   Users,
   Wallet,
-  WhatsappLogo,
   type Icon,
 } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
@@ -76,12 +75,16 @@ import { column, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import useContentWidth from '../hooks/useContentWidth';
+import BrandIcon from '../components/profile/BrandIcon';
 
 const GUTTER = spacing[6];
 const GAP = spacing[3];
 /** One inner padding for every card and tile, so edges line up across the page. */
 const PAD = spacing[4];
 const ICON = 20;
+
+/** The WhatsApp inbox tile shows WhatsApp's real mark, sized like the other tool glyphs. */
+const WhatsappMark: Icon = ({ size }) => <BrandIcon brand="whatsapp" size={Number(size ?? ICON)} />;
 
 /** Things that can be waiting on me; each maps to a tool below. */
 type CountKey = 'requests' | 'reports' | 'support' | 'whatsapp' | 'payouts' | 'refunds' | 'bankAccounts';
@@ -112,7 +115,7 @@ const SECTIONS: { title: string; tools: Tool[] }[] = [
       { label: 'Requests', icon: Tray, to: '/apex/requests', count: 'requests', keywords: 'approve queue ownership white label sub-space free add' },
       { label: 'Reported content', icon: Flag, to: '/apex/reports', count: 'reports', short: 'Reports', keywords: 'moderation abuse' },
       { label: 'Support', icon: Lifebuoy, to: '/apex/support', count: 'support', keywords: 'tickets help inbox' },
-      { label: 'WhatsApp inbox', icon: WhatsappLogo, to: '/apex/whatsapp', count: 'whatsapp', short: 'WhatsApp', keywords: 'chat messages reply' },
+      { label: 'WhatsApp inbox', icon: WhatsappMark, to: '/apex/whatsapp', count: 'whatsapp', short: 'WhatsApp', keywords: 'chat messages reply' },
     ],
   },
   {

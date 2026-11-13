@@ -24,7 +24,8 @@ interface IdentityHeaderProps {
   avatarUrl?: string | null;
   bio?: string | null;
   memberSince?: string | null;
-  stats: IdentityStat[];
+  /** My numbers in a hairline band (View profile); omit for none (the Profile tab). */
+  stats?: IdentityStat[];
   /** Under the bio, e.g. the person's links on View profile. */
   links?: React.ReactNode;
   onEdit: () => void;
@@ -36,7 +37,7 @@ const AVATAR = 88;
 /** Past this Dynamic Type scale the side-by-side buttons would truncate: stack them. */
 const LARGE_TEXT = 1.3;
 
-export const initials = (name: string) =>
+const initials = (name: string) =>
   name
     .split(' ')
     .filter(Boolean)
@@ -46,9 +47,10 @@ export const initials = (name: string) =>
     .toUpperCase();
 
 /**
- * The top of View profile, straight on the page (no card): avatar, my name
- * (Hanken SemiBold; names are never display), handle and bio centred, two
- * outline buttons, then my numbers in a band between full hairlines.
+ * The top of the Profile tab and View profile, straight on the page (no card):
+ * avatar, my name (Hanken SemiBold; names are never display), handle and bio
+ * centred, two outline buttons, then (View profile only) my numbers in a band
+ * between full hairlines.
  */
 export default function IdentityHeader({ name, username, avatarUrl, bio, memberSince, stats, links, onEdit, onViewPublic }: IdentityHeaderProps) {
   const c = useCosmos();
@@ -86,6 +88,7 @@ export default function IdentityHeader({ name, username, avatarUrl, bio, memberS
         ) : null}
       </View>
 
+      {stats?.length ? (
       <View style={[styles.stats, { borderColor: c.border }]}>
         {stats.map((s) => (
           <PressableScale
@@ -107,11 +110,13 @@ export default function IdentityHeader({ name, username, avatarUrl, bio, memberS
           </PressableScale>
         ))}
       </View>
+      ) : null}
     </View>
   );
 }
 
-export function IdentityHeaderSkeleton() {
+/** `stats={false}` drops the numbers band, for the Profile tab. */
+export function IdentityHeaderSkeleton({ stats = true }: { stats?: boolean }) {
   const c = useCosmos();
   return (
     <View accessible accessibilityLabel="Loading profile">
@@ -120,6 +125,7 @@ export function IdentityHeaderSkeleton() {
         <Skeleton width={160} height={20} borderRadius={6} style={{ marginTop: spacing[2] }} />
         <Skeleton width={120} height={14} borderRadius={6} />
       </View>
+      {stats ? (
       <View style={[styles.stats, { borderColor: c.border }]}>
         {[0, 1, 2].map((i) => (
           <View key={i} style={styles.stat}>
@@ -128,6 +134,7 @@ export function IdentityHeaderSkeleton() {
           </View>
         ))}
       </View>
+      ) : null}
     </View>
   );
 }

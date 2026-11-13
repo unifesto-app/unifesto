@@ -19,7 +19,7 @@ export const placeOf = (e: Event) => e.venueName || e.city || (e.type === 'ONLIN
 
 /**
  * Compact event card: 4:3 thumb, title, host, when · where, the price in sky, heart. `past` fades it and drops the price.
- * `flat` drops the card for a row on the page (the list draws the hairlines), as on Saved.
+ * `flat` drops the card for a row on the page (the list draws the hairlines).
  */
 export default function EventListCard({ event, past = false, flat = false, onPress }: { event: Event; past?: boolean; flat?: boolean; onPress: () => void }) {
   const c = useCosmos();

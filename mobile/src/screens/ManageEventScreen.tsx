@@ -29,7 +29,6 @@ import {
   Trophy,
   UsersThree,
   Wallet,
-  WhatsappLogo,
 } from '@unifesto/unicon/react-native';
 import { useManageEvent } from '../hooks/useManageEvent';
 import ManageStats from '../components/manage/ManageStats';
@@ -43,6 +42,7 @@ import { useEventCover } from '../lib/defaultImages';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import BrandIcon from '../components/profile/BrandIcon';
 
 type Row = React.ReactElement | null | false;
 
@@ -267,7 +267,7 @@ export default function ManageEventScreen() {
         hosts && <SettingsRow key="qa" icon={icon(ChatsCircle, c.mint)} label="Live Q&A" onPress={() => router.push(`/manage/event/${e.id}/questions`)} />,
         hosts && <SettingsRow key="quizzes" icon={icon(Timer, c.mint)} label="Live quizzes" onPress={() => router.push(`/manage/event/${e.id}/quizzes`)} />,
         hosts && (
-          <SettingsRow key="whatsapp" icon={icon(WhatsappLogo, c.mint)} label="WhatsApp group" onPress={() => router.push(`/manage/event/${e.id}/whatsapp`)} />
+          <SettingsRow key="whatsapp" icon={<BrandIcon brand="whatsapp" size={ICON} />} label="WhatsApp group" onPress={() => router.push(`/manage/event/${e.id}/whatsapp`)} />
         ),
       ])}
 
