@@ -162,6 +162,10 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
 - **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
   Glyphs take `c.text`, `c.muted` or the card's accent.
+- **Profile tab exception** (owner, 13 Nov 2026, picked after mockups): its rows use
+  sonnycandra's "Basic UI" gradient outline icons from Flaticon (`ProfileIcon`, PNGs in
+  `assets/icons/profile`), shown in their own colours, never tinted. Free licence: the credit line
+  on About stays while they ship. Every other screen keeps Unicon.
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
 - **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.

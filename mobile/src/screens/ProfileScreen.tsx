@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
+import { UnGlyph } from '@unifesto/unicon/react-native';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ import BrandWordmark from '../components/BrandWordmark';
 import { GUTTER } from '../components/home/Section';
 import IdentityHeader, { IdentityHeaderSkeleton } from '../components/profile/IdentityHeader';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import ProfileIcon, { type ProfileIconName } from '../components/profile/ProfileIcon';
 import BrandIcon, { type Brand } from '../components/profile/BrandIcon';
 import AuthButton from '../components/auth/AuthButton';
 import { column, spacing } from '../theme/spacing';
@@ -24,8 +25,6 @@ import { typography } from '../theme/typography';
 import { cosmosFont, displayTracking, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import { openWhatsNew } from '../components/WhatsNewSheet';
-
-const ICON = 28;
 
 const openExternal = (url: string, name: string) =>
   Linking.openURL(url).catch(() => AppAlert.alert('Error', `Unable to open ${name}`));
@@ -41,7 +40,7 @@ const SOCIALS: { brand: Brand; name: string; url: string }[] = [
 interface Nudge {
   title: string;
   to: Href;
-  icon: GlyphName;
+  icon: ProfileIconName;
 }
 
 /**
@@ -50,8 +49,8 @@ interface Nudge {
  * chance to ask for what makes the public profile worth opening.
  */
 function profileNudge(profile: AuthAPI.User): Nudge | null {
-  if (!profile.avatarUrl) return { title: 'Add a photo', to: '/edit-profile', icon: 'image-square' };
-  if (!profile.bio) return { title: 'Write a short bio', to: '/edit-profile', icon: 'user' };
+  if (!profile.avatarUrl) return { title: 'Add a photo', to: '/edit-profile', icon: 'camera' };
+  if (!profile.bio) return { title: 'Write a short bio', to: '/edit-profile', icon: 'pencil' };
   return null;
 }
 
@@ -109,9 +108,7 @@ export default function ProfileScreen() {
   const version = Application.nativeApplicationVersion;
   // A downloaded OTA waiting for a restart: point people at About to apply it.
   const { isUpdatePending } = Updates.useUpdates();
-  // Glyphs carry the card accent of their job (sky tickets and events, mint
-  // done, ivory the gold star); settings chrome stays monochrome.
-  const icon = (name: GlyphName, color: string = c.text) => <UnGlyph name={name} size={ICON} color={color} />;
+  // Row icons are sonnycandra's gradient outline set (ProfileIcon), shown as drawn.
 
   const header = (
     <View style={[styles.header, { paddingTop: topInset + spacing[4] }]}>
@@ -122,15 +119,15 @@ export default function ProfileScreen() {
   // Help is the same signed in or out.
   const help = (
     <SettingsGroup title="Help and more" style={styles.group}>
-      <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
-      <SettingsRow icon={icon('sparkle', c.sky)} label="What’s new" onPress={openWhatsNew} />
+      <SettingsRow icon={<ProfileIcon name="help" />} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
+      <SettingsRow icon={<ProfileIcon name="light" />} label="What’s new" onPress={openWhatsNew} />
       <SettingsRow
-        icon={icon('arrows-clockwise', isUpdatePending ? c.mint : c.text)}
+        icon={<ProfileIcon name="information" />}
         label="About and updates"
         value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined}
         onPress={() => router.push('/about')}
       />
-      <SettingsRow icon={icon('star', c.ivory)} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
+      <SettingsRow icon={<ProfileIcon name="star" />} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
     </SettingsGroup>
   );
 
@@ -218,23 +215,23 @@ export default function ProfileScreen() {
 
         {nudge ? (
           <SettingsGroup style={[styles.group, styles.first]}>
-            <SettingsRow icon={icon(nudge.icon, c.sky)} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
+            <SettingsRow icon={<ProfileIcon name={nudge.icon} />} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
           </SettingsGroup>
         ) : null}
 
         {/* Tickets has its own tab, so it isn't repeated here. */}
         <SettingsGroup title="My stuff" style={styles.group}>
-          <SettingsRow icon={icon('tag', c.sky)} label="Saved" onPress={() => router.push('/favorites')} />
-          <SettingsRow icon={icon('certificate', c.mint)} label="Certificates" onPress={() => router.push('/certificates')} />
-          <SettingsRow icon={icon('users-three', c.sky)} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
+          <SettingsRow icon={<ProfileIcon name="bookmark" />} label="Saved" onPress={() => router.push('/favorites')} />
+          <SettingsRow icon={<ProfileIcon name="file" />} label="Certificates" onPress={() => router.push('/certificates')} />
+          <SettingsRow icon={<ProfileIcon name="home" />} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
         <SettingsGroup title="Settings" style={styles.group}>
-          <SettingsRow icon={icon('user-circle')} label="Account" onPress={() => router.push('/account')} />
-          <SettingsRow icon={icon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
-          <SettingsRow icon={icon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
+          <SettingsRow icon={<ProfileIcon name="profile" />} label="Account" onPress={() => router.push('/account')} />
+          <SettingsRow icon={<ProfileIcon name="notification" />} label="Notifications" onPress={() => router.push('/notification-settings')} />
+          <SettingsRow icon={<ProfileIcon name="toggle" />} label="Permissions" onPress={() => router.push('/permissions')} />
           <SettingsRow
-            icon={icon('circle-half')}
+            icon={<ProfileIcon name="brightness" />}
             label="Appearance"
             value={theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
             onPress={() => router.push('/appearance')}
@@ -245,23 +242,23 @@ export default function ProfileScreen() {
             people who already run a space can start another. */}
         {/* Starting something is an action, so those rows close the list in the sky accent. */}
         <SettingsGroup title="Hosting" style={styles.group}>
-          {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
+          {hosts ? <SettingsRow icon={<ProfileIcon name="layer" />} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
           <SettingsRow
-            icon={icon('plus-circle', c.sky)}
+            icon={<ProfileIcon name="plus" />}
             label={hosts ? 'Start another space' : 'Start a space'}
             accent={c.sky}
             onPress={() => router.push('/space-request')}
           />
           {/* D7: no space yet? One event is enough to start. */}
           {!hosts ? (
-            <SettingsRow icon={icon('calendar-plus', c.sky)} label="Host one event" accent={c.sky} onPress={() => router.push('/event-request')} />
+            <SettingsRow icon={<ProfileIcon name="clock" />} label="Host one event" accent={c.sky} onPress={() => router.push('/event-request')} />
           ) : null}
         </SettingsGroup>
 
         {help}
 
         <SettingsGroup style={styles.group}>
-          <SettingsRow icon={icon('sign-out', c.danger)} label="Sign out" danger onPress={handleLogout} />
+          <SettingsRow icon={<ProfileIcon name="logout" />} label="Sign out" danger onPress={handleLogout} />
         </SettingsGroup>
 
         {footer}
