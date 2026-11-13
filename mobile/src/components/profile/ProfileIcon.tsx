@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from 'expo-image';
+import { Image } from 'react-native';
 import { useCosmos } from '../../theme/cosmos';
 
 /**
@@ -43,9 +43,8 @@ export default function ProfileIcon({ name, color, size = PROFILE_ICON_SIZE }: {
   return (
     <Image
       source={ICONS[name]}
-      tintColor={color ?? c.text}
-      style={{ width: size, height: size }}
-      contentFit="contain"
+      style={{ width: size, height: size, tintColor: color ?? c.text }}
+      resizeMode="contain"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     />

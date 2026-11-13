@@ -1,6 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, View } from 'react-native';
 import { UnGlyph as UniconGlyph, type GlyphName, type Icon, type IconProps } from '@unifesto/unicon/react-native';
 import { useCosmos } from '../../theme/cosmos';
 
@@ -10,11 +9,11 @@ export type { GlyphName, Icon, IconProps, IconWeight } from '@unifesto/unicon/re
  * The app's icons: sonnycandra's gradient outline set from Flaticon (owner,
  * 13 Nov 2026), 128px PNGs in assets/icons/app, painted one colour with
  * `tintColor`. Same names and props as @unifesto/unicon, so screens import from
- * here instead. Outline only: `weight` (fill, duotone) is ignored by the
- * owner's choice. Glyphs with no sonnycandra match fall back to Unicon.
- * Free Flaticon licence: the credit on About must stay while these ship.
- * Generated from the approved mapping; add a glyph by dropping its PNG in
- * assets/icons/app and a line in ASSETS.
+ * here instead. Outline only (owner's choice): `weight` is ignored, and the few
+ * glyphs with no sonnycandra match render Unicon at regular weight. Free
+ * Flaticon licence: the credit on About must stay while these ship. Built from
+ * the mapping the owner approved; add a glyph by dropping its 128px PNG in
+ * assets/icons/app and a line in ASSETS (and an export below if it's named).
  */
 const ASSETS: Partial<Record<GlyphName, number>> = {
   'arrow-circle-up': require('../../../assets/icons/app/arrow-circle-up.png'),
@@ -46,7 +45,6 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'chats-circle': require('../../../assets/icons/app/chats-circle.png'),
   'check': require('../../../assets/icons/app/check.png'),
   'check-circle': require('../../../assets/icons/app/check-circle.png'),
-  'clock': require('../../../assets/icons/app/clock.png'),
   'clock-counter-clockwise': require('../../../assets/icons/app/clock-counter-clockwise.png'),
   'cloud-arrow-down': require('../../../assets/icons/app/cloud-arrow-down.png'),
   'cloud-arrow-up': require('../../../assets/icons/app/cloud-arrow-up.png'),
@@ -83,6 +81,7 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
   'lightbulb': require('../../../assets/icons/app/lightbulb.png'),
   'lightning': require('../../../assets/icons/app/lightning.png'),
   'link': require('../../../assets/icons/app/link.png'),
+  'link-break': require('../../../assets/icons/app/link-break.png'),
   'link-simple': require('../../../assets/icons/app/link-simple.png'),
   'list-bullets': require('../../../assets/icons/app/list-bullets.png'),
   'list-checks': require('../../../assets/icons/app/list-checks.png'),
@@ -152,19 +151,22 @@ const ASSETS: Partial<Record<GlyphName, number>> = {
 /** The PNGs fill more of their box than Unicon's glyphs; this keeps the old optical size. */
 const SCALE = 0.8;
 
-function Png({ source, size = 24, color, mirrored, style, accessibilityLabel }: IconProps & { source: number }) {
+// Core Image, not expo-image: bundled assets draw on the first frame, like the SVGs did.
+// SVG-only props (weight, duotone*) are dropped; anything else (testID, pointerEvents) reaches the box.
+function Png({ source, size = 24, color, mirrored, style, accessibilityLabel, weight, duotoneColor, duotoneOpacity, ...rest }: IconProps & { source: number }) {
   const c = useCosmos();
   const box = Number(size) || 24;
   const inner = Math.round(box * SCALE);
   return (
     <View
-      style={[{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }, mirrored && { transform: [{ scaleX: -1 }] }, style]}
+      {...rest}
+      style={[{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }, style, mirrored && { transform: [{ scaleX: -1 }] }]}
       accessible={!!accessibilityLabel}
       accessibilityLabel={accessibilityLabel}
       accessibilityElementsHidden={!accessibilityLabel}
       importantForAccessibility={accessibilityLabel ? 'yes' : 'no-hide-descendants'}
     >
-      <Image source={source} tintColor={color ?? c.text} style={{ width: inner, height: inner }} contentFit="contain" />
+      <Image source={source} style={{ width: inner, height: inner, tintColor: color ?? c.text }} resizeMode="contain" />
     </View>
   );
 }
@@ -172,7 +174,7 @@ function Png({ source, size = 24, color, mirrored, style, accessibilityLabel }: 
 /** Any glyph by name: the sonnycandra PNG when there is one, else Unicon. */
 export function UnGlyph({ name, ...props }: IconProps & { name: GlyphName }) {
   const source = ASSETS[name];
-  return source ? <Png source={source} {...props} /> : <UniconGlyph name={name} {...props} />;
+  return source ? <Png source={source} {...props} /> : <UniconGlyph name={name} {...props} weight="regular" />;
 }
 
 const glyph = (name: GlyphName): Icon => {
@@ -309,5 +311,15 @@ export const SignOut = glyph('sign-out');
 export const Terminal = glyph('terminal');
 export const Users = glyph('users');
 
-// No sonnycandra match: still Unicon.
-export { At, Cards, Circle, CircleDashed, CircleIcon, Confetti, Gavel, LinkBreak, TreeStructure, UserMinus, WifiSlash } from '@unifesto/unicon/react-native';
+// No sonnycandra match: Unicon, still outline (regular weight).
+export const At = glyph('at');
+export const Cards = glyph('cards');
+export const Circle = glyph('circle');
+export const CircleDashed = glyph('circle-dashed');
+export const CircleIcon = glyph('circle');
+export const Confetti = glyph('confetti');
+export const Gavel = glyph('gavel');
+export const LinkBreak = glyph('link-break');
+export const TreeStructure = glyph('tree-structure');
+export const UserMinus = glyph('user-minus');
+export const WifiSlash = glyph('wifi-slash');
