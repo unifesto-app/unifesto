@@ -138,12 +138,11 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   Instagram, LinkedIn, X, YouTube) is `BrandIcon`, never a Unicon `*-logo` look-alike glyph.
 - **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
   muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
-- **Home's bar** (owner, 13 Nov 2026, District-style): the wordmark's "u" (the splash letter) on
-  the left; search and my bell as bare glyphs on the right (search opens the search sheet, so it
-  needs no field). One row, pinned as Home's sticky header. It sits on the plain
-  ground at the top and turns glass once content slides under it. No filter menu on Home (the
-  Events screen keeps its own). The city lives only in the headline under it, "What's on in
-  Hyderabad?", which scrolls away.
+- **Home's bar** (owner, 13–14 Nov 2026, District-style): the full wordmark on the left; search
+  and my bell as bare glyphs on the right (search opens the search sheet, so it needs no field).
+  One row on the plain ground that scrolls away with the page: not pinned, no glass. No filter
+  menu on Home (the Events screen keeps its own). The city lives only in the headline under it,
+  "What's on in Hyderabad?".
 - **Home's order** (owner, 13 Nov 2026): the bar and headline, then **now**, the spotlight, the space list
   (from my spaces, else the featured space, else an Explore spaces row), Find your vibe,
   Happening near you, My shortlist, then Host / Manage.
@@ -164,7 +163,7 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   hackathons and the Space. The key figure sits on it large, in the accent. Content sits straight
   on the shade; no glass inside. By night the base sits at card level with a hint of the tone and
   the shapes run at 8%; by day the pastels run at 85% (blue 70%).
-- **Glass** only on floating chrome (header buttons, Home's pinned bar once scrolled, segmented tabs over content, sheets, alerts,
+- **Glass** only on floating chrome (header buttons, segmented tabs over content, sheets, alerts,
   notices, bottom bars, camera overlays). Frosted and untinted. Never on content cards or fields.
 
 ## 6. Components

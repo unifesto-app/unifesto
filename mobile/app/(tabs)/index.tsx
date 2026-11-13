@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { Buildings, IdentificationCard, QrCode, ShieldCheck, Sparkle, Ticket, Trophy, UserCircle, UsersThree } from '../../src/components/ui/icons';
@@ -9,7 +9,7 @@ import { useCosmos } from '../../src/theme/cosmos';
 import { composeHome, useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
-import { HOME_BAR_H, HomeBar, HomeHeadline } from '../../src/components/home/HomeHeader';
+import { HomeBar, HomeHeadline } from '../../src/components/home/HomeHeader';
 import { GUTTER, Section } from '../../src/components/home/Section';
 import DayRows, { ActionRow, EventHero, EventHeroSkeleton, EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
@@ -37,8 +37,6 @@ export default function HomeTab() {
   const myInvites = useMyInvites();
   const unread = useUnreadNotifications();
   const search = useHomeSearch();
-  // Content is under the pinned bar, so it turns glass.
-  const [scrolled, setScrolled] = React.useState(false);
   // Live check-ins and the Space / Apex rows, shown only to people who have those tabs.
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
@@ -202,7 +200,6 @@ export default function HomeTab() {
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
   // top inset on top of the header's own spacing (see mobile-tab-top-spacing).
-  // The bar is the ScrollView's sticky first child, so that stays true.
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CosmosBackdrop horizon={false} />
@@ -211,10 +208,6 @@ export default function HomeTab() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[0]}
-        // Re-renders only when content starts or stops sliding under the bar.
-        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 1)}
-        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -226,9 +219,7 @@ export default function HomeTab() {
             }}
             tintColor={c.text}
             colors={[c.text]}
-            // Android draws the spinner over content, so it clears the bar; iOS draws it
-            // behind content, where the bar moves down with the pull.
-            progressViewOffset={Platform.OS === 'android' ? topInset + HOME_BAR_H : topInset}
+            progressViewOffset={topInset}
           />
         }
       >
@@ -237,7 +228,6 @@ export default function HomeTab() {
           unread={unread}
           onPressBell={() => router.push('/notifications')}
           onPressSearch={search.openSheet}
-          scrolled={scrolled}
         />
         <HomeHeadline
           city={city}

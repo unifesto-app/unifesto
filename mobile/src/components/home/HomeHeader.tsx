@@ -7,18 +7,15 @@ import type { LocationStatus } from '../../hooks/useHomeData';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
-import { CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import { GUTTER } from './Section';
 import PressableScale from '../ui/PressableScale';
 
-// The wordmark's own "u" (the splash letter), 96×72.
-const U_H = 24;
-const U_W = Math.round((U_H * 96) / 72);
+// Brand wordmark PNG is 2400×551.
+const MARK_W = 112;
+const MARK_H = Math.round((MARK_W * 551) / 2400);
 const ICON_BOX = 40;
 const BAR_ROW = 44;
 const BAR_PAD = spacing[2];
-/** The bar's height under the status bar, for the pull-to-refresh spinner. */
-export const HOME_BAR_H = BAR_PAD * 2 + BAR_ROW;
 
 interface HomeBarProps {
   /** Guests get no bell. */
@@ -27,33 +24,22 @@ interface HomeBarProps {
   unread?: number;
   onPressBell?: () => void;
   onPressSearch: () => void;
-  /** Content is under the bar: it turns glass. */
-  scrolled: boolean;
 }
 
 /**
- * Home's top bar, pinned like District's: the u, then search and my bell as
- * bare glyphs (search opens the search sheet, so it needs no field). It is
- * Home's sticky header, so it floats over the page once it scrolls and only
- * then turns glass (floating chrome); at the top it sits on the plain ground.
+ * Home's top bar: the wordmark, then search and my bell as bare glyphs (search
+ * opens the search sheet, so it needs no field). It scrolls away with the page.
  */
-export function HomeBar({ signedIn, unread = 0, onPressBell, onPressSearch, scrolled }: HomeBarProps) {
+export function HomeBar({ signedIn, unread = 0, onPressBell, onPressSearch }: HomeBarProps) {
   const c = useCosmos();
   const topInset = useStableTopInset();
 
   return (
     <View style={{ paddingTop: topInset + BAR_PAD, paddingBottom: BAR_PAD, paddingHorizontal: GUTTER }}>
-      {scrolled ? (
-        <CardSurfaceProvider kind="glass">
-          <CardBackdrop opaque style={{ borderRadius: 0 }} />
-        </CardSurfaceProvider>
-      ) : null}
       <View style={styles.bar}>
         <Image
-          source={
-            c.scheme === 'dark' ? require('../../../assets/brand/letters/silver-u.png') : require('../../../assets/brand/letters/ink-u.png')
-          }
-          style={{ width: U_W, height: U_H }}
+          source={c.scheme === 'dark' ? require('../../../assets/brand/wordmark-silver.png') : require('../../../assets/brand/wordmark-ink.png')}
+          style={{ width: MARK_W, height: MARK_H }}
           contentFit="contain"
           accessibilityLabel="Unifesto"
         />
