@@ -1214,3 +1214,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Mobile night cards are iOS grouped #1c1c1e (were #232327) (#670)
 - **2026-11-13** · Mobile Profile rows use sonnycandra's gradient outline icons (Flaticon, credited on About) (#671)
 - **2026-11-13** · Content tab: agenda am/pm buttons, time order everywhere, track or room for parallel sessions, multi-day day lines, speaker photo upload; Hosted by drops the event team (#673)
+- **2026-11-13** · Mobile app icons are sonnycandra's gradient outline set (Flaticon, credited on About), tinted by job; Profile rows in job accents (#672)
