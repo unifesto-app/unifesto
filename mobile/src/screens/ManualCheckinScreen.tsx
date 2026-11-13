@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, Vibration, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { UserFocus } from '@unifesto/unicon/react-native';
+import { UserFocus } from '../components/ui/icons';
 import { CheckinNetworkError, manualCheckin, searchAttendees, undoCheckin, type AttendeeSearchResult } from '../lib/api/checkin';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';

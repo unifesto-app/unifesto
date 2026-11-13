@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { UserPlus } from '@unifesto/unicon/react-native';
+import { UserPlus } from '../components/ui/icons';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import SearchField from '../components/manage/SearchField';
 import { useAuth } from '../context/AuthContext';

@@ -3,8 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { At, Camera, Trash } from '@unifesto/unicon/react-native';
-import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
+import { At, Camera, Trash } from '../../components/ui/icons';
+import { UnGlyph, type GlyphName } from '../../components/ui/icons';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';

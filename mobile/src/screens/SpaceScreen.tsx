@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, Gavel, Handshake, QrCode } from '@unifesto/unicon/react-native';
+import { ArrowUpRight, Gavel, Handshake, QrCode } from '../components/ui/icons';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useWorkspaceCards } from '../hooks/useWorkspaceCards';
 import { useStableTopInset } from '../components/CustomHeader';

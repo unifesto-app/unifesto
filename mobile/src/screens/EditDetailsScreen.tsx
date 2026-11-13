@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Lock } from '@unifesto/unicon/react-native';
+import { Lock } from '../components/ui/icons';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import SaveBar from '../components/manage/SaveBar';
 import { GUTTER } from '../components/home/Section';

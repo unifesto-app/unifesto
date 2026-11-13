@@ -15,7 +15,7 @@ import {
   SignOut,
   Trash,
   type Icon,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';

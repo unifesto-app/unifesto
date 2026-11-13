@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDown } from '@unifesto/unicon/react-native';
+import { CaretDown } from '../ui/icons';
 import { useTheme } from '../../context/ThemeContext';
 import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import type { RegisterMode } from '../../hooks/useEventDetail';

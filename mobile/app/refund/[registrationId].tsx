@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Check, CheckCircle, CircleDashed, Info, XCircle } from '@unifesto/unicon/react-native';
+import { Check, CheckCircle, CircleDashed, Info, XCircle } from '../../src/components/ui/icons';
 import Skeleton from '../../src/components/Skeleton';
 import CosmosScreen from '../../src/components/ui/CosmosScreen';
 import ShadeCard from '../../src/components/ui/ShadeCard';

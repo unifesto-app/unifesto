@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Star } from '@unifesto/unicon/react-native';
+import { Star } from '../ui/icons';
 import { rateTicket, type SupportTicket } from '../../lib/api/support';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';

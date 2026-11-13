@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle } from '@unifesto/unicon/react-native';
+import { CheckCircle } from '../ui/icons';
 import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { getPollFeed, votePoll, type FeedPoll } from '../../lib/api/polls';
 import { AppAlert } from '../ui/AppAlert';

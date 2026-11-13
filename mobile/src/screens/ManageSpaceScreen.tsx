@@ -17,7 +17,7 @@ import {
   UserPlus,
   TreeStructure,
   Wallet,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import { useManageSpace, type ManageTab } from '../hooks/useManageSpace';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { hostingRoleLabel } from '../lib/spaceSections';

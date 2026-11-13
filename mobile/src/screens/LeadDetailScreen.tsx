@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EnvelopeSimple, Phone, Trash } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple, Phone, Trash } from '../components/ui/icons';
 import {
   createLead,
   deleteLead,

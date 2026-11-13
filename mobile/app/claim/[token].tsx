@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User } from '@unifesto/unicon/react-native';
+import { CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User } from '../../src/components/ui/icons';
 import { useAuth } from '../../src/context/AuthContext';
 import useTopSpacing from '../../src/hooks/useTopSpacing';
 import Skeleton from '../../src/components/Skeleton';

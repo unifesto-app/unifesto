@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CaretRight, CheckCircle, CircleDashed, Lock } from '@unifesto/unicon/react-native';
+import { CaretRight, CheckCircle, CircleDashed, Lock } from '../components/ui/icons';
 import {
   getMyAssignments,
   MyAssignments,

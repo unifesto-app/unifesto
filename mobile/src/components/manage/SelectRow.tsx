@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDown, Check, MagnifyingGlass } from '@unifesto/unicon/react-native';
+import { CaretDown, Check, MagnifyingGlass } from '../ui/icons';
 import { sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, cosmosCardRadius, useCosmos } from '../../theme/cosmos';

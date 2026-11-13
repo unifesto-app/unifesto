@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
-import { Heart } from '@unifesto/unicon/react-native';
+import { Heart } from './ui/icons';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { useCosmos } from '../theme/cosmos';
@@ -61,7 +61,8 @@ export default function FavoriteButton({
       accessibilityState={{ selected: favorited }}
       style={style}
     >
-      <Heart size={size} weight={favorited ? 'fill' : 'regular'} color={favorited ? c.text : color ?? c.text} />
+      {/* Outline icons have no filled heart, so saved shows in sky (the Saved accent). */}
+      <Heart size={size} weight={favorited ? 'fill' : 'regular'} color={favorited ? c.sky : color ?? c.text} />
     </TouchableOpacity>
   );
 }

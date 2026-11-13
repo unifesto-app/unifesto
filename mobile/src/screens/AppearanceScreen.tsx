@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CheckCircle, Circle } from '@unifesto/unicon/react-native';
+import { CheckCircle, Circle } from '../components/ui/icons';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';

@@ -15,7 +15,7 @@ import {
   User,
   X,
   XCircle,
-} from '@unifesto/unicon/react-native';
+} from '../ui/icons';
 import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';
 import AuthField from '../auth/AuthField';

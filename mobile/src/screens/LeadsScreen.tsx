@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight, Export, Plus } from '@unifesto/unicon/react-native';
+import { CaretRight, Export, Plus } from '../components/ui/icons';
 import {
   getLeads,
   leadName,

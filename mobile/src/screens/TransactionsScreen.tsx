@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Check, Export } from '@unifesto/unicon/react-native';
+import { Check, Export } from '../components/ui/icons';
 import {
   downloadTransactionsExport,
   getTransactions,

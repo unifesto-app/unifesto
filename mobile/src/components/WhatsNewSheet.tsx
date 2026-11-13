@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { UnGlyph, X } from '@unifesto/unicon/react-native';
+import { UnGlyph, X } from './ui/icons';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { TopLayer } from './ui/TopLayer';
 import { SheetBackdrop } from './ui/CardSurface';

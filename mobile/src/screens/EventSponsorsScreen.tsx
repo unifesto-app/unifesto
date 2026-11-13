@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { Export, Plus } from '@unifesto/unicon/react-native';
+import { Export, Plus } from '../components/ui/icons';
 import {
   attachSponsor,
   detachSponsor,

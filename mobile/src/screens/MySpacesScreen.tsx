@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
+import { MagnifyingGlass, UsersThree, X } from '../components/ui/icons';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowCounterClockwise, LockSimple, WarningCircle } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, LockSimple, WarningCircle } from '../components/ui/icons';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup } from '../components/profile/SettingsGroup';

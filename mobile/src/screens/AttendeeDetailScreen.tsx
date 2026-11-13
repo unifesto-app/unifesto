@@ -2,7 +2,7 @@ import { isEmail } from '../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, ArrowsLeftRight, Check, EnvelopeSimple, PencilSimple, Phone, Plus, Receipt, XCircle } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, ArrowsLeftRight, Check, EnvelopeSimple, PencilSimple, Phone, Plus, Receipt, XCircle } from '../components/ui/icons';
 import { Avatar } from '../components/checkin/PersonRow';
 import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';

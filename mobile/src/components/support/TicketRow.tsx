@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CaretRight } from '@unifesto/unicon/react-native';
+import { CaretRight } from '../ui/icons';
 import { CATEGORY_LABEL, KIND_LABEL, STATUS_LABEL, type SupportTicket } from '../../lib/api/support';
 import { Badge, type BadgeTone } from '../ui/Badge';
 import Skeleton from '../Skeleton';

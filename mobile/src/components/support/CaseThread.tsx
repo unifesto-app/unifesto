@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { PaperPlaneRight } from '@unifesto/unicon/react-native';
+import { PaperPlaneRight } from '../ui/icons';
 import type { SupportMessage, SupportMessageSide } from '../../lib/api/support';
 import ChipPicker from '../manage/ChipPicker';
 import { CardBackdrop } from '../ui/CardSurface';

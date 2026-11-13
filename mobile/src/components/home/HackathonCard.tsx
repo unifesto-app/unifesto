@@ -9,7 +9,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { CaretRight, Trophy } from '@unifesto/unicon/react-native';
+import { CaretRight, Trophy } from '../ui/icons';
 import { getMyHackathon, type HackathonHub } from '../../lib/api/hackathon';
 import type { UpcomingTicket } from '../../hooks/useHomeData';
 import { spacing } from '../../theme/spacing';

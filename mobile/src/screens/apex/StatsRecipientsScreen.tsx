@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Phone, PlusCircle, X } from '@unifesto/unicon/react-native';
+import { Phone, PlusCircle, X } from '../../components/ui/icons';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';

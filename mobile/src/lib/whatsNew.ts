@@ -1,4 +1,4 @@
-import type { GlyphName } from '@unifesto/unicon/react-native';
+import type { GlyphName } from '../components/ui/icons';
 
 /**
  * In-app "What's new". The notes ship inside the JS bundle, so an OTA update

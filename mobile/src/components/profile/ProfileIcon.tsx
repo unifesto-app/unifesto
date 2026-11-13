@@ -1,10 +1,12 @@
 import React from 'react';
-import { Image } from 'expo-image';
+import { Image } from 'react-native';
+import { useCosmos } from '../../theme/cosmos';
 
 /**
  * Profile tab row icons: sonnycandra's "Basic UI" pack, gradient outline style
  * (flaticon.com/packs/basic-ui-17935685), 128px PNGs. Free Flaticon licence:
- * the credit line on About must stay while these ship.
+ * the credit line on About must stay while these ship. Recoloured at runtime to
+ * one theme colour each (owner, 13 Nov: job accents), so night and day follow.
  */
 const ICONS = {
   bookmark: require('../../../assets/icons/profile/bookmark.png'),
@@ -31,13 +33,18 @@ export type ProfileIconName = keyof typeof ICONS;
 /** One size for every row icon on the Profile tab. */
 export const PROFILE_ICON_SIZE = 22;
 
-/** Multi-colour artwork: shown as drawn, never tinted. Decorative; the row label names it. */
-export default function ProfileIcon({ name, size = PROFILE_ICON_SIZE }: { name: ProfileIconName; size?: number }) {
+/**
+ * One row icon in its job's accent (sky tickets and events, mint done, ivory the
+ * star, crimson sign out), or the text colour for plain settings. `tintColor`
+ * paints the outline in that colour. Decorative; the row label names it.
+ */
+export default function ProfileIcon({ name, color, size = PROFILE_ICON_SIZE }: { name: ProfileIconName; color?: string; size?: number }) {
+  const c = useCosmos();
   return (
     <Image
       source={ICONS[name]}
-      style={{ width: size, height: size }}
-      contentFit="contain"
+      style={{ width: size, height: size, tintColor: color ?? c.text }}
+      resizeMode="contain"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     />

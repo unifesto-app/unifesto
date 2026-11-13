@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDown, Check, MagnifyingGlass, Plus } from '@unifesto/unicon/react-native';
+import { CaretDown, Check, MagnifyingGlass, Plus } from '../ui/icons';
 import { borderRadius, sheet, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { SheetBackdrop } from '../ui/CardSurface';

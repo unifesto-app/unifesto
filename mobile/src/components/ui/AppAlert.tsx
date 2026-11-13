@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { WarningCircle } from '@unifesto/unicon/react-native';
+import { WarningCircle } from './icons';
 import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../../theme/cosmos';
 import { SHEET_MAX, spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';

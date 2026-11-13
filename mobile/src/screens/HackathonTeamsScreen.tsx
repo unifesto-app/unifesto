@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { DownloadSimple } from '@unifesto/unicon/react-native';
+import { DownloadSimple } from '../components/ui/icons';
 import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui';

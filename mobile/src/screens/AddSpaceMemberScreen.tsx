@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../components/ui/icons';
 import useTopSpacing from '../hooks/useTopSpacing';
 import MemberRow from '../components/manage/MemberRow';
 import { AppAlert } from '../components/ui/AppAlert';

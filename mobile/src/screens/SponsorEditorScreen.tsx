@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { CalendarBlank, PaperPlaneTilt, Trash } from '@unifesto/unicon/react-native';
+import { CalendarBlank, PaperPlaneTilt, Trash } from '../components/ui/icons';
 import {
   createSponsor,
   deleteSponsor,

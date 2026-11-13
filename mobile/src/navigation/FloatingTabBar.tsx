@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Cards, Crown, Stack, User, Wallet, type Icon } from '@unifesto/unicon/react-native';
+import { Cards, Crown, Stack, User, Wallet, type Icon } from '../components/ui/icons';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useCosmos } from '../theme/cosmos';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';

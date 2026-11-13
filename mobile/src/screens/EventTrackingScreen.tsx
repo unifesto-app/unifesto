@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { EnvelopeSimple, LinkSimple } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple, LinkSimple } from '../components/ui/icons';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
 import { conversion, getTraffic, type TrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

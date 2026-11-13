@@ -21,7 +21,7 @@ import {
   Star,
   Ticket,
   XCircle,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import FavoriteButton from '../components/FavoriteButton';
 import Skeleton from '../components/Skeleton';
 import AttendingShareModal from '../components/AttendingShareModal';

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Lock, LockSimple, SealCheck } from '@unifesto/unicon/react-native';
+import { Lock, LockSimple, SealCheck } from '../components/ui/icons';
 import {
   getMyAssignments,
   getMyJudgment,

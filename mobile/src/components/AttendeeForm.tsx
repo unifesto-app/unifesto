@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check, Sparkle } from '@unifesto/unicon/react-native';
+import { Check, Sparkle } from './ui/icons';
 import AuthField from './auth/AuthField';
 import { CardBackdrop } from './ui/CardSurface';
 import { spacing } from '../theme/spacing';

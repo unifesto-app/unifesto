@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowUpRight, CalendarBlank, CaretRight, CheckCircle, Export, Globe, SealCheck, UsersThree } from '@unifesto/unicon/react-native';
+import { ArrowUpRight, CalendarBlank, CaretRight, CheckCircle, Export, Globe, SealCheck, UsersThree } from '../components/ui/icons';
 import Skeleton from '../components/Skeleton';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform, StatusBar, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
-import { MapPin } from '@unifesto/unicon/react-native';
+import { MapPin } from './ui/icons';
 import BrandWordmark from './BrandWordmark';
 import { spacing, typography } from '../theme';
 import { cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';

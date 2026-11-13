@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CaretUp } from '@unifesto/unicon/react-native';
+import { CaretUp } from '../ui/icons';
 import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { askQuestion, getQaFeed, upvoteQuestion, type QaBoard, type Question } from '../../lib/api/questions';
 import { Button } from '../ui';

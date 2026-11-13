@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../../components/ui/icons';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';

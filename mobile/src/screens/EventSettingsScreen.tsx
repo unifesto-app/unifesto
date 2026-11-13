@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from '../components/ui/icons';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import {
   cancelEvent,

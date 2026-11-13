@@ -3,7 +3,7 @@ import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-nat
 import * as Application from 'expo-application';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { EnvelopeSimple } from '@unifesto/unicon/react-native';
+import { EnvelopeSimple } from '../components/ui/icons';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';

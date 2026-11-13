@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
+import { ArrowCircleUp, ShieldWarning } from '../../components/ui/icons';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';

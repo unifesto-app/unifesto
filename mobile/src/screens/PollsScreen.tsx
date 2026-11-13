@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Plus } from '@unifesto/unicon/react-native';
+import { Plus } from '../components/ui/icons';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import {
   closePoll,

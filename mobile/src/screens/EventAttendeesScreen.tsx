@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretLeft, CaretRight } from '@unifesto/unicon/react-native';
+import { CaretLeft, CaretRight } from '../components/ui/icons';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';

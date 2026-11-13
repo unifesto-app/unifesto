@@ -14,7 +14,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { ShareNetwork, UserCircle, X } from '@unifesto/unicon/react-native';
+import { ShareNetwork, UserCircle, X } from './ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui';
 import UnifestoAppWordmark from './UnifestoAppWordmark';

@@ -29,7 +29,7 @@ import {
   Trophy,
   UsersThree,
   Wallet,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import { useManageEvent } from '../hooks/useManageEvent';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

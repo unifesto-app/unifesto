@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { UnGlyph } from '@unifesto/unicon/react-native';
+import { UnGlyph } from '../components/ui/icons';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../context/AuthContext';
@@ -108,7 +108,8 @@ export default function ProfileScreen() {
   const version = Application.nativeApplicationVersion;
   // A downloaded OTA waiting for a restart: point people at About to apply it.
   const { isUpdatePending } = Updates.useUpdates();
-  // Row icons are sonnycandra's gradient outline set (ProfileIcon), shown as drawn.
+  // Row icons (ProfileIcon) carry their job's accent: sky tickets, events and
+  // actions, mint done, ivory the star, crimson sign out; plain settings stay text.
 
   const header = (
     <View style={[styles.header, { paddingTop: topInset + spacing[4] }]}>
@@ -120,14 +121,14 @@ export default function ProfileScreen() {
   const help = (
     <SettingsGroup title="Help and more" style={styles.group}>
       <SettingsRow icon={<ProfileIcon name="help" />} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
-      <SettingsRow icon={<ProfileIcon name="light" />} label="What’s new" onPress={openWhatsNew} />
+      <SettingsRow icon={<ProfileIcon name="light" color={c.sky} />} label="What’s new" onPress={openWhatsNew} />
       <SettingsRow
-        icon={<ProfileIcon name="information" />}
+        icon={<ProfileIcon name="information" color={isUpdatePending ? c.mint : c.text} />}
         label="About and updates"
         value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined}
         onPress={() => router.push('/about')}
       />
-      <SettingsRow icon={<ProfileIcon name="star" />} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
+      <SettingsRow icon={<ProfileIcon name="star" color={c.ivory} />} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
     </SettingsGroup>
   );
 
@@ -215,15 +216,15 @@ export default function ProfileScreen() {
 
         {nudge ? (
           <SettingsGroup style={[styles.group, styles.first]}>
-            <SettingsRow icon={<ProfileIcon name={nudge.icon} />} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
+            <SettingsRow icon={<ProfileIcon name={nudge.icon} color={c.sky} />} label={nudge.title} accent={c.sky} onPress={() => router.push(nudge.to)} />
           </SettingsGroup>
         ) : null}
 
         {/* Tickets has its own tab, so it isn't repeated here. */}
         <SettingsGroup title="My stuff" style={styles.group}>
-          <SettingsRow icon={<ProfileIcon name="bookmark" />} label="Saved" onPress={() => router.push('/favorites')} />
-          <SettingsRow icon={<ProfileIcon name="file" />} label="Certificates" onPress={() => router.push('/certificates')} />
-          <SettingsRow icon={<ProfileIcon name="home" />} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
+          <SettingsRow icon={<ProfileIcon name="bookmark" color={c.sky} />} label="Saved" onPress={() => router.push('/favorites')} />
+          <SettingsRow icon={<ProfileIcon name="file" color={c.mint} />} label="Certificates" onPress={() => router.push('/certificates')} />
+          <SettingsRow icon={<ProfileIcon name="home" color={c.sky} />} label="My spaces" onPress={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })} />
         </SettingsGroup>
 
         <SettingsGroup title="Settings" style={styles.group}>
@@ -244,21 +245,21 @@ export default function ProfileScreen() {
         <SettingsGroup title="Hosting" style={styles.group}>
           {hosts ? <SettingsRow icon={<ProfileIcon name="layer" />} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
           <SettingsRow
-            icon={<ProfileIcon name="plus" />}
+            icon={<ProfileIcon name="plus" color={c.sky} />}
             label={hosts ? 'Start another space' : 'Start a space'}
             accent={c.sky}
             onPress={() => router.push('/space-request')}
           />
           {/* D7: no space yet? One event is enough to start. */}
           {!hosts ? (
-            <SettingsRow icon={<ProfileIcon name="clock" />} label="Host one event" accent={c.sky} onPress={() => router.push('/event-request')} />
+            <SettingsRow icon={<ProfileIcon name="clock" color={c.sky} />} label="Host one event" accent={c.sky} onPress={() => router.push('/event-request')} />
           ) : null}
         </SettingsGroup>
 
         {help}
 
         <SettingsGroup style={styles.group}>
-          <SettingsRow icon={<ProfileIcon name="logout" />} label="Sign out" danger onPress={handleLogout} />
+          <SettingsRow icon={<ProfileIcon name="logout" color={c.danger} />} label="Sign out" danger onPress={handleLogout} />
         </SettingsGroup>
 
         {footer}

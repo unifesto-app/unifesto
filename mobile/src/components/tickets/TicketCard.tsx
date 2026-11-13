@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, QrCode, UsersThree } from '@unifesto/unicon/react-native';
+import { Check, QrCode, UsersThree } from '../ui/icons';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';

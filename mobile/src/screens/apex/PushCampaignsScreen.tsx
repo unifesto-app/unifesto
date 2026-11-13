@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Plus } from '@unifesto/unicon/react-native';
+import { Plus } from '../../components/ui/icons';
 import { CosmosList } from '../../components/ui/CosmosScreen';
 import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
