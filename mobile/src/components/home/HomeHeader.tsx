@@ -6,7 +6,7 @@ import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 import { CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import { GUTTER } from './Section';
 import PressableScale from '../ui/PressableScale';
@@ -14,11 +14,11 @@ import PressableScale from '../ui/PressableScale';
 // The wordmark's own "u" (the splash letter), 96×72.
 const U_H = 24;
 const U_W = Math.round((U_H * 96) / 72);
-const BELL = 36;
-const SEARCH_H = 44;
+const ICON_BOX = 40;
+const BAR_ROW = 44;
 const BAR_PAD = spacing[2];
 /** The bar's height under the status bar, for the pull-to-refresh spinner. */
-export const HOME_BAR_H = BAR_PAD * 2 + SEARCH_H;
+export const HOME_BAR_H = BAR_PAD * 2 + BAR_ROW;
 
 interface HomeBarProps {
   /** Guests get no bell. */
@@ -32,7 +32,8 @@ interface HomeBarProps {
 }
 
 /**
- * Home's top bar, pinned like District's: the u, search, and my bell. It is
+ * Home's top bar, pinned like District's: the u, then search and my bell as
+ * bare glyphs (search opens the search sheet, so it needs no field). It is
  * Home's sticky header, so it floats over the page once it scrolls and only
  * then turns glass (floating chrome); at the top it sits on the plain ground.
  */
@@ -57,32 +58,36 @@ export function HomeBar({ signedIn, unread = 0, onPressBell, onPressSearch, scro
           accessibilityLabel="Unifesto"
         />
 
-        <PressableScale
-          onPress={onPressSearch}
-          accessibilityRole="search"
-          accessibilityLabel="Search events and spaces"
-          style={[styles.search, { borderColor: c.input, backgroundColor: c.card }]}
-        >
-          <MagnifyingGlass size={18} color={c.muted} />
-          <Text style={[styles.searchText, { color: c.muted }]} numberOfLines={1}>Search events, spaces, vibes</Text>
-        </PressableScale>
-
-        {signedIn && onPressBell ? (
+        <View style={styles.actions}>
           <PressableScale
-            onPress={onPressBell}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-            style={styles.bell}
+            feedback="inline"
+            onPress={onPressSearch}
+            hitSlop={4}
+            accessibilityRole="search"
+            accessibilityLabel="Search events and spaces"
+            style={styles.icon}
           >
-            <Bell size={24} color={c.text} weight={unread ? 'fill' : 'regular'} />
-            {unread ? (
-              <View style={[styles.badge, { backgroundColor: c.primary }]}>
-                <Text style={[styles.badgeText, { color: c.primaryFg }]}>{unread > 9 ? '9+' : unread}</Text>
-              </View>
-            ) : null}
+            <MagnifyingGlass size={24} color={c.text} />
           </PressableScale>
-        ) : null}
+
+          {signedIn && onPressBell ? (
+            <PressableScale
+              feedback="inline"
+              onPress={onPressBell}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+              style={styles.icon}
+            >
+              <Bell size={24} color={c.text} weight={unread ? 'fill' : 'regular'} />
+              {unread ? (
+                <View style={[styles.badge, { backgroundColor: c.primary }]}>
+                  <Text style={[styles.badgeText, { color: c.primaryFg }]}>{unread > 9 ? '9+' : unread}</Text>
+                </View>
+              ) : null}
+            </PressableScale>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -120,23 +125,13 @@ export function HomeHeadline({ city, locationStatus, onEnableLocation }: HomeHea
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  search: {
-    flex: 1,
-    height: SEARCH_H,
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-  },
-  searchText: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
-  bell: { width: BELL, height: BELL, alignItems: 'center', justifyContent: 'center' },
+  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: BAR_ROW },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginRight: -spacing[2] },
+  icon: { width: ICON_BOX, height: ICON_BOX, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 0,
+    top: 4,
+    right: 2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,

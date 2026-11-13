@@ -138,8 +138,9 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   Instagram, LinkedIn, X, YouTube) is `BrandIcon`, never a Unicon `*-logo` look-alike glyph.
 - **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
   muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
-- **Home's bar** (owner, 13 Nov 2026, District-style): the wordmark's "u" (the splash letter),
-  the search field and my bell in one row, pinned as Home's sticky header. It sits on the plain
+- **Home's bar** (owner, 13 Nov 2026, District-style): the wordmark's "u" (the splash letter) on
+  the left; search and my bell as bare glyphs on the right (search opens the search sheet, so it
+  needs no field). One row, pinned as Home's sticky header. It sits on the plain
   ground at the top and turns glass once content slides under it. No filter menu on Home (the
   Events screen keeps its own). The city lives only in the headline under it, "What's on in
   Hyderabad?", which scrolls away.
