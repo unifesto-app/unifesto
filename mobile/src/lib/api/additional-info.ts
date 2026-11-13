@@ -94,6 +94,7 @@ interface RawAgenda {
   startTime: string;
   endTime?: string | null;
   speakerName?: string | null;
+  location?: string | null;
   order: number;
 }
 
@@ -160,6 +161,7 @@ function mapAgenda(row: RawAgenda): AgendaItem {
     startTime: row.startTime,
     endTime: row.endTime ?? undefined,
     speakerName: row.speakerName ?? undefined,
+    location: row.location ?? undefined,
     display_order: row.order ?? 0,
   };
 }

@@ -449,7 +449,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
           // Same logo the space page shows (its default when none is set), never an initial.
           space={event.space ? { ...event.space, logoUrl: hostLogo } : event.space}
           coHosts={event.coHosts?.map((h) => ({ ...h, logoUrl: logoOr(defaults, h.id, h.logoUrl) }))}
-          curators={event.curators}
           contacts={d.contacts}
           onOpenSpace={(spaceId) => router.push(`/space/${spaceId}`)}
         />

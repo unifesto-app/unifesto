@@ -57,6 +57,8 @@ export interface EventAgenda {
   startTime: string;
   endTime: string;
   speakerName?: string;
+  /** Track, hall or stage, for parallel slots. */
+  location?: string;
   order: number;
 }
 
@@ -791,6 +793,7 @@ export interface AgendaPayload {
   startTime: string;
   endTime: string;
   speakerName?: string;
+  location?: string;
   order?: number;
 }
 
@@ -833,6 +836,20 @@ export interface SpeakerPayload {
   company?: string;
   linkedinUrl?: string;
   order?: number;
+}
+
+/** Upload a speaker photo; save the returned URL as the speaker's avatarUrl. `POST /events/:id/speakers/photo`. */
+export async function uploadSpeakerPhoto(
+  eventId: string,
+  file: File
+): Promise<{ data: { avatarUrl: string } | null; error: ApiError | null }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiCall<{ avatarUrl: string }>(
+    backendClient.post(`/events/${eventId}/speakers/photo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
 }
 
 /** Add a speaker/guest. `POST /events/:id/speakers`. */

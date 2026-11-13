@@ -2,7 +2,7 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import {
   ArrowSquareOut,
   CaretDown,
@@ -46,6 +46,7 @@ const PLACE: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 const fmt = (d: Date, tz: string, o: Intl.DateTimeFormatOptions) => d.toLocaleString("en-IN", { timeZone: tz, ...o });
 const time = (d: Date, tz: string) => fmt(d, tz, { hour: "numeric", minute: "2-digit", hour12: true });
 const shortDate = (d: Date, tz: string) => fmt(d, tz, { day: "numeric", month: "short" });
+const weekday = (d: Date, tz: string) => fmt(d, tz, { weekday: "short", day: "numeric", month: "short" });
 const countLabel = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Facts-card date lines: "Saturday, 12 Oct" / "6:30 pm – 9:00 pm", or "12 Oct – 14 Oct" / "From 6:30 pm". */
@@ -141,6 +142,7 @@ export default function EventDetailClient({ event }: Props) {
   const openApp = (e: React.MouseEvent<HTMLAnchorElement>) => openAppOrStore(withStoredUtm(appDeepLink), e);
 
   const tz = event.timezone || "Asia/Kolkata";
+  const multiDayAgenda = new Set(agenda.map((a) => weekday(new Date(a.start_time), tz))).size > 1;
   const start = new Date(event.start_date);
   const chip = { day: fmt(start, tz, { day: "numeric" }), month: fmt(start, tz, { month: "short" }) };
   const when = whenLines(event.start_date, event.end_date, tz);
@@ -388,19 +390,30 @@ export default function EventDetailClient({ event }: Props) {
         {agenda.length > 0 && (
           <Block title="Schedule" subtitle={countLabel(agenda.length, "slot")}>
             <Card>
-              {(agendaOpen ? agenda : agenda.slice(0, AGENDA_PREVIEW)).map((item) => (
-                <div key={item.id} className="flex gap-4 border-t border-border p-4 first:border-t-0">
-                  <div className="w-20 shrink-0">
-                    <p className="text-sm font-semibold text-paper">{time(new Date(item.start_time), tz)}</p>
-                    {item.end_time && <p className="text-xs text-paper/50">{time(new Date(item.end_time), tz)}</p>}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold text-paper">{item.title}</p>
-                    {item.description && <p className="mt-1 text-sm leading-relaxed text-paper/65">{item.description}</p>}
-                    {item.location && <p className="mt-1 text-xs text-paper/50">{item.location}</p>}
-                  </div>
-                </div>
-              ))}
+              {(agendaOpen ? agenda : agenda.slice(0, AGENDA_PREVIEW)).map((item, i, shown) => {
+                // A multi-day agenda (a fest, an overnight hackathon) opens each day with its date.
+                const day = weekday(new Date(item.start_time), tz);
+                const newDay = multiDayAgenda && (i === 0 || weekday(new Date(shown[i - 1].start_time), tz) !== day);
+                const meta = [item.location, item.speaker_name].filter(Boolean).join(" · ");
+                return (
+                  <Fragment key={item.id}>
+                    {newDay && (
+                      <p className="border-t border-border px-4 pt-4 text-xs font-semibold text-paper/55 first:border-t-0">{day}</p>
+                    )}
+                    <div className={`flex gap-4 p-4 ${newDay ? "pt-2" : "border-t border-border first:border-t-0"}`}>
+                      <div className="w-20 shrink-0">
+                        <p className="text-sm font-semibold text-paper">{time(new Date(item.start_time), tz)}</p>
+                        {item.end_time && <p className="text-xs text-paper/50">{time(new Date(item.end_time), tz)}</p>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-semibold text-paper">{item.title}</p>
+                        {item.description && <p className="mt-1 text-sm leading-relaxed text-paper/65">{item.description}</p>}
+                        {meta && <p className="mt-1 text-xs text-paper/50">{meta}</p>}
+                      </div>
+                    </div>
+                  </Fragment>
+                );
+              })}
             </Card>
             {agenda.length > AGENDA_PREVIEW && (
               <button

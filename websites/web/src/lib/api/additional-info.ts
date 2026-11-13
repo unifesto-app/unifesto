@@ -18,7 +18,9 @@ export interface AgendaItem {
   description?: string;
   start_time: string;
   end_time?: string;
+  /** Track, hall or stage, for parallel slots. */
   location?: string;
+  speaker_name?: string;
   speaker_ids?: string[];
   display_order: number;
 }
@@ -87,6 +89,7 @@ interface RawAgenda {
   startTime: string;
   endTime?: string | null;
   speakerName?: string | null;
+  location?: string | null;
   order: number;
 }
 
@@ -150,6 +153,8 @@ function mapAgenda(row: RawAgenda): AgendaItem {
     description: row.description ?? undefined,
     start_time: row.startTime,
     end_time: row.endTime ?? undefined,
+    location: row.location ?? undefined,
+    speaker_name: row.speakerName ?? undefined,
     display_order: row.order ?? 0,
   };
 }

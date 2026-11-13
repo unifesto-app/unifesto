@@ -125,6 +125,18 @@ const LIVE_EVENT_STATUSES: EventStatus[] = [
   EventStatus.ONGOING,
 ];
 
+/** Agenda slots read in time order; parallel slots by end, then by room. */
+const AGENDA_TIME_ORDER: Prisma.EventAgendaOrderByWithRelationInput[] = [
+  { startTime: 'asc' },
+  { endTime: 'asc' },
+  { location: 'asc' },
+];
+
+/** An agenda slot ends after it starts; an overnight slot ends on the next day. */
+function assertSlotEndsAfterStart(start: Date, end: Date) {
+  if (end <= start) throw new BadRequestException('A slot has to end after it starts.');
+}
+
 @Injectable()
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
@@ -2118,7 +2130,7 @@ export class EventsService {
           },
         },
         agenda: {
-          orderBy: { order: 'asc' },
+          orderBy: AGENDA_TIME_ORDER,
         },
         speakers: {
           orderBy: { order: 'asc' },
@@ -2197,7 +2209,7 @@ export class EventsService {
             },
           },
           agenda: {
-            orderBy: { order: 'asc' },
+            orderBy: AGENDA_TIME_ORDER,
           },
           speakers: {
             orderBy: { order: 'asc' },
@@ -2266,34 +2278,13 @@ export class EventsService {
       : false;
     (event as any).branding = resolveEventBranding(event as any, owner, hasRemoveBranding);
 
-    // Attendee-facing "Curated by" list: the event's Curators and Co-Curators
-    // only. Space Admins run the space but are never surfaced here, and Crew is
-    // internal check-in staff — so both are excluded. Only a clean public shape
-    // (id, name, avatar, role code) leaves the API. Runs on cache miss, then
-    // rides along in the cached event object.
-    const curatorRoles = await this.prisma.userRole.findMany({
-      where: {
-        eventId: event.id,
-        role: { code: { in: [RoleCode.CURATOR, RoleCode.CO_CURATOR] } },
-      },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        user: { select: this.teamUserSelect },
-        role: { select: { code: true } },
-      },
-    });
-    (event as any).curators = curatorRoles.map((r) => ({
-      id: r.user.id,
-      fullName: r.user.fullName,
-      username: r.user.username,
-      avatarUrl: r.user.avatarUrl,
-      roleCode: r.role.code,
-    }));
+    // Installed apps sort the agenda by `order`, so it carries the time rank.
+    (event as any).agenda = event.agenda.map((slot, i) => ({ ...slot, order: i }));
 
     // Co-hosting spaces, for the attendee-facing "by <host> & <co-host>" credit.
     // Only the co-host spaces themselves (id/name/slug/logo) are surfaced — the
     // owning space is already `event.space`. Runs on cache miss, then rides
-    // along in the cached event object like `curators` above.
+    // along in the cached event object.
     const coHostLinks = await this.prisma.eventCoHost.findMany({
       where: { eventId: event.id, ...ACCEPTED_CO_HOST },
       orderBy: { createdAt: 'asc' },
@@ -3554,47 +3545,30 @@ export class EventsService {
   }
 
   async createAgenda(userId: string, eventId: string, dto: CreateAgendaDto) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
+    const event = await this.assertCanManageEvent(userId, eventId);
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+    assertSlotEndsAfterStart(startTime, endTime);
 
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot manage this event');
-    }
-
-    return this.prisma.eventAgenda.create({
+    const created = await this.prisma.eventAgenda.create({
       data: {
         eventId,
         title: dto.title,
         description: dto.description,
-        startTime: new Date(dto.startTime),
-        endTime: new Date(dto.endTime),
+        startTime,
+        endTime,
         speakerName: dto.speakerName,
+        location: dto.location,
         order: dto.order || 0,
       },
     });
+    await this.cache.invalidateEventCache(event.slug);
+    return created;
   }
 
   async createSpeaker(userId: string, eventId: string, dto: CreateSpeakerDto) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot manage this event');
-    }
-
-    return this.prisma.eventSpeaker.create({
+    const event = await this.assertCanManageEvent(userId, eventId);
+    const created = await this.prisma.eventSpeaker.create({
       data: {
         eventId,
         name: dto.name,
@@ -3606,6 +3580,14 @@ export class EventsService {
         order: dto.order || 0,
       },
     });
+    await this.cache.invalidateEventCache(event.slug);
+    return created;
+  }
+
+  /** A speaker photo for the content editor; it saves the returned URL on the speaker. */
+  async uploadSpeakerPhoto(userId: string, eventId: string, file: Express.Multer.File) {
+    await this.assertCanManageEvent(userId, eventId);
+    return { avatarUrl: await this.storageService.uploadFile(file, 'speakers/', eventId) };
   }
 
   async createFormField(
@@ -3824,14 +3806,19 @@ export class EventsService {
     if (!item || item.eventId !== eventId) {
       throw new NotFoundException('Agenda item not found');
     }
+    const startTime = dto.startTime ? new Date(dto.startTime) : undefined;
+    const endTime = dto.endTime ? new Date(dto.endTime) : undefined;
+    // A partial edit is checked against the slot's stored other end.
+    assertSlotEndsAfterStart(startTime ?? item.startTime, endTime ?? item.endTime);
     const updated = await this.prisma.eventAgenda.update({
       where: { id: agendaId },
       data: {
         title: dto.title,
         description: dto.description,
-        startTime: dto.startTime ? new Date(dto.startTime) : undefined,
-        endTime: dto.endTime ? new Date(dto.endTime) : undefined,
+        startTime,
+        endTime,
         speakerName: dto.speakerName,
+        location: dto.location,
         order: dto.order,
       },
     });

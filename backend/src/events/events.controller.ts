@@ -299,6 +299,18 @@ export class EventsController {
     return this.eventsService.deleteAgenda(req.user.id, id, agendaId);
   }
 
+  // Multipart `file`; returns `{ avatarUrl }` for the speaker create/update to save.
+  @Post(':id/speakers/photo')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', uploadLimit(5)))
+  async uploadSpeakerPhoto(
+    @Request() req,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.eventsService.uploadSpeakerPhoto(req.user.id, id, file);
+  }
+
   @Post(':id/speakers')
   @UseGuards(JwtAuthGuard)
   async createSpeaker(
