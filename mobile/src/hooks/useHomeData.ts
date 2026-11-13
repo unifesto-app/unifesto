@@ -79,12 +79,11 @@ export interface SpotlightPools {
 
 /**
  * The one event Home leads with as a full-width 4:3 cover, picked before any
- * list so every list below leaves it out.
+ * list so every list below leaves it out. The featured space wins however far
+ * off (owner, 13 Nov 2026: it's Apex's pick), then my spaces, then near you.
+ * Picking from the space lists first also keeps them from waiting on the location fix.
  */
-export function pickSpotlight(pools: SpotlightPools, now = Date.now()): Event | null {
-  // TODO(owner): should a far-off featured or my-space event still beat something near me tonight?
-  // Until then: the featured space wins (Apex's pick), then my spaces, then near you; soonest in each.
-  void now;
+export function pickSpotlight(pools: SpotlightPools): Event | null {
   return pools.featured[0] ?? pools.mySpaces[0] ?? pools.nearYou[0] ?? null;
 }
 
@@ -113,7 +112,7 @@ export function composeHome(p: {
     mySpaces: soonest(fresh(p.spaceEvents), p.now),
     // Like groupByDay: keep the first few by feed priority, then sort them.
     nearYou: soonest(fresh(p.feed).filter((e) => isOn(e, p.now ?? Date.now())).slice(0, NEAR_YOU_MAX), p.now),
-  }, p.now);
+  });
   if (spotlight) shown.add(spotlight.id);
   const take = (events: Event[]) => {
     const next = nextThree(fresh(events), p.now);
