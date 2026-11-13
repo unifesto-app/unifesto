@@ -300,9 +300,10 @@ export class EventsController {
   }
 
   // Multipart `file`; returns `{ avatarUrl }` for the speaker create/update to save.
+  // 10 MB like the cover: the Console checks 5 MB before cropping, and the crop re-encodes.
   @Post(':id/speakers/photo')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor('file', uploadLimit(5)))
+  @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
   async uploadSpeakerPhoto(
     @Request() req,
     @Param('id') id: string,

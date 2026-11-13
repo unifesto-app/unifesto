@@ -291,6 +291,8 @@ export function SectionEditor<T>({
   };
 
   const isFormOpen = editingId !== null;
+  // While a photo uploads, the form can't close or switch rows, so the photo lands on the item it was picked for.
+  const busy = uploading > 0;
 
   return (
     <Card>
@@ -335,6 +337,7 @@ export function SectionEditor<T>({
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(item)}
+                        disabled={busy}
                         aria-label="Edit"
                       >
                         <PencilSimple className="h-4 w-4" />
@@ -344,7 +347,7 @@ export function SectionEditor<T>({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(id)}
-                        disabled={deletingId === id}
+                        disabled={deletingId === id || busy}
                         aria-label="Delete"
                       >
                         {deletingId === id ? (
@@ -372,6 +375,7 @@ export function SectionEditor<T>({
                 variant="ghost"
                 size="icon"
                 onClick={closeForm}
+                disabled={busy}
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -386,7 +390,7 @@ export function SectionEditor<T>({
                 variant="ghost"
                 size="sm"
                 onClick={closeForm}
-                disabled={saving}
+                disabled={saving || busy}
               >
                 Cancel
               </Button>
@@ -394,9 +398,9 @@ export function SectionEditor<T>({
                 type="button"
                 size="sm"
                 onClick={handleSave}
-                disabled={saving || uploading > 0}
+                disabled={saving || busy}
               >
-                {saving ? "Saving…" : uploading > 0 ? "Uploading…" : "Save"}
+                {saving ? "Saving…" : busy ? "Uploading…" : "Save"}
               </Button>
             </div>
           </div>

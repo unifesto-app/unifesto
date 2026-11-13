@@ -31,6 +31,11 @@ const row = {
   createdBy: 'u-owner',
   displayToken: 'projector-secret',
   ticketTypes: [],
+  // Prisma returns these in time order (AGENDA_TIME_ORDER); `order` is whatever was stored.
+  agenda: [
+    { id: 'a-1', title: 'Opening', order: 5 },
+    { id: 'a-2', title: 'Lunch', order: 0 },
+  ],
   space: { name: 'Space', subscription: null, visibility: 'PUBLIC', status: 'ACTIVE' },
   creator: { fullName: 'Owner' },
 };
@@ -44,7 +49,6 @@ function events(opts: { attending?: number } = {}) {
     },
     eventRegistration: { count: jest.fn(async () => opts.attending ?? 0) },
     space: { findUnique: jest.fn(async () => null) },
-    userRole: { findMany: jest.fn(async () => []) },
     eventCoHost: { findMany: jest.fn(async () => []) },
     eventSponsor: { findMany: jest.fn(async () => []) },
   };
@@ -96,6 +100,14 @@ describe('public event fields (J9)', () => {
 
     const stranger: any = await events({ attending: 0 }).svc.getEventBySlug('fest', 'u-stranger');
     expect(stranger.onlineUrl).toBeNull();
+  });
+
+  it('the public detail carries the agenda time rank as `order`, and no event team', async () => {
+    const { svc, prisma } = events();
+    const detail: any = await svc.getEventBySlug('fest');
+    expect(prisma.event.findUnique.mock.calls[0][0].include.agenda.orderBy[0]).toEqual({ startTime: 'asc' });
+    expect(detail.agenda.map((a: any) => [a.id, a.order])).toEqual([['a-1', 0], ['a-2', 1]]);
+    expect(detail).not.toHaveProperty('curators');
   });
 
   it('a ticket holder gets the join link', async () => {

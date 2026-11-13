@@ -100,24 +100,31 @@ export default function EventContentPage() {
 
   // --- Field definitions for each section ---
 
+  const days = eventDays(event.startDateTime, event.endDateTime).map((d) => ({ value: d, label: dayLabel(d) }));
+  // One day: a single Day picker. Several: the start and end days are picked apart,
+  // so an overnight or 36-hour hackathon slot keeps its length.
+  const multiDay = days.length > 1;
   const agendaFields: FieldDef[] = [
     { key: "title", label: "Title", required: true, placeholder: "Opening keynote" },
-    {
-      key: "day",
-      label: "Day",
-      type: "select",
-      required: true,
-      options: eventDays(event.startDateTime, event.endDateTime).map((d) => ({ value: d, label: dayLabel(d) })),
-    },
+    { key: "day", label: multiDay ? "Starts on" : "Day", type: "select", required: true, options: days, colSpan: multiDay ? 1 : 2 },
+    ...(multiDay
+      ? [{ key: "endDay", label: "Ends on", type: "select", required: true, options: days, colSpan: 1 } as FieldDef]
+      : []),
     { key: "start", label: "Starts", type: "clock", required: true, colSpan: 1 },
     { key: "end", label: "Ends", type: "clock", required: true, colSpan: 1 },
     { key: "speakerName", label: "Speaker", colSpan: 1, placeholder: "Optional" },
     { key: "location", label: "Track or room", colSpan: 1, placeholder: "Hall A, for parallel sessions" },
     { key: "description", label: "Description", type: "textarea" },
   ];
-  // The form's day/start/end as the API's ISO times (check() has already passed them).
+  const asSlot = (v: Record<string, string>): SlotForm => ({
+    day: v.day,
+    start: v.start,
+    endDay: multiDay ? v.endDay : v.day,
+    end: v.end,
+  });
+  // The form's slot as the API's ISO times (check() has already passed them).
   const slotTimes = (v: Record<string, string>) =>
-    readSlot(v as SlotForm, event) as { startTime: string; endTime: string };
+    readSlot(asSlot(v), event) as { startTime: string; endTime: string };
 
   const speakerFields: FieldDef[] = [
     { key: "name", label: "Name", required: true, colSpan: 1, placeholder: "Jane Smith" },
@@ -198,7 +205,7 @@ export default function EventContentPage() {
             getId={(a) => a.id}
             sort={byStart}
             check={(v) => {
-              const slot = readSlot(v as SlotForm, event);
+              const slot = readSlot(asSlot(v), event);
               return "error" in slot ? slot.error : null;
             }}
             renderSummary={(a) => (
@@ -213,7 +220,7 @@ export default function EventContentPage() {
             )}
             toForm={(a, list) => ({
               title: a?.title ?? "",
-              ...(a ? slotForm(a) : nextSlotForm(list, event.startDateTime)),
+              ...(a ? slotForm(a) : nextSlotForm(list, event)),
               speakerName: a?.speakerName ?? "",
               location: a?.location ?? "",
               description: a?.description ?? "",

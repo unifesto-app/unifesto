@@ -125,11 +125,13 @@ const LIVE_EVENT_STATUSES: EventStatus[] = [
   EventStatus.ONGOING,
 ];
 
-/** Agenda slots read in time order; parallel slots by end, then by room. */
+/** Agenda slots read in time order; parallel slots by end, then by room (none last), then stably. */
 const AGENDA_TIME_ORDER: Prisma.EventAgendaOrderByWithRelationInput[] = [
   { startTime: 'asc' },
   { endTime: 'asc' },
-  { location: 'asc' },
+  { location: { sort: 'asc', nulls: 'last' } },
+  { order: 'asc' },
+  { id: 'asc' },
 ];
 
 /** An agenda slot ends after it starts; an overnight slot ends on the next day. */

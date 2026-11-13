@@ -6,8 +6,8 @@
 
 type Slot = { startTime: string; endTime: string; location?: string };
 
-/** The editor's form values for a slot: day "YYYY-MM-DD", start and end "1:30 pm". */
-export type SlotForm = { day: string; start: string; end: string };
+/** The editor's form values for a slot: start and end days "YYYY-MM-DD", times "1:30 pm". */
+export type SlotForm = { day: string; start: string; endDay: string; end: string };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -64,46 +64,61 @@ export function slotLabel(startIso: string, endIso: string): string {
     : `${dayLabel(s)}, ${clock(s)} – ${dayLabel(e)}, ${clock(e)}`;
 }
 
-/** Earliest first; parallel slots by end, then by room, as the event page lists them. */
+/** Earliest first; parallel slots by end, then by room with no room last, as the API sorts them. */
 export const byStart = (a: Slot, b: Slot) =>
   Date.parse(a.startTime) - Date.parse(b.startTime) ||
   Date.parse(a.endTime) - Date.parse(b.endTime) ||
+  Number(!a.location) - Number(!b.location) ||
   (a.location ?? "").localeCompare(b.location ?? "");
 
 /** A saved slot as form values. */
 export const slotForm = (slot: Slot): SlotForm => {
   const s = new Date(slot.startTime);
-  return { day: dayOf(s), start: clockOf(s), end: clockOf(new Date(slot.endTime)) };
+  const e = new Date(slot.endTime);
+  return { day: dayOf(s), start: clockOf(s), endDay: dayOf(e), end: clockOf(e) };
 };
+
+type EventHours = { startDateTime: string; endDateTime: string };
+const HALF_HOUR = 30 * 60_000;
 
 /**
  * A new slot starts when the latest-starting one ends (the first, when the
  * event starts) and runs 30 minutes, so its day and am/pm are already right.
+ * It stays inside the event's hours, so the prefill always saves.
  */
-export function nextSlotForm(slots: Slot[], eventStartIso: string): SlotForm {
+export function nextSlotForm(slots: Slot[], event: EventHours): SlotForm {
   const last = [...slots].sort(byStart).at(-1);
-  const start = new Date(last ? last.endTime : eventStartIso);
+  const eventEnd = Date.parse(event.endDateTime);
+  const from = Date.parse(last ? last.endTime : event.startDateTime);
+  const start = Math.max(Date.parse(event.startDateTime), Math.min(from, eventEnd - HALF_HOUR));
   return slotForm({
-    startTime: start.toISOString(),
-    endTime: new Date(start.getTime() + 30 * 60_000).toISOString(),
+    startTime: new Date(start).toISOString(),
+    endTime: new Date(Math.min(start + HALF_HOUR, eventEnd)).toISOString(),
   });
 }
 
+const at = (day: string, minutes: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, minutes);
+};
+
 /**
- * The form's slot as ISO times, or why it can't be saved. An end at or before
- * the start is the next morning (an overnight hackathon slot), and every slot
- * sits inside the event's hours, which is what catches a wrong am/pm.
+ * The form's slot as ISO times, or why it can't be saved. The end day is
+ * picked, never guessed (an overnight or 36-hour hackathon slot ends on a
+ * later day), and every slot sits inside the event's hours, which is what
+ * catches a wrong am/pm.
  */
-export function readSlot(
-  v: SlotForm,
-  event: { startDateTime: string; endDateTime: string }
-): { startTime: string; endTime: string } | { error: string } {
+export function readSlot(v: SlotForm, event: EventHours): { startTime: string; endTime: string } | { error: string } {
   const startMin = clockMinutes(v.start);
   const endMin = clockMinutes(v.end);
   if (startMin === null || endMin === null) return { error: "Enter times like 10:30 and pick am or pm." };
-  const [y, m, d] = v.day.split("-").map(Number);
-  const start = new Date(y, m - 1, d, 0, startMin);
-  const end = new Date(y, m - 1, d + (endMin <= startMin ? 1 : 0), 0, endMin);
+  const start = at(v.day, startMin);
+  const end = at(v.endDay || v.day, endMin);
+  if (end <= start) {
+    return {
+      error: "The slot has to end after it starts. Check am and pm, or for an overnight slot pick the day it ends on.",
+    };
+  }
   if (start < new Date(event.startDateTime) || end > new Date(event.endDateTime)) {
     return {
       error: `This slot runs ${slotLabel(start.toISOString(), end.toISOString())}, outside the event's hours (${slotLabel(event.startDateTime, event.endDateTime)}). Check am and pm, or change the event's times first.`,
