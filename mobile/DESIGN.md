@@ -164,7 +164,8 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   Glyphs take `c.text`, `c.muted` or the card's accent.
 - **Profile tab exception** (owner, 13 Nov 2026, picked after mockups): its rows use
   sonnycandra's "Basic UI" gradient outline icons from Flaticon (`ProfileIcon`, PNGs in
-  `assets/icons/profile`), shown in their own colours, never tinted. Free licence: the credit line
+  `assets/icons/profile`), tinted to one theme colour each by job (owner, 13 Nov: sky, mint,
+  ivory, crimson sign out, text for plain settings). Free licence: the credit line
   on About stays while they ship. Every other screen keeps Unicon.
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
