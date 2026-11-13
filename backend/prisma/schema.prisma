@@ -1972,6 +1972,8 @@ model EventAgenda {
   startTime   DateTime @map("start_time") @db.Timestamptz(6)
   endTime     DateTime @map("end_time") @db.Timestamptz(6)
   speakerName String?  @map("speaker_name") @db.VarChar(255)
+  /// Track, hall or stage, so parallel slots read apart ("Hall A", "Workshop track").
+  location    String?  @db.VarChar(255)
   order       Int      @default(0)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

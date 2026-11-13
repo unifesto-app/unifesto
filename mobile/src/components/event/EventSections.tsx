@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 import { CaretDown, CaretRight, CheckCircle, EnvelopeSimple, Phone } from '@unifesto/unicon/react-native';
 import { GUTTER, Rail } from '../home/Section';
 import type { AgendaItem, Contact, Faq, Prize, Speaker } from '../../lib/api/additional-info';
-import type { EventCurator, EventSponsor } from '../../lib/api/events';
+import type { EventSponsor } from '../../lib/api/events';
 import { formatTime } from '../../utils/eventFormat';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -78,28 +78,38 @@ function MoreToggle({ open, label, onPress }: { open: boolean; label: string; on
   );
 }
 
+const agendaDay = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+
 export function AgendaSection({ items }: { items: AgendaItem[] }) {
   const c = useCosmos();
   const [open, setOpen] = useState(false);
   const shown = open ? items : items.slice(0, AGENDA_PREVIEW);
+  const startOf = (item: AgendaItem) => item.startTime || item.start_time;
+  // A multi-day agenda (a fest, an overnight hackathon) opens each day with its date.
+  const multiDay = new Set(items.map((item) => agendaDay(startOf(item)))).size > 1;
   return (
     <EventBlock title="Schedule">
       <View style={styles.gutter}>
         <Rows>
-          {shown.map((item) => {
-            const start = item.startTime || item.start_time;
+          {shown.map((item, i) => {
+            const start = startOf(item);
             const end = item.endTime || item.end_time;
-            const where = item.location || item.speakerName;
+            const where = [item.location, item.speakerName].filter(Boolean).join(' · ');
+            const day = agendaDay(start);
+            const newDay = multiDay && (i === 0 || agendaDay(startOf(shown[i - 1])) !== day);
             return (
-              <View key={item.id} style={styles.agendaRow}>
-                <View style={styles.agendaTimeCol}>
-                  <Text style={[styles.agendaTime, { color: c.sky }]}>{start ? formatTime(new Date(start)) : ''}</Text>
-                  {end ? <Text style={[styles.agendaEnd, { color: c.muted }]}>{formatTime(new Date(end))}</Text> : null}
-                </View>
-                <View style={styles.flexGap}>
-                  <Text style={[styles.itemTitle, { color: c.text }]}>{item.title}</Text>
-                  {item.description ? <Text style={[styles.itemBody, { color: c.soft }]}>{item.description}</Text> : null}
-                  {where ? <Text style={[styles.itemMeta, { color: c.muted }]}>{where}</Text> : null}
+              <View key={item.id}>
+                {newDay ? <Text style={[styles.agendaDay, { color: c.muted }]}>{day}</Text> : null}
+                <View style={styles.agendaRow}>
+                  <View style={styles.agendaTimeCol}>
+                    <Text style={[styles.agendaTime, { color: c.sky }]}>{start ? formatTime(new Date(start)) : ''}</Text>
+                    {end ? <Text style={[styles.agendaEnd, { color: c.muted }]}>{formatTime(new Date(end))}</Text> : null}
+                  </View>
+                  <View style={styles.flexGap}>
+                    <Text style={[styles.itemTitle, { color: c.text }]}>{item.title}</Text>
+                    {item.description ? <Text style={[styles.itemBody, { color: c.soft }]}>{item.description}</Text> : null}
+                    {where ? <Text style={[styles.itemMeta, { color: c.muted }]}>{where}</Text> : null}
+                  </View>
                 </View>
               </View>
             );
@@ -270,20 +280,19 @@ export function FaqSection({ items }: { items: Faq[] }) {
 }
 
 /**
- * Who's behind it: the hosting space (tap → its page), the event's curators,
- * and the organiser contacts with bare mail / call actions.
+ * Who's behind it: the hosting spaces (tap → their page) and the organiser's
+ * contacts with bare mail / call actions. The event's team (curators) isn't
+ * listed: the contacts are who the organiser chose to put forward.
  */
-export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpace }: {
+export function HostedBySection({ space, coHosts, contacts, onOpenSpace }: {
   space?: { id: string; name: string; logoUrl: string | null; visibility?: string } | null;
   coHosts?: { id: string; name: string; logoUrl: string | null; visibility?: string }[];
-  curators?: EventCurator[];
   contacts: Contact[];
   onOpenSpace: (id: string) => void;
 }) {
   const c = useCosmos();
   const spaces = space ? [space, ...(coHosts ?? [])] : [];
-  const people = curators ?? [];
-  if (!spaces.length && !people.length && !contacts.length) return null;
+  if (!spaces.length && !contacts.length) return null;
   return (
     <EventBlock title="Hosted by">
       <View style={styles.gutter}>
@@ -301,17 +310,6 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
               <Text style={[styles.itemTitle, styles.flex, { color: c.text }]} numberOfLines={1}>{s.name}</Text>
               {s.visibility === 'PRIVATE' ? null : <CaretRight size={15} color={c.muted} />}
             </Pressable>
-          ))}
-          {people.map((p) => (
-            <View key={p.id} style={[styles.row, styles.center]}>
-              <Avatar uri={p.avatarUrl} name={p.fullName || p.username || 'C'} size={44} />
-              <View style={styles.flex}>
-                <Text style={[styles.itemTitle, { color: c.text }]} numberOfLines={1}>
-                  {p.fullName || (p.username ? `@${p.username}` : 'Curator')}
-                </Text>
-                <Text style={[styles.itemMeta, { color: c.muted }]}>{p.roleCode === 'CO_CURATOR' ? 'Co-curator' : 'Curator'}</Text>
-              </View>
-            </View>
           ))}
           {contacts.map((ct) => (
             <View key={ct.id} style={[styles.row, styles.center]}>
@@ -380,6 +378,7 @@ const styles = StyleSheet.create({
   more: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginTop: spacing[3], paddingHorizontal: spacing[1] },
   moreText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   agendaRow: { flexDirection: 'row', gap: spacing[4], paddingVertical: spacing[4] },
+  agendaDay: { paddingTop: spacing[4], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   agendaTimeCol: { width: 74 },
   agendaTime: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   agendaEnd: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.figure },

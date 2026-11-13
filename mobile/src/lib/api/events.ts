@@ -77,11 +77,6 @@ export interface Event {
   }[];
   /** F3: average 1-5 and how many rated; only when the curators opted in and 5+ rated. */
   rating?: { average: number; count: number } | null;
-  /**
-   * The event's Curators and Co-Curators, for the attendee-facing "Curated by"
-   * card. Space Admins and Crew are intentionally excluded by the backend.
-   */
-  curators?: EventCurator[];
   creator?: {
     id: string;
     fullName: string | null;
@@ -120,19 +115,6 @@ export interface Event {
   attendeeEditsUntil?: string | null;
   /** Q17: attendees may transfer their own free ticket (curator switch). */
   allowSelfTransfer?: boolean;
-}
-
-/**
- * A person who curates the event, as surfaced on the public event detail.
- * `roleCode` is the stable backend code (CURATOR | CO_CURATOR); the UI maps it
- * to the attendee-facing label.
- */
-export interface EventCurator {
-  id: string;
-  fullName: string | null;
-  username: string | null;
-  avatarUrl: string | null;
-  roleCode: 'CURATOR' | 'CO_CURATOR';
 }
 
 /**

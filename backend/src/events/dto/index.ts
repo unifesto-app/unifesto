@@ -479,6 +479,11 @@ export class CreateAgendaDto {
   speakerName?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  location?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   order?: number;
@@ -534,6 +539,11 @@ export class UpdateAgendaDto {
   @IsOptional()
   @IsString()
   speakerName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  location?: string;
 
   @IsOptional()
   @IsInt()

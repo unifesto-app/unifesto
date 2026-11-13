@@ -27,6 +27,7 @@ import {
   createFaq,
   updateFaq,
   deleteFaq,
+  uploadSpeakerPhoto,
   type EventAgenda,
   type EventSpeaker,
   type EventPrize,
@@ -37,22 +38,16 @@ import { PageHeader } from "@/console/components/shared/PageHeader";
 import { ErrorNotice } from "@/console/components/shared/ErrorNotice";
 import { Skeleton } from "@/console/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/console/components/ui/tabs";
-
-/** Convert ISO string to `datetime-local` value (YYYY-MM-DDTHH:mm). */
-function toLocalDatetime(iso?: string): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/** Convert a `datetime-local` value into an ISO string (empty stays empty). */
-function toIso(local?: string): string | undefined {
-  if (!local) return undefined;
-  return new Date(local).toISOString();
-}
+import {
+  byStart,
+  dayLabel,
+  eventDays,
+  nextSlotForm,
+  readSlot,
+  slotForm,
+  slotLabel,
+  type SlotForm,
+} from "@/console/lib/agenda";
 
 export default function EventContentPage() {
   const params = useParams();
@@ -105,20 +100,46 @@ export default function EventContentPage() {
 
   // --- Field definitions for each section ---
 
+  const days = eventDays(event.startDateTime, event.endDateTime).map((d) => ({ value: d, label: dayLabel(d) }));
+  // One day: a single Day picker. Several: the start and end days are picked apart,
+  // so an overnight or 36-hour hackathon slot keeps its length.
+  const multiDay = days.length > 1;
   const agendaFields: FieldDef[] = [
     { key: "title", label: "Title", required: true, placeholder: "Opening keynote" },
+    { key: "day", label: multiDay ? "Starts on" : "Day", type: "select", required: true, options: days, colSpan: multiDay ? 1 : 2 },
+    ...(multiDay
+      ? [{ key: "endDay", label: "Ends on", type: "select", required: true, options: days, colSpan: 1 } as FieldDef]
+      : []),
+    { key: "start", label: "Starts", type: "clock", required: true, colSpan: 1 },
+    { key: "end", label: "Ends", type: "clock", required: true, colSpan: 1 },
     { key: "speakerName", label: "Speaker", colSpan: 1, placeholder: "Optional" },
-    { key: "startTime", label: "Starts", type: "datetime", required: true, colSpan: 1 },
-    { key: "endTime", label: "Ends", type: "datetime", required: true, colSpan: 1 },
+    { key: "location", label: "Track or room", colSpan: 1, placeholder: "Hall A, for parallel sessions" },
     { key: "description", label: "Description", type: "textarea" },
   ];
+  const asSlot = (v: Record<string, string>): SlotForm => ({
+    day: v.day,
+    start: v.start,
+    endDay: multiDay ? v.endDay : v.day,
+    end: v.end,
+  });
+  // The form's slot as the API's ISO times (check() has already passed them).
+  const slotTimes = (v: Record<string, string>) =>
+    readSlot(asSlot(v), event) as { startTime: string; endTime: string };
 
   const speakerFields: FieldDef[] = [
     { key: "name", label: "Name", required: true, colSpan: 1, placeholder: "Jane Smith" },
     { key: "designation", label: "Designation", colSpan: 1, placeholder: "CTO" },
     { key: "company", label: "Company", colSpan: 1, placeholder: "TechCorp" },
     { key: "linkedinUrl", label: "LinkedIn URL", type: "url", colSpan: 1 },
-    { key: "avatarUrl", label: "Photo URL", type: "url" },
+    {
+      key: "avatarUrl",
+      label: "Photo",
+      type: "image",
+      upload: async (file) => {
+        const { data, error } = await uploadSpeakerPhoto(eventId, file);
+        return { url: data?.avatarUrl ?? null, error: error?.message ?? null };
+      },
+    },
     { key: "bio", label: "Bio", type: "textarea" },
   ];
 
@@ -182,32 +203,34 @@ export default function EventContentPage() {
             items={event.agenda ?? []}
             fields={agendaFields}
             getId={(a) => a.id}
+            sort={byStart}
+            check={(v) => {
+              const slot = readSlot(asSlot(v), event);
+              return "error" in slot ? slot.error : null;
+            }}
             renderSummary={(a) => (
               <div>
                 <p className="font-medium">{a.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(a.startTime).toLocaleString("en-IN")} –{" "}
-                  {new Date(a.endTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {a.speakerName ? ` · ${a.speakerName}` : ""}
+                  {[slotLabel(a.startTime, a.endTime), a.location, a.speakerName]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
             )}
-            toForm={(a) => ({
+            toForm={(a, list) => ({
               title: a?.title ?? "",
+              ...(a ? slotForm(a) : nextSlotForm(list, event)),
               speakerName: a?.speakerName ?? "",
-              startTime: toLocalDatetime(a?.startTime),
-              endTime: toLocalDatetime(a?.endTime),
+              location: a?.location ?? "",
               description: a?.description ?? "",
             })}
             onCreate={async (v) => {
               const { data, error } = await createAgenda(eventId, {
                 title: v.title.trim(),
                 speakerName: v.speakerName?.trim() || undefined,
-                startTime: toIso(v.startTime)!,
-                endTime: toIso(v.endTime)!,
+                location: v.location?.trim() || undefined,
+                ...slotTimes(v),
                 description: v.description?.trim() || undefined,
               });
               return { item: data, error: error?.message ?? null };
@@ -216,8 +239,8 @@ export default function EventContentPage() {
               const { data, error } = await updateAgenda(eventId, id, {
                 title: v.title.trim(),
                 speakerName: v.speakerName?.trim() || null,
-                startTime: toIso(v.startTime),
-                endTime: toIso(v.endTime),
+                location: v.location?.trim() || null,
+                ...slotTimes(v),
                 description: v.description?.trim() || null,
               });
               return { item: data, error: error?.message ?? null };

@@ -299,6 +299,19 @@ export class EventsController {
     return this.eventsService.deleteAgenda(req.user.id, id, agendaId);
   }
 
+  // Multipart `file`; returns `{ avatarUrl }` for the speaker create/update to save.
+  // 10 MB like the cover: the Console checks 5 MB before cropping, and the crop re-encodes.
+  @Post(':id/speakers/photo')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
+  async uploadSpeakerPhoto(
+    @Request() req,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.eventsService.uploadSpeakerPhoto(req.user.id, id, file);
+  }
+
   @Post(':id/speakers')
   @UseGuards(JwtAuthGuard)
   async createSpeaker(

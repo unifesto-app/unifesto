@@ -13,14 +13,30 @@ import { Button } from "@/console/components/ui/button";
 import { Input } from "@/console/components/ui/input";
 import { Label } from "@/console/components/ui/label";
 import { Textarea } from "@/console/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/console/components/ui/select";
+import {
+  ImageUploadCard,
+  type ImageUploadResult,
+} from "@/console/components/shared/ImageUploadCard";
 
 export type FieldType =
   | "text"
   | "textarea"
-  | "datetime"
   | "url"
   | "email"
-  | "tel";
+  | "tel"
+  /** One of `options`. */
+  | "select"
+  /** A time as "1:30 pm": a time box beside am | pm buttons. */
+  | "clock"
+  /** An uploaded square photo; the value is its URL. Needs `upload`. */
+  | "image";
 
 export interface FieldDef {
   key: string;
@@ -30,6 +46,8 @@ export interface FieldDef {
   placeholder?: string;
   /** Grid columns the field spans (1 or 2). Defaults to 2 (full width). */
   colSpan?: 1 | 2;
+  options?: { value: string; label: string }[];
+  upload?: (file: File) => Promise<ImageUploadResult>;
 }
 
 type FormValues = Record<string, string>;
@@ -45,8 +63,12 @@ interface SectionEditorProps<T> {
   disabled?: boolean;
   getId: (item: T) => string;
   renderSummary: (item: T) => ReactNode;
-  /** Initial form values for a new item (null) or an existing one. */
-  toForm: (item: T | null) => FormValues;
+  /** Initial form values for a new item (null) or an existing one; `list` is what's there now. */
+  toForm: (item: T | null, list: T[]) => FormValues;
+  /** List order; insertion order when absent. */
+  sort?: (a: T, b: T) => number;
+  /** Why the values can't be saved, after the required-field checks; null when they can. */
+  check?: (values: FormValues) => string | null;
   onCreate: (values: FormValues) => Promise<{ item: T | null; error: string | null }>;
   onUpdate: (
     id: string,
@@ -73,6 +95,8 @@ export function SectionEditor<T>({
   getId,
   renderSummary,
   toForm,
+  sort,
+  check,
   onCreate,
   onUpdate,
   onDelete,
@@ -82,18 +106,19 @@ export function SectionEditor<T>({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<FormValues>({});
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const openNew = () => {
     setEditingId("new");
-    setValues(toForm(null));
+    setValues(toForm(null, list));
     setError("");
   };
 
   const openEdit = (item: T) => {
     setEditingId(getId(item));
-    setValues(toForm(item));
+    setValues(toForm(item, list));
     setError("");
   };
 
@@ -112,7 +137,17 @@ export function SectionEditor<T>({
         return `${f.label} is required.`;
       }
     }
-    return null;
+    return check?.(values) ?? null;
+  };
+
+  // In-flight photo uploads hold Save, so a speaker never saves without the photo just picked.
+  const trackUpload = (upload: NonNullable<FieldDef["upload"]>) => async (file: File) => {
+    setUploading((n) => n + 1);
+    try {
+      return await upload(file);
+    } finally {
+      setUploading((n) => n - 1);
+    }
   };
 
   const handleSave = async () => {
@@ -172,23 +207,75 @@ export function SectionEditor<T>({
         key={f.key}
         className={`space-y-1.5 ${f.colSpan === 1 ? "" : "sm:col-span-2"}`}
       >
-        <Label htmlFor={common.id}>
-          {f.label}
-          {f.required && <span className="text-destructive"> *</span>}
-        </Label>
+        {/* The photo card carries its own title. */}
+        {f.type !== "image" && (
+          <Label htmlFor={common.id}>
+            {f.label}
+            {f.required && <span className="text-destructive"> *</span>}
+          </Label>
+        )}
         {f.type === "textarea" ? (
           <Textarea
             {...common}
             rows={3}
             onChange={(e) => setValue(f.key, e.target.value)}
           />
+        ) : f.type === "select" ? (
+          <Select
+            value={common.value}
+            onValueChange={(v) => setValue(f.key, v)}
+            disabled={saving}
+          >
+            <SelectTrigger id={common.id}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(f.options ?? []).map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : f.type === "clock" ? (
+          <ClockInput
+            id={common.id}
+            value={common.value}
+            disabled={saving}
+            onChange={(v) => setValue(f.key, v)}
+          />
+        ) : f.type === "image" && f.upload ? (
+          <div className="space-y-2">
+            <ImageUploadCard
+              title={f.label}
+              imageUrl={common.value || null}
+              aspectClassName="aspect-square"
+              previewClassName="rounded-full"
+              containerClassName="max-w-[96px]"
+              emptyLabel="No photo"
+              maxSizeMb={5}
+              cropAspect={1}
+              disabled={saving}
+              onUpload={trackUpload(f.upload)}
+              onUploaded={(url) => setValue(f.key, url)}
+            />
+            {common.value && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setValue(f.key, "")}
+                disabled={saving}
+              >
+                Remove photo
+              </Button>
+            )}
+          </div>
         ) : (
           <Input
             {...common}
             type={
-              f.type === "datetime"
-                ? "datetime-local"
-                : f.type === "url"
+              f.type === "url"
                 ? "url"
                 : f.type === "email"
                 ? "email"
@@ -204,6 +291,8 @@ export function SectionEditor<T>({
   };
 
   const isFormOpen = editingId !== null;
+  // While a photo uploads, the form can't close or switch rows, so the photo lands on the item it was picked for.
+  const busy = uploading > 0;
 
   return (
     <Card>
@@ -231,7 +320,7 @@ export function SectionEditor<T>({
 
         {list.length > 0 && (
           <ul className="divide-y divide-border">
-            {list.map((item) => {
+            {(sort ? [...list].sort(sort) : list).map((item) => {
               const id = getId(item);
               return (
                 <li
@@ -248,6 +337,7 @@ export function SectionEditor<T>({
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(item)}
+                        disabled={busy}
                         aria-label="Edit"
                       >
                         <PencilSimple className="h-4 w-4" />
@@ -257,7 +347,7 @@ export function SectionEditor<T>({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(id)}
-                        disabled={deletingId === id}
+                        disabled={deletingId === id || busy}
                         aria-label="Delete"
                       >
                         {deletingId === id ? (
@@ -285,6 +375,7 @@ export function SectionEditor<T>({
                 variant="ghost"
                 size="icon"
                 onClick={closeForm}
+                disabled={busy}
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -299,7 +390,7 @@ export function SectionEditor<T>({
                 variant="ghost"
                 size="sm"
                 onClick={closeForm}
-                disabled={saving}
+                disabled={saving || busy}
               >
                 Cancel
               </Button>
@@ -307,14 +398,64 @@ export function SectionEditor<T>({
                 type="button"
                 size="sm"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || busy}
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? "Saving…" : busy ? "Uploading…" : "Save"}
               </Button>
             </div>
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * A time as "1:30 pm": the time box, then am | pm as two buttons, so the half
+ * of the day is always a visible choice (a browser time box hid it and let
+ * "1:00" save as 1 am). "13:30" typed in the box reads as 24-hour.
+ */
+function ClockInput({
+  id,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [, time = "", half = "am"] = value.match(/^(.*?)\s*(am|pm)?$/) ?? [];
+  return (
+    <div className="flex gap-2">
+      <Input
+        id={id}
+        value={time}
+        inputMode="numeric"
+        placeholder="10:30"
+        className="w-24"
+        disabled={disabled}
+        onChange={(e) => onChange(`${e.target.value.trim()} ${half}`)}
+      />
+      <div role="group" aria-label="am or pm" className="inline-flex rounded-md border border-input p-0.5">
+        {(["am", "pm"] as const).map((h) => (
+          <button
+            key={h}
+            type="button"
+            aria-pressed={half === h}
+            disabled={disabled}
+            onClick={() => onChange(`${time} ${h}`)}
+            className={`rounded px-3 text-sm transition-colors ${
+              half === h
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {h}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
