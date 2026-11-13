@@ -1211,3 +1211,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Web: iPhone "Open in app" opens the app at the event (Universal Link via unifesto.app), App Store only when the app is missing (#663)
 - **2026-11-13** · Mobile Profile redesigned: rows on iOS-style colour tiles with SF Symbols, compact identity without the numbers band, and settings, help and sign out on their own Settings page (#664)
 - **2026-11-13** · Mobile Profile back to its 2 Nov layout on cards (Profile and the screens it opens), without the numbers band, and every brand logo is now the company's real mark (#665)
+- **2026-11-13** · Mobile night cards are iOS grouped #1c1c1e (were #232327) (#670)
