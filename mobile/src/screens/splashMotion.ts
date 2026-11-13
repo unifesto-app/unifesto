@@ -294,25 +294,3 @@ export function groundOpacity(out: number): number {
   'worklet';
   return evalTrack(GROUND_EXIT, out)[A];
 }
-
-/**
- * The glass's soft inner glow, as bands for concentric rounded-rect strokes: a
- * CSS `inset 0 0 <blur>px` shadow falls off as 0.5·erfc(d / (σ√2)), σ = blur / 2.
- */
-export function glowBands(blur: number, alpha: number, step: number): { inset: number; width: number; alpha: number }[] {
-  const sigma = blur / 2;
-  const bands: { inset: number; width: number; alpha: number }[] = [];
-  for (let d = step / 2; ; d += step) {
-    const a = alpha * 0.5 * erfc(d / (sigma * Math.SQRT2));
-    if (a < alpha * 0.02) break;
-    bands.push({ inset: d, width: step, alpha: a });
-  }
-  return bands;
-}
-
-/** Abramowitz–Stegun 7.1.26 (max error 1.5e-7). */
-function erfc(x: number): number {
-  const t = 1 / (1 + 0.3275911 * x);
-  const y = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-  return y * Math.exp(-x * x);
-}
