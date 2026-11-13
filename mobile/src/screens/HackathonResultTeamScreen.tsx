@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Check, LinkSimple, LockOpen, Trophy, WarningCircle } from '@unifesto/unicon/react-native';
+import { Check, LinkSimple, LockOpen, Trophy, WarningCircle } from '../components/ui/icons';
 import ShadeCard from '../components/ui/ShadeCard';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

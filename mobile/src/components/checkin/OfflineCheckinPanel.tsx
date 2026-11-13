@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { ArrowsClockwise, CloudArrowUp, UsersThree, Warning } from '@unifesto/unicon/react-native';
+import { ArrowsClockwise, CloudArrowUp, UsersThree, Warning } from '../ui/icons';
 import { useIsOffline } from '../../lib/offline/connectivity';
 import type { useOfflineCheckin } from '../../hooks/useOfflineCheckin';
 import type { QueuedCheckin } from '../../lib/offline/checkinQueue';

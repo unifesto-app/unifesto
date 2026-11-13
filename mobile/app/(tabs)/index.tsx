@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { Buildings, IdentificationCard, ShieldCheck, Sparkle, UserCircle, UsersThree } from '@unifesto/unicon/react-native';
+import { Buildings, IdentificationCard, ShieldCheck, Sparkle, UserCircle, UsersThree } from '../../src/components/ui/icons';
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { useCosmos } from '../../src/theme/cosmos';

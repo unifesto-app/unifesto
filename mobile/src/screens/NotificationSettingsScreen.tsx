@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '../components/ui/icons';
 import useTopSpacing from '../hooks/useTopSpacing';
 import PushService from '../services/PushService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

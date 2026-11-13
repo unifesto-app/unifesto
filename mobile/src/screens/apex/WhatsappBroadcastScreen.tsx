@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CheckCircle, Warning, X } from '@unifesto/unicon/react-native';
+import { CheckCircle, Warning, X } from '../../components/ui/icons';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';

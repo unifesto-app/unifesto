@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight } from '@unifesto/unicon/react-native';
+import { CaretRight } from '../components/ui/icons';
 import { getSubSpaceAnalytics, treeOrder, type SubSpaceAnalytics } from '../lib/api/subSpaces';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';

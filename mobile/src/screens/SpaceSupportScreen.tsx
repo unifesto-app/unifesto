@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lifebuoy } from '@unifesto/unicon/react-native';
+import { Lifebuoy } from '../components/ui/icons';
 import {
   CATEGORY_LABEL,
   DESK_STATUS_LABEL,

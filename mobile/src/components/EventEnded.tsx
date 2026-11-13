@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Certificate, Confetti, Star, Trophy } from '@unifesto/unicon/react-native';
+import { Certificate, Confetti, Star, Trophy } from './ui/icons';
 import { SettingsGroup, SettingsRow } from './profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
 import { getFeedback } from '../lib/api/feedback';

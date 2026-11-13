@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { PaperPlaneTilt } from '@unifesto/unicon/react-native';
+import { PaperPlaneTilt } from '../ui/icons';
 import { SettingsGroup, SettingsRow } from '../profile/SettingsGroup';
 import { FieldRow } from '../manage/FormFields';
 import { Button } from '../ui';

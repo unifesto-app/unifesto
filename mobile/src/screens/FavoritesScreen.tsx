@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { Heart } from '@unifesto/unicon/react-native';
+import { Heart } from '../components/ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { Event } from '../lib/api/events';

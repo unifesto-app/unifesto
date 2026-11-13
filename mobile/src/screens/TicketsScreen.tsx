@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
+import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '../components/ui/icons';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';

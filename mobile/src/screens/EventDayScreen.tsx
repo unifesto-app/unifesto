@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight, ChatsCircle, Lifebuoy, Megaphone, QrCode } from '@unifesto/unicon/react-native';
+import { CaretRight, ChatsCircle, Lifebuoy, Megaphone, QrCode } from '../components/ui/icons';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';
 import { GUTTER } from '../components/home/Section';

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Trash } from '@unifesto/unicon/react-native';
+import { Check, Trash } from '../components/ui/icons';
 import { createTier, deleteTier, getTiers, HEX_RE, updateTier, type TierInput } from '../lib/api/spaceSponsors';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';

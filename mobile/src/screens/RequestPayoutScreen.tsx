@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, CircleIcon } from '@unifesto/unicon/react-native';
+import { CheckCircle, CircleIcon } from '../components/ui/icons';
 import {
   describeAccount,
   getEligibleAccounts,

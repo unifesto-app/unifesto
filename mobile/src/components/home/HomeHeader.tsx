@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket } from '@unifesto/unicon/react-native';
+import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket } from '../ui/icons';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
 import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';

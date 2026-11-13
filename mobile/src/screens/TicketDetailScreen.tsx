@@ -24,7 +24,7 @@ import {
   UsersThree,
   XCircle,
   PencilSimple,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import AttendingShareModal from '../components/AttendingShareModal';
 import LivePollsPanel from '../components/tickets/LivePollsPanel';
 import { AfterEventGroup, EndedStub, useEventCertificate, useEventFeedback } from '../components/EventEnded';

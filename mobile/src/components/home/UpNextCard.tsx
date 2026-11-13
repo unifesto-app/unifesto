@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { QrCode } from '@unifesto/unicon/react-native';
+import { QrCode } from '../ui/icons';
 import type { UpcomingTicket } from '../../hooks/useHomeData';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

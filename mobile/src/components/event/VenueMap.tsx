@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { MapPin, NavigationArrow } from '@unifesto/unicon/react-native';
+import { MapPin, NavigationArrow } from '../ui/icons';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';

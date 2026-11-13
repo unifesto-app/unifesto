@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '@unifesto/unicon/react-native';
+import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '../components/ui/icons';
 import ShadeCard from '../components/ui/ShadeCard';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';

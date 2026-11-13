@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, Bank, Warning } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, Bank, Warning } from '../components/ui/icons';
 import {
   getMyBankAccounts,
   getRefundQueue,

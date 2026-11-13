@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
+import { CheckCircle, CircleIcon as Circle } from '../ui/icons';
 import type { GroupScanResult } from '../../lib/api/checkin';
 import { Button } from '../ui';
 import { Badge } from '../ui/Badge';

@@ -160,13 +160,14 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   a hairline outline; ghost is plain text. Radius 14. Never an accent colour.
 - **Statuses:** `Badge` writes a status as text (done states get a tick). Inline statuses follow
   the same look: coloured or muted text, an optional 6pt dot or tick glyph before it.
-- **Icons:** Unicon, bare. No circles, tiles or borders behind glyphs; size the glyph up instead.
-  Glyphs take `c.text`, `c.muted` or the card's accent.
-- **Profile tab exception** (owner, 13 Nov 2026, picked after mockups): its rows use
-  sonnycandra's "Basic UI" gradient outline icons from Flaticon (`ProfileIcon`, PNGs in
-  `assets/icons/profile`), tinted to one theme colour each by job (owner, 13 Nov: sky, mint,
-  ivory, crimson sign out, text for plain settings). Free licence: the credit line
-  on About stays while they ship. Every other screen keeps Unicon.
+- **Icons:** sonnycandra's gradient outline set from Flaticon (owner, 13 Nov 2026), app-wide.
+  Screens import glyphs from `components/ui/icons` (same names and props as Unicon), never from
+  `@unifesto/unicon` directly. Each is a 128px PNG in `assets/icons/app`, painted one colour with
+  `tintColor`: `c.text`, `c.muted` or the job's accent. Outline only: `weight="fill"` is ignored, so
+  on/off states show by colour. Glyphs with no sonnycandra match still render Unicon. Bare, never
+  on circles, tiles or borders. Free licence: the credit on About stays while they ship.
+- **Profile rows** use `ProfileIcon` (the same pack, named by the pack's own names) at 22pt,
+  tinted by job (sky, mint, ivory, crimson sign out, text for plain settings).
 - **Fields:** `FieldRow` / `AuthField`, solid, radius 14, label above.
 - **Alerts:** `AppAlert`, never `Alert.alert`.
 - **Images:** banners 4:3, logos 1:1, never cropped off-ratio. No chips or tags over event covers.

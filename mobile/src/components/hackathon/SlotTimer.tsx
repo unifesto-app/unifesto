@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Timer } from '@unifesto/unicon/react-native';
+import { Timer } from '../ui/icons';
 import { useNow } from '../../hooks/useHackathonSocket';
 import { formatClock, secondsUntil } from '../../lib/hackathon';
 import { spacing } from '../../theme/spacing';

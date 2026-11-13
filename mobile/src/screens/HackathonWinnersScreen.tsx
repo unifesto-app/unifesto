@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Megaphone, Plus, Trophy } from '@unifesto/unicon/react-native';
+import { Megaphone, Plus, Trophy } from '../components/ui/icons';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import ShadeCard from '../components/ui/ShadeCard';

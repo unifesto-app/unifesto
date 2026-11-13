@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from './icons';
 import { spacing } from '../../theme/spacing';
 import { Text } from './Text';
 import { useCosmos } from '../../theme/cosmos';

@@ -3,8 +3,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Buildings, CheckCircle, Circle, UsersThree } from '@unifesto/unicon/react-native';
-import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
+import { Buildings, CheckCircle, Circle, UsersThree } from '../components/ui/icons';
+import { UnGlyph, type GlyphName } from '../components/ui/icons';
 import { createSpaceRequest } from '../lib/api/spaces';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../components/ui/icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';

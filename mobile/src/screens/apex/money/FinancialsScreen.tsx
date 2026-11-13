@@ -5,7 +5,7 @@ import ShadeCard from '../../../components/ui/ShadeCard';
 import { Button } from '../../../components/ui';
 import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect } from 'expo-router';
-import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
+import { CaretDown, CaretRight } from '../../../components/ui/icons';
 import {
   getPlatformFinancials,
   getPlatformFinancialsBreakdown,

@@ -38,7 +38,7 @@ import {
   Users,
   Wallet,
   type Icon,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop } from '../components/ui/CardSurface';

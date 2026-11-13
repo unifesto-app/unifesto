@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
+import { CheckCircle, CircleIcon as Circle } from '../ui/icons';
 import { CardBackdrop } from '../ui/CardSurface';
 import ShadeCard from '../ui/ShadeCard';
 import { spacing } from '../../theme/spacing';

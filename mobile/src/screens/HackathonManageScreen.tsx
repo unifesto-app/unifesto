@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from '@unifesto/unicon/react-native';
+import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from '../components/ui/icons';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';
 import ManageStats from '../components/manage/ManageStats';

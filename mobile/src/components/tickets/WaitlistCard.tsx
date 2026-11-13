@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Confetti, Hourglass } from '@unifesto/unicon/react-native';
+import { Confetti, Hourglass } from '../ui/icons';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import AuthButton from '../auth/AuthButton';

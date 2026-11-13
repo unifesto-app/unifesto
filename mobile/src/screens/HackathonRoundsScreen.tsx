@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, CircleDashed, PlayCircle, Plus } from '@unifesto/unicon/react-native';
+import { CheckCircle, CircleDashed, PlayCircle, Plus } from '../components/ui/icons';
 import { Button } from '../components/ui';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import { GUTTER } from '../components/home/Section';

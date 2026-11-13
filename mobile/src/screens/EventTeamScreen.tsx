@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
-import { User } from '@unifesto/unicon/react-native';
+import { User } from '../components/ui/icons';
 import { useAuth } from '../context/AuthContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { X } from '@unifesto/unicon/react-native';
+import { X } from '../../components/ui/icons';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow, SwitchRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';

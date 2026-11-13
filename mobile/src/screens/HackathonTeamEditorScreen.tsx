@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from '@unifesto/unicon/react-native';
+import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from '../components/ui/icons';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';

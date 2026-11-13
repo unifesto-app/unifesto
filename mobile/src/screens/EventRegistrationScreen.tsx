@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarX, Ticket as TicketIcon } from '@unifesto/unicon/react-native';
+import { CalendarX, Ticket as TicketIcon } from '../components/ui/icons';
 import { useEventRegistration } from '../hooks/useEventRegistration';
 import { isWaitlistOnly } from '../lib/api/tickets';
 import Skeleton from '../components/Skeleton';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import { MagnifyingGlass, X } from '@unifesto/unicon/react-native';
+import { MagnifyingGlass, X } from '../ui/icons';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 

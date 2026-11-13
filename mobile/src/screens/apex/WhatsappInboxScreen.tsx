@@ -4,7 +4,7 @@ import { CosmosList } from "../../components/ui/CosmosScreen";
 import SearchField from "../../components/manage/SearchField";
 import { GUTTER } from "../../components/home/Section";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { Megaphone } from "@unifesto/unicon/react-native";
+import { Megaphone } from '../../components/ui/icons';
 import {
   HeaderActions,
   HeaderIconButton,

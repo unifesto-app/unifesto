@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { openApexWeb } from '../../lib/openOnWeb';
-import { Cards, Plus } from '@unifesto/unicon/react-native';
+import { Cards, Plus } from '../../components/ui/icons';
 import { CosmosList } from '../../components/ui/CosmosScreen';
 import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';

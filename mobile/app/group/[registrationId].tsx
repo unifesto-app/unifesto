@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowCounterClockwise, CaretRight, Crown, EnvelopeSimple, GenderIntersex, Minus, Phone, Plus, Star, User, UsersThree } from '@unifesto/unicon/react-native';
+import { ArrowCounterClockwise, CaretRight, Crown, EnvelopeSimple, GenderIntersex, Minus, Phone, Plus, Star, User, UsersThree } from '../../src/components/ui/icons';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import { profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';

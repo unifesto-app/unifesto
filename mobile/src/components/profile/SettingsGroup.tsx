@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
+import { ArrowUpRight, CaretRight } from '../ui/icons';
 import { CardBackdrop } from '../ui/CardSurface';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

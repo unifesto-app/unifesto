@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretDown, CaretRight, Link as LinkIcon } from '@unifesto/unicon/react-native';
+import { CaretDown, CaretRight, Link as LinkIcon } from '../components/ui/icons';
 import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from '../lib/api/tracking';
 import { conversion, getTraffic, type SpaceTrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

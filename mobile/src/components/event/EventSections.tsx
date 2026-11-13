@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { CaretDown, CaretRight, CheckCircle, EnvelopeSimple, Phone } from '@unifesto/unicon/react-native';
+import { CaretDown, CaretRight, CheckCircle, EnvelopeSimple, Phone } from '../ui/icons';
 import { GUTTER, Rail } from '../home/Section';
 import type { AgendaItem, Contact, Faq, Prize, Speaker } from '../../lib/api/additional-info';
 import type { EventCurator, EventSponsor } from '../../lib/api/events';

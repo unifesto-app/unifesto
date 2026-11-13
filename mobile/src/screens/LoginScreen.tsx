@@ -24,13 +24,13 @@ import {
   EnvelopeSimple,
   WarningCircle,
   X,
-} from '@unifesto/unicon/react-native';
+} from '../components/ui/icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cognitoDiscovery, COGNITO_REDIRECT_URI, exchangeCognitoCode } from '../lib/api/cognito';
 import * as AuthSession from 'expo-auth-session';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Passkeys from 'react-native-passkeys';
-import { LockKey } from '@unifesto/unicon/react-native';
+import { LockKey } from '../components/ui/icons';
 import { passkeyCancelled } from '../lib/api/auth';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';

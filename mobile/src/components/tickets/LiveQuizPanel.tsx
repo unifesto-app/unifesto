@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle, XCircle } from '@unifesto/unicon/react-native';
+import { CheckCircle, XCircle } from '../ui/icons';
 import { useEngagementSocket } from '../../hooks/useHackathonSocket';
 import { answerQuiz, getQuizFeed, type Leaderboard, type QuizFeed } from '../../lib/api/quizzes';
 import { AppAlert } from '../ui/AppAlert';

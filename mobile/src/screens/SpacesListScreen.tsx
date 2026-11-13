@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { UsersThree } from '@unifesto/unicon/react-native';
+import { UsersThree } from '../components/ui/icons';
 import { CosmosList } from '../components/ui/CosmosScreen';
 import SearchField from '../components/manage/SearchField';
 import { GUTTER } from '../components/home/Section';

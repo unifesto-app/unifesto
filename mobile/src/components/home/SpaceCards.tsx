@@ -10,7 +10,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
-import { CaretRight } from '@unifesto/unicon/react-native';
+import { CaretRight } from '../ui/icons';
 import { SPACE_ROLE_LABEL } from '../../lib/api/spaceMembers';
 import PressableScale from '../ui/PressableScale';
 import { SettingsGroup } from '../profile/SettingsGroup';

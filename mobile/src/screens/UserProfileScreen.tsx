@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { UnGlyph } from '@unifesto/unicon/react-native';
+import { UnGlyph } from '../components/ui/icons';
 import { useAuth } from '../context/AuthContext';
 import * as AuthAPI from '../lib/api/auth';
 import { getMyRegisteredEvents, type Event } from '../lib/api/events';

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { Export, QrCode } from '@unifesto/unicon/react-native';
+import { Export, QrCode } from '../components/ui/icons';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useAuth } from '../context/AuthContext';
 import { dismissBoothScan, syncBoothScans, useBoothScanQueue } from '../lib/offline/boothScanQueue';

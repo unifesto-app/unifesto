@@ -141,13 +141,13 @@ export default function AboutScreen() {
           </SettingsGroup>
         </Section>
         <Text style={[styles.footer, { color: c.muted }]}>© {new Date().getFullYear()} Unifesto</Text>
-        {/* Flaticon's free licence: credit the Profile tab's icons where people can see it. */}
+        {/* Flaticon's free licence: credit the app's icons where people can see it. */}
         <Text
           style={[styles.credit, { color: c.muted }]}
           accessibilityRole="link"
           onPress={() => Linking.openURL('https://www.flaticon.com/authors/sonnycandra').catch(() => {})}
         >
-          Profile icons by sonnycandra from Flaticon
+          Icons by sonnycandra from Flaticon
         </Text>
       </ScrollView>
     </View>

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Lifebuoy, MagnifyingGlass, QrCode } from '@unifesto/unicon/react-native';
+import { Lifebuoy, MagnifyingGlass, QrCode } from '../components/ui/icons';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useCheckinHub } from '../hooks/useCheckinHub';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';

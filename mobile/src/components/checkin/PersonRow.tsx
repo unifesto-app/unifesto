@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../ui/icons';
 import { initials } from '../../utils/checkinFormat';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

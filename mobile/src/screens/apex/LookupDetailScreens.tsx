@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/unicon/react-native';
+import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '../../components/ui/icons';
 import CosmosScreen from '../../components/ui/CosmosScreen';
 import { GUTTER } from '../../components/home/Section';
 import { Image } from 'expo-image';

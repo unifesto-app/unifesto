@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Camera, Flashlight, UsersThree } from '@unifesto/unicon/react-native';
+import { Camera, Flashlight, UsersThree } from '../components/ui/icons';
 import { boothScan, getPortalLeads } from '../lib/api/sponsorPortal';
 import { OFFLINE_MESSAGE } from '../lib/api/errors';
 import { isOnline } from '../lib/offline/connectivity';

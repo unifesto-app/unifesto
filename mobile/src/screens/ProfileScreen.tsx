@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { UnGlyph } from '@unifesto/unicon/react-native';
+import { UnGlyph } from '../components/ui/icons';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../context/AuthContext';

@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/react-native';
+import { Camera, Check, CheckCircle, WarningCircle } from '../components/ui/icons';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { GENDER_OPTIONS, useEditProfile } from '../hooks/useEditProfile';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';

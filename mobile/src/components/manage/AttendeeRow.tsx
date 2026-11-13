@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../ui/icons';
 import type { AttendeeRow as Row } from '../../lib/api/manageEvent';
 import { Avatar } from '../checkin/PersonRow';
 import { spacing } from '../../theme/spacing';

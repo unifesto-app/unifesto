@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
-import { CaretDown, Check, CheckCircle, MagnifyingGlass, Paperclip, X } from '@unifesto/unicon/react-native';
+import { CaretDown, Check, CheckCircle, MagnifyingGlass, Paperclip, X } from './ui/icons';
 import { CustomField, uploadFormFieldFile } from '../lib/api/tickets';
 import { column, spacing } from '../theme/spacing';
 import { cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../theme/cosmos';

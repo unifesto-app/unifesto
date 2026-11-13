@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Check } from '@unifesto/unicon/react-native';
+import { Check } from '../components/ui/icons';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';

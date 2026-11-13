@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
-import { Certificate as CertificateIcon, Export } from '@unifesto/unicon/react-native';
+import { Certificate as CertificateIcon, Export } from '../components/ui/icons';
 import useTopSpacing from '../hooks/useTopSpacing';
 import Skeleton from '../components/Skeleton';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';

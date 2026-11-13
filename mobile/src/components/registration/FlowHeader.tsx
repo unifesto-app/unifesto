@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CaretLeft, X } from '@unifesto/unicon/react-native';
+import { CaretLeft, X } from '../ui/icons';
 import PressableScale from '../ui/PressableScale';
 import { spacing } from '../../theme/spacing';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';

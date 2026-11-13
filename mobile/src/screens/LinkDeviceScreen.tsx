@@ -5,7 +5,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Camera } from '@unifesto/unicon/react-native';
+import { Camera } from '../components/ui/icons';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
