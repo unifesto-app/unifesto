@@ -115,6 +115,22 @@ describe('composeHome', () => {
     const near = composeHome({ ...base, spaceEvents: [], featuredEvents: [] });
     expect(near.spotlight?.id).toBe('open'); // fest and ticket are mine; open is the soonest left
     expect(near.nearYou.map((x) => x.id)).not.toContain('open');
+    expect(mine.spotlightFromSpaces).toBe(true); // final once the space lists load
+    expect(near.spotlightFromSpaces).toBe(false); // waits for the feed
+  });
+
+  it('never repeats a check-in I am running, and keeps undated events in the lists', () => {
+    const tba = { id: 'tba', startDateTime: '' } as unknown as Event;
+    const home = composeHome({
+      ...base,
+      checkinEventIds: ['door'],
+      spaceEvents: [e('door', 10), e('mixer', 14)],
+      featuredEvents: [],
+      favorites: [tba],
+    });
+    expect(home.spotlight?.id).toBe('mixer'); // not the event at the door
+    expect(ids(home.fromMySpaces)).toEqual([]);
+    expect(ids(home.shortlist)).toEqual(['tba']); // a saved TBA event stays, it just can't be the cover
   });
 });
 

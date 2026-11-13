@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { Buildings, IdentificationCard, QrCode, ShieldCheck, Sparkle, Ticket, Trophy, UserCircle, UsersThree } from '../../src/components/ui/icons';
@@ -51,9 +51,10 @@ export default function HomeTab() {
 
   // ── What each list shows: every event once (see composeHome) ───────────
   // Nothing coming up in my spaces (or none joined): the space Apex features instead.
-  const { spotlight, fromMySpaces, featured, shortlist, nearYou } = composeHome({
+  const { spotlight, spotlightFromSpaces, fromMySpaces, featured, shortlist, nearYou } = composeHome({
     tickets: data.upcomingTickets,
     invitedEventIds: myInvites.invites.map((i) => i.event.id),
+    checkinEventIds: workspace.liveCheckins.map((e) => e.id),
     spaceEvents: data.spaceEvents,
     featuredEvents: data.featuredSpace ? data.featuredEvents : [],
     favorites: data.favoriteEvents,
@@ -63,12 +64,15 @@ export default function HomeTab() {
   // The space list shows once what it skips has loaded (not the location fix),
   // then stays put through refreshes. Per person: signing in waits again.
   const userKey = user?.id ?? 'out';
+  // On sign-in or out the hooks reset their loading flags during render, so one
+  // pass still sees the last person's "loaded": nothing settles until the flags are this person's.
+  const flagsAreMine = data.loadsFor === (user?.id ?? null);
   const spacesSettledFor = React.useRef<string | null>(null);
-  if (!data.isLoadingSpaceLists && !myInvites.loading) spacesSettledFor.current = userKey;
+  if (flagsAreMine && !data.isLoadingSpaceLists && !myInvites.loading) spacesSettledFor.current = userKey;
   const spacesSettled = spacesSettledFor.current === userKey;
-  // The spotlight can come from any list, so it waits for all of them once, like the near-you list.
+  // A spotlight from the space lists is final with them; a near-you pick waits for the whole feed.
   const spotlightSettledFor = React.useRef<string | null>(null);
-  if (!feedLoading) spotlightSettledFor.current = userKey;
+  if (flagsAreMine && (!feedLoading || (spacesSettled && spotlightFromSpaces))) spotlightSettledFor.current = userKey;
   const spotlightSettled = spotlightSettledFor.current === userKey;
 
   // At most one nudge, in priority order: sign in → username → full name.
@@ -191,7 +195,9 @@ export default function HomeTab() {
         }
       : null,
   ].filter((item) => item !== null);
-  const [nowCard, ...nowRest] = nowItems;
+  const [nowCard, ...afterCard] = nowItems;
+  // The Up next skeleton has no row: below the card it shows nothing.
+  const nowRest = afterCard.filter((item) => item.row);
 
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
@@ -220,7 +226,9 @@ export default function HomeTab() {
             }}
             tintColor={c.text}
             colors={[c.text]}
-            progressViewOffset={topInset + HOME_BAR_H}
+            // Android draws the spinner over content, so it clears the bar; iOS draws it
+            // behind content, where the bar moves down with the pull.
+            progressViewOffset={Platform.OS === 'android' ? topInset + HOME_BAR_H : topInset}
           />
         }
       >

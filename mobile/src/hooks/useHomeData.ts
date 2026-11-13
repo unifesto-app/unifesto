@@ -59,9 +59,12 @@ function soonest(events: Event[], now = Date.now()): Event[] {
   return events.filter((e) => isOn(e, now)).sort((a, b) => Date.parse(a.startDateTime) - Date.parse(b.startDateTime));
 }
 
-/** The next three not over yet, soonest first. */
+/** The next three not over yet, soonest first. Undated (TBA) events stay; only the spotlight needs a date. */
 export function nextThree(events: Event[], now = Date.now()): Event[] {
-  return soonest(events, now).slice(0, 3);
+  return events
+    .filter((e) => !isEventOver(e, now))
+    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
+    .slice(0, 3);
 }
 
 /** Events Happening near you keeps, by feed priority, before sorting them by day (city first). */
@@ -96,6 +99,8 @@ export function pickSpotlight(pools: SpotlightPools): Event | null {
 export function composeHome(p: {
   tickets: { id: string; parentEventId?: string | null }[];
   invitedEventIds: string[];
+  /** Check-ins I'm running now: their card leads Home, so no list repeats them. */
+  checkinEventIds?: string[];
   spaceEvents: Event[];
   /** Empty when no space is featured. */
   featuredEvents: Event[];
@@ -104,15 +109,20 @@ export function composeHome(p: {
   now?: number;
 }) {
   const shown = new Set<string>(
-    [...p.tickets.flatMap((t) => [t.id, t.parentEventId]), ...p.invitedEventIds].filter((id): id is string => !!id),
+    [...p.tickets.flatMap((t) => [t.id, t.parentEventId]), ...p.invitedEventIds, ...(p.checkinEventIds ?? [])].filter(
+      (id): id is string => !!id,
+    ),
   );
   const fresh = (events: Event[]) => events.filter((e) => !shown.has(e.id));
-  const spotlight = pickSpotlight({
+  const pools = {
     featured: soonest(fresh(p.featuredEvents), p.now),
     mySpaces: soonest(fresh(p.spaceEvents), p.now),
     // Like groupByDay: keep the first few by feed priority, then sort them.
     nearYou: soonest(fresh(p.feed).filter((e) => isOn(e, p.now ?? Date.now())).slice(0, NEAR_YOU_MAX), p.now),
-  });
+  };
+  const spotlight = pickSpotlight(pools);
+  // A pick from the space lists is final once they load; only a near-you pick waits for the feed.
+  const spotlightFromSpaces = !!spotlight && (pools.featured.includes(spotlight) || pools.mySpaces.includes(spotlight));
   if (spotlight) shown.add(spotlight.id);
   const take = (events: Event[]) => {
     const next = nextThree(fresh(events), p.now);
@@ -123,7 +133,7 @@ export function composeHome(p: {
   const featured = fromMySpaces.length === 0 ? take(p.featuredEvents) : [];
   const shortlist = take(p.favorites);
   const nearYou = fresh(p.feed);
-  return { spotlight, fromMySpaces, featured, shortlist, nearYou };
+  return { spotlight, spotlightFromSpaces, fromMySpaces, featured, shortlist, nearYou };
 }
 
 // "Happening near you" should surface whole events, not their parts: when an
@@ -526,6 +536,8 @@ export function useHomeData() {
 
   return {
     user,
+    /** Whose lists the loading flags describe; lags `user` for one discarded render pass on sign-in or out. */
+    loadsFor,
     profile,
     refreshing,
     onRefresh,
