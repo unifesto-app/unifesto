@@ -141,6 +141,14 @@ export default function AboutScreen() {
           </SettingsGroup>
         </Section>
         <Text style={[styles.footer, { color: c.muted }]}>© {new Date().getFullYear()} Unifesto</Text>
+        {/* Flaticon's free licence: credit the Profile tab's icons where people can see it. */}
+        <Text
+          style={[styles.credit, { color: c.muted }]}
+          accessibilityRole="link"
+          onPress={() => Linking.openURL('https://www.flaticon.com/authors/sonnycandra').catch(() => {})}
+        >
+          Profile icons by sonnycandra from Flaticon
+        </Text>
       </ScrollView>
     </View>
   );
@@ -158,6 +166,7 @@ const styles = StyleSheet.create({
   firstSection: { marginTop: 0 },
   section: { marginTop: spacing[8] },
   footer: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  credit: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
   // The SettingsGroup default top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },
 });
