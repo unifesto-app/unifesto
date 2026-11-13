@@ -52,19 +52,47 @@ export function buildPopularEvents(featured: Event[], trending: Event[], upcomin
   });
 }
 
-/** The next three not over yet, soonest first (/favorites is newest-saved first and keeps ended events). */
+const isOn = (e: Event, now: number) => !Number.isNaN(Date.parse(e.startDateTime)) && !isEventOver(e, now);
+
+/** Dated events not over yet, soonest first (/favorites is newest-saved first and keeps ended events). */
+function soonest(events: Event[], now = Date.now()): Event[] {
+  return events.filter((e) => isOn(e, now)).sort((a, b) => Date.parse(a.startDateTime) - Date.parse(b.startDateTime));
+}
+
+/** The next three not over yet, soonest first. */
 export function nextThree(events: Event[], now = Date.now()): Event[] {
-  return events
-    .filter((e) => !isEventOver(e, now))
-    .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-    .slice(0, 3);
+  return soonest(events, now).slice(0, 3);
+}
+
+/** Events Happening near you keeps, by feed priority, before sorting them by day (city first). */
+export const NEAR_YOU_MAX = 8;
+
+/** Spotlight candidates: none of them mine yet (tickets, invites), none over, each soonest first. */
+export interface SpotlightPools {
+  /** The space Apex features on Home; empty when none is featured. */
+  featured: Event[];
+  /** Spaces I joined. */
+  mySpaces: Event[];
+  /** The same few Happening near you would keep (city, then online, then popular picks). */
+  nearYou: Event[];
 }
 
 /**
- * What each Home list shows, every event once, in page order. Tickets and
- * invites lead (a ticket to a sub-event counts its fest as mine too); the space
- * list (from my spaces, else the featured space) skips those; My shortlist skips
- * all of that; Happening near you skips everything shown anywhere else.
+ * The one event Home leads with as a full-width 4:3 cover, picked before any
+ * list so every list below leaves it out.
+ */
+export function pickSpotlight(pools: SpotlightPools, now = Date.now()): Event | null {
+  // TODO(owner): should a far-off featured or my-space event still beat something near me tonight?
+  // Until then: the featured space wins (Apex's pick), then my spaces, then near you; soonest in each.
+  void now;
+  return pools.featured[0] ?? pools.mySpaces[0] ?? pools.nearYou[0] ?? null;
+}
+
+/**
+ * What each part of Home shows, every event once. Tickets and invites lead (a
+ * ticket to a sub-event counts its fest as mine too); the spotlight is picked
+ * next; the space list (from my spaces, else the featured space) skips those;
+ * My shortlist skips all of that; Happening near you skips everything else shown.
  */
 export function composeHome(p: {
   tickets: { id: string; parentEventId?: string | null }[];
@@ -79,16 +107,24 @@ export function composeHome(p: {
   const shown = new Set<string>(
     [...p.tickets.flatMap((t) => [t.id, t.parentEventId]), ...p.invitedEventIds].filter((id): id is string => !!id),
   );
+  const fresh = (events: Event[]) => events.filter((e) => !shown.has(e.id));
+  const spotlight = pickSpotlight({
+    featured: soonest(fresh(p.featuredEvents), p.now),
+    mySpaces: soonest(fresh(p.spaceEvents), p.now),
+    // Like groupByDay: keep the first few by feed priority, then sort them.
+    nearYou: soonest(fresh(p.feed).filter((e) => isOn(e, p.now ?? Date.now())).slice(0, NEAR_YOU_MAX), p.now),
+  }, p.now);
+  if (spotlight) shown.add(spotlight.id);
   const take = (events: Event[]) => {
-    const next = nextThree(events.filter((e) => !shown.has(e.id)), p.now);
+    const next = nextThree(fresh(events), p.now);
     next.forEach((e) => shown.add(e.id));
     return next;
   };
   const fromMySpaces = take(p.spaceEvents);
   const featured = fromMySpaces.length === 0 ? take(p.featuredEvents) : [];
   const shortlist = take(p.favorites);
-  const nearYou = p.feed.filter((e) => !shown.has(e.id));
-  return { fromMySpaces, featured, shortlist, nearYou };
+  const nearYou = fresh(p.feed);
+  return { spotlight, fromMySpaces, featured, shortlist, nearYou };
 }
 
 // "Happening near you" should surface whole events, not their parts: when an
