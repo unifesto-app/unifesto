@@ -222,7 +222,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
         <h2 className="text-2xl font-bold">Application sent</h2>
         <p className="mt-2 text-paper/65">
           Thanks, {form.fullName.trim().split(" ")[0] || "there"}. Our Program Lead reviews every application and gets back
-          to you at <strong className="text-white">{email}</strong>. Questions? Write to orbit@unifesto.app.
+          to you at <strong className="text-white">{email}</strong>. Questions? Write to encore@unifesto.app.
         </p>
       </div>
     );

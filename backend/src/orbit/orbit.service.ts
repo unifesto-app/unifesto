@@ -390,5 +390,5 @@ export interface OrbitApplyInput {
   why: string;
 }
 
-/** The Orbit Program Lead's inbox (Google Group). */
+/** The Program Lead's inbox (Google Group). encore@unifesto.app is an alias of it; the site shows that one. */
 const ORBIT_INBOX = 'orbit@unifesto.app';

@@ -85,7 +85,7 @@ export function OrbitIdCard() {
       </div>
       <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-40" />
       <div className="relative flex items-center justify-between gap-4 px-4 py-3">
-        <span className="text-[9px] leading-snug text-paper/50">If found, please return to orbit@unifesto.app</span>
+        <span className="text-[9px] leading-snug text-paper/50">If found, please return to encore@unifesto.app</span>
         <span className="shrink-0 text-[9px] text-paper/40">Valid while an Encore Lead</span>
       </div>
     </div>
