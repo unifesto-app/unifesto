@@ -24,7 +24,7 @@ const NEXT = [
   { title: "Your first 30 days", body: "Onboard 2 clubs to pass your start period. After that, no end date." },
 ];
 
-export default function EncoreApplyPage() {
+export default function OrbitApplyPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd

@@ -5,7 +5,7 @@ export const alt = "Unifesto Encore on WeGoBeyond";
 export const size = OG_SIZE;
 export const contentType = "image/png";
 
-export default function EncoreImage() {
+export default function OrbitImage() {
   return shareCard({
     note: "Campus programme",
     title: "Unifesto Encore.",

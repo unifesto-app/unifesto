@@ -26,7 +26,7 @@ export const revalidate = 300;
 const DIVIDER = "border-t-[1.5px] border-line";
 const OUT = { target: "_blank", rel: "noreferrer noopener" } as const;
 
-export default async function EncorePage() {
+export default async function OrbitPage() {
   const [map, { community }] = await Promise.all([getOrbitMap(), getContent()]);
   // Applications from colleges with no known city count in totals only, so cities can be empty.
   const showMap = map && map.totals.applications >= MAP_MIN_APPLICATIONS && map.cities.length > 0;

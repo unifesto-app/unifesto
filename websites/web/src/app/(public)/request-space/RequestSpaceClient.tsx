@@ -596,7 +596,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
             </a>
             . If I am appointed, I will accept the{" "}
             <a href="/encore/terms" target="_blank" className="underline hover:text-white">
-              Encore programme terms
+              programme terms
             </a>
             .
           </span>
