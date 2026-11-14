@@ -177,6 +177,31 @@ wegobeyond.in {
 	redir https://www.wegobeyond.in{uri} 308
 }
 
+# Orbit (orbit.unifesto.app and its subdomains). Certs: orbit.pem / orbit.key in
+# /etc/caddy/certs, a Cloudflare Origin Certificate that covers *.orbit.unifesto.app.
+# The containers are on this compose network under the names below, so they must
+# join the `unifesto_default` network (Orbit's own compose file sets that up).
+(cf_orbit) {
+	import cf_tls orbit
+}
+
+api.orbit.unifesto.app {
+	import cf_orbit
+	reverse_proxy orbit-api:3000 {
+		header_up X-Forwarded-For {client_ip}
+	}
+}
+
+orbit.unifesto.app {
+	import cf_orbit
+	reverse_proxy orbit-web:3000
+}
+
+galaxy.orbit.unifesto.app {
+	import cf_orbit
+	reverse_proxy orbit-galaxy:3000
+}
+
 # White-label custom domains (track H, P3). Cloudflare for SaaS terminates the
 # visitor's TLS for each verified customer hostname and forwards it here; the
 # web app resolves the host to its space (middleware.ts) and 404s/redirects
