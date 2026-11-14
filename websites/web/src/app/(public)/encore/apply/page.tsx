@@ -71,7 +71,7 @@ export default function OrbitApplyPage() {
             <p className="text-sm text-paper/60">
               Read the <Link href="/encore/terms" className="underline underline-offset-4 hover:text-white">programme terms</Link>{" "}
               or go back to <a href="https://www.wegobeyond.in/encore" className="underline underline-offset-4 hover:text-white">how Encore works</a>.
-              Questions: orbit@unifesto.app
+              Questions: encore@unifesto.app
             </p>
           </aside>
         </div>

@@ -1,5 +1,6 @@
 // Unifesto Encore, Unifesto's campus programme, on /encore. It was Unifesto Orbit until
-// 14 Nov 2026; identifiers, the API routes and the orbit@ inbox keep the old name.
+// 14 Nov 2026; identifiers and the API routes keep the old name. encore@ is an alias of
+// the orbit@unifesto.app Google Group, so both addresses reach the Program Lead.
 // The programme is Unifesto's: Leads sign its terms with Unifesto Private Limited and
 // apply with a Unifesto account, so Apply and the terms link back to unifesto.app. These
 // facts mirror the programme terms (Unifesto Apex › Legal › orbit-terms) and change only
@@ -11,7 +12,7 @@ const UNIFESTO_WEB = "https://www.unifesto.app";
 export const ORBIT = {
   apply: `${UNIFESTO_WEB}/encore/apply`,
   terms: `${UNIFESTO_WEB}/encore/terms`,
-  inbox: "orbit@unifesto.app",
+  inbox: "encore@unifesto.app",
 } as const;
 
 export const ORBIT_STEPS = [
