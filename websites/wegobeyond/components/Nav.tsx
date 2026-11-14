@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "#what", label: "What we run" },
   { href: "#initiatives", label: "Initiatives" },
-  { href: "/orbit", label: "Orbit" },
+  { href: "/encore", label: "Encore" },
   { href: "#partners", label: "Partners" },
   { href: "#crew", label: "Crew" },
   { href: "#contact", label: "Contact" },

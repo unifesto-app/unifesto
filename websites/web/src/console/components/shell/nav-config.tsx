@@ -214,13 +214,14 @@ export function withSubspaces(groups: NavGroup[], subOrgCount: number): NavGroup
   });
 }
 
-// Unifesto Orbit: only on campus spaces, for the campus's Orbit Lead.
+// Encore (was Unifesto Orbit): only on campus spaces, for the campus's Encore Lead.
+// The route and identifiers keep the old orbit name.
 export const ORBIT_NAV_ITEM: NavItem = {
   href: "/orbit",
-  label: "Orbit",
+  label: "Encore",
   icon: Globe,
   requires: "space:manage-members",
-  keywords: "orbit campus clubs tier leaderboard",
+  keywords: "encore orbit campus clubs tier leaderboard",
 };
 
 /**
@@ -241,7 +242,7 @@ export function resolveNavGroups(
 ): NavGroup[] {
   const groups = withSubspaces(NAV_GROUPS, space.sub_org_count);
   const withOrbit = isCampus(space)
-    ? [groups[0], { label: "Orbit", items: [ORBIT_NAV_ITEM] }, ...groups.slice(1)]
+    ? [groups[0], { label: "Encore", items: [ORBIT_NAV_ITEM] }, ...groups.slice(1)]
     : groups;
   return visibleGroups(withOrbit, access);
 }

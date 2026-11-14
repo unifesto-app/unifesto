@@ -1,4 +1,4 @@
-/* The Unifesto Orbit Lead ID card shown beside the apply form. CSS only. Decorative. */
+/* The Encore Lead ID card shown beside the apply form. CSS only. Decorative. */
 
 /* The Lead's campus ID: lanyard slot, a header band with the u-in-orbit
    mark, a holographic hairline, photo, name, campus, batch and blood group.
@@ -38,7 +38,7 @@ export function OrbitIdCard() {
             <circle cx="55" cy="13" r="2" fill="var(--primary-bright)" />
           </svg>
         </span>
-        <span className="text-[9px] uppercase tracking-[0.2em] text-paper/55">Orbit Lead</span>
+        <span className="text-[9px] uppercase tracking-[0.2em] text-paper/55">Encore Lead</span>
       </div>
       <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-50" />
 
@@ -81,12 +81,12 @@ export function OrbitIdCard() {
         <img src="/press/wordmark-silver.svg" alt="Unifesto" className="h-7 w-auto [[data-theme=light]_&]:hidden" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/press/wordmark-ink.svg" alt="" className="hidden h-7 w-auto [[data-theme=light]_&]:block" />
-        <span className="text-[9px] uppercase tracking-[0.24em] text-paper/50">Orbit • Campus programme</span>
+        <span className="text-[9px] uppercase tracking-[0.24em] text-paper/50">Encore • Campus programme</span>
       </div>
       <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-40" />
       <div className="relative flex items-center justify-between gap-4 px-4 py-3">
         <span className="text-[9px] leading-snug text-paper/50">If found, please return to orbit@unifesto.app</span>
-        <span className="shrink-0 text-[9px] text-paper/40">Valid while an Orbit Lead</span>
+        <span className="shrink-0 text-[9px] text-paper/40">Valid while an Encore Lead</span>
       </div>
     </div>
       </div>

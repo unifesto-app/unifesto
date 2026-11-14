@@ -52,9 +52,9 @@ ${PILLARS.map((p) => `### ${p.title}\n${p.lede}\n${p.points.map((x) => `- ${x}`)
 
 ${HACKATHON_STAGES.map((s) => `- ${s.title}: ${s.body}`).join("\n")}
 
-## Unifesto Orbit (campus programme)
+## Unifesto Encore (campus programme)
 
-Unifesto Orbit, the campus programme, is at https://www.wegobeyond.in/orbit. Applications are at ${SITE.url}/orbit/apply.
+Unifesto Encore, the campus programme (called Unifesto Orbit until November 2026), is at https://www.wegobeyond.in/encore. Applications are at ${SITE.url}/encore/apply.
 
 ## The attendee app
 

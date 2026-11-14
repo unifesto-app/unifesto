@@ -14,9 +14,9 @@ import {
 } from "@/lib/orbit";
 
 export const metadata: Metadata = pageMetadata(
-  "Unifesto Orbit",
-  "One Orbit Lead per campus helps every club on campus run its events on Unifesto. Remote, flexible, no fixed hours. Rewards are recognition, not cash.",
-  "/orbit",
+  "Unifesto Encore",
+  "One Encore Lead per campus helps every club on campus run its events on Unifesto. Remote, flexible, no fixed hours. Rewards are recognition, not cash.",
+  "/encore",
   true
 );
 
@@ -37,7 +37,7 @@ export default async function OrbitPage() {
       <section className="wrap pt-16 lg:pt-24">
         <Reveal trigger="load" stagger>
           <h1 data-reveal-item>
-            Unifesto <span className="text-rust">Orbit.</span>
+            Unifesto <span className="text-rust">Encore.</span>
           </h1>
           <div data-reveal-item className="mt-12 grid items-end gap-10 lg:grid-cols-[1fr_auto]">
             <p className="statement max-w-[30ch]">
@@ -86,8 +86,8 @@ export default async function OrbitPage() {
             <p className="mt-3 max-w-[40ch] text-silver">
               {/* Names the WeGoBeyond community only once it exists (its link is set in Apex). */}
               {community
-                ? "On day one you’re added to the Orbit Leads group in the WeGoBeyond WhatsApp community. Then onboard 2 clubs."
-                : "Join the Orbit Leads WhatsApp community on day one and onboard 2 clubs."} After that there&rsquo;s no end
+                ? "On day one you’re added to the Encore Leads group in the WeGoBeyond WhatsApp community. Then onboard 2 clubs."
+                : "Join the Encore Leads WhatsApp community on day one and onboard 2 clubs."} After that there&rsquo;s no end
               date: you stay as long as you&rsquo;re active. Exam breaks are fine; tell your Program Lead first. Remote,
               with no fixed hours.
             </p>
@@ -211,7 +211,7 @@ export default async function OrbitPage() {
         <section className="wrap pt-28">
           <div className={`grid items-start gap-14 ${DIVIDER} pt-12 lg:grid-cols-2 lg:gap-20`}>
             <Reveal>
-              <h2>Orbit across India.</h2>
+              <h2>Encore across India.</h2>
               <div className="mt-10 flex gap-10">
                 {(
                   [

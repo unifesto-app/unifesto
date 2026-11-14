@@ -17,7 +17,7 @@ export const APP_PAGES = [
   '/organisers',
   '/pricing',
   '/sprint',
-  '/orbit',
+  '/encore/apply',
   '/app',
   '/events',
   '/spaces',
@@ -33,7 +33,7 @@ export const PRODUCT_FACTS = `Unifesto (unifesto.app) is an event platform for c
 - Reach: WhatsApp confirmations and group invite links, push reminders, email campaigns, tracked short links and UTM sources. WhatsApp blasts are Pro.
 - After the event: certificates from the Space's own template with public online verification (Pro); sponsor roster, sponsor portal and booth-scan lead capture (Pro); formatted PDF event reports (Pro).
 - Unifesto Sprint (/sprint, Pro): hackathon teams, problem statements, rounds with weighted rubrics, judge panels, rooms with a help desk, in-app submissions, a live leaderboard and certificates.
-- Unifesto Orbit (/orbit): one Orbit Lead per campus helps clubs run events.
+- Unifesto Encore (/encore/apply), the campus programme, called Unifesto Orbit until November 2026: one Encore Lead per campus helps clubs run events.
 - Ticket transfer: the organiser moves a registration to another account by email.
 - Plans: General, Club, Growth, Pro, Enterprise. No monthly fee; each plan has a platform fee per paid ticket, and free RSVP events cost nothing. Never quote rates; link /pricing.
 - Unifesto does NOT offer quizzes, polls, live Q&A or currencies other than INR. Never claim a feature not listed here.`;

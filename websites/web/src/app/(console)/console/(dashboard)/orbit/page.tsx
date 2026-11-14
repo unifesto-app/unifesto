@@ -12,12 +12,12 @@ import { Badge } from "@/console/components/ui/badge";
 import { getOrbitCampus, type OrbitCampusView } from "@/console/lib/api/orbit";
 import { useSession } from "@/console/lib/context/SessionContext";
 
-const ORBIT_URL = "https://www.wegobeyond.in/orbit";
+const ORBIT_URL = "https://www.wegobeyond.in/encore";
 const GOAL_LABEL = { clubs: "Clubs onboarded", activeClubs: "Active clubs", paidEvents: "Paid events" } as const;
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
 /**
- * Space › Orbit: the Orbit Lead's own campus. Tier and what the next one
+ * Space › Encore (was Orbit): the Encore Lead's own campus. Tier and what the next one
  * needs, the inactivity clock, and every club with whether it's active yet.
  * Shown only on campus spaces (top-level Super spaces).
  */
@@ -31,7 +31,7 @@ export default function OrbitPage() {
     if (!spaceId) return;
     void getOrbitCampus(spaceId).then((res) => {
       if (res.ok) setData(res.data);
-      else setError(res.denied ? "Only the campus's Space Admins can see Orbit." : res.message);
+      else setError(res.denied ? "Only the campus's Space Admins can see Encore." : res.message);
     });
   }, [spaceId]);
 
@@ -42,9 +42,9 @@ export default function OrbitPage() {
     return (
       <EmptyState
         icon={Globe}
-        title="This campus isn't in Unifesto Orbit yet"
-        description="Orbit Leads get every club on their campus running events on Unifesto."
-        action={<a className="text-primary hover:underline" href={ORBIT_URL}>How Orbit works</a>}
+        title="This campus isn't in Unifesto Encore yet"
+        description="Encore Leads get every club on their campus running events on Unifesto."
+        action={<a className="text-primary hover:underline" href={ORBIT_URL}>How Encore works</a>}
       />
     );
   }
@@ -99,7 +99,7 @@ export default function OrbitPage() {
           ))}
         </ListGroup>
       ) : (
-        <div className="rounded-2xl border bg-card p-4 text-sm">Gold. The top of Orbit.</div>
+        <div className="rounded-2xl border bg-card p-4 text-sm">Gold. The top of Encore.</div>
       )}
 
       <ListGroup title="Clubs on my campus" description="A club joins by requesting this campus as its parent space. Unifesto approves it.">
@@ -119,7 +119,7 @@ export default function OrbitPage() {
       </ListGroup>
 
       <p className="text-xs text-muted-foreground">
-        <a className="hover:underline" href="https://www.unifesto.app/orbit/terms">Orbit Lead Programme Terms</a>
+        <a className="hover:underline" href="https://www.unifesto.app/encore/terms">Programme terms</a>
       </p>
     </div>
   );

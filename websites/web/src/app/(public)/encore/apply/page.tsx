@@ -9,18 +9,18 @@ import { OrbitIdCard } from "@/components/visuals/Orbit";
 import RequestSpaceClient from "../../request-space/RequestSpaceClient";
 
 export const metadata: Metadata = withSocial({
-  title: "Apply to be an Orbit Lead",
+  title: "Apply to be an Encore Lead",
   description:
-    "Apply to lead Unifesto Orbit on your campus. Tell us your campus and its clubs, verify your email and phone, and our Program Lead gets back to you.",
-  alternates: { canonical: "/orbit/apply" },
-}, { title: "Apply to be an Orbit Lead", description: "Lead Unifesto Orbit on your campus." });
+    "Apply to lead Unifesto Encore on your campus. Tell us your campus and its clubs, verify your email and phone, and our Program Lead gets back to you.",
+  alternates: { canonical: "/encore/apply" },
+}, { title: "Apply to be an Encore Lead", description: "Lead Unifesto Encore on your campus." });
 
 /* What happens after Apply, in order. */
 const NEXT = [
   { title: "We read it", body: "Our Program Lead reviews every application, usually within a week." },
   { title: "A short call", body: "15 minutes about your campus, its clubs and how you would start." },
   { title: "You are appointed", body: "You get admin access to your campus Space on Unifesto." },
-  { title: "Accept the terms", body: "The Orbit Lead Programme Terms appear in the app. Accept them to begin." },
+  { title: "Accept the terms", body: "The programme terms appear in the app. Accept them to begin." },
   { title: "Your first 30 days", body: "Onboard 2 clubs to pass your start period. After that, no end date." },
 ];
 
@@ -30,15 +30,15 @@ export default function OrbitApplyPage() {
       <JsonLd
         data={breadcrumbLd([
           { name: "Home", path: "/" },
-          { name: "Apply", path: "/orbit/apply" },
+          { name: "Apply", path: "/encore/apply" },
         ])}
       />
       <Navbar />
       <PageHero
-        lines={["Lead your campus.", "Apply to Orbit."]}
+        lines={["Lead your campus.", "Apply to Encore."]}
         accentFrom={1}
         size="md"
-        lede="One Orbit Lead per campus. You represent Unifesto, not your college, and help every club on campus run its events here. Rewards are recognition, not cash."
+        lede="One Encore Lead per campus. You represent Unifesto, not your college, and help every club on campus run its events here. Rewards are recognition, not cash."
       />
       <section className="px-5 pb-24 pt-14 sm:px-8 md:pt-20">
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
@@ -69,8 +69,8 @@ export default function OrbitApplyPage() {
               </ol>
             </div>
             <p className="text-sm text-paper/60">
-              Read the <Link href="/orbit/terms" className="underline underline-offset-4 hover:text-white">programme terms</Link>{" "}
-              or go back to <a href="https://www.wegobeyond.in/orbit" className="underline underline-offset-4 hover:text-white">how Orbit works</a>.
+              Read the <Link href="/encore/terms" className="underline underline-offset-4 hover:text-white">programme terms</Link>{" "}
+              or go back to <a href="https://www.wegobeyond.in/encore" className="underline underline-offset-4 hover:text-white">how Encore works</a>.
               Questions: orbit@unifesto.app
             </p>
           </aside>

@@ -63,7 +63,7 @@ export class OrbitController {
     return this.orbit.applicationMap();
   }
 
-  /** A signed-in student applies (unifesto.app/orbit/apply). */
+  /** A signed-in student applies (unifesto.app/encore/apply). */
   @Post('applications')
   @UseGuards(JwtAuthGuard)
   apply(@Body() dto: OrbitApplyDto, @CurrentUser() user: User) {
