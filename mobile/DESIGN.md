@@ -138,12 +138,24 @@ Read colours from `useCosmos()` (`c`). No hex literals in screens or components.
   Instagram, LinkedIn, X, YouTube) is `BrandIcon`, never a Unicon `*-logo` look-alike glyph.
 - **Event rows** say who runs it, when and where, then the price in sky and the crowd: "64 going"
   muted from 10 registrations, "Almost full" or "Full" in amber (`crowdLabel`). Plain text, no pills.
+- **Home's bar** (owner, 13–14 Nov 2026, District-style): the full wordmark on the left; search
+  and my bell as bare glyphs on the right (search opens the search sheet, so it needs no field).
+  One row on the plain ground that scrolls away with the page: not pinned, no glass. No filter
+  menu on Home (the Events screen keeps its own). The city lives only in the headline under it,
+  "What's on in Hyderabad?".
+- **Home's order** (owner, 13 Nov 2026): the bar and headline, then **now**, the spotlight, the space list
+  (from my spaces, else the featured space, else an Explore spaces row), Find your vibe,
+  Happening near you, My shortlist, then Host / Manage.
+- **Now is one card.** The most urgent of: a check-in I'm running, my hackathon while it runs, Up
+  next, my hackathon before kickoff, seat invites, the one profile nudge. The first is its card;
+  the rest are `LinkRow`s under it. Up next stays the screen's one shade card.
 - **Home shows each event once** (`composeHome`). Tickets and invites lead (a sub-event ticket
-  counts its fest); the space list leaves those out, My shortlist leaves out both, and Happening
-  near you leaves out everything shown anywhere else on the page.
-- **Pictures on Home:** Happening near you opens on one hero card (`EventHero`), the soonest event's
-  4:3 cover at full width; the rest are rows. The one picture rail is Find your vibe (`VibeRail`):
-  category banners at 4:3, named underneath, after Happening near you.
+  counts its fest); the spotlight is picked next (`pickSpotlight`: the featured space, then my
+  spaces, then near you); the space list leaves those out, My shortlist leaves out all of that,
+  and Happening near you leaves out everything shown anywhere else on the page.
+- **Pictures on Home:** the spotlight (`EventHero`) is the one event cover at full width, 4:3,
+  under Now. The one picture rail is Find your vibe (`VibeRail`): category banners at 4:3, named
+  underneath, between the space list and Happening near you, which is rows by day.
 - **Stats** are a figure over a muted label. `ManageStats` draws a row of them as one card divided
   by hairlines.
 - **Shade cards** (`components/ui/ShadeCard`): the hero card of a screen, at most one per screen,

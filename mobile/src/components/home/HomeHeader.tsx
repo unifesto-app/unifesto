@@ -1,66 +1,41 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket } from '../ui/icons';
+import { Bell, MagnifyingGlass, NavigationArrow } from '../ui/icons';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
-import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
-import { HeaderMenu, type HeaderMenuItem } from '../../navigation/HeaderActions';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, displayTracking, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { cosmosFont, displayTracking, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import PressableScale from '../ui/PressableScale';
 
 // Brand wordmark PNG is 2400×551.
 const MARK_W = 112;
 const MARK_H = Math.round((MARK_W * 551) / 2400);
-const BELL = 36;
-const SEARCH_H = 52;
+const ICON_BOX = 40;
+const BAR_ROW = 44;
+const BAR_PAD = spacing[2];
 
-const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
-  weekend: { ios: 'calendar', android: 'ic_menu_my_calendar', glyph: CalendarDots },
-  free: { ios: 'ticket', android: 'ic_menu_agenda', glyph: Ticket },
-  online: { ios: 'globe', android: 'ic_menu_mapmode', glyph: Globe },
-};
-/** Quick-filter menu items, shared with the Events screen's filter button. */
-export const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
-
-interface HomeHeaderProps {
+interface HomeBarProps {
   /** Guests get no bell. */
   signedIn: boolean;
-  city: string | null;
-  locationStatus: LocationStatus;
-  onEnableLocation: () => void;
   /** Unread in-app notifications; the bell shows only when signed in. */
   unread?: number;
   onPressBell?: () => void;
   onPressSearch: () => void;
-  /** Quick filter picked from the menu beside search; opens Events pre-filtered. */
-  onPressPreset: (preset: Preset) => void;
 }
 
 /**
- * Home masthead in the web's layout: wordmark left with place + me on the
- * right (like the site's navbar; my avatar lives in the tab bar), then a DM Sans headline and the search
- * field. Scrolls inline with the page (not sticky), so it's content layer:
- * solid fills, no Liquid Glass (glass is for floating chrome only).
+ * Home's top bar: the wordmark, then search and my bell as bare glyphs (search
+ * opens the search sheet, so it needs no field). It scrolls away with the page.
  */
-export default function HomeHeader({
-  signedIn,
-  city,
-  locationStatus,
-  onEnableLocation,
-  unread = 0,
-  onPressBell,
-  onPressSearch,
-  onPressPreset,
-}: HomeHeaderProps) {
+export function HomeBar({ signedIn, unread = 0, onPressBell, onPressSearch }: HomeBarProps) {
   const c = useCosmos();
   const topInset = useStableTopInset();
 
   return (
-    <View style={{ paddingTop: topInset + spacing[3], paddingHorizontal: GUTTER }}>
+    <View style={{ paddingTop: topInset + BAR_PAD, paddingBottom: BAR_PAD, paddingHorizontal: GUTTER }}>
       <View style={styles.bar}>
         <Image
           source={c.scheme === 'dark' ? require('../../../assets/brand/wordmark-silver.png') : require('../../../assets/brand/wordmark-ink.png')}
@@ -69,36 +44,26 @@ export default function HomeHeader({
           accessibilityLabel="Unifesto"
         />
 
-        <View style={styles.barRight}>
-          {city ? (
-            // Plain label, not a chip: it isn't tappable, so it shouldn't look like a control.
-            <View style={styles.place}>
-              <MapPin size={14} color={c.soft} weight="fill" />
-              <Text style={[styles.chipText, { color: c.soft }]} numberOfLines={1}>{city}</Text>
-            </View>
-          ) : locationStatus === 'denied' ? (
-            <PressableScale
-              onPress={onEnableLocation}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel="Use my location"
-              style={[
-                styles.chip,
-                { borderColor: c.border, backgroundColor: c.card },
-              ]}
-            >
-              <NavigationArrow size={13} color={c.muted} weight="fill" />
-              <Text style={[styles.chipText, { color: c.muted }]}>Set location</Text>
-            </PressableScale>
-          ) : null}
+        <View style={styles.actions}>
+          <PressableScale
+            feedback="inline"
+            onPress={onPressSearch}
+            hitSlop={4}
+            accessibilityRole="search"
+            accessibilityLabel="Search events and spaces"
+            style={styles.icon}
+          >
+            <MagnifyingGlass size={24} color={c.text} />
+          </PressableScale>
 
           {signedIn && onPressBell ? (
             <PressableScale
+              feedback="inline"
               onPress={onPressBell}
-              hitSlop={8}
+              hitSlop={4}
               accessibilityRole="button"
               accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-              style={styles.bell}
+              style={styles.icon}
             >
               <Bell size={24} color={c.text} weight={unread ? 'fill' : 'regular'} />
               {unread ? (
@@ -108,60 +73,51 @@ export default function HomeHeader({
               ) : null}
             </PressableScale>
           ) : null}
-
         </View>
-      </View>
-
-      <Text style={[styles.headline, { color: c.text }]}>
-        What's on{city ? ` in ${city}` : ''}?
-      </Text>
-
-      <View style={styles.searchRow}>
-        <PressableScale
-          onPress={onPressSearch}
-          accessibilityRole="search"
-          accessibilityLabel="Search events and spaces"
-          style={[
-            styles.search,
-            { borderColor: c.input, backgroundColor: c.card },
-          ]}
-        >
-          <MagnifyingGlass size={18} color={c.muted} />
-          <Text style={[styles.searchText, { color: c.muted }]} numberOfLines={1}>Search events, spaces, vibes</Text>
-        </PressableScale>
-        <HeaderMenu
-          title="Browse events"
-          items={PRESET_ITEMS}
-          onSelect={(id) => onPressPreset(id as Preset)}
-          label="Filter events"
-          trigger={<SlidersHorizontal size={20} color={c.text} />}
-          triggerStyle={[styles.filter, { borderColor: c.input, backgroundColor: c.card }]}
-        />
       </View>
     </View>
   );
 }
 
+interface HomeHeadlineProps {
+  city: string | null;
+  locationStatus: LocationStatus;
+  onEnableLocation: () => void;
+}
+
+/** The DM Sans headline under the bar, scrolling with the page. The city lives only here. */
+export function HomeHeadline({ city, locationStatus, onEnableLocation }: HomeHeadlineProps) {
+  const c = useCosmos();
+  return (
+    <View style={styles.headlineWrap}>
+      <Text style={[styles.headline, { color: c.text }]} accessibilityRole="header">
+        What's on{city ? ` in ${city}` : ''}?
+      </Text>
+      {!city && locationStatus === 'denied' ? (
+        <PressableScale
+          feedback="inline"
+          onPress={onEnableLocation}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Use my location"
+          style={styles.locate}
+        >
+          <NavigationArrow size={14} color={c.soft} weight="fill" />
+          <Text style={[styles.locateText, { color: c.soft }]}>Use my location</Text>
+        </PressableScale>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: spacing[3] },
-  barRight: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], flexShrink: 1 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    minHeight: 32,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    maxWidth: 150,
-  },
-  place: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 150, flexShrink: 1 },
-  chipText: { fontSize: typography.fontSize.sm, flexShrink: 1, ...cosmosFont.strong },
-  bell: { width: BELL, height: BELL, alignItems: 'center', justifyContent: 'center' },
+  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: BAR_ROW },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], marginRight: -spacing[2] },
+  icon: { width: ICON_BOX, height: ICON_BOX, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 0,
+    top: 4,
+    right: 2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -170,26 +126,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { fontSize: 10, lineHeight: 12, ...cosmosFont.strong },
-  headline: { marginTop: spacing[8], fontSize: 32, lineHeight: 38, ...cosmosFont.display, letterSpacing: displayTracking(32) },
-  searchRow: { marginTop: spacing[6], flexDirection: 'row', gap: spacing[2] },
-  search: {
-    flex: 1,
-    minHeight: SEARCH_H,
-    paddingVertical: spacing[3],
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
-  },
-  searchText: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
-  filter: {
-    width: SEARCH_H,
-    height: SEARCH_H,
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  headlineWrap: { paddingHorizontal: GUTTER, marginTop: spacing[5] },
+  headline: { fontSize: 32, lineHeight: 38, ...cosmosFont.display, letterSpacing: displayTracking(32) },
+  locate: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[2], alignSelf: 'flex-start' },
+  locateText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

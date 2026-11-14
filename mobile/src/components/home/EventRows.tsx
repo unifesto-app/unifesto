@@ -14,9 +14,7 @@ import PressableScale from '../ui/PressableScale';
 import AuthButton from '../auth/AuthButton';
 import { GUTTER } from './Section';
 import { Rows } from './SpacePanel';
-
-/** Events "Happening near you" shows (hero included) before its All events row. */
-const MAX = 8;
+import { NEAR_YOU_MAX } from '../../hooks/useHomeData';
 // 4:3 like every event cover, the same size as the My space rows so the lists line up.
 const THUMB_W = 64;
 const THUMB_H = 48;
@@ -92,7 +90,7 @@ export function EventRow({
   );
 }
 
-/** The soonest event, opening the list: its cover at full width, so the list has one picture that sells. */
+/** Home's spotlight: one event's cover at full width, so the page has one picture that sells. */
 export function EventHero({ event: e, onPress }: { event: Event; onPress: () => void }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
@@ -140,10 +138,10 @@ export function ActionRow({ label, onPress, checked, hint }: { label: string; on
   );
 }
 
-/** The list's first paint: the hero's shape, then two rows, so the page doesn't jump when it lands. */
-function DayRowsSkeleton() {
+/** The spotlight's first paint, in its shape, so the page doesn't jump when it lands. */
+export function EventHeroSkeleton() {
   return (
-    <View style={styles.wrap}>
+    <View>
       <View style={styles.cover}>
         <Skeleton borderRadius={cosmosCardRadius} style={{ height: '100%' }} />
       </View>
@@ -151,9 +149,15 @@ function DayRowsSkeleton() {
         <Skeleton width="60%" height={20} borderRadius={6} />
         <Skeleton width="80%" height={12} borderRadius={6} />
       </View>
-      <View style={styles.group}>
-        <Rows>{[0, 1].map((i) => <EventRowSkeleton key={i} />)}</Rows>
-      </View>
+    </View>
+  );
+}
+
+/** The list's first paint: three rows, so the page doesn't jump when it lands. */
+function DayRowsSkeleton() {
+  return (
+    <View style={styles.wrap}>
+      <Rows>{[0, 1, 2].map((i) => <EventRowSkeleton key={i} />)}</Rows>
     </View>
   );
 }
@@ -187,14 +191,13 @@ interface DayRowsProps {
 }
 
 /**
- * The soonest event as a hero, then the next few as rows under a day label,
- * closed by a sky "All events" row. The day is in the label, so each row only
- * says the time.
+ * The next few events as rows under a day label, closed by a sky "All events"
+ * row. The day is in the label, so each row only says the time.
  */
 export default function DayRows({ events, loading, failed, onRetry, onPressEvent, allLabel, onSeeAll, footer, emptyTitle }: DayRowsProps) {
   const c = useCosmos();
   // Not memoised: a cheap pass that keeps Today and Tomorrow right on any render.
-  const groups = groupByDay(events, MAX);
+  const groups = groupByDay(events, NEAR_YOU_MAX);
   // The first load holds the skeleton until every feed is in, so rows don't move
   // under a finger as the city's events arrive; a refresh keeps the rows shown.
   // Home remounts this per signed-in person, so signing in waits again.
@@ -226,14 +229,10 @@ export default function DayRows({ events, loading, failed, onRetry, onPressEvent
     );
   }
 
-  const hero = groups[0].events[0];
-  const rest = groups.map((g, i) => (i === 0 ? { ...g, events: g.events.slice(1) } : g)).filter((g) => g.events.length > 0);
-
   return (
     <View style={styles.wrap}>
-      <EventHero event={hero} onPress={() => onPressEvent(hero)} />
-      {rest.map((g) => (
-        <View key={g.label} style={styles.group}>
+      {groups.map((g, i) => (
+        <View key={g.label} style={i === 0 ? null : styles.group}>
           <Text style={[styles.day, { color: c.muted }]} accessibilityRole="header">{g.label}</Text>
           <Rows>
             {g.events.map((e) => (
@@ -242,11 +241,8 @@ export default function DayRows({ events, loading, failed, onRetry, onPressEvent
           </Rows>
         </View>
       ))}
-      {/* Straight under the last row's padding; a hero alone needs the gap. */}
-      <View style={rest.length ? null : styles.closing}>
-        {footer}
-        <ActionRow label={allLabel} onPress={onSeeAll} />
-      </View>
+      {footer}
+      <ActionRow label={allLabel} onPress={onSeeAll} />
     </View>
   );
 }
@@ -258,7 +254,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   // The action rows closing the list, a full hairline above each like the rows.
   action: { paddingVertical: spacing[3], borderTopWidth: StyleSheet.hairlineWidth },
-  closing: { marginTop: spacing[3] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   cover: { width: '100%', aspectRatio: 4 / 3, borderRadius: cosmosCardRadius, overflow: 'hidden' },
   body: { flex: 1, gap: 2 },
