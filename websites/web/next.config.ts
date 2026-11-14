@@ -30,9 +30,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/features', destination: '/organisers', permanent: true },
-      // Apex links legal docs as /<slug>; the Orbit terms live under /orbit.
-      { source: '/orbit-terms', destination: '/orbit/terms', permanent: true },
-      // The programme page lives on WeGoBeyond; /orbit/apply and /orbit/terms stay here.
+      // Apex links legal docs as /<slug>; the programme terms live under /encore.
+      { source: '/orbit-terms', destination: '/encore/terms', permanent: true },
+      // Unifesto Orbit was renamed Unifesto Encore (14 Nov 2026).
+      { source: '/orbit/apply', destination: '/encore/apply', permanent: true },
+      { source: '/orbit/terms', destination: '/encore/terms', permanent: true },
+      // The programme page lives on WeGoBeyond, whose /orbit now redirects to /encore. Leave
+      // this one as it is: browsers have cached it (308).
       { source: '/orbit', destination: 'https://www.wegobeyond.in/orbit', permanent: true },
       { source: '/host', destination: '/organisers', permanent: true },
       { source: '/products', destination: '/organisers', permanent: true },

@@ -1,5 +1,5 @@
 /**
- * City → coordinates for the public Orbit map (unifesto.app/orbit). A campus
+ * City → coordinates for the public Encore map (wegobeyond.in/encore). A campus
  * Space's free-text `city` is matched against this list; unknown cities still
  * count in the totals, they just get no dot. Add a row when a new campus city
  * shows up unplaced.

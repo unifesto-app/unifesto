@@ -30,7 +30,8 @@ const CLOCK_TONE = { active: "success", paused: "neutral", "check-in": "warning"
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
 /**
- * Apex › Orbit: the Unifesto Orbit leaderboard. One row per campus (a top-level
+ * Apex › Encore: the Unifesto Encore leaderboard (Unifesto Orbit until 14 Nov
+ * 2026; routes and identifiers keep the orbit name). One row per campus (a top-level
  * Super space) with its clubs rolled up, ranked by tier then active clubs.
  * Appointing a Lead also makes them Space Admin of the campus; ending one
  * removes that access.
@@ -85,7 +86,7 @@ export default function OrbitPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Unifesto Orbit"
+        title="Unifesto Encore"
         subtitle="Campuses ranked by tier, then active clubs. A club is active once it has published an event."
       />
       {error && <ErrorNotice message={error} />}
@@ -147,7 +148,7 @@ export default function OrbitPage() {
                     <th className="px-4 py-3 font-medium">#</th>
                     <th className="px-4 py-3 font-medium">Campus</th>
                     <th className="px-4 py-3 font-medium">Tier</th>
-                    <th className="px-4 py-3 font-medium">Orbit Lead</th>
+                    <th className="px-4 py-3 font-medium">Encore Lead</th>
                     <th className="px-4 py-3 text-right font-medium">Clubs (active)</th>
                     <th className="px-4 py-3 text-right font-medium">Events</th>
                     <th className="px-4 py-3 text-right font-medium">Paid regs</th>
@@ -228,7 +229,7 @@ export default function OrbitPage() {
 }
 
 /**
- * Applications from unifesto.app/orbit/apply. Open ones first, each with the
+ * Applications from unifesto.app/encore/apply. Open ones first, each with the
  * campus to appoint them to (their pick by default; a college that isn't on
  * Unifesto yet needs its campus Space created first).
  */
@@ -269,7 +270,7 @@ function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; o
         </div>
         {error && <ErrorNotice message={error} />}
         {open.length === 0 && (
-          <p className="text-sm text-muted-foreground">No open applications. They arrive from unifesto.app/orbit/apply.</p>
+          <p className="text-sm text-muted-foreground">No open applications. They arrive from unifesto.app/encore/apply.</p>
         )}
         {open.map((a) => {
           const spaceId = pick[a.id] ?? a.space?.id ?? "";
@@ -321,7 +322,7 @@ function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; o
                   disabled={!spaceId || busy === a.id}
                   onClick={() => void act(a.id, appointOrbitApplication(a.id, spaceId))}
                 >
-                  Appoint Orbit Lead
+                  Appoint Encore Lead
                 </Button>
                 <Button
                   size="sm"

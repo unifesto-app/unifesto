@@ -61,7 +61,7 @@ async function call<T>(method: string, path: string, body: unknown, token?: stri
  * `kind="event"` hosts one event without a space instead (Assist D7): same
  * signup, event basics in place of the space, made as a draft in a new space.
  *
- * `kind="orbit"` is the Unifesto Orbit Lead application (/orbit/apply): same
+ * `kind="orbit"` is the Encore (was Unifesto Orbit) Lead application (/encore/apply): same
  * signup, then campus and clubs. Appointing needs an account, so this is it.
  */
 export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" | "event" | "orbit" }) {
@@ -374,7 +374,7 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               className={FIELD}
             />
           </Field>
-          <Field label="Why you want to be your campus's Orbit Lead">
+          <Field label="Why you want to be your campus's Encore Lead">
             <textarea
               required
               rows={3}
@@ -595,8 +595,8 @@ export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" 
               Privacy Policy
             </a>
             . If I am appointed, I will accept the{" "}
-            <a href="/orbit/terms" target="_blank" className="underline hover:text-white">
-              Orbit Lead Programme Terms
+            <a href="/encore/terms" target="_blank" className="underline hover:text-white">
+              Encore programme terms
             </a>
             .
           </span>

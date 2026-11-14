@@ -22,7 +22,8 @@ const EVER_PAID = [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED, Payment
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**
- * Unifesto Orbit: one student per campus (a top-level SUPER space) gets clubs
+ * Unifesto Encore (Unifesto Orbit until 14 Nov 2026; code, routes and tables keep
+ * the orbit name): one student per campus (a top-level SUPER space) gets clubs
  * onto Unifesto. Orbit Leads are explicit `OrbitLead` rows; appointing one
  * also makes them Space Admin of the campus, and ending one removes that.
  */
@@ -183,7 +184,7 @@ export class OrbitService {
   async forCampus(spaceId: string) {
     const all = await this.campuses();
     const i = all.findIndex((c) => c.spaceId === spaceId);
-    if (i < 0) throw new NotFoundException('Not an Orbit campus');
+    if (i < 0) throw new NotFoundException('Not an Encore campus');
     const { gmv, platformEarnings, paidRegistrations, ...campus } = all[i];
     // What the next tier needs; null once Gold.
     const nextGoal = ORBIT_GOALS[campus.tier] ?? null;
@@ -204,11 +205,11 @@ export class OrbitService {
     });
     if (!space) throw new NotFoundException('Space not found');
     if (space.type !== SpaceType.SUPER || space.parentSpaceId) {
-      throw new BadRequestException('Orbit Leads go on a campus: a top-level Super space');
+      throw new BadRequestException('Encore Leads go on a campus: a top-level Super space');
     }
     const user = { id: userId };
     if (await this.prisma.orbitLead.findFirst({ where: { spaceId, userId: user.id, endedAt: null } })) {
-      throw new ConflictException('Already in Orbit on this campus');
+      throw new ConflictException('Already in Encore on this campus');
     }
     if (role === 'CREW') {
       return this.prisma.orbitLead.create({ data: { spaceId, userId: user.id, role } });
@@ -234,7 +235,7 @@ export class OrbitService {
       where: { id: leadId },
       include: { space: { select: { createdBy: true } } },
     });
-    if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
+    if (!lead || lead.endedAt) throw new NotFoundException('No live Encore Lead with that id');
     // Only Leads were given campus admin access; Crew memberships are left alone.
     // A Lead who created the campus space keeps it: a creator can't be removed
     // (S64), so only their Orbit term ends. Ownership moves via an Ownership request.
@@ -253,11 +254,11 @@ export class OrbitService {
   /** Declare (or clear, with null) an exam window that pauses the clock. */
   async setExamPause(leadId: string, until: Date | null) {
     const lead = await this.prisma.orbitLead.findUnique({ where: { id: leadId } });
-    if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
+    if (!lead || lead.endedAt) throw new NotFoundException('No live Encore Lead with that id');
     return this.prisma.orbitLead.update({ where: { id: leadId }, data: { examPauseUntil: until } });
   }
 
-  // ── Public map (unifesto.app/orbit) ───────────────────────────────────────
+  // ── Public map (wegobeyond.in/encore) ─────────────────────────────────────
 
   // ponytail: per-instance 5-minute cache; fine for one backend container,
   // move to Redis if the backend scales out.
@@ -275,7 +276,7 @@ export class OrbitService {
     return data;
   }
 
-  // ── Applications (unifesto.app/orbit/apply) ───────────────────────────────
+  // ── Applications (unifesto.app/encore/apply) ──────────────────────────────
 
   /** Public campus picker for the apply form. `open` = no live Orbit Lead yet. */
   async campusOptions() {
@@ -297,7 +298,7 @@ export class OrbitService {
       if (!campus) throw new BadRequestException('Pick your campus from the list, or choose "Not listed".');
     }
     if (await this.prisma.orbitLead.findFirst({ where: { userId, endedAt: null } })) {
-      throw new ConflictException('You are already in Orbit.');
+      throw new ConflictException('You are already in Encore.');
     }
     if (await this.prisma.orbitApplication.findFirst({ where: { userId, status: 'PENDING' } })) {
       throw new ConflictException('You already have an application in review. We will get back to you.');
@@ -321,8 +322,8 @@ export class OrbitService {
     void this.email
       .sendRawEmail(
         ORBIT_INBOX,
-        `New Orbit Lead application: ${who}, ${app.collegeName}`,
-        h1('New Orbit Lead application') +
+        `New Encore Lead application: ${who}, ${app.collegeName}`,
+        h1('New Encore Lead application') +
           p(`${strong(esc(who))} applied for ${strong(esc(app.collegeName))} (${esc(app.yearOfStudy)}).`) +
           p(`Email: ${esc(app.user.identities[0]?.email ?? 'not set')} · Phone: ${esc(app.user.mobileNumber)}`) +
           p(`<b>Clubs they're part of</b><br>${esc(app.myClubs).replace(/\n/g, '<br>')}`) +

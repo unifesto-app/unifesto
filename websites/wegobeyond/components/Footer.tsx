@@ -27,7 +27,7 @@ const LOGOS: Record<Social["network"], ReactNode> = {
 const siteLinks = (hasPhotos: boolean) => [
   { href: "/#what", label: "What we run" },
   { href: "/#initiatives", label: "Initiatives" },
-  { href: "/orbit", label: "Unifesto Orbit" },
+  { href: "/encore", label: "Unifesto Encore" },
   // The gallery only renders once it has photos, so its link waits too.
   ...(hasPhotos ? [{ href: "/#moments", label: "Moments" }] : []),
   { href: "/#partners", label: "Partners" },

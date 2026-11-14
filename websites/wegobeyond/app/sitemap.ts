@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
-    { url: `${SITE_URL}/orbit`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/encore`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/crew`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/volunteer`, changeFrequency: "monthly", priority: 0.6 },
   ];

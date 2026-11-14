@@ -66,8 +66,8 @@ export type Release = { date: string; title: string; body: string };
 export const RELEASES: Release[] = [
   {
     date: "2026-10-21",
-    title: "Unifesto Orbit, our campus programme for students",
-    body: "One Orbit Lead per campus represents Unifesto and helps every club on campus run its events here. Leads earn a certificate, a badge that levels up with their tier, and quarterly goodies. Applications are open at unifesto.app/orbit.",
+    title: "Unifesto Orbit, our campus programme for students (now called Encore)",
+    body: "One Orbit Lead per campus represents Unifesto and helps every club on campus run its events here. Leads earn a certificate, a badge that levels up with their tier, and quarterly goodies. Applications are open at unifesto.app/encore/apply.",
   },
   {
     date: "2026-10-07",

@@ -35,8 +35,8 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/request-space": { kind: "Get started", title: "Bring your club to Unifesto", subtitle: "Start a Space for your club, community or institution. Live in minutes.", cta: "Start a Space", icon: PlusCircle },
   "/request-event": { kind: "Get started", title: "Host one event, no Space needed", subtitle: "Run a single event on Unifesto without setting up a Space.", cta: "Host an event", icon: CalendarPlus },
 
-  // Orbit
-  "/orbit/apply": { kind: "Unifesto Orbit", title: "Lead Orbit on your campus", subtitle: "Apply to be your campus Orbit Lead. We read every application, usually within a week.", cta: "Apply now", icon: HandArrowUp },
+  // Encore (was Unifesto Orbit)
+  "/encore/apply": { kind: "Unifesto Encore", title: "Lead Encore on your campus", subtitle: "Apply to be your campus Encore Lead. We read every application, usually within a week.", cta: "Apply now", icon: HandArrowUp },
 
   // Company
   "/about": { kind: "About", title: "Built by people who ran the events", subtitle: "Made in Hyderabad, after years of college events run on forms, spreadsheets and group chats.", icon: Heart },
@@ -66,5 +66,5 @@ export const OG_PAGES: Record<string, OgPage> = {
   "/organiser-agreement": { kind: "Legal", title: "Organiser Agreement", subtitle: "The terms for running a Space: responsibilities, fees, payouts, refunds and attendee data.", icon: FileText },
   "/sponsor-terms": { kind: "Legal", title: "Sponsor and Partner Terms", subtitle: "The terms for sponsors and partners, and how attendee leads may be used.", icon: Medal },
   "/subprocessors": { kind: "Legal", title: "Subprocessor List", subtitle: "The providers that process personal data for us, what for, and where.", icon: TreeStructure },
-  "/orbit/terms": { kind: "Legal", title: "Orbit Lead Terms", subtitle: "The programme terms for Unifesto Orbit Leads.", icon: ListChecks },
+  "/encore/terms": { kind: "Legal", title: "Encore programme terms", subtitle: "The programme terms for Unifesto Encore Leads.", icon: ListChecks },
 };

@@ -98,7 +98,7 @@ export const adminNav: NavGroup[] = [
     items: [
       { href: "/dashboard/users", label: "Users", icon: Users, keywords: "people accounts" },
       { href: "/dashboard/spaces", label: "Spaces", icon: Buildings, keywords: "orgs tenants verify" },
-      { href: "/dashboard/orbit", label: "Orbit", icon: Globe, keywords: "orbit campus leads ambassador university leaderboard" },
+      { href: "/dashboard/orbit", label: "Encore", icon: Globe, keywords: "encore orbit campus leads ambassador university leaderboard" },
       { href: "/dashboard/events", label: "Events", icon: CalendarBlank },
       { href: "/dashboard/categories", label: "Categories", icon: Tag },
     ],

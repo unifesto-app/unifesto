@@ -38,7 +38,7 @@ export const CACHED_PAGES = [
   '/help',
   '/help/[slug]',
   '/links',
-  '/orbit/terms',
+  '/encore/terms',
   '/organiser-agreement',
   '/organisers',
   '/press',
