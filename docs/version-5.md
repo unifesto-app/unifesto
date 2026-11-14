@@ -1218,3 +1218,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Splash glass loses its border light (rims and edge glow); fill and sheen stay (#674)
 - **2026-11-13** · deploy.sh stops syncing founder/ and marketing/ to the server (#675)
 - **2026-11-14** · Campus programme renamed Unifesto Orbit → Unifesto Encore in all copy; /encore pages added, old /orbit URLs redirect (#678)
+- **2026-11-14** · Programme inbox shown as encore@unifesto.app (alias of the orbit@ group) (#679)
