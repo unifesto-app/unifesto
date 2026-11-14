@@ -1217,3 +1217,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-13** · Mobile app icons are sonnycandra's gradient outline set (Flaticon, credited on About), tinted by job; Profile rows in job accents (#672)
 - **2026-11-13** · Splash glass loses its border light (rims and edge glow); fill and sheen stay (#674)
 - **2026-11-13** · deploy.sh stops syncing founder/ and marketing/ to the server (#675)
+- **2026-11-14** · Campus programme renamed Unifesto Orbit → Unifesto Encore in all copy; /encore pages added, old /orbit URLs redirect (#678)
