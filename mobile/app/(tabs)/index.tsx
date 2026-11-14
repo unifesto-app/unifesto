@@ -2,18 +2,19 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { Buildings, IdentificationCard, ShieldCheck, Sparkle, UserCircle, UsersThree } from '../../src/components/ui/icons';
+import { Buildings, IdentificationCard, QrCode, ShieldCheck, Sparkle, Ticket, Trophy, UserCircle, UsersThree } from '../../src/components/ui/icons';
 import { useStableTopInset } from '../../src/components/CustomHeader';
 import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
 import { useCosmos } from '../../src/theme/cosmos';
 import { composeHome, useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
-import HomeHeader from '../../src/components/home/HomeHeader';
+import { HomeBar, HomeHeadline } from '../../src/components/home/HomeHeader';
 import { GUTTER, Section } from '../../src/components/home/Section';
-import DayRows, { ActionRow, EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
+import DayRows, { ActionRow, EventHero, EventHeroSkeleton, EventRow, EventRowSkeleton } from '../../src/components/home/EventRows';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
-import HackathonCard, { useMyHackathon } from '../../src/components/home/HackathonCard';
+import HackathonCard, { statusLine, useMyHackathon } from '../../src/components/home/HackathonCard';
+import type { CheckinEvent } from '../../src/lib/api/checkin';
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
 import { useUnreadNotifications } from '../../src/hooks/useUnreadNotifications';
@@ -23,7 +24,6 @@ import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import HostCta from '../../src/components/home/HostCta';
 import SearchSheet from '../../src/components/home/SearchSheet';
-import type { Preset } from '../../src/hooks/useEventsBrowse';
 import { relativeWhen } from '../../src/utils/eventFormat';
 import { column, spacing } from '../../src/theme/spacing';
 import { successTap } from '../../src/lib/haptics';
@@ -45,14 +45,14 @@ export default function HomeTab() {
   const openEvent = (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`);
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });
-  const openPreset = (preset: Preset) => router.push({ pathname: '/events', params: { preset } });
   const openSpaces = () => router.push('/spaces');
 
   // ── What each list shows: every event once (see composeHome) ───────────
   // Nothing coming up in my spaces (or none joined): the space Apex features instead.
-  const { fromMySpaces, featured, shortlist, nearYou } = composeHome({
+  const { spotlight, spotlightFromSpaces, fromMySpaces, featured, shortlist, nearYou } = composeHome({
     tickets: data.upcomingTickets,
     invitedEventIds: myInvites.invites.map((i) => i.event.id),
+    checkinEventIds: workspace.liveCheckins.map((e) => e.id),
     spaceEvents: data.spaceEvents,
     featuredEvents: data.featuredSpace ? data.featuredEvents : [],
     favorites: data.favoriteEvents,
@@ -62,9 +62,16 @@ export default function HomeTab() {
   // The space list shows once what it skips has loaded (not the location fix),
   // then stays put through refreshes. Per person: signing in waits again.
   const userKey = user?.id ?? 'out';
+  // On sign-in or out the hooks reset their loading flags during render, so one
+  // pass still sees the last person's "loaded": nothing settles until the flags are this person's.
+  const flagsAreMine = data.loadsFor === (user?.id ?? null);
   const spacesSettledFor = React.useRef<string | null>(null);
-  if (!data.isLoadingSpaceLists && !myInvites.loading) spacesSettledFor.current = userKey;
+  if (flagsAreMine && !data.isLoadingSpaceLists && !myInvites.loading) spacesSettledFor.current = userKey;
   const spacesSettled = spacesSettledFor.current === userKey;
+  // A spotlight from the space lists is final with them; a near-you pick waits for the whole feed.
+  const spotlightSettledFor = React.useRef<string | null>(null);
+  if (flagsAreMine && (!feedLoading || (spacesSettled && spotlightFromSpaces))) spotlightSettledFor.current = userKey;
+  const spotlightSettled = spotlightSettledFor.current === userKey;
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
@@ -99,6 +106,97 @@ export default function HomeTab() {
   const hackathon = useMyHackathon(data.upcomingTickets);
   const city = data.detectedCity;
 
+  // ── Now: the one thing that can't wait is a card, the rest are rows under it ──
+  // A check-in I'm running, my hackathon while it runs, my next ticket, then my
+  // hackathon before kickoff, seat invites, and the one profile nudge.
+  const scan = (e: CheckinEvent) =>
+    router.push({
+      pathname: `/checkin/${e.id}`,
+      params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
+    });
+  const openTicket = () =>
+    nextTicket && router.push({ pathname: '/ticket/[id]', params: { id: nextTicket.id, ticket: JSON.stringify(nextTicket) } });
+  const openHackathon = () => hackathon && router.push(`/hackathon/${hackathon.eventId}` as never);
+  const nowMs = Date.now();
+  const hackathonLive =
+    !!hackathon && Date.parse(hackathon.event.startDateTime) <= nowMs && nowMs < Date.parse(hackathon.event.endDateTime);
+  const hackathonItem = hackathon
+    ? {
+        key: 'hackathon',
+        card: <HackathonCard hub={hackathon} onPress={openHackathon} />,
+        row: (
+          <LinkRow
+            key="hackathon"
+            icon={<Trophy size={24} color={c.text} />}
+            title={hackathon.event.title}
+            meta={statusLine(hackathon.team!, hackathon.unreadCount)}
+            onPress={openHackathon}
+          />
+        ),
+      }
+    : null;
+  const nowItems = [
+    ...workspace.liveCheckins.map((e) => ({
+      key: `checkin-${e.id}`,
+      card: (
+        <View style={styles.cards}>
+          <LiveCheckinCard event={e} onScan={() => scan(e)} />
+        </View>
+      ),
+      row: <LinkRow key={`checkin-${e.id}`} icon={<QrCode size={24} color={c.mint} />} title={e.title} meta="Check-in live" onPress={() => scan(e)} />,
+    })),
+    hackathonLive ? hackathonItem : null,
+    nextTicket
+      ? {
+          key: 'next',
+          card: (
+            <UpNextCard
+              ticket={nextTicket}
+              moreCount={data.upcomingTickets.length - 1}
+              onOpenTicket={openTicket}
+              onSeeAllTickets={() => router.navigate('/tickets')}
+            />
+          ),
+          row: (
+            <LinkRow
+              key="next"
+              icon={<Ticket size={24} color={c.sky} />}
+              title={nextTicket.title}
+              meta={`Up next · ${relativeWhen(nextTicket.startDateTime)}`}
+              onPress={openTicket}
+            />
+          ),
+        }
+      : // Skeleton only until the first answer: on pull-to-refresh the stale card stays put.
+        data.isLoadingTickets
+        ? { key: 'next', card: <UpNextCardSkeleton />, row: null }
+        : null,
+    hackathonLive ? null : hackathonItem,
+    ...myInvites.invites.slice(0, 3).map((inv) => ({
+      key: `invite-${inv.token}`,
+      card: <InviteCards invites={[inv]} onOpen={(t) => router.push(`/claim/${t}`)} onDecline={myInvites.decline} />,
+      row: (
+        <LinkRow
+          key={`invite-${inv.token}`}
+          icon={<Ticket size={24} color={c.sky} />}
+          title={inv.event.title}
+          meta={inv.invitedBy ? `${inv.invitedBy} saved you a seat` : 'You have a seat waiting'}
+          onPress={() => router.push(`/claim/${inv.token}`)}
+        />
+      ),
+    })),
+    prompt
+      ? {
+          key: 'prompt',
+          card: <PromptCard icon={prompt.icon} title={prompt.title} body={prompt.body} onPress={() => router.push(prompt.to)} />,
+          row: <LinkRow key="prompt" icon={prompt.icon} title={prompt.title} meta={prompt.body} onPress={() => router.push(prompt.to)} />,
+        }
+      : null,
+  ].filter((item) => item !== null);
+  const [nowCard, ...afterCard] = nowItems;
+  // The Up next skeleton has no row: below the card it shows nothing.
+  const nowRest = afterCard.filter((item) => item.row);
+
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
   // top inset on top of the header's own spacing (see mobile-tab-top-spacing).
@@ -125,69 +223,37 @@ export default function HomeTab() {
           />
         }
       >
-        <HomeHeader
+        <HomeBar
           signedIn={!!user}
+          unread={unread}
+          onPressBell={() => router.push('/notifications')}
+          onPressSearch={search.openSheet}
+        />
+        <HomeHeadline
           city={city}
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
-          unread={unread}
-          onPressBell={() => router.push('/notifications')}
-          onPressPreset={openPreset}
-          onPressSearch={search.openSheet}
         />
 
-        {myInvites.invites.length > 0 ? (
+        {nowCard ? (
           <View style={styles.block}>
-            <InviteCards invites={myInvites.invites} onOpen={(t) => router.push(`/claim/${t}`)} onDecline={myInvites.decline} />
+            {nowCard.card}
+            {nowRest.length > 0 ? (
+              <View style={[styles.rows, styles.nowRows]}>
+                <Rows>{nowRest.map((item) => item.row)}</Rows>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
-        {prompt ? (
-          <View style={styles.block}>
-            <PromptCard icon={prompt.icon} title={prompt.title} body={prompt.body} onPress={() => router.push(prompt.to)} />
+        {/* The one picture that sells, picked before any list so none repeats it. */}
+        {!spotlightSettled ? (
+          <View style={[styles.block, styles.rows]}>
+            <EventHeroSkeleton />
           </View>
-        ) : null}
-
-        {/* Skeleton only until the first answer: on pull-to-refresh the stale
-            card stays put rather than flashing back to a placeholder. */}
-        {!nextTicket && data.isLoadingTickets ? (
-          <View style={styles.block}>
-            <UpNextCardSkeleton />
-          </View>
-        ) : nextTicket ? (
-          <View style={styles.block}>
-            <UpNextCard
-              ticket={nextTicket}
-              moreCount={data.upcomingTickets.length - 1}
-              onOpenTicket={() =>
-                router.push({ pathname: '/ticket/[id]', params: { id: nextTicket.id, ticket: JSON.stringify(nextTicket) } })
-              }
-              onSeeAllTickets={() => router.navigate('/tickets')}
-            />
-          </View>
-        ) : null}
-
-        {hackathon ? (
-          <View style={styles.block}>
-            <HackathonCard hub={hackathon} onPress={() => router.push(`/hackathon/${hackathon.eventId}` as never)} />
-          </View>
-        ) : null}
-
-        {/* A check-in running now is the one operator thing that can't wait for the Space tab. */}
-        {workspace.liveCheckins.length > 0 ? (
-          <View style={[styles.block, styles.cards]}>
-            {workspace.liveCheckins.map((e) => (
-              <LiveCheckinCard
-                key={e.id}
-                event={e}
-                onScan={() =>
-                  router.push({
-                    pathname: `/checkin/${e.id}`,
-                    params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
-                  })
-                }
-              />
-            ))}
+        ) : spotlight ? (
+          <View style={[styles.block, styles.rows]}>
+            <EventHero event={spotlight} onPress={() => openEvent(spotlight)} />
           </View>
         ) : null}
 
@@ -214,6 +280,24 @@ export default function HomeTab() {
               </Rows>
               <ActionRow label="Explore spaces" onPress={openSpaces} />
             </View>
+          </Section>
+        ) : spacesSettled ? (
+          // Neither space list showed: keep a way into spaces on the page.
+          <View style={[styles.rows, styles.block]}>
+            <Rows>
+              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={openSpaces} />
+            </Rows>
+          </View>
+        ) : null}
+
+        {/* The picture rail sits between the two row lists, so the page isn't one wall of rows. */}
+        {data.isLoadingCategories || data.categories.length > 0 ? (
+          <Section title="Find your vibe">
+            {data.categories.length === 0 ? (
+              <VibeRailSkeleton />
+            ) : (
+              <VibeRail categories={data.categories} onPressCategory={openCategory} />
+            )}
           </Section>
         ) : null}
 
@@ -243,25 +327,6 @@ export default function HomeTab() {
             }
           />
         </Section>
-
-        {/* Neither space list showed: keep a way into spaces on the page. */}
-        {spacesSettled && fromMySpaces.length === 0 && featured.length === 0 ? (
-          <View style={[styles.rows, styles.lone]}>
-            <Rows>
-              <LinkRow key="spaces" icon={<UsersThree size={24} color={c.text} />} title="Explore spaces" meta="Clubs, colleges and communities" onPress={openSpaces} />
-            </Rows>
-          </View>
-        ) : null}
-
-        {data.isLoadingCategories || data.categories.length > 0 ? (
-          <Section title="Find your vibe">
-            {data.categories.length === 0 ? (
-              <VibeRailSkeleton />
-            ) : (
-              <VibeRail categories={data.categories} onPressCategory={openCategory} />
-            )}
-          </Section>
-        ) : null}
 
         {user && ((data.isLoadingFavorites && data.favoriteEvents.length === 0) || shortlist.length > 0) ? (
           <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
@@ -327,5 +392,5 @@ const styles = StyleSheet.create({
   block: { marginTop: spacing[8] },
   cards: { paddingHorizontal: GUTTER, gap: spacing[3] },
   rows: { paddingHorizontal: GUTTER },
-  lone: { marginTop: spacing[8] },
+  nowRows: { marginTop: spacing[2] },
 });

@@ -86,6 +86,7 @@ describe('composeHome', () => {
 
   it('shows every event once, in page order', () => {
     const home = composeHome({ ...base, spaceEvents: [e('invite', 11), e('mixer', 14), e('over', 9)], featuredEvents: [e('wgb', 16)] });
+    expect(home.spotlight?.id).toBe('wgb'); // the featured space leads the cover
     expect(ids(home.fromMySpaces)).toEqual(['mixer']); // the invite leads the page; ended events drop
     expect(home.featured).toEqual([]); // my spaces have something on
     expect(ids(home.shortlist)).toEqual(['saved']); // ticket and mixer are already shown
@@ -93,10 +94,43 @@ describe('composeHome', () => {
   });
 
   it('falls back to the featured space when nothing is on in my spaces', () => {
-    const home = composeHome({ ...base, spaceEvents: [], featuredEvents: [e('wgb', 16), e('invite', 11)] });
-    expect(ids(home.featured)).toEqual(['wgb']);
+    const home = composeHome({ ...base, spaceEvents: [], featuredEvents: [e('wgb2', 18), e('wgb', 16), e('invite', 11)] });
+    expect(home.spotlight?.id).toBe('wgb'); // soonest, and the invite is already mine
+    expect(ids(home.featured)).toEqual(['wgb2']);
     expect(ids(home.shortlist)).toEqual(['mixer', 'saved']);
     expect(ids(home.nearYou)).toEqual(['open', 'run']);
+  });
+
+  it('leaves the featured list empty when its only event is the spotlight', () => {
+    const home = composeHome({ ...base, spaceEvents: [], featuredEvents: [e('wgb', 16)] });
+    expect(home.spotlight?.id).toBe('wgb');
+    expect(home.featured).toEqual([]); // Home shows the Explore spaces row instead
+  });
+
+  it('takes the spotlight from my spaces, then near you, never from what is already mine', () => {
+    const mine = composeHome({ ...base, spaceEvents: [e('mixer', 14), e('club', 13)], featuredEvents: [] });
+    expect(mine.spotlight?.id).toBe('club');
+    expect(ids(mine.fromMySpaces)).toEqual(['mixer']);
+
+    const near = composeHome({ ...base, spaceEvents: [], featuredEvents: [] });
+    expect(near.spotlight?.id).toBe('open'); // fest and ticket are mine; open is the soonest left
+    expect(near.nearYou.map((x) => x.id)).not.toContain('open');
+    expect(mine.spotlightFromSpaces).toBe(true); // final once the space lists load
+    expect(near.spotlightFromSpaces).toBe(false); // waits for the feed
+  });
+
+  it('never repeats a check-in I am running, and keeps undated events in the lists', () => {
+    const tba = { id: 'tba', startDateTime: '' } as unknown as Event;
+    const home = composeHome({
+      ...base,
+      checkinEventIds: ['door'],
+      spaceEvents: [e('door', 10), e('mixer', 14)],
+      featuredEvents: [],
+      favorites: [tba],
+    });
+    expect(home.spotlight?.id).toBe('mixer'); // not the event at the door
+    expect(ids(home.fromMySpaces)).toEqual([]);
+    expect(ids(home.shortlist)).toEqual(['tba']); // a saved TBA event stays, it just can't be the cover
   });
 });
 

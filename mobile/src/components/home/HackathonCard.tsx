@@ -49,7 +49,7 @@ export function useMyHackathon(tickets: UpcomingTicket[]): HackathonHub | null {
 }
 
 /** The one thing the team should know right now, most urgent first. */
-function statusLine(team: Team, unread: number): string {
+export function statusLine(team: Team, unread: number): string {
   const req = team.evaluation?.request;
   if (req?.status === 'CALLED') return `You're up for ${req.roundName}`;
   if (req?.status === 'WAITING' && req.position) return `#${req.position} in the ${req.roundName} queue`;
