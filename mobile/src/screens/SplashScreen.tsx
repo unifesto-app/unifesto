@@ -381,7 +381,7 @@ function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenP
         style={[styles.footer, { color: c.muted, bottom: insets.bottom + 28 }, footerStyle]}
         numberOfLines={1}
       >
-        Built by organisers who lived the chaos
+        built by organisers who lived the chaos
       </Animated.Text>
     </View>
   );
