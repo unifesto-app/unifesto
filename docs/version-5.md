@@ -1220,3 +1220,4 @@ Decisions (29 Oct): the canonical host stays `www.unifesto.app`. Public and cons
 - **2026-11-14** · Campus programme renamed Unifesto Orbit → Unifesto Encore in all copy; /encore pages added, old /orbit URLs redirect (#678)
 - **2026-11-14** · Programme inbox shown as encore@unifesto.app (alias of the orbit@ group) (#679)
 - **2026-11-14** · Splash footer line in lowercase (#676)
+- **2026-11-14** · Home restructure: wordmark bar with search and bell, one now card, spotlight cover, then the lists (#677)
