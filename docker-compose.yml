@@ -58,13 +58,15 @@ services:
   # on 2026-11-16, with every key copied over (DUMP/RESTORE, TTLs kept).
   # AOF on, because refresh tokens and queued jobs must survive a restart;
   # noeviction, which BullMQ requires (as the ElastiCache parameter group had).
-  # No published port: only containers on this compose network reach it, so
+  # No published port, and only on the private `cache` network with backend and
+  # cert-worker (other stacks join `default`, so they can't reach it). Hence
   # no password and no TLS. ~10 MB in use when it moved; 256 MB is headroom.
   redis:
     image: valkey/valkey:8.1-alpine
     restart: unless-stopped
     logging: *logging
     command: ["valkey-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    networks: [cache]
     volumes:
       - redis_data:/data
     healthcheck:
@@ -117,6 +119,7 @@ services:
       # Certificate renders run only in `cert-worker` (below), never on a
       # replica serving traffic.
       CERT_WORKER: "false"
+    networks: [default, cache]
     expose:
       - "8080"
     # Healthcheck: deploy.sh waits for `healthy` before draining an old replica,
@@ -189,6 +192,7 @@ services:
       RUN_MIGRATIONS: "false"
       NODE_OPTIONS: "--max-old-space-size=512"
       CERT_WORKER: "true"
+    networks: [default, cache]
     healthcheck:
       test:
         - "CMD"
@@ -360,3 +364,8 @@ volumes:
   caddy_data:
   caddy_config:
   redis_data:
+
+# `cache`: redis + backend + cert-worker only. Not internal, so a one-off
+# container on it can still reach outside (the ElastiCache copy at cutover).
+networks:
+  cache:
