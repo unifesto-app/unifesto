@@ -177,27 +177,6 @@ wegobeyond.in {
 	redir https://www.wegobeyond.in{uri} 308
 }
 
-# Orbit. Hosts are one level under unifesto.app so the free Cloudflare certificate
-# and the origin cert (origin.pem, covers *.unifesto.app) both apply. Two-level
-# names like api.orbit.unifesto.app have no edge certificate. The containers
-# orbit-api, orbit-web and orbit-galaxy must be on the `unifesto_default` network.
-orbit.unifesto.app {
-	import cf_origin
-	reverse_proxy orbit-web:3000
-}
-
-orbitapi.unifesto.app {
-	import cf_origin
-	reverse_proxy orbit-api:3000 {
-		header_up X-Forwarded-For {client_ip}
-	}
-}
-
-galaxy.unifesto.app {
-	import cf_origin
-	reverse_proxy orbit-galaxy:3000
-}
-
 # White-label custom domains (track H, P3). Cloudflare for SaaS terminates the
 # visitor's TLS for each verified customer hostname and forwards it here; the
 # web app resolves the host to its space (middleware.ts) and 404s/redirects
