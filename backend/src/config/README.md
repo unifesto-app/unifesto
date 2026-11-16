@@ -23,9 +23,9 @@ A NestJS service that implements `OnModuleInit` to validate required environment
 - `S3_BUCKET_NAME` - Name of S3 bucket for file storage
 - `COGNITO_USER_POOL_ID` - AWS Cognito user pool ID for JWT verification
 - `COGNITO_CLIENT_ID` - AWS Cognito client ID for JWT verification
-- `REDIS_HOST` - ElastiCache (Valkey) hostname
-- `REDIS_PORT` - ElastiCache port number
-- `REDIS_TLS` - Boolean flag to enable TLS for Redis connection
+- `REDIS_HOST` - Valkey hostname (`redis`, the compose container, in production)
+- `REDIS_PORT` - Valkey port number (6379)
+- `REDIS_TLS` - Boolean flag to enable TLS for Redis connection (`false` for the container)
 - `DATABASE_URL` - PostgreSQL connection string (must include sslmode=require)
 
 ### ConfigModule

@@ -10,6 +10,9 @@ name: unifesto
 #   unifesto.app / www  -> web:3000 (the console is www/console; space.unifesto.app 308s there)
 #   www.wegobeyond.in   -> wegobeyond:3000 (bare wegobeyond.in 308s to www)
 #
+# The API's Redis is the `redis` (Valkey) container below, not ElastiCache:
+# backend/.env has REDIS_HOST=redis, REDIS_PORT=6379, REDIS_TLS=false.
+#
 # Runtime secrets come from each app's own env file (backend/.env,
 # websites/apex/.env, websites/web/.env.local).
 # Build-time NEXT_PUBLIC_* values are inlined into the client bundles, so
@@ -50,6 +53,33 @@ services:
       - apex
       - web
 
+  # The API's Redis (Valkey): BullMQ queues, refresh tokens (auth:refresh:*),
+  # cron locks, the throttler and the Socket.IO adapter. Replaced ElastiCache
+  # on 2026-11-16, with every key copied over (DUMP/RESTORE, TTLs kept).
+  # AOF on, because refresh tokens and queued jobs must survive a restart;
+  # noeviction, which BullMQ requires (as the ElastiCache parameter group had).
+  # No published port, and only on the private `cache` network with backend and
+  # cert-worker (other stacks join `default`, so they can't reach it). Hence
+  # no password and no TLS. ~10 MB in use when it moved; 256 MB is headroom.
+  redis:
+    image: valkey/valkey:8.1-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ["valkey-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    networks: [cache]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+
   # One-shot: apply DB migrations exactly once before the API replicas start,
   # so the replicas don't race to run `prisma migrate deploy` concurrently on
   # boot. Runs, migrates, exits. `restart: "no"` — it is not a long-lived svc.
@@ -89,6 +119,7 @@ services:
       # Certificate renders run only in `cert-worker` (below), never on a
       # replica serving traffic.
       CERT_WORKER: "false"
+    networks: [default, cache]
     expose:
       - "8080"
     # Healthcheck: deploy.sh waits for `healthy` before draining an old replica,
@@ -116,13 +147,16 @@ services:
     depends_on:
       backend-migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     # SIGTERM -> Nest enableShutdownHooks closes the HTTP server and BullMQ
     # worker; give in-flight requests and a running cert render time to finish
     # before Docker sends SIGKILL (default was 10s). deploy.sh rolls replicas,
     # so the old ones drain while the new ones already serve.
     stop_grace_period: 60s
-    # Host is t3.large (2 vCPU / 8 GB) shared with Caddy + 4 Next.js apps.
-    # Three API replicas fit the 8 GB comfortably (3 x 1G cap = 3 GB) and give
+    # Host is t3.medium (2 vCPU / 4 GB, down from t3.large on 2026-11-16) shared
+    # with Caddy + the Next.js apps. Replicas measured ~200-260 MB each that day;
+    # the 1G caps are ceilings, not reservations. Three API replicas give
     # more concurrency headroom than the 2 vCPUs alone; the extra replica
     # absorbs bursts and the CPU-blocking cert/PDF paths. The app is stateless
     # (JWT, Redis-backed throttler + Socket.IO Redis adapter, external Postgres),
@@ -158,6 +192,7 @@ services:
       RUN_MIGRATIONS: "false"
       NODE_OPTIONS: "--max-old-space-size=512"
       CERT_WORKER: "true"
+    networks: [default, cache]
     healthcheck:
       test:
         - "CMD"
@@ -172,6 +207,8 @@ services:
     depends_on:
       backend-migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     # A running render finishes (or BullMQ retries it) before SIGKILL.
     stop_grace_period: 60s
     deploy:
@@ -235,7 +272,7 @@ services:
       start_period: 30s
       start_interval: 2s
     # Measured ~80 MB resident (2026-10-18); the cap keeps a leak from
-    # starving the API replicas on the shared 8 GB host.
+    # starving the API replicas on the shared 4 GB host.
     deploy:
       resources:
         limits:
@@ -311,7 +348,7 @@ services:
       retries: 3
       start_period: 30s
       start_interval: 2s
-    # Shared 8 GB host; a small static site.
+    # Shared 4 GB host; a small static site.
     deploy:
       resources:
         limits:
@@ -326,3 +363,9 @@ secrets:
 volumes:
   caddy_data:
   caddy_config:
+  redis_data:
+
+# `cache`: redis + backend + cert-worker only. Not internal, so a one-off
+# container on it can still reach outside (the ElastiCache copy at cutover).
+networks:
+  cache:
